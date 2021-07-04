@@ -1,0 +1,110 @@
+div#load_screen{
+      background: #f1f2f3;
+      opacity: 1;
+      position: fixed;
+      z-index:999999;
+      top: 0px;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      width: 100%;
+}
+div#load_screen .loader {
+    display: flex;
+    justify-content: center;
+    height: 100vh;
+}
+div#load_screen .loader-content {
+    right: 0;
+    align-self: center;
+    height: 100vh;
+}
+div#load_screen svg{
+    width: 119px;
+    height: 231px;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    right: 0;
+    left: 0;
+    margin: auto auto;
+}
+div#load_screen svg path {
+    width:100px;
+    height:20px;
+    fill:#1b55e2;
+    animation:animate_path 5s;
+    -moz-animation:animate_path 5s infinite; /* Firefox */
+    -webkit-animation:animate_path 5s infinite; /* Safari and Chrome */
+}
+
+@-moz-keyframes animate_path /* Firefox */ {
+    0% {fill:#1b55e2;}
+    50% {fill:#3b3f5c;}
+    100% {fill:#1b55e2;}
+}
+
+@-webkit-keyframes animate_path /* Safari and Chrome */ {
+    0% {fill:#1b55e2;}
+    50% {fill:#3b3f5c;}
+    100% {fill:#1b55e2;}
+}
+
+div#load_screen svg circle {
+    width:100px;
+    height:20px;
+    fill:#2196f3;
+    animation:animate_circle 5s;
+    -moz-animation:animate_circle 5s infinite; /* Firefox */
+    -webkit-animation:animate_circle 5s infinite; /* Safari and Chrome */
+}
+
+@-moz-keyframes animate_circle /* Firefox */ {
+    0% {fill:#2196f3;}
+    50% {fill:#ffbb44;}
+    100% {fill:#2196f3;}
+}
+
+@-webkit-keyframes animate_circle /* Safari and Chrome */ {
+    0% {fill:#2196f3;}
+    50% {fill:#ffbb44;}
+    100% {fill:#2196f3;}
+}
+
+div#load_screen svg circle.st2 {
+    fill:#c2d5ff;
+    opacity: 1;
+    animation:animate_circle_one 3s;
+    -moz-animation:animate_circle_one 3s infinite; /* Firefox */
+    -webkit-animation:animate_circle_one 3s infinite; /* Safari and Chrome */
+}
+
+@-moz-keyframes animate_circle_one /* Firefox */ {
+    0% {fill:#c2d5ff;}
+    50% {fill:#1b55e2;}
+    100% {fill:#c2d5ff;}
+}
+
+@-webkit-keyframes animate_circle_one /* Safari and Chrome */ {
+    0% {fill:#c2d5ff;}
+    50% {fill:#1b55e2;}
+    100% {fill:#c2d5ff;}
+}
+
+div#load_screen svg circle.st4 {
+    fill:#3b3f5c;
+    animation:animate_circle_three 5s;
+    -moz-animation:animate_circle_three 5s infinite; /* Firefox */
+    -webkit-animation:animate_circle_three 5s infinite; /* Safari and Chrome */
+}
+@-moz-keyframes animate_circle_three /* Firefox */ {
+    0% {fill:#3b3f5c;}
+    50% {fill:#acb0c3;}
+    100% {fill:#3b3f5c;}
+}
+
+@-webkit-keyframes animate_circle_three /* Safari and Chrome */ {
+    0% {fill:#3b3f5c;}
+    50% {fill:#acb0c3;}
+    100% {fill:#3b3f5c;}
+}
