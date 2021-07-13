@@ -6,7 +6,6 @@ urlpatterns = [
      path('', views.index, name='index'),
      path('index/',views.index, name='index'),
      path('stuinfo/',views.stuinfo, name='stuinfo'),
-     path('stuinfo/<str:queryname>/',views.stuinfo, name='stuinfo'),
      path('register/',views.register, name='register'),
      path('login/',views.index,name='index'),
      path('logout/',views.logout, name='logout'),
