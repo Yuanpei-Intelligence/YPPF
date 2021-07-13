@@ -1,4 +1,5 @@
 from django.contrib.auth.hashers import BasePasswordHasher,MD5PasswordHasher ,mask_hash  
+import json
 import hashlib
 class MyMD5PasswordHasher(MD5PasswordHasher):  
     algorithm = "mymd5"
