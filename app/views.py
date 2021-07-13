@@ -106,7 +106,7 @@ def miniLogin(request):
             )
 
 
-def stuinfo(request):
+def stuinfo(request, queryname=None):
     print(request.user.is_authenticated)
     print("stuinfo getin!!!")
     undergroundurl = underground_url
@@ -127,23 +127,36 @@ def stuinfo(request):
     ##<organization对象>.department = 团委宣传部
     ##解释性语言##
 
-    
+    # dyh 7.13
     if request.user.is_authenticated:
         try:
             username = request.session['username']
-            userinfo = student.objects.filter(username=username).values()[0]
-            useroj = student.objects.get(username=username)
-            isFirst = useroj.firstTimeLogin
-            #未修改密码
-            if isFirst:
-                return redirect('/modpw/')
-            ava = useroj.avatar
-            ava_path = ''
-            if str(ava) == '':
-                ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg' 
+            if queryname is None:
+                queryname = username
+
+            userinfo = student.objects.filter(username=queryname).values()
+            assert(len(userinfo) <= 1)
+            if len(userinfo) == 0:
+                return # 在原始页面显示查无此人
+            userinfo = userinfo[0]
+
+            avatar = userinfo['avatar']
+            avatar_path = ''
+            if str(avatar) == '':
+                avatar_path = settings.MEDIA_URL + 'avatar/codecat.jpg' 
             else:
-                ava_path = settings.MEDIA_URL + str(ava)
-            return render(request,'indexinfo.html',locals())
+                avatar_path = settings.MEDIA_URL + str(avatar)
+
+            if queryname == username:
+                isFirst = userinfo['firstTimeLogin']
+                #未修改密码
+                if isFirst:
+                    return redirect('/modpw/')
+                print('private', username)
+                return render(request, 'profile_private.html', locals())
+            else:
+                print('public', queryname)
+                return render(request, 'profile_public.html', locals())
         except:
             auth.logout(request)
             return redirect('/index')
