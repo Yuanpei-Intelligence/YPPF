@@ -130,9 +130,6 @@ def stuinfo(request, queryname=None):
     # dyh 7.13
     if request.user.is_authenticated:
         try:
-            # 为什么获取img时的url会像这样：
-            #   /stuinfo/alt="avatar"/
-            #   /stuinfo/height="90px"/
             username = request.session['username']
             if queryname is None:
                 queryname = username
