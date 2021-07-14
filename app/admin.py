@@ -2,14 +2,14 @@ from django.contrib import admin
 from app.models import *
 # Register your models here.
 class Newstudent(admin.ModelAdmin):
-    list_display = ['pno','pname','username','pgender','pyear','pemail','pclass','pmajor','ptel','firstTimeLogin']
-    search_fields = ('pname','pno')
+    list_display = ['pname','pid','pgender','syear','sdorm','sstatus','TypeID','pemail','sclass','smajor','ptel','firstTimeLogin']
+    search_fields = ('pid','pname')
 class NewOrg(admin.ModelAdmin):
-    list_display = ['organization_name','department']
-    search_fields = ('organization_name','department')
+    list_display = ['oname']
+    search_fields = ('oname',)
 class NewPos(admin.ModelAdmin):
-    list_display = ['position_stu','from_organization','job']
-    search_fields = ('position_stu__sname','from_organization__organization_name','position_stu__sno')
-admin.site.register(NaturalPeople,Newstudent)
-admin.site.register(organization, NewOrg)
-admin.site.register(position, NewPos)
+    list_display = ['person','org','pos']
+    search_fields = ('person__pname','Organization__oname','position__person')
+admin.site.register(NaturalPerson,Newstudent)
+admin.site.register(Organization, NewOrg)
+admin.site.register(Position, NewPos)

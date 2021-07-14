@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from app.models import NaturalPeople,position,organization
+from app.models import NaturalPerson,Position,Organization
 from django.contrib import auth,messages
 from django.http import HttpResponseRedirect
 from django.http import JsonResponse
@@ -49,7 +49,7 @@ def index(request):
                 
                 en_pw = hash_coder.encode(username)
                 try:
-                    userinfo = NaturalPeople.objects.get(username=username)
+                    userinfo = NaturalPerson.objects.get(pid=username)
                     name = userinfo.pname
                     return redirect(arg_origin+f'?Sid={username}&Secret={en_pw}&name={name}')
                     
@@ -89,7 +89,7 @@ def miniLogin(request):
             
             request.session['username'] = username
             en_pw = hash_coder.encode(request.session['username'])
-            user_account = NaturalPeople.objects.get(username=username)
+            user_account = NaturalPerson.objects.get(pid=username)
             return JsonResponse(
             {'pname': user_account.pname, 'Succeed': 1},
             status = 200
@@ -116,14 +116,14 @@ def stuinfo(request):
             mod_code = True
     try:
         username = request.session['username']
-        userinfo = NaturalPeople.objects.filter(username=username)
-        user_pos = position.objects.get(position_stu=NaturalPeople.objects.get(pno=username))
+        userinfo = NaturalPerson.objects.filter(pid=username)
+        user_pos = Position.objects.get(position_stu=NaturalPerson.objects.get(pid=username))
         user_org = user_pos.from_organization
     except:
         redirect('/index/')
     ##user_pos.job = 部员
     ##user_pos.from_organization = <organization对象>
-    ##<organization对象>.organization_name = 共青团北京大学元培学院委员会
+    ##<organization对象>.oname = 共青团北京大学元培学院委员会
     ##<organization对象>.department = 团委宣传部
     ##解释性语言##
 
@@ -131,8 +131,8 @@ def stuinfo(request):
     if request.user.is_authenticated:
         try:
             username = request.session['username']
-            userinfo = NaturalPeople.objects.filter(username=username).values()[0]
-            useroj = NaturalPeople.objects.get(username=username)
+            userinfo = NaturalPerson.objects.filter(pid=username).values()[0]
+            useroj = NaturalPerson.objects.get(pid=username)
             isFirst = useroj.firstTimeLogin
             #未修改密码
             if isFirst:
@@ -154,9 +154,9 @@ def account_setting(request):
     undergroundurl = underground_url
     if request.user.is_authenticated:
         username = request.session['username']
-        info = NaturalPeople.objects.filter(username=username)
+        info = NaturalPerson.objects.filter(username=username)
         userinfo = info.values()[0]
-        useroj = NaturalPeople.objects.get(pno=username)
+        useroj = NaturalPerson.objects.get(pno=username)
         if str(useroj.avatar) == '' :
             former_img = settings.MEDIA_URL + 'avatar/codecat.jpg' 
         else:
@@ -205,10 +205,10 @@ def register(request):
                 render(request,'index.html')
             else:
                 #user with same pno
-                same_user = NaturalPeople.objects.filter(pno=pno)
+                same_user = NaturalPerson.objects.filter(pno=pno)
                 if same_user:
                     render(request,'auth_register_boxed.html')
-                same_email = NaturalPeople.objects.filter(pemail=email)
+                same_email = NaturalPerson.objects.filter(pemail=email)
                 if same_email:
                     render(request,'auth_register_boxed.html')
                 
@@ -216,7 +216,7 @@ def register(request):
                 user = User.objects.create(username=pno)
                 user.set_password(password)
                 user.save()
-                new_user = NaturalPeople.objects.create(pno=pno,username=user)
+                new_user = NaturalPerson.objects.create(pno=pno,username=user)
                 new_user.pemail = email
                 new_user.pyear = pyear
                 new_user.pgender = pgender
@@ -235,13 +235,13 @@ def org_spec(request,*args, **kwargs):
     arg = args[0]
     org_dict = local_dict['org']
     title = org_dict[arg]
-    org = organization.objects.filter(organization_name=title)
-    department = org.department
-    pos = position.objects.filter(Q(from_organization=org) | Q(job='部长') | Q(job='老板'))
+    org = Organization.objects.filter(oname=title)
+    #department = org.department
+    pos = Position.objects.filter(Q(from_organization=org) | Q(job='部长') | Q(job='老板'))
     try:
-        pos = position.objects.filter(Q(from_organization=org) | Q(job='部长') | Q(job='老板'))
+        pos = Position.objects.filter(Q(from_organization=org) | Q(job='部长') | Q(job='老板'))
         boss_no = pos.values()[0]['position_stu_id']
-        boss = NaturalPeople.objects.get(pno=boss_no).pname
+        boss = NaturalPerson.objects.get(pno=boss_no).pname
         job = pos.values()[0]['job']
     except:
         person_incharge = '负责人'
@@ -253,7 +253,7 @@ def get_stu_img(request):
     if stuId is not None:
         try:
             print(stuId)
-            img_path = NaturalPeople.objects.get(pno=stuId).avatar
+            img_path = NaturalPerson.objects.get(pno=stuId).avatar
             if str(img_path) == '':
                 img_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
             else:
@@ -269,7 +269,7 @@ def get_stu_img(request):
 def search(request):
     undergroundurl = underground_url
     query = request.GET.get('Query')
-    stu_list = NaturalPeople.objects.filter(Q(pno__icontains=query) | Q(pname__icontains=query))
+    stu_list = NaturalPerson.objects.filter(Q(pno__icontains=query) | Q(pname__icontains=query))
     return render(request,'search.html',locals())
     
 
@@ -280,9 +280,9 @@ def modpw(request):
     err_code = 0
     err_message = None
     if request.user.is_authenticated:
-        isFirst = NaturalPeople.objects.get(pno=request.session['username']).firstTimeLogin
+        isFirst = NaturalPerson.objects.get(pno=request.session['username']).firstTimeLogin
         username = request.session['username']  # added by wxy
-        useroj = NaturalPeople.objects.get(pno=username)
+        useroj = NaturalPerson.objects.get(pno=username)
         if str(useroj.avatar) == '' :
             ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg' 
         else:
@@ -304,7 +304,7 @@ def modpw(request):
                     if user:
                         user.set_password(newpw)
                         user.save()
-                        stu = NaturalPeople.objects.filter(username=username)
+                        stu = NaturalPerson.objects.filter(username=username)
                         stu.update(firstTimeLogin=False)
 
                         urls = reverse("index") + "?success=yes"
@@ -341,7 +341,8 @@ def load_data(request):
             user = User.objects.create(username=username)
             user.set_password(password)
             user.save()
-            stu = NaturalPeople.objects.create(pno=pno,username=user)
+            stu = NaturalPerson.objects.create(pid=pno)
+            #stu = NaturalPerson.objects.create(pid=pno,username=user)
             stu.pemail = email
             stu.ptel = tel
             stu.pyear = year
