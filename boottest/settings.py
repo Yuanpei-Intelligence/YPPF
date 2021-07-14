@@ -93,8 +93,8 @@ DATABASES = {
         'NAME': 'YPPF',
         'HOST': '127.0.0.1',
         'PORT': 3306,
-        'USER': '',
-        'PASSWORD': '',
+        'USER': 'root',
+        'PASSWORD': 'ZJHzjh228093',
         # 'OPTIONS': {
         #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         # }

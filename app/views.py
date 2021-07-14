@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from app.models import naturalPeople,position,organization
+from app.models import NaturalPeople,position,organization
 from django.contrib import auth,messages
 from django.http import HttpResponseRedirect
 from django.http import JsonResponse
@@ -49,8 +49,8 @@ def index(request):
                 
                 en_pw = hash_coder.encode(username)
                 try:
-                    userinfo = naturalPeople.objects.get(username=username)
-                    name = userinfo.sname
+                    userinfo = NaturalPeople.objects.get(username=username)
+                    name = userinfo.pname
                     return redirect(arg_origin+f'?Sid={username}&Secret={en_pw}&name={name}')
                     
                 except:
@@ -89,19 +89,19 @@ def miniLogin(request):
             
             request.session['username'] = username
             en_pw = hash_coder.encode(request.session['username'])
-            user_account = naturalPeople.objects.get(username=username)
+            user_account = NaturalPeople.objects.get(username=username)
             return JsonResponse(
-            {'Sname': user_account.sname, 'Succeed': 1},
+            {'pname': user_account.pname, 'Succeed': 1},
             status = 200
         )
         else:
             return JsonResponse(
-            {'Sname': username, 'Succeed': 0},
+            {'pname': username, 'Succeed': 0},
             status = 400
         )
     except:
         return JsonResponse(
-                {'Sname': '', 'Succeed': 0},
+                {'pname': '', 'Succeed': 0},
                 status = 400
             )
 
@@ -116,8 +116,8 @@ def stuinfo(request):
             mod_code = True
     try:
         username = request.session['username']
-        userinfo = naturalPeople.objects.filter(username=username)
-        user_pos = position.objects.get(position_stu=naturalPeople.objects.get(sno=username))
+        userinfo = NaturalPeople.objects.filter(username=username)
+        user_pos = position.objects.get(position_stu=NaturalPeople.objects.get(pno=username))
         user_org = user_pos.from_organization
     except:
         redirect('/index/')
@@ -131,8 +131,8 @@ def stuinfo(request):
     if request.user.is_authenticated:
         try:
             username = request.session['username']
-            userinfo = naturalPeople.objects.filter(username=username).values()[0]
-            useroj = naturalPeople.objects.get(username=username)
+            userinfo = NaturalPeople.objects.filter(username=username).values()[0]
+            useroj = NaturalPeople.objects.get(username=username)
             isFirst = useroj.firstTimeLogin
             #未修改密码
             if isFirst:
@@ -154,9 +154,9 @@ def account_setting(request):
     undergroundurl = underground_url
     if request.user.is_authenticated:
         username = request.session['username']
-        info = naturalPeople.objects.filter(username=username)
+        info = NaturalPeople.objects.filter(username=username)
         userinfo = info.values()[0]
-        useroj = naturalPeople.objects.get(sno=username)
+        useroj = NaturalPeople.objects.get(pno=username)
         if str(useroj.avatar) == '' :
             former_img = settings.MEDIA_URL + 'avatar/codecat.jpg' 
         else:
@@ -170,13 +170,13 @@ def account_setting(request):
             ava =  request.FILES.get('avatar')
             expr = bool(tel or Major or email or aboutbio or ava)
             if aboutbio != '':
-                useroj.sBio = aboutbio
+                useroj.pBio = aboutbio
             if Major != '':
-                useroj.smajor = Major
+                useroj.pmajor = Major
             if email != '':
-                useroj.semail = email
+                useroj.pemail = email
             if tel != '':
-                useroj.stel = tel
+                useroj.ptel = tel
             if ava is None:
                 pass
             else:
@@ -196,31 +196,31 @@ def register(request):
         if request.method == 'POST' and request.POST:
             name = request.POST['name']
             password = request.POST['password']
-            sno = request.POST['snum']
+            pno = request.POST['snum']
             email = request.POST['email']
             password2 = request.POST['password2']
-            syear = request.POST['syear']
-            sgender = request.POST['sgender']
+            pyear = request.POST['pyear']
+            pgender = request.POST['pgender']
             if password != password2:
                 render(request,'index.html')
             else:
-                #user with same sno
-                same_user = naturalPeople.objects.filter(sno=sno)
+                #user with same pno
+                same_user = NaturalPeople.objects.filter(pno=pno)
                 if same_user:
                     render(request,'auth_register_boxed.html')
-                same_email = naturalPeople.objects.filter(semail=email)
+                same_email = NaturalPeople.objects.filter(pemail=email)
                 if same_email:
                     render(request,'auth_register_boxed.html')
                 
                 #OK!
-                user = User.objects.create(username=sno)
+                user = User.objects.create(username=pno)
                 user.set_password(password)
                 user.save()
-                new_user = naturalPeople.objects.create(sno=sno,username=user)
-                new_user.semail = email
-                new_user.syear = syear
-                new_user.sgender = sgender
-                new_user.sname = name
+                new_user = NaturalPeople.objects.create(pno=pno,username=user)
+                new_user.pemail = email
+                new_user.pyear = pyear
+                new_user.pgender = pgender
+                new_user.pname = name
                 new_user.save()
                 return HttpResponseRedirect('/index/')
         return render(request,'auth_register_boxed.html')
@@ -241,7 +241,7 @@ def org_spec(request,*args, **kwargs):
     try:
         pos = position.objects.filter(Q(from_organization=org) | Q(job='部长') | Q(job='老板'))
         boss_no = pos.values()[0]['position_stu_id']
-        boss = naturalPeople.objects.get(sno=boss_no).sname
+        boss = NaturalPeople.objects.get(pno=boss_no).pname
         job = pos.values()[0]['job']
     except:
         person_incharge = '负责人'
@@ -253,7 +253,7 @@ def get_stu_img(request):
     if stuId is not None:
         try:
             print(stuId)
-            img_path = naturalPeople.objects.get(sno=stuId).avatar
+            img_path = NaturalPeople.objects.get(pno=stuId).avatar
             if str(img_path) == '':
                 img_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
             else:
@@ -269,7 +269,7 @@ def get_stu_img(request):
 def search(request):
     undergroundurl = underground_url
     query = request.GET.get('Query')
-    stu_list = naturalPeople.objects.filter(Q(sno__icontains=query) | Q(sname__icontains=query))
+    stu_list = NaturalPeople.objects.filter(Q(pno__icontains=query) | Q(sname__icontains=query))
     return render(request,'search.html',locals())
     
 
@@ -280,9 +280,9 @@ def modpw(request):
     err_code = 0
     err_message = None
     if request.user.is_authenticated:
-        isFirst = naturalPeople.objects.get(sno=request.session['username']).firstTimeLogin
+        isFirst = NaturalPeople.objects.get(pno=request.session['username']).firstTimeLogin
         username = request.session['username']  # added by wxy
-        useroj = naturalPeople.objects.get(sno=username)
+        useroj = NaturalPeople.objects.get(pno=username)
         if str(useroj.avatar) == '' :
             ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg' 
         else:
@@ -304,7 +304,7 @@ def modpw(request):
                     if user:
                         user.set_password(newpw)
                         user.save()
-                        stu = naturalPeople.objects.filter(username=username)
+                        stu = NaturalPeople.objects.filter(username=username)
                         stu.update(firstTimeLogin=False)
 
                         urls = reverse("index") + "?success=yes"
@@ -324,30 +324,30 @@ def load_data(request):
         df_1819 = load()
         for i in range(len(df_1819)): #import 2018 stu info.
             username = str(df_1819['学号'].iloc[i])
-            sno = username
-            password = sno
+            pno = username
+            password = pno
             email = df_1819['邮箱'].iloc[i]
             if email == 'None':
-                if sno[0] == '2':
-                    email = sno + '@stu.pku.edu.cn'
+                if pno[0] == '2':
+                    email = pno + '@stu.pku.edu.cn'
                 else:
-                    email = sno + '@pku.edu.cn'
+                    email = pno + '@pku.edu.cn'
             tel = str(df_1819['手机号'].iloc[i])
-            year = '20' + sno[0:2]
+            year = '20' + pno[0:2]
             gender = df_1819['性别'].iloc[i]
             major = df_1819['专业'].iloc[i]
             name = df_1819['姓名'].iloc[i]
-            sclass = df_1819['班级'].iloc[i]
+            pclass = df_1819['班级'].iloc[i]
             user = User.objects.create(username=username)
             user.set_password(password)
             user.save()
-            stu = naturalPeople.objects.create(sno=sno,username=user)
-            stu.semail = email
-            stu.stel = tel
-            stu.syear = year
-            stu.sgender = gender
-            stu.smajor = major
-            stu.sname = name
-            stu.sclass = sclass
+            stu = NaturalPeople.objects.create(pno=pno,username=user)
+            stu.pemail = email
+            stu.ptel = tel
+            stu.pyear = year
+            stu.pgender = gender
+            stu.pmajor = major
+            stu.pname = name
+            stu.pclass = pclass
             stu.save()
         return render(request,'debugging.html')
