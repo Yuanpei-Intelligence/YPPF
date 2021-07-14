@@ -269,7 +269,7 @@ def get_stu_img(request):
 def search(request):
     undergroundurl = underground_url
     query = request.GET.get('Query')
-    stu_list = NaturalPeople.objects.filter(Q(pno__icontains=query) | Q(sname__icontains=query))
+    stu_list = NaturalPeople.objects.filter(Q(pno__icontains=query) | Q(pname__icontains=query))
     return render(request,'search.html',locals())
     
 

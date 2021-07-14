@@ -9,7 +9,7 @@ class NewOrg(admin.ModelAdmin):
     search_fields = ('organization_name','department')
 class NewPos(admin.ModelAdmin):
     list_display = ['position_stu','from_organization','job']
-    search_fields = ('position_stu__sname','from_organization__organization_name','position_stu__pno')
+    search_fields = ('position_stu__sname','from_organization__organization_name','position_stu__sno')
 admin.site.register(NaturalPeople,Newstudent)
 admin.site.register(organization, NewOrg)
 admin.site.register(position, NewPos)
