@@ -13,16 +13,18 @@ from app.utils import MyMD5PasswordHasher, MySHA256Hasher, load_local_json
 from django.conf import settings
 from django.urls import reverse
 import json
+from datetime import datetime
 import time
 
 local_dict = load_local_json()
-# underground_url = local_dict['url']['base_url']
-underground_url = 'http://127.0.0.1:8080/appointment/index'
+underground_url = local_dict['url']['base_url']
+# underground_url = 'http://127.0.0.1:8080/appointment/index'
 hash_coder = MySHA256Hasher(local_dict['hash']['base_hasher'])
 
 def index(request):
     arg_origin = request.GET.get('origin')
     modpw_status = request.GET.get('success')
+    #request.GET['success'] = "no"
     arg_islogout = request.GET.get('is_logout')
     if arg_islogout is not None:
         if request.user.is_authenticated:
@@ -38,6 +40,8 @@ def index(request):
         try:
             user = User.objects.get(username=username)
         except:
+            #if arg_origin is not None:
+            #    redirect(f'/login/?origin={arg_origin}')
             message = local_dict['msg']['404']
             invalid = True
             return render(request,'index.html',locals())
@@ -49,7 +53,11 @@ def index(request):
                 ##   加时间戳
                 ##   以及可以判断一下 arg_origin 在哪
                 ##   看看是不是 '/' 开头就行
-                timeStamp = str(int(time.time()))
+                d = datetime.utcnow()
+                t = time.mktime(datetime.timetuple(d))
+                timeStamp = str(int(t))
+                print("utc time: ", d)
+                print(timeStamp)
                 en_pw = hash_coder.encode(username + timeStamp)
                 try:
                     userinfo = student.objects.get(username=username)
@@ -66,7 +74,11 @@ def index(request):
     # 非 post 过来的
     if arg_origin is not None:
         if request.user.is_authenticated:
-            timeStamp = str(int(time.time()))
+            d = datetime.utcnow()
+            t = time.mktime(datetime.timetuple(d))
+            timeStamp = str(int(t))
+            print("utc time: ", d)
+            print(timeStamp)
             username = request.session['username']
             en_pw = hash_coder.encode(username + timeStamp)
             return redirect(arg_origin+f'?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}')
