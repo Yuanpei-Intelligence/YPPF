@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from app.models import student,position,organization
+from app.models import naturalPeople,position,organization
 from django.contrib import auth,messages
 from django.http import HttpResponseRedirect
 from django.http import JsonResponse
@@ -49,7 +49,7 @@ def index(request):
                 
                 en_pw = hash_coder.encode(username)
                 try:
-                    userinfo = student.objects.get(username=username)
+                    userinfo = naturalPeople.objects.get(username=username)
                     name = userinfo.sname
                     return redirect(arg_origin+f'?Sid={username}&Secret={en_pw}&name={name}')
                     
@@ -89,7 +89,7 @@ def miniLogin(request):
             
             request.session['username'] = username
             en_pw = hash_coder.encode(request.session['username'])
-            user_account = student.objects.get(username=username)
+            user_account = naturalPeople.objects.get(username=username)
             return JsonResponse(
             {'Sname': user_account.sname, 'Succeed': 1},
             status = 200
@@ -116,8 +116,8 @@ def stuinfo(request):
             mod_code = True
     try:
         username = request.session['username']
-        userinfo = student.objects.filter(username=username)
-        user_pos = position.objects.get(position_stu=student.objects.get(sno=username))
+        userinfo = naturalPeople.objects.filter(username=username)
+        user_pos = position.objects.get(position_stu=naturalPeople.objects.get(sno=username))
         user_org = user_pos.from_organization
     except:
         redirect('/index/')
@@ -131,8 +131,8 @@ def stuinfo(request):
     if request.user.is_authenticated:
         try:
             username = request.session['username']
-            userinfo = student.objects.filter(username=username).values()[0]
-            useroj = student.objects.get(username=username)
+            userinfo = naturalPeople.objects.filter(username=username).values()[0]
+            useroj = naturalPeople.objects.get(username=username)
             isFirst = useroj.firstTimeLogin
             #未修改密码
             if isFirst:
@@ -154,9 +154,9 @@ def account_setting(request):
     undergroundurl = underground_url
     if request.user.is_authenticated:
         username = request.session['username']
-        info = student.objects.filter(username=username)
+        info = naturalPeople.objects.filter(username=username)
         userinfo = info.values()[0]
-        useroj = student.objects.get(sno=username)
+        useroj = naturalPeople.objects.get(sno=username)
         if str(useroj.avatar) == '' :
             former_img = settings.MEDIA_URL + 'avatar/codecat.jpg' 
         else:
@@ -205,10 +205,10 @@ def register(request):
                 render(request,'index.html')
             else:
                 #user with same sno
-                same_user = student.objects.filter(sno=sno)
+                same_user = naturalPeople.objects.filter(sno=sno)
                 if same_user:
                     render(request,'auth_register_boxed.html')
-                same_email = student.objects.filter(semail=email)
+                same_email = naturalPeople.objects.filter(semail=email)
                 if same_email:
                     render(request,'auth_register_boxed.html')
                 
@@ -216,7 +216,7 @@ def register(request):
                 user = User.objects.create(username=sno)
                 user.set_password(password)
                 user.save()
-                new_user = student.objects.create(sno=sno,username=user)
+                new_user = naturalPeople.objects.create(sno=sno,username=user)
                 new_user.semail = email
                 new_user.syear = syear
                 new_user.sgender = sgender
@@ -241,7 +241,7 @@ def org_spec(request,*args, **kwargs):
     try:
         pos = position.objects.filter(Q(from_organization=org) | Q(job='部长') | Q(job='老板'))
         boss_no = pos.values()[0]['position_stu_id']
-        boss = student.objects.get(sno=boss_no).sname
+        boss = naturalPeople.objects.get(sno=boss_no).sname
         job = pos.values()[0]['job']
     except:
         person_incharge = '负责人'
@@ -253,7 +253,7 @@ def get_stu_img(request):
     if stuId is not None:
         try:
             print(stuId)
-            img_path = student.objects.get(sno=stuId).avatar
+            img_path = naturalPeople.objects.get(sno=stuId).avatar
             if str(img_path) == '':
                 img_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
             else:
@@ -269,7 +269,7 @@ def get_stu_img(request):
 def search(request):
     undergroundurl = underground_url
     query = request.GET.get('Query')
-    stu_list = student.objects.filter(Q(sno__icontains=query) | Q(sname__icontains=query))
+    stu_list = naturalPeople.objects.filter(Q(sno__icontains=query) | Q(sname__icontains=query))
     return render(request,'search.html',locals())
     
 
@@ -280,9 +280,9 @@ def modpw(request):
     err_code = 0
     err_message = None
     if request.user.is_authenticated:
-        isFirst = student.objects.get(sno=request.session['username']).firstTimeLogin
+        isFirst = naturalPeople.objects.get(sno=request.session['username']).firstTimeLogin
         username = request.session['username']  # added by wxy
-        useroj = student.objects.get(sno=username)
+        useroj = naturalPeople.objects.get(sno=username)
         if str(useroj.avatar) == '' :
             ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg' 
         else:
@@ -304,7 +304,7 @@ def modpw(request):
                     if user:
                         user.set_password(newpw)
                         user.save()
-                        stu = student.objects.filter(username=username)
+                        stu = naturalPeople.objects.filter(username=username)
                         stu.update(firstTimeLogin=False)
 
                         urls = reverse("index") + "?success=yes"
@@ -341,7 +341,7 @@ def load_data(request):
             user = User.objects.create(username=username)
             user.set_password(password)
             user.save()
-            stu = student.objects.create(sno=sno,username=user)
+            stu = naturalPeople.objects.create(sno=sno,username=user)
             stu.semail = email
             stu.stel = tel
             stu.syear = year
