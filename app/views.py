@@ -62,7 +62,7 @@ def index(request):
                 en_pw = hash_coder.encode(username + timeStamp)
                 try:
                     userinfo = NaturalPerson.objects.get(pid=username)
-                    name = userinfo.sname
+                    name = userinfo.pname
                     return redirect(arg_origin + f'?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}&name={name}')
                 except:
                     return redirect(arg_origin + f'?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}')
@@ -137,9 +137,10 @@ def stuinfo(request):
             mod_code = True
     try:
         username = request.session['username']
-        userinfo = NaturalPerson.objects.filter(pid=username)
-        user_pos = Position.objects.get(person=NaturalPerson.objects.get(pid=username))
-        user_org = user_pos.from_organization
+        user = User.objects.get(username= username)
+        useroj = NaturalPerson.objects.get(pid=user)
+        #user_pos = Position.objects.get(person=person)
+        #user_org = user_pos.org
     except:
         redirect('/index/')
     ##user_pos.job = 部员
@@ -149,9 +150,8 @@ def stuinfo(request):
     ##解释性语言##
 
     try:
-        username = request.session['username']
-        userinfo = NaturalPerson.objects.filter(pid=username).values()[0]
-        useroj = NaturalPerson.objects.get(pid=username)
+        #userinfo = NaturalPerson.objects.filter(pid=user).values()[0]
+        userinfo = useroj
         isFirst = useroj.firstTimeLogin
         # 未修改密码
         if isFirst:
@@ -218,16 +218,16 @@ def register(request):
             sno = request.POST['snum']
             email = request.POST['email']
             password2 = request.POST['password2']
-            syear = request.POST['syear']
-            sgender = request.POST['sgender']
+            pyear = request.POST['syear']
+            #pgender = request.POST['sgender']
             if password != password2:
                 render(request, 'index.html')
             else:
                 # user with same sno
-                same_user = NaturalPerson.objects.filter(sno=sno)
+                same_user = NaturalPerson.objects.filter(pid=sno)
                 if same_user:
                     render(request, 'auth_register_boxed.html')
-                same_email = NaturalPerson.objects.filter(semail=email)
+                same_email = NaturalPerson.objects.filter(pemail=email)
                 if same_email:
                     render(request, 'auth_register_boxed.html')
 
@@ -235,11 +235,11 @@ def register(request):
                 user = User.objects.create(username=sno)
                 user.set_password(password)
                 user.save()
-                new_user = NaturalPerson.objects.create(sno=sno, username=user)
-                new_user.semail = email
-                new_user.syear = syear
-                new_user.sgender = sgender
-                new_user.sname = name
+                new_user = NaturalPerson.objects.create(pid=user)
+                new_user.pname = name
+                new_user.pemail = email
+                new_user.pyear = pyear
+                #new_user.sgender = sgender
                 new_user.save()
                 return HttpResponseRedirect('/index/')
         return render(request, 'auth_register_boxed.html')
@@ -367,7 +367,7 @@ def load_data(request):
             stu = NaturalPerson.objects.create(sno=sno, pid=user)
             stu.semail = email
             stu.stel = tel
-            stu.syear = year
+            stu.pyear = year
             stu.sgender = gender
             stu.smajor = major
             stu.sname = name
