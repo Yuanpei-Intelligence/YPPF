@@ -27,14 +27,14 @@ class NaturalPeople(models.Model):
     pdorm = models.CharField(max_length=6, null=True)  # 宿舍
 
     class status(models.IntegerChoices):
-        UNDERGRADUATED = 0;  # 未毕业
-        GRADUATED = 1;  # 毕业则注销
+        UNDERGRADUATED = 0  # 未毕业
+        GRADUATED = 1  # 毕业则注销
 
     sstatus = models.SmallIntegerField('在校状态', choices=status.choices, default=0)  # 账户状态
 
     class Identity(models.IntegerChoices):
-        TEACHER = 0;
-        STUDENT = 1;
+        TEACHER = 0
+        STUDENT = 1
 
     TypeID = models.SmallIntegerField('身份', choices=Identity.choices, default=1)  # 标识学生还是老师
 
@@ -55,9 +55,9 @@ class NaturalPeople(models.Model):
 
 
 class organization(models.Model):
+    organization_no = models.CharField(max_length=10, unique=True, primary_key=True)
     organization_name = models.CharField(max_length=32, default='暂未加入学工组织')
     department = models.CharField(max_length=32, null=True, blank=True)
-
     def __str__(self):
         if self.department is not None:
             return self.organization_name + str(self.department)
@@ -78,6 +78,7 @@ class position(models.Model):
     def __str__(self):
         return '机构：' + str(self.from_organization.organization_name) + '; 部门：' + str(self.from_organization.department)
         + "；负责人：" + str(self.position_stu.pname)
+
 
 # @receiver(post_save,sender=student)
 # def create_position(sender, instance, created, **kwargs):
