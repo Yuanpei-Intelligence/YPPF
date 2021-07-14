@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
-from app.models import student,position,organization
-from django.contrib import auth,messages
+from app.models import NaturalPerson, Position, Organization
+from django.contrib import auth, messages
 from django.http import HttpResponseRedirect
 from django.http import JsonResponse
 from app.forms import UserForm
@@ -21,31 +21,32 @@ underground_url = local_dict['url']['base_url']
 # underground_url = 'http://127.0.0.1:8080/appointment/index'
 hash_coder = MySHA256Hasher(local_dict['hash']['base_hasher'])
 
+
 def index(request):
     arg_origin = request.GET.get('origin')
     modpw_status = request.GET.get('success')
-    #request.GET['success'] = "no"
+    # request.GET['success'] = "no"
     arg_islogout = request.GET.get('is_logout')
     if arg_islogout is not None:
         if request.user.is_authenticated:
             auth.logout(request)
-            return render(request,'index.html',locals())
-    if arg_origin is None: #非外部接入
+            return render(request, 'index.html', locals())
+    if arg_origin is None:  # 非外部接入
         if request.user.is_authenticated:
             return redirect('/stuinfo')
     if request.method == 'POST' and request.POST:
         username = request.POST['username']
         password = request.POST['password']
-        
+
         try:
             user = User.objects.get(username=username)
         except:
-            #if arg_origin is not None:
+            # if arg_origin is not None:
             #    redirect(f'/login/?origin={arg_origin}')
             message = local_dict['msg']['404']
             invalid = True
-            return render(request,'index.html',locals())
-        userinfo = auth.authenticate(username=username,password=password)
+            return render(request, 'index.html', locals())
+        userinfo = auth.authenticate(username=username, password=password)
         if userinfo:
             auth.login(request, userinfo)
             request.session['username'] = username
@@ -60,11 +61,11 @@ def index(request):
                 print(timeStamp)
                 en_pw = hash_coder.encode(username + timeStamp)
                 try:
-                    userinfo = student.objects.get(username=username)
-                    name = userinfo.sname
-                    return redirect(arg_origin+f'?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}&name={name}')
+                    userinfo = NaturalPerson.objects.get(pid=username)
+                    name = userinfo.pname
+                    return redirect(arg_origin + f'?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}&name={name}')
                 except:
-                    return redirect(arg_origin+f'?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}')
+                    return redirect(arg_origin + f'?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}')
             else:
                 return redirect('/stuinfo')
         else:
@@ -81,45 +82,49 @@ def index(request):
             print(timeStamp)
             username = request.session['username']
             en_pw = hash_coder.encode(username + timeStamp)
-            return redirect(arg_origin+f'?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}')
+            return redirect(arg_origin + f'?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}')
 
-    return render(request,'index.html',locals())
+    return render(request, 'index.html', locals())
 
-#Return content
+
+# Return content
 # Sname 姓名 Succeed 成功与否
 wechat_login_coder = MyMD5PasswordHasher("wechat_login")
+
+
 def miniLogin(request):
     try:
         assert (request.method == 'POST')
         username = request.POST['username']
         password = request.POST['password']
         secret_token = request.POST['secret_token']
-        assert (wechat_login_coder.verify(username,secret_token) == True)
+        assert (wechat_login_coder.verify(username, secret_token) == True)
         user = User.objects.get(username=username)
-        
-        userinfo = auth.authenticate(username=username,password=password)
-        
+
+        userinfo = auth.authenticate(username=username, password=password)
+
         if userinfo:
-            
-            auth.login(request,userinfo)
-            
+
+            auth.login(request, userinfo)
+
             request.session['username'] = username
             en_pw = hash_coder.encode(request.session['username'])
-            user_account = student.objects.get(username=username)
+            user_account = NaturalPerson.objects.get(pid=username)
             return JsonResponse(
-            {'Sname': user_account.sname, 'Succeed': 1},
-            status = 200
-        )
+                {'Sname': user_account.sname, 'Succeed': 1},
+                status=200
+            )
         else:
             return JsonResponse(
-            {'Sname': username, 'Succeed': 0},
-            status = 400
-        )
+                {'Sname': username, 'Succeed': 0},
+                status=400
+            )
     except:
         return JsonResponse(
-                {'Sname': '', 'Succeed': 0},
-                status = 400
-            )
+            {'Sname': '', 'Succeed': 0},
+            status=400
+        )
+
 
 @login_required(redirect_field_name='origin')
 def stuinfo(request):
@@ -132,9 +137,10 @@ def stuinfo(request):
             mod_code = True
     try:
         username = request.session['username']
-        userinfo = student.objects.filter(username=username)
-        user_pos = position.objects.get(position_stu=student.objects.get(sno=username))
-        user_org = user_pos.from_organization
+        user = User.objects.get(username= username)
+        useroj = NaturalPerson.objects.get(pid=user)
+        #user_pos = Position.objects.get(person=person)
+        #user_org = user_pos.org
     except:
         redirect('/index/')
     ##user_pos.job = 部员
@@ -144,42 +150,42 @@ def stuinfo(request):
     ##解释性语言##
 
     try:
-        username = request.session['username']
-        userinfo = student.objects.filter(username=username).values()[0]
-        useroj = student.objects.get(username=username)
+        #userinfo = NaturalPerson.objects.filter(pid=user).values()[0]
+        userinfo = useroj
         isFirst = useroj.firstTimeLogin
-        #未修改密码
+        # 未修改密码
         if isFirst:
             return redirect('/modpw/')
         ava = useroj.avatar
         ava_path = ''
         if str(ava) == '':
-            ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg' 
+            ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
         else:
             ava_path = settings.MEDIA_URL + str(ava)
-        return render(request,'indexinfo.html',locals())
+        return render(request, 'indexinfo.html', locals())
     except:
         auth.logout(request)
         return redirect('/index')
+
 
 @login_required(redirect_field_name='origin')
 def account_setting(request):
     undergroundurl = underground_url
     username = request.session['username']
-    info = student.objects.filter(username=username)
+    info = NaturalPerson.objects.filter(pid=username)
     userinfo = info.values()[0]
-    useroj = student.objects.get(sno=username)
-    if str(useroj.avatar) == '' :
-        former_img = settings.MEDIA_URL + 'avatar/codecat.jpg' 
+    useroj = NaturalPerson.objects.get(sno=username)
+    if str(useroj.avatar) == '':
+        former_img = settings.MEDIA_URL + 'avatar/codecat.jpg'
     else:
         former_img = settings.MEDIA_URL + str(useroj.avatar)
-    
+
     if request.method == 'POST' and request.POST:
         aboutbio = request.POST['aboutBio']
         tel = request.POST['tel']
         email = request.POST['email']
         Major = request.POST['major']
-        ava =  request.FILES.get('avatar')
+        ava = request.FILES.get('avatar')
         expr = bool(tel or Major or email or aboutbio or ava)
         if aboutbio != '':
             useroj.sBio = aboutbio
@@ -196,12 +202,13 @@ def account_setting(request):
         useroj.save()
         ava_path = settings.MEDIA_URL + str(ava)
         if expr == False:
-            return render(request,'user_account_setting.html',locals())
-        
+            return render(request, 'user_account_setting.html', locals())
+
         else:
             upload_state = True
             return redirect("/stuinfo/?modinfo=success")
-    return render(request,'user_account_setting.html',locals())
+    return render(request, 'user_account_setting.html', locals())
+
 
 def register(request):
     if request.user.is_superuser:
@@ -211,54 +218,57 @@ def register(request):
             sno = request.POST['snum']
             email = request.POST['email']
             password2 = request.POST['password2']
-            syear = request.POST['syear']
-            sgender = request.POST['sgender']
+            pyear = request.POST['syear']
+            #pgender = request.POST['sgender']
             if password != password2:
-                render(request,'index.html')
+                render(request, 'index.html')
             else:
-                #user with same sno
-                same_user = student.objects.filter(sno=sno)
+                # user with same sno
+                same_user = NaturalPerson.objects.filter(pid=sno)
                 if same_user:
-                    render(request,'auth_register_boxed.html')
-                same_email = student.objects.filter(semail=email)
+                    render(request, 'auth_register_boxed.html')
+                same_email = NaturalPerson.objects.filter(pemail=email)
                 if same_email:
-                    render(request,'auth_register_boxed.html')
-                
-                #OK!
+                    render(request, 'auth_register_boxed.html')
+
+                # OK!
                 user = User.objects.create(username=sno)
                 user.set_password(password)
                 user.save()
-                new_user = student.objects.create(sno=sno,username=user)
-                new_user.semail = email
-                new_user.syear = syear
-                new_user.sgender = sgender
-                new_user.sname = name
+                new_user = NaturalPerson.objects.create(pid=user)
+                new_user.pname = name
+                new_user.pemail = email
+                new_user.pyear = pyear
+                #new_user.sgender = sgender
                 new_user.save()
                 return HttpResponseRedirect('/index/')
-        return render(request,'auth_register_boxed.html')
+        return render(request, 'auth_register_boxed.html')
     else:
         return HttpResponseRedirect('/index/')
+
 
 @login_required(redirect_field_name=None)
 def logout(request):
     auth.logout(request)
     return HttpResponseRedirect('/index/')
 
-def org_spec(request,*args, **kwargs):
+
+def org_spec(request, *args, **kwargs):
     arg = args[0]
     org_dict = local_dict['org']
     title = org_dict[arg]
-    org = organization.objects.filter(organization_name=title)
+    org = Organization.objects.filter(organization_name=title)
     department = org.department
-    pos = position.objects.filter(Q(from_organization=org) | Q(job='部长') | Q(job='老板'))
+    pos = Position.objects.filter(Q(from_organization=org) | Q(job='部长') | Q(job='老板'))
     try:
-        pos = position.objects.filter(Q(from_organization=org) | Q(job='部长') | Q(job='老板'))
+        pos = Position.objects.filter(Q(from_organization=org) | Q(job='部长') | Q(job='老板'))
         boss_no = pos.values()[0]['position_stu_id']
-        boss = student.objects.get(sno=boss_no).sname
+        boss = NaturalPerson.objects.get(sno=boss_no).sname
         job = pos.values()[0]['job']
     except:
         person_incharge = '负责人'
-    return render(request,'org_spec.html',locals())
+    return render(request, 'org_spec.html', locals())
+
 
 def get_stu_img(request):
     print("in get stu img")
@@ -266,39 +276,39 @@ def get_stu_img(request):
     if stuId is not None:
         try:
             print(stuId)
-            img_path = student.objects.get(sno=stuId).avatar
+            img_path = NaturalPerson.objects.get(sno=stuId).avatar
             if str(img_path) == '':
                 img_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
             else:
-                img_path = settings.MEDIA_URL  +str(img_path)
+                img_path = settings.MEDIA_URL + str(img_path)
             print(img_path)
-            return JsonResponse({'path':img_path}, status=200)
+            return JsonResponse({'path': img_path}, status=200)
         except:
-            return JsonResponse({'message':"Image not found!"},status=404)
-    return JsonResponse({'message':'User not found!'},status=404)
-
+            return JsonResponse({'message': "Image not found!"}, status=404)
+    return JsonResponse({'message': 'User not found!'}, status=404)
 
 
 def search(request):
     undergroundurl = underground_url
     query = request.GET.get('Query')
-    stu_list = student.objects.filter(Q(sno__icontains=query) | Q(sname__icontains=query))
-    return render(request,'search.html',locals())
-    
+    stu_list = NaturalPerson.objects.filter(Q(sno__icontains=query) | Q(sname__icontains=query))
+    return render(request, 'search.html', locals())
+
 
 def test(request):
     request.session['cookies'] = 'hello, i m still here.'
-    return render(request,'all_org.html')
+    return render(request, 'all_org.html')
+
 
 @login_required(redirect_field_name='origin')
 def modpw(request):
     err_code = 0
     err_message = None
-    isFirst = student.objects.get(sno=request.session['username']).firstTimeLogin
+    isFirst = NaturalPerson.objects.get(sno=request.session['username']).firstTimeLogin
     username = request.session['username']  # added by wxy
-    useroj = student.objects.get(sno=username)
-    if str(useroj.avatar) == '' :
-        ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg' 
+    useroj = NaturalPerson.objects.get(sno=username)
+    if str(useroj.avatar) == '':
+        ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
     else:
         ava_path = settings.MEDIA_URL + str(useroj.avatar)
     if request.method == 'POST' and request.POST:
@@ -312,13 +322,13 @@ def modpw(request):
             err_code = 2
             err_message = "新密码不能与学号相同"
         else:
-            userauth = auth.authenticate(username=username,password=oldpassword)
+            userauth = auth.authenticate(username=username, password=oldpassword)
             if userauth:
                 user = User.objects.get(username=username)
                 if user:
                     user.set_password(newpw)
                     user.save()
-                    stu = student.objects.filter(username=username)
+                    stu = NaturalPerson.objects.filter(pid=username)
                     stu.update(firstTimeLogin=False)
 
                     urls = reverse("index") + "?success=yes"
@@ -329,12 +339,13 @@ def modpw(request):
             else:
                 err_code = 4
                 err_message = "原始密码不正确"
-    return render(request,'modpw.html',locals())
+    return render(request, 'modpw.html', locals())
+
 
 def load_data(request):
     if request.user.is_superuser:
         df_1819 = load()
-        for i in range(len(df_1819)): #import 2018 stu info.
+        for i in range(len(df_1819)):  # import 2018 stu info.
             username = str(df_1819['学号'].iloc[i])
             sno = username
             password = sno
@@ -353,13 +364,13 @@ def load_data(request):
             user = User.objects.create(username=username)
             user.set_password(password)
             user.save()
-            stu = student.objects.create(sno=sno,username=user)
+            stu = NaturalPerson.objects.create(sno=sno, pid=user)
             stu.semail = email
             stu.stel = tel
-            stu.syear = year
+            stu.pyear = year
             stu.sgender = gender
             stu.smajor = major
             stu.sname = name
             stu.sclass = sclass
             stu.save()
-        return render(request,'debugging.html')
+        return render(request, 'debugging.html')
