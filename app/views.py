@@ -135,7 +135,6 @@ def stuinfo(request):
         userinfo = student.objects.filter(username=username)
         user_pos = position.objects.get(position_stu=student.objects.get(sno=username))
         user_org = user_pos.from_organization
-        print("Ooops!")
     except:
         redirect('/index/')
     ##user_pos.job = 部员

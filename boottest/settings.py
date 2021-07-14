@@ -11,12 +11,14 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+from app.utils import load_local_json
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # LOGIN_URL，未登录时重定向到的 URL
-LOGIN_URL = 'https://yppf.yuanpei.life'
+local_dict = load_local_json()
+LOGIN_URL = local_dict['url']['login_url']
 # LOGIN_URL = 'http:localhost:8000/'
 
 
