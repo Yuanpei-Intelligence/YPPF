@@ -2,7 +2,7 @@ from django.contrib import admin
 from app.models import *
 # Register your models here.
 class Newstudent(admin.ModelAdmin):
-    list_display = ['pname','pid','pgender','syear','sdorm','sstatus','TypeID','pemail','sclass','smajor','ptel','firstTimeLogin']
+    list_display = ['pname','pid','pgender','pyear','pdorm','pstatus','TypeID','pemail','pclass','pmajor','ptel','firstTimeLogin']
     search_fields = ('pid','pname')
 class NewOrg(admin.ModelAdmin):
     list_display = ['oname']

@@ -137,9 +137,11 @@ def stuinfo(request):
             mod_code = True
     try:
         username = request.session['username']
-        userinfo = NaturalPerson.objects.filter(pid=username)
-        user_pos = Position.objects.get(person=NaturalPerson.objects.get(pid=username))
-        user_org = user_pos.org
+        user = User.objects.get(pid= username)
+        useroj = NaturalPerson.objects.get(pid=user)
+        #user_pos = Position.objects.get(person=person)
+        #user_org = user_pos.org
+
     except:
         redirect('/index/')
     ##user_pos.pos = 部员
@@ -148,9 +150,8 @@ def stuinfo(request):
     ##解释性语言##
 
     try:
-        username = request.session['username']
-        userinfo = NaturalPerson.objects.filter(pid=username).values()[0]
-        useroj = NaturalPerson.objects.get(pid=username)
+        #userinfo = NaturalPerson.objects.filter(pid=user).values()[0]
+        userinfo = useroj
         isFirst = useroj.firstTimeLogin
         # 未修改密码
         if isFirst:
@@ -217,8 +218,8 @@ def register(request):
             sno = request.POST['snum']
             email = request.POST['email']
             password2 = request.POST['password2']
-            syear = request.POST['syear']
-            sgender = request.POST['sgender']
+            pyear = request.POST['syear']
+            pgender = request.POST['sgender']
             if password != password2:
                 render(request, 'index.html')
             else:
@@ -234,11 +235,12 @@ def register(request):
                 user = User.objects.create(username=sno)
                 user.set_password(password)
                 user.save()
-                new_user = NaturalPerson.objects.create(pid=sno)
-                new_user.pemail = email
-                new_user.syear = syear
-                new_user.pgender = sgender
+
+                new_user = NaturalPerson.objects.create(pid=user)
                 new_user.pname = name
+                new_user.pemail = email
+                new_user.syear = pyear
+                new_user.pgender = pgender
                 new_user.save()
                 return HttpResponseRedirect('/index/')
         return render(request, 'auth_register_boxed.html')
