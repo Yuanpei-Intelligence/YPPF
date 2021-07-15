@@ -44,7 +44,7 @@ class NaturalPerson(models.Model):
     avatar = models.ImageField(upload_to=f'avatar/', blank=True)
     firstTimeLogin = models.BooleanField(default=True)
     objects = NaturalPersonManager()
-
+    QRcode=models.ImageField(upload_to=f'QRcode/', blank=True)
 
     YQPoint = models.FloatField("元气值", default=0.0)
 
@@ -140,7 +140,7 @@ class Organization(models.Model):
     ostatus = models.CharField('状态（备用字段）', max_length=25)
     otype_id = models.ForeignKey(
         OrganizationType, to_field="otype_id", on_delete=models.CASCADE)
-
+    QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)#二维码字段
     def __str__(self):
         return self.oname
 
@@ -209,7 +209,7 @@ class Activity(models.Model):
     astart = models.DateTimeField("开始时间")
     afinish = models.DateTimeField("结束时间")
     acontent = models.CharField("活动内容", max_length=225)
-
+    QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)  # 二维码字段
     class Astatus(models.TextChoices):
         Asta_Pending = "审核中"
         Applying = "报名中"

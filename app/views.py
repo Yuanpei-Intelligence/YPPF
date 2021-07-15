@@ -219,7 +219,7 @@ def register(request):
             email = request.POST['email']
             password2 = request.POST['password2']
             pyear = request.POST['syear']
-            pgender = request.POST['sgender']
+            #pgender = request.POST['sgender']
             if password != password2:
                 render(request, 'index.html')
             else:
@@ -240,7 +240,6 @@ def register(request):
                 new_user.pname = name
                 new_user.pemail = email
                 new_user.pyear= pyear
-                new_user.pgender = pgender
                 new_user.save()
                 return HttpResponseRedirect('/index/')
         return render(request, 'auth_register_boxed.html')
