@@ -6,6 +6,8 @@ from django.dispatch import receiver
 
 import datetime
 
+from app.utils import load_local_json
+local_json = load_local_json()
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
@@ -150,7 +152,7 @@ class Organization(models.Model):
 class PositionManager(models.Manager):
     def activated(self):
         # 选择学年相同，并且学期相同或者覆盖的
-        return self.filter(in_year=Position.org.oschool_year).filter(in_semester__contains=Position.org.oschool_semester)
+        return self.filter(in_year=int(local_json['semester_data']['year'])).filter(in_semester__contains=local_json['semester_data']['semester'])
 
 
 class Position(models.Model):
@@ -236,3 +238,4 @@ class Paticipant(models.Model):
                             on_delete=models.CASCADE)
     pid = models.ForeignKey(
         NaturalPerson, to_field="pid", on_delete=models.CASCADE)
+

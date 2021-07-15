@@ -128,8 +128,6 @@ def miniLogin(request):
 
 @login_required(redirect_field_name='origin')
 def stuinfo(request):
-    print(request.user.is_authenticated)
-    print("stuinfo getin!!!")
     undergroundurl = underground_url
     mod_status = request.GET.get('modinfo')
     if mod_status is not None:
@@ -162,10 +160,20 @@ def stuinfo(request):
             ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
         else:
             ava_path = settings.MEDIA_URL + str(ava)
-        return render(request, 'indexinfo.html', locals())
+        
     except:
         auth.logout(request)
         return redirect('/index')
+
+    # 处理组织相关的信息
+    my_pos_id_list = Position.objects.activated().filter(person=useroj)
+    my_org_list = Organization.objects.filter(org__in = my_pos_id_list.values('org')) # 我属于的组织
+    control_pos_id_list = my_pos_id_list.filter(pos=0)  # 最高级, 是非密码管理员
+    control_org_list = Organization.objects.filter(org__in = control_pos_id_list.values('org'))  # 我管理的组织
+
+
+
+    return render(request, 'indexinfo.html', locals())
 
 
 @login_required(redirect_field_name='origin')
