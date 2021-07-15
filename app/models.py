@@ -109,8 +109,7 @@ class OrganizationType(models.Model):
         '组织类型编号', unique=True, primary_key=True)
     otype_name = models.CharField('组织类型名称', max_length=25)
     otype_superior_id = models.SmallIntegerField('上级组织类型编号', default=0)
-    ojob_name = ListCharField(
-        name="职务名称列表",
+    ojob_name_list = ListCharField(
         base_field=models.CharField(max_length=10),
         size=4,
         max_length = 44
