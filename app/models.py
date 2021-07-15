@@ -9,12 +9,12 @@ import datetime
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
-        return self.exclude(sstatus=NaturalPerson.status.GRADUATED)
+        return self.exclude(pstatus=NaturalPerson.status.GRADUATED)
 
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
         datas = NaturalPerson.objects.activated()
         year = datetime.datetime.now().strftime('%Y')
-        datas.objects.filter(pyear=str(int(year) - 4)).update(sstatus=1)
+        datas.objects.filter(pyear=str(int(year) - 4)).update(pstatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
