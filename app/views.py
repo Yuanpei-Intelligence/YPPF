@@ -303,9 +303,10 @@ def test(request):
 def modpw(request):
     err_code = 0
     err_message = None
-    isFirst = NaturalPerson.objects.get(pid=request.session['username']).firstTimeLogin
     username = request.session['username']  # added by wxy
-    useroj = NaturalPerson.objects.get(pid=username)
+    user = User.objects.get(username=username)
+    useroj = NaturalPerson.objects.get(pid=user)
+    isFirst = useroj.firstTimeLogin
     if str(useroj.avatar) == '':
         ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
     else:
@@ -314,10 +315,12 @@ def modpw(request):
         oldpassword = request.POST['pw']
         newpw = request.POST['new']
         username = request.session['username']
-        if oldpassword == newpw:
+        strict_check = False
+        
+        if oldpassword == newpw and strict_check:
             err_code = 1
             err_message = "新密码不能与原密码相同"
-        elif newpw == username:
+        elif newpw == username and strict_check:
             err_code = 2
             err_message = "新密码不能与学号相同"
         else:
@@ -327,7 +330,7 @@ def modpw(request):
                 if user:
                     user.set_password(newpw)
                     user.save()
-                    stu = NaturalPerson.objects.filter(pid=username)
+                    stu = NaturalPerson.objects.filter(pid=user)
                     stu.update(firstTimeLogin=False)
 
                     urls = reverse("index") + "?success=yes"

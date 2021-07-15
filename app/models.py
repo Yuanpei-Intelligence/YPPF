@@ -29,17 +29,17 @@ class NaturalPerson(models.Model):
     #                        on_delete=models.CASCADE, unique=True, primary_key=True)
     pid = models.OneToOneField(to = User, on_delete = models.CASCADE)
     pname = models.CharField("姓名", max_length=10)
-    pnickname = models.CharField("昵称", max_length=20, null=True)   # 添加昵称
+    pnickname = models.CharField("昵称", max_length=20, null=True, blank=True)   # 添加昵称
     class Gender(models.IntegerChoices):
         MALE = 0
         FEMALE = 1
         OTHER = 2
 
     #pgender = models.CharField(max_length=10, null=True)
-    pgender = models.SmallIntegerField('性别', choices=Gender.choices,null=True)
+    pgender = models.SmallIntegerField('性别', choices=Gender.choices,null=True,blank=True)
 
-    pemail = models.EmailField("邮箱", null=True)
-    ptel = models.CharField("电话", max_length=20, null=True)
+    pemail = models.EmailField("邮箱", null=True,blank=True)
+    ptel = models.CharField("电话", max_length=20, null=True,blank=True)
     pBio = models.TextField("自我介绍", max_length=1024, default='还没有填写哦～')
     avatar = models.ImageField(upload_to=f'avatar/', blank=True)
     firstTimeLogin = models.BooleanField(default=True)
@@ -50,10 +50,10 @@ class NaturalPerson(models.Model):
 
 
     # Students Attributes
-    pclass = models.CharField("班级", max_length=5, null=True)
-    pmajor = models.CharField("专业", max_length=25, null=True)
-    pyear = models.CharField("年级", max_length=5, null=True)
-    pdorm = models.CharField("宿舍", max_length=6, null=True)  # 宿舍
+    pclass = models.CharField("班级", max_length=5, null=True,blank=True)
+    pmajor = models.CharField("专业", max_length=25, null=True,blank=True)
+    pyear = models.CharField("年级", max_length=5, null=True,blank=True)
+    pdorm = models.CharField("宿舍", max_length=6, null=True,blank=True)  # 宿舍
 
     class status(models.IntegerChoices):
         UNDERGRADUATED = 0  # 未毕业
@@ -115,6 +115,9 @@ class OrganizationType(models.Model):
         max_length = 44
     )
 
+    def __str__(self):
+        return str(self.otype_name)
+
 
 class Semester(models.TextChoices):
     Fall = "Fall"
@@ -136,7 +139,7 @@ class Organization(models.Model):
         "当前学期", choices=Semester.choices,max_length=15)
 
     YQPoint = models.FloatField("元气值", default=0.0)
-    ostatus = models.CharField('状态（备用字段）', max_length=25)
+    ointroduction = models.TextField('介绍', null=True, blank=True)
     otype_id = models.ForeignKey(
         OrganizationType, to_field="otype_id", on_delete=models.CASCADE)
     QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)#二维码字段
@@ -222,7 +225,7 @@ class Activity(models.Model):
     astatus = models.CharField("活动状态", choices=Astatus.choices,max_length=32)
 
     YQPoint = models.FloatField("元气值", default=0.0)
-    URL = models.URLField("相关网址", null=True)
+    URL = models.URLField("相关网址", null=True,blank=True)
 
     def __str__(self):
         return f"活动：{self.aname}"
