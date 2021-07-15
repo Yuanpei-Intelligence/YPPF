@@ -9,12 +9,12 @@ import datetime
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
-        return self.exclude(sstatus=NaturalPerson.status.GRADUATED)
+        return self.exclude(pstatus=NaturalPerson.status.GRADUATED)
 
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
         datas = NaturalPerson.objects.activated()
         year = datetime.datetime.now().strftime('%Y')
-        datas.objects.filter(pyear=str(int(year) - 4)).update(sstatus=1)
+        datas.objects.filter(pyear=str(int(year) - 4)).update(pstatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
@@ -30,7 +30,6 @@ class NaturalPerson(models.Model):
     pid = models.OneToOneField(to = User, on_delete = models.CASCADE)
     pname = models.CharField("姓名", max_length=10)
     pnickname = models.CharField("昵称", max_length=20, null=True)   # 添加昵称
-
     class Gender(models.IntegerChoices):
         MALE = 0
         FEMALE = 1
@@ -45,8 +44,10 @@ class NaturalPerson(models.Model):
     avatar = models.ImageField(upload_to=f'avatar/', blank=True)
     firstTimeLogin = models.BooleanField(default=True)
     objects = NaturalPersonManager()
+    QRcode=models.ImageField(upload_to=f'QRcode/', blank=True)
 
     YQPoint = models.FloatField("元气值", default=0.0)
+
 
     # Students Attributes
     pclass = models.CharField("班级", max_length=5, null=True)
@@ -69,7 +70,6 @@ class NaturalPerson(models.Model):
         '身份', choices=Identity.choices, default=1)  # 标识学生还是老师
 
     def __str__(self):
-        # return "学生：" + str(self.pyear) + '级 ' + str(self.pid) + ' ' + str(self.pname)
         return str(self.pname)
 
 
@@ -139,7 +139,7 @@ class Organization(models.Model):
     ostatus = models.CharField('状态（备用字段）', max_length=25)
     otype_id = models.ForeignKey(
         OrganizationType, to_field="otype_id", on_delete=models.CASCADE)
-
+    QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)#二维码字段
     def __str__(self):
         return self.oname
 
@@ -208,7 +208,7 @@ class Activity(models.Model):
     astart = models.DateTimeField("开始时间")
     afinish = models.DateTimeField("结束时间")
     acontent = models.CharField("活动内容", max_length=225)
-
+    QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)  # 二维码字段
     class Astatus(models.TextChoices):
         Asta_Pending = "审核中"
         Applying = "报名中"

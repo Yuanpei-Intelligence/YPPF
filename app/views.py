@@ -111,7 +111,7 @@ def miniLogin(request):
             en_pw = hash_coder.encode(request.session['username'])
             user_account = NaturalPerson.objects.get(pid=username)
             return JsonResponse(
-                {'Sname': user_account.sname, 'Succeed': 1},
+                {'Sname': user_account.pname, 'Succeed': 1},
                 status=200
             )
         else:
@@ -141,12 +141,12 @@ def stuinfo(request):
         useroj = NaturalPerson.objects.get(pid=user)
         #user_pos = Position.objects.get(person=person)
         #user_org = user_pos.org
+
     except:
         redirect('/index/')
-    ##user_pos.job = 部员
-    ##user_pos.from_organization = <organization对象>
-    ##<organization对象>.organization_name = 共青团北京大学元培学院委员会
-    ##<organization对象>.department = 团委宣传部
+    ##user_pos.pos = 部员
+    ##user_pos.org = <organization对象>
+    ##<organization对象>.oname = 共青团北京大学元培学院委员会
     ##解释性语言##
 
     try:
@@ -174,7 +174,7 @@ def account_setting(request):
     username = request.session['username']
     info = NaturalPerson.objects.filter(pid=username)
     userinfo = info.values()[0]
-    useroj = NaturalPerson.objects.get(sno=username)
+    useroj = NaturalPerson.objects.get(pid=username)
     if str(useroj.avatar) == '':
         former_img = settings.MEDIA_URL + 'avatar/codecat.jpg'
     else:
@@ -188,13 +188,13 @@ def account_setting(request):
         ava = request.FILES.get('avatar')
         expr = bool(tel or Major or email or aboutbio or ava)
         if aboutbio != '':
-            useroj.sBio = aboutbio
+            useroj.pBio = aboutbio
         if Major != '':
-            useroj.smajor = Major
+            useroj.pmajor = Major
         if email != '':
-            useroj.semail = email
+            useroj.pemail = email
         if tel != '':
-            useroj.stel = tel
+            useroj.ptel = tel
         if ava is None:
             pass
         else:
@@ -235,11 +235,11 @@ def register(request):
                 user = User.objects.create(username=sno)
                 user.set_password(password)
                 user.save()
+
                 new_user = NaturalPerson.objects.create(pid=user)
                 new_user.pname = name
                 new_user.pemail = email
-                new_user.pyear = pyear
-                #new_user.sgender = sgender
+                new_user.pyear= pyear
                 new_user.save()
                 return HttpResponseRedirect('/index/')
         return render(request, 'auth_register_boxed.html')
@@ -257,14 +257,13 @@ def org_spec(request, *args, **kwargs):
     arg = args[0]
     org_dict = local_dict['org']
     title = org_dict[arg]
-    org = Organization.objects.filter(organization_name=title)
-    department = org.department
-    pos = Position.objects.filter(Q(from_organization=org) | Q(job='部长') | Q(job='老板'))
+    org = Organization.objects.filter(oname=title)
+    pos = Position.objects.filter(Q(org=org) | Q(pos='部长') | Q(pos='老板'))
     try:
-        pos = Position.objects.filter(Q(from_organization=org) | Q(job='部长') | Q(job='老板'))
-        boss_no = pos.values()[0]['position_stu_id']
-        boss = NaturalPerson.objects.get(sno=boss_no).sname
-        job = pos.values()[0]['job']
+        pos = Position.objects.filter(Q(org=org) | Q(pos='部长') | Q(pos='老板'))
+        boss_no = pos.values()[0]['person_id']#存疑，可能还有bug here
+        boss = NaturalPerson.objects.get(pid=boss_no).pname
+        job = pos.values()[0]['pos']
     except:
         person_incharge = '负责人'
     return render(request, 'org_spec.html', locals())
@@ -276,7 +275,7 @@ def get_stu_img(request):
     if stuId is not None:
         try:
             print(stuId)
-            img_path = NaturalPerson.objects.get(sno=stuId).avatar
+            img_path = NaturalPerson.objects.get(pid=stuId).avatar
             if str(img_path) == '':
                 img_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
             else:
@@ -291,7 +290,7 @@ def get_stu_img(request):
 def search(request):
     undergroundurl = underground_url
     query = request.GET.get('Query')
-    stu_list = NaturalPerson.objects.filter(Q(sno__icontains=query) | Q(sname__icontains=query))
+    stu_list = NaturalPerson.objects.filter(Q(pid__icontains=query) | Q(pname__icontains=query))
     return render(request, 'search.html', locals())
 
 
@@ -304,9 +303,9 @@ def test(request):
 def modpw(request):
     err_code = 0
     err_message = None
-    isFirst = NaturalPerson.objects.get(sno=request.session['username']).firstTimeLogin
+    isFirst = NaturalPerson.objects.get(pid=request.session['username']).firstTimeLogin
     username = request.session['username']  # added by wxy
-    useroj = NaturalPerson.objects.get(sno=username)
+    useroj = NaturalPerson.objects.get(pid=username)
     if str(useroj.avatar) == '':
         ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
     else:
@@ -360,17 +359,17 @@ def load_data(request):
             gender = df_1819['性别'].iloc[i]
             major = df_1819['专业'].iloc[i]
             name = df_1819['姓名'].iloc[i]
-            sclass = df_1819['班级'].iloc[i]
+            pclass = df_1819['班级'].iloc[i]
             user = User.objects.create(username=username)
             user.set_password(password)
             user.save()
-            stu = NaturalPerson.objects.create(sno=sno, pid=user)
-            stu.semail = email
-            stu.stel = tel
-            stu.pyear = year
-            stu.sgender = gender
-            stu.smajor = major
-            stu.sname = name
-            stu.sclass = sclass
+            stu = NaturalPerson.objects.create(pid=sno)
+            stu.pemail = email
+            stu.ptel = tel
+            stu.pyear= year
+            stu.pgender = gender
+            stu.pmajor = major
+            stu.pname = name
+            stu.pclass = pclass
             stu.save()
         return render(request, 'debugging.html')
