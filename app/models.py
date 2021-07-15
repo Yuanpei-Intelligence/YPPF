@@ -26,7 +26,11 @@ class NaturalPerson(models.Model):
     # Natural Person Attributes
     pid = models.ForeignKey(User, to_field='username', on_delete=models.CASCADE,unique=True)
     pname = models.CharField(max_length=10, null=True)
-    pgender = models.CharField(max_length=10, null=True)
+    class gender (models.IntegerChoices):
+        FEMALE=0
+        MALE=1
+        OTHERS=2
+    pgender = models.SmallIntegerField('性别',choices=gender.choices,default=2)
 
     pemail = models.CharField(max_length=100, null=True)
     ptel = models.CharField(max_length=20, null=True)
@@ -35,7 +39,7 @@ class NaturalPerson(models.Model):
     firstTimeLogin = models.BooleanField(default=True)
     pmanager = NaturalPersonManager()
 
-    pyqp = models.IntegerField("元气值")
+    pyqp = models.FloatField("元气值",default=0.0)
 
     # Students Attributes
     sclass = models.CharField(max_length=5, null=True)
@@ -56,7 +60,7 @@ class NaturalPerson(models.Model):
     TypeID = models.SmallIntegerField('身份', choices=Identity.choices, default=1)  # 标识学生还是老师
 
     def __str__(self):
-        return "学生：" + str(self.pyear) + '级 ' + str(self.pid) + ' ' + str(self.pname)
+        return str(self.pname)
 
 
 class OrganizationType(models.Model):
@@ -97,7 +101,7 @@ class Organization(models.Model):
     oid = models.ForeignKey(User, to_field='username', on_delete=models.CASCADE,unique=True)
     oname = models.CharField(max_length=32, default='暂未加入学工组织')
     oestablished_time = models.DateField('建立时间')
-    oyqp = models.IntegerField('元气值',default=0)
+    oyqp = models.FloatField('元气值',default=0.0)
     ostatus = models.CharField('状态（备用字段）',max_length=25)
     otype_id = models.ForeignKey(OrganizationType, to_field="otype_id", on_delete=models.CASCADE)
 
