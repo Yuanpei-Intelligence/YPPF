@@ -137,7 +137,7 @@ def stuinfo(request):
             mod_code = True
     try:
         username = request.session['username']
-        user = User.objects.get(pid= username)
+        user = User.objects.get(username= username)
         useroj = NaturalPerson.objects.get(pid=user)
         #user_pos = Position.objects.get(person=person)
         #user_org = user_pos.org
@@ -190,7 +190,7 @@ def account_setting(request):
         if aboutbio != '':
             useroj.pBio = aboutbio
         if Major != '':
-            useroj.smajor = Major
+            useroj.pmajor = Major
         if email != '':
             useroj.pemail = email
         if tel != '':
@@ -239,7 +239,7 @@ def register(request):
                 new_user = NaturalPerson.objects.create(pid=user)
                 new_user.pname = name
                 new_user.pemail = email
-                new_user.syear = pyear
+                new_user.pyear= pyear
                 new_user.pgender = pgender
                 new_user.save()
                 return HttpResponseRedirect('/index/')
@@ -360,17 +360,17 @@ def load_data(request):
             gender = df_1819['性别'].iloc[i]
             major = df_1819['专业'].iloc[i]
             name = df_1819['姓名'].iloc[i]
-            sclass = df_1819['班级'].iloc[i]
+            pclass = df_1819['班级'].iloc[i]
             user = User.objects.create(username=username)
             user.set_password(password)
             user.save()
             stu = NaturalPerson.objects.create(pid=sno)
             stu.pemail = email
             stu.ptel = tel
-            stu.syear = year
+            stu.pyear= year
             stu.pgender = gender
-            stu.smajor = major
+            stu.pmajor = major
             stu.pname = name
-            stu.sclass = sclass
+            stu.pclass = pclass
             stu.save()
         return render(request, 'debugging.html')
