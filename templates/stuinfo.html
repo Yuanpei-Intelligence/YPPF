@@ -238,7 +238,7 @@
                         <ul class="collapse submenu list-unstyled" id="dashboard2" data-parent="#accordionExample">
                             {% for control_org in control_org_list %}
                                 <li>
-                                    <a href=""> {{control_org.oname}}(待跳转) </a>
+                                    <a href="/request_login_org/{{control_org.oname}}"> {{control_org.oname}}(待跳转) </a>
                                 </li>
 
                             {% endfor %}
@@ -305,6 +305,10 @@
                 {% if mod_code %}
                 <div class="alert alert-success  text-center">修改个人信息成功</div>
                 {% endif %}
+                
+                {% if warn_code %}
+	        		<div class="alert alert-warning  text-center" >{{ warn_message }}</div>
+    			{% endif %}
                 <div class="row layout-spacing">
                    
                     <!-- Content -->
