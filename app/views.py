@@ -128,8 +128,6 @@ def miniLogin(request):
 
 @login_required(redirect_field_name='origin')
 def stuinfo(request):
-    print(request.user.is_authenticated)
-    print("stuinfo getin!!!")
     undergroundurl = underground_url
     mod_status = request.GET.get('modinfo')
     if mod_status is not None:
@@ -162,10 +160,20 @@ def stuinfo(request):
             ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
         else:
             ava_path = settings.MEDIA_URL + str(ava)
-        return render(request, 'indexinfo.html', locals())
+        
     except:
         auth.logout(request)
         return redirect('/index')
+
+    # 处理组织相关的信息
+    my_pos_id_list = Position.objects.activated().filter(person=useroj)
+    my_org_list = Organization.objects.filter(org__in = my_pos_id_list.values('org')) # 我属于的组织
+    control_pos_id_list = my_pos_id_list.filter(pos=0)  # 最高级, 是非密码管理员
+    control_org_list = Organization.objects.filter(org__in = control_pos_id_list.values('org'))  # 我管理的组织
+
+
+
+    return render(request, 'indexinfo.html', locals())
 
 
 @login_required(redirect_field_name='origin')
@@ -303,9 +311,10 @@ def test(request):
 def modpw(request):
     err_code = 0
     err_message = None
-    isFirst = NaturalPerson.objects.get(pid=request.session['username']).firstTimeLogin
     username = request.session['username']  # added by wxy
-    useroj = NaturalPerson.objects.get(pid=username)
+    user = User.objects.get(username=username)
+    useroj = NaturalPerson.objects.get(pid=user)
+    isFirst = useroj.firstTimeLogin
     if str(useroj.avatar) == '':
         ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
     else:
@@ -314,10 +323,12 @@ def modpw(request):
         oldpassword = request.POST['pw']
         newpw = request.POST['new']
         username = request.session['username']
-        if oldpassword == newpw:
+        strict_check = False
+        
+        if oldpassword == newpw and strict_check:
             err_code = 1
             err_message = "新密码不能与原密码相同"
-        elif newpw == username:
+        elif newpw == username and strict_check:
             err_code = 2
             err_message = "新密码不能与学号相同"
         else:
@@ -327,7 +338,7 @@ def modpw(request):
                 if user:
                     user.set_password(newpw)
                     user.save()
-                    stu = NaturalPerson.objects.filter(pid=username)
+                    stu = NaturalPerson.objects.filter(pid=user)
                     stu.update(firstTimeLogin=False)
 
                     urls = reverse("index") + "?success=yes"
