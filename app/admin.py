@@ -13,3 +13,6 @@ class NewPos(admin.ModelAdmin):
 admin.site.register(NaturalPerson,Newstudent)
 admin.site.register(Organization, NewOrg)
 admin.site.register(Position, NewPos)
+
+admin.site.register(OrganizationType)
+admin.site.register(Activity)
