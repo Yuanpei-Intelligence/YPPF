@@ -111,6 +111,7 @@ class OrganizationType(models.Model):
         '组织类型编号', unique=True, primary_key=True)
     otype_name = models.CharField('组织类型名称', max_length=25)
     otype_superior_id = models.SmallIntegerField('上级组织类型编号', default=0)
+    oincharge = models.ForeignKey(NaturalPerson, on_delete=models.SET_NULL,blank=True,null=True) # 相关组织的负责人
     ojob_name_list = ListCharField(
         base_field=models.CharField(max_length=10),
         size=4,
@@ -127,21 +128,29 @@ class Semester(models.TextChoices):
     Annual = "Fall+Spring"
 
 
+class OrganizationManager(models.Manager):
+    def activated(self):
+        return self.exclude(ostatus=False)
+
 class Organization(models.Model):
     oid = models.OneToOneField(to = User, on_delete = models.CASCADE)
     #oid = models.ForeignKey(User, to_field='username',
     #                        on_delete=models.CASCADE, unique=True, primary_key=True)
-    oname = models.CharField(max_length=32, default='未命名组织')
+    oname = models.CharField(max_length=32,unique=True)
     # 本质上的逻辑应该不是建立时间，而是现在这个组织处于哪一个周期
     # oestablished_time = models.DateField('建立时间')
-    oschool_year = models.IntegerField(
-        "当前学年", default=int(datetime.datetime.now().strftime('%Y')))
+    #oschool_year = models.IntegerField(
+    #    "当前学年", default=int(datetime.datetime.now().strftime('%Y')))
 
-    oschool_semester = models.CharField(
-        "当前学期", choices=Semester.choices,max_length=15)
+    #oschool_semester = models.CharField(
+    #    "当前学期", choices=Semester.choices,max_length=15)
+
+    ostatus = models.BooleanField("激活状态")  #表示一个组织是否上线(或者是已经被下线)
+
+    objects = OrganizationManager()
 
     YQPoint = models.FloatField("元气值", default=0.0)
-    ointroduction = models.TextField('介绍', null=True, blank=True)
+    ointroduction = models.TextField('介绍', null=True, blank=True,default="这里暂时没有介绍哦~")
     otype_id = models.ForeignKey(
         OrganizationType, to_field="otype_id", on_delete=models.CASCADE)
     QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)#二维码字段

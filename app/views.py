@@ -10,6 +10,7 @@ from app.data_import import load
 from django.contrib.auth.hashers import make_password, check_password
 from django.db.models import Q
 from app.utils import MyMD5PasswordHasher, MySHA256Hasher, load_local_json
+import app.utils as utils
 from django.conf import settings
 from django.urls import reverse
 import json
@@ -33,7 +34,13 @@ def index(request):
             return render(request, 'index.html', locals())
     if arg_origin is None:  # 非外部接入
         if request.user.is_authenticated:
-            return redirect('/stuinfo')
+            return redirect('/welcome/')
+            '''
+            valid, user_type = utils.check_user_type(request)
+            if not valid:
+                return render(request, 'index.html', locals())
+            return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
+            '''
     if request.method == 'POST' and request.POST:
         username = request.POST['username']
         password = request.POST['password']
@@ -67,7 +74,13 @@ def index(request):
                 except:
                     return redirect(arg_origin + f'?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}')
             else:
-                return redirect('/stuinfo')
+                return redirect('/welcome/')
+                '''
+                valid, user_type = utils.check_user_type(request)
+                if not valid:
+                    return render(request, 'index.html', locals())
+                return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
+                '''
         else:
             invalid = True
             message = local_dict['msg']['406']
@@ -127,16 +140,53 @@ def miniLogin(request):
 
 
 @login_required(redirect_field_name='origin')
-def stuinfo(request):
+def stuinfo(request,name = None):
+    '''
+        进入到这里的逻辑:
+        首先必须登录，并且不是超级账户
+        如果name是空
+            如果是个人账户，那么就自动跳转个人主页"/stuinfo/myname"
+            如果是组织账户，那么自动跳转welcome
+        如果name非空但是找不到对应的对象
+            自动跳转到welcome
+        如果name有明确的对象
+            如果是自己，那么呈现并且有左边栏
+            如果不是自己或者自己是组织，那么呈现并且没有侧边栏
+
+    '''
     undergroundurl = underground_url
-    mod_status = request.GET.get('modinfo')
+    mod_status = request.GET.get('modinfo',None)
     if mod_status is not None:
         if mod_status == 'success':
             mod_code = True
+    warn_code = request.GET.get('warn_code',0)   # 是否有来自外部的消息
+    warn_message = request.GET.get('warn_message',"") # 提醒的具体内容 
     try:
-        username = request.session['username']
-        user = User.objects.get(username= username)
-        useroj = NaturalPerson.objects.get(pid=user)
+        #username = request.session['username']
+        #user = User.objects.get(username= username)
+        user = request.user
+        valid, u_type = utils.check_user_type(request)
+        if not valid:
+            return redirect('/logout/')
+        if name is None:
+            if u_type == 'Organization':
+                return redirect('/welcome/')
+            try:
+                me = NaturalPerson.objects.activated().get(pid=user)
+            except:
+                return redirect('/welcome/')
+            return redirect('/stuinfo/' + me.pname)
+        try:
+            person = NaturalPerson.objects.activated().get(pname=name)
+        except:
+            return redirect('/welcome/')
+        
+        # 用一个字段储存是否是自己
+        ismyself = False
+        if u_type == 'Person':
+            if person.pid == user:
+                ismyself = True
+        
         #user_pos = Position.objects.get(person=person)
         #user_org = user_pos.org
 
@@ -147,14 +197,15 @@ def stuinfo(request):
     ##<organization对象>.oname = 共青团北京大学元培学院委员会
     ##解释性语言##
 
+
     try:
         #userinfo = NaturalPerson.objects.filter(pid=user).values()[0]
-        userinfo = useroj
-        isFirst = useroj.firstTimeLogin
+        userinfo = person
+        isFirst = person.firstTimeLogin
         # 未修改密码
-        if isFirst:
+        if isFirst and ismyself:
             return redirect('/modpw/')
-        ava = useroj.avatar
+        ava = person.avatar
         ava_path = ''
         if str(ava) == '':
             ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
@@ -166,15 +217,90 @@ def stuinfo(request):
         return redirect('/index')
 
     # 处理组织相关的信息
-    my_pos_id_list = Position.objects.activated().filter(person=useroj)
+    my_pos_id_list = Position.objects.activated().filter(person=person)
     my_org_list = Organization.objects.filter(org__in = my_pos_id_list.values('org')) # 我属于的组织
     control_pos_id_list = my_pos_id_list.filter(pos=0)  # 最高级, 是非密码管理员
-    control_org_list = Organization.objects.filter(org__in = control_pos_id_list.values('org'))  # 我管理的组织
+    control_org_list = list(Organization.objects.filter(org__in = control_pos_id_list.values('org')))  # 我管理的组织
 
 
 
-    return render(request, 'indexinfo.html', locals())
+    return render(request, 'stuinfo.html', locals())
 
+@login_required(redirect_field_name='origin')
+def request_login_org(request,name = None): #特指个人希望通过个人账户登入组织账户的逻辑
+    '''
+        这个函数的逻辑是，个人账户点击左侧的管理组织直接跳转登录到组织账户
+        首先检查登录的user是个人账户，否则直接跳转orginfo
+        如果个人账户对应的是name对应的组织的最高权限人，那么允许登录，否则跳转回stuinfo并warning
+    '''
+    user = request.user
+    valid, u_type = utils.check_user_type(request)
+    if not valid:
+        return redirect('/logout/')
+    if u_type == "Organization":
+        return redirect('/orginfo/')
+    try:
+        me = NaturalPerson.objects.activated().get(pid=user)
+    except: #找不到合法的用户
+        return redirect('/welcome/')
+    if name is None:    #个人登录未指定登入组织,属于不合法行为,弹回欢迎
+        return redirect('/welcome/')
+    else:   # 确认有无这个组织
+        try:
+            org = Organization.objects.get(oname=name)
+        except: # 找不到对应组织
+            urls = '/stuinfo/'+me.pname+"?warn_code=1&warn_message=找不到对应组织,请联系管理员!"
+            return redirect(urls)
+        try:
+            position = Position.objects.activated().filter(org=org,person=me)
+            assert len(position) == 1
+            position = position[0]
+            assert position.pos == 0
+        except:
+            urls = '/stuinfo/'+me.pname+"?warn_code=1&warn_message=没有登录到该组织账户的权限!"
+            return redirect(urls)
+        # 到这里,是本人组织并且有权限登录
+        auth.logout(request)
+        auth.login(request, org.oid)    #切换到组织账号
+        return redirect('/orginfo/')
+
+@login_required(redirect_field_name='origin')
+def orginfo(request,name=None): #此时的登录人有可能是负责人,因此要特殊处理
+    '''
+        orginfo负责呈现组织主页，逻辑和stuinfo是一样的，可以参考
+    '''
+    user = request.user
+    valid, u_type = utils.check_user_type(request)
+    if not valid:
+        return redirect('/logout/')
+    if name is None:
+        if u_type == 'Person':
+            return redirect('/welcome/')
+        try:
+            org = Organization.objects.activated().get(oid=user)
+        except:
+            return redirect('/welcome/')
+        return redirect('/orginfo/' + org.oname)
+    try:
+        org = Organization.objects.activated().get(oname=name)
+    except:
+        return redirect('/welcome/')
+
+    return render(request, 'orginfo.html', locals())
+
+
+@login_required(redirect_field_name='origin')
+def homepage(request):
+    valid, u_type = utils.check_user_type(request)
+    is_person = True if u_type == 'Person' else False
+    if not valid:
+        return redirect('/logout/')
+    me = NaturalPerson.objects.get(pid = request.user) if is_person else Organization.objects.get(oid = request.user)
+    myname = me.pname if is_person else me.oname
+    profile_name = "个人主页" if is_person else "组织主页"
+    profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
+    
+    return render(request, 'welcome_page.html', locals())
 
 @login_required(redirect_field_name='origin')
 def account_setting(request):
@@ -255,12 +381,12 @@ def register(request):
         return HttpResponseRedirect('/index/')
 
 
-@login_required(redirect_field_name=None)
+#@login_required(redirect_field_name=None)
 def logout(request):
     auth.logout(request)
     return HttpResponseRedirect('/index/')
 
-
+'''
 def org_spec(request, *args, **kwargs):
     arg = args[0]
     org_dict = local_dict['org']
@@ -275,7 +401,7 @@ def org_spec(request, *args, **kwargs):
     except:
         person_incharge = '负责人'
     return render(request, 'org_spec.html', locals())
-
+'''
 
 def get_stu_img(request):
     print("in get stu img")
