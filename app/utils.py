@@ -1,6 +1,7 @@
 from django.contrib.auth.hashers import BasePasswordHasher,MD5PasswordHasher ,mask_hash  
 import hashlib
 import json
+from django.contrib import auth
 class MyMD5PasswordHasher(MD5PasswordHasher):  
     algorithm = "mymd5"
     salt = "" 
@@ -35,3 +36,12 @@ def load_local_json(path='./local_json.json'):
     with open(path, encoding='utf_8') as f:
         local_dict = json.load(f)
     return local_dict
+
+def check_user_type(request): # return Valid(Bool), type
+    if request.user.is_superuser:
+        auth.logout(request)
+        return False,''
+    if request.user.username[:2] == 'zz':
+        return True, 'Organization'
+    else:
+        return True, 'Person'
