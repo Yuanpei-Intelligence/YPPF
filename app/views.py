@@ -16,14 +16,11 @@ from django.urls import reverse
 import json
 from datetime import datetime
 import time
-import random, requests   # 发送验证码
 
 local_dict = load_local_json()
 underground_url = local_dict['url']['base_url']
-email_url = local_dict['url']['email_url']
 # underground_url = 'http://127.0.0.1:8080/appointment/index'
 hash_coder = MySHA256Hasher(local_dict['hash']['base_hasher'])
-email_coder = MySHA256Hasher(local_dict['hash']['email'])
 
 
 def index(request):
@@ -492,87 +489,10 @@ def test(request):
     return render(request, 'all_org.html')
 
 
-def forget_password(request):
-    if request.method == 'POST' and request.POST:
-        username = request.POST['username']
-        send_captcha = request.POST['send_captcha'] == 'yes'
-        vertify_code = request.POST['vertify_code'] # 用户输入的验证码
-        
-        user = User.objects.filter(username=username)
-        if not user:
-            err_code = 1
-            err_message = '账号不存在'
-        else:
-            user = User.objects.get(username=username)
-            useroj = NaturalPerson.objects.get(pid=username) # 目前似乎保证是自然人
-            isFirst = useroj.firstTimeLogin
-            if isFirst:  
-                err_code = 2
-                err_message = '初次登录密码与账号相同！'
-            elif send_captcha:
-                email = useroj.pemail
-                if not email or email.lower() == 'none' or '@' not in email:
-                    err_code = 3
-                    err_message = '您没有设置邮箱，请发送姓名、学号和常用邮箱至|||||||进行修改'# 记得填
-                captcha = random.randrange(1000000) # randint包含端点，randrange不包含
-                captcha = f'{captcha:06}'
-                msg = (
-                f'<h3><b>亲爱的{useroj.pname}同学：</b></h3><br/>'
-                '您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>'
-                f'<p style="color:orange">{captcha}'
-                '<span style="color:gray">(仅当前页面有效)</span></p>'
-                '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
-                '<br/><br/><br/>'
-                '元培学院开发组<br/>'
-                + datetime.now().strftime('%Y年%m月%d日'))
-                post_data = {
-                    'toaddrs' : [email],    # 收件人列表
-                    'subject' : 'YPPF登录验证',        # 邮件主题/标题
-                    'content' : msg,    # 邮件内容
-                        # 若subject为空, 第一个\n视为标题和内容的分隔符
-                    'html' : True,          # 可选 如果为真则content被解读为html
-                    'private_level' : 0,    # 可选 应在0-2之间
-                        # 影响显示的收件人信息
-                        # 0级全部显示, 1级只显示第一个收件人, 2级只显示发件人
-                    'secret' : email_coder.encode(msg), # content加密后的密文
-                }
-                post_data = json.dumps(post_data)
-                try:
-                    response = requests.post(email_url, post_data, timeout=5)
-                    response = response.json()
-                    if response['status'] != 200:
-                        err_code = 4
-                        err_message = '邮件发送失败'
-                    else:
-                        request.session['captcha'] = captcha
-                        pre, suf = email.rsplit('@', 1)
-                        if len(pre) > 5:
-                            pre = pre[:2] + '*' * len(pre[2:-3]) + pre[-3:]
-                        err_code = 0
-                        err_message = f'验证码已发送至{pre}@{suf}'
-                except:
-                    err_code = 4
-                    err_message = '邮件发送失败'
-            else:
-                captcha = request.session.get('captcha')
-                if not captcha or len(captcha) != 6:
-                    err_code = 5
-                    err_message = '请先发送验证码'
-                elif vertify_code.upper() == captcha.upper():
-                    auth.login(request, user)
-                    request.session['forgetpw'] = 'yes'
-                    return redirect(reverse('modpw'))
-                else:
-                    err_code = 6
-                    err_message = "验证码不正确"
-    return render(request, 'forget_password.html', locals())
-
-
 @login_required(redirect_field_name='origin')
 def modpw(request):
     err_code = 0
     err_message = None
-    forgetpw = request.session.get('forgetpw', '') == 'yes'   # added by pht
     username = request.session['username']  # added by wxy
     user = User.objects.get(username=username)
     useroj = NaturalPerson.objects.get(pid=user)
@@ -586,35 +506,27 @@ def modpw(request):
         newpw = request.POST['new']
         username = request.session['username']
         strict_check = False
-        
-        if oldpassword == newpw and strict_check and not forgetpw:   # modified by pht
+
+        if oldpassword == newpw and strict_check:
             err_code = 1
             err_message = "新密码不能与原密码相同"
         elif newpw == username and strict_check:
             err_code = 2
             err_message = "新密码不能与学号相同"
-        elif newpw != oldpassword and forgetpw:    # added by pht
-            err_code = 5
-            err_message = "两次输入的密码不同"
         else:
             userauth = auth.authenticate(
                 username=username, password=oldpassword)
-            if forgetpw:    # added by pht: 这是不好的写法，可改进
-                userauth = True
             if userauth:
-                try:    # modified by pht: if检查是错误的，不存在时get会报错
-                    user = User.objects.get(username=username)
+                user = User.objects.get(username=username)
+                if user:
                     user.set_password(newpw)
                     user.save()
                     stu = NaturalPerson.objects.filter(pid=user)
                     stu.update(firstTimeLogin=False)
 
-                    if forgetpw:
-                        request.session.pop('forgetpw') # 删除session记录
-
                     urls = reverse("index") + "?success=yes"
                     return redirect(urls)
-                except: # modified by pht: 之前使用的if检查是错误的
+                else:
                     err_code = 3
                     err_message = "学号不存在"
             else:
