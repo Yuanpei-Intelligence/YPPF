@@ -36,7 +36,7 @@ def index(request):
         if request.user.is_authenticated:
             return redirect('/welcome/')
             '''
-            valid, user_type = utils.check_user_type(request)
+            valid, user_type , html_display = utils.check_user_type(request)
             if not valid:
                 return render(request, 'index.html', locals())
             return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
@@ -76,7 +76,7 @@ def index(request):
             else:
                 return redirect('/welcome/')
                 '''
-                valid, user_type = utils.check_user_type(request)
+                valid, user_type , html_display = utils.check_user_type(request)
                 if not valid:
                     return render(request, 'index.html', locals())
                 return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
@@ -231,7 +231,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         如果个人账户对应的是name对应的组织的最高权限人，那么允许登录，否则跳转回stuinfo并warning
     '''
     user = request.user
-    valid, u_type = utils.check_user_type(request)
+    valid, u_type, html_display = utils.check_user_type(request)
     if not valid:
         return redirect('/logout/')
     if u_type == "Organization":
@@ -268,7 +268,8 @@ def orginfo(request, name=None):  # 此时的登录人有可能是负责人,因�
         orginfo负责呈现组织主页，逻辑和stuinfo是一样的，可以参考
     '''
     user = request.user
-    valid, u_type = utils.check_user_type(request)
+    valid, u_type, html_display = utils.check_user_type(request)
+    me = NaturalPerson.objects.activated().get(pid = user) if u_type == 'Person' else Organization.objects.get(oid=user)
     if not valid:
         return redirect('/logout/')
     if name is None:
@@ -284,6 +285,11 @@ def orginfo(request, name=None):  # 此时的登录人有可能是负责人,因�
     except:
         return redirect('/welcome/')
 
+
+    # 补充一些呈现信息
+    html_display['title_name'] = 'Org. Profile'
+    html_display['narbar_name'] = '组织主页'
+    html_display['ava_path'] = utils.get_user_ava(me)
     return render(request, 'orginfo.html', locals())
 
 
