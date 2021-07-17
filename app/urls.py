@@ -15,7 +15,6 @@ urlpatterns = [
      path('login/',views.index,name='index'),
      path('logout/',views.logout, name='logout'),
      #path('org/',views.org, name='org'),
-     path('forgetpw/',views.forget_password, name='forgetpw'),
      path('modpw/',views.modpw, name='modpw'),
      path('test/',views.test,name='test'),
      #path('loaddata/',views.load_data, name='load_data'),
