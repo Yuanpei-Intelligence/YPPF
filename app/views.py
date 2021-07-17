@@ -361,7 +361,7 @@ def account_setting(request):
 
 
 def register(request):
-    if request.user.is_superuser or True:
+    if request.user.is_superuser:
         if request.method == 'POST' and request.POST:
             name = request.POST['name']
             password = request.POST['password']
