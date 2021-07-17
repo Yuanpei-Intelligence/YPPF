@@ -50,10 +50,15 @@ def check_user_type(request): # return Valid(Bool), type
         user_type = 'Organization'
         html_display['profile_name'] = '组织主页'
         html_display['profile_url'] = '/orginfo/'
+        org = Organization.objects.get(oid=request.user)
+        html_display['avatar_path'] = get_user_ava(org)
+        # 不确定Org的结构，这里先空着（组织就没有头像了）
     else:
         user_type = 'Person'
+        person = NaturalPerson.objects.activated().get(pid=request.user)
         html_display['profile_name'] = '个人主页'
         html_display['profile_url'] = '/stuinfo/'
+        html_display['avatar_path'] = get_user_ava(person)
         
     return True, user_type, html_display
 
