@@ -155,22 +155,11 @@ def stuinfo(request, name = None):
                 如果不是自己或者自己是组织，那么呈现并且没有侧边栏
             如果重名
                 那么期望有一个"+"在name中，如果搜不到就跳转到Search/？Query=name让他跳转去
-
     '''
-
-    # variables with 'local_' prefix will be packed to render HTML
-    local_underground_url = underground_url                   # 跳转至地下室预约系统的
-    local_warn_code = request.GET.get('warn_code', 0)         # 是否有来自外部的消息
-    local_warn_message = request.GET.get('warn_message', "")  # 提醒的具体内容 
-
-    modpw_status = request.GET.get('modinfo', None)
-    local_modpw_code = modpw_status is not None and modpw_status == 'success'
     
     try:
-        #username = request.session['username']
-        #user = User.objects.get(username= username)
         user = request.user
-        valid, user_type = utils.check_user_type(request)
+        valid, user_type, html_display = utils.check_user_type(request)
         if not valid:
             return redirect('/logout/')
 
@@ -189,41 +178,43 @@ def stuinfo(request, name = None):
             name_list = name.split("+")
             name = name_list[0]
             person = NaturalPerson.objects.activated().filter(pname=name)
-            if len(person) == 0:  # 查无此人
+            if len(person) == 0:            # 查无此人
                 return redirect('/welcome/')
             else:
-                if len(person) == 1:
+                if len(person) == 1:        # 无重名
                     person = person[0]
-                else: # 有很多人,这时候假设加号后面的是user的id
-                    if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
+                else:                       # 有很多人，这时候假设加号后面的是user的id
+                    if len(name_list) == 1: # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
                         if user_type == 'Person' and NaturalPerson.objects.activated().get(pid=user).pname == name:
                             person = NaturalPerson.objects.activated().get(pid=user)
-                        else:
-                            # 不是自己，信息不全跳转搜索
-                            return redirect('/search?Query=' + name)
+                        else:               # 不是自己，信息不全跳转搜索
+                            return redirect('/search?Query=' + name)        
                     else:
-                        obtain_id = int(name_list[1])  # 获取增补信息
+                        obtain_id = int(name_list[1])                       # 获取增补信息
                         get_user = User.objects.get(id=obtain_id)
                         potential_person = NaturalPerson.objects.activated().get(pid=get_user)
                         assert potential_person in person
                         person = potential_person
                 
-                local_userinfo = person
-            
-                is_myself = user_type == 'Person' and  person.pid == user   # 用一个字段储存是否是自己
-                local_is_myself = is_myself
+                modpw_status = request.GET.get('modinfo', None)
 
+                is_myself = user_type == 'Person' and person.pid == user    # 用一个字段储存是否是自己
                 is_first = person.firstTimeLogin                            # 是否为第一次登陆
                 if is_myself and is_first:
                     return redirect('/modpw/')
 
-                local_avatar_path = settings.MEDIA_URL + (str(person.avatar) or 'avatar/codecat.jpg')
-
                 # 处理组织相关的信息
                 join_pos_id_list = Position.objects.activated().filter(person=person)
-                local_join_org_list = Organization.objects.filter(org__in = join_pos_id_list.values('org'))             # 我属于的组织
-                control_pos_id_list = join_pos_id_list.filter(pos=0)                                                    # 最高级, 是非密码管理员
-                local_control_org_list = list(Organization.objects.filter(org__in = control_pos_id_list.values('org'))) # 我管理的组织
+                control_pos_id_list = join_pos_id_list.filter(pos=0)        # 最高级, 是非密码管理员
+
+                html_display['modpw_code'] = modpw_status is not None and modpw_status == 'success'
+                html_display['underground_url'] = underground_url                       # 跳转至地下室预约系统的
+                html_display['warn_code'] = request.GET.get('warn_code', 0)             # 是否有来自外部的消息
+                html_display['warn_message'] = request.GET.get('warn_message', "")      # 提醒的具体内容 
+                html_display['userinfo'] = person
+                html_display['is_myself'] = is_myself
+                html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
+                html_display['control_org_list'] = list(Organization.objects.filter(org__in = control_pos_id_list.values('org')))   # 我管理的组织
 
                 return render(request, 'stuinfo.html', locals())
     except:
@@ -298,17 +289,14 @@ def orginfo(request, name=None):  # 此时的登录人有可能是负责人,因�
 
 @login_required(redirect_field_name='origin')
 def homepage(request):
-    valid, u_type = utils.check_user_type(request)
-    is_person = True if u_type == 'Person' else False
-    if not valid:
-        return redirect('/logout/')
-    me = NaturalPerson.objects.get(
-        pid=request.user) if is_person else Organization.objects.get(oid=request.user)
-    myname = me.pname if is_person else me.oname
-    profile_name = "个人主页" if is_person else "组织主页"
-    profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
-
-    return render(request, 'welcome_page.html', locals())
+    try: # 这个try-except可以加入@修饰（需要html_display），但是我不会所以就先放这了
+        valid, user_type, html_display = utils.check_user_type(request)
+        if not valid:
+            return redirect('/logout/')
+        return render(request, 'welcome_page.html', locals())
+    except:
+        auth.logout(request)
+        return redirect('/index/')
 
 
 @login_required(redirect_field_name='origin')
@@ -444,21 +432,31 @@ def search(request):
             组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
 
     '''
-    undergroundurl = underground_url
-    query = request.GET.get('Query', '')
-    if query == '':
-        return redirect('/welcome/')
+    try:
+        valid, user_type, html_display = utils.check_user_type(request)
+        if not valid:
+            return redirect('/logout/')
+  
+        undergroundurl = underground_url
+        query = request.GET.get('Query', '')
+        if query == '':
+            return redirect('/welcome/')
 
-    # 首先搜索个人
-    people_list = NaturalPerson.objects.filter(
-        Q(pname__icontains=query) | (Q(pnickname__icontains=query)) | (Q(pmajor__icontains = query)))
+        # 首先搜索个人
+        people_list = NaturalPerson.objects.filter(
+            Q(pname__icontains=query) | (Q(pnickname__icontains=query)) | (Q(pmajor__icontains = query)))
 
-    # 接下来准备呈现的内容
+        # 接下来准备呈现的内容
 
-    # 首先是准备搜索个人信息的部分
-    people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
+        # 首先是准备搜索个人信息的部分
+        people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
 
-    return render(request, 'search.html', locals())
+        return render(request, 'search.html', locals())
+    except:
+        auth.logout(request)
+        return redirect('/index/')
+
+
 
 
 def test(request):

@@ -162,6 +162,7 @@ class Organization(models.Model):
     ointroduction = models.TextField('介绍', null=True, blank=True,default="这里暂时没有介绍哦~")
     otype_id = models.ForeignKey(
         OrganizationType, to_field="otype_id", on_delete=models.CASCADE)
+    avatar = models.ImageField(upload_to=f'avatar/', blank=True)
     QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)#二维码字段
     def __str__(self):
         return self.oname
