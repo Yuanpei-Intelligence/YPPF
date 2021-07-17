@@ -294,14 +294,22 @@ def orginfo(request, name=None):  # 此时的登录人有可能是负责人,因�
 
 @login_required(redirect_field_name='origin')
 def homepage(request):
-    try: # 这个try-except可以加入@修饰（需要html_display），但是我不会所以就先放这了
-        valid, user_type, html_display = utils.check_user_type(request)
-        if not valid:
-            return redirect('/logout/')
-        return render(request, 'welcome_page.html', locals())
-    except:
-        auth.logout(request)
-        return redirect('/index/')
+    valid, u_type, html_display = utils.check_user_type(request)
+    is_person = True if u_type == 'Person' else False
+    if not valid:
+        return redirect('/logout/')
+    me = NaturalPerson.objects.get(
+        pid=request.user) if is_person else Organization.objects.get(oid=request.user)
+    myname = me.pname if is_person else me.oname
+    # 直接储存在html_display中
+    #profile_name = "个人主页" if is_person else "组织主页"
+    #profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
+
+    # 补充一些呈现信息
+    html_display['title_name'] = 'Welcome Page'
+    html_display['narbar_name'] = '近期要闻'
+    html_display['ava_path'] = utils.get_user_ava(me)
+    return render(request, 'welcome_page.html', locals())
 
 
 @login_required(redirect_field_name='origin')
