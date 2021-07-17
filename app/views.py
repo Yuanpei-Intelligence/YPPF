@@ -290,7 +290,7 @@ def orginfo(request, name=None):  # 此时的登录人有可能是负责人,因�
     # 补充一些呈现信息
     html_display['title_name'] = 'Org. Profile'
     html_display['narbar_name'] = '组织主页'
-    html_display['ava_path'] = utils.get_user_ava(me)
+    html_display['avatar_path'] = utils.get_user_ava(me)
     return render(request, 'orginfo.html', locals())
 
 
@@ -311,7 +311,7 @@ def homepage(request):
     # 补充一些呈现信息
     html_display['title_name'] = 'Welcome Page'
     html_display['narbar_name'] = '近期要闻' #
-    html_display['ava_path'] = utils.get_user_ava(me)
+    html_display['avatar_path'] = utils.get_user_ava(me)
     return render(request, 'welcome_page.html', locals())
 
 
@@ -328,7 +328,7 @@ def account_setting(request):
 
     useroj = NaturalPerson.objects.get(pid=user)
 
-    former_img = html_display['ava_path']
+    former_img = html_display['avatar_path']
 
     if request.method == 'POST' and request.POST:
         aboutbio = request.POST['aboutBio']
@@ -350,7 +350,7 @@ def account_setting(request):
         else:
             useroj.avatar = ava
         useroj.save()
-        ava_path = settings.MEDIA_URL + str(ava)
+        avatar_path = settings.MEDIA_URL + str(ava)
         if expr == False:
             return render(request, 'user_account_setting.html', locals())
 
@@ -492,9 +492,9 @@ def modpw(request):
     useroj = NaturalPerson.objects.get(pid=user)
     isFirst = useroj.firstTimeLogin
     if str(useroj.avatar) == '':
-        ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
+        avatar_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
     else:
-        ava_path = settings.MEDIA_URL + str(useroj.avatar)
+        avatar_path = settings.MEDIA_URL + str(useroj.avatar)
     if request.method == 'POST' and request.POST:
         oldpassword = request.POST['pw']
         newpw = request.POST['new']
