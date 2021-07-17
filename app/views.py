@@ -36,7 +36,7 @@ def index(request):
         if request.user.is_authenticated:
             return redirect('/welcome/')
             '''
-            valid, user_type = utils.check_user_type(request)
+            valid, user_type , html_display = utils.check_user_type(request)
             if not valid:
                 return render(request, 'index.html', locals())
             return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
@@ -76,7 +76,7 @@ def index(request):
             else:
                 return redirect('/welcome/')
                 '''
-                valid, user_type = utils.check_user_type(request)
+                valid, user_type , html_display = utils.check_user_type(request)
                 if not valid:
                     return render(request, 'index.html', locals())
                 return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
@@ -168,15 +168,12 @@ def stuinfo(request, name=None):
         #username = request.session['username']
         #user = User.objects.get(username= username)
         user = request.user
-        valid, u_type = utils.check_user_type(request)
+        valid, u_type, html_display = utils.check_user_type(request)
+        me = NaturalPerson.objects.activated().get(pid = user) if u_type == 'Person' else Organization.objects.get(oid=user)
         if not valid:
             return redirect('/logout/')
         if name is None:
             if u_type == 'Organization':
-                return redirect('/welcome/')
-            try:
-                me = NaturalPerson.objects.activated().get(pid=user)
-            except:
                 return redirect('/welcome/')
             return redirect('/stuinfo/' + me.pname)
         try:
@@ -227,12 +224,6 @@ def stuinfo(request, name=None):
         # 未修改密码
         if isFirst and ismyself:
             return redirect('/modpw/')
-        ava = person.avatar
-        ava_path = ''
-        if str(ava) == '':
-            ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
-        else:
-            ava_path = settings.MEDIA_URL + str(ava)
 
     except:
         auth.logout(request)
@@ -246,6 +237,10 @@ def stuinfo(request, name=None):
     control_org_list = list(Organization.objects.filter(
         org__in=control_pos_id_list.values('org')))  # 我管理的组织
 
+    # 补充一些呈现信息
+    html_display['title_name'] = 'User Profile'
+    html_display['narbar_name'] = '个人主页'
+    html_display['ava_path'] = utils.get_user_ava(me)
     return render(request, 'stuinfo.html', locals())
 
 
@@ -257,7 +252,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         如果个人账户对应的是name对应的组织的最高权限人，那么允许登录，否则跳转回stuinfo并warning
     '''
     user = request.user
-    valid, u_type = utils.check_user_type(request)
+    valid, u_type, html_display = utils.check_user_type(request)
     if not valid:
         return redirect('/logout/')
     if u_type == "Organization":
@@ -294,7 +289,8 @@ def orginfo(request, name=None):  # 此时的登录人有可能是负责人,因�
         orginfo负责呈现组织主页，逻辑和stuinfo是一样的，可以参考
     '''
     user = request.user
-    valid, u_type = utils.check_user_type(request)
+    valid, u_type, html_display = utils.check_user_type(request)
+    me = NaturalPerson.objects.activated().get(pid = user) if u_type == 'Person' else Organization.objects.get(oid=user)
     if not valid:
         return redirect('/logout/')
     if name is None:
@@ -310,21 +306,31 @@ def orginfo(request, name=None):  # 此时的登录人有可能是负责人,因�
     except:
         return redirect('/welcome/')
 
+
+    # 补充一些呈现信息
+    html_display['title_name'] = 'Org. Profile'
+    html_display['narbar_name'] = '组织主页'
+    html_display['ava_path'] = utils.get_user_ava(me)
     return render(request, 'orginfo.html', locals())
 
 
 @login_required(redirect_field_name='origin')
 def homepage(request):
-    valid, u_type = utils.check_user_type(request)
+    valid, u_type, html_display = utils.check_user_type(request)
     is_person = True if u_type == 'Person' else False
     if not valid:
         return redirect('/logout/')
     me = NaturalPerson.objects.get(
         pid=request.user) if is_person else Organization.objects.get(oid=request.user)
     myname = me.pname if is_person else me.oname
-    profile_name = "个人主页" if is_person else "组织主页"
-    profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
+    # 直接储存在html_display中
+    #profile_name = "个人主页" if is_person else "组织主页"
+    #profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
 
+    # 补充一些呈现信息
+    html_display['title_name'] = 'Welcome Page'
+    html_display['narbar_name'] = '近期要闻'
+    html_display['ava_path'] = utils.get_user_ava(me)
     return render(request, 'welcome_page.html', locals())
 
 
@@ -468,7 +474,7 @@ def search(request):
 
     # 首先搜索个人
     people_list = NaturalPerson.objects.filter(
-        Q(pname__icontains=query) | (Q(pnickname__icontains=query)) | (Q(pmajor__icontains = query)))
+        Q(pname__icontains=query) | (Q(pnickname__icontains=query)) | (Q(pmajor__icontains=query)))
 
     # 接下来准备呈现的内容
 
