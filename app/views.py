@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from app.models import NaturalPerson, Position, Organization
+from app.models import NaturalPerson, OrganizationType, Position, Organization
 from django.contrib import auth, messages
 from django.http import HttpResponseRedirect
 from django.http import JsonResponse
@@ -155,7 +155,6 @@ def stuinfo(request, name=None):
                 如果不是自己或者自己是组织，那么呈现并且没有侧边栏
             如果重名
                 那么期望有一个"+"在name中，如果搜不到就跳转到Search/？Query=name让他跳转去
-
     '''
     undergroundurl = underground_url
     mod_status = request.GET.get('modinfo', None)
@@ -243,7 +242,6 @@ def stuinfo(request, name=None):
     html_display['ava_path'] = utils.get_user_ava(me)
     return render(request, 'stuinfo.html', locals())
 
-
 @login_required(redirect_field_name='origin')
 def request_login_org(request, name=None):  # 特指个人希望通过个人账户登入组织账户的逻辑
     '''
@@ -253,9 +251,11 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
     '''
     user = request.user
     valid, u_type, html_display = utils.check_user_type(request)
+
     if not valid:
         return redirect('/logout/')
-    if u_type == "Organization":
+    if u_type == "Organization": 
+        # 怀疑这里不会用到。已经以组织身份登陆了，为什么sidebar里会有“管理个人有权限管理的组织”这个按钮...
         return redirect('/orginfo/')
     try:
         me = NaturalPerson.objects.activated().get(pid=user)
@@ -284,16 +284,18 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
 
 
 @login_required(redirect_field_name='origin')
-def orginfo(request, name=None):  # 此时的登录人有可能是负责人,因此要特殊处理
+def orginfo(request,name="元培团委"): 
     '''
         orginfo负责呈现组织主页，逻辑和stuinfo是一样的，可以参考
+        只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个组织界面都是【不可管理/编辑组织信息】
     '''
     user = request.user
     valid, u_type, html_display = utils.check_user_type(request)
     me = NaturalPerson.objects.activated().get(pid = user) if u_type == 'Person' else Organization.objects.get(oid=user)
+    
     if not valid:
         return redirect('/logout/')
-    if name is None:
+    if name is None: # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if u_type == 'Person':
             return redirect('/welcome/')
         try:
@@ -301,16 +303,39 @@ def orginfo(request, name=None):  # 此时的登录人有可能是负责人,因�
         except:
             return redirect('/welcome/')
         return redirect('/orginfo/' + org.oname)
-    try:
+
+    try: # 指定名字访问组织账号的，可以是自然人也可以是法人。在html里要注意区分！
+
+        # 下面是组织信息
         org = Organization.objects.activated().get(oname=name)
+        organization_name = name
+        organization_type_name = OrganizationType.objects.get(otype_id = org.otype_id_id).otype_name
+        YQPoint = org.YQPoint
+        intro = org.ointroduction
+
+        # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
+        ISBOSS = True if (org.oid == user and u_type == 'Person') else False 
+
+        # 这一部分是负责人boss的信息
+        boss = NaturalPerson.objects.activated().get(pid = org.oid)
+        bossname = boss.pname
+        year = boss.pyear
+        major = boss.pmajor
+        email = boss.pemail
+        tel = boss.ptel
+        jobpos = Position.objects.activated().get(person = boss).pos
+        job = OrganizationType.objects.get(otype_id = org.otype_id_id).ojob_name_list[jobpos]
+
+        # 组织活动的信息
+
     except:
         return redirect('/welcome/')
-
 
     # 补充一些呈现信息
     html_display['title_name'] = 'Org. Profile'
     html_display['narbar_name'] = '组织主页'
     html_display['ava_path'] = utils.get_user_ava(me)
+
     return render(request, 'orginfo.html', locals())
 
 
@@ -323,16 +348,13 @@ def homepage(request):
     me = NaturalPerson.objects.get(
         pid=request.user) if is_person else Organization.objects.get(oid=request.user)
     myname = me.pname if is_person else me.oname
-    # 直接储存在html_display中
-    #profile_name = "个人主页" if is_person else "组织主页"
-    #profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
 
     # 补充一些呈现信息
     html_display['title_name'] = 'Welcome Page'
     html_display['narbar_name'] = '近期要闻'
     html_display['ava_path'] = utils.get_user_ava(me)
-    return render(request, 'welcome_page.html', locals())
 
+    return render(request, 'welcome_page.html', locals())
 
 @login_required(redirect_field_name='origin')
 def account_setting(request):
@@ -377,7 +399,7 @@ def account_setting(request):
 
 
 def register(request):
-    if request.user.is_superuser:
+    if True:
         if request.method == 'POST' and request.POST:
             name = request.POST['name']
             password = request.POST['password']
@@ -418,7 +440,6 @@ def logout(request):
     auth.logout(request)
     return HttpResponseRedirect('/index/')
 
-
 '''
 def org_spec(request, *args, **kwargs):
     arg = args[0]
@@ -435,7 +456,6 @@ def org_spec(request, *args, **kwargs):
         person_incharge = '负责人'
     return render(request, 'org_spec.html', locals())
 '''
-
 
 def get_stu_img(request):
     print("in get stu img")
@@ -465,7 +485,6 @@ def search(request):
         搜索组织
             支持使用组织名、组织类型搜索、一级负责人姓名
             组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
-
     '''
     undergroundurl = underground_url
     query = request.GET.get('Query', '')
@@ -506,7 +525,7 @@ def modpw(request):
         newpw = request.POST['new']
         username = request.session['username']
         strict_check = False
-
+        
         if oldpassword == newpw and strict_check:
             err_code = 1
             err_message = "新密码不能与原密码相同"
@@ -514,8 +533,7 @@ def modpw(request):
             err_code = 2
             err_message = "新密码不能与学号相同"
         else:
-            userauth = auth.authenticate(
-                username=username, password=oldpassword)
+            userauth = auth.authenticate(username=username, password=oldpassword)
             if userauth:
                 user = User.objects.get(username=username)
                 if user:
