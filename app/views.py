@@ -255,7 +255,6 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
     if not valid:
         return redirect('/logout/')
     if u_type == "Organization": 
-        # 怀疑这里不会用到。已经以组织身份登陆了，为什么sidebar里会有“管理个人有权限管理的组织”这个按钮...
         return redirect('/orginfo/')
     try:
         me = NaturalPerson.objects.activated().get(pid=user)
@@ -284,7 +283,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
 
 
 @login_required(redirect_field_name='origin')
-def orginfo(request,name="元培团委"): 
+def orginfo(request,name = None): 
     '''
         orginfo负责呈现组织主页，逻辑和stuinfo是一样的，可以参考
         只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个组织界面都是【不可管理/编辑组织信息】
@@ -399,7 +398,7 @@ def account_setting(request):
 
 
 def register(request):
-    if True:
+    if request.user.is_superuser:
         if request.method == 'POST' and request.POST:
             name = request.POST['name']
             password = request.POST['password']
