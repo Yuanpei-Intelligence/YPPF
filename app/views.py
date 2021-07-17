@@ -180,43 +180,42 @@ def stuinfo(request, name = None):
             person = NaturalPerson.objects.activated().filter(pname=name)
             if len(person) == 0:            # 查无此人
                 return redirect('/welcome/')
-            else:
-                if len(person) == 1:        # 无重名
-                    person = person[0]
-                else:                       # 有很多人，这时候假设加号后面的是user的id
-                    if len(name_list) == 1: # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
-                        if user_type == 'Person' and NaturalPerson.objects.activated().get(pid=user).pname == name:
-                            person = NaturalPerson.objects.activated().get(pid=user)
-                        else:               # 不是自己，信息不全跳转搜索
-                            return redirect('/search?Query=' + name)        
-                    else:
-                        obtain_id = int(name_list[1])                       # 获取增补信息
-                        get_user = User.objects.get(id=obtain_id)
-                        potential_person = NaturalPerson.objects.activated().get(pid=get_user)
-                        assert potential_person in person
-                        person = potential_person
-                
-                modpw_status = request.GET.get('modinfo', None)
+            if len(person) == 1:        # 无重名
+                person = person[0]
+            else:                       # 有很多人，这时候假设加号后面的是user的id
+                if len(name_list) == 1: # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
+                    if user_type == 'Person' and NaturalPerson.objects.activated().get(pid=user).pname == name:
+                        person = NaturalPerson.objects.activated().get(pid=user)
+                    else:               # 不是自己，信息不全跳转搜索
+                        return redirect('/search?Query=' + name)        
+                else:
+                    obtain_id = int(name_list[1])                       # 获取增补信息
+                    get_user = User.objects.get(id=obtain_id)
+                    potential_person = NaturalPerson.objects.activated().get(pid=get_user)
+                    assert potential_person in person
+                    person = potential_person
 
-                is_myself = user_type == 'Person' and person.pid == user    # 用一个字段储存是否是自己
-                is_first = person.firstTimeLogin                            # 是否为第一次登陆
-                if is_myself and is_first:
-                    return redirect('/modpw/')
+            modpw_status = request.GET.get('modinfo', None)
 
-                # 处理组织相关的信息
-                join_pos_id_list = Position.objects.activated().filter(person=person)
-                control_pos_id_list = join_pos_id_list.filter(pos=0)        # 最高级, 是非密码管理员
+            is_myself = user_type == 'Person' and person.pid == user    # 用一个字段储存是否是自己
+            is_first = person.firstTimeLogin                            # 是否为第一次登陆
+            if is_myself and is_first:
+                return redirect('/modpw/')
 
-                html_display['modpw_code'] = modpw_status is not None and modpw_status == 'success'
-                html_display['underground_url'] = underground_url                       # 跳转至地下室预约系统的
-                html_display['warn_code'] = request.GET.get('warn_code', 0)             # 是否有来自外部的消息
-                html_display['warn_message'] = request.GET.get('warn_message', "")      # 提醒的具体内容 
-                html_display['userinfo'] = person
-                html_display['is_myself'] = is_myself
-                html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
-                html_display['control_org_list'] = list(Organization.objects.filter(org__in = control_pos_id_list.values('org')))   # 我管理的组织
+            # 处理组织相关的信息
+            join_pos_id_list = Position.objects.activated().filter(person=person)
+            control_pos_id_list = join_pos_id_list.filter(pos=0)        # 最高级, 是非密码管理员
 
-                return render(request, 'stuinfo.html', locals())
+            html_display['modpw_code'] = modpw_status is not None and modpw_status == 'success'
+            html_display['underground_url'] = underground_url                       # 跳转至地下室预约系统的
+            html_display['warn_code'] = request.GET.get('warn_code', 0)             # 是否有来自外部的消息
+            html_display['warn_message'] = request.GET.get('warn_message', "")      # 提醒的具体内容 
+            html_display['userinfo'] = person
+            html_display['is_myself'] = is_myself
+            html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
+            html_display['control_org_list'] = list(Organization.objects.filter(org__in = control_pos_id_list.values('org')))   # 我管理的组织
+
+            return render(request, 'stuinfo.html', locals())
     except:
         auth.logout(request)
         return redirect('/index/')
