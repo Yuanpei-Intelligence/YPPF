@@ -317,6 +317,9 @@ def homepage(request):
 
 @login_required(redirect_field_name='origin')
 def account_setting(request):
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/logout/')
     undergroundurl = underground_url
 
     user = request.user
@@ -325,7 +328,7 @@ def account_setting(request):
 
     useroj = NaturalPerson.objects.get(pid=user)
 
-    former_img = settings.MEDIA_URL + (str(useroj.avatar) or 'avatar/codecat.jpg')
+    former_img = html_display['ava_path']
 
     if request.method == 'POST' and request.POST:
         aboutbio = request.POST['aboutBio']
