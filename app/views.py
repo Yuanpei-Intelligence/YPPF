@@ -622,11 +622,7 @@ def engage_activity(request):
             activity.Places[choice] = cnt - 1
             orgnization.YQPoint += float(amount)
 
-            record = TransferRecord.objects.create()
-            record.proposer = payer.pname
-            record.proposer_id = pid
-            record.recipient = orgnization.oname
-            record.recipient_id = str(orgnization.oid)
+            record = TransferRecord.objects.create(proposer=request.user, recipient=orgnization.oid)
             record.amount = amount
             record.message = f'Participate Activity {activity.aname}'
             record.tstatus = 0 # Wating
@@ -645,6 +641,7 @@ def engage_activity(request):
     except:
         context['msg'] = 'Unexpected failure. If you are not deliberately do it, please contact the administrator to report this bug.'
         return render(request, 'msg.html', context)
+
 
 
     context['msg'] = 'Successfully participate the activity.'
@@ -722,11 +719,9 @@ def start_transaction(request):
 
     try:
         if recipient_type == 'np':
-            recipient = NaturalPerson.objects.get(pid=recipient_id)
-            rid = str(recipient.pid)
+            recipient = NaturalPerson.objects.get(pid=recipient_id).pid
         else:
-            recipient = Organization.objects.get(oid=recipient_id)
-            rid = str(recipient.oid)
+            recipient = Organization.objects.get(oid=recipient_id).oid
     except:
         context['msg'] = 'Unexpected recipient. If you are not deliberately doing this, please contact the administrator to report this bug.'
         return render(request, 'msg.html', context)
@@ -737,8 +732,6 @@ def start_transaction(request):
     else:
         payer = NaturalPerson.objects.get(pid=request.user)
 
-    # 这里需要验证 payer 的元气值 >= amout
-    # 想通过数据库本身的功能实现，预期不满足时会 except
 
     try:
         if re.match('zz\d+', payer_id) is not None:
@@ -751,11 +744,7 @@ def start_transaction(request):
             payer.YQPoint -= float(amount)
             # TODO 目前用的是 nickname，可能需要改成 name
             # 需要确认 create 是否会在数据库产生记录，如果不会是否会有主键冲突？
-            record = TransferRecord.objects.create()
-            record.proposer = payer.pname
-            record.proposer_id = payer_id
-            record.recipient = name
-            record.recipient_id = rid
+            record = TransferRecord.objects.create(proposer=request.user, recipient=recipient)
             record.amount = amount
             record.message = transaction_msg
             record.tstatus = 1 # Wating
@@ -788,24 +777,24 @@ def confirm_transaction(request):
         with transaction.atomic():
             assert(len(record) == 1)
             record = record[0]
-            if record.recipient_id != request.user.username:
+            if record.recipient != request.user:
                 context['msg'] = 'The transaction is not yours. If you are not deliberately doing this, please contact the administrator to report this bug.'
                 return render(request, 'msg.html', context)
             if record.tstatus != 1:
                 context['msg'] = 'The transaction has already been dealt. If you are not deliberately doing this, please contact the administrator to report this bug.'
                 return render(request, 'msg.html', context)
-            payer_id = record.proposer_id
-            if re.match('zz\d+', payer_id) is not None:
-                payer = Organization.objects.select_for_update().filter(oid__username=payer_id)
+            payer = record.proposer
+            if re.match('zz\d+', payer.username) is not None:
+                payer = Organization.objects.select_for_update().filter(oid=payer)
             else:
-                payer = NaturalPerson.objects.select_for_update().filter(pid__username=payer_id)
+                payer = NaturalPerson.objects.select_for_update().filter(pid=payer)
             assert(len(payer) == 1)
             payer = payer[0]
-            recipient_id = record.recipient_id
-            if re.match('zz\d+', recipient_id) is not None:
-                recipient = Organization.objects.select_for_update().filter(oid__username=recipient_id)
+            recipient = record.recipient
+            if re.match('zz\d+', recipient.username) is not None:
+                recipient = Organization.objects.select_for_update().filter(oid=recipient)
             else:
-                recipient = NaturalPerson.objects.select_for_update().filter(pid__username=recipient_id)
+                recipient = NaturalPerson.objects.select_for_update().filter(pid=recipient)
             assert(len(recipient) == 1)
             recipient = recipient[0]
             if reject == 'True':
