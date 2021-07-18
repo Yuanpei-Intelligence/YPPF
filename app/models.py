@@ -33,9 +33,9 @@ class NaturalPerson(models.Model):
     pname = models.CharField("姓名", max_length=10)
     pnickname = models.CharField("昵称", max_length=20, null=True, blank=True)   # 添加昵称
     class Gender(models.IntegerChoices):
-        MALE = 0
-        FEMALE = 1
-        OTHER = 2
+        MALE = (0, "男")
+        FEMALE = (1, "女")
+        OTHER = (2, "其它")
 
     #pgender = models.CharField(max_length=10, null=True)
     pgender = models.SmallIntegerField('性别', choices=Gender.choices,null=True,blank=True)
@@ -70,6 +70,15 @@ class NaturalPerson(models.Model):
 
     TypeID = models.SmallIntegerField(
         '身份', choices=Identity.choices, default=1)  # 标识学生还是老师
+
+    # 表示信息是否选择展示
+    # '昵称','性别','邮箱','电话','专业','宿舍'
+    show_nickname = models.BooleanField(default=True)
+    show_gender = models.BooleanField(default=True)
+    show_email = models.BooleanField(default=False)
+    show_tel = models.BooleanField(default=False)
+    show_major = models.BooleanField(default=True)
+    show_dorm = models.BooleanField(default=False)
 
     def __str__(self):
         return str(self.pname)
@@ -153,6 +162,7 @@ class Organization(models.Model):
     ointroduction = models.TextField('介绍', null=True, blank=True,default="这里暂时没有介绍哦~")
     otype_id = models.ForeignKey(
         OrganizationType, to_field="otype_id", on_delete=models.CASCADE)
+    avatar = models.ImageField(upload_to=f'avatar/', blank=True)
     QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)#二维码字段
     def __str__(self):
         return self.oname
