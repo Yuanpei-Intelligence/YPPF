@@ -267,11 +267,9 @@ class Activity(models.Model):
 
 # modified by Kinnuch & genuine
 class TransferRecord(models.Model):
-    proposer = models.CharField('转账方', max_length=64)
-    proposer_id = models.CharField('转账方学号', max_length=64)
-    recipient = models.CharField('收款方', max_length=64)
-    recipient_id = models.CharField('收款方学号', max_length=64)
-    amount = models.IntegerField('转账元气值数量', default=0)
+    proposer = models.ForeignKey(User, related_name='proposer_id', on_delete=models.CASCADE)
+    recipient = models.ForeignKey(User, related_name='recipient_id', on_delete=models.CASCADE)
+    amount = models.FloatField('转账元气值数量', default=0)
     time = models.DateTimeField('转账时间', auto_now_add=True)
     message = models.CharField("备注信息", max_length=255, default='')
 
