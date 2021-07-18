@@ -23,6 +23,10 @@ urlpatterns = [
      path('minilogin',views.miniLogin,name='minilogin'),
      #re_path('^org([0-9]{2})',views.org_spec,name='org_spec'),
      path('getStuImg',views.get_stu_img,name='get_stu_img'),
+     path('transPage', views.transaction_page, name='transPage'),
+     path('startTrans', views.start_transaction, name='startTrans'),
+     path('confirmTrans', views.confirm_transaction, name='confirmTrans'),
+     path('engage', views.engage_activity, name='engage'),
             ]
 if settings.DEBUG:
      urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)
