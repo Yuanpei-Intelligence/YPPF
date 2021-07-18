@@ -252,10 +252,10 @@ class Activity(models.Model):
         default = ['0']
     )
     Places = ListCharField(
-        base_field=models.CharField(max_length=4),
+        base_field=models.IntegerField(default=0),
         size=10,
         max_length = 50,
-        default = ['0']
+        default = [0]
     )
 
 
