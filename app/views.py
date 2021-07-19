@@ -711,7 +711,8 @@ def start_transaction(request):
     # r_user = User.objects.get(username=recipient_id)
 
     try: 
-        amount = float(amount)
+        # 允许一位小数，* 10 存成整数
+        amount = int(float(amount) * 10)
     except:
         context['msg'] = 'Unexpected amount. If you are not deliberately doing this, please contact the administrator to report this bug.'
         return render(request, 'msg.html', context)
