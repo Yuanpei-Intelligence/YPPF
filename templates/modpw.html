@@ -43,7 +43,7 @@
 
                                 <div id="pw-field" class="field-wrapper input mb-2">
                                     <div class="d-flex justify-content-between">
-                                        <label>原密码</label>
+                                        <label>{% if forgetpw %}新密码{% else %}原密码{% endif %}</label><!--modified by pht-->
                                         <a href="/logout/" class="forgot-pass-link">Logout</a>
                                     </div>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -68,7 +68,7 @@
                                 <div class="form">
                                     <div id="new-field" class="field-wrapper input mb-2">
                                         <div class="d-flex justify-content-between">
-                                            <label for="new">新密码</label>
+                                            <label for="new">{% if forgetpw %}重复输入新密码{% else %}新密码{% endif %}</label><!--modified by pht-->
                                         </div>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
