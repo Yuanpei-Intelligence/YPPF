@@ -145,13 +145,13 @@ class Organization(models.Model):
     #oschool_semester = models.CharField(
     #    "当前学期", choices=Semester.choices,max_length=15)
 
-    ostatus = models.BooleanField("激活状态")  #表示一个组织是否上线(或者是已经被下线)
+    ostatus = models.BooleanField("激活状态",default=False)  #表示一个组织是否上线(或者是已经被下线)
 
     objects = OrganizationManager()
 
     YQPoint = models.FloatField("元气值", default=0.0)
     ointroduction = models.TextField('介绍', null=True, blank=True,default="这里暂时没有介绍哦~")
-    otype_id = models.ForeignKey(
+    otype_id= models.ForeignKey(
         OrganizationType, to_field="otype_id", on_delete=models.CASCADE)
     QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)#二维码字段
     def __str__(self):
@@ -223,6 +223,7 @@ class Activity(models.Model):
     afinish = models.DateTimeField("结束时间")
     acontent = models.CharField("活动内容", max_length=225)
     QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)  # 二维码字段
+    #url,活动二维码
     class Astatus(models.TextChoices):
         Asta_Pending = "审核中"
         Applying = "报名中"
