@@ -1,6 +1,7 @@
 {% extends "base.html" %}
 
 {% block mainpage %}
+
     <!--  BEGIN MAIN CONTAINER  -->
     <div class="main-container" id="container">
 
@@ -18,7 +19,7 @@
                         <a href="#dashboard" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-home"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                                <span>Dashboard</span>
+                                <span>管理组织</span>
                             </div>
                             <div>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -26,10 +27,7 @@
                         </a>
                         <ul class="collapse submenu list-unstyled" id="dashboard" data-parent="#accordionExample">
                             <li>
-                                <a href="index.html"> Sales </a>
-                            </li>
-                            <li>
-                                <a href="index2.html"> Analytics </a>
+                                <a href="index.html"> 编辑组织信息 </a>
                             </li>
                         </ul>
                     </li>
@@ -38,7 +36,7 @@
                         <a href="#app" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-cpu"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"></rect><rect x="9" y="9" width="6" height="6"></rect><line x1="9" y1="1" x2="9" y2="4"></line><line x1="15" y1="1" x2="15" y2="4"></line><line x1="9" y1="20" x2="9" y2="23"></line><line x1="15" y1="20" x2="15" y2="23"></line><line x1="20" y1="9" x2="23" y2="9"></line><line x1="20" y1="14" x2="23" y2="14"></line><line x1="1" y1="9" x2="4" y2="9"></line><line x1="1" y1="14" x2="4" y2="14"></line></svg>
-                                <span>Apps</span>
+                                <span>管理活动</span>
                             </div>
                             <div>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -46,88 +44,55 @@
                         </a>
                         <ul class="collapse submenu list-unstyled" id="app" data-parent="#accordionExample">
                             <li>
-                                <a href="apps_chat.html"> Chat </a>
+                                <a href="apps_chat.html"> 发起活动 </a>
                             </li>
                             <li>
-                                <a href="apps_mailbox.html"> Mailbox  </a>
+                                <a href="apps_mailbox.html"> 申请经费  </a>
                             </li>
-                            <li>
-                                <a href="apps_todoList.html"> Todo List </a>
-                            </li>                            
-                            <li>
-                                <a href="apps_notes.html"> Notes </a>
-                            </li>
-                            <li>
-                                <a href="apps_scrumboard.html">Scrumboard</a>
-                            </li>
-                            <li>
-                                <a href="apps_contacts.html"> Contacts </a>
-                            </li>
-                            <li>
-                                <a href="apps_invoice.html"> Invoice List </a>
-                            </li>
-                            <li>
-                                <a href="apps_calendar.html"> Calendar </a>
-                            </li>
+                            
                         </ul>
                     </li>
-
-                    
-
-                    
-
-                    
-
-                    
-
-                    
-
-                    
-
-                    
-                    
-                    
-
-                    
-
-                    
-
-                    
-
-                    
-
-                    
 
                     <li class="menu">
-                        <a href="#starter-kit" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                        <a href="/welcome/" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
                             <div class="">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-terminal"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
-                                <span>Starter Kit</span>
-                            </div>
-                            <div>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /> </svg>
+                                <span>组织信息</span>
                             </div>
                         </a>
-                        <ul class="collapse submenu list-unstyled" id="starter-kit" data-parent="#accordionExample">
-                            <li>
-                                <a href="starter_kit_blank_page.html"> Blank Page </a>
-                            </li>
-                            <li>
-                                <a href="starter_kit_breadcrumbs.html"> Breadcrumbs </a>
-                            </li>
-                            <li>
-                                <a href="starter_kit_boxed.html"> Boxed </a>
-                            </li>
-                            <li>
-                                <a href="starter_kit_alt_menu.html"> Alternate Menu </a>
-                            </li>
-                        </ul>
                     </li>
 
-                    
-                    
-                <div class="ps__rail-x" style="left: 0px; bottom: 0px;"><div class="ps__thumb-x" tabindex="0" style="left: 0px; width: 0px;"></div></div><div class="ps__rail-y" style="top: 0px; height: 690px; right: -4px;"><div class="ps__thumb-y" tabindex="0" style="top: 0px; height: 300px;"></div></div></ul>
-                
+                    <li class="menu">
+                        <a href="/welcome/" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                            <div class="">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /> <path d="M13.73 21a2 2 0 0 1-3.46 0" /> </svg>
+                                <span>组织活动</span>
+                            </div>
+                        </a>
+                    </li>
+
+                    <li class="menu">
+                        <a href="/welcome/" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                            <div class="">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /> </svg>
+                                <span>组织动态</span>
+                            </div>
+                        </a>
+                    </li>
+
+                    {% if ISBOSS == True %}
+                    <li class="menu">
+                        <a href="/welcome/" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                            <div class="">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /> <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /> <polyline points="3.27 6.96 12 12.01 20.73 6.96" /> <line x1="12" y1="22.08" x2="12" y2="12" /> </svg>
+                                <span>切换账号</span>
+                            </div>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    <div class="ps__rail-x" style="left: 0px; bottom: 0px;"><div class="ps__thumb-x" tabindex="0" style="left: 0px; width: 0px;"></div></div><div class="ps__rail-y" style="top: 0px; height: 690px; right: -4px;"><div class="ps__thumb-y" tabindex="0" style="top: 0px; height: 300px;"></div></div>
+                </ul>
             </nav>
 
         </div>
@@ -142,13 +107,41 @@
                     <!-- Content -->
                     <div class="col-xl-8 col-lg-6 col-md-7 col-sm-12 layout-top-spacing">
 
+                        <div class="user-profile layout-spacing">
+                            <div class="widget-content widget-content-area">
+                                
+                                <div class="d-flex justify-content-between">
+                                    <h3 class="">Organization</h3>
+                                </div>
+
+                                <div class="text-center user-info">
+                                    <img src="assets/img/profile-10.jpeg.jpg" alt="avatar">
+                                    <p class="">{{organization_name}}</p>
+                                </div>
+
+                                <div class="user-info-list">
+
+                                    <div class="">
+                                        <ul class="contacts-block list-unstyled">
+                                            <li class="contacts-block__item">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="2" y="7" width="20" height="14" rx="2" ry="2" /> <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /> </svg> {{organization_type_name}}
+                                            </li>
+                                            <li class="contacts-block__item">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <polyline points="20 12 20 22 4 22 4 12" /> <rect x="2" y="7" width="20" height="5" /> <line x1="12" y1="22" x2="12" y2="7" /> <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /> <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /> </svg>元气值{{org.YQPoint}}
+                                            </li>
+                                            
+                                        </ul>
+                                    </div>                                    
+                                </div>
+
+                            </div>
+                        </div>
+
                         <div class="bio layout-spacing ">
                             <div class="widget-content widget-content-area">
 
-                                <h3 class="">{{title}}</h3>
-                                <p>I'm Web Developer from California. I code and design websites worldwide. Mauris varius tellus vitae tristique sagittis. Sed aliquet, est nec auctor aliquet, orci ex vestibulum ex, non pharetra lacus erat ac nulla.</p>
-
-                                <p>Sed vulputate, ligula eget mollis auctor, lectus elit feugiat urna, eget euismod turpis lectus sed ex. Orci varius natoque penatibus et magnis dis parturient montes, nascetur ridiculus mus. Nunc ut velit finibus, scelerisque sapien vitae, pharetra est. Nunc accumsan ligula vehicula scelerisque vulputate.</p>
+                                <h3 class="">Intro</h3>
+                                <p>{{org.introduction}}</p>
 
                                 <div class="bio-skill-box">
 
@@ -160,7 +153,7 @@
                                                 <div>
                                                 </div>
                                                 <div class="">
-                                                    <h5>{{department}}</h5>
+                                                    <h5>活动1</h5>
                                                     <p>Duis aute irure dolor in reprehenderit in voluptate velit esse eu fugiat nulla pariatur.</p>
                                                 </div>
                                             </div>
@@ -173,7 +166,7 @@
                                                 <div>
                                                 </div>
                                                 <div class="">
-                                                    <h5>国际交流部</h5>
+                                                    <h5>活动2</h5>
                                                     <p>Ut enim ad minim veniam, quis nostrud exercitation aliquip ex ea commodo consequat.</p>
                                                 </div>
                                             </div>
@@ -186,7 +179,7 @@
                                                 <div>
                                                 </div>
                                                 <div class="">
-                                                    <h5>对外联系部</h5>
+                                                    <h5>活动3</h5>
                                                     <p>Duis aute irure dolor in reprehenderit in voluptate velit esse eu fugiat nulla pariatur.</p>
                                                 </div>
                                             </div>
@@ -199,120 +192,65 @@
                                                 <div>
                                                 </div>
                                                 <div class="">
-                                                    <h5>实践发展部</h5>
+                                                    <h5>活动4</h5>
                                                     <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do et dolore magna aliqua.</p>
                                                 </div>
                                             </div>
 
                                         </div>
-
-                                    <div class="col-12 col-xl-6 col-lg-12 mb-xl-5 mb-5 ">
-                                            
-                                            <div class="d-flex b-skills">
-                                                <div>
-                                                </div>
-                                                <div class="">
-                                                    <h5>体育竞技部</h5>
-                                                    <p>Duis aute irure dolor in reprehenderit in voluptate velit esse eu fugiat nulla pariatur.</p>
-                                                </div>
-                                            </div>
-
-                                        </div><div class="col-12 col-xl-6 col-lg-12 mb-xl-5 mb-5 ">
-                                            
-                                            <div class="d-flex b-skills">
-                                                <div>
-                                                </div>
-                                                <div class="">
-                                                    <h5>文娱生活部</h5>
-                                                    <p>Duis aute irure dolor in reprehenderit in voluptate velit esse eu fugiat nulla pariatur.</p>
-                                                </div>
-                                            </div>
-
-                                        </div></div>
+                                    </div>
 
                                 </div>
 
                             </div>                                
-                        </div><div class="skills layout-spacing ">
-                            <div class="widget-content widget-content-area">
-                                <h3 class="">Skills</h3>
-                                <div class="progress br-30">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 25%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><div class="progress-title"><span>PHP</span> <span>25%</span> </div></div>
-                                </div>
-                                <div class="progress br-30">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 50%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><div class="progress-title"><span>Wordpress</span> <span>50%</span> </div></div>
-                                </div>
-                                <div class="progress br-30">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 70%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><div class="progress-title"><span>Javascript</span> <span>70%</span> </div></div>
-                                </div>
-                                <div class="progress br-30">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 60%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><div class="progress-title"><span>jQuery</span> <span>60%</span> </div></div>
-                                </div>
-
-                            </div>
                         </div>
 
-                        
+                    </div>
 
-                    </div><div class="col-xl-4 col-lg-6 col-md-5 col-sm-12 layout-top-spacing">
+                    <div class="col-xl-4 col-lg-6 col-md-5 col-sm-12 layout-top-spacing">
 
                         <div class="user-profile layout-spacing">
                             <div class="widget-content widget-content-area">
+                                
                                 <div class="d-flex justify-content-between">
-                                    <h3 class="">负责人</h3>
-                                    <a href="user_account_setting.html" class="mt-2 edit-profile"> <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-settings"><path d="M12 20h9"></path><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path></svg></a>
+                                    <h3 class="">Manager</h3>
                                 </div>
+
                                 <div class="text-center user-info">
-                                    <img src="assets/img/profile-3.jpeg.jpg" alt="avatar">
-                                    <p class="">{{boss}}</p>
+                                    <img src="assets/img/profile-10.jpeg.jpg" alt="avatar">
+                                    <p class="">{{boss_display.bossname}}</p>
                                 </div>
+
                                 <div class="user-info-list">
 
                                     <div class="">
                                         <ul class="contacts-block list-unstyled">
                                             <li class="contacts-block__item">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-coffee"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg> {{job}}
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-coffee"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg> {{boss_display.job}}
                                             </li>
                                             <li class="contacts-block__item">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>Jan 20, 1989
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>{{boss_display.year}}
                                             </li>
                                             <li class="contacts-block__item">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-map-pin"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>New York, USA
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-map-pin"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>{{boss_display.major}}
                                             </li>
                                             <li class="contacts-block__item">
-                                                <a href="mailto:example@mail.com"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mail"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>Jimmy@gmail.com</a>
+                                                <a href="mailto:example@mail.com"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mail"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>{{boss_display.email}}</a>
                                             </li>
                                             <li class="contacts-block__item">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-phone"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> +1 (530) 555-12121
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-phone"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> {{boss_display.tel}}
                                             </li>
-                                            <li class="contacts-block__item">
-                                                <ul class="list-inline">
-                                                    <li class="list-inline-item">
-                                                        <div class="social-icon">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-facebook"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"></path></svg>
-                                                        </div>
-                                                    </li>
-                                                    <li class="list-inline-item">
-                                                        <div class="social-icon">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-twitter"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path></svg>
-                                                        </div>
-                                                    </li>
-                                                    <li class="list-inline-item">
-                                                        <div class="social-icon">
-                                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-linkedin"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
-                                                        </div>
-                                                    </li>
-                                                </ul>
-                                            </li>
+                                            
                                         </ul>
                                     </div>                                    
                                 </div>
+
                             </div>
                         </div>
 
                         <div class="education layout-spacing ">
                             <div class="widget-content widget-content-area">
-                                <h3 class="">Education</h3>
+                                <h3 class="">Event</h3>
                                 <div class="timeline-alter">
                                     <div class="item-timeline">
                                         <div class="t-meta-date">
@@ -351,61 +289,31 @@
                             </div>
                         </div>
 
-                        <div class="work-experience layout-spacing ">
-                            
+                        <div class="activity layout-spacing ">
                             <div class="widget-content widget-content-area">
-
-                                <h3 class="">Work Experience</h3>
-                                
-                                <div class="timeline-alter">
-                                
-                                    <div class="item-timeline">
-                                        <div class="t-meta-date">
-                                            <p class="">04 Mar 2009</p>
-                                        </div>
-                                        <div class="t-dot" data-original-title="" title="">
-                                        </div>
-                                        <div class="t-text">
-                                            <p>Netfilx Inc.</p>
-                                            <p>Designer Illustrator</p>
-                                        </div>
-                                    </div>
-
-                                    <div class="item-timeline">
-                                        <div class="t-meta-date">
-                                            <p class="">25 Apr 2014</p>
-                                        </div>
-                                        <div class="t-dot" data-original-title="" title="">
-                                        </div>
-                                        <div class="t-text">
-                                            <p>Google Inc.</p>
-                                            <p>Designer Illustrator</p>
-                                        </div>
-                                    </div>
-
-                                    <div class="item-timeline">
-                                        <div class="t-meta-date">
-                                            <p class="">04 Apr 2018</p>
-                                        </div>
-                                        <div class="t-dot" data-original-title="" title="">
-                                        </div>
-                                        <div class="t-text">
-                                            <p>Design Reset Inc.</p>
-                                            <p>Designer Illustrator</p>
-                                        </div>
-                                    </div>
-
+                                <h3 class="">Activation</h3>
+                                <div class="progress br-30">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 65%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><div class="progress-title"><span>Freshman</span> <span>65%</span> </div></div>
                                 </div>
-                            </div>
+                                <div class="progress br-30">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 50%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><div class="progress-title"><span>Sophomore</span> <span>50%</span> </div></div>
+                                </div>
+                                <div class="progress br-30">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 70%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><div class="progress-title"><span>Junior</span> <span>70%</span> </div></div>
+                                </div>
+                                <div class="progress br-30">
+                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 60%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><div class="progress-title"><span>Senior</span> <span>60%</span> </div></div>
+                                </div>
 
+                            </div>
                         </div>
 
                     </div>
-
-                    
+                    <!-- Content Ends -->
 
                 </div>
             </div>
+
             <div class="footer-wrapper">
                 <div class="footer-section f-section-1">
                     <p class="">Copyright © 2020 <a target="_blank" href="../../../designreset.html">DesignReset</a>, All rights <a href="http://www.bootstrapmb.com">Reserved </a>.</p>
@@ -416,7 +324,8 @@
             </div>
         </div>
         <!--  END CONTENT AREA  -->
+
     </div>
     <!-- END MAIN CONTAINER -->
-
-    {% endblock %}
+    
+{% endblock %}
