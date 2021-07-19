@@ -29,7 +29,7 @@
                             <a href="{{undergroundurl}}"> 地下室预约 </a>
                         </li>
 			<li>
-			    <a href=../../mywallet/> 我的钱包 </a>
+			    <a href=../../#> 我的钱包 </a>
 			</li>
                         <li>
                             <a href=""> 开发中。。 </a>
@@ -107,48 +107,87 @@
                             <div class="widget-header">
                                 <div class="row">
                                     <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                        <h4>人员搜索</h4>
+                                        <h4>我的钱包</h4>
                                     </div>          
                                 </div>
                             </div>
                             <div class="widget-content widget-content-area">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered mb-4">
-                                        <thead>
-                                            <tr>
-                                                <th>Name</th>
-                                                <th>Gender</th>
-                                                <th>Year</th>
-                                                <th class="text-center">Major</th>
-                                                <th class="text-center">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                        {% for i in people_list %}
-                                            <tr>
-                                                <td><a href=../../stuinfo/{{i.pname}}+{{i.id}}>{{i.pname}}</a></td>
-                                                <td>{{i.pgender}}</td>
-                                                <td>{{i.pyear}}</td>
-                                                <td>{{i.pmajor}}</td>
-						<!-- <td>{{i.YQPoint}}</td> -->
-						<td><a class="btn btn-secondary" href=../../?origin=/transPage/{{i.Sid}} role="button">元气值转账</a></td>
-                                                <!-- <td class="text-center"><span class="badge badge-success">元培学生</span></td> -->
-                                                
-                                            </tr>
-                                        {% endfor %}
-                                            
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                
-
+				<div class="table-responsive">
+				    <table class="table table-bordered mb-4">
+					<thead>
+					    <tr>
+						<th>元气值余额</th>
+					    </tr>
+					</thead>
+					<tbody>
+					    <tr>
+						<td>{{balance}}</td>
+					    </tr>
+					</tbody>
+				    </table>
+				</div>
                             </div>
                         </div>
                     </div>
 
                                         
-                
+                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing">
+                        <div class="statbox widget box box-shadow">
+                            <div class="widget-header">
+                                <div class="row">
+                                    <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                        <h4>最近转账明细</h4>
+                                    </div>          
+                                </div>
+                            </div>
+                            <div class="widget-content widget-content-area">
+				<div class="table-responsive">
+				    <table class="table table-bordered mb-4">
+                                        <thead>
+                                            <tr>
+						<th class="text-center">交易编号</th>
+                                                <th class="text-center">转账人</th>
+                                                <th class="text-center">转账人学号</th>
+                                                <th class="text-center">收款人</th>
+                                                <th class="text-center">收款人学号</th>
+                                                <th class="text-center">金额</th>
+						<th class="text-center">留言</th>
+						<th class="text-center">状态</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        {% for i in Record_list %}
+                                            <tr>
+						<td class="text-center">{{i.id}}</td>
+                                                <td class="text-center">{{i.proposer}}</td>
+                                                <td class="text-center">{{i.proposer_id}}</td>
+                                                <td class="text-center">{{i.recipient}}</td>
+                                                <td class="text-center">{{i.recipient_id}}</td>
+						<td class="text-center">{{i.amount}}</td>
+						<td class="text-center">{{i.message}}</td>
+						{% if i.tstatus == 1 %}
+						    {% if i.recipient_id == tmp %}
+						    <td><a class="btn btn-secondary" href=../../?origin=/confirmTrans/{{i.id}}/0 role="button">接受</a>
+							<a class="btn btn-secondary" href=../../?origin=/confirmTrans/{{i.id}}/2 role="button">拒绝</a></td>
+						    {% else %}
+						    <td class="text-center">等待中</td>
+						    {% endif %}	
+						{% elif i.tstatus == 0 %}
+						<td class="text-center">已接受</td>
+						{% elif i.tstatus == 2 %}
+						<td class="text-center">已拒绝</td>
+						{% elif i.tstatus == 3 %}
+						<td class="text-center">交易意外终止，请联系管理员</td>
+						{% endif %}
+                                            </tr>
+                                        {% endfor %}
+                                            
+                                        </tbody>
+                                    </table>
+				</div>
+                            </div>
+                        </div>
+                    </div>
                     
 
                 </div>

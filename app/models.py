@@ -30,6 +30,9 @@ class NaturalPerson(models.Model):
     #pid = models.ForeignKey(User, to_field='username',
     #                        on_delete=models.CASCADE, unique=True, primary_key=True)
     pid = models.OneToOneField(to = User, on_delete = models.CASCADE)
+
+    Sid = models.IntegerField("学号", max_length=64)
+
     pname = models.CharField("姓名", max_length=10)
     pnickname = models.CharField("昵称", max_length=20, null=True, blank=True)   # 添加昵称
     class Gender(models.IntegerChoices):
@@ -73,12 +76,12 @@ class NaturalPerson(models.Model):
 
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
-    show_nickname = models.BooleanField(default=True)
-    show_gender = models.BooleanField(default=True)
-    show_email = models.BooleanField(default=False)
-    show_tel = models.BooleanField(default=False)
-    show_major = models.BooleanField(default=True)
-    show_dorm = models.BooleanField(default=False)
+    # show_nickname = models.BooleanField(default=True)
+    # show_gender = models.BooleanField(default=True)
+    # show_email = models.BooleanField(default=False)
+    # show_tel = models.BooleanField(default=False)
+    # show_major = models.BooleanField(default=True)
+    # show_dorm = models.BooleanField(default=False)
 
     def __str__(self):
         return str(self.pname)
@@ -258,3 +261,26 @@ class Paticipant(models.Model):
     pid = models.ForeignKey(
         NaturalPerson, to_field="pid", on_delete=models.CASCADE)
 
+# modified by Kinnuch & genuine
+class TransferRecord(models.Model):
+    proposer = models.CharField('转账方', max_length=64)
+    proposer_id = models.CharField('转账方学号', max_length=64)
+    recipient = models.CharField('收款方', max_length=64)
+    recipient_id = models.CharField('收款方学号', max_length=64)
+    amount = models.FloatField('转账元气值数量', default=0)
+    time = models.DateTimeField('转账时间', auto_now_add=True)
+    message = models.CharField("备注信息", max_length=255, default='')
+
+    class Tstatus(models.IntegerChoices):
+        ACCEPTED = 0 # 已接受
+        WAITING = 1 # 等待确认中
+        REFUSED = 2 # 已拒绝
+        SUSPENDED = 3 # 已终止
+
+    tstatus = models.IntegerField(choices=Tstatus.choices, default=1)
+
+    class Meta:
+        verbose_name = '转账信息'
+        verbose_name_plural = verbose_name
+
+        ordering = ['time']

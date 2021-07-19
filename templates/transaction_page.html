@@ -29,7 +29,7 @@
                             <a href="{{undergroundurl}}"> 地下室预约 </a>
                         </li>
 			<li>
-			    <a href=../../mywallet/> 我的钱包 </a>
+			    <a href=../../#> 我的钱包 </a>
 			</li>
                         <li>
                             <a href=""> 开发中。。 </a>
@@ -92,6 +92,7 @@
     <!--  END SIDEBAR  -->
 
     <!--  BEGIN CONTENT AREA  -->
+    {% if rtype == 'np' %}
     <div id="content" class="main-content">
         <div class="container">
             <div class="container">
@@ -107,42 +108,20 @@
                             <div class="widget-header">
                                 <div class="row">
                                     <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                        <h4>人员搜索</h4>
+                                        <h4>向{{name}}发起转账</h4>
                                     </div>          
                                 </div>
                             </div>
                             <div class="widget-content widget-content-area">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered mb-4">
-                                        <thead>
-                                            <tr>
-                                                <th>Name</th>
-                                                <th>Gender</th>
-                                                <th>Year</th>
-                                                <th class="text-center">Major</th>
-                                                <th class="text-center">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                        {% for i in people_list %}
-                                            <tr>
-                                                <td><a href=../../stuinfo/{{i.pname}}+{{i.id}}>{{i.pname}}</a></td>
-                                                <td>{{i.pgender}}</td>
-                                                <td>{{i.pyear}}</td>
-                                                <td>{{i.pmajor}}</td>
-						<!-- <td>{{i.YQPoint}}</td> -->
-						<td><a class="btn btn-secondary" href=../../?origin=/transPage/{{i.Sid}} role="button">元气值转账</a></td>
-                                                <!-- <td class="text-center"><span class="badge badge-success">元培学生</span></td> -->
-                                                
-                                            </tr>
-                                        {% endfor %}
-                                            
-                                        </tbody>
-                                    </table>
-                                </div>
-
-                                
-
+                                <form action="startTrans/" method="POST">
+				    金额：<input type="text" name="amount">
+				    留言：<input type="text" name="msg">
+				    <input type="submit" name="Submit">
+				    <input type="hidden" name="rid", value={{rid}}>
+				    <input type="hidden" name="origin", value={{origin}}>
+				    <input type="hidden" name="rtype", value={{rtype}}>
+				    <input type="hidden" name="name", value={{name}}>
+				</form>
                             </div>
                         </div>
                     </div>
@@ -162,6 +141,7 @@
             
         </div>
     </div>
+    {% endif %}
     <!--  END CONTENT AREA  -->
 </div>
 <!-- END MAIN CONTAINER -->

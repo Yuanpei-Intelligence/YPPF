@@ -18,8 +18,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # LOGIN_URL，未登录时重定向到的 URL
 local_dict = load_local_json()
-LOGIN_URL = local_dict['url']['login_url']
-# LOGIN_URL = 'http:localhost:8000/'
+# LOGIN_URL = local_dict['url']['login_url']
+LOGIN_URL = 'http:localhost:8000/'
 
 
 # Quick-start development settings - unsuitable for production
@@ -96,11 +96,11 @@ DATABASES = {
     # create database underground charset='utf8';
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': local_dict['database']['NAME'],
+        'NAME': 'yuanpei_underground',
         'HOST': '127.0.0.1',
         'PORT': 3306,
-        'USER': local_dict['database']['USER'],
-        'PASSWORD': local_dict['database']['PASSWORD'],
+        'USER': 'root',
+        'PASSWORD': 'harrystark%0424',
         # 'OPTIONS': {
         #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         # }

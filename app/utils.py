@@ -35,7 +35,7 @@ class MySHA256Hasher(object):
 
 def load_local_json(path='./local_json.json'):
     local_dict = {}
-    with open(path, encoding='utf_8') as f:
+    with open(path, encoding='unicode_escape') as f:
         local_dict = json.load(f)
     return local_dict
 

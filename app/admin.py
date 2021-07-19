@@ -16,3 +16,6 @@ admin.site.register(Position, NewPos)
 
 admin.site.register(OrganizationType)
 admin.site.register(Activity)
+
+#modified by Kinnuch
+admin.site.register(TransferRecord)
