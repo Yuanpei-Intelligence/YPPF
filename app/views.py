@@ -269,7 +269,7 @@ def orginfo(request,name=None): #此时的登录人有可能是负责人,因此�
     '''
         orginfo负责呈现组织主页，逻辑和stuinfo是一样的，可以参考
     '''
-    user = request.user
+    """user = request.user
     valid, u_type = utils.check_user_type(request)
     if not valid:
         return redirect('/logout/')
@@ -284,7 +284,7 @@ def orginfo(request,name=None): #此时的登录人有可能是负责人,因此�
     try:
         org = Organization.objects.activated().get(oname=name)
     except:
-        return redirect('/welcome/')
+        return redirect('/welcome/')"""
 
     return render(request, 'orginfo.html', locals())
 
