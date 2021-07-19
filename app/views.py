@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from app.models import NaturalPerson, Position, Organization
+from app.models import NaturalPerson, OrganizationType, Position, Organization
 from django.contrib import auth, messages
 from django.http import HttpResponseRedirect
 from django.http import JsonResponse
@@ -267,16 +267,18 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
 
 
 @login_required(redirect_field_name='origin')
-def orginfo(request, name=None):  # 此时的登录人有可能是负责人,因此要特殊处理
+def orginfo(request,name = None): 
     '''
         orginfo负责呈现组织主页，逻辑和stuinfo是一样的，可以参考
+        只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个组织界面都是【不可管理/编辑组织信息】
     '''
     user = request.user
     valid, u_type, html_display = utils.check_user_type(request)
     me = NaturalPerson.objects.activated().get(pid = user) if u_type == 'Person' else Organization.objects.get(oid=user)
+    
     if not valid:
         return redirect('/logout/')
-    if name is None:
+    if name is None: # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if u_type == 'Person':
             return redirect('/welcome/')
         try:
@@ -284,16 +286,42 @@ def orginfo(request, name=None):  # 此时的登录人有可能是负责人,因�
         except:
             return redirect('/welcome/')
         return redirect('/orginfo/' + org.oname)
-    try:
+
+    try: # 指定名字访问组织账号的，可以是自然人也可以是法人。在html里要注意区分！
+
+        # 下面是组织信息
         org = Organization.objects.activated().get(oname=name)
+        organization_name = name
+        organization_type_name = OrganizationType.objects.get(otype_id = org.otype_id_id).otype_name
+        # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
+
+        # 这一部分是负责人boss的信息
+        bossid = Position.objects.activated().get(org_id = org.oid_id, pos = 0).person_id
+        boss = NaturalPerson.objects.activated().get(pid = bossid)
+        boss_display = {}
+
+        boss_display['bossname'] = boss.pname
+        boss_display['year'] = boss.pyear
+        boss_display['major'] = boss.pmajor
+        boss_display['email'] = boss.pemail
+        boss_display['tel'] = boss.ptel
+
+        jobpos = Position.objects.activated().get(person = boss).pos
+        boss_display['job'] = OrganizationType.objects.get(otype_id = org.otype_id_id).ojob_name_list[jobpos]
+
+        # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
+        ISBOSS = True if (user_type == 'Person' and boss.pid == user) else False 
+
+        # 组织活动的信息
+
     except:
         return redirect('/welcome/')
-
 
     # 补充一些呈现信息
     html_display['title_name'] = 'Org. Profile'
     html_display['narbar_name'] = '组织主页'
     html_display['avatar_path'] = utils.get_user_ava(me)
+
     return render(request, 'orginfo.html', locals())
 
 
@@ -452,7 +480,6 @@ def search(request):
         搜索组织
             支持使用组织名、组织类型搜索、一级负责人姓名
             组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
-
     '''
     try:
         valid, user_type, html_display = utils.check_user_type(request)
@@ -495,7 +522,7 @@ def forget_password(request):
         - 根据（邮箱）验证码完成登录，提交后跳转到修改密码界面
         - 本质是登录而不是修改密码
         - 如果改成支持验证码登录只需修改页面和跳转（记得修改函数和页面名）
-
+        
         页面逻辑
         -------
         1. 发送验证码
@@ -503,7 +530,7 @@ def forget_password(request):
         2. 输入验证码
             2.5 保留表单信息
         3. 错误提醒和邮件发送提醒
-
+        
         实现逻辑
         -------
         - 通过脚本使按钮提供不同的`send_captcha`值，区分按钮
@@ -515,7 +542,7 @@ def forget_password(request):
             - `err_code`=`0`或`4`是预设的提醒值，额外弹出提示框
             - forget_password.html中可以进一步修改
         - 尝试发送验证码后总是弹出提示框，通知用户验证码的发送情况
-
+        
         注意事项
         -------
         - 尝试忘记密码的不一定是本人，一定要做好隐私和逻辑处理
