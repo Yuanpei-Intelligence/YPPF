@@ -9,7 +9,8 @@ from django.contrib.auth.decorators import login_required
 from app.data_import import load
 from django.contrib.auth.hashers import make_password, check_password
 from django.db.models import Q
-from app.utils import MyMD5PasswordHasher, MySHA256Hasher, load_local_json
+from app.utils import MyMD5PasswordHasher, MySHA256Hasher
+from  boottest import local_dict
 import app.utils as utils
 from django.conf import settings
 from django.urls import reverse
@@ -18,10 +19,8 @@ from datetime import datetime
 import time
 import random, requests   # 发送验证码
 
-local_dict = load_local_json()
-underground_url = local_dict['url']['base_url']
+
 email_url = local_dict['url']['email_url']
-# underground_url = 'http://127.0.0.1:8080/appointment/index'
 hash_coder = MySHA256Hasher(local_dict['hash']['base_hasher'])
 email_coder = MySHA256Hasher(local_dict['hash']['email'])
 
@@ -202,21 +201,23 @@ def stuinfo(request, name = None):
 
             is_myself = user_type == 'Person' and person.pid == user    # 用一个字段储存是否是自己
             is_first = person.firstTimeLogin                            # 是否为第一次登陆
+            html_display['is_myself'] = is_myself                       # 存入显示
             if is_myself and is_first:
                 return redirect('/modpw/')
 
-            # 处理组织相关的信息
+            # 处理被搜索人的信息，这里应该和“用户自己”区分开
             join_pos_id_list = Position.objects.activated().filter(person=person)
-            control_pos_id_list = join_pos_id_list.filter(pos=0)        # 最高级, 是非密码管理员
+            #html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
+            
+            # 呈现信息
+            # 首先是左边栏
+            html_display = utils.get_user_left_narbar(person, is_myself, html_display)
 
             html_display['modpw_code'] = modpw_status is not None and modpw_status == 'success'
-            html_display['underground_url'] = underground_url                       # 跳转至地下室预约系统的
             html_display['warn_code'] = request.GET.get('warn_code', 0)             # 是否有来自外部的消息
             html_display['warn_message'] = request.GET.get('warn_message', "")      # 提醒的具体内容 
             html_display['userinfo'] = person
-            html_display['is_myself'] = is_myself
-            html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
-            html_display['control_org_list'] = list(Organization.objects.filter(org__in = control_pos_id_list.values('org')))   # 我管理的组织
+            
             html_display['title_name'] = 'User Profile'
             html_display['narbar_name'] = '个人主页'
             
@@ -293,28 +294,30 @@ def orginfo(request, name=None):  # 此时的登录人有可能是负责人,因�
     # 补充一些呈现信息
     html_display['title_name'] = 'Org. Profile'
     html_display['narbar_name'] = '组织主页'
+<<<<<<< Updated upstream
     html_display['avatar_path'] = utils.get_user_ava(me)
+=======
+>>>>>>> Stashed changes
     return render(request, 'orginfo.html', locals())
 
 
 @login_required(redirect_field_name='origin')
 def homepage(request):
     
-    valid, u_type, html_display = utils.check_user_type(request) #
-    is_person = True if u_type == 'Person' else False #
+    valid, u_type, html_display = utils.check_user_type(request) 
+    is_person = True if u_type == 'Person' else False 
     if not valid:
-        return redirect('/logout/') #
+        return redirect('/logout/') 
     me = NaturalPerson.objects.get(
         pid=request.user) if is_person else Organization.objects.get(oid=request.user) #
-    myname = me.pname if is_person else me.oname #
+    myname = me.pname if is_person else me.oname 
     # 直接储存在html_display中
     #profile_name = "个人主页" if is_person else "组织主页"
     #profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
 
     # 补充一些呈现信息
     html_display['title_name'] = 'Welcome Page'
-    html_display['narbar_name'] = '近期要闻' #
-    html_display['avatar_path'] = utils.get_user_ava(me)
+    html_display['narbar_name'] = '近期要闻' 
     return render(request, 'welcome_page.html', locals())
 
 
@@ -323,8 +326,9 @@ def account_setting(request):
     valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
         return redirect('/logout/')
-    undergroundurl = underground_url
-
+    
+    # 在这个页面 默认回归为自己的左边栏
+    html_display['is_myself'] = True
     user = request.user
     info = NaturalPerson.objects.filter(pid=user)
     userinfo = info.values()[0]
@@ -360,6 +364,15 @@ def account_setting(request):
         else:
             upload_state = True
             return redirect("/stuinfo/?modinfo=success")
+    
+    # 补充网页呈现所需信息
+    html_display['title_name'] = 'Account Setting'
+    html_display['narbar_name'] = '账户设置'
+
+    #然后是左边栏
+    html_display = utils.get_user_left_narbar(useroj, html_display['is_myself'], html_display)
+
+
     return render(request, 'user_account_setting.html', locals())
 
 
