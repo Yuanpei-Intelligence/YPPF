@@ -236,10 +236,10 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         如果个人账户对应的是name对应的组织的最高权限人，那么允许登录，否则跳转回stuinfo并warning
     '''
     user = request.user
-    valid, u_type, html_display = utils.check_user_type(request)
+    valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
         return redirect('/logout/')
-    if u_type == "Organization":
+    if user_type == "Organization":
         return redirect('/orginfo/')
     try:
         me = NaturalPerson.objects.activated().get(pid=user)
@@ -274,13 +274,13 @@ def orginfo(request,name = None):
         只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个组织界面都是【不可管理/编辑组织信息】
     '''
     user = request.user
-    valid, u_type, html_display = utils.check_user_type(request)
-    me = NaturalPerson.objects.activated().get(pid = user) if u_type == 'Person' else Organization.objects.get(oid=user)
+    valid, user_type, html_display = utils.check_user_type(request)
+    me = NaturalPerson.objects.activated().get(pid = user) if user_type == 'Person' else Organization.objects.get(oid=user)
     
     if not valid:
         return redirect('/logout/')
     if name is None: # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
-        if u_type == 'Person':
+        if user_type == 'Person':
             return redirect('/welcome/')
         try:
             org = Organization.objects.activated().get(oid=user)
@@ -328,8 +328,8 @@ def orginfo(request,name = None):
 @login_required(redirect_field_name='origin')
 def homepage(request):
     
-    valid, u_type, html_display = utils.check_user_type(request) 
-    is_person = True if u_type == 'Person' else False 
+    valid, user_type, html_display = utils.check_user_type(request) 
+    is_person = True if user_type == 'Person' else False 
     if not valid:
         return redirect('/logout/') 
     me = NaturalPerson.objects.get(
@@ -494,8 +494,13 @@ def search(request):
         valid, user_type, html_display = utils.check_user_type(request)
         if not valid:
             return redirect('/logout/')
-  
-        undergroundurl = underground_url
+
+        is_person = True if user_type == 'Person' else False
+        me = NaturalPerson.objects.get(pid=request.user) if is_person else\
+            Organization.objects.get(oid=request.user) # 
+        html_display['is_myself'] = True
+        html_display = utils.get_user_left_narbar(me, html_display['is_myself'], html_display)
+        
         query = request.GET.get('Query', '')
         if query == '':
             return redirect('/welcome/')
