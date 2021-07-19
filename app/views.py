@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from app.models import NaturalPerson, Position, Organization
+from app.models import NaturalPerson, OrganizationType, Position, Organization
 from django.contrib import auth, messages
 from django.http import HttpResponseRedirect
 from django.http import JsonResponse
