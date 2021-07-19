@@ -11,9 +11,15 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+from app.utils import load_local_json
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# LOGIN_URL，未登录时重定向到的 URL
+local_dict = load_local_json()
+LOGIN_URL = local_dict['url']['login_url']
+# LOGIN_URL = 'http:localhost:8000/'
 
 
 # Quick-start development settings - unsuitable for production
@@ -23,7 +29,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = 'k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = ["*"]
 
@@ -90,11 +96,11 @@ DATABASES = {
     # create database underground charset='utf8';
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'NAME': 'YPPF',
+        'NAME': local_dict['database']['NAME'],
         'HOST': '127.0.0.1',
         'PORT': 3306,
-        'USER': '',
-        'PASSWORD': '',
+        'USER': local_dict['database']['USER'],
+        'PASSWORD': local_dict['database']['PASSWORD'],
         # 'OPTIONS': {
         #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         # }
@@ -143,10 +149,12 @@ USE_TZ = True
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
-#STATIC_ROOT = os.path.join(BASE_DIR, "collectstatic")
+# STATIC_ROOT = os.path.join(BASE_DIR, "static")
 STATIC_URL = '/static/'
+
 STATICFILES_DIRS=(
            os.path.join(BASE_DIR,'static'),
            )
+           
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR,'media/')
