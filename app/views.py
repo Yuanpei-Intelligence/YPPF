@@ -309,21 +309,23 @@ def orginfo(request,name = None):
         org = Organization.objects.activated().get(oname=name)
         organization_name = name
         organization_type_name = OrganizationType.objects.get(otype_id = org.otype_id_id).otype_name
-        YQPoint = org.YQPoint
-        intro = org.ointroduction
-
+        # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
+        
         # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
         ISBOSS = True if (org.oid == user and u_type == 'Person') else False 
 
         # 这一部分是负责人boss的信息
         boss = NaturalPerson.objects.activated().get(pid = org.oid)
-        bossname = boss.pname
-        year = boss.pyear
-        major = boss.pmajor
-        email = boss.pemail
-        tel = boss.ptel
+        boss_display = {}
+
+        boss_display['bossname'] = boss.pname
+        boss_display['year'] = boss.pyear
+        boss_display['major'] = boss.pmajor
+        boss_display['email'] = boss.pemail
+        boss_display['tel'] = boss.ptel
+
         jobpos = Position.objects.activated().get(person = boss).pos
-        job = OrganizationType.objects.get(otype_id = org.otype_id_id).ojob_name_list[jobpos]
+        boss_display['job'] = OrganizationType.objects.get(otype_id = org.otype_id_id).ojob_name_list[jobpos]
 
         # 组织活动的信息
 
