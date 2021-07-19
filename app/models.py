@@ -246,10 +246,10 @@ class Activity(models.Model):
 
     mutableYQ = models.BooleanField("是否可以调整价格", default=False)
     YQPoint = ListCharField(
-        base_field=models.CharField(max_length=6),
+        base_field=models.IntegerField(default=0),
         size=10,
-        max_length = 80,
-        default = ['0']
+        max_length = 50,
+        default = [0]
     )
     Places = ListCharField(
         base_field=models.IntegerField(default=0),
