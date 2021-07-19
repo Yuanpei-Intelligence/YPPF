@@ -297,8 +297,8 @@ def orginfo(request,name = None):
         # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
         # 这一部分是负责人boss的信息
-        bossid = Position.objects.activated().get(org_id = org.oid_id, pos = 0).person_id
-        boss = NaturalPerson.objects.activated().get(pid = bossid)
+        boss = Position.objects.activated().get(org = org, pos = 0).person
+        #boss = NaturalPerson.objects.activated().get(pid = bossid)
         boss_display = {}
 
         boss_display['bossname'] = boss.pname
@@ -499,8 +499,11 @@ def search(request):
         me = NaturalPerson.objects.get(pid=request.user) if is_person else\
             Organization.objects.get(oid=request.user) # 
         html_display['is_myself'] = True
-        html_display = utils.get_user_left_narbar(me, html_display['is_myself'], html_display)
-        
+        if is_person:
+            html_display = utils.get_user_left_narbar(me, html_display['is_myself'], html_display)
+        else:
+            html_display = utils.get_org_left_narbar(me, html_display['is_myself'], html_display)
+
         query = request.GET.get('Query', '')
         if query == '':
             return redirect('/welcome/')

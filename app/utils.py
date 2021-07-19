@@ -74,3 +74,7 @@ def get_user_left_narbar(person, is_myself, html_display):    #获取左边栏�
     html_display['my_org_list'] = Organization.objects.filter(org__in = my_org_id_list.values('org'))   # 我管理的组织
     
     return html_display
+
+
+def get_org_left_narbar(org, is_myself, html_display):
+    pass
