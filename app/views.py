@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from app.models import NaturalPerson, OrganizationType, Position, Organization
+from app.models import NaturalPerson, Position, Organization
 from django.contrib import auth, messages
 from django.http import HttpResponseRedirect
 from django.http import JsonResponse
@@ -16,11 +16,14 @@ from django.urls import reverse
 import json
 from datetime import datetime
 import time
+import random, requests   # 发送验证码
 
 local_dict = load_local_json()
 underground_url = local_dict['url']['base_url']
+email_url = local_dict['url']['email_url']
 # underground_url = 'http://127.0.0.1:8080/appointment/index'
 hash_coder = MySHA256Hasher(local_dict['hash']['base_hasher'])
+email_coder = MySHA256Hasher(local_dict['hash']['email'])
 
 
 def index(request):
@@ -140,7 +143,7 @@ def miniLogin(request):
 
 
 @login_required(redirect_field_name='origin')
-def stuinfo(request, name=None):
+def stuinfo(request, name = None):
     '''
         进入到这里的逻辑:
         首先必须登录，并且不是超级账户
@@ -156,91 +159,73 @@ def stuinfo(request, name=None):
             如果重名
                 那么期望有一个"+"在name中，如果搜不到就跳转到Search/？Query=name让他跳转去
     '''
-    undergroundurl = underground_url
-    mod_status = request.GET.get('modinfo', None)
-    if mod_status is not None:
-        if mod_status == 'success':
-            mod_code = True
-    warn_code = request.GET.get('warn_code', 0)   # 是否有来自外部的消息
-    warn_message = request.GET.get('warn_message', "")  # 提醒的具体内容
+    
     try:
-        #username = request.session['username']
-        #user = User.objects.get(username= username)
         user = request.user
-        valid, u_type, html_display = utils.check_user_type(request)
-        me = NaturalPerson.objects.activated().get(pid = user) if u_type == 'Person' else Organization.objects.get(oid=user)
+        valid, user_type, html_display = utils.check_user_type(request)
         if not valid:
             return redirect('/logout/')
+
         if name is None:
-            if u_type == 'Organization':
+            if user_type == 'Organization':
                 return redirect('/welcome/')
-            return redirect('/stuinfo/' + me.pname)
-        try:
+            else:
+                assert(user_type == 'Person')
+                try:
+                    oneself = NaturalPerson.objects.activated().get(pid=user)
+                except:
+                    return redirect('/welcome/')
+                return redirect('/stuinfo/' + oneself.pname)
+        else:
             # 先对可能的加号做处理
             name_list = name.split("+")
             name = name_list[0]
             person = NaturalPerson.objects.activated().filter(pname=name)
-            if len(person) == 0:  # 查无此人
+            if len(person) == 0:            # 查无此人
                 return redirect('/welcome/')
-            elif len(person) == 1:
+            if len(person) == 1:        # 无重名
                 person = person[0]
-            else:  # 有很多人,这时候假设加号后面的是user的id
-                if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
-                    if u_type == 'Person' and NaturalPerson.objects.activated().get(pid=user).pname == name:
+            else:                       # 有很多人，这时候假设加号后面的是user的id
+                if len(name_list) == 1: # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
+                    if user_type == 'Person' and NaturalPerson.objects.activated().get(pid=user).pname == name:
                         person = NaturalPerson.objects.activated().get(pid=user)
-                    else:
-                        # 不是自己，信息不全跳转搜索
-                        return redirect('/search?Query=' + name)
+                    else:               # 不是自己，信息不全跳转搜索
+                        return redirect('/search?Query=' + name)        
                 else:
-                    obtain_id = int(name_list[1])  # 获取增补信息
+                    obtain_id = int(name_list[1])                       # 获取增补信息
                     get_user = User.objects.get(id=obtain_id)
                     potential_person = NaturalPerson.objects.activated().get(pid=get_user)
                     assert potential_person in person
                     person = potential_person
-        except:
-            return redirect('/welcome/')
 
-        # 用一个字段储存是否是自己
-        ismyself = False
-        if u_type == 'Person':
-            if person.pid == user:
-                ismyself = True
+            modpw_status = request.GET.get('modinfo', None)
 
-        #user_pos = Position.objects.get(person=person)
-        #user_org = user_pos.org
+            is_myself = user_type == 'Person' and person.pid == user    # 用一个字段储存是否是自己
+            is_first = person.firstTimeLogin                            # 是否为第一次登陆
+            if is_myself and is_first:
+                return redirect('/modpw/')
 
-    except:
-        redirect('/index/')
-    ##user_pos.pos = 部员
-    # user_pos.org = <organization对象>
-    # <organization对象>.oname = 共青团北京大学元培学院委员会
-    ##解释性语言##
+            # 处理组织相关的信息
+            join_pos_id_list = Position.objects.activated().filter(person=person)
+            control_pos_id_list = join_pos_id_list.filter(pos=0)        # 最高级, 是非密码管理员
 
-    try:
-        #userinfo = NaturalPerson.objects.filter(pid=user).values()[0]
-        userinfo = person
-        isFirst = person.firstTimeLogin
-        # 未修改密码
-        if isFirst and ismyself:
-            return redirect('/modpw/')
-
+            html_display['modpw_code'] = modpw_status is not None and modpw_status == 'success'
+            html_display['underground_url'] = underground_url                       # 跳转至地下室预约系统的
+            html_display['warn_code'] = request.GET.get('warn_code', 0)             # 是否有来自外部的消息
+            html_display['warn_message'] = request.GET.get('warn_message', "")      # 提醒的具体内容 
+            html_display['userinfo'] = person
+            html_display['is_myself'] = is_myself
+            html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
+            html_display['control_org_list'] = list(Organization.objects.filter(org__in = control_pos_id_list.values('org')))   # 我管理的组织
+            html_display['title_name'] = 'User Profile'
+            html_display['narbar_name'] = '个人主页'
+            
+            return render(request, 'stuinfo.html', locals())
     except:
         auth.logout(request)
-        return redirect('/index')
+        return redirect('/index/')
 
-    # 处理组织相关的信息
-    my_pos_id_list = Position.objects.activated().filter(person=person)
-    my_org_list = Organization.objects.filter(
-        org__in=my_pos_id_list.values('org'))  # 我属于的组织
-    control_pos_id_list = my_pos_id_list.filter(pos=0)  # 最高级, 是非密码管理员
-    control_org_list = list(Organization.objects.filter(
-        org__in=control_pos_id_list.values('org')))  # 我管理的组织
 
-    # 补充一些呈现信息
-    html_display['title_name'] = 'User Profile'
-    html_display['narbar_name'] = '个人主页'
-    html_display['ava_path'] = utils.get_user_ava(me)
-    return render(request, 'stuinfo.html', locals())
 
 @login_required(redirect_field_name='origin')
 def request_login_org(request, name=None):  # 特指个人希望通过个人账户登入组织账户的逻辑
@@ -251,10 +236,9 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
     '''
     user = request.user
     valid, u_type, html_display = utils.check_user_type(request)
-
     if not valid:
         return redirect('/logout/')
-    if u_type == "Organization": 
+    if u_type == "Organization":
         return redirect('/orginfo/')
     try:
         me = NaturalPerson.objects.activated().get(pid=user)
@@ -335,39 +319,46 @@ def orginfo(request,name = None):
     # 补充一些呈现信息
     html_display['title_name'] = 'Org. Profile'
     html_display['narbar_name'] = '组织主页'
-    html_display['ava_path'] = utils.get_user_ava(me)
+    html_display['avatar_path'] = utils.get_user_ava(me)
 
     return render(request, 'orginfo.html', locals())
 
 
 @login_required(redirect_field_name='origin')
 def homepage(request):
-    valid, u_type, html_display = utils.check_user_type(request)
-    is_person = True if u_type == 'Person' else False
+    
+    valid, u_type, html_display = utils.check_user_type(request) #
+    is_person = True if u_type == 'Person' else False #
     if not valid:
-        return redirect('/logout/')
+        return redirect('/logout/') #
     me = NaturalPerson.objects.get(
-        pid=request.user) if is_person else Organization.objects.get(oid=request.user)
-    myname = me.pname if is_person else me.oname
+        pid=request.user) if is_person else Organization.objects.get(oid=request.user) #
+    myname = me.pname if is_person else me.oname #
+    # 直接储存在html_display中
+    #profile_name = "个人主页" if is_person else "组织主页"
+    #profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
 
     # 补充一些呈现信息
     html_display['title_name'] = 'Welcome Page'
-    html_display['narbar_name'] = '近期要闻'
-    html_display['ava_path'] = utils.get_user_ava(me)
-
+    html_display['narbar_name'] = '近期要闻' #
+    html_display['avatar_path'] = utils.get_user_ava(me)
     return render(request, 'welcome_page.html', locals())
+
 
 @login_required(redirect_field_name='origin')
 def account_setting(request):
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/logout/')
     undergroundurl = underground_url
-    username = request.session['username']
-    info = NaturalPerson.objects.filter(pid=username)
+
+    user = request.user
+    info = NaturalPerson.objects.filter(pid=user)
     userinfo = info.values()[0]
-    useroj = NaturalPerson.objects.get(pid=username)
-    if str(useroj.avatar) == '':
-        former_img = settings.MEDIA_URL + 'avatar/codecat.jpg'
-    else:
-        former_img = settings.MEDIA_URL + str(useroj.avatar)
+
+    useroj = NaturalPerson.objects.get(pid=user)
+
+    former_img = html_display['avatar_path']
 
     if request.method == 'POST' and request.POST:
         aboutbio = request.POST['aboutBio']
@@ -389,7 +380,7 @@ def account_setting(request):
         else:
             useroj.avatar = ava
         useroj.save()
-        ava_path = settings.MEDIA_URL + str(ava)
+        avatar_path = settings.MEDIA_URL + str(ava)
         if expr == False:
             return render(request, 'user_account_setting.html', locals())
 
@@ -441,6 +432,7 @@ def logout(request):
     auth.logout(request)
     return HttpResponseRedirect('/index/')
 
+
 '''
 def org_spec(request, *args, **kwargs):
     arg = args[0]
@@ -457,6 +449,7 @@ def org_spec(request, *args, **kwargs):
         person_incharge = '负责人'
     return render(request, 'org_spec.html', locals())
 '''
+
 
 def get_stu_img(request):
     print("in get stu img")
@@ -487,21 +480,31 @@ def search(request):
             支持使用组织名、组织类型搜索、一级负责人姓名
             组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
     '''
-    undergroundurl = underground_url
-    query = request.GET.get('Query', '')
-    if query == '':
-        return redirect('/welcome/')
+    try:
+        valid, user_type, html_display = utils.check_user_type(request)
+        if not valid:
+            return redirect('/logout/')
+  
+        undergroundurl = underground_url
+        query = request.GET.get('Query', '')
+        if query == '':
+            return redirect('/welcome/')
 
-    # 首先搜索个人
-    people_list = NaturalPerson.objects.filter(
-        Q(pname__icontains=query) | (Q(pnickname__icontains=query)) | (Q(pmajor__icontains=query)))
+        # 首先搜索个人
+        people_list = NaturalPerson.objects.filter(
+            Q(pname__icontains=query) | (Q(pnickname__icontains=query)) | (Q(pmajor__icontains = query)))
 
-    # 接下来准备呈现的内容
+        # 接下来准备呈现的内容
 
-    # 首先是准备搜索个人信息的部分
-    people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
+        # 首先是准备搜索个人信息的部分
+        people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
 
-    return render(request, 'search.html', locals())
+        return render(request, 'search.html', locals())
+    except:
+        auth.logout(request)
+        return redirect('/index/')
+
+
 
 
 def test(request):
@@ -509,43 +512,170 @@ def test(request):
     return render(request, 'all_org.html')
 
 
+def forget_password(request):
+    '''
+        忘记密码页（Pylance可以提供文档字符串支持）
+        
+        页面效果
+        -------
+        - 根据（邮箱）验证码完成登录，提交后跳转到修改密码界面
+        - 本质是登录而不是修改密码
+        - 如果改成支持验证码登录只需修改页面和跳转（记得修改函数和页面名）
+        页面逻辑
+        -------
+        1. 发送验证码
+            1.5 验证码冷却避免多次发送
+        2. 输入验证码
+            2.5 保留表单信息
+        3. 错误提醒和邮件发送提醒
+        实现逻辑
+        -------
+        - 通过脚本使按钮提供不同的`send_captcha`值，区分按钮
+        - 通过脚本实现验证码冷却，页面刷新后重置冷却（避免过长等待影响体验）
+        - 通过`session`保证安全传输验证码和待验证用户
+        - 成功发送/登录后才在`session`中记录信息
+        - 页面模板中实现消息提醒
+            - `err_code`非零值代表错误，在页面中显示
+            - `err_code`=`0`或`4`是预设的提醒值，额外弹出提示框
+            - forget_password.html中可以进一步修改
+        - 尝试发送验证码后总是弹出提示框，通知用户验证码的发送情况
+        注意事项
+        -------
+        - 尝试忘记密码的不一定是本人，一定要做好隐私和逻辑处理
+            - 用户邮箱应当部分打码，避免向非本人提供隐私数据！
+        - 不发送消息时`err_code`应为`None`或不声明，不同于modpw
+        - `err_code`=`4`时弹出
+        - 连接设置的timeout为6s
+        - 如果引入企业微信验证，建议将send_captcha分为'qywx'和'email'
+    '''
+    if request.method == 'POST':
+        username = request.POST['username']
+        send_captcha = request.POST['send_captcha'] == 'yes'
+        vertify_code = request.POST['vertify_code'] # 用户输入的验证码
+        
+        user = User.objects.filter(username=username)
+        if not user:
+            err_code = 1
+            err_message = '账号不存在'
+        else:
+            user = User.objects.get(username=username)
+            useroj = NaturalPerson.objects.get(pid=user) # 目前似乎保证是自然人
+            isFirst = useroj.firstTimeLogin
+            if isFirst:  
+                err_code = 2
+                err_message = '初次登录密码与账号相同！'
+            elif send_captcha:
+                email = useroj.pemail
+                if not email or email.lower() == 'none' or '@' not in email:
+                    err_code = 3
+                    err_message = '您没有设置邮箱，请发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改'# 记得填
+                else:
+                    captcha = random.randrange(1000000) # randint包含端点，randrange不包含
+                    captcha = f'{captcha:06}'
+                    msg = (
+                    f'<h3><b>亲爱的{useroj.pname}同学：</b></h3><br/>'
+                    '您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>'
+                    f'<p style="color:orange">{captcha}'
+                    '<span style="color:gray">(仅当前页面有效)</span></p>'
+                    '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
+                    '<br/><br/><br/>'
+                    '元培学院开发组<br/>'
+                    + datetime.now().strftime('%Y年%m月%d日'))
+                    post_data = {
+                        'toaddrs' : [email],    # 收件人列表
+                        'subject' : 'YPPF登录验证',        # 邮件主题/标题
+                        'content' : msg,    # 邮件内容
+                            # 若subject为空, 第一个\n视为标题和内容的分隔符
+                        'html' : True,          # 可选 如果为真则content被解读为html
+                        'private_level' : 0,    # 可选 应在0-2之间
+                            # 影响显示的收件人信息
+                            # 0级全部显示, 1级只显示第一个收件人, 2级只显示发件人
+                        'secret' : email_coder.encode(msg), # content加密后的密文
+                    }
+                    post_data = json.dumps(post_data)
+                    pre, suf = email.rsplit('@', 1)
+                    if len(pre) > 5:
+                        pre = pre[:2] + '*' * len(pre[2:-3]) + pre[-3:]
+                    try:
+                        response = requests.post(email_url, post_data, timeout=6)
+                        response = response.json()
+                        if response['status'] != 200:
+                            err_code = 4
+                            err_message = f'未能向{pre}@{suf}发送邮件'
+                        else:  
+                            # 记录验证码发给谁 不使用username防止被修改
+                            request.session['received_user'] = username
+                            request.session['captcha'] = captcha
+                            err_code = 0
+                            err_message = f'验证码已发送至{pre}@{suf}'
+                    except:
+                        err_code = 4
+                        err_message = '邮件发送失败：超时'
+            else:
+                captcha = request.session.get('captcha', '')
+                received_user = request.session.get('received_user', '')
+                if len(captcha) != 6 or username != received_user:
+                    err_code = 5
+                    err_message = '请先发送验证码'
+                elif vertify_code.upper() == captcha.upper():
+                    auth.login(request, user)
+                    request.session.pop('captcha')
+                    request.session['username'] = username
+                    request.session['forgetpw'] = 'yes'
+                    return redirect(reverse('modpw'))
+                else:
+                    err_code = 6
+                    err_message = "验证码不正确"
+    return render(request, 'forget_password.html', locals())
+
+
 @login_required(redirect_field_name='origin')
 def modpw(request):
     err_code = 0
     err_message = None
+    forgetpw = request.session.get('forgetpw', '') == 'yes'   # added by pht
     username = request.session['username']  # added by wxy
     user = User.objects.get(username=username)
     useroj = NaturalPerson.objects.get(pid=user)
     isFirst = useroj.firstTimeLogin
     if str(useroj.avatar) == '':
-        ava_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
+        avatar_path = settings.MEDIA_URL + 'avatar/codecat.jpg'
     else:
-        ava_path = settings.MEDIA_URL + str(useroj.avatar)
+        avatar_path = settings.MEDIA_URL + str(useroj.avatar)
     if request.method == 'POST' and request.POST:
         oldpassword = request.POST['pw']
         newpw = request.POST['new']
         username = request.session['username']
         strict_check = False
         
-        if oldpassword == newpw and strict_check:
+        if oldpassword == newpw and strict_check and not forgetpw:   # modified by pht
             err_code = 1
             err_message = "新密码不能与原密码相同"
         elif newpw == username and strict_check:
             err_code = 2
             err_message = "新密码不能与学号相同"
+        elif newpw != oldpassword and forgetpw:    # added by pht
+            err_code = 5
+            err_message = "两次输入的密码不匹配"
         else:
-            userauth = auth.authenticate(username=username, password=oldpassword)
+            userauth = auth.authenticate(
+                username=username, password=oldpassword)
+            if forgetpw:    # added by pht: 这是不好的写法，可改进
+                userauth = True
             if userauth:
-                user = User.objects.get(username=username)
-                if user:
+                try:    # modified by pht: if检查是错误的，不存在时get会报错
+                    user = User.objects.get(username=username)
                     user.set_password(newpw)
                     user.save()
                     stu = NaturalPerson.objects.filter(pid=user)
                     stu.update(firstTimeLogin=False)
 
+                    if forgetpw:
+                        request.session.pop('forgetpw') # 删除session记录
+
                     urls = reverse("index") + "?success=yes"
                     return redirect(urls)
-                else:
+                except: # modified by pht: 之前使用的if检查是错误的
                     err_code = 3
                     err_message = "学号不存在"
             else:
