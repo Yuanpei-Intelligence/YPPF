@@ -11,9 +11,9 @@ def load(format=0):
     if format == 0:
         df_1819 = pd.read_csv('app/append.csv')
     elif format == 1:
-        df_1819 = pd.read_csv('./orginf.csv')
+        df_1819 = pd.read_csv('test_data/orginf.csv')
     elif format == 2:
-        df_1819 = pd.read_csv('./orgtypeinf.csv')
+        df_1819 = pd.read_csv('test_data/orgtypeinf.csv')
     return df_1819
 
 
@@ -52,7 +52,8 @@ def load_org():
             user.set_password(password)
             user.save()
             orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
-            org, mid = Organization.objects.get_or_create(oid=user, otype=orgtype, oname=oname)
+            org, mid = Organization.objects.get_or_create(oid=user, otype=orgtype)
+            org.oname=oname
             org.save()
 
             people, mid = NaturalPerson.objects.get_or_create(pname=person)
