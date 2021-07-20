@@ -1,0 +1,163 @@
+<!--  真的要这样吗 我觉得保留sidebar挺合理的，界面统一  -->
+
+<!--  BEGIN SIDEBAR  -->
+
+<div class="sidebar-wrapper sidebar-theme">
+    
+    <nav id="sidebar">
+        <div class="shadow-bottom"></div>
+        <ul class="list-unstyled menu-categories ps ps--active-y"  id="accordionExample">
+            {% if html_display.is_myself %} 
+
+            <li class="menu">
+                <a href="#dashboard1" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                    <div class="">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-home"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        <span>元培生活</span>
+                    </div>
+                    <div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
+                </a>
+                <ul class="collapse submenu list-unstyled" id="dashboard1" data-parent="#accordionExample">
+                    <li>
+                        <a href="{{html_display.underground_url}}"> 地下室预约 </a>
+                    </li>
+                    <li>
+                        <a href="#"> 我的元气值 </a>
+                    </li>
+                    <li>
+                        <a href="#"> 我的活动 </a>
+                    </li>
+                </ul>
+            </li>
+
+            {% if html_display.my_org_len %}
+            <li class="menu">
+                <a href="#dashboard2" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                    <div class="">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-home"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        <span>切换账号</span>
+                    </div>
+                    <div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
+                </a>
+                <ul class="collapse submenu list-unstyled" id="dashboard2" data-parent="#accordionExample">
+                    {% for control_org in html_display.my_org_list %}
+                        <li>
+                            <a href="/request_login_org/{{control_org.oname}}"> {{control_org.oname}}</a>
+                        </li>
+
+                    {% endfor %}
+                </ul>
+            </li>
+            {% endif %}
+
+            <li class="menu">
+                <a href="#dashboard3" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                    <div class="">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-home"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                        <span>账户设置</span>
+                    </div>
+                    <div>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg>
+                    </div>
+                </a>
+                <ul class="collapse submenu list-unstyled" id="dashboard3" data-parent="#accordionExample">
+                        <li>
+                            <a href="/user_account_setting/">信息与隐私</a>
+                        </li>
+                    <li>
+                        <a href="/modpw/">修改密码</a>
+                    </li>
+                </ul>
+            </li>
+            <!--
+            <li class="menu">
+                
+                <ul class="collapse submenu list-unstyled" id="app" data-parent="#accordionExample">
+                    <li>
+                        <a href="apps_chat.html"> Chat </a>
+                    </li>
+                    <li>
+                        <a href="apps_mailbox.html"> Mailbox  </a>
+                    </li>
+                    <li>
+                        <a href="apps_todoList.html"> Todo List </a>
+                    </li>                            
+                    <li>
+                        <a href="apps_notes.html"> Notes </a>
+                    </li>
+                    <li>
+                        <a href="apps_scrumboard.html">Scrumboard</a>
+                    </li>
+                    <li>
+                        <a href="apps_contacts.html"> Contacts </a>
+                    </li>
+                    <li>
+                        <a href="apps_invoice.html"> Invoice List </a>
+                    </li>
+                    <li>
+                        <a href="apps_calendar.html"> Calendar </a>
+                    </li>
+                </ul>
+            </li>
+            -->
+
+            <!--
+            <li class="menu">
+                <a href="{{html_display.profile_url}}" aria-expanded="false" class="dropdown-toggle">
+                    <div class="">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                        <span>{{html_display.profile_name}}</span>
+                    </div>
+                </a>
+            </li>
+            -->
+
+            <li class="menu">
+                <a href="/logout/" aria-expanded="false" class="dropdown-toggle">
+                    <div class="">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                        <span>登出账户</span>
+                    </div>
+                </a>
+            </li>
+            <!--
+            <li class="menu">
+                <a href="/modpw/" aria-expanded="false" class="dropdown-toggle">
+                    <div class="">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                        <span>Change Password</span>
+                    </div>
+                </a>
+            </li>
+            -->
+            {% else %}
+            <li class="menu">
+                <a href="/welcome/" aria-expanded="false" class="dropdown-toggle">
+                    <div class="">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                        <span>发起转账</span>
+                    </div>
+                </a>
+            </li>
+
+            <li class="menu">
+                <a href="/welcome/" aria-expanded="false" class="dropdown-toggle">
+                    <div class="">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                        <span>Ta的活动</span>
+                    </div>
+                </a>
+            </li>
+
+            {% endif %}
+
+        </ul>
+        
+    </nav>
+
+</div>
+<!--  END SIDEBAR  -->
