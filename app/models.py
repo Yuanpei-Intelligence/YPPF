@@ -159,12 +159,12 @@ class Organization(models.Model):
 
     YQPoint = models.FloatField("元气值", default=0.0)
     ointroduction = models.TextField('介绍', null=True, blank=True,default="这里暂时没有介绍哦~")
-    otype_id = models.ForeignKey(
-        OrganizationType, to_field="otype_id", on_delete=models.CASCADE)
+    otype = models.ForeignKey(
+        OrganizationType, on_delete=models.CASCADE)
     avatar = models.ImageField(upload_to=f'avatar/', blank=True)
     QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)#二维码字段
     def __str__(self):
-        return self.oname
+        return str(self.oname)
 
 
 class PositionManager(models.Manager):
@@ -287,8 +287,8 @@ class TransferRecord(models.Model):
         ordering = ['time']
 
 class Paticipant(models.Model):
-    aid = models.ForeignKey(Activity, to_field="id",
+    aid = models.ForeignKey(Activity,
                             on_delete=models.CASCADE)
     pid = models.ForeignKey(
-        NaturalPerson, to_field="pid", on_delete=models.CASCADE)
+        NaturalPerson, on_delete=models.CASCADE)
 

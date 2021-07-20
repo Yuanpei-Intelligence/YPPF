@@ -71,7 +71,7 @@ def get_user_left_narbar(person, is_myself, html_display):    #获取左边栏�
     html_display['underground_url'] = local_dict['url']['base_url']
 
     my_org_id_list = Position.objects.activated().filter(person=person).filter(pos=0)
-    html_display['my_org_list'] = Organization.objects.filter(org__in = my_org_id_list.values('org'))   # 我管理的组织
+    html_display['my_org_list'] = [w.org for w in my_org_id_list]   # 我管理的组织
     
     return html_display
 

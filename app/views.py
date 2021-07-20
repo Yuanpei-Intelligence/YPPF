@@ -11,7 +11,7 @@ from app.models import (
 import app.utils as utils
 from app.forms import UserForm
 from app.data_import import load
-from app.utils import MyMD5PasswordHasher, MySHA256Hasher, load_local_json
+from app.utils import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.shortcuts import render, redirect
 from django.http import HttpResponseRedirect, JsonResponse
@@ -32,10 +32,7 @@ from boottest import local_dict
 import re
 import random, requests  # 发送验证码
 
-local_dict = load_local_json()
-underground_url = local_dict["url"]["base_url"]
 email_url = local_dict["url"]["email_url"]
-# underground_url = 'http://127.0.0.1:8080/appointment/index'
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
@@ -322,9 +319,7 @@ def orginfo(request, name=None):
 
         org = Organization.objects.activated().get(oname=name)
         organization_name = name
-        organization_type_name = OrganizationType.objects.get(
-            otype_id=org.otype_id_id
-        ).otype_name
+        organization_type_name = org.otype.otype_name
         # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
         # 这一部分是负责人boss的信息
@@ -338,10 +333,8 @@ def orginfo(request, name=None):
         boss_display["email"] = boss.pemail
         boss_display["tel"] = boss.ptel
 
-        jobpos = Position.objects.activated().get(person=boss).pos
-        boss_display["job"] = OrganizationType.objects.get(
-            otype_id=org.otype_id_id
-        ).ojob_name_list[jobpos]
+        #jobpos = Position.objects.activated().get(person=boss, org = org).pos
+        boss_display["job"] = org.otype.ojob_name_list[0]
 
         # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
         ISBOSS = True if (user_type == "Person" and boss.pid == user) else False
