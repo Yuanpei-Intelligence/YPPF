@@ -20,7 +20,9 @@ def load(format=0):
 def load_orgtype():
     username = 'YPadmin'
     user, mid = User.objects.get_or_create(username=username)
-    user.set_password('YPPFtest')
+    password='YPPFtest'
+    user.set_password(password)
+    user.save()
     Nperson, mid = NaturalPerson.objects.get_or_create(pid=user)
     Nperson.pname = username
     Nperson.save()
