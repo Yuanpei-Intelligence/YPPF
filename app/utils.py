@@ -1,8 +1,8 @@
 from django.contrib.auth.hashers import BasePasswordHasher,MD5PasswordHasher ,mask_hash  
 import hashlib
-import json
 from django.contrib import auth
 from django.conf import settings
+from boottest import local_dict
 
 class MyMD5PasswordHasher(MD5PasswordHasher):  
     algorithm = "mymd5"
@@ -35,13 +35,16 @@ class MySHA256Hasher(object):
 
 def load_local_json(path='./local_json.json'):
     local_dict = {}
+    # when utf-8 is not working, try unicode_escape else err on the utf-8 side
     with open(path, encoding='unicode_escape') as f:
         local_dict = json.load(f)
     return local_dict
 
 
+
+
+from app.models import NaturalPerson, Organization, Position
 def check_user_type(request): # return Valid(Bool), type
-    from app.models import NaturalPerson, Organization
     html_display = {}
     if request.user.is_superuser:
         auth.logout(request)
@@ -69,3 +72,16 @@ def get_user_ava(obj):
         return  settings.MEDIA_URL + str(ava)
     except:
         return settings.MEDIA_URL + 'avatar/codecat.jpg'
+
+def get_user_left_narbar(person, is_myself, html_display):    #获取左边栏的内容，is_myself表示是否是自己
+    assert 'is_myself' in html_display.keys(), "Forget to tell the website whether this is the user itself!"
+    html_display['underground_url'] = local_dict['url']['base_url']
+
+    my_org_id_list = Position.objects.activated().filter(person=person).filter(pos=0)
+    html_display['my_org_list'] = [w.org for w in my_org_id_list]   # 我管理的组织
+    
+    return html_display
+
+
+def get_org_left_narbar(org, is_myself, html_display):
+    pass
