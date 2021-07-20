@@ -66,15 +66,18 @@ def get_user_ava(obj):
     except:
         return settings.MEDIA_URL + 'avatar/codecat.jpg'
 
-def get_user_left_narbar(person, is_myself, html_display):    #获取左边栏的内容，is_myself表示是否是自己
+def get_user_left_narbar(person, is_myself, html_display):    #获取左边栏的内容，is_myself表示是否是自己, person表示看的人
     assert 'is_myself' in html_display.keys(), "Forget to tell the website whether this is the user itself!"
     html_display['underground_url'] = local_dict['url']['base_url']
 
     my_org_id_list = Position.objects.activated().filter(person=person).filter(pos=0)
     html_display['my_org_list'] = [w.org for w in my_org_id_list]   # 我管理的组织
-    
+    html_display['my_org_len'] = len(html_display['my_org_list'])
     return html_display
 
 
 def get_org_left_narbar(org, is_myself, html_display):
-    pass
+    assert 'is_myself' in html_display.keys(), "Forget to tell the website whether this is the user itself!"
+    html_display['switch_org_name'] = org.oname
+    return html_display
+    
