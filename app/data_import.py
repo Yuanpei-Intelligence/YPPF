@@ -51,10 +51,8 @@ def load_org():
             user, mid = User.objects.get_or_create(username=username)
             user.set_password(password)
             user.save()
-
-            org, mid = Organization.objects.get_or_create(oid=user)
-            org.oname = oname
-            org.otype_id_id = type_id
+            orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
+            org, mid = Organization.objects.get_or_create(oid=user, otype=orgtype, oname=oname)
             org.save()
 
             people, mid = NaturalPerson.objects.get_or_create(pname=person)
