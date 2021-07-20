@@ -10,21 +10,17 @@ from app.models import (
 )
 import app.utils as utils
 from app.forms import UserForm
-from app.data_import import load
+from app.data_import import load,load_orgtype,load_org
 from app.utils import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.shortcuts import render, redirect
-from app.models import NaturalPerson, Position, Organization, OrganizationType
 from django.http import HttpResponseRedirect, JsonResponse
-
 from django.contrib import auth, messages
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
-from app.data_import import load, load_org, load_orgtype
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import transaction
 from django.db.models import Q
-from app.utils import MyMD5PasswordHasher, load_local_json
 from django.conf import settings
 from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
@@ -32,17 +28,6 @@ from django.views.decorators.http import require_POST, require_GET
 import json
 from time import mktime
 from datetime import datetime
-import time
-import random, requests  # 发送验证码
-
-load_orgtype()
-load_org()
-local_dict = load_local_json()
-underground_url = local_dict['url']['base_url']
-email_url = local_dict['url']['email_url']
-# underground_url = 'http://127.0.0.1:8080/appointment/index'
-hash_coder = MySHA256Hasher(local_dict['hash']['base_hasher'])
-email_coder = MySHA256Hasher(local_dict['hash']['email'])
 from boottest import local_dict
 import re
 import random, requests  # 发送验证码
@@ -50,8 +35,10 @@ import random, requests  # 发送验证码
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
+load_orgtype()
+load_org()
 
-def get_person_or_org(user,user_type):
+def get_person_or_org(user, user_type):
     return (
         NaturalPerson.objects.get(pid=user)
         if user_type == 'Person'
@@ -182,15 +169,9 @@ def miniLogin(request):
         return JsonResponse({"Sname": "", "Succeed": 0}, status=400)
 
 
-<<<<<<< HEAD
-@login_required(redirect_field_name='origin')
-def stuinfo(request, name=None):
-    '''
-=======
 @login_required(redirect_field_name="origin")
 def stuinfo(request, name=None):
     """
->>>>>>> upstream/develop
         进入到这里的逻辑:
         首先必须登录，并且不是超级账户
         如果name是空
@@ -204,9 +185,7 @@ def stuinfo(request, name=None):
                 如果不是自己或者自己是组织，那么呈现并且没有侧边栏
             如果重名
                 那么期望有一个"+"在name中，如果搜不到就跳转到Search/？Query=name让他跳转去
-<<<<<<< HEAD
-    '''
-
+    """
 
     try:
         user = request.user
@@ -236,9 +215,9 @@ def stuinfo(request, name=None):
             else:  # 有很多人，这时候假设加号后面的是user的id
                 if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
                     if (
-                        user_type == "Person"
-                        and NaturalPerson.objects.activated().get(pid=user).pname
-                        == name
+                            user_type == "Person"
+                            and NaturalPerson.objects.activated().get(pid=user).pname
+                            == name
                     ):
                         person = NaturalPerson.objects.activated().get(pid=user)
                     else:  # 不是自己，信息不全跳转搜索
@@ -251,27 +230,12 @@ def stuinfo(request, name=None):
                     )
                     assert potential_person in person
                     person = potential_person
+
             is_myself = user_type == "Person" and person.pid == user  # 用一个字段储存是否是自己
             html_display["is_myself"] = is_myself  # 存入显示
 
             # 处理被搜索人的信息，这里应该和“用户自己”区分开
             join_pos_id_list = Position.objects.activated().filter(person=person)
-            control_pos_id_list = join_pos_id_list.filter(pos=0)  # 最高级, 是非密码管理员
-
-            html_display['modpw_code'] = modpw_status is not None and modpw_status == 'success'
-            html_display['underground_url'] = underground_url  # 跳转至地下室预约系统的
-            html_display['warn_code'] = request.GET.get('warn_code', 0)  # 是否有来自外部的消息
-            html_display['warn_message'] = request.GET.get('warn_message', "")  # 提醒的具体内容
-            html_display['userinfo'] = person
-            html_display['is_myself'] = is_myself
-            html_display['join_org_list'] = Organization.objects.filter(
-                org__in=join_pos_id_list.values('org'))  # 我属于的组织
-            html_display['control_org_list'] = list(
-                Organization.objects.filter(org__in=control_pos_id_list.values('org')))  # 我管理的组织
-            html_display['title_name'] = 'User Profile'
-            html_display['narbar_name'] = '个人主页'
-
-            return render(request, 'stuinfo.html', locals())
 
             # html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
 
@@ -281,7 +245,7 @@ def stuinfo(request, name=None):
 
             modpw_status = request.GET.get("modinfo", None)
             html_display["modpw_code"] = (
-                modpw_status is not None and modpw_status == "success"
+                    modpw_status is not None and modpw_status == "success"
             )
             html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
             html_display["warn_message"] = request.GET.get(
@@ -294,7 +258,6 @@ def stuinfo(request, name=None):
             html_display["narbar_name"] = "个人主页"
 
             return render(request, "stuinfo.html", locals())
-
     except:
         auth.logout(request)
         return redirect("/index/")
@@ -354,7 +317,6 @@ def orginfo(request, name=None):
     if not valid:
         return redirect("/logout/")
 
-    
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if user_type == "Person":
             return redirect("/welcome/")
@@ -384,7 +346,7 @@ def orginfo(request, name=None):
         boss_display["email"] = boss.pemail
         boss_display["tel"] = boss.ptel
 
-        #jobpos = Position.objects.activated().get(person=boss, org = org).pos
+        # jobpos = Position.objects.activated().get(person=boss, org = org).pos
         boss_display["job"] = org.otype.ojob_name_list[0]
 
         # 补充左边栏信息
@@ -392,18 +354,15 @@ def orginfo(request, name=None):
         html_display['isboss'] = True if (user_type == "Person" and boss.pid == user) else False
         # 判断是否为组织账户本身在登录
         html_display['is_myself'] = (me == org)
-        
-        
+
         # 再处理修改信息的回弹
         modpw_status = request.GET.get("modinfo", None)
         html_display["modpw_code"] = (
-            modpw_status is not None and modpw_status == "success"
+                modpw_status is not None and modpw_status == "success"
         )
-
 
         # 补充其余信息
         html_display = utils.get_org_left_narbar(org, html_display['is_myself'], html_display)
-        
 
         # 组织活动的信息
 
@@ -424,7 +383,6 @@ def homepage(request):
         return redirect("/logout/")
     me = get_person_or_org(request.user, user_type)
     myname = me.pname if is_person else me.oname
-
 
     # 直接储存在html_display中
     # profile_name = "个人主页" if is_person else "组织主页"
@@ -581,8 +539,6 @@ def search(request):
         搜索组织
             支持使用组织名、组织类型搜索、一级负责人姓名
             组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
-
-
     """
     try:
 
@@ -632,13 +588,13 @@ def test(request):
 def forget_password(request):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
-        
+
         页面效果
         -------
         - 根据（邮箱）验证码完成登录，提交后跳转到修改密码界面
         - 本质是登录而不是修改密码
         - 如果改成支持验证码登录只需修改页面和跳转（记得修改函数和页面名）
-        
+
         页面逻辑
         -------
         1. 发送验证码
@@ -646,7 +602,7 @@ def forget_password(request):
         2. 输入验证码
             2.5 保留表单信息
         3. 错误提醒和邮件发送提醒
-        
+
         实现逻辑
         -------
         - 通过脚本使按钮提供不同的`send_captcha`值，区分按钮
@@ -658,7 +614,7 @@ def forget_password(request):
             - `err_code`=`0`或`4`是预设的提醒值，额外弹出提示框
             - forget_password.html中可以进一步修改
         - 尝试发送验证码后总是弹出提示框，通知用户验证码的发送情况
-        
+
         注意事项
         -------
         - 尝试忘记密码的不一定是本人，一定要做好隐私和逻辑处理
@@ -667,13 +623,11 @@ def forget_password(request):
         - `err_code`=`4`时弹出
         - 连接设置的timeout为6s
         - 如果引入企业微信验证，建议将send_captcha分为'qywx'和'email'
-
     """
     if request.method == "POST":
         username = request.POST["username"]
         send_captcha = request.POST["send_captcha"] == "yes"
         vertify_code = request.POST["vertify_code"]  # 用户输入的验证码
-
 
         user = User.objects.filter(username=username)
         if not user:
@@ -695,13 +649,13 @@ def forget_password(request):
                     captcha = random.randrange(1000000)  # randint包含端点，randrange不包含
                     captcha = f"{captcha:06}"
                     msg = (
-                        f"<h3><b>亲爱的{useroj.pname}同学：</b></h3><br/>"
-                        "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
-                        f'<p style="color:orange">{captcha}'
-                        '<span style="color:gray">(仅当前页面有效)</span></p>'
-                        '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
-                        "<br/><br/><br/>"
-                        "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
+                            f"<h3><b>亲爱的{useroj.pname}同学：</b></h3><br/>"
+                            "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
+                            f'<p style="color:orange">{captcha}'
+                            '<span style="color:gray">(仅当前页面有效)</span></p>'
+                            '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
+                            "<br/><br/><br/>"
+                            "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
                         "toaddrs": [email],  # 收件人列表
@@ -785,16 +739,13 @@ def modpw(request):
                 userauth = True
             if userauth:
                 try:  # modified by pht: if检查是错误的，不存在时get会报错
-
                     user.set_password(newpw)
                     user.save()
-                    useroj.firstTimeLogin=False
+                    useroj.firstTimeLogin = False
                     useroj.save()
 
                     if forgetpw:
-
                         request.session.pop("forgetpw")  # 删除session记录
-
 
                     urls = reverse("index") + "?success=yes"
                     return redirect(urls)
@@ -809,7 +760,7 @@ def modpw(request):
 
 def load_data(request):
     if request.user.is_superuser:
-        df_1819 = load(format=0)
+        df_1819 = load()
         for i in range(len(df_1819)):  # import 2018 stu info.
             username = str(df_1819["学号"].iloc[i])
             sno = username

@@ -8,8 +8,6 @@ import datetime
 from boottest import local_dict
 
 
-
-
 class NaturalPersonManager(models.Manager):
     def activated(self):
         return self.exclude(pstatus=NaturalPerson.status.GRADUATED)
@@ -162,13 +160,14 @@ class Organization(models.Model):
     objects = OrganizationManager()
 
     YQPoint = models.FloatField("元气值", default=0.0)
-    ointroduction = models.TextField('介绍', null=True, blank=True,default="这里暂时没有介绍哦~")
+    ointroduction = models.TextField('介绍', null=True, blank=True, default="这里暂时没有介绍哦~")
     otype = models.ForeignKey(
         OrganizationType, on_delete=models.CASCADE)
     avatar = models.ImageField(upload_to=f'avatar/', blank=True)
-    QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)#二维码字段
+    QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)  # 二维码字段
 
-    firstTimeLogin = models.BooleanField(default=True) #是否第一次登录
+    firstTimeLogin = models.BooleanField(default=True)  # 是否第一次登录
+
     def __str__(self):
         return str(self.oname)
 
@@ -176,8 +175,8 @@ class Organization(models.Model):
 class PositionManager(models.Manager):
     def activated(self):
         # 选择学年相同，并且学期相同或者覆盖的
-        return self.filter(in_year=int(local_dict['semester_data']['year'])).filter(in_semester__contains=local_dict['semester_data']['semester'])
-
+        return self.filter(in_year=int(local_dict['semester_data']['year'])).filter(
+            in_semester__contains=local_dict['semester_data']['semester'])
 
 
 class Position(models.Model):
@@ -254,23 +253,21 @@ class Activity(models.Model):
     YQPoint = ListCharField(
         base_field=models.IntegerField(default=0),
         size=10,
-        max_length = 50,
-        default = [0]
+        max_length=50,
+        default=[0]
     )
     Places = ListCharField(
         base_field=models.IntegerField(default=0),
         size=10,
-        max_length = 50,
-        default = [0]
+        max_length=50,
+        default=[0]
     )
 
-
-
-    URL = models.URLField("相关网址", null=True,blank=True)
-
+    URL = models.URLField("相关网址", null=True, blank=True)
 
     def __str__(self):
         return f"活动：{self.aname}"
+
 
 # modified by Kinnuch & genuine
 class TransferRecord(models.Model):
@@ -281,10 +278,10 @@ class TransferRecord(models.Model):
     message = models.CharField("备注信息", max_length=255, default='')
 
     class Tstatus(models.IntegerChoices):
-        ACCEPTED = 0 # 已接受
-        WAITING = 1 # 等待确认中
-        REFUSED = 2 # 已拒绝
-        SUSPENDED = 3 # 已终止
+        ACCEPTED = 0  # 已接受
+        WAITING = 1  # 等待确认中
+        REFUSED = 2  # 已拒绝
+        SUSPENDED = 3  # 已终止
 
     tstatus = models.IntegerField(choices=Tstatus.choices, default=1)
 
@@ -294,10 +291,10 @@ class TransferRecord(models.Model):
 
         ordering = ['time']
 
+
 class Paticipant(models.Model):
     aid = models.ForeignKey(Activity,
                             on_delete=models.CASCADE)
     pid = models.ForeignKey(
 
         NaturalPerson, on_delete=models.CASCADE)
-
