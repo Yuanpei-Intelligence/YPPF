@@ -163,6 +163,8 @@ class Organization(models.Model):
         OrganizationType, on_delete=models.CASCADE)
     avatar = models.ImageField(upload_to=f'avatar/', blank=True)
     QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)#二维码字段
+
+    firstTimeLogin = models.BooleanField(default=True) #是否第一次登录
     def __str__(self):
         return str(self.oname)
 

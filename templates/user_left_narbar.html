@@ -1,14 +1,16 @@
 <!--  真的要这样吗 我觉得保留sidebar挺合理的，界面统一  -->
-{% if html_display.is_myself %} 
+
 <!--  BEGIN SIDEBAR  -->
+
 <div class="sidebar-wrapper sidebar-theme">
     
     <nav id="sidebar">
         <div class="shadow-bottom"></div>
+        <ul class="list-unstyled menu-categories ps ps--active-y"  id="accordionExample">
+            {% if html_display.is_myself %} 
 
-        <ul class="list-unstyled menu-categories" >
             <li class="menu">
-                <a href="#dashboard1" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" id="accordionExample">
+                <a href="#dashboard1" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-home"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                         <span>元培生活</span>
@@ -21,24 +23,21 @@
                     <li>
                         <a href="{{html_display.underground_url}}"> 地下室预约 </a>
                     </li>
-                </ul>
-                <ul class="collapse submenu list-unstyled" id="dashboard1" data-parent="#accordionExample">
                     <li>
                         <a href="#"> 我的元气值 </a>
                     </li>
-                </ul>
-                <ul class="collapse submenu list-unstyled" id="dashboard1" data-parent="#accordionExample">
                     <li>
                         <a href="#"> 我的活动 </a>
                     </li>
                 </ul>
             </li>
 
+            {% if html_display.my_org_len %}
             <li class="menu">
                 <a href="#dashboard2" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-home"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                        <span>管理组织</span>
+                        <span>切换账号</span>
                     </div>
                     <div>
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -53,6 +52,7 @@
                     {% endfor %}
                 </ul>
             </li>
+            {% endif %}
 
             <li class="menu">
                 <a href="#dashboard3" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
@@ -68,8 +68,6 @@
                         <li>
                             <a href="/user_account_setting/">信息与隐私</a>
                         </li>
-                </ul>
-                <ul class="collapse submenu list-unstyled" id="dashboard3" data-parent="#accordionExample">
                     <li>
                         <a href="/modpw/">修改密码</a>
                     </li>
@@ -107,6 +105,7 @@
             </li>
             -->
 
+            <!--
             <li class="menu">
                 <a href="{{html_display.profile_url}}" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
@@ -115,6 +114,7 @@
                     </div>
                 </a>
             </li>
+            -->
 
             <li class="menu">
                 <a href="/logout/" aria-expanded="false" class="dropdown-toggle">
@@ -134,10 +134,30 @@
                 </a>
             </li>
             -->
+            {% else %}
+            <li class="menu">
+                <a href="/welcome/" aria-expanded="false" class="dropdown-toggle">
+                    <div class="">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                        <span>发起转账</span>
+                    </div>
+                </a>
+            </li>
+
+            <li class="menu">
+                <a href="/welcome/" aria-expanded="false" class="dropdown-toggle">
+                    <div class="">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                        <span>Ta的活动</span>
+                    </div>
+                </a>
+            </li>
+
+            {% endif %}
+
         </ul>
         
     </nav>
 
 </div>
 <!--  END SIDEBAR  -->
-{% endif %}

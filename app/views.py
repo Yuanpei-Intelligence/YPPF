@@ -36,6 +36,13 @@ email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
+def get_person_or_org(user,user_type):
+    return (
+        NaturalPerson.objects.get(pid=user)
+        if user_type == 'Person'
+        else Organization.objects.get(oid=user)
+    )  #
+
 
 def index(request):
     arg_origin = request.GET.get("origin")
@@ -94,6 +101,14 @@ def index(request):
                         + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
                     )
             else:
+                # 先处理初次登录
+                valid, user_type, html_display = utils.check_user_type(request)
+                if not valid:
+                    return redirect("/logout/")
+                me = get_person_or_org(userinfo, user_type)
+                if me.firstTimeLogin:
+                    return redirect('/modpw/')
+
                 return redirect("/welcome/")
                 """
                 valid, user_type , html_display = utils.check_user_type(request)
@@ -214,13 +229,9 @@ def stuinfo(request, name=None):
                     assert potential_person in person
                     person = potential_person
 
-            modpw_status = request.GET.get("modinfo", None)
-
+            
             is_myself = user_type == "Person" and person.pid == user  # 用一个字段储存是否是自己
-            is_first = person.firstTimeLogin  # 是否为第一次登陆
             html_display["is_myself"] = is_myself  # 存入显示
-            if is_myself and is_first:
-                return redirect("/modpw/")
 
             # 处理被搜索人的信息，这里应该和“用户自己”区分开
             join_pos_id_list = Position.objects.activated().filter(person=person)
@@ -231,6 +242,7 @@ def stuinfo(request, name=None):
             # 首先是左边栏
             html_display = utils.get_user_left_narbar(person, is_myself, html_display)
 
+            modpw_status = request.GET.get("modinfo", None)
             html_display["modpw_code"] = (
                 modpw_status is not None and modpw_status == "success"
             )
@@ -238,6 +250,7 @@ def stuinfo(request, name=None):
             html_display["warn_message"] = request.GET.get(
                 "warn_message", ""
             )  # 提醒的具体内容
+
             html_display["userinfo"] = person
 
             html_display["title_name"] = "User Profile"
@@ -285,6 +298,8 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         # 到这里,是本人组织并且有权限登录
         auth.logout(request)
         auth.login(request, org.oid)  # 切换到组织账号
+        if org.firstTimeLogin:
+            return redirect("/modpw/")
         return redirect("/orginfo/")
 
 
@@ -296,14 +311,12 @@ def orginfo(request, name=None):
     """
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request)
-    me = (
-        NaturalPerson.objects.activated().get(pid=user)
-        if user_type == "Person"
-        else Organization.objects.get(oid=user)
-    )
+    me = get_person_or_org(user, user_type)
 
     if not valid:
         return redirect("/logout/")
+
+    
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if user_type == "Person":
             return redirect("/welcome/")
@@ -336,8 +349,23 @@ def orginfo(request, name=None):
         #jobpos = Position.objects.activated().get(person=boss, org = org).pos
         boss_display["job"] = org.otype.ojob_name_list[0]
 
+        # 补充左边栏信息
         # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
-        ISBOSS = True if (user_type == "Person" and boss.pid == user) else False
+        html_display['isboss'] = True if (user_type == "Person" and boss.pid == user) else False
+        # 判断是否为组织账户本身在登录
+        html_display['is_myself'] = (me == org)
+        
+        
+        # 再处理修改信息的回弹
+        modpw_status = request.GET.get("modinfo", None)
+        html_display["modpw_code"] = (
+            modpw_status is not None and modpw_status == "success"
+        )
+
+
+        # 补充其余信息
+        html_display = utils.get_org_left_narbar(org, html_display['is_myself'], html_display)
+        
 
         # 组织活动的信息
 
@@ -356,11 +384,7 @@ def homepage(request):
     is_person = True if user_type == "Person" else False
     if not valid:
         return redirect("/logout/")
-    me = (
-        NaturalPerson.objects.get(pid=request.user)
-        if is_person
-        else Organization.objects.get(oid=request.user)
-    )  #
+    me = get_person_or_org(request.user, user_type)
     myname = me.pname if is_person else me.oname
 
     # 直接储存在html_display中
@@ -528,11 +552,7 @@ def search(request):
             return redirect("/logout/")
 
         is_person = True if user_type == "Person" else False
-        me = (
-            NaturalPerson.objects.get(pid=request.user)
-            if is_person
-            else Organization.objects.get(oid=request.user)
-        )  #
+        me = get_person_or_org(request.user, user_type)
         html_display["is_myself"] = True
         if is_person:
             html_display = utils.get_user_left_narbar(
@@ -695,9 +715,10 @@ def modpw(request):
     err_code = 0
     err_message = None
     forgetpw = request.session.get("forgetpw", "") == "yes"  # added by pht
-    username = request.session["username"]  # added by wxy
-    user = User.objects.get(username=username)
-    useroj = NaturalPerson.objects.get(pid=user)
+    user = request.user
+    username = user.username
+    valid, user_type, html_display = utils.check_user_type(request)
+    useroj = get_person_or_org(user, user_type)
     isFirst = useroj.firstTimeLogin
     if str(useroj.avatar) == "":
         avatar_path = settings.MEDIA_URL + "avatar/codecat.jpg"
@@ -706,7 +727,6 @@ def modpw(request):
     if request.method == "POST" and request.POST:
         oldpassword = request.POST["pw"]
         newpw = request.POST["new"]
-        username = request.session["username"]
         strict_check = False
 
         if oldpassword == newpw and strict_check and not forgetpw:  # modified by pht
@@ -724,11 +744,10 @@ def modpw(request):
                 userauth = True
             if userauth:
                 try:  # modified by pht: if检查是错误的，不存在时get会报错
-                    user = User.objects.get(username=username)
                     user.set_password(newpw)
                     user.save()
-                    stu = NaturalPerson.objects.filter(pid=user)
-                    stu.update(firstTimeLogin=False)
+                    useroj.firstTimeLogin=False
+                    useroj.save()
 
                     if forgetpw:
                         request.session.pop("forgetpw")  # 删除session记录
