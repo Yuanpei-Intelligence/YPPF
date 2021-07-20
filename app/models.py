@@ -5,10 +5,9 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 import datetime
+from boottest import local_dict
 
-from app.utils import load_local_json
 
-local_json = load_local_json()
 
 
 class NaturalPersonManager(models.Manager):
@@ -163,21 +162,22 @@ class Organization(models.Model):
     objects = OrganizationManager()
 
     YQPoint = models.FloatField("元气值", default=0.0)
-    ointroduction = models.TextField('介绍', null=True, blank=True, default="这里暂时没有介绍哦~")
-    otype_id = models.ForeignKey(
-        OrganizationType, to_field="otype_id", on_delete=models.CASCADE, default=0)
+    ointroduction = models.TextField('介绍', null=True, blank=True,default="这里暂时没有介绍哦~")
+    otype = models.ForeignKey(
+        OrganizationType, on_delete=models.CASCADE)
     avatar = models.ImageField(upload_to=f'avatar/', blank=True)
-    QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)  # 二维码字段
+    QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)#二维码字段
 
+    firstTimeLogin = models.BooleanField(default=True) #是否第一次登录
     def __str__(self):
-        return self.oname
+        return str(self.oname)
 
 
 class PositionManager(models.Manager):
     def activated(self):
         # 选择学年相同，并且学期相同或者覆盖的
-        return self.filter(in_year=int(local_json['semester_data']['year'])).filter(
-            in_semester__contains=local_json['semester_data']['semester'])
+        return self.filter(in_year=int(local_dict['semester_data']['year'])).filter(in_semester__contains=local_dict['semester_data']['semester'])
+
 
 
 class Position(models.Model):
@@ -227,7 +227,6 @@ class Course(models.Model):
 
 
 class Activity(models.Model):
-    aid = models.IntegerField("活动编号", unique=True, primary_key=True)
     aname = models.CharField("活动名称", max_length=25)
     oid = models.ForeignKey(Organization, to_field="oid",
                             related_name='actoid', on_delete=models.CASCADE)
@@ -251,16 +250,54 @@ class Activity(models.Model):
         Unsucceed = "未通过"
 
     astatus = models.CharField("活动状态", choices=Astatus.choices, max_length=32)
+    mutableYQ = models.BooleanField("是否可以调整价格", default=False)
+    YQPoint = ListCharField(
+        base_field=models.IntegerField(default=0),
+        size=10,
+        max_length = 50,
+        default = [0]
+    )
+    Places = ListCharField(
+        base_field=models.IntegerField(default=0),
+        size=10,
+        max_length = 50,
+        default = [0]
+    )
 
-    YQPoint = models.FloatField("元气值", default=0.0)
-    URL = models.URLField("相关网址", null=True, blank=True)
+
+
+    URL = models.URLField("相关网址", null=True,blank=True)
+
 
     def __str__(self):
         return f"活动：{self.aname}"
 
+# modified by Kinnuch & genuine
+class TransferRecord(models.Model):
+    proposer = models.ForeignKey(User, related_name='proposer_id', on_delete=models.CASCADE)
+    recipient = models.ForeignKey(User, related_name='recipient_id', on_delete=models.CASCADE)
+    amount = models.FloatField('转账元气值数量', default=0)
+    time = models.DateTimeField('转账时间', auto_now_add=True)
+    message = models.CharField("备注信息", max_length=255, default='')
+
+    class Tstatus(models.IntegerChoices):
+        ACCEPTED = 0 # 已接受
+        WAITING = 1 # 等待确认中
+        REFUSED = 2 # 已拒绝
+        SUSPENDED = 3 # 已终止
+
+    tstatus = models.IntegerField(choices=Tstatus.choices, default=1)
+
+    class Meta:
+        verbose_name = '转账信息'
+        verbose_name_plural = verbose_name
+
+        ordering = ['time']
 
 class Paticipant(models.Model):
-    aid = models.ForeignKey(Activity, to_field="aid",
+    aid = models.ForeignKey(Activity,
                             on_delete=models.CASCADE)
     pid = models.ForeignKey(
-        NaturalPerson, to_field="pid", on_delete=models.CASCADE)
+
+        NaturalPerson, on_delete=models.CASCADE)
+

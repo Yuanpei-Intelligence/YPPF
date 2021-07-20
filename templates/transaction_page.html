@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title>transPage</title>
+</head>
+<body>
+	{% if rtype == 'np' %}<p>(如果是 user 的话放一个用户头像)avatar url, {{ avatar }}.<p>{% endif %}
+	<p>向{{name}}发起转账</p>
+
+	<form action="startTrans" method="POST">
+		金额：<input type="text" name="amount">
+		留言：<input type="text" name="msg">
+		<input type="submit" name="Submit">
+		<input type="hidden" name="rid", value={{rid}}>
+		<input type="hidden" name="origin", value={{origin}}>
+		<input type="hidden" name="rtype", value={{rtype}}>
+		<input type="hidden" name="name", value={{name}}>
+	</form>
+
+</body>
+</html>
