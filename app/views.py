@@ -2,6 +2,8 @@ from app.models import (
     NaturalPerson,
     Position,
     Organization,
+    OrganizationType,
+    Position,
     Activity,
     TransferRecord,
     Paticipant,
@@ -13,16 +15,12 @@ from app.utils import MyMD5PasswordHasher, MySHA256Hasher, load_local_json
 
 from django.shortcuts import render, redirect
 from django.http import HttpResponseRedirect, JsonResponse
-from app.models import NaturalPerson, OrganizationType, Position, Organization
 from django.contrib import auth, messages
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password, check_password
-from django.db.models import Q
 from django.db import transaction
-from app.utils import MyMD5PasswordHasher, MySHA256Hasher
-from  boottest import local_dict
-import app.utils as utils
+from django.db.models import Q
 from django.conf import settings
 from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
@@ -30,6 +28,7 @@ from django.views.decorators.http import require_POST, require_GET
 import json
 from time import mktime
 from datetime import datetime
+from boottest import local_dict
 import re
 import random, requests  # 发送验证码
 
@@ -39,7 +38,6 @@ email_url = local_dict["url"]["email_url"]
 # underground_url = 'http://127.0.0.1:8080/appointment/index'
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
-
 
 
 def index(request):
@@ -221,31 +219,34 @@ def stuinfo(request, name=None):
 
             modpw_status = request.GET.get("modinfo", None)
 
-
-            is_myself = user_type == 'Person' and person.pid == user    # 用一个字段储存是否是自己
-            is_first = person.firstTimeLogin                            # 是否为第一次登陆
-            html_display['is_myself'] = is_myself                       # 存入显示
+            is_myself = user_type == "Person" and person.pid == user  # 用一个字段储存是否是自己
+            is_first = person.firstTimeLogin  # 是否为第一次登陆
+            html_display["is_myself"] = is_myself  # 存入显示
             if is_myself and is_first:
                 return redirect("/modpw/")
 
             # 处理被搜索人的信息，这里应该和“用户自己”区分开
             join_pos_id_list = Position.objects.activated().filter(person=person)
 
-            #html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
-            
+            # html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
+
             # 呈现信息
             # 首先是左边栏
             html_display = utils.get_user_left_narbar(person, is_myself, html_display)
 
-            html_display['modpw_code'] = modpw_status is not None and modpw_status == 'success'
-            html_display['warn_code'] = request.GET.get('warn_code', 0)             # 是否有来自外部的消息
-            html_display['warn_message'] = request.GET.get('warn_message', "")      # 提醒的具体内容 
-            html_display['userinfo'] = person
-            
-            html_display['title_name'] = 'User Profile'
-            html_display['narbar_name'] = '个人主页'
-            
-            return render(request, 'stuinfo.html', locals())
+            html_display["modpw_code"] = (
+                modpw_status is not None and modpw_status == "success"
+            )
+            html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
+            html_display["warn_message"] = request.GET.get(
+                "warn_message", ""
+            )  # 提醒的具体内容
+            html_display["userinfo"] = person
+
+            html_display["title_name"] = "User Profile"
+            html_display["narbar_name"] = "个人主页"
+
+            return render(request, "stuinfo.html", locals())
     except:
         auth.logout(request)
         return redirect("/index/")
@@ -261,9 +262,9 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
-        return redirect('/logout/')
+        return redirect("/logout/")
     if user_type == "Organization":
-        return redirect('/orginfo/')
+        return redirect("/orginfo/")
     try:
         me = NaturalPerson.objects.activated().get(pid=user)
     except:  # 找不到合法的用户
@@ -290,53 +291,60 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         return redirect("/orginfo/")
 
 
-
-@login_required(redirect_field_name='origin')
-def orginfo(request,name = None): 
-    '''
+@login_required(redirect_field_name="origin")
+def orginfo(request, name=None):
+    """
         orginfo负责呈现组织主页，逻辑和stuinfo是一样的，可以参考
         只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个组织界面都是【不可管理/编辑组织信息】
-    '''
+    """
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request)
-    me = NaturalPerson.objects.activated().get(pid = user) if user_type == 'Person' else Organization.objects.get(oid=user)
-    
+    me = (
+        NaturalPerson.objects.activated().get(pid=user)
+        if user_type == "Person"
+        else Organization.objects.get(oid=user)
+    )
+
     if not valid:
-        return redirect('/logout/')
-    if name is None: # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
-        if user_type == 'Person':
-            return redirect('/welcome/')
+        return redirect("/logout/")
+    if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
+        if user_type == "Person":
+            return redirect("/welcome/")
         try:
             org = Organization.objects.activated().get(oid=user)
         except:
-            return redirect('/welcome/')
-        return redirect('/orginfo/' + org.oname)
+            return redirect("/welcome/")
+        return redirect("/orginfo/" + org.oname)
 
-    try: # 指定名字访问组织账号的，可以是自然人也可以是法人。在html里要注意区分！
+    try:  # 指定名字访问组织账号的，可以是自然人也可以是法人。在html里要注意区分！
 
         # 下面是组织信息
 
         org = Organization.objects.activated().get(oname=name)
         organization_name = name
-        organization_type_name = OrganizationType.objects.get(otype_id = org.otype_id_id).otype_name
+        organization_type_name = OrganizationType.objects.get(
+            otype_id=org.otype_id_id
+        ).otype_name
         # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
         # 这一部分是负责人boss的信息
-        boss = Position.objects.activated().get(org = org, pos = 0).person
-        #boss = NaturalPerson.objects.activated().get(pid = bossid)
+        boss = Position.objects.activated().get(org=org, pos=0).person
+        # boss = NaturalPerson.objects.activated().get(pid = bossid)
         boss_display = {}
 
-        boss_display['bossname'] = boss.pname
-        boss_display['year'] = boss.pyear
-        boss_display['major'] = boss.pmajor
-        boss_display['email'] = boss.pemail
-        boss_display['tel'] = boss.ptel
+        boss_display["bossname"] = boss.pname
+        boss_display["year"] = boss.pyear
+        boss_display["major"] = boss.pmajor
+        boss_display["email"] = boss.pemail
+        boss_display["tel"] = boss.ptel
 
-        jobpos = Position.objects.activated().get(person = boss).pos
-        boss_display['job'] = OrganizationType.objects.get(otype_id = org.otype_id_id).ojob_name_list[jobpos]
+        jobpos = Position.objects.activated().get(person=boss).pos
+        boss_display["job"] = OrganizationType.objects.get(
+            otype_id=org.otype_id_id
+        ).ojob_name_list[jobpos]
 
         # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
-        ISBOSS = True if (user_type == 'Person' and boss.pid == user) else False 
+        ISBOSS = True if (user_type == "Person" and boss.pid == user) else False
 
         # 组织活动的信息
 
@@ -351,13 +359,16 @@ def orginfo(request,name = None):
 
 @login_required(redirect_field_name="origin")
 def homepage(request):
-    valid, user_type, html_display = utils.check_user_type(request) 
-    is_person = True if user_type == 'Person' else False 
+    valid, user_type, html_display = utils.check_user_type(request)
+    is_person = True if user_type == "Person" else False
     if not valid:
-        return redirect('/logout/') 
-    me = NaturalPerson.objects.get(
-        pid=request.user) if is_person else Organization.objects.get(oid=request.user) #
-    myname = me.pname if is_person else me.oname 
+        return redirect("/logout/")
+    me = (
+        NaturalPerson.objects.get(pid=request.user)
+        if is_person
+        else Organization.objects.get(oid=request.user)
+    )  #
+    myname = me.pname if is_person else me.oname
 
     # 直接储存在html_display中
     # profile_name = "个人主页" if is_person else "组织主页"
@@ -369,15 +380,14 @@ def homepage(request):
     return render(request, "welcome_page.html", locals())
 
 
-
 @login_required(redirect_field_name="origin")
 def account_setting(request):
     valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
-        return redirect('/logout/')
-    
+        return redirect("/logout/")
+
     # 在这个页面 默认回归为自己的左边栏
-    html_display['is_myself'] = True
+    html_display["is_myself"] = True
     user = request.user
     info = NaturalPerson.objects.filter(pid=user)
     userinfo = info.values()[0]
@@ -414,16 +424,16 @@ def account_setting(request):
             upload_state = True
             return redirect("/stuinfo/?modinfo=success")
 
-    
     # 补充网页呈现所需信息
-    html_display['title_name'] = 'Account Setting'
-    html_display['narbar_name'] = '账户设置'
+    html_display["title_name"] = "Account Setting"
+    html_display["narbar_name"] = "账户设置"
 
-    #然后是左边栏
-    html_display = utils.get_user_left_narbar(useroj, html_display['is_myself'], html_display)
+    # 然后是左边栏
+    html_display = utils.get_user_left_narbar(
+        useroj, html_display["is_myself"], html_display
+    )
 
-
-    return render(request, 'user_account_setting.html', locals())
+    return render(request, "user_account_setting.html", locals())
 
 
 def register(request):
@@ -522,20 +532,27 @@ def search(request):
 
         valid, user_type, html_display = utils.check_user_type(request)
         if not valid:
-            return redirect('/logout/')
+            return redirect("/logout/")
 
-        is_person = True if user_type == 'Person' else False
-        me = NaturalPerson.objects.get(pid=request.user) if is_person else\
-            Organization.objects.get(oid=request.user) # 
-        html_display['is_myself'] = True
+        is_person = True if user_type == "Person" else False
+        me = (
+            NaturalPerson.objects.get(pid=request.user)
+            if is_person
+            else Organization.objects.get(oid=request.user)
+        )  #
+        html_display["is_myself"] = True
         if is_person:
-            html_display = utils.get_user_left_narbar(me, html_display['is_myself'], html_display)
+            html_display = utils.get_user_left_narbar(
+                me, html_display["is_myself"], html_display
+            )
         else:
-            html_display = utils.get_org_left_narbar(me, html_display['is_myself'], html_display)
+            html_display = utils.get_org_left_narbar(
+                me, html_display["is_myself"], html_display
+            )
 
-        query = request.GET.get('Query', '')
-        if query == '':
-            return redirect('/welcome/')
+        query = request.GET.get("Query", "")
+        if query == "":
+            return redirect("/welcome/")
 
         # 首先搜索个人
         people_list = NaturalPerson.objects.filter(
@@ -910,7 +927,7 @@ def start_transaction(request):
 
     # r_user = User.objects.get(username=recipient_id)
 
-    try: 
+    try:
         # 允许一位小数，* 10 存成整数
         amount = int(float(amount) * 10)
     except:
