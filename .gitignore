@@ -41,7 +41,7 @@ Thumbs.db
 .vscode/
 .idea/
 local_json.json
-
+app/migrations/*
 # Python #
 __pycache__/
 *.py[cod]
