@@ -30,7 +30,7 @@ class NaturalPerson(models.Model):
     #                        on_delete=models.CASCADE, unique=True, primary_key=True)
     pid = models.OneToOneField(to = User, on_delete = models.CASCADE)
 
-    Sid = models.IntegerField("学号", max_length=64)
+    Sid = models.CharField("学号", max_length=64)
 
     pname = models.CharField("姓名", max_length=10)
     pnickname = models.CharField("昵称", max_length=20, null=True, blank=True)   # 添加昵称
