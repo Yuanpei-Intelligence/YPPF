@@ -33,7 +33,7 @@ import re
 import random, requests  # 发送验证码
 
 local_dict = load_local_json()
-underground_url = local_dict['url']['base_url']
+underground_url = local_dict["url"]["base_url"]
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
@@ -335,7 +335,7 @@ def orginfo(request, name=None):
         boss_display["email"] = boss.pemail
         boss_display["tel"] = boss.ptel
 
-        #jobpos = Position.objects.activated().get(person=boss, org = org).pos
+        # jobpos = Position.objects.activated().get(person=boss, org = org).pos
         boss_display["job"] = org.otype.ojob_name_list[0]
 
         # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
@@ -354,8 +354,8 @@ def orginfo(request, name=None):
 
 @login_required(redirect_field_name="origin")
 def homepage(request):
-    valid, u_type, html_display = utils.check_user_type(request) #app
-    is_person = True if u_type == 'Person' else False #
+    valid, u_type, html_display = utils.check_user_type(request)  # app
+    is_person = True if u_type == "Person" else False  #
     if not valid:
         return redirect("/logout/")
     me = (
@@ -777,7 +777,8 @@ def load_data(request):
             stu.pname = name
             stu.pclass = pclass
             stu.save()
-         return render(request, 'debugging.html')
+        return render(request, "debugging.html")
+
 
 from django.views.decorators.http import require_POST, require_GET
 from app.models import NaturalPerson, Position, Organization, Activity, TransferRecord
@@ -788,20 +789,20 @@ import re
 # 再加一个 origin from，点一下即可返回 ( 可以看到已经报名 )
 # 活动的多字段怎么弄
 @require_GET
-@login_required(redirect_field_name='origin')
+@login_required(redirect_field_name="origin")
 def engage_activity(request):
-    origin = request.GET.get('origin')
+    origin = request.GET.get("origin")
     if origin is None:
-        origin = '/'
+        origin = "/"
     context = dict()
-    context['origin'] = origin
-    choice = request.GET.get('choice')
+    context["origin"] = origin
+    choice = request.GET.get("choice")
     # 默认是 0，没有分级的情况下可以只传 aid
     if choice is None:
         choice = 0
     else:
         choice = int(choice)
-        
+
     aid = request.GET.get("aid")
     pid = request.session["username"]
 
@@ -865,65 +866,68 @@ def engage_activity(request):
     context["msg"] = "Successfully participate the activity."
     return render(request, "msg.html", context)
 
+
 # 用已有的搜索，加一个转账的想他转账的 field
 # 调用的时候传一下 url 到 origin
 # 搜索不希望出现学号，rid 为 User 的 index
 @require_GET
-@login_required(redirect_field_name='origin')
-def transaction_page(request, name = None):
-    recipient_id = request.GET.get('Sid')
-    origin = request.GET.get('origin')
+@login_required(redirect_field_name="origin")
+def transaction_page(request, name=None):
+    recipient_id = request.GET.get("Sid")
+    origin = request.GET.get("origin")
     if origin is None:
-        origin = '/'
+        origin = "/"
     # 可以有一个默认金额，但好像用不到
     # amount = request.GET.get('amount')
     context = dict()
     # r_user = User.objects.get(id=recipient_id)
 
-
     try:
-        if re.match('zz\d+', recipient_id) is not None:
+        if re.match("zz\d+", recipient_id) is not None:
             recipient = Organization.objects.get(oid=recipient_id)
-            recipient_type = 'org'
+            recipient_type = "org"
         else:
             recipient = NaturalPerson.objects.get(Sid=name)
-            recipient_type = 'np'
+            recipient_type = "np"
     except:
-        context['msg'] = 'Unexpected recipient. If you are not deliberately doing this, please contact the administrator to report this bug.'
-        context['origin'] = origin
-        return render(request, 'msg.html', context)
+        context[
+            "msg"
+        ] = "Unexpected recipient. If you are not deliberately doing this, please contact the administrator to report this bug."
+        context["origin"] = origin
+        return render(request, "msg.html", context)
 
-    if recipient_type == 'np':
+    if recipient_type == "np":
         rname = recipient.pnickname
-        if rname == '':
+        if rname == "":
             rname = recipient.pname
-        context['avatar'] = recipient.avatar
+        context["avatar"] = recipient.avatar
     else:
         rname = recipient.oname
-    context['name'] = rname
-    context['rid'] = name
-    context['rtype'] = recipient_type
-    context['origin'] = origin
-    return render(request, 'transaction_page.html', context)
+    context["name"] = rname
+    context["rid"] = name
+    context["rtype"] = recipient_type
+    context["origin"] = origin
+    return render(request, "transaction_page.html", context)
+
 
 # 涉及表单，一般就用 post 吧
 # 这边先扣，那边先不加，等确认加
 # 预期这边成功之后，用企业微信通知接收方，调转到查看未接收记录的窗口
 @require_POST
-@login_required(redirect_field_name='origin')
+@login_required(redirect_field_name="origin")
 def start_transaction(request):
-    recipient_id = request.POST.get('rid')  # index
-    recipient_type = request.POST.get('rtype')
-    origin = request.POST.get('origin')
-    amount = request.POST.get('amount')
-    transaction_msg = request.POST.get('msg')
-    name = request.POST.get('name')
+    recipient_id = request.POST.get("rid")  # index
+    recipient_type = request.POST.get("rtype")
+    origin = request.POST.get("origin")
+    amount = request.POST.get("amount")
+    transaction_msg = request.POST.get("msg")
+    name = request.POST.get("name")
     context = dict()
-    context['origin'] = origin
+    context["origin"] = origin
 
     # r_user = User.objects.get(username=recipient_id)
 
-    '''
+    """
     try:
         amount = float(amount)
     except:
@@ -941,13 +945,13 @@ def start_transaction(request):
     except:
         context['msg'] = 'Unexpected recipient. If you are not deliberately doing this, please contact the administrator to report this bug.'
         return render(request, 'msg.html', context)
-    '''
+    """
     amount = float(amount)
     recipient = NaturalPerson.objects.get(Sid=recipient_id)
     rid = str(recipient_id)
 
-    payer_id = request.session['username']
-    if re.match('zz\d+', payer_id) is not None:
+    payer_id = request.session["username"]
+    if re.match("zz\d+", payer_id) is not None:
         payer = Organization.objects.get(oid=request.user)
     else:
         payer = NaturalPerson.objects.get(pid=request.user)
@@ -955,13 +959,13 @@ def start_transaction(request):
     # 这里需要验证 payer 的元气值 >= amout
     # 想通过数据库本身的功能实现，预期不满足时会 except
 
-    #try:
-    if re.match('zz\d+', payer_id) is not None:
+    # try:
+    if re.match("zz\d+", payer_id) is not None:
         payer = Organization.objects.select_for_update().filter(oid=request.user)
     else:
         payer = NaturalPerson.objects.select_for_update().filter(pid=request.user)
     with transaction.atomic():
-        assert(len(payer) == 1)
+        assert len(payer) == 1
         payer = payer[0]
         payer.YQPoint -= float(amount)
         # TODO 目前用的是 nickname，可能需要改成 name
@@ -973,47 +977,47 @@ def start_transaction(request):
         record.recipient_id = rid
         record.amount = amount
         record.message = transaction_msg
-        record.tstatus = 1 # Wating
+        record.tstatus = 1  # Wating
         record.time = str(datetime.now())
         record.save()
 
         # TODO 确认 save 之后会释放锁？
         payer.save()
-    '''
+    """
     except:
         context['msg'] = 'Check if you have enough YQPoint. If so, please contact the administrator to report this bug.'
         return render(request, 'msg.html', context)
-        '''
-    context['msg'] = 'Waiting the recipient to confirm the transaction.'
-    return render(request, 'msg.html', context)
+        """
+    context["msg"] = "Waiting the recipient to confirm the transaction."
+    return render(request, "msg.html", context)
 
 
 @require_GET
-@login_required(redirect_field_name='origin')
+@login_required(redirect_field_name="origin")
 def confirm_transaction(request, tid=None, reject=None):
     # tid = request.GET.get('tid')
     # reject = request.GET.get('reject')
-    origin = request.GET.get('origin')
+    origin = request.GET.get("origin")
     if origin is None:
-        origin = '/'
+        origin = "/"
     context = dict()
-#    try:
+    #    try:
     record = TransferRecord.objects.filter(id=tid)
     record = record[0]
     payer_id = record.proposer_id
-    if re.match('zz\d+', payer_id) is not None:
+    if re.match("zz\d+", payer_id) is not None:
         payer = Organization.objects.filter(oid__username=payer_id)
     else:
         payer = NaturalPerson.objects.filter(pname=payer_id)
     payer = payer[0]
     recipient_id = record.recipient_id
-    if re.match('zz\d+', recipient_id) is not None:
+    if re.match("zz\d+", recipient_id) is not None:
         recipient = Organization.objects.filter(oid__username=recipient_id)
     else:
         recipient = NaturalPerson.objects.filter(Sid=recipient_id)
     recipient = recipient[0]
     with transaction.atomic():
-        '''
+        """
         assert(len(record) == 1)
         record = record[0]
         if record.recipient_id != request.user.username:
@@ -1036,7 +1040,7 @@ def confirm_transaction(request, tid=None, reject=None):
             recipient = NaturalPerson.objects.select_for_update().filter(pid__username=recipient_id)
         assert(len(recipient) == 1)
         recipient = recipient[0]
-        '''
+        """
         if reject == 2:
             record.tstatus = 2
             payer.YQPoint += record.amount
@@ -1046,20 +1050,21 @@ def confirm_transaction(request, tid=None, reject=None):
         record.save()
         payer.save()
         recipient.save()
-    context['msg'] = 'Confirmed transaction.'
-    context['origin'] = origin
-    return render(request, 'msg.html', context)
-    '''
+    context["msg"] = "Confirmed transaction."
+    context["origin"] = origin
+    return render(request, "msg.html", context)
+    """
     except:
         context['msg'] = 'Can not find the transaction record. If you are not deliberately doing this, please contact the administrator to report this bug.'
         return render(request, 'msg.html', context)
-'''
+"""
 
-#modified by Kinnuch
-@login_required(redirect_field_name='origin')
+
+# modified by Kinnuch
+@login_required(redirect_field_name="origin")
 def mywallet(request):
-    query = request.session['username']
-    if re.match('zz\d+', query) is not None:
+    query = request.session["username"]
+    if re.match("zz\d+", query) is not None:
         queryman = Organization.objects.get(oid=request.user)
     else:
         queryman = NaturalPerson.objects.get(pid=request.user)
@@ -1067,5 +1072,10 @@ def mywallet(request):
     query_id = queryman.Sid
     tmp = str(query_id)
     Record_list = TransferRecord.objects.filter(
-        Q(proposer=query) | (Q(recipient=query)) | (Q(proposer_id=query_id)) | (Q(recipient_id=query_id)))
-    return render(request, 'mywallet.html', locals())
+        Q(proposer=query)
+        | (Q(recipient=query))
+        | (Q(proposer_id=query_id))
+        | (Q(recipient_id=query_id))
+    )
+    return render(request, "mywallet.html", locals())
+
