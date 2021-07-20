@@ -16,3 +16,4 @@ admin.site.register(Position, NewPos)
 
 admin.site.register(OrganizationType)
 admin.site.register(Activity)
+admin.site.register(TransferRecord)
