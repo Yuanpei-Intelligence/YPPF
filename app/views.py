@@ -1078,4 +1078,3 @@ def mywallet(request):
         | (Q(recipient_id=query_id))
     )
     return render(request, "mywallet.html", locals())
-
