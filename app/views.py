@@ -35,8 +35,22 @@ import random, requests  # 发送验证码
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
-load_orgtype()
-load_org()
+
+def load_org_data(request):
+    if request.user.is_superuser:
+        load_type = request.GET.get('loadtype', None)
+        message = '加载失败！'
+        if load_type is None:
+            message = '没有得到loadtype参数:[org或type]'
+        elif load_type == 'type':
+            load_orgtype()
+            message = "load type成功！"
+        elif load_type == 'org':
+            load_org()
+            message = 'load org成功！'
+    else:
+        message = '请先以超级账户登录后台后再操作！'
+    return render(request, 'debugging.html',locals())
 
 
 def get_person_or_org(user, user_type):
@@ -188,80 +202,78 @@ def stuinfo(request, name=None):
                 那么期望有一个"+"在name中，如果搜不到就跳转到Search/？Query=name让他跳转去
     """
 
-    try:
-        user = request.user
-        valid, user_type, html_display = utils.check_user_type(request)
-        if not valid:
-            return redirect("/logout/")
 
-        if name is None:
-            if user_type == "Organization":
-                return redirect("/welcome/")
-            else:
-                assert user_type == "Person"
-                try:
-                    oneself = NaturalPerson.objects.activated().get(person_id=user)
-                except:
-                    return redirect("/welcome/")
-                return redirect("/stuinfo/" + oneself.pname)
+    user = request.user
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect("/logout/")
+
+    if name is None:
+        if user_type == "Organization":
+            return redirect("/welcome/")
         else:
-            # 先对可能的加号做处理
-            name_list = name.split("+")
-            name = name_list[0]
-            person = NaturalPerson.objects.activated().filter(pname=name)
-            if len(person) == 0:  # 查无此人
+            assert user_type == "Person"
+            try:
+                oneself = NaturalPerson.objects.activated().get(pid=user)
+            except:
                 return redirect("/welcome/")
-            if len(person) == 1:  # 无重名
-                person = person[0]
-            else:  # 有很多人，这时候假设加号后面的是user的id
-                if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
-                    if (
+            return redirect("/stuinfo/" + oneself.pname)
+    else:
+        # 先对可能的加号做处理
+        name_list = name.split("+")
+        name = name_list[0]
+        person = NaturalPerson.objects.activated().filter(pname=name)
+        if len(person) == 0:  # 查无此人
+            return redirect("/welcome/")
+        if len(person) == 1:  # 无重名
+            person = person[0]
+        else:  # 有很多人，这时候假设加号后面的是user的id
+            if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
+                if (
                         user_type == "Person"
-                        and NaturalPerson.objects.activated().get(person_id=user).pname
+                        and NaturalPerson.objects.activated().get(pid=user).pname
                         == name
-                    ):
-                        person = NaturalPerson.objects.activated().get(person_id=user)
-                    else:  # 不是自己，信息不全跳转搜索
-                        return redirect("/search?Query=" + name)
-                else:
-                    obtain_id = int(name_list[1])  # 获取增补信息
-                    get_user = User.objects.get(id=obtain_id)
-                    potential_person = NaturalPerson.objects.activated().get(
-                        person_id=get_user
-                    )
-                    assert potential_person in person
-                    person = potential_person
+                ):
+                    person = NaturalPerson.objects.activated().get(pid=user)
+                else:  # 不是自己，信息不全跳转搜索
+                    return redirect("/search?Query=" + name)
+            else:
+                obtain_id = int(name_list[1])  # 获取增补信息
+                get_user = User.objects.get(id=obtain_id)
+                potential_person = NaturalPerson.objects.activated().get(
+                    pid=get_user
+                )
+                assert potential_person in person
+                person = potential_person
 
-            is_myself = user_type == "Person" and person.person_id == user  # 用一个字段储存是否是自己
-            html_display["is_myself"] = is_myself  # 存入显示
+        is_myself = user_type == "Person" and person.pid == user  # 用一个字段储存是否是自己
+        html_display["is_myself"] = is_myself  # 存入显示
 
-            # 处理被搜索人的信息，这里应该和“用户自己”区分开
-            join_pos_id_list = Position.objects.activated().filter(person=person)
+        # 处理被搜索人的信息，这里应该和“用户自己”区分开
+        join_pos_id_list = Position.objects.activated().filter(person=person)
 
-            # html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
+        # html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
 
-            # 呈现信息
-            # 首先是左边栏
-            html_display = utils.get_user_left_narbar(person, is_myself, html_display)
+        # 呈现信息
+        # 首先是左边栏
+        html_display = utils.get_user_left_narbar(person, is_myself, html_display)
 
-            modpw_status = request.GET.get("modinfo", None)
-            html_display["modpw_code"] = (
+        modpw_status = request.GET.get("modinfo", None)
+        html_display["modpw_code"] = (
                 modpw_status is not None and modpw_status == "success"
-            )
-            html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
-            html_display["warn_message"] = request.GET.get(
-                "warn_message", ""
-            )  # 提醒的具体内容
+        )
+        html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
+        html_display["warn_message"] = request.GET.get(
+            "warn_message", ""
+        )  # 提醒的具体内容
 
-            html_display["userinfo"] = person
+        html_display["userinfo"] = person
 
-            html_display["title_name"] = "User Profile"
-            html_display["narbar_name"] = "个人主页"
+        html_display["title_name"] = "User Profile"
+        html_display["narbar_name"] = "个人主页"
 
-            return render(request, "stuinfo.html", locals())
-    except:
-        auth.logout(request)
-        return redirect("/index/")
+        return render(request, "stuinfo.html", locals())
+    
 
 
 @login_required(redirect_field_name="origin")
@@ -336,6 +348,9 @@ def orginfo(request, name=None):
         organization_type_name = org.otype.otype_name
         # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
+    except:
+        return redirect("/welcome/")
+
         # 这一部分是负责人boss的信息
         boss = Position.objects.activated().get(org=org, pos=0).person
         # boss = NaturalPerson.objects.activated().get(person_id = bossid)
@@ -371,8 +386,7 @@ def orginfo(request, name=None):
 
         # 组织活动的信息
 
-    except:
-        return redirect("/welcome/")
+    
 
     # 补充一些呈现信息
     html_display["title_name"] = "Org. Profile"
@@ -562,6 +576,8 @@ def search(request):
             html_display = utils.get_org_left_narbar(
                 me, html_display["is_myself"], html_display
             )
+        # syb: 以上一段目前不注释掉运行还会报错，我去查查为什么;好像是position类里面缺一些相关的设置
+        # 或许我一会儿补一下下面报错的描述
 
         query = request.GET.get("Query", "")
         if query == "":
@@ -569,18 +585,17 @@ def search(request):
 
         # 首先搜索个人
         people_list = NaturalPerson.objects.filter(
-            Q(pname__icontains=query)
-            | (Q(pnickname__icontains=query))
-            | (Q(pmajor__icontains=query))
-        )
-
+            Q(pname__icontains=query) | (Q(pnickname__icontains=query) & Q(show_nickname=True)) |
+            (Q(pmajor__icontains=query) & Q(show_major=True)))
+            
         # 接下来准备呈现的内容
-
         # 首先是准备搜索个人信息的部分
-        people_field = ["姓名", "年级&班级", "昵称", "性别", "专业", "邮箱", "电话", "宿舍", "状态"]
+        people_field = ['姓名', '年级', '班级', '昵称',
+                        '性别', '专业', '邮箱', '电话', '宿舍', '状态']  # 感觉将年级和班级分开呈现会简洁很多
 
         return render(request, "search.html", locals())
-    except:
+    except Exception as e:
+        print(f"Error was found in app/views.py, function search.\nError description: {str(e)}\n")
         auth.logout(request)
         return redirect("/index/")
 
@@ -789,12 +804,20 @@ def load_data(request):
             stu.pemail = email
             stu.ptel = tel
             stu.pyear = year
-            stu.pgender = gender
+            if gender == '男' :
+                stu.pgender = NaturalPerson.Gender.MALE
+            elif gender == '女':
+                stu.pgender = NaturalPerson.Gender.FEMALE
+            else:
+                stu.pgender = NaturalPerson.Gender.OTHER
             stu.pmajor = major
             stu.pname = name
             stu.pclass = pclass
             stu.save()
-        return render(request, "debugging.html")
+        message = "导入学生信息成功！"
+    else:
+        message = '请先以超级账户登录后台后再操作！'
+    return render(request, "debugging.html",locals())
 
 
 # 参与活动，get 传两个简单参数即可，活动 aid，价格等级

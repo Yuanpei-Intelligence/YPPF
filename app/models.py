@@ -25,7 +25,8 @@ class NaturalPerson(models.Model):
     # Common Attributes
     person_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
     pname = models.CharField("姓名", max_length=10)
-    pnickname = models.CharField("昵称", max_length=20, null=True, blank=True)  # 添加昵称
+    pnickname = models.CharField(
+        "昵称", max_length=20, null=True, blank=True)  # 添加昵称
 
     class Gender(models.IntegerChoices):
         MALE = (0, "男")
@@ -76,6 +77,25 @@ class NaturalPerson(models.Model):
 
     def __str__(self):
         return str(self.pname)
+
+    def show_info(self):
+        '''
+            返回值为一个列表，在search.html中使用，按照如下顺序呈现：
+            people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
+            其中未公开的属性呈现为‘未公开’
+        '''
+        unpublished = '未公开'
+        gender = ['男', '女', '其他']
+        info = [self.pname, self.pyear, self.pclass]
+        info.append(self.pnickname if self.show_nickname else unpublished)
+        info.append(
+            unpublished if not self.show_gender else gender[self.pgender])
+        info.append(self.pmajor if self.show_major else unpublished)
+        info.append(self.pemail if self.show_email else unpublished)
+        info.append(self.ptel if self.show_tel else unpublished)
+        info.append(self.pdorm if self.show_dorm else unpublished)
+        info.append('在校' if self.pstatus == NaturalPerson.status.UNDERGRADUATED else '已毕业')
+        return info
 
 
 class OrganizationType(models.Model):

@@ -9,7 +9,7 @@ BASE_DIR = "/Users/rickymac/Documents/20Autmun/ypdev/YPPF/boot/boottest/"
 def load(format=0):
     # df_2018 = pd.read_csv(BASE_DIR + 'static/2018.csv')
     if format == 0:
-        df_1819 = pd.read_csv("app/append.csv")
+        df_1819 = pd.read_csv('test_data/stuinf.csv')
     elif format == 1:
         df_1819 = pd.read_csv("test_data/orginf.csv")
     elif format == 2:
