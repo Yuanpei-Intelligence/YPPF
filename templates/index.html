@@ -6,14 +6,13 @@
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no">
-    <title>Sign In</title>
+    <title>登录页面 | 元培成长档案</title>
 
     <!-- BEGIN GLOBAL MANDATORY STYLES -->
-    <link type="image/x-icon" href="{% static 'assets/img/yp_favicon.png' %} " rel="icon">
     <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet">
     <link href={% static "bootstrap/css/bootstrap.min.css" %} rel="stylesheet" type="text/css" />
     <link href={% static "assets/css/plugins.css" %} rel="stylesheet" type="text/css" />
-    <link href={% static "assets/css/authentication/form-2.css" %} rel="stylesheet" type="text/css" />
+    <link href={% static "assets/css/authentication/form-1.css" %} rel="stylesheet" type="text/css" />
     <!-- END GLOBAL MANDATORY STYLES -->
     <link rel="stylesheet" type="text/css" href={% static "assets/css/forms/theme-checkbox-radio.css" %}>
     <link rel="stylesheet" type="text/css" href={% static "assets/css/forms/switches.css" %}>
@@ -41,9 +40,7 @@
                             <div class="form">
 
                                 <div id="username-field" class="field-wrapper input">
-                                    <div class="d-flex justify-content-between">
-                                        <label for="new">账户</label><!--modified by pht-->
-                                    </div>
+
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                         stroke-linejoin="round" class="feather feather-user">
@@ -55,31 +52,28 @@
                                 </div>
 
                                 <div id="password-field" class="field-wrapper input mb-2">
-                                    <div class="d-flex justify-content-between">
-                                        <label for="new">密码</label><!--modified by pht-->
-                                        <a href="/forgetpw/" class="forgot-pass-link">Forget?</a>
-                                    </div>
+                                    <!--
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                         stroke-linejoin="round" class="feather feather-lock">
                                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
                                         <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                                     </svg>
-                                    
-                                    <input id="password" name="password" type="password" class="form-control"
-                                        placeholder="初始密码为学号">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                        stroke-linecap="round" stroke-linejoin="round" id="toggle-password"
-                                        class="feather feather-eye">
+                                    -->
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" id="toggle-password" class="feather feather-eye">
                                         <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
                                         <circle cx="12" cy="12" r="3"></circle>
                                     </svg>
-                                    
+                                    <input id="password" name="password" type="password" class="form-control"
+                                        placeholder="密码">
+
                                 </div>
-                                
-                                <div class="d-sm-flex justify-content-between">
-                                    <div class="field-wrapper toggle-pass">
+
+                                <div class="d-flex justify-content-between "
+                                    style="display:block;margin:0 auto;align-items:center;">
+                                    <div class="field-wrapper">
                                         <!--
                                         <p class="d-inline-block">Show Password</p>
                                         <label class="switch s-primary">
@@ -87,12 +81,14 @@
                                             <span class="slider round"></span>
                                         </label>
                                         -->
-                                        <div class="field-wrapper"></div>
                                         <button type="submit" class="btn btn-primary" value="">Sign In</button>
                                     </div>
-
+                                    <div class="field-wrapper text-center" style="vertical-align: middle;">
+                                        <a href="/forgetpw/" >Forget
+                                            Password?</a>
+                                    </div>
                                 </div>
-                                
+
                                 <!--
                                 <div class="field-wrapper text-center keep-logged-in">
                                     <div class="n-chk new-checkbox checkbox-outline-primary">
@@ -102,11 +98,9 @@
                                         </label>
                                     </div>
                                 </div>
-                                
-                                <div class="field-wrapper">
-                                    <a href="/forgetpw/" class="forgot-pass-link">Forgot Password?</a>
-                                </div>
-                                -->
+                            -->
+
+
                             </div>
 
                         </form>
@@ -116,22 +110,22 @@
                         {% if modpw_status == 'yes' %}
                         <div class="alert alert-success  text-center"> 修改密码成功！</div>
                         {% endif %}
-                        <p> </p>
-                        <p class="terms-conditions">© Yuanpei Intelligence Campus <a href="">All Rights Reserved </a>.
-                            <a href="#">Yuanpei Profile is a product of Yuanpei College.</a>
+                        <p class="terms-conditions" align='center'>© Yuanpei Intelligence Campus <a href="">All Rights
+                                Reserved </a>.
+                            <a href="/index/">Yuanpei Profile</a> is a product of Yuanpei College.
                         </p>
 
                     </div>
                 </div>
             </div>
         </div>
-        <!--
+
         <div class="form-image">
             <div class="l-image">
                 <img style="width: 100%;" src={% static "assets/img/yuanpeibg.png" %}>
             </div>
         </div>
-        -->
+
     </div>
 
 
