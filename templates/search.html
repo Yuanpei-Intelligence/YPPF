@@ -58,6 +58,7 @@
                                                 <td>{{people.pstatus}}</td> -->
                                                 {% for attribute in person.show_info %}
                                                     {% if forloop.counter == 1 %}
+                                                    <!-- 说明此时要展示姓名，关联链接 -->
                                                         <td><a href=../../stuinfo/{{person.pname}}+{{person.id}}>{{attribute}}</a></td>
                                                     {% else %}
                                                         <td> {{attribute}} </td>
