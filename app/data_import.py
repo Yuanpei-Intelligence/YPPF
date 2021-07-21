@@ -24,19 +24,19 @@ def load_orgtype():
     user.set_password(password)
     user.save()
     Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
-    Nperson.pname = username
+    Nperson.name = username
     Nperson.save()
     orgfile = load(format=2)
     for i in range(len(orgfile)):
         type_id = int(orgfile["otype_id"].iloc[i])
         type_name = str(orgfile["otype_name"].iloc[i])
         # otype_superior_id = int(orgfile['otype_superior_id'].iloc[i])
-        incharge = str(orgfile["oincharge"].iloc[i])
+        incharge = str(orgfile["incharge"].iloc[i])
         orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
         orgtype.otype_name = type_name
         # orgtype.otype_superior_id=otype_superior_id
-        Nperson, mid = NaturalPerson.objects.get_or_create(pname=incharge)
-        orgtype.oincharge = Nperson
+        Nperson, mid = NaturalPerson.objects.get_or_create(name=incharge)
+        orgtype.incharge = Nperson
         orgtype.save()
     return
 
@@ -44,7 +44,7 @@ def load_orgtype():
 def load_org():
     orgfile = load(format=1)
     for i in range(len(orgfile)):
-        username = str(orgfile["oid"].iloc[i])
+        username = str(orgfile["organization_id"].iloc[i])
         if username[:2] == "zz":
             password = "YPPFtest"
             oname = str(orgfile["oname"].iloc[i])
@@ -54,11 +54,11 @@ def load_org():
             user.set_password(password)
             user.save()
             orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
-            org, mid = Organization.objects.get_or_create(oid=user, otype=orgtype)
+            org, mid = Organization.objects.get_or_create(organization_id=user, otype=orgtype)
             org.oname = oname
             org.save()
 
-            people, mid = NaturalPerson.objects.get_or_create(pname=person)
+            people, mid = NaturalPerson.objects.get_or_create(name=person)
             pos, mid = Position.objects.get_or_create(person=people, org=org)
             pos.save()
             # orgtype=OrganizationType.objects.create(otype_id=type_id)

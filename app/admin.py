@@ -4,20 +4,20 @@ from app.models import *
 # Register your models here.
 class NaturalPersonAdmin(admin.ModelAdmin):
     list_display = [
-        "pname",
+        "name",
         "person_id",
-        "pgender",
-        "pyear",
-        "pdorm",
-        "pstatus",
+        "gender",
+        "stu_grade",
+        "stu_dorm",
+        "status",
         "identity",
-        "pemail",
-        "pclass",
-        "pmajor",
-        "ptel",
-        "firstTimeLogin",
+        "email",
+        "stu_class",
+        "stu_major",
+        "telephone",
+        "first_time_login",
     ]
-    search_fields = ("person_id", "pname")
+    search_fields = ("person_id", "name")
 
 
 class OrganizationAdmin(admin.ModelAdmin):

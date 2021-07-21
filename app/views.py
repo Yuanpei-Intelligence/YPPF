@@ -42,7 +42,7 @@ def load_org_data(request):
         message = '加载失败！'
         if load_type is None:
             message = '没有得到loadtype参数:[org或type]'
-        elif load_type == 'type':
+        elif load_type == 'otype':
             load_orgtype()
             message = "load type成功！"
         elif load_type == 'org':
@@ -57,7 +57,7 @@ def get_person_or_org(user, user_type):
     return (
         NaturalPerson.objects.get(person_id=user)
         if user_type == "Person"
-        else Organization.objects.get(oid=user)
+        else Organization.objects.get(organization_id=user)
     )  #
 
 
@@ -107,7 +107,7 @@ def index(request):
                 en_pw = hash_coder.encode(username + timeStamp)
                 try:
                     userinfo = NaturalPerson.objects.get(person_id=username)
-                    name = userinfo.pname
+                    name = userinfo.name
                     return redirect(
                         arg_origin
                         + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}&name={name}"
@@ -123,7 +123,7 @@ def index(request):
                 if not valid:
                     return redirect("/logout/")
                 me = get_person_or_org(userinfo, user_type)
-                if me.firstTimeLogin:
+                if me.first_time_login:
                     return redirect("/modpw/")
 
                 return redirect("/welcome/")
@@ -177,7 +177,7 @@ def miniLogin(request):
             request.session["username"] = username
             en_pw = hash_coder.encode(request.session["username"])
             user_account = NaturalPerson.objects.get(person_id=username)
-            return JsonResponse({"Sname": user_account.pname, "Succeed": 1}, status=200)
+            return JsonResponse({"Sname": user_account.name, "Succeed": 1}, status=200)
         else:
             return JsonResponse({"Sname": username, "Succeed": 0}, status=400)
     except:
@@ -217,12 +217,12 @@ def stuinfo(request, name=None):
                 oneself = NaturalPerson.objects.activated().get(pid=user)
             except:
                 return redirect("/welcome/")
-            return redirect("/stuinfo/" + oneself.pname)
+            return redirect("/stuinfo/" + oneself.name)
     else:
         # 先对可能的加号做处理
         name_list = name.split("+")
         name = name_list[0]
-        person = NaturalPerson.objects.activated().filter(pname=name)
+        person = NaturalPerson.objects.activated().filter(name=name)
         if len(person) == 0:  # 查无此人
             return redirect("/welcome/")
         if len(person) == 1:  # 无重名
@@ -231,7 +231,7 @@ def stuinfo(request, name=None):
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
                 if (
                         user_type == "Person"
-                        and NaturalPerson.objects.activated().get(pid=user).pname
+                        and NaturalPerson.objects.activated().get(pid=user).name
                         == name
                 ):
                     person = NaturalPerson.objects.activated().get(pid=user)
@@ -299,7 +299,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         try:
             org = Organization.objects.get(oname=name)
         except:  # 找不到对应组织
-            urls = "/stuinfo/" + me.pname + "?warn_code=1&warn_message=找不到对应组织,请联系管理员!"
+            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=找不到对应组织,请联系管理员!"
             return redirect(urls)
         try:
             position = Position.objects.activated().filter(org=org, person=me)
@@ -307,12 +307,12 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
             position = position[0]
             assert position.pos == 0
         except:
-            urls = "/stuinfo/" + me.pname + "?warn_code=1&warn_message=没有登录到该组织账户的权限!"
+            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该组织账户的权限!"
             return redirect(urls)
         # 到这里,是本人组织并且有权限登录
         auth.logout(request)
-        auth.login(request, org.oid)  # 切换到组织账号
-        if org.firstTimeLogin:
+        auth.login(request, org.organization_id)  # 切换到组织账号
+        if org.first_time_login:
             return redirect("/modpw/")
         return redirect("/orginfo/")
 
@@ -334,7 +334,7 @@ def orginfo(request, name=None):
         if user_type == "Person":
             return redirect("/welcome/")
         try:
-            org = Organization.objects.activated().get(oid=user)
+            org = Organization.objects.activated().get(organization_id=user)
         except:
             return redirect("/welcome/")
         return redirect("/orginfo/" + org.oname)
@@ -356,14 +356,14 @@ def orginfo(request, name=None):
         # boss = NaturalPerson.objects.activated().get(person_id = bossid)
         boss_display = {}
 
-        boss_display["bossname"] = boss.pname
-        boss_display["year"] = boss.pyear
-        boss_display["major"] = boss.pmajor
-        boss_display["email"] = boss.pemail
-        boss_display["tel"] = boss.ptel
+        boss_display["bossname"] = boss.name
+        boss_display["year"] = boss.stu_grade
+        boss_display["major"] = boss.stu_major
+        boss_display["email"] = boss.email
+        boss_display["tel"] = boss.telephone
 
         # jobpos = Position.objects.activated().get(person=boss, org = org).pos
-        boss_display["job"] = org.otype.ojob_name_list[0]
+        boss_display["job"] = org.otype.job_name_list[0]
 
         # 补充左边栏信息
         # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
@@ -401,7 +401,7 @@ def homepage(request):
     if not valid:
         return redirect("/logout/")
     me = get_person_or_org(request.user, user_type)
-    myname = me.pname if is_person else me.oname
+    myname = me.name if is_person else me.oname
 
     # 直接储存在html_display中
     # profile_name = "个人主页" if is_person else "组织主页"
@@ -437,13 +437,13 @@ def account_setting(request):
         ava = request.FILES.get("avatar")
         expr = bool(tel or Major or email or aboutbio or ava)
         if aboutbio != "":
-            useroj.pBio = aboutbio
+            useroj.biography = aboutbio
         if Major != "":
-            useroj.pmajor = Major
+            useroj.stu_major = Major
         if email != "":
-            useroj.pemail = email
+            useroj.email = email
         if tel != "":
-            useroj.ptel = tel
+            useroj.telephone = tel
         if ava is None:
             pass
         else:
@@ -477,8 +477,8 @@ def register(request):
             sno = request.POST["snum"]
             email = request.POST["email"]
             password2 = request.POST["password2"]
-            pyear = request.POST["syear"]
-            # pgender = request.POST['sgender']
+            stu_grade = request.POST["syear"]
+            # gender = request.POST['sgender']
             if password != password2:
                 render(request, "index.html")
             else:
@@ -486,7 +486,7 @@ def register(request):
                 same_user = NaturalPerson.objects.filter(person_id=sno)
                 if same_user:
                     render(request, "auth_register_boxed.html")
-                same_email = NaturalPerson.objects.filter(pemail=email)
+                same_email = NaturalPerson.objects.filter(email=email)
                 if same_email:
                     render(request, "auth_register_boxed.html")
 
@@ -496,9 +496,9 @@ def register(request):
                 user.save()
 
                 new_user = NaturalPerson.objects.create(person_id=user)
-                new_user.pname = name
-                new_user.pemail = email
-                new_user.pyear = pyear
+                new_user.name = name
+                new_user.email = email
+                new_user.stu_grade = stu_grade
                 new_user.save()
                 return HttpResponseRedirect("/index/")
         return render(request, "auth_register_boxed.html")
@@ -516,13 +516,13 @@ def logout(request):
 def org_spec(request, *args, **kwargs):
     arg = args[0]
     org_dict = local_dict['org']
-    title = org_dict[arg]
-    org = Organization.objects.filter(oname=title)
+    topic = org_dict[arg]
+    org = Organization.objects.filter(oname=topic)
     pos = Position.objects.filter(Q(org=org) | Q(pos='部长') | Q(pos='老板'))
     try:
         pos = Position.objects.filter(Q(org=org) | Q(pos='部长') | Q(pos='老板'))
         boss_no = pos.values()[0]['person_id']#存疑，可能还有bug here
-        boss = NaturalPerson.objects.get(person_id=boss_no).pname
+        boss = NaturalPerson.objects.get(person_id=boss_no).name
         job = pos.values()[0]['pos']
     except:
         person_incharge = '负责人'
@@ -656,12 +656,12 @@ def forget_password(request):
         else:
             user = User.objects.get(username=username)
             useroj = NaturalPerson.objects.get(person_id=user)  # 目前似乎保证是自然人
-            isFirst = useroj.firstTimeLogin
+            isFirst = useroj.first_time_login
             if isFirst:
                 err_code = 2
                 err_message = "初次登录密码与账号相同！"
             elif send_captcha:
-                email = useroj.pemail
+                email = useroj.email
                 if not email or email.lower() == "none" or "@" not in email:
                     err_code = 3
                     err_message = "您没有设置邮箱，请发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"  # 记得填
@@ -669,7 +669,7 @@ def forget_password(request):
                     captcha = random.randrange(1000000)  # randint包含端点，randrange不包含
                     captcha = f"{captcha:06}"
                     msg = (
-                        f"<h3><b>亲爱的{useroj.pname}同学：</b></h3><br/>"
+                        f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
                         "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
                         f'<p style="color:orange">{captcha}'
                         '<span style="color:gray">(仅当前页面有效)</span></p>'
@@ -734,7 +734,7 @@ def modpw(request):
     username = user.username
     valid, user_type, html_display = utils.check_user_type(request)
     useroj = get_person_or_org(user, user_type)
-    isFirst = useroj.firstTimeLogin
+    isFirst = useroj.first_time_login
     if str(useroj.avatar) == "":
         avatar_path = settings.MEDIA_URL + "avatar/codecat.jpg"
     else:
@@ -761,7 +761,7 @@ def modpw(request):
                 try:  # modified by pht: if检查是错误的，不存在时get会报错
                     user.set_password(newpw)
                     user.save()
-                    useroj.firstTimeLogin = False
+                    useroj.first_time_login = False
                     useroj.save()
 
                     if forgetpw:
@@ -796,23 +796,23 @@ def load_data(request):
             gender = df_1819["性别"].iloc[i]
             major = df_1819["专业"].iloc[i]
             name = df_1819["姓名"].iloc[i]
-            pclass = df_1819["班级"].iloc[i]
+            stu_class = df_1819["班级"].iloc[i]
             user = User.objects.create(username=username)
             user.set_password(password)
             user.save()
             stu = NaturalPerson.objects.create(person_id=sno)
-            stu.pemail = email
-            stu.ptel = tel
-            stu.pyear = year
+            stu.email = email
+            stu.telephone = tel
+            stu.stu_grade = year
             if gender == '男' :
-                stu.pgender = NaturalPerson.Gender.MALE
+                stu.gender = NaturalPerson.Gender.MALE
             elif gender == '女':
-                stu.pgender = NaturalPerson.Gender.FEMALE
+                stu.gender = NaturalPerson.Gender.FEMALE
             else:
-                stu.pgender = NaturalPerson.Gender.OTHER
-            stu.pmajor = major
-            stu.pname = name
-            stu.pclass = pclass
+                stu.gender = NaturalPerson.Gender.OTHER
+            stu.stu_major = major
+            stu.name = name
+            stu.stu_class = stu_class
             stu.save()
         message = "导入学生信息成功！"
     else:
@@ -858,8 +858,8 @@ def engage_activity(request):
             except:
                 pass
 
-            oid = activity.oid_id
-            orgnization = Organization.objects.select_for_update().filter(oid=oid)
+            organization_id = activity.oid_id
+            orgnization = Organization.objects.select_for_update().filter(organization_id=organization_id)
             assert len(orgnization) == 1
             orgnization = orgnization[0]
 
@@ -876,10 +876,10 @@ def engage_activity(request):
             orgnization.YQPoint += float(amount)
 
             record = TransferRecord.objects.create(
-                proposer=request.user, recipient=orgnization.oid
+                proposer=request.user, recipient=orgnization.organization_id
             )
             record.amount = amount
-            record.message = f"Participate Activity {activity.aname}"
+            record.message = f"Participate Activity {activity.topic}"
             record.status = 0  # Wating
             record.time = str(datetime.now())
 
@@ -919,7 +919,7 @@ def transaction_page(request):
 
     try:
         if re.match("zz\d+", recipient_id) is not None:
-            recipient = Organization.objects.get(oid=recipient_id)
+            recipient = Organization.objects.get(organization_id=recipient_id)
             recipient_type = "org"
         else:
             recipient = NaturalPerson.objects.get(person_id=recipient_id)
@@ -932,9 +932,9 @@ def transaction_page(request):
         return render(request, "msg.html", context)
 
     if recipient_type == "np":
-        name = recipient.pnickname
+        name = recipient.nickname
         if name == "":
-            name = recipient.pname
+            name = recipient.name
         context["avatar"] = recipient.avatar
     else:
         name = recipient.oname
@@ -975,7 +975,7 @@ def start_transaction(request):
         if recipient_type == "np":
             recipient = NaturalPerson.objects.get(person_id=recipient_id).person_id
         else:
-            recipient = Organization.objects.get(oid=recipient_id).oid
+            recipient = Organization.objects.get(organization_id=recipient_id).organization_id
     except:
         context[
             "msg"
@@ -984,13 +984,13 @@ def start_transaction(request):
 
     payer_id = request.session["username"]
     if re.match("zz\d+", payer_id) is not None:
-        payer = Organization.objects.get(oid=request.user)
+        payer = Organization.objects.get(organization_id=request.user)
     else:
         payer = NaturalPerson.objects.get(person_id=request.user)
 
     try:
         if re.match("zz\d+", payer_id) is not None:
-            payer = Organization.objects.select_for_update().filter(oid=request.user)
+            payer = Organization.objects.select_for_update().filter(organization_id=request.user)
         else:
             payer = NaturalPerson.objects.select_for_update().filter(person_id=request.user)
         with transaction.atomic():
@@ -1047,7 +1047,7 @@ def confirm_transaction(request):
                 return render(request, "msg.html", context)
             payer = record.proposer
             if re.match("zz\d+", payer.username) is not None:
-                payer = Organization.objects.select_for_update().filter(oid=payer)
+                payer = Organization.objects.select_for_update().filter(organization_id=payer)
             else:
                 payer = NaturalPerson.objects.select_for_update().filter(person_id=payer)
             assert len(payer) == 1
@@ -1055,7 +1055,7 @@ def confirm_transaction(request):
             recipient = record.recipient
             if re.match("zz\d+", recipient.username) is not None:
                 recipient = Organization.objects.select_for_update().filter(
-                    oid=recipient
+                    organization_id=recipient
                 )
             else:
                 recipient = NaturalPerson.objects.select_for_update().filter(
