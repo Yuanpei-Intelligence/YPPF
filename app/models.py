@@ -233,12 +233,11 @@ class Activity(models.Model):
         "活动年份", default=int(datetime.datetime.now().strftime('%Y')))
     asemester = models.CharField(
         "活动学期", choices=Semester.choices, max_length=15)
-    astart = models.DateTimeField("开始时间")
-    afinish = models.DateTimeField("结束时间")
-    acontent = models.CharField("活动内容", max_length=225)
-    QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)  # 二维码字段
+    astart = models.DateTimeField("开始时间")  # 报名开始时间，
+    afinish = models.DateTimeField("结束时间")  # 报名截止时间
+    acontent = models.CharField("活动内容", max_length=1000)
+    aURL = models.URLField("相关网址", null=True, blank=True)
 
-    # url,活动二维码
     class Astatus(models.TextChoices):
         Asta_Pending = "审核中"
         Applying = "报名中"
@@ -248,23 +247,26 @@ class Activity(models.Model):
         Finish = "已结束"
         Unsucceed = "未通过"
 
-    astatus = models.CharField("活动状态", choices=Astatus.choices, max_length=32)
+    astatus = models.CharField("活动状态", choices=Astatus.choices, max_length=32, default=Astatus.Asta_Pending)
     mutableYQ = models.BooleanField("是否可以调整价格", default=False)
+    max_people = models.IntegerField("活动最大人数", default=100)
+    store_YQP = models.FloatField("已募集的元气值", default=0.0)  # 记录收到的元气值的多少
     YQPoint = ListCharField(
         base_field=models.IntegerField(default=0),
         size=10,
         max_length=50,
         default=[0]
-    )
+    )#注意都×10了，使用时注意
     Places = ListCharField(
-        base_field=models.IntegerField(default=0),
+        base_field=models.CharField("活动地点", max_length=100),
         size=10,
-        max_length=50,
-        default=[0]
+        max_length=1100,
+        default=["暂定"]
     )
 
-    URL = models.URLField("相关网址", null=True, blank=True)
+    QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)  # 二维码字段
 
+    # 备记：活动二维码
     def __str__(self):
         return f"活动：{self.aname}"
 
