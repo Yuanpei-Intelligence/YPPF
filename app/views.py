@@ -10,7 +10,7 @@ from app.models import (
 )
 import app.utils as utils
 from app.forms import UserForm
-from app.data_import import load,load_orgtype,load_org
+from app.data_import import load, load_orgtype, load_org
 from app.utils import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.shortcuts import render, redirect
@@ -38,10 +38,11 @@ email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 load_orgtype()
 load_org()
 
+
 def get_person_or_org(user, user_type):
     return (
-        NaturalPerson.objects.get(pid=user)
-        if user_type == 'Person'
+        NaturalPerson.objects.get(person_id=user)
+        if user_type == "Person"
         else Organization.objects.get(oid=user)
     )  #
 
@@ -91,7 +92,7 @@ def index(request):
                 print(timeStamp)
                 en_pw = hash_coder.encode(username + timeStamp)
                 try:
-                    userinfo = NaturalPerson.objects.get(pid=username)
+                    userinfo = NaturalPerson.objects.get(person_id=username)
                     name = userinfo.pname
                     return redirect(
                         arg_origin
@@ -109,7 +110,7 @@ def index(request):
                     return redirect("/logout/")
                 me = get_person_or_org(userinfo, user_type)
                 if me.firstTimeLogin:
-                    return redirect('/modpw/')
+                    return redirect("/modpw/")
 
                 return redirect("/welcome/")
                 """
@@ -161,7 +162,7 @@ def miniLogin(request):
 
             request.session["username"] = username
             en_pw = hash_coder.encode(request.session["username"])
-            user_account = NaturalPerson.objects.get(pid=username)
+            user_account = NaturalPerson.objects.get(person_id=username)
             return JsonResponse({"Sname": user_account.pname, "Succeed": 1}, status=200)
         else:
             return JsonResponse({"Sname": username, "Succeed": 0}, status=400)
@@ -199,7 +200,7 @@ def stuinfo(request, name=None):
             else:
                 assert user_type == "Person"
                 try:
-                    oneself = NaturalPerson.objects.activated().get(pid=user)
+                    oneself = NaturalPerson.objects.activated().get(person_id=user)
                 except:
                     return redirect("/welcome/")
                 return redirect("/stuinfo/" + oneself.pname)
@@ -215,23 +216,23 @@ def stuinfo(request, name=None):
             else:  # 有很多人，这时候假设加号后面的是user的id
                 if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
                     if (
-                            user_type == "Person"
-                            and NaturalPerson.objects.activated().get(pid=user).pname
-                            == name
+                        user_type == "Person"
+                        and NaturalPerson.objects.activated().get(person_id=user).pname
+                        == name
                     ):
-                        person = NaturalPerson.objects.activated().get(pid=user)
+                        person = NaturalPerson.objects.activated().get(person_id=user)
                     else:  # 不是自己，信息不全跳转搜索
                         return redirect("/search?Query=" + name)
                 else:
                     obtain_id = int(name_list[1])  # 获取增补信息
                     get_user = User.objects.get(id=obtain_id)
                     potential_person = NaturalPerson.objects.activated().get(
-                        pid=get_user
+                        person_id=get_user
                     )
                     assert potential_person in person
                     person = potential_person
 
-            is_myself = user_type == "Person" and person.pid == user  # 用一个字段储存是否是自己
+            is_myself = user_type == "Person" and person.person_id == user  # 用一个字段储存是否是自己
             html_display["is_myself"] = is_myself  # 存入显示
 
             # 处理被搜索人的信息，这里应该和“用户自己”区分开
@@ -245,7 +246,7 @@ def stuinfo(request, name=None):
 
             modpw_status = request.GET.get("modinfo", None)
             html_display["modpw_code"] = (
-                    modpw_status is not None and modpw_status == "success"
+                modpw_status is not None and modpw_status == "success"
             )
             html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
             html_display["warn_message"] = request.GET.get(
@@ -277,7 +278,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
     if user_type == "Organization":
         return redirect("/orginfo/")
     try:
-        me = NaturalPerson.objects.activated().get(pid=user)
+        me = NaturalPerson.objects.activated().get(person_id=user)
     except:  # 找不到合法的用户
         return redirect("/welcome/")
     if name is None:  # 个人登录未指定登入组织,属于不合法行为,弹回欢迎
@@ -337,7 +338,7 @@ def orginfo(request, name=None):
 
         # 这一部分是负责人boss的信息
         boss = Position.objects.activated().get(org=org, pos=0).person
-        # boss = NaturalPerson.objects.activated().get(pid = bossid)
+        # boss = NaturalPerson.objects.activated().get(person_id = bossid)
         boss_display = {}
 
         boss_display["bossname"] = boss.pname
@@ -351,18 +352,22 @@ def orginfo(request, name=None):
 
         # 补充左边栏信息
         # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
-        html_display['isboss'] = True if (user_type == "Person" and boss.pid == user) else False
+        html_display["isboss"] = (
+            True if (user_type == "Person" and boss.person_id == user) else False
+        )
         # 判断是否为组织账户本身在登录
-        html_display['is_myself'] = (me == org)
+        html_display["is_myself"] = me == org
 
         # 再处理修改信息的回弹
         modpw_status = request.GET.get("modinfo", None)
         html_display["modpw_code"] = (
-                modpw_status is not None and modpw_status == "success"
+            modpw_status is not None and modpw_status == "success"
         )
 
         # 补充其余信息
-        html_display = utils.get_org_left_narbar(org, html_display['is_myself'], html_display)
+        html_display = utils.get_org_left_narbar(
+            org, html_display["is_myself"], html_display
+        )
 
         # 组织活动的信息
 
@@ -403,10 +408,10 @@ def account_setting(request):
     # 在这个页面 默认回归为自己的左边栏
     html_display["is_myself"] = True
     user = request.user
-    info = NaturalPerson.objects.filter(pid=user)
+    info = NaturalPerson.objects.filter(person_id=user)
     userinfo = info.values()[0]
 
-    useroj = NaturalPerson.objects.get(pid=user)
+    useroj = NaturalPerson.objects.get(person_id=user)
 
     former_img = html_display["avatar_path"]
 
@@ -464,7 +469,7 @@ def register(request):
                 render(request, "index.html")
             else:
                 # user with same sno
-                same_user = NaturalPerson.objects.filter(pid=sno)
+                same_user = NaturalPerson.objects.filter(person_id=sno)
                 if same_user:
                     render(request, "auth_register_boxed.html")
                 same_email = NaturalPerson.objects.filter(pemail=email)
@@ -476,7 +481,7 @@ def register(request):
                 user.set_password(password)
                 user.save()
 
-                new_user = NaturalPerson.objects.create(pid=user)
+                new_user = NaturalPerson.objects.create(person_id=user)
                 new_user.pname = name
                 new_user.pemail = email
                 new_user.pyear = pyear
@@ -503,7 +508,7 @@ def org_spec(request, *args, **kwargs):
     try:
         pos = Position.objects.filter(Q(org=org) | Q(pos='部长') | Q(pos='老板'))
         boss_no = pos.values()[0]['person_id']#存疑，可能还有bug here
-        boss = NaturalPerson.objects.get(pid=boss_no).pname
+        boss = NaturalPerson.objects.get(person_id=boss_no).pname
         job = pos.values()[0]['pos']
     except:
         person_incharge = '负责人'
@@ -517,7 +522,7 @@ def get_stu_img(request):
     if stuId is not None:
         try:
             print(stuId)
-            img_path = NaturalPerson.objects.get(pid=stuId).avatar
+            img_path = NaturalPerson.objects.get(person_id=stuId).avatar
             if str(img_path) == "":
                 img_path = settings.MEDIA_URL + "avatar/codecat.jpg"
             else:
@@ -635,7 +640,7 @@ def forget_password(request):
             err_message = "账号不存在"
         else:
             user = User.objects.get(username=username)
-            useroj = NaturalPerson.objects.get(pid=user)  # 目前似乎保证是自然人
+            useroj = NaturalPerson.objects.get(person_id=user)  # 目前似乎保证是自然人
             isFirst = useroj.firstTimeLogin
             if isFirst:
                 err_code = 2
@@ -649,13 +654,13 @@ def forget_password(request):
                     captcha = random.randrange(1000000)  # randint包含端点，randrange不包含
                     captcha = f"{captcha:06}"
                     msg = (
-                            f"<h3><b>亲爱的{useroj.pname}同学：</b></h3><br/>"
-                            "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
-                            f'<p style="color:orange">{captcha}'
-                            '<span style="color:gray">(仅当前页面有效)</span></p>'
-                            '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
-                            "<br/><br/><br/>"
-                            "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
+                        f"<h3><b>亲爱的{useroj.pname}同学：</b></h3><br/>"
+                        "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
+                        f'<p style="color:orange">{captcha}'
+                        '<span style="color:gray">(仅当前页面有效)</span></p>'
+                        '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
+                        "<br/><br/><br/>"
+                        "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
                         "toaddrs": [email],  # 收件人列表
@@ -780,7 +785,7 @@ def load_data(request):
             user = User.objects.create(username=username)
             user.set_password(password)
             user.save()
-            stu = NaturalPerson.objects.create(pid=sno)
+            stu = NaturalPerson.objects.create(person_id=sno)
             stu.pemail = email
             stu.ptel = tel
             stu.pyear = year
@@ -804,17 +809,17 @@ def engage_activity(request):
     context = dict()
     context["origin"] = origin
     choice = request.GET.get("choice")
-    # 默认是 0，没有分级的情况下可以只传 aid
+    # 默认是 0，没有分级的情况下可以只传 activity_id
     if choice is None:
         choice = 0
     else:
         choice = int(choice)
-    aid = request.GET.get("aid")
-    pid = request.session["username"]
+    activity_id = request.GET.get("activity_id")
+    person_id = request.session["username"]
 
     try:
-        activity = Activity.objects.select_for_update().filter(id=aid)
-        payer = NaturalPerson.objects.select_for_update().filter(pid__username=pid)
+        activity = Activity.objects.select_for_update().filter(id=activity_id)
+        payer = NaturalPerson.objects.select_for_update().filter(pid__username=person_id)
         with transaction.atomic():
             assert len(activity) == 1
             assert len(payer) == 1
@@ -822,7 +827,7 @@ def engage_activity(request):
             payer = payer[0]
 
             try:
-                panticipant = Paticipant.objects.get(aid=activity, pid=payer)
+                panticipant = Paticipant.objects.get(activity_id=activity, person_id=payer)
                 context[
                     "msg"
                 ] = "You have already participated in the activity. If you are not deliberately do it, please contact the administrator to report this bug."
@@ -852,10 +857,10 @@ def engage_activity(request):
             )
             record.amount = amount
             record.message = f"Participate Activity {activity.aname}"
-            record.tstatus = 0  # Wating
+            record.status = 0  # Wating
             record.time = str(datetime.now())
 
-            panticipant = Paticipant.objects.create(aid=activity, pid=payer)
+            panticipant = Paticipant.objects.create(activity_id=activity, person_id=payer)
 
             panticipant.save()
             record.save()
@@ -894,7 +899,7 @@ def transaction_page(request):
             recipient = Organization.objects.get(oid=recipient_id)
             recipient_type = "org"
         else:
-            recipient = NaturalPerson.objects.get(pid=recipient_id)
+            recipient = NaturalPerson.objects.get(person_id=recipient_id)
             recipient_type = "np"
     except:
         context[
@@ -945,7 +950,7 @@ def start_transaction(request):
 
     try:
         if recipient_type == "np":
-            recipient = NaturalPerson.objects.get(pid=recipient_id).pid
+            recipient = NaturalPerson.objects.get(person_id=recipient_id).person_id
         else:
             recipient = Organization.objects.get(oid=recipient_id).oid
     except:
@@ -958,13 +963,13 @@ def start_transaction(request):
     if re.match("zz\d+", payer_id) is not None:
         payer = Organization.objects.get(oid=request.user)
     else:
-        payer = NaturalPerson.objects.get(pid=request.user)
+        payer = NaturalPerson.objects.get(person_id=request.user)
 
     try:
         if re.match("zz\d+", payer_id) is not None:
             payer = Organization.objects.select_for_update().filter(oid=request.user)
         else:
-            payer = NaturalPerson.objects.select_for_update().filter(pid=request.user)
+            payer = NaturalPerson.objects.select_for_update().filter(person_id=request.user)
         with transaction.atomic():
             assert len(payer) == 1
             payer = payer[0]
@@ -976,7 +981,7 @@ def start_transaction(request):
             )
             record.amount = amount
             record.message = transaction_msg
-            record.tstatus = 1  # Wating
+            record.status = 1  # Wating
             record.time = str(datetime.now())
             record.save()
 
@@ -1012,7 +1017,7 @@ def confirm_transaction(request):
                     "msg"
                 ] = "The transaction is not yours. If you are not deliberately doing this, please contact the administrator to report this bug."
                 return render(request, "msg.html", context)
-            if record.tstatus != 1:
+            if record.status != 1:
                 context[
                     "msg"
                 ] = "The transaction has already been dealt. If you are not deliberately doing this, please contact the administrator to report this bug."
@@ -1021,7 +1026,7 @@ def confirm_transaction(request):
             if re.match("zz\d+", payer.username) is not None:
                 payer = Organization.objects.select_for_update().filter(oid=payer)
             else:
-                payer = NaturalPerson.objects.select_for_update().filter(pid=payer)
+                payer = NaturalPerson.objects.select_for_update().filter(person_id=payer)
             assert len(payer) == 1
             payer = payer[0]
             recipient = record.recipient
@@ -1031,15 +1036,15 @@ def confirm_transaction(request):
                 )
             else:
                 recipient = NaturalPerson.objects.select_for_update().filter(
-                    pid=recipient
+                    person_id=recipient
                 )
             assert len(recipient) == 1
             recipient = recipient[0]
             if reject == "True":
-                record.tstatus = 2
+                record.status = 2
                 payer.YQPoint += record.amount
             else:
-                record.tstatus = 0
+                record.status = 0
                 recipient.YQPoint += record.amount
             record.save()
             payer.save()
