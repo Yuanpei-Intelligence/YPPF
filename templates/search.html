@@ -15,18 +15,18 @@
             <div class="container">
 
                 <div id="navSection" data-spy="affix" class="nav sidenav">
-                    
+
                 </div>
 
                 <div class="row layout-top-spacing">
-                    
+
                     <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing">
                         <div class="statbox widget box box-shadow">
                             <div class="widget-header">
                                 <div class="row">
                                     <div class="col-xl-12 col-md-12 col-sm-12 col-12">
                                         <h4>人员搜索</h4>
-                                    </div>          
+                                    </div>
                                 </div>
                             </div>
                             <div class="widget-content widget-content-area">
@@ -45,7 +45,7 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                        {% for person in people_list %}
+                                            {% for person in people_list %}
                                             <tr>
                                                 <!-- <td><a href=../../stuinfo/{{i.pname}}+{{i.id}}>{{people.pname}}</a></td> -->
                                                 <!--<td>{{people.pyear}}</td>
@@ -57,21 +57,23 @@
                                                 <td>{{people.pdorm}}</td>
                                                 <td>{{people.pstatus}}</td> -->
                                                 {% for attribute in person.show_info %}
-                                                    {% if forloop.counter == 1 %}
-                                                    <!-- 说明此时要展示姓名，关联链接 -->
-                                                        <td class="text-center"><a href=../../stuinfo/{{person.pname}}+{{person.id}}>{{attribute}}</a></td>
-                                                    {% else %}
-                                                        <td class="text-center"> {{attribute}} </td>
-                                                    {% endif %}
+                                                {% if forloop.counter == 1 %}
+                                                <!-- 说明此时要展示姓名，关联链接 -->
+                                                <td class="text-center"><a
+                                                        href=../../stuinfo/{{person.pname}}+{{person.id}}>{{attribute}}</a>
+                                                </td>
+                                                {% else %}
+                                                <td class="text-center"> {{attribute}} </td>
+                                                {% endif %}
                                                 {% endfor %}
                                             </tr>
-                                        {% endfor %}
-                                            
+                                            {% endfor %}
+
                                         </tbody>
                                     </table>
                                 </div>
 
-                                
+
 
                             </div>
                         </div>
@@ -83,7 +85,7 @@
                                 <div class="row">
                                     <div class="col-xl-12 col-md-12 col-sm-12 col-12">
                                         <h4>组织搜索</h4>
-                                    </div>          
+                                    </div>
                                 </div>
                             </div>
                             <div class="widget-content widget-content-area">
@@ -92,21 +94,26 @@
                                         <thead>
                                         </thead>
                                         <tbody>
+                                            <!-- <tr>
+                                                <td class="text-center"><a
+                                                    href=../../orginfo/{{orgn.oname}}>{{attribute}}</a>
+                                            </tr> -->
                                             <tr>
-                                                <td>青年志愿者协会 </td>
+                                                <td class="text-center"><a
+                                                    href=../../orginfo/{{青年志愿者协会}}>青年志愿者协会</a>
                                             </tr>
-                                            
+
                                         </tbody>
                                     </table>
                                 </div>
 
-                                
+
 
                             </div>
                         </div>
-                    </div>                
-                
-                    
+                    </div>
+
+
 
                 </div>
 
@@ -114,9 +121,10 @@
         </div>
         <div class="footer-wrapper">
             <div class="footer-section f-section-1">
-                <p class="">Copyright © 2020 <a target="_blank" href="../../../designreset.html">YPPF Team</a>, All rights <a href="http://www.bootstrapmb.com">Reserved </a>.</p>
+                <p class="">Copyright © 2020 <a target="_blank" href="../../../designreset.html">YPPF Team</a>, All
+                    rights <a href="http://www.bootstrapmb.com">Reserved </a>.</p>
             </div>
-            
+
         </div>
     </div>
     <!--  END CONTENT AREA  -->
