@@ -57,12 +57,12 @@ class NaturalPerson(models.Model):
 
     pstatus = models.SmallIntegerField("在校状态", choices=status.choices, default=0)
 
-    class Identity(models.IntegerChoices):
+    class identity(models.IntegerChoices):
         TEACHER = (0, "教职工")
         STUDENT = (1, "学生")
 
-    Identity = models.SmallIntegerField(
-        "身份", choices=Identity.choices, default=1
+    identity = models.SmallIntegerField(
+        "身份", choices=identity.choices, default=1
     )  # 标识学生还是老师
 
     # 表示信息是否选择展示
@@ -145,7 +145,10 @@ class Position(models.Model):
     """
 
     person = models.ForeignKey(
-        NaturalPerson, related_name="person", to_field="person_id", on_delete=models.CASCADE,
+        NaturalPerson,
+        related_name="person",
+        to_field="person_id",
+        on_delete=models.CASCADE,
     )
     org = models.ForeignKey(Organization, related_name="org", on_delete=models.CASCADE)
 
@@ -195,20 +198,20 @@ class Activity(models.Model):
 
     # url,活动二维码
     class Astatus(models.TextChoices):
-        Asta_Pending = "审核中"
-        Applying = "报名中"
-        Waiting = "等待中"
-        Processing = "进行中"
-        Canceled = "已取消"
-        Finish = "已结束"
-        Unsucceed = "未通过"
+        PENDING = "审核中"
+        APPLYING = "报名中"
+        WAITING = "等待中"
+        PROCESSING = "进行中"
+        CANCELLED = "已取消"
+        FINISH = "已结束"
+        REJECTED = "未通过"
 
-    astatus = models.CharField("活动状态", choices=Astatus.choices, max_length=32)
-    mutableYQ = models.BooleanField("是否可以调整价格", default=False)
+    status = models.CharField("活动状态", choices=Astatus.choices, max_length=32)
+    mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
     YQPoint = ListCharField(
         base_field=models.IntegerField(default=0), size=10, max_length=50, default=[0]
     )
-    Places = ListCharField(
+    places = ListCharField(
         base_field=models.IntegerField(default=0), size=10, max_length=50, default=[0]
     )
 
@@ -218,31 +221,29 @@ class Activity(models.Model):
         return f"活动：{self.aname}"
 
 
-# modified by Kinnuch & genuine
 class TransferRecord(models.Model):
+    class Meta:
+        verbose_name = "转账信息"
+        verbose_name_plural = verbose_name
+        ordering = ["time"]
+
     proposer = models.ForeignKey(
         User, related_name="proposer_id", on_delete=models.CASCADE
     )
     recipient = models.ForeignKey(
         User, related_name="recipient_id", on_delete=models.CASCADE
     )
-    amount = models.FloatField("转账元气值数量", default=0)
+    amount = models.IntegerField("转账元气值数量", default=0)
     time = models.DateTimeField("转账时间", auto_now_add=True)
     message = models.CharField("备注信息", max_length=255, default="")
 
     class TransferStatus(models.IntegerChoices):
-        ACCEPTED = 0  # 已接受
-        WAITING = 1  # 等待确认中
-        REFUSED = 2  # 已拒绝
-        SUSPENDED = 3  # 已终止
+        ACCEPTED = (0, "已接受")
+        WAITING = (1, "等待确认中")
+        REFUSED = (2, "已拒绝")
+        SUSPENDED = (3, "已终止")
 
     status = models.IntegerField(choices=TransferStatus.choices, default=1)
-
-    class Meta:
-        verbose_name = "转账信息"
-        verbose_name_plural = verbose_name
-
-        ordering = ["time"]
 
 
 class Paticipant(models.Model):

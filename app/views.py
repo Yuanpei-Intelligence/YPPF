@@ -841,7 +841,7 @@ def engage_activity(request):
             orgnization = orgnization[0]
 
             amount = float(activity.YQPoint[choice])
-            cnt = activity.Places[choice]
+            cnt = activity.places[choice]
             if cnt <= 0:
                 context["msg"] = "Failed to fetch the ticket."
                 return render(request, "msg.html", context)
@@ -849,7 +849,7 @@ def engage_activity(request):
                 context["msg"] = "No enough YQPoint"
                 return render(request, "msg.html", context)
             payer.YQPoint -= float(amount)
-            activity.Places[choice] = cnt - 1
+            activity.places[choice] = cnt - 1
             orgnization.YQPoint += float(amount)
 
             record = TransferRecord.objects.create(
