@@ -589,7 +589,8 @@ def search(request):
                         '性别', '专业', '邮箱', '电话', '宿舍', '状态']  # 感觉将年级和班级分开呈现会简洁很多
 
         return render(request, "search.html", locals())
-    except:
+    except Exception as e:
+        print(f"In app/views.py, function search.\n Error description: {str(e)}")
         auth.logout(request)
         return redirect("/index/")
 
