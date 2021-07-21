@@ -10,7 +10,7 @@ from app.models import (
 )
 import app.utils as utils
 from app.forms import UserForm
-from app.data_import import load
+from app.data_import import load,load_orgtype,load_org
 from app.utils import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.shortcuts import render, redirect
@@ -36,7 +36,23 @@ email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
-def get_person_or_org(user,user_type):
+def load_org_data(request):
+    if request.user.is_superuser:
+        load_type = request.GET.get('loadtype', None)
+        message = '加载失败！'
+        if load_type is None:
+            message = '没有得到loadtype参数:[org或type]'
+        elif load_type == 'type':
+            load_orgtype()
+            message = "load type成功！"
+        elif load_type == 'org':
+            load_org()
+            message = 'load org成功！'
+    else:
+        message = '请先以超级账户登录后台后再操作！'
+    return render(request, 'debugging.html',locals())
+
+def get_person_or_org(user, user_type):
     return (
         NaturalPerson.objects.get(pid=user)
         if user_type == 'Person'
@@ -185,81 +201,78 @@ def stuinfo(request, name=None):
                 那么期望有一个"+"在name中，如果搜不到就跳转到Search/？Query=name让他跳转去
     """
 
-    try:
-        user = request.user
-        valid, user_type, html_display = utils.check_user_type(request)
-        if not valid:
-            return redirect("/logout/")
 
-        if name is None:
-            if user_type == "Organization":
-                return redirect("/welcome/")
-            else:
-                assert user_type == "Person"
-                try:
-                    oneself = NaturalPerson.objects.activated().get(pid=user)
-                except:
-                    return redirect("/welcome/")
-                return redirect("/stuinfo/" + oneself.pname)
+    user = request.user
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect("/logout/")
+
+    if name is None:
+        if user_type == "Organization":
+            return redirect("/welcome/")
         else:
-            # 先对可能的加号做处理
-            name_list = name.split("+")
-            name = name_list[0]
-            person = NaturalPerson.objects.activated().filter(pname=name)
-            if len(person) == 0:  # 查无此人
+            assert user_type == "Person"
+            try:
+                oneself = NaturalPerson.objects.activated().get(pid=user)
+            except:
                 return redirect("/welcome/")
-            if len(person) == 1:  # 无重名
-                person = person[0]
-            else:  # 有很多人，这时候假设加号后面的是user的id
-                if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
-                    if (
+            return redirect("/stuinfo/" + oneself.pname)
+    else:
+        # 先对可能的加号做处理
+        name_list = name.split("+")
+        name = name_list[0]
+        person = NaturalPerson.objects.activated().filter(pname=name)
+        if len(person) == 0:  # 查无此人
+            return redirect("/welcome/")
+        if len(person) == 1:  # 无重名
+            person = person[0]
+        else:  # 有很多人，这时候假设加号后面的是user的id
+            if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
+                if (
                         user_type == "Person"
                         and NaturalPerson.objects.activated().get(pid=user).pname
                         == name
-                    ):
-                        person = NaturalPerson.objects.activated().get(pid=user)
-                    else:  # 不是自己，信息不全跳转搜索
-                        return redirect("/search?Query=" + name)
-                else:
-                    obtain_id = int(name_list[1])  # 获取增补信息
-                    get_user = User.objects.get(id=obtain_id)
-                    potential_person = NaturalPerson.objects.activated().get(
-                        pid=get_user
-                    )
-                    assert potential_person in person
-                    person = potential_person
+                ):
+                    person = NaturalPerson.objects.activated().get(pid=user)
+                else:  # 不是自己，信息不全跳转搜索
+                    return redirect("/search?Query=" + name)
+            else:
+                obtain_id = int(name_list[1])  # 获取增补信息
+                get_user = User.objects.get(id=obtain_id)
+                potential_person = NaturalPerson.objects.activated().get(
+                    pid=get_user
+                )
+                assert potential_person in person
+                person = potential_person
 
-            
-            is_myself = user_type == "Person" and person.pid == user  # 用一个字段储存是否是自己
-            html_display["is_myself"] = is_myself  # 存入显示
+        is_myself = user_type == "Person" and person.pid == user  # 用一个字段储存是否是自己
+        html_display["is_myself"] = is_myself  # 存入显示
 
-            # 处理被搜索人的信息，这里应该和“用户自己”区分开
-            join_pos_id_list = Position.objects.activated().filter(person=person)
+        # 处理被搜索人的信息，这里应该和“用户自己”区分开
+        join_pos_id_list = Position.objects.activated().filter(person=person)
 
-            # html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
+        # html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
 
-            # 呈现信息
-            # 首先是左边栏
-            html_display = utils.get_user_left_narbar(person, is_myself, html_display)
+        # 呈现信息
+        # 首先是左边栏
+        html_display = utils.get_user_left_narbar(person, is_myself, html_display)
 
-            modpw_status = request.GET.get("modinfo", None)
-            html_display["modpw_code"] = (
+        modpw_status = request.GET.get("modinfo", None)
+        html_display["modpw_code"] = (
                 modpw_status is not None and modpw_status == "success"
-            )
-            html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
-            html_display["warn_message"] = request.GET.get(
-                "warn_message", ""
-            )  # 提醒的具体内容
+        )
+        html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
+        html_display["warn_message"] = request.GET.get(
+            "warn_message", ""
+        )  # 提醒的具体内容
 
-            html_display["userinfo"] = person
+        html_display["userinfo"] = person
 
-            html_display["title_name"] = "User Profile"
-            html_display["narbar_name"] = "个人主页"
+        html_display["title_name"] = "User Profile"
+        html_display["narbar_name"] = "个人主页"
 
-            return render(request, "stuinfo.html", locals())
-    except:
-        auth.logout(request)
-        return redirect("/index/")
+        return render(request, "stuinfo.html", locals())
+    
 
 
 @login_required(redirect_field_name="origin")
@@ -316,7 +329,6 @@ def orginfo(request, name=None):
     if not valid:
         return redirect("/logout/")
 
-    
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if user_type == "Person":
             return redirect("/welcome/")
@@ -335,6 +347,9 @@ def orginfo(request, name=None):
         organization_type_name = org.otype.otype_name
         # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
+    except:
+        return redirect("/welcome/")
+
         # 这一部分是负责人boss的信息
         boss = Position.objects.activated().get(org=org, pos=0).person
         # boss = NaturalPerson.objects.activated().get(pid = bossid)
@@ -346,7 +361,7 @@ def orginfo(request, name=None):
         boss_display["email"] = boss.pemail
         boss_display["tel"] = boss.ptel
 
-        #jobpos = Position.objects.activated().get(person=boss, org = org).pos
+        # jobpos = Position.objects.activated().get(person=boss, org = org).pos
         boss_display["job"] = org.otype.ojob_name_list[0]
 
         # 补充左边栏信息
@@ -354,23 +369,19 @@ def orginfo(request, name=None):
         html_display['isboss'] = True if (user_type == "Person" and boss.pid == user) else False
         # 判断是否为组织账户本身在登录
         html_display['is_myself'] = (me == org)
-        
-        
+
         # 再处理修改信息的回弹
         modpw_status = request.GET.get("modinfo", None)
         html_display["modpw_code"] = (
-            modpw_status is not None and modpw_status == "success"
+                modpw_status is not None and modpw_status == "success"
         )
-
 
         # 补充其余信息
         html_display = utils.get_org_left_narbar(org, html_display['is_myself'], html_display)
-        
 
         # 组织活动的信息
 
-    except:
-        return redirect("/welcome/")
+    
 
     # 补充一些呈现信息
     html_display["title_name"] = "Org. Profile"
@@ -542,8 +553,6 @@ def search(request):
         搜索组织
             支持使用组织名、组织类型搜索、一级负责人姓名
             组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
-
-
     """
     try:
 
@@ -593,13 +602,13 @@ def test(request):
 def forget_password(request):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
-        
+
         页面效果
         -------
         - 根据（邮箱）验证码完成登录，提交后跳转到修改密码界面
         - 本质是登录而不是修改密码
         - 如果改成支持验证码登录只需修改页面和跳转（记得修改函数和页面名）
-        
+
         页面逻辑
         -------
         1. 发送验证码
@@ -607,7 +616,7 @@ def forget_password(request):
         2. 输入验证码
             2.5 保留表单信息
         3. 错误提醒和邮件发送提醒
-        
+
         实现逻辑
         -------
         - 通过脚本使按钮提供不同的`send_captcha`值，区分按钮
@@ -619,7 +628,7 @@ def forget_password(request):
             - `err_code`=`0`或`4`是预设的提醒值，额外弹出提示框
             - forget_password.html中可以进一步修改
         - 尝试发送验证码后总是弹出提示框，通知用户验证码的发送情况
-        
+
         注意事项
         -------
         - 尝试忘记密码的不一定是本人，一定要做好隐私和逻辑处理
@@ -654,13 +663,13 @@ def forget_password(request):
                     captcha = random.randrange(1000000)  # randint包含端点，randrange不包含
                     captcha = f"{captcha:06}"
                     msg = (
-                        f"<h3><b>亲爱的{useroj.pname}同学：</b></h3><br/>"
-                        "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
-                        f'<p style="color:orange">{captcha}'
-                        '<span style="color:gray">(仅当前页面有效)</span></p>'
-                        '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
-                        "<br/><br/><br/>"
-                        "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
+                            f"<h3><b>亲爱的{useroj.pname}同学：</b></h3><br/>"
+                            "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
+                            f'<p style="color:orange">{captcha}'
+                            '<span style="color:gray">(仅当前页面有效)</span></p>'
+                            '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
+                            "<br/><br/><br/>"
+                            "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
                         "toaddrs": [email],  # 收件人列表
@@ -746,7 +755,7 @@ def modpw(request):
                 try:  # modified by pht: if检查是错误的，不存在时get会报错
                     user.set_password(newpw)
                     user.save()
-                    useroj.firstTimeLogin=False
+                    useroj.firstTimeLogin = False
                     useroj.save()
 
                     if forgetpw:
@@ -785,16 +794,24 @@ def load_data(request):
             user = User.objects.create(username=username)
             user.set_password(password)
             user.save()
-            stu = NaturalPerson.objects.create(pid=sno)
+            stu = NaturalPerson.objects.create(pid=user)
             stu.pemail = email
             stu.ptel = tel
             stu.pyear = year
-            stu.pgender = gender
+            if gender == '男' :
+                stu.pgender = NaturalPerson.Gender.MALE
+            elif gender == '女':
+                stu.pgender = NaturalPerson.Gender.FEMALE
+            else:
+                stu.pgender = NaturalPerson.Gender.OTHER
             stu.pmajor = major
             stu.pname = name
             stu.pclass = pclass
             stu.save()
-        return render(request, "debugging.html")
+        message = "导入学生信息成功！"
+    else:
+        message = '请先以超级账户登录后台后再操作！'
+    return render(request, "debugging.html",locals())
 
 
 # 参与活动，get 传两个简单参数即可，活动 aid，价格等级
