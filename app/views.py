@@ -600,12 +600,9 @@ def search(request):
             Q(otype_name__icontains=query) | Q(oincharge__in=organization_incharge_list))
         organization_list = Organization.objects.filter(
             Q(oname__icontains=query) | Q(otype__in=organization_manager_list))
-        
-        print(organization_incharge_list)
-        print(organization_list)
-        print(people_list)
+
         # 组织不呈现具体内容，进行跳转
-        print("\n\ndebugging\n\n")
+        print(organization_list)
         return render(request, "search.html", locals())
     except Exception as e:
         # 处理错误
