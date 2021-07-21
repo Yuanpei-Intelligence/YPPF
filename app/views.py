@@ -37,16 +37,19 @@ hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
 def load_org_data(request):
-    load_type = request.GET.get('loadtype', None)
-    message = '加载失败！'
-    if load_type is None:
-        message = '没有得到loadtype参数:[org或type]'
-    elif load_type == 'type':
-        load_orgtype()
-        message = "load type成功！"
-    elif load_type == 'org':
-        load_org()
-        message = 'load org成功！'
+    if request.user.is_superuser:
+        load_type = request.GET.get('loadtype', None)
+        message = '加载失败！'
+        if load_type is None:
+            message = '没有得到loadtype参数:[org或type]'
+        elif load_type == 'type':
+            load_orgtype()
+            message = "load type成功！"
+        elif load_type == 'org':
+            load_org()
+            message = 'load org成功！'
+    else:
+        message = '请先以超级账户登录后台后再操作！'
     return render(request, 'debugging.html',locals())
 
 def get_person_or_org(user, user_type):
