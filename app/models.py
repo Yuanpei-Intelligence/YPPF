@@ -94,7 +94,7 @@ class NaturalPerson(models.Model):
         gender = ['男', '女', '其他']
         info = [self.pname, self.pyear, self.pclass]
         info.append(self.pnickname if self.show_nickname else unpublished)
-        info.append(unpublished if not self.show_gender else gender[self.pname])
+        info.append(unpublished if not self.show_gender else gender[self.pgender])
         info.append(self.pmajor if self.show_major else unpublished)
         info.append(self.pemail if self.show_email else unpublished)
         info.append(self.ptel if self.show_tel else unpublished)
