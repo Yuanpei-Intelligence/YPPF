@@ -57,7 +57,11 @@
                                                 <td>{{people.pdorm}}</td>
                                                 <td>{{people.pstatus}}</td> -->
                                                 {% for attribute in person.show_info %}
-                                                    <td> {{attribute}} </td>
+                                                    {% if forloop.counter == 1 %}
+                                                        <td><a href=../../stuinfo/{{person.pname}}+{{person.id}}>{{attribute}}</a></td>
+                                                    {% else %}
+                                                        <td> {{attribute}} </td>
+                                                    {% endif %}
                                                 {% endfor %}
                                             </tr>
                                         {% endfor %}
