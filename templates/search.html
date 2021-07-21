@@ -67,6 +67,10 @@
                                                 {% endif %}
                                                 {% endfor %}
                                             </tr>
+                                            {% empty %}
+                                            <tr>
+                                                <td class="text-center">{{not_found_message}}</td>
+                                            </tr>
                                             {% endfor %}
 
                                         </tbody>
