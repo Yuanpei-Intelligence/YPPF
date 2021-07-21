@@ -10,7 +10,7 @@ from app.models import (
 )
 import app.utils as utils
 from app.forms import UserForm
-from app.data_import import load
+from app.data_import import load,load_orgtype,load_org
 from app.utils import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.shortcuts import render, redirect
@@ -35,8 +35,10 @@ import random, requests  # 发送验证码
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
+load_orgtype()
+load_org()
 
-def get_person_or_org(user,user_type):
+def get_person_or_org(user, user_type):
     return (
         NaturalPerson.objects.get(pid=user)
         if user_type == 'Person'
@@ -213,9 +215,9 @@ def stuinfo(request, name=None):
             else:  # 有很多人，这时候假设加号后面的是user的id
                 if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
                     if (
-                        user_type == "Person"
-                        and NaturalPerson.objects.activated().get(pid=user).pname
-                        == name
+                            user_type == "Person"
+                            and NaturalPerson.objects.activated().get(pid=user).pname
+                            == name
                     ):
                         person = NaturalPerson.objects.activated().get(pid=user)
                     else:  # 不是自己，信息不全跳转搜索
@@ -229,7 +231,6 @@ def stuinfo(request, name=None):
                     assert potential_person in person
                     person = potential_person
 
-            
             is_myself = user_type == "Person" and person.pid == user  # 用一个字段储存是否是自己
             html_display["is_myself"] = is_myself  # 存入显示
 
@@ -244,7 +245,7 @@ def stuinfo(request, name=None):
 
             modpw_status = request.GET.get("modinfo", None)
             html_display["modpw_code"] = (
-                modpw_status is not None and modpw_status == "success"
+                    modpw_status is not None and modpw_status == "success"
             )
             html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
             html_display["warn_message"] = request.GET.get(
@@ -316,7 +317,6 @@ def orginfo(request, name=None):
     if not valid:
         return redirect("/logout/")
 
-    
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if user_type == "Person":
             return redirect("/welcome/")
@@ -346,7 +346,7 @@ def orginfo(request, name=None):
         boss_display["email"] = boss.pemail
         boss_display["tel"] = boss.ptel
 
-        #jobpos = Position.objects.activated().get(person=boss, org = org).pos
+        # jobpos = Position.objects.activated().get(person=boss, org = org).pos
         boss_display["job"] = org.otype.ojob_name_list[0]
 
         # 补充左边栏信息
@@ -354,18 +354,15 @@ def orginfo(request, name=None):
         html_display['isboss'] = True if (user_type == "Person" and boss.pid == user) else False
         # 判断是否为组织账户本身在登录
         html_display['is_myself'] = (me == org)
-        
-        
+
         # 再处理修改信息的回弹
         modpw_status = request.GET.get("modinfo", None)
         html_display["modpw_code"] = (
-            modpw_status is not None and modpw_status == "success"
+                modpw_status is not None and modpw_status == "success"
         )
-
 
         # 补充其余信息
         html_display = utils.get_org_left_narbar(org, html_display['is_myself'], html_display)
-        
 
         # 组织活动的信息
 
@@ -542,8 +539,6 @@ def search(request):
         搜索组织
             支持使用组织名、组织类型搜索、一级负责人姓名
             组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
-
-
     """
     try:
 
@@ -593,13 +588,13 @@ def test(request):
 def forget_password(request):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
-        
+
         页面效果
         -------
         - 根据（邮箱）验证码完成登录，提交后跳转到修改密码界面
         - 本质是登录而不是修改密码
         - 如果改成支持验证码登录只需修改页面和跳转（记得修改函数和页面名）
-        
+
         页面逻辑
         -------
         1. 发送验证码
@@ -607,7 +602,7 @@ def forget_password(request):
         2. 输入验证码
             2.5 保留表单信息
         3. 错误提醒和邮件发送提醒
-        
+
         实现逻辑
         -------
         - 通过脚本使按钮提供不同的`send_captcha`值，区分按钮
@@ -619,7 +614,7 @@ def forget_password(request):
             - `err_code`=`0`或`4`是预设的提醒值，额外弹出提示框
             - forget_password.html中可以进一步修改
         - 尝试发送验证码后总是弹出提示框，通知用户验证码的发送情况
-        
+
         注意事项
         -------
         - 尝试忘记密码的不一定是本人，一定要做好隐私和逻辑处理
@@ -654,13 +649,13 @@ def forget_password(request):
                     captcha = random.randrange(1000000)  # randint包含端点，randrange不包含
                     captcha = f"{captcha:06}"
                     msg = (
-                        f"<h3><b>亲爱的{useroj.pname}同学：</b></h3><br/>"
-                        "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
-                        f'<p style="color:orange">{captcha}'
-                        '<span style="color:gray">(仅当前页面有效)</span></p>'
-                        '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
-                        "<br/><br/><br/>"
-                        "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
+                            f"<h3><b>亲爱的{useroj.pname}同学：</b></h3><br/>"
+                            "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
+                            f'<p style="color:orange">{captcha}'
+                            '<span style="color:gray">(仅当前页面有效)</span></p>'
+                            '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
+                            "<br/><br/><br/>"
+                            "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
                         "toaddrs": [email],  # 收件人列表
@@ -746,7 +741,7 @@ def modpw(request):
                 try:  # modified by pht: if检查是错误的，不存在时get会报错
                     user.set_password(newpw)
                     user.save()
-                    useroj.firstTimeLogin=False
+                    useroj.firstTimeLogin = False
                     useroj.save()
 
                     if forgetpw:
