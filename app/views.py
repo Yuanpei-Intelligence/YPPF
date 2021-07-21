@@ -571,6 +571,8 @@ def search(request):
             html_display = utils.get_org_left_narbar(
                 me, html_display["is_myself"], html_display
             )
+        # syb: 以上一段目前不注释掉运行还会报错，我去查查为什么;好像是position类里面缺一些相关的设置
+        # 或许我一会儿补一下下面报错的描述
 
         query = request.GET.get("Query", "")
         if query == "":
@@ -578,18 +580,17 @@ def search(request):
 
         # 首先搜索个人
         people_list = NaturalPerson.objects.filter(
-            Q(pname__icontains=query)
-            | (Q(pnickname__icontains=query))
-            | (Q(pmajor__icontains=query))
-        )
-
+            Q(pname__icontains=query) | (Q(pnickname__icontains=query) & Q(show_nickname=True)) |
+            (Q(pmajor__icontains=query) & Q(show_major=True)))
+            
         # 接下来准备呈现的内容
-
         # 首先是准备搜索个人信息的部分
-        people_field = ["姓名", "年级&班级", "昵称", "性别", "专业", "邮箱", "电话", "宿舍", "状态"]
+        people_field = ['姓名', '年级', '班级', '昵称',
+                        '性别', '专业', '邮箱', '电话', '宿舍', '状态']  # 感觉将年级和班级分开呈现会简洁很多
 
         return render(request, "search.html", locals())
-    except:
+    except Exception as e:
+        print(f"Error was found in app/views.py, function search.\nError description: {str(e)}\n")
         auth.logout(request)
         return redirect("/index/")
 
