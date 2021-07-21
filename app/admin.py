@@ -10,7 +10,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         "pyear",
         "pdorm",
         "pstatus",
-        "Identity",
+        "identity",
         "pemail",
         "pclass",
         "pmajor",
