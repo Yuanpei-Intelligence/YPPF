@@ -256,7 +256,7 @@ class Activity(models.Model):
         size=10,
         max_length=50,
         default=[0]
-    )#注意都×10了，使用时注意
+    )  # 注意都×10了，使用时注意
     Places = ListCharField(
         base_field=models.CharField("活动地点", max_length=100),
         size=10,

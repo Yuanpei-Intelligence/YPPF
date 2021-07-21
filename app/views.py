@@ -10,8 +10,8 @@ from app.models import (
 )
 import app.utils as utils
 from app.forms import UserForm
-from app.data_import import load,load_orgtype,load_org
-from app.utils import MyMD5PasswordHasher, MySHA256Hasher,check_time
+from app.data_import import load, load_orgtype, load_org
+from app.utils import MyMD5PasswordHasher, MySHA256Hasher, check_time
 
 from django.shortcuts import render, redirect
 from django.http import HttpResponseRedirect, JsonResponse
@@ -37,6 +37,7 @@ hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 load_orgtype()
 load_org()
+
 
 def get_person_or_org(user, user_type):
     return (
@@ -1052,42 +1053,44 @@ def confirm_transaction(request):
             "msg"
         ] = "Can not find the transaction record. If you are not deliberately doing this, please contact the administrator to report this bug."
         return render(request, "msg.html", context)
+
+
 # 发起活动
 def launch_activity(request):
     context = dict()
     # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
-    aname=str(request.POST["aname"])  # 活动名称
-    oid=request.POST["oid"]  # 组织id
-    astart=request.POST["astart"]#默认传入的格式为 2021-07-21 21:00:00
-    afinish=request.POST["afinish"]
-    content=str(request.POST["content"])
-    URL=str(request.POST["URL"])  # 活动推送链接
-    QRcode=request.POST["QRcode"]  # 收取元气值的二维码
-    aprice=request.POST["aprice"]  # 活动价格
-    places=request.POST["places"]#活动举办的地点，默认是list
-    if type(aprice).__name__=='int':
-        aprice=[aprice]
-    YQP=[]
+    aname = str(request.POST["aname"])  # 活动名称
+    oid = request.POST["oid"]  # 组织id
+    astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
+    afinish = request.POST["afinish"]
+    content = str(request.POST["content"])
+    URL = str(request.POST["URL"])  # 活动推送链接
+    QRcode = request.POST["QRcode"]  # 收取元气值的二维码
+    aprice = request.POST["aprice"]  # 活动价格
+    places = request.POST["places"]  # 活动举办的地点，默认是list
+    if type(aprice).__name__ == 'int':
+        aprice = [aprice]
+    YQP = []
     for i in aprice:
-        YQP.append(int(i*10))
+        YQP.append(int(i * 10))
     try:
-        if(check_time(astart,afinish)):
+        if (check_time(astart, afinish)):
             with transaction.commit_on_success():
-                new_act=Activity.objects.create(aname=aname,oid=oid,astart=astart,afinish=afinish,
-                                                astatus=Activity.Astatus.Asta_Pending)#默认状态是报名中
+                new_act = Activity.objects.create(aname=aname, oid=oid, astart=astart, afinish=afinish,
+                                                  astatus=Activity.Astatus.Asta_Pending)  # 默认状态是报名中
 
                 new_act.content = content
                 new_act.aURL = URL
                 new_act.QRcode = QRcode
                 new_act.YQPoint = YQP
-                new_act.Places=places
+                new_act.Places = places
                 new_act.save()
         else:
-            context["msg"] ="The activity has to be in a month! or you have sent a wrong timeform!"
+            context["msg"] = "The activity has to be in a month! or you have sent a wrong timeform!"
             return render(request, "xxx.html", context)
     except:
-        context["msg"]="Can not launch this activity, please check time or if activity is reiterated "
-        return render(request,"activity_info.html",context)
+        context["msg"] = "Can not launch this activity, please check time or if activity is reiterated "
+        return render(request, "activity_info.html", context)
 
     # 返回发起成功或者失败的页面
-    return render(request,"activity_info.html",context)
+    return render(request, "activity_info.html", context)
