@@ -35,8 +35,19 @@ import random, requests  # 发送验证码
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
-load_orgtype()
-load_org()
+
+def load_org_data(request):
+    load_type = request.GET.get('loadtype', None)
+    message = '加载失败！'
+    if load_type is None:
+        message = '没有得到loadtype参数:[org或type]'
+    elif load_type == 'type':
+        load_orgtype()
+        message = "load type成功！"
+    elif load_type == 'org':
+        load_org()
+        message = 'load org成功！'
+    return render(request, 'debugging.html',locals())
 
 def get_person_or_org(user, user_type):
     return (
