@@ -32,6 +32,7 @@
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
+                                        {% if people_list.len == 0 %}
                                         <thead>
                                             <tr>
                                                 <!-- <th>Name</th>
@@ -66,14 +67,17 @@
                                                 <td class="text-center"> {{attribute}} </td>
                                                 {% endif %}
                                                 {% endfor %}
-                                            </tr>
-                                            {% empty %}
-                                            <tr>
-                                                <td class="text-center">{{not_found_message}}</td>
-                                            </tr>
                                             {% endfor %}
-
                                         </tbody>
+                                        {% else %}
+                                        <!-- 如果列表为空 -->
+                                            <thead></thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td class="text-center"> {{not_found_message}}</td>
+                                                </tr>
+                                            </tbody>
+                                        {% endif %}
                                     </table>
                                 </div>
 
