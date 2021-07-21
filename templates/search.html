@@ -38,7 +38,7 @@
                                                 <th>Gender</th>
                                                 <th>Year</th>
                                                 <th class="text-center">Major</th>
-                                                <!-- <th class="text-center">Action</th> -->
+                                                <th class="text-center">Action</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -47,7 +47,8 @@
                                                 <td><a href=../../stuinfo/{{i.pname}}+{{i.id}}>{{i.pname}}</a></td>
                                                 <td>{{i.pgender}}</td>
                                                 <td>{{i.pyear}}</td>
-                                                <td>{{i.pmajor}}</td>
+                                                <td class="text-center">{{i.pmajor}}</td>
+						<td><center><a class="btn btn-secondary" href=../../?origin=/transPage/{{i.pid_id}} role="button">向Ta发起元气值转账</a></center></td>
                                                 <!-- <td class="text-center"><span class="badge badge-success">元培学生</span></td> -->
                                                 
                                             </tr>

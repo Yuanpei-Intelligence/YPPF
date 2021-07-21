@@ -546,11 +546,11 @@ def search(request):
 
     """
     try:
-
         valid, user_type, html_display = utils.check_user_type(request)
         if not valid:
-            return redirect("/logout/")
+           return redirect("/logout/")
 
+        '''
         is_person = True if user_type == "Person" else False
         me = get_person_or_org(request.user, user_type)
         html_display["is_myself"] = True
@@ -562,6 +562,7 @@ def search(request):
             html_display = utils.get_org_left_narbar(
                 me, html_display["is_myself"], html_display
             )
+        '''
 
         query = request.GET.get("Query", "")
         if query == "":
@@ -883,8 +884,9 @@ def engage_activity(request):
 # 搜索不希望出现学号，rid 为 User 的 index
 @require_GET
 @login_required(redirect_field_name="origin")
-def transaction_page(request):
-    recipient_id = request.GET.get("rid")
+def transaction_page(request, rid=None):
+    # recipient_id = request.GET.get("rid")
+    recipient_id = rid
     origin = request.GET.get("origin")
     if origin is None:
         origin = "/"
@@ -895,7 +897,7 @@ def transaction_page(request):
     # r_user = User.objects.get(id=recipient_id)
 
     try:
-        if re.match("zz\d+", recipient_id) is not None:
+        if re.match("zz\d+", str(recipient_id)) is not None:
             recipient = Organization.objects.get(oid=recipient_id)
             recipient_type = "org"
         else:
@@ -907,6 +909,7 @@ def transaction_page(request):
         ] = "Unexpected recipient. If you are not deliberately doing this, please contact the administrator to report this bug."
         context["origin"] = origin
         return render(request, "msg.html", context)
+
 
     if recipient_type == "np":
         name = recipient.pnickname
@@ -1000,9 +1003,9 @@ def start_transaction(request):
 
 @require_GET
 @login_required(redirect_field_name="origin")
-def confirm_transaction(request):
-    tid = request.GET.get("tid")
-    reject = request.GET.get("reject")
+def confirm_transaction(request, tid=None, reject=None):
+    # tid = request.GET.get("tid")
+    # reject = request.GET.get("reject")
     origin = request.GET.get("origin")
     if origin is None:
         origin = "/"
@@ -1040,10 +1043,10 @@ def confirm_transaction(request):
                 )
             assert len(recipient) == 1
             recipient = recipient[0]
-            if reject == "True":
+            if reject == 2:
                 record.tstatus = 2
                 payer.YQPoint += record.amount
-            else:
+            elif reject == 0:
                 record.tstatus = 0
                 recipient.YQPoint += record.amount
             record.save()
@@ -1057,3 +1060,20 @@ def confirm_transaction(request):
             "msg"
         ] = "Can not find the transaction record. If you are not deliberately doing this, please contact the administrator to report this bug."
         return render(request, "msg.html", context)
+
+#modified by Kinnuch
+@login_required(redirect_field_name='origin')
+def mywallet(request):
+    query = request.session['username']
+    flag = -1
+    if re.match('zz\d+', query) is not None:
+        queryman = Organization.objects.get(oid=request.user)
+        flag = 0
+    else:
+        queryman = NaturalPerson.objects.get(pid=request.user)
+        flag = 1
+    balance = queryman.YQPoint
+    query_id = queryman.pid_id
+    Record_list = TransferRecord.objects.filter(
+        Q(proposer=query_id) | (Q(recipient=query_id)))
+    return render(request, 'mywallet.html', locals())
