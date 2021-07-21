@@ -590,7 +590,7 @@ def search(request):
 
         return render(request, "search.html", locals())
     except Exception as e:
-        print(f"In app/views.py, function search.\n Error description: {str(e)}")
+        print(f"Error was found in app/views.py, function search.\nError description: {str(e)}\n")
         auth.logout(request)
         return redirect("/index/")
 

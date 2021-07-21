@@ -100,7 +100,7 @@ class NaturalPerson(models.Model):
         info.append(self.pemail if self.show_email else unpublished)
         info.append(self.ptel if self.show_tel else unpublished)
         info.append(self.pdorm if self.show_dorm else unpublished)
-        info.append(self.pstatus)
+        info.append('在校' if self.pstatus == NaturalPerson.status.UNDERGRADUATED else '已毕业')
         return info
 
 
