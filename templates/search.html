@@ -60,8 +60,8 @@
                                                 {% for attribute in person.show_info %}
                                                 {% if forloop.counter == 1 %}
                                                 <!-- 说明此时要展示姓名，关联链接 -->
-                                                <td class="text-center"><a
-                                                        href=../../stuinfo/{{person.pname}}+{{person.id}}>{{attribute}}</a>
+                                                <td class="text-center">
+                                                    <a href=../../stuinfo/{{person.pname}}+{{person.id}}>{{attribute}}</a>
                                                 </td>
                                                 {% else %}
                                                 <td class="text-center"> {{attribute}} </td>
@@ -101,17 +101,21 @@
                                     <table class="table table-bordered mb-4">
                                         <thead>
                                         </thead>
+                                        {% if organization_list.len != 0 %}
                                         <tbody>
                                             <!-- <tr>
                                                 <td class="text-center"><a
                                                     href=../../orginfo/{{orgn.oname}}>{{attribute}}</a>
                                             </tr> -->
+                                            {% for orgn in organization_list %}
                                             <tr>
-                                                <td class="text-center"><a
-                                                    href=../../orginfo/{{青年志愿者协会}}>青年志愿者协会</a>
+                                                <td>
+                                                    <a href=../../orginfo/{{orgn.name}}>{{orgn.oname}}</a> 
+                                                </td>
                                             </tr>
-
+                                            {% endfor%}
                                         </tbody>
+                                        {% endif %}
                                     </table>
                                 </div>
 
