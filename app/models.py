@@ -10,12 +10,12 @@ from boottest import local_dict
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
-        return self.exclude(pstatus=NaturalPerson.status.GRADUATED)
+        return self.exclude(status=NaturalPerson.status.GRADUATED)
 
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
         datas = NaturalPerson.objects.activated()
         year = datetime.now().strftime("%Y")
-        datas.objects.filter(pyear=str(int(year) - 4)).update(pstatus=1)
+        datas.objects.filter(stu_grade=str(int(year) - 4)).update(status=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
@@ -24,47 +24,47 @@ class NaturalPersonManager(models.Manager):
 class NaturalPerson(models.Model):
     # Common Attributes
     person_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
-    pname = models.CharField("姓名", max_length=10)
-    pnickname = models.CharField(
+    name = models.CharField("姓名", max_length=10)
+    nickname = models.CharField(
         "昵称", max_length=20, null=True, blank=True)  # 添加昵称
 
     class Gender(models.IntegerChoices):
         MALE = (0, "男")
         FEMALE = (1, "女")
 
-    pgender = models.SmallIntegerField(
+    gender = models.SmallIntegerField(
         "性别", choices=Gender.choices, null=True, blank=True
     )
 
-    pemail = models.EmailField("邮箱", null=True, blank=True)
-    ptel = models.CharField("电话", max_length=20, null=True, blank=True)
-    pBio = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
+    email = models.EmailField("邮箱", null=True, blank=True)
+    telephone = models.CharField("电话", max_length=20, null=True, blank=True)
+    biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
-    firstTimeLogin = models.BooleanField(default=True)
+    first_time_login = models.BooleanField(default=True)
     objects = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
 
     YQPoint = models.IntegerField("元气值", default=0)
 
-    # Students Attributes
-    pclass = models.CharField("班级", max_length=5, null=True, blank=True)
-    pmajor = models.CharField("专业", max_length=25, null=True, blank=True)
-    pyear = models.CharField("年级", max_length=5, null=True, blank=True)
-    pdorm = models.CharField("宿舍", max_length=6, null=True, blank=True)
-
-    class status(models.IntegerChoices):
-        UNDERGRADUATED = 0  # 未毕业
-        GRADUATED = 1  # 毕业则注销
-
-    pstatus = models.SmallIntegerField("在校状态", choices=status.choices, default=0)
-
-    class identity(models.IntegerChoices):
+    class Identity(models.IntegerChoices):
         TEACHER = (0, "教职工")
         STUDENT = (1, "学生")
 
     identity = models.SmallIntegerField(
-        "身份", choices=identity.choices, default=1
+        "身份", choices=Identity.choices, default=1
     )  # 标识学生还是老师
+
+    # Students Attributes
+    stu_class = models.CharField("班级", max_length=5, null=True, blank=True)
+    stu_major = models.CharField("专业", max_length=25, null=True, blank=True)
+    stu_grade = models.CharField("年级", max_length=5, null=True, blank=True)
+    stu_dorm = models.CharField("宿舍", max_length=6, null=True, blank=True)
+
+    class GraduateStatus(models.IntegerChoices):
+        UNDERGRADUATED = 0  # 未毕业
+        GRADUATED = 1  # 毕业则注销
+
+    status = models.SmallIntegerField("在校状态", choices=GraduateStatus.choices, default=0)
 
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
@@ -76,7 +76,7 @@ class NaturalPerson(models.Model):
     show_dorm = models.BooleanField(default=False)
 
     def __str__(self):
-        return str(self.pname)
+        return str(self.name)
 
     def show_info(self):
         '''
@@ -85,16 +85,16 @@ class NaturalPerson(models.Model):
             其中未公开的属性呈现为‘未公开’
         '''
         unpublished = '未公开'
-        gender = ['男', '女', '其他']
-        info = [self.pname, self.pyear, self.pclass]
-        info.append(self.pnickname if self.show_nickname else unpublished)
+        gender = ['男', '女']
+        info = [self.name, self.stu_grade, self.stu_class]
+        info.append(self.nickname if self.show_nickname else unpublished)
         info.append(
-            unpublished if not self.show_gender else gender[self.pgender])
-        info.append(self.pmajor if self.show_major else unpublished)
-        info.append(self.pemail if self.show_email else unpublished)
-        info.append(self.ptel if self.show_tel else unpublished)
-        info.append(self.pdorm if self.show_dorm else unpublished)
-        info.append('在校' if self.pstatus == NaturalPerson.status.UNDERGRADUATED else '已毕业')
+            unpublished if not self.show_gender else gender[self.gender])
+        info.append(self.stu_major if self.show_major else unpublished)
+        info.append(self.email if self.show_email else unpublished)
+        info.append(self.telephone if self.show_tel else unpublished)
+        info.append(self.stu_dorm if self.show_dorm else unpublished)
+        info.append('在校' if self.status == NaturalPerson.status.UNDERGRADUATED else '已毕业')
         return info
 
 
@@ -102,16 +102,16 @@ class OrganizationType(models.Model):
     otype_id = models.SmallIntegerField("组织类型编号", unique=True, primary_key=True)
     otype_name = models.CharField("组织类型名称", max_length=25)
     otype_superior_id = models.SmallIntegerField("上级组织类型编号", default=0)
-    oincharge = models.ForeignKey(
+    incharge = models.ForeignKey(
         NaturalPerson,
-        related_name="oincharge",
+        related_name="incharge",
         on_delete=models.SET_NULL,
         blank=True,
         null=True,
     )  # 相关组织的负责人
-    ojob_name_list = ListCharField(
+    job_name_list = ListCharField(
         base_field=models.CharField(max_length=10), size=4, max_length=44
-    )
+    )  # [部长, 副部长, 部员]
 
     def __str__(self):
         return str(self.otype_name)
@@ -125,23 +125,23 @@ class Semester(models.TextChoices):
 
 class OrganizationManager(models.Manager):
     def activated(self):
-        return self.exclude(ostatus=False)
+        return self.exclude(status=False)
 
 
 class Organization(models.Model):
-    oid = models.OneToOneField(to=User, on_delete=models.CASCADE)
+    organization_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
     oname = models.CharField(max_length=32, unique=True)
-    ostatus = models.BooleanField("激活状态", default=False)  # 表示一个组织是否上线(或者是已经被下线)
+    otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
+    status = models.BooleanField("激活状态", default=False)  # 表示一个组织是否上线(或者是已经被下线)
 
     objects = OrganizationManager()
 
     YQPoint = models.FloatField("元气值", default=0.0)
-    ointroduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
-    otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
+    introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
-    firstTimeLogin = models.BooleanField(default=True)  # 是否第一次登录
+    first_time_login = models.BooleanField(default=True)  # 是否第一次登录
 
     def __str__(self):
         return str(self.oname)
@@ -173,18 +173,15 @@ class Position(models.Model):
     org = models.ForeignKey(Organization, related_name="org", on_delete=models.CASCADE)
 
     # 职务的逻辑应该是0最高，1次之这样，然后数字映射到名字是在组织类型表中体现的
-    # pos = models.CharField(verbose_name='职务', max_length=32, default='无')
     pos = models.IntegerField(verbose_name="职务等级", default=0)
 
     # 表示是这个组织哪一年、哪个学期的成员
     in_year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
     in_semester = models.CharField(
-        "当前学期", choices=Semester.choices, default=Semester.Annual, max_length=15
+        "当前学期", choices=Semester.choices, default=Semester.ANNUAL, max_length=15
     )
 
     objects = PositionManager()
-    # in_time = models.DateField('加入时间')
-    # out_time = models.DateField('离开时间')
 
 
 class Course(models.Model):
@@ -205,15 +202,15 @@ class Course(models.Model):
 
 
 class Activity(models.Model):
-    aname = models.CharField("活动名称", max_length=25)
-    oid = models.ForeignKey(
-        Organization, to_field="oid", related_name="actoid", on_delete=models.CASCADE
+    topic = models.CharField("活动名称", max_length=25)
+    organization_id = models.ForeignKey(
+        Organization, to_field="organization_id", related_name="actoid", on_delete=models.CASCADE
     )
-    ayear = models.IntegerField("活动年份", default=int(datetime.now().strftime("%Y")))
-    asemester = models.CharField("活动学期", choices=Semester.choices, max_length=15)
-    astart = models.DateTimeField("开始时间")
-    afinish = models.DateTimeField("结束时间")
-    acontent = models.CharField("活动内容", max_length=225)
+    year = models.IntegerField("活动年份", default=int(datetime.now().strftime("%Y")))
+    semester = models.CharField("活动学期", choices=Semester.choices, max_length=15)
+    start = models.DateTimeField("开始时间")
+    finish = models.DateTimeField("结束时间")
+    content = models.CharField("活动内容", max_length=225)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
     # url,活动二维码
@@ -238,7 +235,7 @@ class Activity(models.Model):
     URL = models.URLField("相关网址", null=True, blank=True)
 
     def __str__(self):
-        return f"活动：{self.aname}"
+        return f"活动：{self.topic}"
 
 
 class TransferRecord(models.Model):

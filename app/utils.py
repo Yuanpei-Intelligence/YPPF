@@ -40,7 +40,7 @@ class MySHA256Hasher(object):
 from app.models import NaturalPerson, Organization, Position
 
 
-def check_user_type(request):  # return Valid(Bool), type
+def check_user_type(request):  # return Valid(Bool), otype
     html_display = {}
     if request.user.is_superuser:
         auth.logout(request)
@@ -49,7 +49,7 @@ def check_user_type(request):  # return Valid(Bool), type
         user_type = "Organization"
         html_display["profile_name"] = "组织主页"
         html_display["profile_url"] = "/orginfo/"
-        org = Organization.objects.get(oid=request.user)
+        org = Organization.objects.get(organization_id=request.user)
         html_display["avatar_path"] = get_user_ava(org)
         # 不确定Org的结构，这里先空着（组织就没有头像了）
     else:
