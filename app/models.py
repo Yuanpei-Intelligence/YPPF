@@ -25,7 +25,7 @@ class NaturalPerson(models.Model):
     # user = models.ForeignKey(User, to_field='username', on_delete=models.CASCADE)
     # pid = models.CharField(max_length=10, unique=True, primary_key=True)
 
-    # Natural Person Attributes
+    # Natural Person info[i]s
     # pid = models.ForeignKey(User, to_field='username',
     #                        on_delete=models.CASCADE, unique=True, primary_key=True)
     pid = models.OneToOneField(to=User, on_delete=models.CASCADE)
@@ -52,7 +52,7 @@ class NaturalPerson(models.Model):
 
     YQPoint = models.FloatField("元气值", default=0.0)
 
-    # Students Attributes
+    # Students info[i]s
     pclass = models.CharField("班级", max_length=5, null=True, blank=True)
     pmajor = models.CharField("专业", max_length=25, null=True, blank=True)
     pyear = models.CharField("年级", max_length=5, null=True, blank=True)
@@ -89,19 +89,27 @@ class NaturalPerson(models.Model):
             返回值为一个列表，在search.html中使用，按照如下顺序呈现：
             people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
             其中未公开的属性呈现为‘未公开’
+            注意：major, gender, nickname, email, tel, dorm可能为None
         '''
-        unpublished = '未公开'
-        gender = ['男', '女', '其他']
-        info = [self.pname, self.pyear, self.pclass]
-        info.append(self.pnickname if self.show_nickname else unpublished)
-        info.append(
-            unpublished if not self.show_gender else gender[self.pgender])
-        info.append(self.pmajor if self.show_major else unpublished)
-        info.append(self.pemail if self.show_email else unpublished)
-        info.append(self.ptel if self.show_tel else unpublished)
-        info.append(self.pdorm if self.show_dorm else unpublished)
-        info.append('在校' if self.pstatus == NaturalPerson.status.UNDERGRADUATED else '已毕业')
-        return info
+        try:
+            unpublished = '未公开'
+            gender = ['男', '女', '其他']
+            info = [self.pname, self.pyear, self.pclass]
+            info.append(self.pnickname if self.show_nickname else unpublished)
+            info.append(
+                unpublished if ((not self.show_gender) or (self.pgender == None)) else gender[self.pgender])
+            info.append(self.pmajor if self.show_major else unpublished)
+            info.append(self.pemail if self.show_email else unpublished)
+            info.append(self.ptel if self.show_tel else unpublished)
+            info.append(self.pdorm if self.show_dorm else unpublished)
+            info.append('在校' if self.pstatus == NaturalPerson.status.UNDERGRADUATED else '已毕业')
+            for i in range(len(info)):
+                if info[i] == None:
+                    info[i] = unpublished
+            return info
+        except:
+            # 处理错误
+            PASS
 
 
 class OrganizationType(models.Model):

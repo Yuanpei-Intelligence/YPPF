@@ -10,7 +10,7 @@ from app.models import (
 )
 import app.utils as utils
 from app.forms import UserForm
-from app.data_import import load,load_orgtype,load_org
+from app.data_import import load, load_orgtype, load_org
 from app.utils import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.shortcuts import render, redirect
@@ -30,11 +30,13 @@ from time import mktime
 from datetime import datetime
 from boottest import local_dict
 import re
-import random, requests  # 发送验证码
+import random
+import requests  # 发送验证码
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
+
 
 def load_org_data(request):
     if request.user.is_superuser:
@@ -50,7 +52,8 @@ def load_org_data(request):
             message = 'load org成功！'
     else:
         message = '请先以超级账户登录后台后再操作！'
-    return render(request, 'debugging.html',locals())
+    return render(request, 'debugging.html', locals())
+
 
 def get_person_or_org(user, user_type):
     return (
@@ -147,7 +150,8 @@ def index(request):
             username = request.session["username"]
             en_pw = hash_coder.encode(username + timeStamp)
             return redirect(
-                arg_origin + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
+                arg_origin +
+                f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
             )
 
     return render(request, "index.html", locals())
@@ -200,7 +204,6 @@ def stuinfo(request, name=None):
             如果重名
                 那么期望有一个"+"在name中，如果搜不到就跳转到Search/？Query=name让他跳转去
     """
-
 
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request)
@@ -255,13 +258,15 @@ def stuinfo(request, name=None):
 
         # 呈现信息
         # 首先是左边栏
-        html_display = utils.get_user_left_narbar(person, is_myself, html_display)
+        html_display = utils.get_user_left_narbar(
+            person, is_myself, html_display)
 
         modpw_status = request.GET.get("modinfo", None)
         html_display["modpw_code"] = (
-                modpw_status is not None and modpw_status == "success"
+            modpw_status is not None and modpw_status == "success"
         )
-        html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
+        html_display["warn_code"] = request.GET.get(
+            "warn_code", 0)  # 是否有来自外部的消息
         html_display["warn_message"] = request.GET.get(
             "warn_message", ""
         )  # 提醒的具体内容
@@ -272,7 +277,6 @@ def stuinfo(request, name=None):
         html_display["narbar_name"] = "个人主页"
 
         return render(request, "stuinfo.html", locals())
-    
 
 
 @login_required(redirect_field_name="origin")
@@ -366,22 +370,22 @@ def orginfo(request, name=None):
 
         # 补充左边栏信息
         # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
-        html_display['isboss'] = True if (user_type == "Person" and boss.pid == user) else False
+        html_display['isboss'] = True if (
+            user_type == "Person" and boss.pid == user) else False
         # 判断是否为组织账户本身在登录
         html_display['is_myself'] = (me == org)
 
         # 再处理修改信息的回弹
         modpw_status = request.GET.get("modinfo", None)
         html_display["modpw_code"] = (
-                modpw_status is not None and modpw_status == "success"
+            modpw_status is not None and modpw_status == "success"
         )
 
         # 补充其余信息
-        html_display = utils.get_org_left_narbar(org, html_display['is_myself'], html_display)
+        html_display = utils.get_org_left_narbar(
+            org, html_display['is_myself'], html_display)
 
         # 组织活动的信息
-
-    
 
     # 补充一些呈现信息
     html_display["title_name"] = "Org. Profile"
@@ -560,17 +564,17 @@ def search(request):
         if not valid:
             return redirect("/logout/")
 
-        is_person = True if user_type == "Person" else False
-        me = get_person_or_org(request.user, user_type)
-        html_display["is_myself"] = True
-        if is_person:
-            html_display = utils.get_user_left_narbar(
-                me, html_display["is_myself"], html_display
-            )
-        else:
-            html_display = utils.get_org_left_narbar(
-                me, html_display["is_myself"], html_display
-            )
+        # is_person = True if user_type == "Person" else False
+        # me = get_person_or_org(request.user, user_type)
+        # html_display["is_myself"] = True
+        # if is_person:
+        #     html_display = utils.get_user_left_narbar(
+        #         me, html_display["is_myself"], html_display
+        #     )
+        # else:
+        #     html_display = utils.get_org_left_narbar(
+        #         me, html_display["is_myself"], html_display
+        #     )
         # syb: 以上一段目前不注释掉运行还会报错，我去查查为什么;好像是position类里面缺一些相关的设置
         # 或许我一会儿补一下下面报错的描述
 
@@ -583,20 +587,28 @@ def search(request):
         people_list = NaturalPerson.objects.filter(
             Q(pname__icontains=query) | (Q(pnickname__icontains=query) & Q(show_nickname=True)) |
             (Q(pmajor__icontains=query) & Q(show_major=True)))
-            
+
         # 接下来准备呈现的内容
         # 首先是准备搜索个人信息的部分
         people_field = ['姓名', '年级', '班级', '昵称',
                         '性别', '专业', '邮箱', '电话', '宿舍', '状态']  # 感觉将年级和班级分开呈现会简洁很多
 
         # 搜索组织
-        organization_list = Organization.objects.filter(Q(oname__icontains=query))
-
+        organization_incharge_list = NaturalPerson.objects.filter(
+            Q(pname__icontains=query))
+        organization_manager_list = OrganizationType.objects.filter(
+            Q(otype_name__icontains=query) | Q(oincharge__in=organization_incharge_list))
+        organization_list = Organization.objects.filter(
+            Q(oname__icontains=query) | Q(otype__in=organization_manager_list))
+        
+        print(organization_incharge_list)
+        print(organization_list)
+        print(people_list)
         # 组织不呈现具体内容，进行跳转
-
+        print("\n\ndebugging\n\n")
         return render(request, "search.html", locals())
     except Exception as e:
-        print(f"Error was found in app/views.py, function search.\nError description: {str(e)}\n")
+        # 处理错误
         auth.logout(request)
         return redirect("/index/")
 
@@ -667,16 +679,17 @@ def forget_password(request):
                     err_code = 3
                     err_message = "您没有设置邮箱，请发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"  # 记得填
                 else:
-                    captcha = random.randrange(1000000)  # randint包含端点，randrange不包含
+                    # randint包含端点，randrange不包含
+                    captcha = random.randrange(1000000)
                     captcha = f"{captcha:06}"
                     msg = (
-                            f"<h3><b>亲爱的{useroj.pname}同学：</b></h3><br/>"
-                            "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
-                            f'<p style="color:orange">{captcha}'
-                            '<span style="color:gray">(仅当前页面有效)</span></p>'
-                            '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
-                            "<br/><br/><br/>"
-                            "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
+                        f"<h3><b>亲爱的{useroj.pname}同学：</b></h3><br/>"
+                        "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
+                        f'<p style="color:orange">{captcha}'
+                        '<span style="color:gray">(仅当前页面有效)</span></p>'
+                        '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
+                        "<br/><br/><br/>"
+                        "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
                         "toaddrs": [email],  # 收件人列表
@@ -694,7 +707,8 @@ def forget_password(request):
                     if len(pre) > 5:
                         pre = pre[:2] + "*" * len(pre[2:-3]) + pre[-3:]
                     try:
-                        response = requests.post(email_url, post_data, timeout=6)
+                        response = requests.post(
+                            email_url, post_data, timeout=6)
                         response = response.json()
                         if response["status"] != 200:
                             err_code = 4
@@ -755,7 +769,8 @@ def modpw(request):
             err_code = 5
             err_message = "两次输入的密码不匹配"
         else:
-            userauth = auth.authenticate(username=username, password=oldpassword)
+            userauth = auth.authenticate(
+                username=username, password=oldpassword)
             if forgetpw:  # added by pht: 这是不好的写法，可改进
                 userauth = True
             if userauth:
@@ -805,7 +820,7 @@ def load_data(request):
             stu.pemail = email
             stu.ptel = tel
             stu.pyear = year
-            if gender == '男' :
+            if gender == '男':
                 stu.pgender = NaturalPerson.Gender.MALE
             elif gender == '女':
                 stu.pgender = NaturalPerson.Gender.FEMALE
@@ -818,7 +833,7 @@ def load_data(request):
         message = "导入学生信息成功！"
     else:
         message = '请先以超级账户登录后台后再操作！'
-    return render(request, "debugging.html",locals())
+    return render(request, "debugging.html", locals())
 
 
 # 参与活动，get 传两个简单参数即可，活动 aid，价格等级
