@@ -571,6 +571,7 @@ def search(request):
             html_display = utils.get_org_left_narbar(
                 me, html_display["is_myself"], html_display
             )
+        # syb: 以上一段目前不注释掉运行还会报错，我去查查为什么
 
         query = request.GET.get("Query", "")
         if query == "":

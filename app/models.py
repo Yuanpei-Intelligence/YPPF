@@ -90,12 +90,11 @@ class NaturalPerson(models.Model):
             people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
             其中未公开的属性呈现为‘未公开’
         '''
-        # print(self.pyear)
         unpublished = '未公开'
-        # print(unpublished)
+        gender = ['男', '女', '其他']
         info = [self.pname, self.pyear, self.pclass]
         info.append(self.pnickname if self.show_nickname else unpublished)
-        info.append(self.pgender if self.show_gender else unpublished)
+        info.append(unpublished if not self.show_gender else gender[self.pname])
         info.append(self.pmajor if self.show_major else unpublished)
         info.append(self.pemail if self.show_email else unpublished)
         info.append(self.ptel if self.show_tel else unpublished)
