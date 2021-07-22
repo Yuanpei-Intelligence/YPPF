@@ -32,14 +32,9 @@
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
-                                        {% if people_list.len != 0 %}
+                                        {% if people_list.count != 0 %}
                                         <thead>
                                             <tr>
-                                                <!-- <th>Name</th>
-                                                <th>Gender</th>
-                                                <th>Year</th>
-                                                <th class="text-center">Major</th> -->
-                                                <!-- <th class="text-center">Action</th> -->
                                                 {% for attribute in people_field %}
                                                 <th class="text-center"> {{attribute}} </th>
                                                 {% endfor %}
@@ -90,7 +85,7 @@
                                     <table class="table table-bordered mb-4">
                                         <thead>
                                         </thead>
-                                        {% if organization_list.len != 0 %}
+                                        {% if organization_list.count != 0 %}
                                         <tbody>
                                             <!-- <tr>
                                                 <td class="text-center"><a
@@ -103,6 +98,12 @@
                                                 </td>
                                             </tr>
                                             {% endfor%}
+                                        </tbody>
+                                        {% else %}
+                                        <tbody>
+                                            <tr>
+                                                <td>{{not_found_message}}</td>
+                                            </tr>
                                         </tbody>
                                         {% endif %}
                                     </table>
