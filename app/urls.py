@@ -1,15 +1,20 @@
-from django.urls import path,re_path
+from django.urls import path, re_path
 from django.conf.urls.static import static
 from . import views
 from django.conf import settings
 urlpatterns = [
+     
      path("", views.index, name="index"),
      path("index/",views.index, name="index"),
      path("stuinfo/",views.stuinfo, name="stuinfo"),
      path("orginfo/",views.orginfo, name="orginfo"),
      path("stuinfo/<str:name>",views.stuinfo, name="stuinfo"),
      path("orginfo/<str:name>",views.orginfo, name="orginfo"),
-     path("request_login_org/<str:name>",views.request_login_org,name="request_login_org"),
+     path(
+          "request_login_org/<str:name>",
+          views.request_login_org,
+          name="request_login_org"
+     ),
      path("welcome/",views.homepage, name="welcome"),
      path("register/",views.register, name="register"),
      path("login/",views.index,name="index"),
@@ -36,4 +41,5 @@ urlpatterns = [
      path("addActivities", views.addActivities, name="addActivities"),
             ]
 if settings.DEBUG:
+     
      urlpatterns += static(settings.MEDIA_URL,document_root=settings.MEDIA_ROOT)
