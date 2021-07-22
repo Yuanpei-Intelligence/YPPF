@@ -1054,41 +1054,46 @@ def confirm_transaction(request):
         ] = "Can not find the transaction record. If you are not deliberately doing this, please contact the administrator to report this bug."
         return render(request, "msg.html", context)
 
-
-# 发起活动
-def launch_activity(request):
-    context = dict()
-    # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
+def check_ac_request(request):
     aname = str(request.POST["aname"])  # 活动名称
-    oid = request.POST["oid"]  # 组织id
+    #oid的获取
+    oid=1
     astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
     afinish = request.POST["afinish"]
     content = str(request.POST["content"])
     URL = str(request.POST["URL"])  # 活动推送链接
-    QRcode = request.POST["QRcode"]  # 收取元气值的二维码
     aprice = request.POST["aprice"]  # 活动价格
-    places = request.POST["places"]  # 活动举办的地点，默认是list
-    if type(aprice).__name__ == 'int':
-        aprice = [aprice]
-    YQP = []
-    for i in aprice:
-        YQP.append(int(i * 10))
-    try:
-        if (check_time(astart, afinish)):
-            with transaction.commit_on_success():
-                new_act = Activity.objects.create(aname=aname, oid=oid, astart=astart, afinish=afinish,
-                                                  astatus=Activity.Astatus.Asta_Pending)  # 默认状态是报名中
+    max_people = request.POST["places"]#活动最大参与人数
+    start_time = datetime.datetime.strptime(astart, '%Y-%m-%d %H:%M:%S')
+    end_time = datetime.datetime.strptime(afinish, '%Y-%m-%d %H:%M:%S')
 
-                new_act.content = content
-                new_act.aURL = URL
-                new_act.QRcode = QRcode
-                new_act.YQPoint = YQP
-                new_act.Places = places
-                new_act.save()
-        else:
-            context["msg"] = "The activity has to be in a month! or you have sent a wrong timeform!"
-            return render(request, "xxx.html", context)
-    except:
+    if(check_time(start_time,end_time)):
+
+        pass
+    else:
+        return aname, oid, start_time, end_time, URL, aprice, max_people, 1
+
+    return aname,oid,start_time,end_time,URL,aprice,max_people,0
+# 发起活动
+def launch_activity(request):
+    context = dict()
+    # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
+    aname,oid,astart,afinish,content,URL,YQP,max_people,if_ilegal=check_ac_request(request)
+    if if_ilegal==0:
+        with transaction.commit_on_success():
+            new_act = Activity.objects.create(aname=aname, oid=oid, astart=astart, afinish=afinish,
+                                              astatus=Activity.Astatus.Asta_Pending)  # 默认状态是报名中
+
+            new_act.content = content
+            new_act.aURL = URL
+            #new_act.QRcode = QRcode
+            new_act.YQPoint = YQP
+            new_act.Places = places
+            new_act.save()
+
+    else:
+        context["msg"] = "The activity has to be in a month! or you have sent a wrong timeform!"
+        return render(request, "xxx.html", context)
         context["msg"] = "Can not launch this activity, please check time or if activity is reiterated "
         return render(request, "activity_info.html", context)
 

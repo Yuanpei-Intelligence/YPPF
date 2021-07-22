@@ -88,10 +88,8 @@ def get_org_left_narbar(org, is_myself, html_display):
     return html_display
 
 
-def check_time(abegin, aend):
+def check_time(start_time, end_time):
     try:
-        start_time = datetime.datetime.strptime(abegin, '%Y-%m-%d %H:%M:%S')
-        end_time = datetime.datetime.strptime(aend, '%Y-%m-%d %H:%M:%S')
         now_time = datetime.datetime.strptime(str(datetime.datetime.now().date()), '%Y-%m-%d %H:%M:%S')
         month_late = (now_time + datetime.timedelta(days=30))
         if now_time < start_time < month_late and now_time < end_time < month_late:
