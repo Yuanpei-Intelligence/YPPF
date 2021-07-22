@@ -63,7 +63,7 @@
                                             <thead></thead>
                                             <tbody>
                                                 <tr>
-                                                    <td class="text-center"> {{not_found_message}}</td>
+                                                    <td> {{not_found_message}}</td>
                                                 </tr>
                                             </tbody>
                                         {% endif %}
@@ -99,7 +99,7 @@
                                             {% for orgn in organization_list %}
                                             <tr>
                                                 <td>
-                                                    <a href=../../orginfo/{{orgn.name}}>{{orgn.oname}}</a> 
+                                                    <a href=../../orginfo/{{orgn.oname}}>{{orgn.oname}}</a> 
                                                 </td>
                                             </tr>
                                             {% endfor%}
