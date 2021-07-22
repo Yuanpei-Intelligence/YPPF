@@ -935,7 +935,7 @@ def transaction_page(request, rid=None):
 
     try:
         if re.match("zz\d+", str(recipient_id)) is not None:
-            recipient = Organization.objects.get(oid=recipient_id)
+            recipient = Organization.objects.get(organization_id=recipient_id)
             recipient_type = "org"
         else:
             recipient = NaturalPerson.objects.get(person_id=recipient_id)
@@ -1091,10 +1091,10 @@ def confirm_transaction(request, tid=None, reject=None):
             assert len(recipient) == 1
             recipient = recipient[0]
             if reject == 2:
-                record.tstatus = 2
+                record.status = 2
                 payer.YQPoint += record.amount
             elif reject == 0:
-                record.tstatus = 0
+                record.status = 0
                 recipient.YQPoint += record.amount
             record.save()
             payer.save()
