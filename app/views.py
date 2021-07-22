@@ -1113,17 +1113,24 @@ def confirm_transaction(request, tid=None, reject=None):
 def mywallet(request):
     query = request.session['username']
     flag = -1
-    if re.match('zz\d+', query) is not None:
-        queryman = Organization.objects.get(oid=request.user)
-        flag = 0
-    else:
-        queryman = NaturalPerson.objects.get(pid=request.user)
-        flag = 1
-    balance = queryman.YQPoint
-    query_id = queryman.pid_id
-    Record_list = TransferRecord.objects.filter(
-        Q(proposer=query_id) | (Q(recipient=query_id)))
-    return render(request, 'mywallet.html', locals())
+    context = dict()
+    try:
+        if re.match("zz\d+", query) is not None:
+            queryman = Organization.objects.get(organization_id=request.user)
+            balance = queryman.YQPoint
+            Record_list = TransferRecord.objects.filter(
+                Q(proposer=queryman.organization_id) | (Q(recipient=queryman.organization_id)))
+            flag = 0
+        else:
+            queryman = NaturalPerson.objects.get(person_id=request.user)
+            balance = queryman.YQPoint
+            Record_list = TransferRecord.objects.filter(
+                Q(proposer=queryman.person_id) | (Q(recipient=queryman.person_id)))
+            flag = 1
+        return render(request, 'mywallet.html', locals())
+    except:
+        context["msg"] = "Fatal error, please contact the administrator to report this bug."
+        return render(request, "msg.html", context)
 
 def showActivities(request):
     notes = [
