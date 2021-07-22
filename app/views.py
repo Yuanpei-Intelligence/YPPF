@@ -590,7 +590,7 @@ def search(request):
         people_list = NaturalPerson.objects.filter(
             Q(name__icontains=query) | (Q(nickname__icontains=query) & Q(show_nickname=True)) |
             (Q(stu_major__icontains=query) & Q(show_major=True)))
-        print(people_list[0].show_info())
+
         # 接下来准备呈现的内容
         # 首先是准备搜索个人信息的部分
         people_field = ['姓名', '年级', '班级', '昵称',
