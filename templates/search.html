@@ -15,18 +15,18 @@
             <div class="container">
 
                 <div id="navSection" data-spy="affix" class="nav sidenav">
-                    
+
                 </div>
 
                 <div class="row layout-top-spacing">
-                    
-                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing">
+
+                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing"  style="text-align:center">
                         <div class="statbox widget box box-shadow">
                             <div class="widget-header">
                                 <div class="row">
                                     <div class="col-xl-12 col-md-12 col-sm-12 col-12">
                                         <h4>人员搜索</h4>
-                                    </div>          
+                                    </div>
                                 </div>
                             </div>
                             <div class="widget-content widget-content-area">
@@ -38,45 +38,55 @@
                                                 <th>Gender</th>
                                                 <th>Year</th>
                                                 <th class="text-center">Major</th> -->
-                                                <th class="text-center">Action</th>
+                                                
                                                 {% for attribute in people_field %}
                                                 <th> {{attribute}} </th>
                                                 {% endfor %}
                                             </tr>
                                         </thead>
                                         <tbody>
-                                        {% for person in people_list %}
+                                            {% for person in people_list %}
                                             <tr>
-                                                <td><a href=../../stuinfo/{{person.pname}}+{{person.id}}>{{person.pname}}</a></td>
+                                                <!--
+                                                <td><a
+                                                        href=../../stuinfo/{{person.pname}}+{{person.id}}>{{person.pname}}</a>
+                                                </td>
                                                 <td>{{person.pgender}}</td>
                                                 <td>{{person.pyear}}</td>
                                                 <td class="text-center">{{person.pmajor}}</td>
-						<td><center><a class="btn btn-secondary" href=../../?origin=/transPage/{{person.person_id}} role="button">向Ta发起元气值转账</a></center></td>
-                                                <!-- <td class="text-center"><span class="badge badge-success">元培学生</span></td> -->       
+                                                <td>
+                                                    <center><a class="btn btn-secondary"
+                                                            href=../../?origin=/transPage/{{person.person_id}}
+                                                            role="button">向Ta发起元气值转账</a></center>
+                                                </td>
+                                                -->
+                                                <!-- <td class="text-center"><span class="badge badge-success">元培学生</span></td> -->
                                                 {% for attribute in person.show_info %}
-                                                    {% if forloop.counter == 1 %}
-                                                    <!-- 说明此时要展示姓名，关联链接 -->
-                                                        <td><a href=../../stuinfo/{{person.name}}+{{person.id}}>{{attribute}}</a></td>
-                                                    {% else %}
-                                                        <td> {{attribute}} </td>
-                                                    {% endif %}
+                                                {% if forloop.counter == 1 %}
+                                                <!-- 说明此时要展示姓名，关联链接 -->
+                                                <td><a
+                                                        href=../../stuinfo/{{person.name}}+{{person.id}}>{{attribute}}</a>
+                                                </td>
+                                                {% else %}
+                                                <td> {{attribute}} </td>
+                                                {% endif %}
                                                 {% endfor %}
                                             </tr>
-                                        {% endfor %}
-                                            
+                                            {% endfor %}
+
                                         </tbody>
                                     </table>
                                 </div>
 
-                                
+
 
                             </div>
                         </div>
                     </div>
 
-                                        
-                
-                    
+
+
+
 
                 </div>
 

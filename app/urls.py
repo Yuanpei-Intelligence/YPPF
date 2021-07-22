@@ -40,7 +40,7 @@ urlpatterns = [
         name="confirmTrans",
     ),
     path("engage", views.engage_activity, name="engage"),
-    path("mywallet/", views.mywallet, name="mywallet"),
+    path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
     path("showActivities", views.showActivities, name="showActivities"),
     path("viewActivities", views.viewActivities, name="viewActivities"),
     path("addActivities", views.addActivities, name="addActivities"),

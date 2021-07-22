@@ -1,3 +1,4 @@
+from django.template.defaulttags import register
 from app.models import (
     NaturalPerson,
     Position,
@@ -30,11 +31,17 @@ from time import mktime
 from datetime import datetime
 from boottest import local_dict
 import re
-import random, requests  # 发送验证码
+import random
+import requests  # 发送验证码
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
+
+
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key)
 
 
 def load_org_data(request):
@@ -151,7 +158,8 @@ def index(request):
             username = request.session["username"]
             en_pw = hash_coder.encode(username + timeStamp)
             return redirect(
-                arg_origin + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
+                arg_origin +
+                f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
             )
 
     return render(request, "index.html", locals())
@@ -255,14 +263,17 @@ def stuinfo(request, name=None):
 
         # 呈现信息
         # 首先是左边栏
-        html_display = utils.get_user_left_narbar(person, is_myself, html_display)
+        html_display = utils.get_user_left_narbar(
+            person, is_myself, html_display)
 
         modpw_status = request.GET.get("modinfo", None)
         html_display["modpw_code"] = (
             modpw_status is not None and modpw_status == "success"
         )
-        html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
-        html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+        html_display["warn_code"] = request.GET.get(
+            "warn_code", 0)  # 是否有来自外部的消息
+        html_display["warn_message"] = request.GET.get(
+            "warn_message", "")  # 提醒的具体内容
 
         html_display["userinfo"] = person
 
@@ -677,7 +688,8 @@ def forget_password(request):
                     err_code = 3
                     err_message = "您没有设置邮箱，请发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"  # 记得填
                 else:
-                    captcha = random.randrange(1000000)  # randint包含端点，randrange不包含
+                    # randint包含端点，randrange不包含
+                    captcha = random.randrange(1000000)
                     captcha = f"{captcha:06}"
                     msg = (
                         f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
@@ -704,7 +716,8 @@ def forget_password(request):
                     if len(pre) > 5:
                         pre = pre[:2] + "*" * len(pre[2:-3]) + pre[-3:]
                     try:
-                        response = requests.post(email_url, post_data, timeout=6)
+                        response = requests.post(
+                            email_url, post_data, timeout=6)
                         response = response.json()
                         if response["status"] != 200:
                             err_code = 4
@@ -765,7 +778,8 @@ def modpw(request):
             err_code = 5
             err_message = "两次输入的密码不匹配"
         else:
-            userauth = auth.authenticate(username=username, password=oldpassword)
+            userauth = auth.authenticate(
+                username=username, password=oldpassword)
             if forgetpw:  # added by pht: 这是不好的写法，可改进
                 userauth = True
             if userauth:
@@ -938,11 +952,13 @@ def transaction_page(request, rid=None):
     # r_user = User.objects.get(id=recipient_id)
 
     try:
-        if re.match("zz\d+", str(recipient_id))) is not None:
-            recipient = Organization.objects.get(organization_id__username=recipient_id)
+        if re.match("zz\d+", recipient_id) is not None:
+            recipient = Organization.objects.get(
+                organization_id__username=recipient_id)
             recipient_type = "org"
         else:
-            recipient = NaturalPerson.objects.get(person_id__username=recipient_id)
+            recipient = NaturalPerson.objects.get(
+                person_id__username=recipient_id)
             recipient_type = "np"
     except:
         context[
@@ -950,7 +966,6 @@ def transaction_page(request, rid=None):
         ] = "Unexpected recipient. If you are not deliberately doing this, please contact the administrator to report this bug."
         context["origin"] = origin
         return render(request, "msg.html", context)
-
 
     if recipient_type == "np":
         name = recipient.nickname
@@ -994,7 +1009,8 @@ def start_transaction(request):
 
     try:
         if recipient_type == "np":
-            recipient = NaturalPerson.objects.get(person_id__username=recipient_id).person_id
+            recipient = NaturalPerson.objects.get(
+                person_id__username=recipient_id).person_id
         else:
             recipient = Organization.objects.get(
                 organization_id__username=recipient_id
@@ -1112,33 +1128,109 @@ def confirm_transaction(request, tid=None, reject=None):
         ] = "Can not find the transaction record. If you are not deliberately doing this, please contact the administrator to report this bug."
         return render(request, "msg.html", context)
 
-#modified by Kinnuch
+
+def record2Display(record_list, record_type):  # 对应myYQPoint函数中的table_show_list
+    assert record_type in ['send', 'recv']
+    lis = []
+    for record in record_list:
+        lis.append({})
+        # 时间
+        lis[-1]['time'] = record.time.strftime("%m/%d %H:%M")
+
+        # 对象
+        # 如果是给出列表，那么对象就是接收者
+        obj_user = record.recipient if record_type == 'send' else record.proposer
+        lis[-1]['obj_direct'] = 'To  ' if record_type == 'send' else 'From'
+        if hasattr(obj_user, 'naturalperson'):  # 如果OneToOne Field在个人上
+            lis[-1]['obj'] = obj_user.naturalperson.name
+            lis[-1]['obj_url'] = '/stuinfo/' + \
+                lis[-1]['obj'] + "+" + str(obj_user.id)
+        else:
+            lis[-1]['obj'] = obj_user.organization.oname
+            lis[-1]['obj_url'] = '/orginfo/' + lis[-1]['obj']
+
+        # 金额
+        lis[-1]['amount'] = record.amount
+
+        # 留言
+        lis[-1]['message'] = record.message
+        lis[-1]['if_act_url'] = False
+        if record.corres_act is not None:
+            lis[-1]['message'] = '活动' + record.corres_act.topic + '积分'
+            # TODO 这里还需要补充一个活动跳转链接
+
+        # 状态
+        lis[-1]['status'] = record.get_status_display()
+
+    return lis
+
+
+# modified by Kinnuch
+
 @login_required(redirect_field_name='origin')
-def mywallet(request):
+def myYQPoint(request):
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/index/')
+    me = get_person_or_org(request.user, user_type)
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
+    # 补充一些呈现信息
+    html_display["title_name"] = "Welcome Page"
+    html_display["narbar_name"] = "我的元气值"  #
+
+    to_send_list = record2Display(record_list=TransferRecord.objects.filter(
+        proposer=request.user, status=TransferRecord.TransferStatus.WAITING),
+        record_type='send')
+    to_recv_list = record2Display(record_list=TransferRecord.objects.filter(
+        recipient=request.user, status=TransferRecord.TransferStatus.WAITING),
+        record_type='recv')
+
+    issued_send_list = record2Display(record_list=TransferRecord.objects.filter(proposer=request.user, status__in=[
+        TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED]),
+        record_type='send')
+    issued_recv_list = record2Display(record_list=TransferRecord.objects.filter(recipient=request.user, status__in=[
+        TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED]),
+        record_type='recv')
+
+    to_list = to_recv_list + to_send_list
+    issued_list = issued_recv_list + issued_send_list
+
+    show_table = {'time': '时间',
+                  'obj': '对象',
+                  'amount': '金额',
+                  'message': '留言',
+                  'status': '状态'
+                  }
+
     query = request.session['username']
     flag = -1
     context = dict()
-    try:
-        if re.match("zz\d+", query) is not None:
-            queryman = Organization.objects.get(organization_id=request.user)
-            balance = queryman.YQPoint
-            Record_list = TransferRecord.objects.filter(
-                Q(proposer=queryman.organization_id) | (Q(recipient=queryman.organization_id)))
-            flag = 0
-        else:
-            queryman = NaturalPerson.objects.get(person_id=request.user)
-            balance = queryman.YQPoint
-            Record_list = TransferRecord.objects.filter(
-                Q(proposer=queryman.person_id) | (Q(recipient=queryman.person_id)))
-            flag = 1
-        return render(request, 'mywallet.html', locals())
-    except:
-        context["msg"] = "Fatal error, please contact the administrator to report this bug."
-        return render(request, "msg.html", context)
+
+    if re.match("zz\d+", query) is not None:
+        queryman = Organization.objects.get(organization_id=request.user)
+        balance = queryman.YQPoint
+        Record_list = TransferRecord.objects.filter(
+            Q(proposer=queryman.organization_id) | (Q(recipient=queryman.organization_id)))
+        flag = 0
+    else:
+        queryman = NaturalPerson.objects.get(person_id=request.user)
+        balance = queryman.YQPoint
+        Record_list = TransferRecord.objects.filter(
+            Q(proposer=queryman.person_id) | (Q(recipient=queryman.person_id)))
+        flag = 1
+    return render(request, 'myYQPoint.html', locals())
+
 
 def showActivities(request):
     notes = [
-        {"title": "活动名称1", "Date": "11/01/2019", "Address": ["B107A", "B107B"]},
+        {"title": "活动名称1", "Date": "11/01/2019",
+            "Address": ["B107A", "B107B"]},
         {"title": "活动名称2", "Date": "11/02/2019", "Address": ["B108A"]},
         {"title": "活动名称3", "Date": "11/02/2019", "Address": ["B108A"]},
         {"title": "活动名称4", "Date": "11/02/2019", "Address": ["B108A"]},
