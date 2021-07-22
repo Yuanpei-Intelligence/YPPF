@@ -38,7 +38,7 @@
                                                 <th>Gender</th>
                                                 <th>Year</th>
                                                 <th class="text-center">Major</th> -->
-                                                <!-- <th class="text-center">Action</th> -->
+                                                <th class="text-center">Action</th>
                                                 {% for attribute in people_field %}
                                                 <th> {{attribute}} </th>
                                                 {% endfor %}
@@ -47,6 +47,12 @@
                                         <tbody>
                                         {% for person in people_list %}
                                             <tr>
+                                                <td><a href=../../stuinfo/{{person.pname}}+{{person.id}}>{{person.pname}}</a></td>
+                                                <td>{{person.pgender}}</td>
+                                                <td>{{person.pyear}}</td>
+                                                <td class="text-center">{{person.pmajor}}</td>
+						<td><center><a class="btn btn-secondary" href=../../?origin=/transPage/{{person.person_id}} role="button">向Ta发起元气值转账</a></center></td>
+                                                <!-- <td class="text-center"><span class="badge badge-success">元培学生</span></td> -->       
                                                 {% for attribute in person.show_info %}
                                                     {% if forloop.counter == 1 %}
                                                     <!-- 说明此时要展示姓名，关联链接 -->

@@ -556,11 +556,11 @@ def search(request):
             组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
     """
     try:
-
         valid, user_type, html_display = utils.check_user_type(request)
         if not valid:
             return redirect("/logout/")
 
+        '''
         is_person = True if user_type == "Person" else False
         me = get_person_or_org(request.user, user_type)
         html_display["is_myself"] = True
@@ -572,6 +572,7 @@ def search(request):
             html_display = utils.get_org_left_narbar(
                 me, html_display["is_myself"], html_display
             )
+        '''
         # syb: 以上一段目前不注释掉运行还会报错，我去查查为什么;好像是position类里面缺一些相关的设置
         # 或许我一会儿补一下下面报错的描述
 
@@ -924,8 +925,9 @@ def engage_activity(request):
 # 搜索不希望出现学号，rid 为 User 的 index
 @require_GET
 @login_required(redirect_field_name="origin")
-def transaction_page(request):
-    recipient_id = request.GET.get("rid")
+def transaction_page(request, rid=None):
+    # recipient_id = request.GET.get("rid")
+    recipient_id = rid
     origin = request.GET.get("origin")
     if origin is None:
         origin = "/"
@@ -936,11 +938,11 @@ def transaction_page(request):
     # r_user = User.objects.get(id=recipient_id)
 
     try:
-        if re.match("zz\d+", recipient_id) is not None:
-            recipient = Organization.objects.get(organization_id=recipient_id)
+        if re.match("zz\d+", str(recipient_id))) is not None:
+            recipient = Organization.objects.get(organization_id__username=recipient_id)
             recipient_type = "org"
         else:
-            recipient = NaturalPerson.objects.get(person_id=recipient_id)
+            recipient = NaturalPerson.objects.get(person_id__username=recipient_id)
             recipient_type = "np"
     except:
         context[
@@ -948,6 +950,7 @@ def transaction_page(request):
         ] = "Unexpected recipient. If you are not deliberately doing this, please contact the administrator to report this bug."
         context["origin"] = origin
         return render(request, "msg.html", context)
+
 
     if recipient_type == "np":
         name = recipient.nickname
@@ -991,10 +994,10 @@ def start_transaction(request):
 
     try:
         if recipient_type == "np":
-            recipient = NaturalPerson.objects.get(person_id=recipient_id).person_id
+            recipient = NaturalPerson.objects.get(person_id__username=recipient_id).person_id
         else:
             recipient = Organization.objects.get(
-                organization_id=recipient_id
+                organization_id__username=recipient_id
             ).organization_id
     except:
         context[
@@ -1047,9 +1050,9 @@ def start_transaction(request):
 
 @require_GET
 @login_required(redirect_field_name="origin")
-def confirm_transaction(request):
-    tid = request.GET.get("tid")
-    reject = request.GET.get("reject")
+def confirm_transaction(request, tid=None, reject=None):
+    # tid = request.GET.get("tid")
+    # reject = request.GET.get("reject")
     origin = request.GET.get("origin")
     if origin is None:
         origin = "/"
@@ -1091,10 +1094,10 @@ def confirm_transaction(request):
                 )
             assert len(recipient) == 1
             recipient = recipient[0]
-            if reject == "True":
+            if reject == 2:
                 record.status = 2
                 payer.YQPoint += record.amount
-            else:
+            elif reject == 0:
                 record.status = 0
                 recipient.YQPoint += record.amount
             record.save()
@@ -1109,6 +1112,29 @@ def confirm_transaction(request):
         ] = "Can not find the transaction record. If you are not deliberately doing this, please contact the administrator to report this bug."
         return render(request, "msg.html", context)
 
+#modified by Kinnuch
+@login_required(redirect_field_name='origin')
+def mywallet(request):
+    query = request.session['username']
+    flag = -1
+    context = dict()
+    try:
+        if re.match("zz\d+", query) is not None:
+            queryman = Organization.objects.get(organization_id=request.user)
+            balance = queryman.YQPoint
+            Record_list = TransferRecord.objects.filter(
+                Q(proposer=queryman.organization_id) | (Q(recipient=queryman.organization_id)))
+            flag = 0
+        else:
+            queryman = NaturalPerson.objects.get(person_id=request.user)
+            balance = queryman.YQPoint
+            Record_list = TransferRecord.objects.filter(
+                Q(proposer=queryman.person_id) | (Q(recipient=queryman.person_id)))
+            flag = 1
+        return render(request, 'mywallet.html', locals())
+    except:
+        context["msg"] = "Fatal error, please contact the administrator to report this bug."
+        return render(request, "msg.html", context)
 
 def showActivities(request):
     notes = [
@@ -1158,4 +1184,3 @@ def addActivities(request):
     person = True
 
     return render(request, "activity_add.html", locals())
-
