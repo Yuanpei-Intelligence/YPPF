@@ -588,8 +588,8 @@ def search(request):
         not_found_message = "好像这里没有要找的东西啊……"
         # 首先搜索个人
         people_list = NaturalPerson.objects.filter(
-            Q(pname__icontains=query) | (Q(pnickname__icontains=query) & Q(show_nickname=True)) |
-            (Q(pmajor__icontains=query) & Q(show_major=True)))
+            Q(name__icontains=query) | (Q(nickname__icontains=query) & Q(show_nickname=True)) |
+            (Q(stu_major__icontains=query) & Q(show_major=True)))
 
         # 接下来准备呈现的内容
         # 首先是准备搜索个人信息的部分
@@ -597,13 +597,12 @@ def search(request):
                         '性别', '专业', '邮箱', '电话', '宿舍', '状态']  # 感觉将年级和班级分开呈现会简洁很多
 
         # 搜索组织
-        organization_incharge_list = NaturalPerson.objects.filter(
-            Q(pname__icontains=query))
-        organization_manager_list = OrganizationType.objects.filter(
-            Q(otype_name__icontains=query) | Q(oincharge__in=organization_incharge_list))
+        incharge_list = NaturalPerson.objects.filter(Q(name__icontains=query)) # 负责人姓名
+        # print("debugging\n\n")
+        manager_list = OrganizationType.objects.filter(
+            Q(otype_name__icontains=query) | Q(incharge__in=incharge_list)) # 负责人姓名 & 组织类名
         organization_list = Organization.objects.filter(
-            Q(oname__icontains=query) | Q(otype__in=organization_manager_list))
-
+            Q(oname__icontains=query) | Q(otype__in=manager_list)) # 负责人姓名 & 组织类名 & 组织名
         # 组织不呈现具体内容，进行跳转
 
         return render(request, "search.html", locals())
