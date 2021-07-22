@@ -10,12 +10,13 @@ from boottest import local_dict
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
-        return self.exclude(pstatus=NaturalPerson.status.GRADUATED)
+        return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
 
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
         datas = NaturalPerson.objects.activated()
-        year = datetime.datetime.now().strftime('%Y')
-        datas.objects.filter(pyear=str(int(year) - 4)).update(pstatus=1)
+        year = datetime.now().strftime("%Y")
+        datas.objects.filter(stu_grade=str(int(year) - 4)).update(GraduateStatus=1)
+
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
@@ -80,7 +81,27 @@ class NaturalPerson(models.Model):
     show_dorm = models.BooleanField(default=False)
 
     def __str__(self):
-        return str(self.pname)
+        return str(self.name)
+
+    def show_info(self):
+        '''
+            返回值为一个列表，在search.html中使用，按照如下顺序呈现：
+            people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
+            其中未公开的属性呈现为‘未公开’
+        '''
+        unpublished = '未公开'
+        gender = ['男', '女']
+        info = [self.name, self.stu_grade, self.stu_class]
+        info.append(self.nickname if self.show_nickname else unpublished)
+        info.append(
+            unpublished if not self.show_gender else gender[self.gender])
+        info.append(self.stu_major if self.show_major else unpublished)
+        info.append(self.email if self.show_email else unpublished)
+        info.append(self.telephone if self.show_tel else unpublished)
+        info.append(self.stu_dorm if self.show_dorm else unpublished)
+        info.append('在校' if self.status == NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
+        return info
+
 
 
 class OrganizationType(models.Model):
@@ -137,15 +158,9 @@ class Organization(models.Model):
     # oid = models.ForeignKey(User, to_field='username',
     #                        on_delete=models.CASCADE, unique=True, primary_key=True)
     oname = models.CharField(max_length=32, unique=True)
-    # 本质上的逻辑应该不是建立时间，而是现在这个组织处于哪一个周期
-    # oestablished_time = models.DateField('建立时间')
-    # oschool_year = models.IntegerField(
-    #    "当前学年", default=int(datetime.datetime.now().strftime('%Y')))
+    otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
+    status = models.BooleanField("激活状态", default=True)  # 表示一个组织是否上线(或者是已经被下线)
 
-    # oschool_semester = models.CharField(
-    #    "当前学期", choices=Semester.choices,max_length=15)
-
-    ostatus = models.BooleanField("激活状态", default=False)  # 表示一个组织是否上线(或者是已经被下线)
 
     objects = OrganizationManager()
 
