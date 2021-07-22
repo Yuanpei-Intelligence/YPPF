@@ -51,14 +51,8 @@ def load_org_data(request):
             load_org()
             message = "load org成功！"
     else:
-<<<<<<< HEAD
-        message = '请先以超级账户登录后台后再操作！'
-    return render(request, 'debugging.html', locals())
-
-=======
         message = "请先以超级账户登录后台后再操作！"
     return render(request, "debugging.html", locals())
->>>>>>> 77d8665e0ec997e523b6bd25df97b049f3480a55
 
 
 def get_person_or_org(user, user_type):
@@ -268,16 +262,8 @@ def stuinfo(request, name=None):
         html_display["modpw_code"] = (
             modpw_status is not None and modpw_status == "success"
         )
-<<<<<<< HEAD
-        html_display["warn_code"] = request.GET.get(
-            "warn_code", 0)  # 是否有来自外部的消息
-        html_display["warn_message"] = request.GET.get(
-            "warn_message", ""
-        )  # 提醒的具体内容
-=======
         html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
         html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
->>>>>>> 77d8665e0ec997e523b6bd25df97b049f3480a55
 
         html_display["userinfo"] = person
 
@@ -574,17 +560,17 @@ def search(request):
         if not valid:
             return redirect("/logout/")
 
-        # is_person = True if user_type == "Person" else False
-        # me = get_person_or_org(request.user, user_type)
-        # html_display["is_myself"] = True
-        # if is_person:
-        #     html_display = utils.get_user_left_narbar(
-        #         me, html_display["is_myself"], html_display
-        #     )
-        # else:
-        #     html_display = utils.get_org_left_narbar(
-        #         me, html_display["is_myself"], html_display
-        #     )
+        is_person = True if user_type == "Person" else False
+        me = get_person_or_org(request.user, user_type)
+        html_display["is_myself"] = True
+        if is_person:
+            html_display = utils.get_user_left_narbar(
+                me, html_display["is_myself"], html_display
+            )
+        else:
+            html_display = utils.get_org_left_narbar(
+                me, html_display["is_myself"], html_display
+            )
         # syb: 以上一段目前不注释掉运行还会报错，我去查查为什么;好像是position类里面缺一些相关的设置
         # 或许我一会儿补一下下面报错的描述
 
@@ -595,15 +581,8 @@ def search(request):
         not_found_message = "好像这里没有要找的东西啊……"
         # 首先搜索个人
         people_list = NaturalPerson.objects.filter(
-<<<<<<< HEAD
             Q(name__icontains=query) | (Q(nickname__icontains=query) & Q(show_nickname=True)) |
             (Q(stu_major__icontains=query) & Q(show_major=True)))
-=======
-            Q(pname__icontains=query)
-            | (Q(pnickname__icontains=query) & Q(show_nickname=True))
-            | (Q(pmajor__icontains=query) & Q(show_major=True))
-        )
->>>>>>> 77d8665e0ec997e523b6bd25df97b049f3480a55
 
         # 接下来准备呈现的内容
         # 首先是准备搜索个人信息的部分
@@ -631,14 +610,8 @@ def search(request):
 
         return render(request, "search.html", locals())
     except Exception as e:
-<<<<<<< HEAD
         # 处理错误
         print(str(e))
-=======
-        print(
-            f"Error was found in app/views.py, function search.\nError description: {str(e)}\n"
-        )
->>>>>>> 77d8665e0ec997e523b6bd25df97b049f3480a55
         auth.logout(request)
         return redirect("/index/")
 
@@ -862,11 +835,7 @@ def load_data(request):
             stu.save()
         message = "导入学生信息成功！"
     else:
-<<<<<<< HEAD
-        message = '请先以超级账户登录后台后再操作！'
-=======
         message = "请先以超级账户登录后台后再操作！"
->>>>>>> 77d8665e0ec997e523b6bd25df97b049f3480a55
     return render(request, "debugging.html", locals())
 
 
