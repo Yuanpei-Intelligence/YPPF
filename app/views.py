@@ -934,11 +934,11 @@ def transaction_page(request, rid=None):
     # r_user = User.objects.get(id=recipient_id)
 
     try:
-        if re.match("zz\d+", str(recipient_id)) is not None:
-            recipient = Organization.objects.get(organization_id=recipient_id)
+        if re.match("zz\d+", recipient_id)) is not None:
+            recipient = Organization.objects.get(oname=recipient_id)
             recipient_type = "org"
         else:
-            recipient = NaturalPerson.objects.get(person_id=recipient_id)
+            recipient = NaturalPerson.objects.get(name=recipient_id)
             recipient_type = "np"
     except:
         context[
