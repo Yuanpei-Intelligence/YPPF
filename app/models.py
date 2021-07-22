@@ -225,12 +225,9 @@ class Activity(models.Model):
 
     status = models.CharField("活动状态", choices=Astatus.choices, max_length=32)
     mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
-    YQPoint = ListCharField(
-        base_field=models.IntegerField(default=0), size=10, max_length=50, default=[0]
-    )
-    places = ListCharField(
-        base_field=models.IntegerField(default=0), size=10, max_length=50, default=[0]
-    )
+    store_YQP = models.FloatField("已募集的元气值", default=0.0)  # 记录收到的元气值的多少
+    YQPoint = models.FloatField("元气值定价", default=0.0)
+    places = models.IntegerField("活动人数", default=100)
 
     URL = models.URLField("相关网址", null=True, blank=True)
 
