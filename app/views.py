@@ -580,7 +580,7 @@ def search(request):
         if query == "":
             return redirect("/welcome/")
 
-        not_found_message = "好像这里没有要找的东西啊……"
+        not_found_message = "找不到符合搜索的信息或相关内容未公开！"
         # 首先搜索个人
         people_list = NaturalPerson.objects.filter(
             Q(name__icontains=query) | (Q(nickname__icontains=query) & Q(show_nickname=True)) |
@@ -608,11 +608,12 @@ def search(request):
             Q(otype_name__icontains=query) | Q(incharge__in=incharge_list))  # 负责人姓名 & 组织类名
         organization_list = Organization.objects.filter(
             Q(oname__icontains=query) | Q(otype__in=manager_list))  # 负责人姓名 & 组织类名 & 组织名
-        # 组织不呈现具体内容，进行跳转
+        # 组织要呈现的具体内容
+        organization_field = ["组织名", "组织类型", "负责人", "近期活动"]
+
 
         return render(request, "search.html", locals())
     except Exception as e:
-        # 处理错误
         print(str(e))
         auth.logout(request)
         return redirect("/index/")
