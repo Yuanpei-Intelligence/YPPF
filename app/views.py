@@ -36,21 +36,22 @@ email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
+
 def load_org_data(request):
     if request.user.is_superuser:
-        load_type = request.GET.get('loadtype', None)
-        message = '加载失败！'
+        load_type = request.GET.get("loadtype", None)
+        message = "加载失败！"
         if load_type is None:
-            message = '没有得到loadtype参数:[org或type]'
-        elif load_type == 'otype':
+            message = "没有得到loadtype参数:[org或type]"
+        elif load_type == "otype":
             load_orgtype()
             message = "load type成功！"
-        elif load_type == 'org':
+        elif load_type == "org":
             load_org()
-            message = 'load org成功！'
+            message = "load org成功！"
     else:
-        message = '请先以超级账户登录后台后再操作！'
-    return render(request, 'debugging.html',locals())
+        message = "请先以超级账户登录后台后再操作！"
+    return render(request, "debugging.html", locals())
 
 
 def get_person_or_org(user, user_type):
@@ -202,7 +203,6 @@ def stuinfo(request, name=None):
                 那么期望有一个"+"在name中，如果搜不到就跳转到Search/？Query=name让他跳转去
     """
 
-
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
@@ -230,9 +230,8 @@ def stuinfo(request, name=None):
         else:  # 有很多人，这时候假设加号后面的是user的id
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
                 if (
-                        user_type == "Person"
-                        and NaturalPerson.objects.activated().get(pid=user).name
-                        == name
+                    user_type == "Person"
+                    and NaturalPerson.objects.activated().get(pid=user).name == name
                 ):
                     person = NaturalPerson.objects.activated().get(pid=user)
                 else:  # 不是自己，信息不全跳转搜索
@@ -240,9 +239,7 @@ def stuinfo(request, name=None):
             else:
                 obtain_id = int(name_list[1])  # 获取增补信息
                 get_user = User.objects.get(id=obtain_id)
-                potential_person = NaturalPerson.objects.activated().get(
-                    pid=get_user
-                )
+                potential_person = NaturalPerson.objects.activated().get(pid=get_user)
                 assert potential_person in person
                 person = potential_person
 
@@ -260,12 +257,10 @@ def stuinfo(request, name=None):
 
         modpw_status = request.GET.get("modinfo", None)
         html_display["modpw_code"] = (
-                modpw_status is not None and modpw_status == "success"
+            modpw_status is not None and modpw_status == "success"
         )
         html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
-        html_display["warn_message"] = request.GET.get(
-            "warn_message", ""
-        )  # 提醒的具体内容
+        html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
 
         html_display["userinfo"] = person
 
@@ -273,7 +268,6 @@ def stuinfo(request, name=None):
         html_display["narbar_name"] = "个人主页"
 
         return render(request, "stuinfo.html", locals())
-    
 
 
 @login_required(redirect_field_name="origin")
@@ -385,8 +379,6 @@ def orginfo(request, name=None):
         )
 
         # 组织活动的信息
-
-    
 
     # 补充一些呈现信息
     html_display["title_name"] = "Org. Profile"
@@ -586,17 +578,31 @@ def search(request):
 
         # 首先搜索个人
         people_list = NaturalPerson.objects.filter(
-            Q(pname__icontains=query) | (Q(pnickname__icontains=query) & Q(show_nickname=True)) |
-            (Q(pmajor__icontains=query) & Q(show_major=True)))
-            
+            Q(pname__icontains=query)
+            | (Q(pnickname__icontains=query) & Q(show_nickname=True))
+            | (Q(pmajor__icontains=query) & Q(show_major=True))
+        )
+
         # 接下来准备呈现的内容
         # 首先是准备搜索个人信息的部分
-        people_field = ['姓名', '年级', '班级', '昵称',
-                        '性别', '专业', '邮箱', '电话', '宿舍', '状态']  # 感觉将年级和班级分开呈现会简洁很多
+        people_field = [
+            "姓名",
+            "年级",
+            "班级",
+            "昵称",
+            "性别",
+            "专业",
+            "邮箱",
+            "电话",
+            "宿舍",
+            "状态",
+        ]  # 感觉将年级和班级分开呈现会简洁很多
 
         return render(request, "search.html", locals())
     except Exception as e:
-        print(f"Error was found in app/views.py, function search.\nError description: {str(e)}\n")
+        print(
+            f"Error was found in app/views.py, function search.\nError description: {str(e)}\n"
+        )
         auth.logout(request)
         return redirect("/index/")
 
@@ -805,9 +811,9 @@ def load_data(request):
             stu.email = email
             stu.telephone = tel
             stu.stu_grade = year
-            if gender == '男' :
+            if gender == "男":
                 stu.gender = NaturalPerson.Gender.MALE
-            elif gender == '女':
+            elif gender == "女":
                 stu.gender = NaturalPerson.Gender.FEMALE
             else:
                 stu.gender = NaturalPerson.Gender.OTHER
@@ -817,8 +823,8 @@ def load_data(request):
             stu.save()
         message = "导入学生信息成功！"
     else:
-        message = '请先以超级账户登录后台后再操作！'
-    return render(request, "debugging.html",locals())
+        message = "请先以超级账户登录后台后再操作！"
+    return render(request, "debugging.html", locals())
 
 
 # 参与活动，get 传两个简单参数即可，活动 aid，价格等级
@@ -843,7 +849,9 @@ def engage_activity(request):
 
     try:
         activity = Activity.objects.select_for_update().filter(id=activity_id)
-        payer = NaturalPerson.objects.select_for_update().filter(pid__username=person_id)
+        payer = NaturalPerson.objects.select_for_update().filter(
+            pid__username=person_id
+        )
         with transaction.atomic():
             assert len(activity) == 1
             assert len(payer) == 1
@@ -851,7 +859,9 @@ def engage_activity(request):
             payer = payer[0]
 
             try:
-                panticipant = Paticipant.objects.get(activity_id=activity, person_id=payer)
+                panticipant = Paticipant.objects.get(
+                    activity_id=activity, person_id=payer
+                )
                 context[
                     "msg"
                 ] = "You have already participated in the activity. If you are not deliberately do it, please contact the administrator to report this bug."
@@ -860,7 +870,9 @@ def engage_activity(request):
                 pass
 
             organization_id = activity.oid_id
-            orgnization = Organization.objects.select_for_update().filter(organization_id=organization_id)
+            orgnization = Organization.objects.select_for_update().filter(
+                organization_id=organization_id
+            )
             assert len(orgnization) == 1
             orgnization = orgnization[0]
 
@@ -884,7 +896,9 @@ def engage_activity(request):
             record.status = 0  # Wating
             record.time = str(datetime.now())
 
-            panticipant = Paticipant.objects.create(activity_id=activity, person_id=payer)
+            panticipant = Paticipant.objects.create(
+                activity_id=activity, person_id=payer
+            )
 
             panticipant.save()
             record.save()
@@ -978,7 +992,9 @@ def start_transaction(request):
         if recipient_type == "np":
             recipient = NaturalPerson.objects.get(person_id=recipient_id).person_id
         else:
-            recipient = Organization.objects.get(organization_id=recipient_id).organization_id
+            recipient = Organization.objects.get(
+                organization_id=recipient_id
+            ).organization_id
     except:
         context[
             "msg"
@@ -993,9 +1009,13 @@ def start_transaction(request):
 
     try:
         if re.match("zz\d+", payer_id) is not None:
-            payer = Organization.objects.select_for_update().filter(organization_id=request.user)
+            payer = Organization.objects.select_for_update().filter(
+                organization_id=request.user
+            )
         else:
-            payer = NaturalPerson.objects.select_for_update().filter(person_id=request.user)
+            payer = NaturalPerson.objects.select_for_update().filter(
+                person_id=request.user
+            )
         with transaction.atomic():
             assert len(payer) == 1
             payer = payer[0]
@@ -1050,9 +1070,13 @@ def confirm_transaction(request, tid=None, reject=None):
                 return render(request, "msg.html", context)
             payer = record.proposer
             if re.match("zz\d+", payer.username) is not None:
-                payer = Organization.objects.select_for_update().filter(organization_id=payer)
+                payer = Organization.objects.select_for_update().filter(
+                    organization_id=payer
+                )
             else:
-                payer = NaturalPerson.objects.select_for_update().filter(person_id=payer)
+                payer = NaturalPerson.objects.select_for_update().filter(
+                    person_id=payer
+                )
             assert len(payer) == 1
             payer = payer[0]
             recipient = record.recipient
@@ -1100,3 +1124,52 @@ def mywallet(request):
     Record_list = TransferRecord.objects.filter(
         Q(proposer=query_id) | (Q(recipient=query_id)))
     return render(request, 'mywallet.html', locals())
+
+def showActivities(request):
+    notes = [
+        {"title": "活动名称1", "Date": "11/01/2019", "Address": ["B107A", "B107B"]},
+        {"title": "活动名称2", "Date": "11/02/2019", "Address": ["B108A"]},
+        {"title": "活动名称3", "Date": "11/02/2019", "Address": ["B108A"]},
+        {"title": "活动名称4", "Date": "11/02/2019", "Address": ["B108A"]},
+        {"title": "活动名称5", "Date": "11/02/2019", "Address": ["B108A"]},
+    ]
+
+    person = True  # 人/法人
+
+    return render(request, "notes.html", locals())
+
+
+def viewActivities(request):
+    """
+    aname = str(request.POST["aname"])  # 活动名称
+    oid = request.POST["oid"]  # 组织id
+    astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
+    afinish = request.POST["afinish"]
+    content = str(request.POST["content"])
+    URL = str(request.POST["URL"])  # 活动推送链接
+    QRcode = request.POST["QRcode"]  # 收取元气值的二维码
+    aprice = request.POST["aprice"]  # 活动价格
+    places = request.POST["places"]  # 活动举办的地点，默认是list
+    """
+
+    person = True
+
+    return render(request, "activity_info.html", locals())
+
+
+def addActivities(request):
+    """
+    aname = str(request.POST["aname"])  # 活动名称
+    oid = request.POST["oid"]  # 组织id
+    astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
+    afinish = request.POST["afinish"]
+    content = str(request.POST["content"])
+    URL = str(request.POST["URL"])  # 活动推送链接
+    QRcode = request.POST["QRcode"]  # 收取元气值的二维码
+    aprice = request.POST["aprice"]  # 活动价格
+    places = request.POST["places"]  # 活动举办的地点，默认是list
+    """
+
+    person = True
+
+    return render(request, "activity_add.html", locals())
