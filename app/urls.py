@@ -34,6 +34,9 @@ urlpatterns = [
     path("startTrans", views.start_transaction, name="startTrans"),
     path("confirmTrans", views.confirm_transaction, name="confirmTrans"),
     path("engage", views.engage_activity, name="engage"),
+    path("showActivities", views.showActivities, name="showActivities"),
+    path("viewActivities", views.viewActivities, name="viewActivities"),
+    path("addActivities", views.addActivities, name="addActivities"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
