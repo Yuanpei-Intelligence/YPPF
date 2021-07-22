@@ -239,20 +239,9 @@ class Activity(models.Model):
 
     astatus = models.CharField("活动状态", choices=Astatus.choices, max_length=32, default=Astatus.Asta_Pending)
     mutableYQ = models.BooleanField("是否可以调整价格", default=False)
-    max_people = models.IntegerField("活动最大人数", default=100)
     store_YQP = models.FloatField("已募集的元气值", default=0.0)  # 记录收到的元气值的多少
-    YQPoint = ListCharField(
-        base_field=models.IntegerField(default=0),
-        size=10,
-        max_length=50,
-        default=[0]
-    )  # 注意都×10了，使用时注意
-    Places = ListCharField(
-        base_field=models.CharField("活动地点", max_length=100),
-        size=10,
-        max_length=1100,
-        default=["暂定"]
-    )
+    YQPoint = models.FloatField("元气值定价",default=0.0)
+    Places = models.IntegerField("活动人数", default=100)
 
     QRcode = models.ImageField(upload_to=f'QRcode/', blank=True)  # 二维码字段
 
@@ -288,5 +277,14 @@ class Paticipant(models.Model):
     aid = models.ForeignKey(Activity,
                             on_delete=models.CASCADE)
     pid = models.ForeignKey(
-
         NaturalPerson, on_delete=models.CASCADE)
+
+    class status(models.IntegerChoices):
+        APPLYING = 0  # 申请中
+        APLLYFAILED = 1  # 申请失败
+        APLLYSUCCESS = 2  # 已报名
+        ATTENDED = 3  # 已参与
+        UNATTENDED = 4  # 未参与
+        CANCELED = 5  # 放弃，如果学生取消活动，则设置这里
+    pstatus=models.IntegerField('学生参与活动状态',choices=status.choices, default=2)
+

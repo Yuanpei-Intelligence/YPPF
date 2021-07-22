@@ -837,12 +837,7 @@ def engage_activity(request):
         origin = "/"
     context = dict()
     context["origin"] = origin
-    choice = request.GET.get("choice")
-    # 默认是 0，没有分级的情况下可以只传 activity_id
-    if choice is None:
-        choice = 0
-    else:
-        choice = int(choice)
+    # 没有分级的情况下可以只传 activity_id
     activity_id = request.GET.get("activity_id")
     person_id = request.session["username"]
 
@@ -875,8 +870,8 @@ def engage_activity(request):
             assert len(orgnization) == 1
             orgnization = orgnization[0]
 
-            amount = float(activity.YQPoint[choice])
-            cnt = activity.places[choice]
+            amount = float(activity.YQPoint)
+            cnt = activity.places
             if cnt <= 0:
                 context["msg"] = "Failed to fetch the ticket."
                 return render(request, "msg.html", context)
@@ -884,7 +879,7 @@ def engage_activity(request):
                 context["msg"] = "No enough YQPoint"
                 return render(request, "msg.html", context)
             payer.YQPoint -= float(amount)
-            activity.places[choice] = cnt - 1
+            activity.places = cnt - 1
             orgnization.YQPoint += float(amount)
 
             record = TransferRecord.objects.create(
@@ -1058,12 +1053,14 @@ def confirm_transaction(request):
             if record.recipient != request.user:
                 context[
                     "msg"
-                ] = "The transaction is not yours. If you are not deliberately doing this, please contact the administrator to report this bug."
+                ] = "The transaction is not yours. If you are not deliberately doing this, " \
+                    "please contact the administrator to report this bug."
                 return render(request, "msg.html", context)
             if record.status != 1:
                 context[
                     "msg"
-                ] = "The transaction has already been dealt. If you are not deliberately doing this, please contact the administrator to report this bug."
+                ] = "The transaction has already been dealt. If you are not deliberately doing this," \
+                    " please contact the administrator to report this bug."
                 return render(request, "msg.html", context)
             payer = record.proposer
             if re.match("zz\d+", payer.username) is not None:
@@ -1102,7 +1099,8 @@ def confirm_transaction(request):
     except:
         context[
             "msg"
-        ] = "Can not find the transaction record. If you are not deliberately doing this, please contact the administrator to report this bug."
+        ] = "Can not find the transaction record. If you are not deliberately doing this, " \
+            "please contact the administrator to report this bug."
         return render(request, "msg.html", context)
 
 
@@ -1139,7 +1137,6 @@ def viewActivities(request):
 
 
 def check_ac_request(request):
-    aname = str(request.POST["aname"])  # 活动名称
     # oid的获取
     oid = 1
 
@@ -1151,15 +1148,18 @@ def check_ac_request(request):
     URL = str(request.POST["URL"])  # 活动推送链接
     aprice = request.POST["aprice"]  # 活动价格
     max_people = request.POST["places"]  # 活动最大参与人数
+
     start_time = datetime.datetime.strptime(astart, '%Y-%m-%d %H:%M:%S')
     end_time = datetime.datetime.strptime(afinish, '%Y-%m-%d %H:%M:%S')
+    if_ilegal = 0
+    if check_time(start_time, end_time) == False:
+        if_ilegal = 1
+    if aprice < 0:
+        if_ilegal = 2
+    if max_people <= 0:
+        if_ilegal = 3
 
-    if (check_time(start_time, end_time)):
-        pass
-    else:
-        return aname, oid, start_time, end_time, URL, aprice, max_people, 1
-
-    return aname, oid, start_time, end_time, URL, aprice, max_people, 0
+    return aname, oid, start_time, end_time, URL, aprice, max_people, if_ilegal
 
 
 # 发起活动
@@ -1168,24 +1168,27 @@ def addActivities(request):
     # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
     aname, oid, astart, afinish, content, URL, YQP, max_people, if_ilegal = check_ac_request(request)
     if if_ilegal == 0:
-        with transaction.commit_on_success():
-            new_act = Activity.objects.create(aname=aname, oid=oid, astart=astart, afinish=afinish,
-                                              astatus=Activity.Astatus.Asta_Pending)  # 默认状态是报名中
+        try:
+            with transaction.commit_on_success():
+                new_act = Activity.objects.create(aname=aname, oid=oid, astart=astart, afinish=afinish,
+                                                  astatus=Activity.Astatus.Asta_Pending)  # 默认状态是报名中
 
-            new_act.content = content
-            new_act.aURL = URL
-            # new_act.QRcode = QRcode
-            new_act.YQPoint = YQP
-            # new_act.Places = places
-            new_act.save()
+                new_act.content = content
+                new_act.aURL = URL
+                # new_act.QRcode = QRcode
+                new_act.YQPoint = YQP
+                new_act.Places = max_people
+                new_act.save()
+        except:
+            if_ilegal=4
 
-    else:
+    if  if_ilegal==1:
         context["msg"] = "The activity has to be in a month! or you have sent a wrong timeform!"
-        return render(request, "xxx.html", context)
+    elif if_ilegal==2:
+        context["msg"] ="The price can't be below 0!"
+    elif if_ilegal==3:
+        context["msg"] ="Participants number can't be below 0!"
+    elif if_ilegal==4:
         context["msg"] = "Can not launch this activity, please check time or if activity is reiterated "
-        return render(request, "activity_info.html", context)
-    person = True
-
-    return render(request, "activity_add.html", locals())
     # 返回发起成功或者失败的页面
-    return render(request, "activity_info.html", context)
+    return render(request, "activity_add.html", context)
