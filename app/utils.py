@@ -3,7 +3,7 @@ import hashlib
 from django.contrib import auth
 from django.conf import settings
 from boottest import local_dict
-
+from datetime import datetime
 
 class MyMD5PasswordHasher(MD5PasswordHasher):
     algorithm = "mymd5"
@@ -92,3 +92,13 @@ def get_org_left_narbar(org, is_myself, html_display):
     html_display["switch_org_name"] = org.oname
     return html_display
 
+def check_time(start_time, end_time):
+    try:
+        now_time = datetime.datetime.strptime(str(datetime.datetime.now().date()), '%Y-%m-%d %H:%M:%S')
+        month_late = (now_time + datetime.timedelta(days=30))
+        if now_time < start_time < month_late and now_time < end_time < month_late:
+            return True  # 时间所处范围正确
+    except:
+        return False
+
+    return False
