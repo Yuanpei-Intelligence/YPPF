@@ -266,4 +266,9 @@ class TransferRecord(models.Model):
 class Paticipant(models.Model):
     activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
     person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
-
+    class TransferStatus(models.IntegerChoices):
+        ACCEPTED = (0, "已接受")
+        WAITING = (1, "等待确认中")
+        REFUSED = (2, "已拒绝")
+        SUSPENDED = (3, "已终止")
+    status = models.IntegerField(choices=TransferStatus.choices, default=1)
