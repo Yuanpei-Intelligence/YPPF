@@ -88,31 +88,21 @@ class OrganizationType(models.Model):
     class OType(models.IntegerChoices):
         NONE = -1
         YUANPEI_XUEYUAN = 0
-
         YUANPEI_DANGWEI = 1
-
         YUANPEI_TUANWEI = 100
         TUANWEI_BUMEN = 101
-
         YUANPEI_XUESHENGHUI = 200
         XUESHENGHUI_ZHUXITUAN = 210
         XUESHENGHUI_BUMEN = 220
-
         YUANPEI_XUEXUEXUE = 300
         XUEXUEXUE_ZHUXITUAN = 310
         XUEXUEXUE_BUMEN = 320
         XUEXUEXUE_XUEHUI = 330
-
         HESHANHENG_TUSHUSHI = 400
-
         YUANPEI_SHEJIZU = 500
-
         DIXIADIANYINGYUAN = 600
-
         BIANLUNDUI = 700
-
         SHUYUAN_KECHENG = 800
-
     '''
 
     otype_id = models.SmallIntegerField(
