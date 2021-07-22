@@ -935,10 +935,10 @@ def transaction_page(request, rid=None):
 
     try:
         if re.match("zz\d+", str(recipient_id))) is not None:
-            recipient = Organization.objects.get(id=recipient_id)
+            recipient = Organization.objects.get(organization_id__username=recipient_id)
             recipient_type = "org"
         else:
-            recipient = NaturalPerson.objects.get(id=recipient_id)
+            recipient = NaturalPerson.objects.get(person_id__username=recipient_id)
             recipient_type = "np"
     except:
         context[
@@ -990,10 +990,10 @@ def start_transaction(request):
 
     try:
         if recipient_type == "np":
-            recipient = NaturalPerson.objects.get(person_id=recipient_id).person_id
+            recipient = NaturalPerson.objects.get(person_id__username=recipient_id).person_id
         else:
             recipient = Organization.objects.get(
-                organization_id=recipient_id
+                organization_id__username=recipient_id
             ).organization_id
     except:
         context[
