@@ -84,18 +84,23 @@ class NaturalPerson(models.Model):
             people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
             其中未公开的属性呈现为‘未公开’
             注意：major, gender, nickname, email, tel, dorm可能为None
+            班级和年级现在好像也可以为None
         '''
         unpublished = '未公开'
-        gender = ['男', '女']
+        gender = ['男', '女', '其他']
         info = [self.name, self.stu_grade, self.stu_class]
-        info.append(self.nickname if self.show_nickname else unpublished)
+        info.append(self.nickname if (self.show_nickname) else unpublished)
         info.append(
             unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
-        info.append(self.stu_major if self.show_major else unpublished)
-        info.append(self.email if self.show_email else unpublished)
-        info.append(self.telephone if self.show_tel else unpublished)
-        info.append(self.stu_dorm if self.show_dorm else unpublished)
-        info.append('在校' if self.status == NaturalPerson.status.UNDERGRADUATED else '已毕业')
+        info.append(self.stu_major if (self.show_major) else unpublished)
+        info.append(self.email if (self.show_email) else unpublished)
+        info.append(self.telephone if (self.show_tel) else unpublished)
+        info.append(self.stu_dorm if (self.show_dorm) else unpublished)
+        info.append('在校' if self.status == NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
+        # 防止显示None
+        for i in range(len(info)):
+            if info[i] == None:
+                info[i] = unpublished
         return info
 
 
