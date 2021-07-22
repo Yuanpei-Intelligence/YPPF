@@ -10,12 +10,12 @@ from boottest import local_dict
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
-        return self.exclude(status=NaturalPerson.status.GRADUATED)
+        return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
 
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
         datas = NaturalPerson.objects.activated()
         year = datetime.now().strftime("%Y")
-        datas.objects.filter(stu_grade=str(int(year) - 4)).update(status=1)
+        datas.objects.filter(stu_grade=str(int(year) - 4)).update(GraduateStatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
@@ -94,7 +94,7 @@ class NaturalPerson(models.Model):
         info.append(self.email if self.show_email else unpublished)
         info.append(self.telephone if self.show_tel else unpublished)
         info.append(self.stu_dorm if self.show_dorm else unpublished)
-        info.append('在校' if self.status == NaturalPerson.status.UNDERGRADUATED else '已毕业')
+        info.append('在校' if self.status == NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
         return info
 
 
@@ -132,7 +132,7 @@ class Organization(models.Model):
     organization_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
     oname = models.CharField(max_length=32, unique=True)
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
-    status = models.BooleanField("激活状态", default=False)  # 表示一个组织是否上线(或者是已经被下线)
+    status = models.BooleanField("激活状态", default=True)  # 表示一个组织是否上线(或者是已经被下线)
 
     objects = OrganizationManager()
 

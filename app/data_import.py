@@ -37,6 +37,7 @@ def load_orgtype():
         # orgtype.otype_superior_id=otype_superior_id
         Nperson, mid = NaturalPerson.objects.get_or_create(name=incharge)
         orgtype.incharge = Nperson
+        orgtype.job_name_list = str(orgfile['job_name_list'].iloc[i])
         orgtype.save()
     return
 

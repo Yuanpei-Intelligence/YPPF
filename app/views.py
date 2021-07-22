@@ -42,13 +42,15 @@ def load_org_data(request):
         load_type = request.GET.get("loadtype", None)
         message = "加载失败！"
         if load_type is None:
-            message = "没有得到loadtype参数:[org或type]"
+            message = "没有得到loadtype参数:[org或otype]"
         elif load_type == "otype":
             load_orgtype()
             message = "load type成功！"
         elif load_type == "org":
             load_org()
             message = "load org成功！"
+        else:
+            message = "没有得到loadtype参数:[org或otype]"
     else:
         message = "请先以超级账户登录后台后再操作！"
     return render(request, "debugging.html", locals())
@@ -214,7 +216,7 @@ def stuinfo(request, name=None):
         else:
             assert user_type == "Person"
             try:
-                oneself = NaturalPerson.objects.activated().get(pid=user)
+                oneself = NaturalPerson.objects.activated().get(person_id=user)
             except:
                 return redirect("/welcome/")
             return redirect("/stuinfo/" + oneself.name)
@@ -231,19 +233,19 @@ def stuinfo(request, name=None):
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
                 if (
                     user_type == "Person"
-                    and NaturalPerson.objects.activated().get(pid=user).name == name
+                    and NaturalPerson.objects.activated().get(person_id=user).name == name
                 ):
-                    person = NaturalPerson.objects.activated().get(pid=user)
+                    person = NaturalPerson.objects.activated().get(person_id=user)
                 else:  # 不是自己，信息不全跳转搜索
                     return redirect("/search?Query=" + name)
             else:
                 obtain_id = int(name_list[1])  # 获取增补信息
                 get_user = User.objects.get(id=obtain_id)
-                potential_person = NaturalPerson.objects.activated().get(pid=get_user)
+                potential_person = NaturalPerson.objects.activated().get(person_id=get_user)
                 assert potential_person in person
                 person = potential_person
 
-        is_myself = user_type == "Person" and person.pid == user  # 用一个字段储存是否是自己
+        is_myself = user_type == "Person" and person.person_id == user  # 用一个字段储存是否是自己
         html_display["is_myself"] = is_myself  # 存入显示
 
         # 处理被搜索人的信息，这里应该和“用户自己”区分开
@@ -393,6 +395,8 @@ def homepage(request):
     if not valid:
         return redirect("/logout/")
     me = get_person_or_org(request.user, user_type)
+    if me.first_time_login:
+        return redirect("/modpw/")
     myname = me.name if is_person else me.oname
 
     # 直接储存在html_display中
@@ -577,9 +581,9 @@ def search(request):
 
         # 首先搜索个人
         people_list = NaturalPerson.objects.filter(
-            Q(pname__icontains=query)
-            | (Q(pnickname__icontains=query) & Q(show_nickname=True))
-            | (Q(pmajor__icontains=query) & Q(show_major=True))
+            Q(name__icontains=query)
+            | (Q(nickname__icontains=query) & Q(show_nickname=True))
+            | (Q(stu_major__icontains=query) & Q(show_major=True))
         )
 
         # 接下来准备呈现的内容
@@ -806,7 +810,7 @@ def load_data(request):
             user = User.objects.create(username=username)
             user.set_password(password)
             user.save()
-            stu = NaturalPerson.objects.create(person_id=sno)
+            stu = NaturalPerson.objects.create(person_id=user)
             stu.email = email
             stu.telephone = tel
             stu.stu_grade = year
@@ -849,7 +853,7 @@ def engage_activity(request):
     try:
         activity = Activity.objects.select_for_update().filter(id=activity_id)
         payer = NaturalPerson.objects.select_for_update().filter(
-            pid__username=person_id
+            person_id__username=person_id
         )
         with transaction.atomic():
             assert len(activity) == 1
@@ -868,7 +872,7 @@ def engage_activity(request):
             except:
                 pass
 
-            organization_id = activity.oid_id
+            organization_id = activity.organization_id_id
             orgnization = Organization.objects.select_for_update().filter(
                 organization_id=organization_id
             )
@@ -1123,7 +1127,7 @@ def showActivities(request):
 def viewActivities(request):
     """
     aname = str(request.POST["aname"])  # 活动名称
-    oid = request.POST["oid"]  # 组织id
+    organization_id = request.POST["organization_id"]  # 组织id
     astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
     afinish = request.POST["afinish"]
     content = str(request.POST["content"])
@@ -1141,7 +1145,7 @@ def viewActivities(request):
 def addActivities(request):
     """
     aname = str(request.POST["aname"])  # 活动名称
-    oid = request.POST["oid"]  # 组织id
+    organization_id = request.POST["organization_id"]  # 组织id
     astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
     afinish = request.POST["afinish"]
     content = str(request.POST["content"])
