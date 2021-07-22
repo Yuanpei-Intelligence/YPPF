@@ -602,7 +602,7 @@ def search(request):
             Q(oname__icontains=query) | Q(otype__in=organization_manager_list))
 
         # 组织不呈现具体内容，进行跳转
-        print(organization_list)
+
         return render(request, "search.html", locals())
     except Exception as e:
         # 处理错误
