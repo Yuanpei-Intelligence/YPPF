@@ -44,23 +44,25 @@
                                             {% for person in people_list %}
                                             <tr>
                                                 {% for attribute in person.show_info %}
-                                                    {% if forloop.counter == 1 %}
-                                                    <!-- 说明此时要展示姓名，关联链接 -->
-                                                        <td><a href=../../stuinfo/{{person.name}}+{{person.id}}>{{attribute}}</a></td>
-                                                    {% else %}
-                                                        <td> {{attribute}} </td>
-                                                    {% endif %}
+                                                {% if forloop.counter == 1 %}
+                                                <!-- 说明此时要展示姓名，关联链接 -->
+                                                <td><a
+                                                        href=../../stuinfo/{{person.name}}+{{person.id}}>{{attribute}}</a>
+                                                </td>
+                                                {% else %}
+                                                <td> {{attribute}} </td>
+                                                {% endif %}
                                                 {% endfor %}
-                                            {% endfor %}
+                                                {% endfor %}
                                         </tbody>
                                         {% else %}
                                         <!-- 如果列表为空 -->
-                                            <thead></thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td> {{not_found_message}}</td>
-                                                </tr>
-                                            </tbody>
+                                        <thead></thead>
+                                        <tbody>
+                                            <tr>
+                                                <td> {{not_found_message}}</td>
+                                            </tr>
+                                        </tbody>
                                         {% endif %}
                                     </table>
                                 </div>
@@ -94,7 +96,7 @@
                                             {% for orgn in organization_list %}
                                             <tr>
                                                 <td>
-                                                    <a href=../../orginfo/{{orgn.oname}}>{{orgn.oname}}</a> 
+                                                    <a href=../../orginfo/{{orgn.oname}}>{{orgn.oname}}</a>
                                                 </td>
                                             </tr>
                                             {% endfor%}
