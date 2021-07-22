@@ -11,7 +11,7 @@ from app.models import (
 import app.utils as utils
 from app.forms import UserForm
 from app.data_import import load, load_orgtype, load_org
-from app.utils import MyMD5PasswordHasher, MySHA256Hasher
+from app.utils import MyMD5PasswordHasher, MySHA256Hasher,check_time
 
 from django.shortcuts import render, redirect
 from django.http import HttpResponseRedirect, JsonResponse
@@ -841,12 +841,6 @@ def engage_activity(request):
         origin = "/"
     context = dict()
     context["origin"] = origin
-    choice = request.GET.get("choice")
-    # 默认是 0，没有分级的情况下可以只传 activity_id
-    if choice is None:
-        choice = 0
-    else:
-        choice = int(choice)
     activity_id = request.GET.get("activity_id")
     person_id = request.session["username"]
 
@@ -879,8 +873,8 @@ def engage_activity(request):
             assert len(orgnization) == 1
             orgnization = orgnization[0]
 
-            amount = float(activity.YQPoint[choice])
-            cnt = activity.places[choice]
+            amount = float(activity.YQPoint)
+            cnt = activity.places
             if cnt <= 0:
                 context["msg"] = "Failed to fetch the ticket."
                 return render(request, "msg.html", context)
@@ -888,7 +882,7 @@ def engage_activity(request):
                 context["msg"] = "No enough YQPoint"
                 return render(request, "msg.html", context)
             payer.YQPoint -= float(amount)
-            activity.places[choice] = cnt - 1
+            activity.places = cnt - 1
             orgnization.YQPoint += float(amount)
 
             record = TransferRecord.objects.create(
@@ -1141,21 +1135,60 @@ def viewActivities(request):
 
     return render(request, "activity_info.html", locals())
 
+def check_ac_request(request):
+    # oid的获取
+    oid = 1
 
-def addActivities(request):
-    """
     aname = str(request.POST["aname"])  # 活动名称
     organization_id = request.POST["organization_id"]  # 组织id
     astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
     afinish = request.POST["afinish"]
     content = str(request.POST["content"])
     URL = str(request.POST["URL"])  # 活动推送链接
-    QRcode = request.POST["QRcode"]  # 收取元气值的二维码
     aprice = request.POST["aprice"]  # 活动价格
-    places = request.POST["places"]  # 活动举办的地点，默认是list
-    """
+    max_people = request.POST["places"]  # 活动最大参与人数
 
-    person = True
+    start_time = datetime.datetime.strptime(astart, '%Y-%m-%d %H:%M:%S')
+    end_time = datetime.datetime.strptime(afinish, '%Y-%m-%d %H:%M:%S')
+    if_ilegal = 0
+    if check_time(start_time, end_time) == False:
+        if_ilegal = 1
+    if aprice < 0:
+        if_ilegal = 2
+    if max_people <= 0:
+        if_ilegal = 3
 
-    return render(request, "activity_add.html", locals())
+    return aname, oid, start_time, end_time, URL, aprice, max_people, if_ilegal
+
+
+# 发起活动
+def addActivities(request):
+    context = dict()
+    # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
+    aname, oid, astart, afinish, content, URL, YQP, max_people, if_ilegal = check_ac_request(request)
+    if if_ilegal == 0:
+        try:
+            with transaction.commit_on_success():
+                new_act = Activity.objects.create(aname=aname, oid=oid, astart=astart, afinish=afinish,
+                                                  astatus=Activity.Astatus.Asta_Pending)  # 默认状态是报名中
+
+                new_act.content = content
+                new_act.aURL = URL
+                # new_act.QRcode = QRcode
+                new_act.YQPoint = YQP
+                new_act.Places = max_people
+                new_act.save()
+        except:
+            if_ilegal=4
+
+    if  if_ilegal==1:
+        context["msg"] = "The activity has to be in a month! or you have sent a wrong timeform!"
+    elif if_ilegal==2:
+        context["msg"] ="The price can't be below 0!"
+    elif if_ilegal==3:
+        context["msg"] ="Participants number can't be below 0!"
+    elif if_ilegal==4:
+        context["msg"] = "Can not launch this activity, please check time or if activity is reiterated "
+    # 返回发起成功或者失败的页面
+    return render(request, "activity_add.html", context)
 
