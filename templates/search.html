@@ -48,24 +48,13 @@
                                         <tbody>
                                             {% for person in people_list %}
                                             <tr>
-                                                <!-- <td><a href=../../stuinfo/{{i.pname}}+{{i.id}}>{{people.pname}}</a></td> -->
-                                                <!--<td>{{people.pyear}}</td>
-                                                <td>{{people.pnickname}}</td>
-                                                <td>{{people.pgender}}</td>
-                                                <td>{{people.pmajor}}</td>
-                                                <td>{{people.pemail}}</td>
-                                                <td>{{people.ptel}}</td>
-                                                <td>{{people.pdorm}}</td>
-                                                <td>{{people.pstatus}}</td> -->
                                                 {% for attribute in person.show_info %}
-                                                {% if forloop.counter == 1 %}
-                                                <!-- 说明此时要展示姓名，关联链接 -->
-                                                <td class="text-center">
-                                                    <a href=../../stuinfo/{{person.pname}}+{{person.id}}>{{attribute}}</a>
-                                                </td>
-                                                {% else %}
-                                                <td class="text-center"> {{attribute}} </td>
-                                                {% endif %}
+                                                    {% if forloop.counter == 1 %}
+                                                    <!-- 说明此时要展示姓名，关联链接 -->
+                                                        <td><a href=../../stuinfo/{{person.name}}+{{person.id}}>{{attribute}}</a></td>
+                                                    {% else %}
+                                                        <td> {{attribute}} </td>
+                                                    {% endif %}
                                                 {% endfor %}
                                             {% endfor %}
                                         </tbody>
@@ -130,13 +119,6 @@
                 </div>
 
             </div>
-        </div>
-        <div class="footer-wrapper">
-            <div class="footer-section f-section-1">
-                <p class="">Copyright © 2020 <a target="_blank" href="../../../designreset.html">YPPF Team</a>, All
-                    rights <a href="http://www.bootstrapmb.com">Reserved </a>.</p>
-            </div>
-
         </div>
     </div>
     <!--  END CONTENT AREA  -->
