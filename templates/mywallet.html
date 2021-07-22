@@ -154,29 +154,29 @@
                                             </tr>
                                         </thead>
                                         <tbody>
-                                        {% for i in Record_list %}
+                                        {% for record in Record_list %}
                                             <tr>
-						<td class="text-center">{{i.time}}</td>
-                                                <td class="text-center">{{i.proposer}}</td>
-                                                <td class="text-center">{{i.recipient}}</td>
+						<td class="text-center">{{record.time}}</td>
+                                                <td class="text-center">{{record.proposer}}</td>
+                                                <td class="text-center">{{record.recipient}}</td>
 						<!-- <td class="text-center">{{queryman}}</td> -->
-						<td class="text-center">{{i.amount}}</td>
-						<td class="text-center">{{i.message}}</td>
-						{% if i.tstatus == 1 %}
-						    {% if flag == 1 and i.recipient == queryman.pid %}
-						    <td><a class="btn btn-secondary" href=../../?origin=/confirmTrans/{{i.id}}/0 role="button">接受</a>
-							<a class="btn btn-secondary" href=../../?origin=/confirmTrans/{{i.id}}/2 role="button">拒绝</a></td>
-						    {% elif flag == 0 and i.recipient == queryman.oid %}
-						    <td><a class="btn btn-secondary" href=../../?origin=/confirmTrans/{{i.id}}/0 role="button">接受</a>
-							<a class="btn btn-secondary" href=../../?origin=/confirmTrans/{{i.id}}/2 role="button">拒绝</a></td>
+						<td class="text-center">{{record.amount}}</td>
+						<td class="text-center">{{record.message}}</td>
+						{% if i.status == 1 %}
+						    {% if flag == 1 and record.recipient == queryman.pid %}
+						    <td><a class="btn btn-secondary" href=../../?origin=/confirmTrans/{{record.id}}/0 role="button">接受</a>
+							<a class="btn btn-secondary" href=../../?origin=/confirmTrans/{{record.id}}/2 role="button">拒绝</a></td>
+						    {% elif flag == 0 and record.recipient == queryman.oid %}
+						    <td><a class="btn btn-secondary" href=../../?origin=/confirmTrans/{{record.id}}/0 role="button">接受</a>
+							<a class="btn btn-secondary" href=../../?origin=/confirmTrans/{{record.id}}/2 role="button">拒绝</a></td>
 						    {% elif flag != -1 %}
 						    <td class="text-center">等待中</td>
 						    {% endif %}	
-						{% elif i.tstatus == 0 %}
+						{% elif i.status == 0 %}
 						<td class="text-center">已接受</td>
-						{% elif i.tstatus == 2 %}
+						{% elif i.status == 2 %}
 						<td class="text-center">已拒绝</td>
-						{% elif i.tstatus == 3 %}
+						{% elif i.status == 3 %}
 						<td class="text-center">交易意外终止，请联系管理员</td>
 						{% endif %}
                                             </tr>
