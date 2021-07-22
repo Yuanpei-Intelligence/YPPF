@@ -87,7 +87,7 @@ class NaturalPerson(models.Model):
             班级和年级现在好像也可以为None
         '''
         unpublished = '未公开'
-        gender = ['男', '女', '其他']
+        gender = ['男', '女']
         info = [self.name, self.stu_grade, self.stu_class]
         info.append(self.nickname if (self.show_nickname) else unpublished)
         info.append(
