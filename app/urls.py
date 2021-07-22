@@ -24,6 +24,7 @@ urlpatterns = [
     path("modpw/", views.modpw, name="modpw"),
     path("test/", views.test, name="test"),
     path("loaddata/", views.load_data, name="load_data"),
+    path("loadorgdata/", views.load_org_data, name="load_org_data"),
     path("user_account_setting/", views.account_setting, name="user_account_setting"),
     path("search/", views.search, name="search"),
     path("minilogin", views.miniLogin, name="minilogin"),
