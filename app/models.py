@@ -44,7 +44,7 @@ class NaturalPerson(models.Model):
     objects = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
 
-    YQPoint = models.IntegerField("元气值", default=0)
+    YQPoint = models.FloatField("元气值", default=0)
 
     class Identity(models.IntegerChoices):
         TEACHER = (0, "教职工")
@@ -250,17 +250,19 @@ class TransferRecord(models.Model):
     recipient = models.ForeignKey(
         User, related_name="recipient_id", on_delete=models.CASCADE
     )
-    amount = models.IntegerField("转账元气值数量", default=0)
+    amount = models.FloatField("转账元气值数量", default=0)
     time = models.DateTimeField("转账时间", auto_now_add=True)
     message = models.CharField("备注信息", max_length=255, default="")
 
+    corres_act = models.ForeignKey(Activity, related_name="有关活动", on_delete = models.SET_NULL, null=True, blank=True)
+
     class TransferStatus(models.IntegerChoices):
         ACCEPTED = (0, "已接受")
-        WAITING = (1, "等待确认中")
+        WAITING = (1, "待确认")
         REFUSED = (2, "已拒绝")
         SUSPENDED = (3, "已终止")
 
-    status = models.IntegerField(choices=TransferStatus.choices, default=1)
+    status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
 
 
 class Paticipant(models.Model):
