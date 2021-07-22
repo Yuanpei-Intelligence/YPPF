@@ -47,11 +47,11 @@
                                         <tbody>
                                         {% for person in people_list %}
                                             <tr>
-                                                <td><a href=../../stuinfo/{{i.pname}}+{{i.id}}>{{i.pname}}</a></td>
-                                                <td>{{i.pgender}}</td>
-                                                <td>{{i.pyear}}</td>
-                                                <td class="text-center">{{i.pmajor}}</td>
-						<td><center><a class="btn btn-secondary" href=../../?origin=/transPage/{{i.pid_id}} role="button">向Ta发起元气值转账</a></center></td>
+                                                <td><a href=../../stuinfo/{{person.pname}}+{{person.id}}>{{person.pname}}</a></td>
+                                                <td>{{person.pgender}}</td>
+                                                <td>{{person.pyear}}</td>
+                                                <td class="text-center">{{person.pmajor}}</td>
+						<td><center><a class="btn btn-secondary" href=../../?origin=/transPage/{{person.pid_id}} role="button">向Ta发起元气值转账</a></center></td>
                                                 <!-- <td class="text-center"><span class="badge badge-success">元培学生</span></td> -->       
                                                 {% for attribute in person.show_info %}
                                                     {% if forloop.counter == 1 %}
