@@ -554,7 +554,7 @@ def search(request):
     try:
         valid, user_type, html_display = utils.check_user_type(request)
         if not valid:
-           return redirect("/logout/")
+            return redirect("/logout/")
 
         '''
         is_person = True if user_type == "Person" else False
