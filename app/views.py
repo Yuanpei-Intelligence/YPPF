@@ -601,7 +601,6 @@ def search(request):
 
         # 搜索组织
         incharge_list = NaturalPerson.objects.filter(Q(name__icontains=query)) # 负责人姓名
-        # print("debugging\n\n")
         manager_list = OrganizationType.objects.filter(
             Q(otype_name__icontains=query) | Q(incharge__in=incharge_list)) # 负责人姓名 & 组织类名
         organization_list = Organization.objects.filter(
