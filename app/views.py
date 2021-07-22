@@ -262,8 +262,10 @@ def stuinfo(request, name=None):
         html_display["modpw_code"] = (
             modpw_status is not None and modpw_status == "success"
         )
-        html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
-        html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+        html_display["warn_code"] = request.GET.get(
+            "warn_code", 0)  # 是否有来自外部的消息
+        html_display["warn_message"] = request.GET.get(
+            "warn_message", "")  # 提醒的具体内容
 
         html_display["userinfo"] = person
 
@@ -600,11 +602,12 @@ def search(request):
         ]  # 感觉将年级和班级分开呈现会简洁很多
 
         # 搜索组织
-        incharge_list = NaturalPerson.objects.filter(Q(name__icontains=query)) # 负责人姓名
+        incharge_list = NaturalPerson.objects.filter(
+            Q(name__icontains=query))  # 负责人姓名
         manager_list = OrganizationType.objects.filter(
-            Q(otype_name__icontains=query) | Q(incharge__in=incharge_list)) # 负责人姓名 & 组织类名
+            Q(otype_name__icontains=query) | Q(incharge__in=incharge_list))  # 负责人姓名 & 组织类名
         organization_list = Organization.objects.filter(
-            Q(oname__icontains=query) | Q(otype__in=manager_list)) # 负责人姓名 & 组织类名 & 组织名
+            Q(oname__icontains=query) | Q(otype__in=manager_list))  # 负责人姓名 & 组织类名 & 组织名
         # 组织不呈现具体内容，进行跳转
 
         return render(request, "search.html", locals())
@@ -999,7 +1002,8 @@ def start_transaction(request):
 
     try:
         if recipient_type == "np":
-            recipient = NaturalPerson.objects.get(person_id=recipient_id).person_id
+            recipient = NaturalPerson.objects.get(
+                person_id=recipient_id).person_id
         else:
             recipient = Organization.objects.get(
                 organization_id=recipient_id
@@ -1120,7 +1124,8 @@ def confirm_transaction(request):
 
 def showActivities(request):
     notes = [
-        {"title": "活动名称1", "Date": "11/01/2019", "Address": ["B107A", "B107B"]},
+        {"title": "活动名称1", "Date": "11/01/2019",
+            "Address": ["B107A", "B107B"]},
         {"title": "活动名称2", "Date": "11/02/2019", "Address": ["B108A"]},
         {"title": "活动名称3", "Date": "11/02/2019", "Address": ["B108A"]},
         {"title": "活动名称4", "Date": "11/02/2019", "Address": ["B108A"]},
@@ -1166,4 +1171,3 @@ def addActivities(request):
     person = True
 
     return render(request, "activity_add.html", locals())
-
