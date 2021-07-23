@@ -618,14 +618,13 @@ def search(request):
 
         # 搜索组织
         # 先查找通过个人关联到的position_list
-        position_list = Position.objects.activated().filter(Q(person__in=people_list) & Q(show_post=True))
+        position_list = Position.objects.filter(Q(person__in=people_list) & Q(show_post=True))
         # 通过组织名、组织类名、个人关系查找
         organization_list = Organization.objects.filter(
             Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in = position_list.values('org')))
 
         # 组织要呈现的具体内容
         organization_field = ["组织名", "组织类型", "负责人", "近期活动"]
-
 
         return render(request, "search.html", locals())
     except Exception as e:
