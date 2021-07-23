@@ -617,8 +617,8 @@ def search(request):
         #     Q(otype_name__icontains=query) | Q(incharge__in=incharge_list))  # 负责人姓名 & 组织类名
         # organization_list = Organization.objects.filter(
         #     Q(oname__icontains=query) | Q(otype__in=manager_list))  # 负责人姓名 & 组织类名 & 组织名
-        position_list = Position.objects.activated().filter()
-        
+        position_list = Position.objects.activated().filter((Q(person__in=people_list) & Q()) | )
+
         # 组织要呈现的具体内容
         organization_field = ["组织名", "组织类型", "负责人", "近期活动"]
 
