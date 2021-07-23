@@ -1,0 +1,272 @@
+{% extends "base.html" %}
+
+
+{% block mainpage %}
+<!--  BEGIN MAIN CONTAINER  
+
+<style type='text/css'>
+    .table th,
+    .table td {
+        text-align: center;
+        vertical-align: middle !important;
+    }
+
+    table {
+        width: 100px;
+        table-layout: fixed;
+        /* 只有定义了表格的布局算法为fixed，下面td的定义才能起作用。 */
+    }
+
+    td {
+        width: 100%;
+        word-break: keep-all;
+        /* 不换行 */
+        white-space: nowrap;
+        /* 不换行 */
+        overflow: hidden;
+        /* 内容超出宽度时隐藏超出部分的内容 */
+        text-overflow: ellipsis;
+        /* 当对象内文本溢出时显示省略标记(...) ；需与overflow:hidden;一起使用*/
+        -o-text-overflow: ellipsis;
+        -icab-text-overflow: ellipsis;
+        -khtml-text-overflow: ellipsis;
+        -moz-text-overflow: ellipsis;
+        -webkit-text-overflow: ellipsis;
+    }
+
+    .table {
+        table-layout: fixed;
+    }
+</style>
+-->
+<div class="main-container" id="container">
+
+    <div class="overlay"></div>
+    <div class="search-overlay"></div>
+
+    {% include 'user_left_narbar.html' %}
+
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+        <div class="container">
+            <div class="container">
+
+
+
+                <div class="row layout-top-spacing">
+
+                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+                        <div class="statbox widget box box-shadow">
+                            <div class="widget-header">
+                                <div class="row">
+                                    <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                        <h4>元气值概览</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="widget-content widget-content-area">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered mb-4">
+                                        <thead>
+                                            <tr>
+                                                <th>当前余额</th>
+                                                <th>待收入</th>
+                                                <th>待支出</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>{{balance}}</td>
+                                                <td bgcolor="E8FFF5">未实现</td>
+                                                <td bgcolor="FFD2D2">未实现</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+                        <div class="statbox widget box box-shadow">
+                            <div class="widget-header">
+                                <div class="row">
+
+                                    <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                        <h4>元气值交易</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="widget-content widget-content-area">
+                                <!--
+                                        <ul class="nav nav-tabs nav-tabs-solid nav-justified">
+                                            <li class="nav-item">
+                                                <a class="nav-link " onclick="window.location='admin-index.html'"
+                                                    data-toggle="tab">未开始预约</a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link active" href="#solid-justified-tab2"
+                                                    data-toggle="tab">过去一周</a>
+                                            </li>
+                                        </ul>
+                                        -->
+                                <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                    <li class="nav-item">
+                                        <a class="nav-link active" onclick="window.location='/myYQPoint/'"
+                                            data-toggle="tab">
+                                            待处理
+                                        </a>
+                                    </li>
+
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="#issued" data-toggle="tab">
+                                            已处理
+                                        </a>
+                                    </li>
+
+                                </ul>
+
+                                <div id="myTabContent" class="tab-content">
+                                    <div class="tab-pane fade in active show" id="home">
+                                        {% if to_list|length == 0 %}
+                                        <p></p>
+                                        <a>没有待处理的转账记录.</a>
+                                        {% else %}
+                                        <div class="table-responsive">
+
+                                            <div
+                                                style="white-space: nowrap; overflow: hidden; overflow-x: scroll; -webkit-backface-visibility: hidden; -webkit-overflow-scrolling: touch;">
+                                                <table class="table table-bordered mb-4">
+                                                    <thead>
+                                                        <tr>
+                                                            {% for key, value in show_table.items %}
+                                                            <th class="text-center">{{value}}</th>
+                                                            {% endfor %}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for record in to_list %}
+                                                        {% if record.obj_direct == "From" %}
+                                                        <tr bgcolor="E8FFF5">
+                                                            {% else %}
+                                                        <tr bgcolor="FFD2D2">
+                                                            {% endif %}
+                                                            {% for key, value in show_table.items %}
+                                                            {% if key == "obj" %}
+                                                            <td class="text-center">{{record.obj_direct}} <a
+                                                                    href='{{record.obj_url}}'><u>{{record|get_item:key}}</u></a>
+                                                            </td>
+                                                            {% elif key == "message" and record.if_act_url %}
+                                                            <td class="text-center"> <a
+                                                                    href='{{record.obj_url}}'><u>{{record|get_item:key}}</u></a>
+                                                            </td>
+                                                            <!--    还没有开始实现
+                                                            {% elif key == "status" and record.obj_direct == "From" %}
+                                                                <td>
+                                                                    <center><a class="btn btn-primary"
+                                                                            href="/confirmTrans/{{record.id}}/0"
+                                                                            role="button">接受</a>
+                                                                        <a class="btn "
+                                                                            href="/confirmTrans/{{record.id}}/2"
+                                                                            role="button">拒绝</a>
+                                                                    </center>
+                                                                </td>
+                                                            -->
+                                                            {% else %}
+                                                            <td class="text-center">{{record|get_item:key}}</td>
+                                                            {% endif %}
+                                                            {% endfor %}
+                                                        </tr>
+
+                                                        {% endfor %}
+
+                                                    </tbody>
+
+                                                </table>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="tab-pane fade" id="issued">
+                                        {% if issued_list|length == 0 %}
+                                        <p></p>
+                                        <a>没有已处理的转账记录.</a>
+                                        {% else %}
+                                        <div class="table-responsive">
+                                            <div
+                                                style="white-space: nowrap; overflow: hidden; overflow-x: scroll; -webkit-backface-visibility: hidden; -webkit-overflow-scrolling: touch;">
+                                                <table class="table table-bordered mb-4">
+                                                    <thead>
+                                                        <tr>
+                                                            {% for key, value in show_table.items %}
+                                                            <th class="text-center">{{value}}</th>
+                                                            {% endfor %}
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {% for record in issued_list %}
+                                                        {% if record.obj_direct == "From" %}
+                                                        <tr bgcolor="E8FFF5">
+                                                            {% else %}
+                                                        <tr bgcolor="FFD2D2">
+                                                            {% endif %}
+                                                            {% for key, value in show_table.items %}
+                                                            {% if key == "obj" %}
+                                                            <td class="text-center">{{record.obj_direct}} <a
+                                                                    href='{{record.obj_url}}'><u>{{record|get_item:key}}</u></a>
+                                                            </td>
+                                                            {% elif key == "message" and record.if_act_url %}
+                                                            <td class="text-center"><u>{{record|get_item:key}}</u></a>
+                                                            </td>
+                                                            {% else %}
+                                                            <td class="text-center" title="{{record|get_item:key}}">
+                                                                {{record|get_item:key}}</td>
+                                                            {% endif %}
+                                                            {% endfor %}
+                                                        </tr>
+                                                        {% endfor %}
+
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+    <!--  END CONTENT AREA  -->
+</div>
+<!-- END MAIN CONTAINER -->
+
+<script>
+    $('.nav-tabs').on('shown.bs.tab', 'a', function (e) {
+        if (e.relatedTarget) {
+            $(e.relatedTarget).removeClass('active');
+        }
+    })
+</script>
+
+<script>
+    $('.table').bootstrapTable({
+        onLoadSuccess: function () {
+            $('.table tr td').each(function () {
+
+                $(this).attr("title", $(this).text());
+                $(this).css("cursor", 'pointer');
+            });
+
+        }
+    })
+</script>
+{% endblock %}

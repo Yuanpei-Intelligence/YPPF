@@ -1,3 +1,4 @@
+from django.template.defaulttags import register
 from app.models import (
     NaturalPerson,
     Position,
@@ -38,18 +39,25 @@ hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
 
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key)
+
+
 def load_org_data(request):
     if request.user.is_superuser:
         load_type = request.GET.get("loadtype", None)
         message = "加载失败！"
         if load_type is None:
-            message = "没有得到loadtype参数:[org或type]"
+            message = "没有得到loadtype参数:[org或otype]"
         elif load_type == "otype":
             load_orgtype()
             message = "load type成功！"
         elif load_type == "org":
             load_org()
             message = "load org成功！"
+        else:
+            message = "没有得到loadtype参数:[org或otype]"
     else:
         message = "请先以超级账户登录后台后再操作！"
     return render(request, "debugging.html", locals())
@@ -216,7 +224,7 @@ def stuinfo(request, name=None):
         else:
             assert user_type == "Person"
             try:
-                oneself = NaturalPerson.objects.activated().get(pid=user)
+                oneself = NaturalPerson.objects.activated().get(person_id=user)
             except:
                 return redirect("/welcome/")
             return redirect("/stuinfo/" + oneself.name)
@@ -233,19 +241,19 @@ def stuinfo(request, name=None):
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
                 if (
                     user_type == "Person"
-                    and NaturalPerson.objects.activated().get(pid=user).name == name
+                    and NaturalPerson.objects.activated().get(person_id=user).name == name
                 ):
-                    person = NaturalPerson.objects.activated().get(pid=user)
+                    person = NaturalPerson.objects.activated().get(person_id=user)
                 else:  # 不是自己，信息不全跳转搜索
                     return redirect("/search?Query=" + name)
             else:
                 obtain_id = int(name_list[1])  # 获取增补信息
                 get_user = User.objects.get(id=obtain_id)
-                potential_person = NaturalPerson.objects.activated().get(pid=get_user)
+                potential_person = NaturalPerson.objects.activated().get(person_id=get_user)
                 assert potential_person in person
                 person = potential_person
 
-        is_myself = user_type == "Person" and person.pid == user  # 用一个字段储存是否是自己
+        is_myself = user_type == "Person" and person.person_id == user  # 用一个字段储存是否是自己
         html_display["is_myself"] = is_myself  # 存入显示
 
         # 处理被搜索人的信息，这里应该和“用户自己”区分开
@@ -398,6 +406,8 @@ def homepage(request):
     if not valid:
         return redirect("/logout/")
     me = get_person_or_org(request.user, user_type)
+    if me.first_time_login:
+        return redirect("/modpw/")
     myname = me.name if is_person else me.oname
 
     # 直接储存在html_display中
@@ -557,11 +567,11 @@ def search(request):
             组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
     """
     try:
-
         valid, user_type, html_display = utils.check_user_type(request)
         if not valid:
             return redirect("/logout/")
 
+        '''
         is_person = True if user_type == "Person" else False
         me = get_person_or_org(request.user, user_type)
         html_display["is_myself"] = True
@@ -573,6 +583,12 @@ def search(request):
             html_display = utils.get_org_left_narbar(
                 me, html_display["is_myself"], html_display
             )
+<<<<<<< HEAD
+=======
+        '''
+        # syb: 以上一段目前不注释掉运行还会报错，我去查查为什么;好像是position类里面缺一些相关的设置
+        # 或许我一会儿补一下下面报错的描述
+>>>>>>> 6407f62b3a5f8414b5408a825b4ade41b5718448
 
         query = request.GET.get("Query", "")
         if query == "":
@@ -581,8 +597,15 @@ def search(request):
         not_found_message = "找不到符合搜索的信息或相关内容未公开！"
         # 首先搜索个人
         people_list = NaturalPerson.objects.filter(
+<<<<<<< HEAD
             Q(name__icontains=query) | (Q(nickname__icontains=query) & Q(show_nickname=True)) |
             (Q(stu_major__icontains=query) & Q(show_major=True)))
+=======
+            Q(name__icontains=query)
+            | (Q(nickname__icontains=query) & Q(show_nickname=True))
+            | (Q(stu_major__icontains=query) & Q(show_major=True))
+        )
+>>>>>>> 6407f62b3a5f8414b5408a825b4ade41b5718448
 
         # 接下来准备呈现的内容
         # 首先是准备搜索个人信息的部分
@@ -822,7 +845,7 @@ def load_data(request):
             user = User.objects.create(username=username)
             user.set_password(password)
             user.save()
-            stu = NaturalPerson.objects.create(person_id=sno)
+            stu = NaturalPerson.objects.create(person_id=user)
             stu.email = email
             stu.telephone = tel
             stu.stu_grade = year
@@ -865,7 +888,7 @@ def engage_activity(request):
     try:
         activity = Activity.objects.select_for_update().filter(id=activity_id)
         payer = NaturalPerson.objects.select_for_update().filter(
-            pid__username=person_id
+            person_id__username=person_id
         )
         with transaction.atomic():
             assert len(activity) == 1
@@ -884,7 +907,7 @@ def engage_activity(request):
             except:
                 pass
 
-            organization_id = activity.oid_id
+            organization_id = activity.organization_id_id
             orgnization = Organization.objects.select_for_update().filter(
                 organization_id=organization_id
             )
@@ -936,8 +959,9 @@ def engage_activity(request):
 # 搜索不希望出现学号，rid 为 User 的 index
 @require_GET
 @login_required(redirect_field_name="origin")
-def transaction_page(request):
-    recipient_id = request.GET.get("rid")
+def transaction_page(request, rid=None):
+    # recipient_id = request.GET.get("rid")
+    recipient_id = rid
     origin = request.GET.get("origin")
     if origin is None:
         origin = "/"
@@ -949,10 +973,12 @@ def transaction_page(request):
 
     try:
         if re.match("zz\d+", recipient_id) is not None:
-            recipient = Organization.objects.get(organization_id=recipient_id)
+            recipient = Organization.objects.get(
+                organization_id__username=recipient_id)
             recipient_type = "org"
         else:
-            recipient = NaturalPerson.objects.get(person_id=recipient_id)
+            recipient = NaturalPerson.objects.get(
+                person_id__username=recipient_id)
             recipient_type = "np"
     except:
         context[
@@ -1004,10 +1030,14 @@ def start_transaction(request):
     try:
         if recipient_type == "np":
             recipient = NaturalPerson.objects.get(
+<<<<<<< HEAD
                 person_id=recipient_id).person_id
+=======
+                person_id__username=recipient_id).person_id
+>>>>>>> 6407f62b3a5f8414b5408a825b4ade41b5718448
         else:
             recipient = Organization.objects.get(
-                organization_id=recipient_id
+                organization_id__username=recipient_id
             ).organization_id
     except:
         context[
@@ -1060,9 +1090,9 @@ def start_transaction(request):
 
 @require_GET
 @login_required(redirect_field_name="origin")
-def confirm_transaction(request):
-    tid = request.GET.get("tid")
-    reject = request.GET.get("reject")
+def confirm_transaction(request, tid=None, reject=None):
+    # tid = request.GET.get("tid")
+    # reject = request.GET.get("reject")
     origin = request.GET.get("origin")
     if origin is None:
         origin = "/"
@@ -1104,10 +1134,10 @@ def confirm_transaction(request):
                 )
             assert len(recipient) == 1
             recipient = recipient[0]
-            if reject == "True":
+            if reject == 2:
                 record.status = 2
                 payer.YQPoint += record.amount
-            else:
+            elif reject == 0:
                 record.status = 0
                 recipient.YQPoint += record.amount
             record.save()
@@ -1121,6 +1151,104 @@ def confirm_transaction(request):
             "msg"
         ] = "Can not find the transaction record. If you are not deliberately doing this, please contact the administrator to report this bug."
         return render(request, "msg.html", context)
+
+
+def record2Display(record_list, record_type):  # 对应myYQPoint函数中的table_show_list
+    assert record_type in ['send', 'recv']
+    lis = []
+    for record in record_list:
+        lis.append({})
+        # 时间
+        lis[-1]['time'] = record.time.strftime("%m/%d %H:%M")
+
+        # 对象
+        # 如果是给出列表，那么对象就是接收者
+        obj_user = record.recipient if record_type == 'send' else record.proposer
+        lis[-1]['obj_direct'] = 'To  ' if record_type == 'send' else 'From'
+        if hasattr(obj_user, 'naturalperson'):  # 如果OneToOne Field在个人上
+            lis[-1]['obj'] = obj_user.naturalperson.name
+            lis[-1]['obj_url'] = '/stuinfo/' + \
+                lis[-1]['obj'] + "+" + str(obj_user.id)
+        else:
+            lis[-1]['obj'] = obj_user.organization.oname
+            lis[-1]['obj_url'] = '/orginfo/' + lis[-1]['obj']
+
+        # 金额
+        lis[-1]['amount'] = record.amount
+
+        # 留言
+        lis[-1]['message'] = record.message
+        lis[-1]['if_act_url'] = False
+        if record.corres_act is not None:
+            lis[-1]['message'] = '活动' + record.corres_act.topic + '积分'
+            # TODO 这里还需要补充一个活动跳转链接
+
+        # 状态
+        lis[-1]['status'] = record.get_status_display()
+
+    return lis
+
+
+# modified by Kinnuch
+
+@login_required(redirect_field_name='origin')
+def myYQPoint(request):
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/index/')
+    me = get_person_or_org(request.user, user_type)
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
+    # 补充一些呈现信息
+    html_display["title_name"] = "Welcome Page"
+    html_display["narbar_name"] = "我的元气值"  #
+
+    to_send_list = record2Display(record_list=TransferRecord.objects.filter(
+        proposer=request.user, status=TransferRecord.TransferStatus.WAITING),
+        record_type='send')
+    to_recv_list = record2Display(record_list=TransferRecord.objects.filter(
+        recipient=request.user, status=TransferRecord.TransferStatus.WAITING),
+        record_type='recv')
+
+    issued_send_list = record2Display(record_list=TransferRecord.objects.filter(proposer=request.user, status__in=[
+        TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED]),
+        record_type='send')
+    issued_recv_list = record2Display(record_list=TransferRecord.objects.filter(recipient=request.user, status__in=[
+        TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED]),
+        record_type='recv')
+
+    to_list = to_recv_list + to_send_list
+    issued_list = issued_recv_list + issued_send_list
+
+    show_table = {'time': '时间',
+                  'obj': '对象',
+                  'amount': '金额',
+                  'message': '留言',
+                  'status': '状态'
+                  }
+
+    query = request.session['username']
+    flag = -1
+    context = dict()
+
+    if re.match("zz\d+", query) is not None:
+        queryman = Organization.objects.get(organization_id=request.user)
+        balance = queryman.YQPoint
+        Record_list = TransferRecord.objects.filter(
+            Q(proposer=queryman.organization_id) | (Q(recipient=queryman.organization_id)))
+        flag = 0
+    else:
+        queryman = NaturalPerson.objects.get(person_id=request.user)
+        balance = queryman.YQPoint
+        Record_list = TransferRecord.objects.filter(
+            Q(proposer=queryman.person_id) | (Q(recipient=queryman.person_id)))
+        flag = 1
+    return render(request, 'myYQPoint.html', locals())
 
 
 def showActivities(request):
@@ -1141,7 +1269,7 @@ def showActivities(request):
 def viewActivities(request):
     """
     aname = str(request.POST["aname"])  # 活动名称
-    oid = request.POST["oid"]  # 组织id
+    organization_id = request.POST["organization_id"]  # 组织id
     astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
     afinish = request.POST["afinish"]
     content = str(request.POST["content"])
@@ -1159,7 +1287,7 @@ def viewActivities(request):
 def addActivities(request):
     """
     aname = str(request.POST["aname"])  # 活动名称
-    oid = request.POST["oid"]  # 组织id
+    organization_id = request.POST["organization_id"]  # 组织id
     astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
     afinish = request.POST["afinish"]
     content = str(request.POST["content"])

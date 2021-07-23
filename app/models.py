@@ -10,12 +10,12 @@ from boottest import local_dict
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
-        return self.exclude(status=NaturalPerson.status.GRADUATED)
+        return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
 
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
         datas = NaturalPerson.objects.activated()
         year = datetime.now().strftime("%Y")
-        datas.objects.filter(stu_grade=str(int(year) - 4)).update(status=1)
+        datas.objects.filter(stu_grade=str(int(year) - 4)).update(GraduateStatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
@@ -44,7 +44,7 @@ class NaturalPerson(models.Model):
     objects = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
 
-    YQPoint = models.IntegerField("元气值", default=0)
+    YQPoint = models.FloatField("元气值", default=0)
 
     class Identity(models.IntegerChoices):
         TEACHER = (0, "教职工")
@@ -92,6 +92,7 @@ class NaturalPerson(models.Model):
         info = [self.name, self.stu_grade, self.stu_class]
         info.append(self.nickname if (self.show_nickname) else unpublished)
         info.append(
+<<<<<<< HEAD
             unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
         info.append(self.stu_major if (self.show_major) else unpublished)
         info.append(self.email if (self.show_email) else unpublished)
@@ -103,6 +104,14 @@ class NaturalPerson(models.Model):
         for i in range(len(info)):
             if info[i] == None:
                 info[i] = unpublished
+=======
+            unpublished if not self.show_gender else gender[self.gender])
+        info.append(self.stu_major if self.show_major else unpublished)
+        info.append(self.email if self.show_email else unpublished)
+        info.append(self.telephone if self.show_tel else unpublished)
+        info.append(self.stu_dorm if self.show_dorm else unpublished)
+        info.append('在校' if self.status == NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
+>>>>>>> 6407f62b3a5f8414b5408a825b4ade41b5718448
         return info
 
 
@@ -141,7 +150,7 @@ class Organization(models.Model):
     organization_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
     oname = models.CharField(max_length=32, unique=True)
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
-    status = models.BooleanField("激活状态", default=False)  # 表示一个组织是否上线(或者是已经被下线)
+    status = models.BooleanField("激活状态", default=True)  # 表示一个组织是否上线(或者是已经被下线)
 
     objects = OrganizationManager()
 
@@ -266,17 +275,19 @@ class TransferRecord(models.Model):
     recipient = models.ForeignKey(
         User, related_name="recipient_id", on_delete=models.CASCADE
     )
-    amount = models.IntegerField("转账元气值数量", default=0)
+    amount = models.FloatField("转账元气值数量", default=0)
     time = models.DateTimeField("转账时间", auto_now_add=True)
     message = models.CharField("备注信息", max_length=255, default="")
 
+    corres_act = models.ForeignKey(Activity, related_name="有关活动", on_delete = models.SET_NULL, null=True, blank=True)
+
     class TransferStatus(models.IntegerChoices):
         ACCEPTED = (0, "已接受")
-        WAITING = (1, "等待确认中")
+        WAITING = (1, "待确认")
         REFUSED = (2, "已拒绝")
         SUSPENDED = (3, "已终止")
 
-    status = models.IntegerField(choices=TransferStatus.choices, default=1)
+    status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
 
 
 class Paticipant(models.Model):

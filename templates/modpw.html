@@ -18,9 +18,11 @@
     <link rel="stylesheet" type="text/css" href={% static "assets/css/forms/switches.css" %}>
 </head>
 {% if isFirst %}
+{% if err_code == 0 %}
 <script>
     alert('初次登录请修改密码！')
 </script>
+{% endif %}
 {% endif %}
 
 <body class="form no-image-content">
