@@ -617,7 +617,7 @@ def search(request):
         ]  # 感觉将年级和班级分开呈现会简洁很多
 
         # 搜索组织
-        # 通过个人关联到的position_list
+        # 先查找通过个人关联到的position_list
         position_list = Position.objects.activated().filter(Q(person__in=people_list) & Q(show_post=True))
         # 通过组织名、组织类名、个人关系查找
         organization_list = Organization.objects.filter(
