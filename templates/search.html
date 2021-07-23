@@ -92,7 +92,7 @@
                         </div>
                     </div>
                     <!-- add by syb -->
-                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing">
+                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
                         <div class="statbox widget box box-shadow">
                             <div class="widget-header">
                                 <div class="row">
@@ -121,18 +121,20 @@
                                                     <a href="/orginfo/{{orgn.oname}}" class="link">{{orgn.oname}}</a>
                                                 </td>
                                                 <td>
-                                                    <a href="/orginfo/{{orgn.oname}}">{{orgn.oname}}</a>
+                                                    {{orgn.otype}}
                                                 </td>
                                                 <td>
-                                                    <a href="/orginfo/{{orgn.oname}}">{{orgn.oname}}</a>
+                                                    {{orgn.otype.incharge}}
                                                 </td>
                                                 <td>
-                                                    <a href="/orginfo/{{orgn.oname}}">{{orgn.oname}}</a>
+                                                    {{orgn.oname}}
+                                                    {{orgn.oname}}
                                                 </td>
                                             </tr>
                                             {% endfor %}
                                         </tbody>
                                         {% else %}
+                                        <thead></thead>
                                         <tbody>
                                             <tr>
                                                 <td>{{not_found_message}}</td>
