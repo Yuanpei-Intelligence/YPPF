@@ -5,6 +5,7 @@ from django.conf import settings
 from boottest import local_dict
 from datetime import datetime
 
+
 class MyMD5PasswordHasher(MD5PasswordHasher):
     algorithm = "mymd5"
     salt = ""
@@ -72,10 +73,10 @@ def get_user_ava(obj):
 
 
 def get_user_left_narbar(
-    person, is_myself, html_display
+        person, is_myself, html_display
 ):  # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
     assert (
-        "is_myself" in html_display.keys()
+            "is_myself" in html_display.keys()
     ), "Forget to tell the website whether this is the user itself!"
     html_display["underground_url"] = local_dict["url"]["base_url"]
 
@@ -87,16 +88,54 @@ def get_user_left_narbar(
 
 def get_org_left_narbar(org, is_myself, html_display):
     assert (
-        "is_myself" in html_display.keys()
+            "is_myself" in html_display.keys()
     ), "Forget to tell the website whether this is the user itself!"
     html_display["switch_org_name"] = org.oname
     return html_display
 
-def check_time(start_time, end_time):
+
+# 检查发起活动的request的合法性
+def check_ac_request(request):
+    # oid的获取
+    aname = str(request.POST["aname"])  # 活动名称
+
+    publish_time = request.POST["publishdate"] + ' ' + request.POST["publishtime"] + ':00'  # 该活动信息发布时间
+    signup_start = request.POST["signupSdate"] + ' ' + request.POST["signupStime"] + ':00'  # 活动报名时间
+    signup_end = request.POST["signupEdate"] + ' ' + request.POST["signupEtime"] + ':00'  # 活动报名结束时间
+    act_start = request.POST["actSdate"] + ' ' + request.POST["actStime"] + ':00'  # 活动开始时间
+    act_end = request.POST["actEdate"] + ' ' + request.POST["actEtime"] + ':00'  # 活动结束时间
+
+    #
+    content = str(request.POST["content"])  # 活动内容
+    URL = str(request.POST["URL"])  # 活动推送链接
+    aprice = float(request.POST["aprice"])  # 活动价格
+    max_people = int(request.POST["maxpeople"])  # 活动最大参与人数
+    power = int(request.POST["customRadioInline1"])  # 1是给报名者发消息，0是给所有人发消息，之后设置
+    location = str(request.POST["location"])
+    publish_time = datetime.strptime(publish_time, '%Y-%m-%d %H:%M:%S')
+    signup_start = datetime.strptime(signup_start, '%Y-%m-%d %H:%M:%S')
+    signup_end = datetime.strptime(signup_end, '%Y-%m-%d %H:%M:%S')
+    act_start = datetime.strptime(act_start, '%Y-%m-%d %H:%M:%S')
+    act_end = datetime.strptime(act_end, '%Y-%m-%d %H:%M:%S')
+    if_ilegal = 0
+    if publish_time <= signup_start <= act_start and check_ac_time(signup_start, signup_end) == False \
+            and check_ac_time(act_start, act_end) == False:
+        if_ilegal = 1
+    if aprice < 0:
+        if_ilegal = 2
+    if max_people <= 0:
+        if_ilegal = 3
+
+    return aname, publish_time, signup_start, signup_end, act_start, act_end, location, content, URL, aprice, max_people, \
+           power, if_ilegal
+
+
+# 时间合法性的检查，检查时间是否在当前时间的一个月以内，并且检查开始的时间是否早于结束的时间，
+def check_ac_time(start_time, end_time):
     try:
-        now_time = datetime.datetime.strptime(str(datetime.datetime.now().date()), '%Y-%m-%d %H:%M:%S')
+        now_time = datetime.now().strptime('%Y-%m-%d %H:%M:%S')
         month_late = (now_time + datetime.timedelta(days=30))
-        if now_time < start_time< end_time < month_late :
+        if now_time < start_time < end_time < month_late:
             return True  # 时间所处范围正确
     except:
         return False

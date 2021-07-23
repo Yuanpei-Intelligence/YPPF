@@ -11,7 +11,7 @@ from app.models import (
 import app.utils as utils
 from app.forms import UserForm
 from app.data_import import load, load_orgtype, load_org
-from app.utils import MyMD5PasswordHasher, MySHA256Hasher, check_time
+from app.utils import MyMD5PasswordHasher, MySHA256Hasher, check_ac_request
 
 from django.shortcuts import render, redirect
 from django.http import HttpResponseRedirect, JsonResponse
@@ -874,7 +874,7 @@ def engage_activity(request):
             orgnization = orgnization[0]
 
             amount = float(activity.YQPoint)
-            cnt = activity.places
+            cnt = activity.capacity
             if cnt <= 0:
                 context["msg"] = "Failed to fetch the ticket."
                 return render(request, "msg.html", context)
@@ -882,14 +882,14 @@ def engage_activity(request):
                 context["msg"] = "No enough YQPoint"
                 return render(request, "msg.html", context)
             payer.YQPoint -= float(amount)
-            activity.places = cnt - 1
+            activity.capacity = cnt - 1
             orgnization.YQPoint += float(amount)
 
             record = TransferRecord.objects.create(
                 proposer=request.user, recipient=orgnization.organization_id
             )
             record.amount = amount
-            record.message = f"Participate Activity {activity.topic}"
+            record.message = f"Participate Activity {activity.title}"
             record.status = 0  # Wating
             record.time = str(datetime.now())
 
@@ -1128,7 +1128,7 @@ def viewActivities(request):
     URL = str(request.POST["URL"])  # 活动推送链接
     QRcode = request.POST["QRcode"]  # 收取元气值的二维码
     aprice = request.POST["aprice"]  # 活动价格
-    places = request.POST["places"]  # 活动举办的地点，默认是list
+    capacity = request.POST["capacity"]  # 活动举办的地点，默认是list
     """
 
     person = True
@@ -1136,56 +1136,22 @@ def viewActivities(request):
     return render(request, "activity_info.html", locals())
 
 
-def check_ac_request(request):
-    # oid的获取
-
-    aname = str(request.POST["aname"])  # 活动名称
-    oid = 'zz00010'  # organization_id = request.POST["organization_id"]  # 组织id
-    publish_time = request.POST["publishdate"] + ' ' + request.POST["publishtime"] +':00' # 该活动信息发布时间
-    signup_start = request.POST["signupSdate"] + ' ' + request.POST["signupStime"]  +':00'# 活动报名时间
-    signup_end = request.POST["signupEdate"] + ' ' + request.POST["signupEtime"] +':00' # 活动报名结束时间
-    act_start = request.POST["actSdate"] + ' ' + request.POST["actStime"] +':00' # 活动开始时间
-    act_end = request.POST["actEdate"] + ' ' + request.POST["actEtime"]  +':00'# 活动结束时间
-
-    #
-    content = str(request.POST["content"])#活动内容
-    URL = str(request.POST["URL"])  # 活动推送链接
-    aprice = float(request.POST["aprice"]) # 活动价格
-    max_people = int(request.POST["maxpeople"])  # 活动最大参与人数
-    power = int(request.POST["customRadioInline1"] ) # 1是给报名者发消息，0是给所有人发消息，之后设置
-
-    publish_time=datetime.strptime(publish_time, '%Y-%m-%d %H:%M:%S')
-    signup_start=datetime.strptime(signup_start, '%Y-%m-%d %H:%M:%S')
-    signup_end=datetime.strptime(signup_end, '%Y-%m-%d %H:%M:%S')
-    act_start=datetime.strptime(act_start, '%Y-%m-%d %H:%M:%S')
-    act_end=datetime.strptime(act_end, '%Y-%m-%d %H:%M:%S')
-    if_ilegal = 0
-    if publish_time<=signup_start<=act_start and check_time(signup_start, signup_end) == False \
-            and check_time(act_start,act_end)==False:
-        if_ilegal = 1
-    if aprice < 0:
-        if_ilegal = 2
-    if max_people <= 0:
-        if_ilegal = 3
-
-    return aname, oid, publish_time,signup_start, signup_end,act_start,act_end, content,URL, aprice, max_people, \
-           power,if_ilegal
-
-
 # 发起活动
-
-# @login_required(redirect_field_name="origin")
 def addActivities(request):
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/index/')
+    if user_type == 'Person':
+        return redirect('/index/')  # test
     if request.method == "POST" and request.POST:
+        org = get_person_or_org(request.user, user_type)
         context = dict()
         # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
-        aname, oid, publish_time,signup_start, signup_end,act_start,act_end, content, URL, YQP, max_people, power,\
-        if_ilegal = check_ac_request(request)
-        user=User.objects.get(username=oid)
-        org=Organization.objects.get(organization_id =user)
+        aname, publish_time, signup_start, signup_end, act_start, act_end, location, content, URL, YQP, \
+        max_people, power, if_ilegal = check_ac_request(request)
         if if_ilegal == 0:
             with transaction.atomic():
-                new_act = Activity.objects.create(topic=aname, organization_id =org,
+                new_act = Activity.objects.create(title=aname, organization_id=org,
                                                   status=Activity.Astatus.PENDING)  # 默认状态是报名中
 
                 new_act.content = content
@@ -1195,14 +1161,15 @@ def addActivities(request):
                 new_act.start = act_start
                 new_act.end = act_end
                 new_act.URL = URL
+                new_act.location = location
                 # new_act.QRcode = QRcode
                 new_act.YQPoint = YQP
-                new_act.places = max_people
+                new_act.capacity = max_people
                 new_act.power = power
                 new_act.save()
 
-            #except:
-                #if_ilegal = 4
+            # except:
+            # if_ilegal = 4
 
         if if_ilegal == 1:
             context["msg"] = "The activity has to be in a month! or you have sent a wrong timeform!"
