@@ -63,7 +63,12 @@ def load_org_data(request):
     return render(request, "debugging.html", locals())
 
 
-def get_person_or_org(user, user_type):
+def get_person_or_org(user, user_type = None):
+    if user_type is None:
+        if hasattr(user, 'naturalperson'):
+            return user.naturalperson
+        else:
+            return user.organization
     return (
         NaturalPerson.objects.get(person_id=user)
         if user_type == "Person"
@@ -1064,76 +1069,74 @@ def start_transaction(request):
     return render(request, "msg.html", context)
 
 
-@require_GET
-@login_required(redirect_field_name="origin")
 def confirm_transaction(request, tid=None, reject=None):
-    # tid = request.GET.get("tid")
-    # reject = request.GET.get("reject")
-    origin = request.GET.get("origin")
-    if origin is None:
-        origin = "/"
     context = dict()
-    try:
-        record = TransferRecord.objects.select_for_update().filter(id=tid)
-        with transaction.atomic():
-            assert len(record) == 1
-            record = record[0]
-            if record.recipient != request.user:
-                context[
-                    "msg"
-                ] = "The transaction is not yours. If you are not deliberately doing this, please contact the administrator to report this bug."
-                return render(request, "msg.html", context)
-            if record.status != 1:
-                context[
-                    "msg"
-                ] = "The transaction has already been dealt. If you are not deliberately doing this, please contact the administrator to report this bug."
-                return render(request, "msg.html", context)
-            payer = record.proposer
-            if re.match("zz\d+", payer.username) is not None:
-                payer = Organization.objects.select_for_update().filter(
-                    organization_id=payer
-                )
+    context['warn_code'] = 1    # 先假设有问题
+    with transaction.atomic():
+        try:
+            record = TransferRecord.objects.select_for_update().get(id=tid,recipient=request.user)
+            
+        except Exception as e:
+            
+            context[
+                "warn_message"
+            ] = "交易遇到问题, 请联系管理员!" + str(e) 
+            return context
+        
+
+        if record.status != TransferRecord.TransferStatus.WAITING:
+            context[
+                "warn_message"
+            ] = "交易已经完成, 请不要重复操作!"
+            return context
+
+        payer = record.proposer
+        try:
+            if hasattr(payer, 'naturalperson'):
+                payer = NaturalPerson.objects.activated().select_for_update().get(person_id=payer)
             else:
-                payer = NaturalPerson.objects.select_for_update().filter(
-                    person_id=payer
-                )
-            assert len(payer) == 1
-            payer = payer[0]
-            recipient = record.recipient
-            if re.match("zz\d+", recipient.username) is not None:
-                recipient = Organization.objects.select_for_update().filter(
-                    organization_id=recipient
-                )
-            else:
-                recipient = NaturalPerson.objects.select_for_update().filter(
-                    person_id=recipient
-                )
-            assert len(recipient) == 1
-            recipient = recipient[0]
-            if reject == 2:
-                record.status = 2
-                payer.YQPoint += record.amount
-            elif reject == 0:
-                record.status = 0
-                recipient.YQPoint += record.amount
-            record.save()
+                payer = Organization.objects.select_for_update().get(organization_id=payer)
+        except:
+            context['warn_message'] = "交易对象不存在或已毕业, 请联系管理员!"
+            return context
+
+        
+        recipient = record.recipient
+        if hasattr(recipient, 'naturalperson'):
+            recipient = NaturalPerson.objects.activated().select_for_update().get(person_id=recipient)
+        else:
+            recipient = Organization.objects.select_for_update().get(organization_id=recipient)
+        
+    
+    
+        if reject is True:
+            record.status = TransferRecord.TransferStatus.REFUSED
+            payer.YQPoint += record.amount
             payer.save()
+            context['warn_message'] = "拒绝转账成功!"
+        else:
+            record.status = TransferRecord.TransferStatus.ACCEPTED
+            recipient.YQPoint += record.amount
             recipient.save()
-        context["msg"] = "Confirmed transaction."
-        context["origin"] = origin
-        return render(request, "msg.html", context)
-    except:
-        context[
-            "msg"
-        ] = "Can not find the transaction record. If you are not deliberately doing this, please contact the administrator to report this bug."
-        return render(request, "msg.html", context)
+            context['warn_message'] = "交易成功!"
+        record.save()
+        context["warn_code"] = 2
+        
+        return context
+
+    context['warn_message'] = "交易遇到问题, 请联系管理员!"
+    return context
 
 
 def record2Display(record_list, record_type):  # 对应myYQPoint函数中的table_show_list
     assert record_type in ['send', 'recv']
     lis = []
+    amount = 0.0    # 储存这个列表中所有record的元气值的和
     for record in record_list:
         lis.append({})
+        # id
+        lis[-1]['id'] = record.id
+
         # 时间
         lis[-1]['time'] = record.time.strftime("%m/%d %H:%M")
 
@@ -1151,6 +1154,7 @@ def record2Display(record_list, record_type):  # 对应myYQPoint函数中的tabl
 
         # 金额
         lis[-1]['amount'] = record.amount
+        amount += record.amount
 
         # 留言
         lis[-1]['message'] = record.message
@@ -1162,7 +1166,7 @@ def record2Display(record_list, record_type):  # 对应myYQPoint函数中的tabl
         # 状态
         lis[-1]['status'] = record.get_status_display()
 
-    return lis
+    return lis, amount
 
 
 # modified by Kinnuch
@@ -1172,6 +1176,26 @@ def myYQPoint(request):
     valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
         return redirect('/index/')
+
+    # 接下来处理POST相关的内容
+    html_display['warn_code'] = 0
+    if request.method == "POST":    #发生了交易处理的事件
+        try:    #检查参数合法性
+            post_args = request.POST.get("post_button") 
+            record_id, action = post_args.split("+")[0], post_args.split("+")[1]
+            assert action in ['accept','reject']
+            reject = (action == 'reject')
+        except:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "交易遇到问题,请不要非法修改参数!"
+        
+        if html_display['warn_code'] == 0:  # 如果传入参数没有问题
+            # 调用确认预约API
+            context = confirm_transaction(request, record_id, reject)
+            # 此时warn_code一定是1或者2，必定需要提示
+            html_display['warn_code'] = context['warn_code']
+            html_display['warn_message'] = context['warn_message']
+
     me = get_person_or_org(request.user, user_type)
     html_display['is_myself'] = True
     if user_type == 'Person':
@@ -1184,30 +1208,35 @@ def myYQPoint(request):
     html_display["title_name"] = "Welcome Page"
     html_display["narbar_name"] = "我的元气值"  #
 
-    to_send_list = record2Display(record_list=TransferRecord.objects.filter(
+    
+
+
+    to_send_list, to_send_amount = record2Display(record_list=TransferRecord.objects.filter(
         proposer=request.user, status=TransferRecord.TransferStatus.WAITING),
         record_type='send')
-    to_recv_list = record2Display(record_list=TransferRecord.objects.filter(
+    to_recv_list, to_recv_amount = record2Display(record_list=TransferRecord.objects.filter(
         recipient=request.user, status=TransferRecord.TransferStatus.WAITING),
         record_type='recv')
 
-    issued_send_list = record2Display(record_list=TransferRecord.objects.filter(proposer=request.user, status__in=[
+    issued_send_list, _ = record2Display(record_list=TransferRecord.objects.filter(proposer=request.user, status__in=[
         TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED]),
         record_type='send')
-    issued_recv_list = record2Display(record_list=TransferRecord.objects.filter(recipient=request.user, status__in=[
+    issued_recv_list, _ = record2Display(record_list=TransferRecord.objects.filter(recipient=request.user, status__in=[
         TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED]),
         record_type='recv')
 
     to_list = to_recv_list + to_send_list
     issued_list = issued_recv_list + issued_send_list
 
-    show_table = {'time': '时间',
-                  'obj': '对象',
-                  'amount': '金额',
-                  'message': '留言',
-                  'status': '状态'
-                  }
+    show_table = {
+        'obj': '对象',
+        'time': '时间',
+        'amount': '金额',
+        'message': '留言',
+        'status': '状态'
+    }
 
+    '''
     query = request.session['username']
     flag = -1
     context = dict()
@@ -1224,6 +1253,7 @@ def myYQPoint(request):
         Record_list = TransferRecord.objects.filter(
             Q(proposer=queryman.person_id) | (Q(recipient=queryman.person_id)))
         flag = 1
+    '''
     return render(request, 'myYQPoint.html', locals())
 
 

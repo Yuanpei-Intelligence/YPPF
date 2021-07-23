@@ -48,6 +48,11 @@
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
+        {% if html_display.warn_code == 1 %}
+                <div class="alert alert-warning  text-center" >{{ html_display.warn_message }}</div>
+        {% elif html_display.warn_code == 2 %}
+        <div class="alert alert-success  text-center" >{{ html_display.warn_message }}</div>
+        {% endif %}
         <div class="container">
             <div class="container">
 
@@ -55,30 +60,24 @@
 
                 <div class="row layout-top-spacing">
 
-                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
-                        <div class="statbox widget box box-shadow">
-                            <div class="widget-header">
-                                <div class="row">
-                                    <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                        <h4>元气值概览</h4>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="col-lg-12 col-12 layout-top-spacing">
+                        <div class="bio layout-spacing ">
                             <div class="widget-content widget-content-area">
+                                <h3>元气值总览</h3>
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
                                         <thead>
                                             <tr>
-                                                <th>当前余额</th>
+                                                <th>可用余额</th>
                                                 <th>待收入</th>
                                                 <th>待支出</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             <tr>
-                                                <td>{{balance}}</td>
-                                                <td bgcolor="E8FFF5">未实现</td>
-                                                <td bgcolor="FFD2D2">未实现</td>
+                                                <td>{{me.YQPoint}}</td>
+                                                <td bgcolor="E8FFF5">{{to_recv_amount}}</td>
+                                                <td bgcolor="FFD2D2">{{to_send_amount}}</td>
                                             </tr>
                                         </tbody>
                                     </table>
@@ -88,17 +87,10 @@
                     </div>
 
 
-                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
-                        <div class="statbox widget box box-shadow">
-                            <div class="widget-header">
-                                <div class="row">
-
-                                    <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                        <h4>元气值交易</h4>
-                                    </div>
-                                </div>
-                            </div>
+                    <div class="col-lg-12 col-12 layout-top-spacing">
+                        <div class="bio layout-spacing ">
                             <div class="widget-content widget-content-area">
+                                <h3>元气值交易</h3>
                                 <!--
                                         <ul class="nav nav-tabs nav-tabs-solid nav-justified">
                                             <li class="nav-item">
@@ -115,13 +107,13 @@
                                     <li class="nav-item">
                                         <a class="nav-link active" onclick="window.location='/myYQPoint/'"
                                             data-toggle="tab">
-                                            待处理
+                                            <h5>待处理</h5>
                                         </a>
                                     </li>
 
                                     <li class="nav-item">
                                         <a class="nav-link" href="#issued" data-toggle="tab">
-                                            已处理
+                                            <h5>已处理</h5>
                                         </a>
                                     </li>
 
@@ -133,140 +125,176 @@
                                         <p></p>
                                         <a>没有待处理的转账记录.</a>
                                         {% else %}
-                                        <div class="table-responsive">
+                                        <div class="bio-skill-box">
+                                            <div class="row">
+                                                {% for record in to_list %}
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
 
-                                            <div
-                                                style="white-space: nowrap; overflow: hidden; overflow-x: scroll; -webkit-backface-visibility: hidden; -webkit-overflow-scrolling: touch;">
-                                                <table class="table table-bordered mb-4">
-                                                    <thead>
-                                                        <tr>
-                                                            {% for key, value in show_table.items %}
-                                                            <th class="text-center">{{value}}</th>
-                                                            {% endfor %}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {% for record in to_list %}
+                                                    {% if record.obj_direct == "From" %}
+                                                    <div class=" b-skills">
+                                                        {% else %}
+                                                        <div class=" b-skills">
+                                                            {% endif %}
+
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <h5>
+                                                                        {{record.obj_direct}} <a
+                                                                            href='{{record.obj_url}}'><u>{{record.obj}}</u></a>
+                                                                    </h5>
+                                                                </div>
+                                                                <div>
+                                                                    <h5>
+                                                                        <i class="	fa fa-rmb"></i>{{record.amount}}
+                                                                    </h5>
+                                                                </div>
+                                                            </div>
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <p style="color: rgb(66, 67, 68);"><i
+                                                                            class="fa fa-calendar-o"></i>
+                                                                        {{record.time}}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p style="color: rgb(66, 67, 68);">{{record.status}}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            {% if record.obj_direct == 'From' %}
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <p style="color: rgb(66, 67, 68);"><i
+                                                                            class="fa fa-envelope-o"></i>
+                                                                        {{record.message}}</p>
+                                                                </div>
+                                                                <form method="POST" >
+                                                                    <div style="margin-left: 8px; ">
+                                                                    <div class="btn-group btn-group-sm">
+                                                                        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"
+                                                                        style="display:block;
+                                                                        white-space:nowrap; 
+                                                                        overflow:hidden; ">
+                                                                          <span class="">操作</span>
+                                                                        </button>
+                                                                        <div class="dropdown-menu">
+                                                                          <button class="dropdown-item" type="submit" name='post_button'
+                                                                          value="{{record.id}}+accept" onclick="return confirm('确定接收来自{{record.obj}}的转账?')"
+                                                                          >接收</button>
+                                                                          <button class="dropdown-item" type="submit" name='post_button'
+                                                                          value="{{record.id}}+reject" onclick="return confirm('确定拒绝来自{{record.obj}}的转账?')"
+                                                                          >拒绝</button>
+                                                                        </div>
+                                                                      </div>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
+                                                            {% else %}
+                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                                class="fa fa-envelope-o"></i>
+                                                            {{record.message}}</p>
+                                                            {% endif %}
+                                                        </div>
+
+
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+
+                                            </div>
+
+                                            {% endif %}
+                                        </div>
+                                        <div class="tab-pane fade" id="issued">
+                                            {% if issued_list|length == 0 %}
+                                            <p></p>
+                                            <a>没有已处理的转账记录.</a>
+                                            {% else %}
+
+
+                                            <div class="bio-skill-box">
+                                                <div class="row">
+                                                    {% for record in issued_list %}
+                                                    <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+
                                                         {% if record.obj_direct == "From" %}
-                                                        <tr bgcolor="E8FFF5">
+                                                        <div class=" b-skills">
                                                             {% else %}
-                                                        <tr bgcolor="FFD2D2">
-                                                            {% endif %}
-                                                            {% for key, value in show_table.items %}
-                                                            {% if key == "obj" %}
-                                                            <td class="text-center">{{record.obj_direct}} <a
-                                                                    href='{{record.obj_url}}'><u>{{record|get_item:key}}</u></a>
-                                                            </td>
-                                                            {% elif key == "message" and record.if_act_url %}
-                                                            <td class="text-center"> <a
-                                                                    href='{{record.obj_url}}'><u>{{record|get_item:key}}</u></a>
-                                                            </td>
-                                                            <!--    还没有开始实现
-                                                            {% elif key == "status" and record.obj_direct == "From" %}
-                                                                <td>
-                                                                    <center><a class="btn btn-primary"
-                                                                            href="/confirmTrans/{{record.id}}/0"
-                                                                            role="button">接受</a>
-                                                                        <a class="btn "
-                                                                            href="/confirmTrans/{{record.id}}/2"
-                                                                            role="button">拒绝</a>
-                                                                    </center>
-                                                                </td>
-                                                            -->
-                                                            {% else %}
-                                                            <td class="text-center">{{record|get_item:key}}</td>
-                                                            {% endif %}
-                                                            {% endfor %}
-                                                        </tr>
+                                                            <div class=" b-skills">
+                                                                {% endif %}
 
+                                                                <div class="d-flex justify-content-between">
+                                                                    <div>
+                                                                        <h5>
+                                                                            {{record.obj_direct}} <a
+                                                                                href='{{record.obj_url}}'><u>{{record.obj}}</u></a>
+                                                                        </h5>
+                                                                    </div>
+                                                                    <div>
+                                                                        <h5>
+                                                                            <i class="	fa fa-rmb"></i>{{record.amount}}
+                                                                        </h5>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="d-flex justify-content-between">
+                                                                    <div>
+                                                                        <p style="color: rgb(66, 67, 68);"><i
+                                                                                class="fa fa-calendar-o"></i>
+                                                                            {{record.time}}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p style="color: rgb(66, 67, 68);">
+                                                                            {{record.status}}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+                                                                <p style="color: rgb(66, 67, 68);"><i
+                                                                        class="fa fa-envelope-o"></i> {{record.message}}
+                                                                </p>
+
+                                                            </div>
+
+
+                                                        </div>
                                                         {% endfor %}
+                                                    </div>
 
-                                                    </tbody>
-
-                                                </table>
+                                                </div>
+                                                {% endif %}
                                             </div>
                                         </div>
-                                        {% endif %}
-                                    </div>
-                                    <div class="tab-pane fade" id="issued">
-                                        {% if issued_list|length == 0 %}
-                                        <p></p>
-                                        <a>没有已处理的转账记录.</a>
-                                        {% else %}
-                                        <div class="table-responsive">
-                                            <div
-                                                style="white-space: nowrap; overflow: hidden; overflow-x: scroll; -webkit-backface-visibility: hidden; -webkit-overflow-scrolling: touch;">
-                                                <table class="table table-bordered mb-4">
-                                                    <thead>
-                                                        <tr>
-                                                            {% for key, value in show_table.items %}
-                                                            <th class="text-center">{{value}}</th>
-                                                            {% endfor %}
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {% for record in issued_list %}
-                                                        {% if record.obj_direct == "From" %}
-                                                        <tr bgcolor="E8FFF5">
-                                                            {% else %}
-                                                        <tr bgcolor="FFD2D2">
-                                                            {% endif %}
-                                                            {% for key, value in show_table.items %}
-                                                            {% if key == "obj" %}
-                                                            <td class="text-center">{{record.obj_direct}} <a
-                                                                    href='{{record.obj_url}}'><u>{{record|get_item:key}}</u></a>
-                                                            </td>
-                                                            {% elif key == "message" and record.if_act_url %}
-                                                            <td class="text-center"><u>{{record|get_item:key}}</u></a>
-                                                            </td>
-                                                            {% else %}
-                                                            <td class="text-center" title="{{record|get_item:key}}">
-                                                                {{record|get_item:key}}</td>
-                                                            {% endif %}
-                                                            {% endfor %}
-                                                        </tr>
-                                                        {% endfor %}
-
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        </div>
-                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
+
+
                         </div>
+
                     </div>
-
-
                 </div>
 
             </div>
+            <!--  END CONTENT AREA  -->
         </div>
+        <!-- END MAIN CONTAINER -->
 
-    </div>
-    <!--  END CONTENT AREA  -->
-</div>
-<!-- END MAIN CONTAINER -->
+        <script>
+            $('.nav-tabs').on('shown.bs.tab', 'a', function (e) {
+                if (e.relatedTarget) {
+                    $(e.relatedTarget).removeClass('active');
+                }
+            })
+        </script>
 
-<script>
-    $('.nav-tabs').on('shown.bs.tab', 'a', function (e) {
-        if (e.relatedTarget) {
-            $(e.relatedTarget).removeClass('active');
-        }
-    })
-</script>
+        <script>
+            $('.table').bootstrapTable({
+                onLoadSuccess: function () {
+                    $('.table tr td').each(function () {
 
-<script>
-    $('.table').bootstrapTable({
-        onLoadSuccess: function () {
-            $('.table tr td').each(function () {
+                        $(this).attr("title", $(this).text());
+                        $(this).css("cursor", 'pointer');
+                    });
 
-                $(this).attr("title", $(this).text());
-                $(this).css("cursor", 'pointer');
-            });
-
-        }
-    })
-</script>
-{% endblock %}
+                }
+            })
+        </script>
+        {% endblock %}
