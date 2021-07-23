@@ -1140,9 +1140,10 @@ def check_ac_request(request):
     oid = 1
 
     aname = str(request.POST["aname"])  # 活动名称
-    organization_id = request.POST["organization_id"]  # 组织id
+    #organization_id = request.POST["organization_id"]  # 组织id
     astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
-    afinish = request.POST["afinish"]
+    afinish = request.POST["afinish"]#regstart,regfinish
+    #
     content = str(request.POST["content"])
     URL = str(request.POST["URL"])  # 活动推送链接
     aprice = request.POST["aprice"]  # 活动价格
@@ -1162,33 +1163,36 @@ def check_ac_request(request):
 
 
 # 发起活动
+
+#@login_required(redirect_field_name="origin")
 def addActivities(request):
-    context = dict()
-    # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
-    aname, oid, astart, afinish, content, URL, YQP, max_people, if_ilegal = check_ac_request(request)
-    if if_ilegal == 0:
-        try:
-            with transaction.commit_on_success():
-                new_act = Activity.objects.create(aname=aname, oid=oid, astart=astart, afinish=afinish,
-                                                  astatus=Activity.Astatus.Asta_Pending)  # 默认状态是报名中
+    if request.method == "POST" and request.POST:
+        context = dict()
+        # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
+        aname, oid, astart, afinish, content, URL, YQP, max_people, if_ilegal = check_ac_request(request)
+        if if_ilegal == 0:
+            try:
+                with transaction.commit_on_success():
+                    new_act = Activity.objects.create(aname=aname, oid=oid, astart=astart, afinish=afinish,
+                                                      astatus=Activity.Astatus.Asta_Pending)  # 默认状态是报名中
 
-                new_act.content = content
-                new_act.aURL = URL
-                # new_act.QRcode = QRcode
-                new_act.YQPoint = YQP
-                new_act.Places = max_people
-                new_act.save()
-        except:
-            if_ilegal=4
+                    new_act.content = content
+                    new_act.URL = URL
+                    # new_act.QRcode = QRcode
+                    new_act.YQPoint = YQP
+                    new_act.places = max_people
+                    new_act.save()
+            except:
+                if_ilegal=4
 
-    if  if_ilegal==1:
-        context["msg"] = "The activity has to be in a month! or you have sent a wrong timeform!"
-    elif if_ilegal==2:
-        context["msg"] ="The price can't be below 0!"
-    elif if_ilegal==3:
-        context["msg"] ="Participants number can't be below 0!"
-    elif if_ilegal==4:
-        context["msg"] = "Can not launch this activity, please check time or if activity is reiterated "
-    # 返回发起成功或者失败的页面
-    return render(request, "activity_add.html", context)
-
+        if  if_ilegal==1:
+            context["msg"] = "The activity has to be in a month! or you have sent a wrong timeform!"
+        elif if_ilegal==2:
+            context["msg"] ="The price can't be below 0!"
+        elif if_ilegal==3:
+            context["msg"] ="Participants number can't be below 0!"
+        elif if_ilegal==4:
+            context["msg"] = "Can not launch this activity, please check time or if activity is reiterated "
+        # 返回发起成功或者失败的页面
+        return render(request, "activity_add.html", context)
+    return render(request, "activity_add.html")
