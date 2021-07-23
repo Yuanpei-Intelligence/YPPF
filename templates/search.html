@@ -65,8 +65,8 @@
                                                 {% for attribute in person.show_info %}
                                                 {% if forloop.counter == 1 %}
                                                 <!-- 说明此时要展示姓名，关联链接 -->
-                                                <td><a
-                                                        href="stuinfo/{{person.name}}+{{person.id}}">{{attribute}}</a>
+                                                <td><u><a
+                                                        href="stuinfo/{{person.name}}+{{person.id}}">{{attribute}}</a></u>
                                                 </td>
                                                 {% else %}
                                                 <td> {{attribute}} </td>
@@ -118,7 +118,7 @@
                                             {% for orgn in organization_list %}
                                             <tr>
                                                 <td>
-                                                    <a href="/orginfo/{{orgn.oname}}" class="link">{{orgn.oname}}</a>
+                                                    <u><a href="/orginfo/{{orgn.oname}}">{{orgn.oname}}</a></u>
                                                 </td>
                                                 <td>
                                                     {{orgn.otype}}
@@ -127,8 +127,7 @@
                                                     {{orgn.otype.incharge}}
                                                 </td>
                                                 <td>
-                                                    {{orgn.oname}}
-                                                    {{orgn.oname}}
+                                                    摸鱼
                                                 </td>
                                             </tr>
                                             {% endfor %}
