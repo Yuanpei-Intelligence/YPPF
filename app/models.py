@@ -261,7 +261,7 @@ class TransferRecord(models.Model):
     class Meta:
         verbose_name = "转账信息"
         verbose_name_plural = verbose_name
-        ordering = ["time"]
+        ordering = ["-finish_time","-start_time"]
 
     proposer = models.ForeignKey(
         User, related_name="proposer_id", on_delete=models.CASCADE
@@ -270,7 +270,8 @@ class TransferRecord(models.Model):
         User, related_name="recipient_id", on_delete=models.CASCADE
     )
     amount = models.FloatField("转账元气值数量", default=0)
-    time = models.DateTimeField("转账时间", auto_now_add=True)
+    start_time = models.DateTimeField("发起时间", auto_now_add=True)
+    finish_time = models.DateTimeField("处理时间", blank=True, null=True)
     message = models.CharField("备注信息", max_length=255, default="")
 
     corres_act = models.ForeignKey(Activity, related_name="有关活动", on_delete = models.SET_NULL, null=True, blank=True)
