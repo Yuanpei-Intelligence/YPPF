@@ -186,6 +186,9 @@ class Position(models.Model):
     # 职务的逻辑应该是0最高，1次之这样，然后数字映射到名字是在组织类型表中体现的
     pos = models.IntegerField(verbose_name="职务等级", default=0)
 
+    # 是否选择公开当前的职务
+    show_post = models.BooleanField(default=True)
+
     # 表示是这个组织哪一年、哪个学期的成员
     in_year = models.IntegerField(
         "当前学年", default=int(datetime.now().strftime("%Y")))
