@@ -584,8 +584,6 @@ def search(request):
                 me, html_display["is_myself"], html_display
             )
         '''
-        # syb: 以上一段目前不注释掉运行还会报错，我去查查为什么;好像是position类里面缺一些相关的设置
-        # 或许我一会儿补一下下面报错的描述
 
         query = request.GET.get("Query", "")
         if query == "":
@@ -619,7 +617,7 @@ def search(request):
         #     Q(otype_name__icontains=query) | Q(incharge__in=incharge_list))  # 负责人姓名 & 组织类名
         # organization_list = Organization.objects.filter(
         #     Q(oname__icontains=query) | Q(otype__in=manager_list))  # 负责人姓名 & 组织类名 & 组织名
-        
+        position_list = Position.objects.activated().filter()
         
         # 组织要呈现的具体内容
         organization_field = ["组织名", "组织类型", "负责人", "近期活动"]
