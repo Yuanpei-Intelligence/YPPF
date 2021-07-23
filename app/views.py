@@ -565,6 +565,12 @@ def search(request):
         搜索组织
             支持使用组织名、组织类型搜索、一级负责人姓名
             组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
+
+            add by syb:
+            支持通过组织名、组织类型来搜索组织
+            支持通过公开关系的个人搜索组织，即如果某自然人用户可以被上面的人员搜索检出，
+            而且该用户选择公开其与组织的关系，那么该组织将在搜索界面呈现。
+            搜索结果的呈现内容见organization_field
     """
     try:
         valid, user_type, html_display = utils.check_user_type(request)
@@ -611,13 +617,11 @@ def search(request):
         ]  # 感觉将年级和班级分开呈现会简洁很多
 
         # 搜索组织
-        # incharge_list = NaturalPerson.objects.filter(
-        #     Q(name__icontains=query))  # 负责人姓名
-        # manager_list = OrganizationType.objects.filter(
-        #     Q(otype_name__icontains=query) | Q(incharge__in=incharge_list))  # 负责人姓名 & 组织类名
-        # organization_list = Organization.objects.filter(
-        #     Q(oname__icontains=query) | Q(otype__in=manager_list))  # 负责人姓名 & 组织类名 & 组织名
-        position_list = Position.objects.activated().filter((Q(person__in=people_list) & Q()) | )
+        # 通过个人关联到的position_list
+        position_list = Position.objects.activated().filter(Q(person__in=people_list) & Q(show_post=True))
+        # 通过组织名、组织类名、个人关系查找
+        organization_list = Organization.objects.filter(
+            Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in = position_list.values('org')))
 
         # 组织要呈现的具体内容
         organization_field = ["组织名", "组织类型", "负责人", "近期活动"]
