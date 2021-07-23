@@ -96,7 +96,7 @@ def check_time(start_time, end_time):
     try:
         now_time = datetime.datetime.strptime(str(datetime.datetime.now().date()), '%Y-%m-%d %H:%M:%S')
         month_late = (now_time + datetime.timedelta(days=30))
-        if now_time < start_time < month_late and now_time < end_time < month_late:
+        if now_time < start_time< end_time < month_late :
             return True  # 时间所处范围正确
     except:
         return False
