@@ -363,40 +363,40 @@ def orginfo(request, name=None):
     except:
         return redirect("/welcome/")
 
-        # 这一部分是负责人boss的信息
-        boss = Position.objects.activated().get(org=org, pos=0).person
-        # boss = NaturalPerson.objects.activated().get(person_id = bossid)
-        boss_display = {}
+    # 这一部分是负责人boss的信息
+    boss = Position.objects.activated().get(org=org, pos=0).person
+    # boss = NaturalPerson.objects.activated().get(person_id = bossid)
+    boss_display = {}
 
-        boss_display["bossname"] = boss.name
-        boss_display["year"] = boss.stu_grade
-        boss_display["major"] = boss.stu_major
-        boss_display["email"] = boss.email
-        boss_display["tel"] = boss.telephone
+    boss_display["bossname"] = boss.name
+    boss_display["year"] = boss.stu_grade
+    boss_display["major"] = boss.stu_major
+    boss_display["email"] = boss.email
+    boss_display["tel"] = boss.telephone
 
-        # jobpos = Position.objects.activated().get(person=boss, org = org).pos
-        boss_display["job"] = org.otype.job_name_list[0]
+    # jobpos = Position.objects.activated().get(person=boss, org = org).pos
+    boss_display["job"] = org.otype.job_name_list[0]
 
-        # 补充左边栏信息
-        # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
-        html_display["isboss"] = (
-            True if (user_type == "Person" and boss.person_id == user) else False
-        )
-        # 判断是否为组织账户本身在登录
-        html_display["is_myself"] = me == org
+    # 补充左边栏信息
+    # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
+    html_display["isboss"] = (
+        True if (user_type == "Person" and boss.person_id == user) else False
+    )
+    # 判断是否为组织账户本身在登录
+    html_display["is_myself"] = me == org
 
-        # 再处理修改信息的回弹
-        modpw_status = request.GET.get("modinfo", None)
-        html_display["modpw_code"] = (
-            modpw_status is not None and modpw_status == "success"
-        )
+    # 再处理修改信息的回弹
+    modpw_status = request.GET.get("modinfo", None)
+    html_display["modpw_code"] = (
+        modpw_status is not None and modpw_status == "success"
+    )
 
-        # 补充其余信息
-        html_display = utils.get_org_left_narbar(
-            org, html_display["is_myself"], html_display
-        )
+    # 补充其余信息
+    html_display = utils.get_org_left_narbar(
+        org, html_display["is_myself"], html_display
+    )
 
-        # 组织活动的信息
+    # 组织活动的信息
 
     # 补充一些呈现信息
     html_display["title_name"] = "Org. Profile"
@@ -547,13 +547,8 @@ def get_stu_img(request):
     stuId = request.GET.get("stuId")
     if stuId is not None:
         try:
-            print(stuId)
-            img_path = NaturalPerson.objects.get(person_id=stuId).avatar
-            if str(img_path) == "":
-                img_path = settings.MEDIA_URL + "avatar/codecat.jpg"
-            else:
-                img_path = settings.MEDIA_URL + str(img_path)
-            print(img_path)
+            stu = NaturalPerson.objects.get(person_id=stuId)
+            img_path = utils.get_user_ava(stu,'Person')
             return JsonResponse({"path": img_path}, status=200)
         except:
             return JsonResponse({"message": "Image not found!"}, status=404)
@@ -763,11 +758,8 @@ def modpw(request):
     username = user.username
     valid, user_type, html_display = utils.check_user_type(request)
     useroj = get_person_or_org(user, user_type)
+    avatar_path = utils.get_user_ava(useroj,user_type)
     isFirst = useroj.first_time_login
-    if str(useroj.avatar) == "":
-        avatar_path = settings.MEDIA_URL + "avatar/codecat.jpg"
-    else:
-        avatar_path = settings.MEDIA_URL + str(useroj.avatar)
     if request.method == "POST" and request.POST:
         oldpassword = request.POST["pw"]
         newpw = request.POST["new"]
