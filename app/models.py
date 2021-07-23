@@ -202,19 +202,20 @@ class Course(models.Model):
 
 
 class Activity(models.Model):
-    topic = models.CharField("活动名称", max_length=25)
+    title = models.CharField("活动名称", max_length=25)
     organization_id = models.ForeignKey(
         Organization, to_field="organization_id", related_name="actoid", on_delete=models.CASCADE
     )
     year = models.IntegerField("活动年份", default=int(datetime.now().strftime("%Y")))
     semester = models.CharField("活动学期", choices=Semester.choices, max_length=15)
-    publish_time=models.DateTimeField("信息发布时间",blank=True,default=datetime.now())#可以为空
-    sign_start=models.DateTimeField("报名开始时间",blank=True,default=datetime.now())
-    sign_end=models.DateTimeField("报名结束时间",blank=True,default=datetime.now())
-    start = models.DateTimeField("活动开始时间",blank=True,default=datetime.now())
-    finish = models.DateTimeField("活动结束时间",blank=True,default=datetime.now())
+    publish_time = models.DateTimeField("信息发布时间", blank=True, default=datetime.now())  # 可以为空
+    sign_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now())
+    sign_finish = models.DateTimeField("报名结束时间", blank=True, default=datetime.now())
+    start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now())
+    finish = models.DateTimeField("活动结束时间", blank=True, default=datetime.now())
 
-    content = models.CharField("活动内容", max_length=225,blank=True)
+    location = models.CharField("活动地点", blank=True, max_length=200)
+    content = models.CharField("活动内容", max_length=225, blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
     # url,活动二维码
@@ -229,12 +230,12 @@ class Activity(models.Model):
 
     status = models.CharField("活动状态", choices=Astatus.choices, max_length=32)
     mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
-    store_YQP = models.FloatField("已募集的元气值", default=0.0)  # 记录收到的元气值的多少
     YQPoint = models.FloatField("元气值定价", default=0.0)
-    places = models.IntegerField("活动最大参与人数", default=100)
+    capacity = models.IntegerField("活动最大参与人数", default=100)
 
     URL = models.URLField("相关网址", null=True, blank=True)
-    power=models.IntegerField("发送权限",default=1)#权限：1是给报名者发消息，0是给所有人发消息（暂时如此）
+    power = models.IntegerField("发送权限", default=1)  # 权限：1是给报名者发消息，0是给所有人发消息（暂时如此）
+
     def __str__(self):
         return f"活动：{self.topic}"
 
@@ -267,11 +268,13 @@ class TransferRecord(models.Model):
 class Paticipant(models.Model):
     activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
     person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
-    class TransferStatus(models.IntegerChoices):
+
+    class AttendStatus(models.IntegerChoices):
         APPLYING = 0  # 申请中
         APLLYFAILED = 1  # 申请失败
         APLLYSUCCESS = 2  # 已报名
         ATTENDED = 3  # 已参与
         UNATTENDED = 4  # 未参与
         CANCELED = 5  # 放弃，如果学生取消活动，则设置这里
-    status = models.IntegerField('学生参与活动状态',choices=TransferStatus.choices, default=2)
+
+    status = models.IntegerField('学生参与活动状态', choices=AttendStatus.choices, default=0)
