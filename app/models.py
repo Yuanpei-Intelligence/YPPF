@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from boottest import local_dict
 
 
@@ -64,7 +64,8 @@ class NaturalPerson(models.Model):
         UNDERGRADUATED = 0  # 未毕业
         GRADUATED = 1  # 毕业则注销
 
-    status = models.SmallIntegerField("在校状态", choices=GraduateStatus.choices, default=0)
+    status = models.SmallIntegerField(
+        "在校状态", choices=GraduateStatus.choices, default=0)
 
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
@@ -83,23 +84,31 @@ class NaturalPerson(models.Model):
             返回值为一个列表，在search.html中使用，按照如下顺序呈现：
             people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
             其中未公开的属性呈现为‘未公开’
+            注意：major, gender, nickname, email, tel, dorm可能为None
+            班级和年级现在好像也可以为None
         '''
         unpublished = '未公开'
         gender = ['男', '女']
         info = [self.name, self.stu_grade, self.stu_class]
-        info.append(self.nickname if self.show_nickname else unpublished)
+        info.append(self.nickname if (self.show_nickname) else unpublished)
         info.append(
-            unpublished if not self.show_gender else gender[self.gender])
-        info.append(self.stu_major if self.show_major else unpublished)
-        info.append(self.email if self.show_email else unpublished)
-        info.append(self.telephone if self.show_tel else unpublished)
-        info.append(self.stu_dorm if self.show_dorm else unpublished)
-        info.append('在校' if self.status == NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
+            unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
+        info.append(self.stu_major if (self.show_major) else unpublished)
+        info.append(self.email if (self.show_email) else unpublished)
+        info.append(self.telephone if (self.show_tel) else unpublished)
+        info.append(self.stu_dorm if (self.show_dorm) else unpublished)
+        info.append('在校' if self.status ==
+                    NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
+        # 防止显示None
+        for i in range(len(info)):
+            if info[i] == None:
+                info[i] = unpublished
         return info
 
 
 class OrganizationType(models.Model):
-    otype_id = models.SmallIntegerField("组织类型编号", unique=True, primary_key=True)
+    otype_id = models.SmallIntegerField(
+        "组织类型编号", unique=True, primary_key=True)
     otype_name = models.CharField("组织类型名称", max_length=25)
     otype_superior_id = models.SmallIntegerField("上级组织类型编号", default=0)
     incharge = models.ForeignKey(
@@ -137,7 +146,8 @@ class Organization(models.Model):
     objects = OrganizationManager()
 
     YQPoint = models.FloatField("元气值", default=0.0)
-    introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
+    introduction = models.TextField(
+        "介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
@@ -170,13 +180,18 @@ class Position(models.Model):
         to_field="person_id",
         on_delete=models.CASCADE,
     )
-    org = models.ForeignKey(Organization, related_name="org", on_delete=models.CASCADE)
+    org = models.ForeignKey(
+        Organization, related_name="org", on_delete=models.CASCADE)
 
     # 职务的逻辑应该是0最高，1次之这样，然后数字映射到名字是在组织类型表中体现的
     pos = models.IntegerField(verbose_name="职务等级", default=0)
 
+    # 是否选择公开当前的职务
+    show_post = models.BooleanField(default=True)
+
     # 表示是这个组织哪一年、哪个学期的成员
-    in_year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
+    in_year = models.IntegerField(
+        "当前学年", default=int(datetime.now().strftime("%Y")))
     in_semester = models.CharField(
         "当前学期", choices=Semester.choices, default=Semester.ANNUAL, max_length=15
     )
@@ -189,8 +204,10 @@ class Course(models.Model):
         to=Organization, on_delete=models.CASCADE, related_name="cid"
     )
     # 课程周期
-    year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
-    semester = models.CharField("当前学期", choices=Semester.choices, max_length=15)
+    year = models.IntegerField(
+        "当前学年", default=int(datetime.now().strftime("%Y")))
+    semester = models.CharField(
+        "当前学期", choices=Semester.choices, max_length=15)
 
     scheduler = models.CharField("上课时间", max_length=25)
     classroom = models.CharField("上课地点", max_length=25)
@@ -206,8 +223,10 @@ class Activity(models.Model):
     organization_id = models.ForeignKey(
         Organization, to_field="organization_id", related_name="actoid", on_delete=models.CASCADE
     )
-    year = models.IntegerField("活动年份", default=int(datetime.now().strftime("%Y")))
-    semester = models.CharField("活动学期", choices=Semester.choices, max_length=15)
+    year = models.IntegerField(
+        "活动年份", default=int(datetime.now().strftime("%Y")))
+    semester = models.CharField(
+        "活动学期", choices=Semester.choices, max_length=15)
     start = models.DateTimeField("开始时间")
     finish = models.DateTimeField("结束时间")
     content = models.CharField("活动内容", max_length=225)
@@ -268,4 +287,3 @@ class TransferRecord(models.Model):
 class Paticipant(models.Model):
     activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
     person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
-
