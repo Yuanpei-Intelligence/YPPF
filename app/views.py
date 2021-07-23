@@ -257,7 +257,7 @@ def stuinfo(request, name=None):
         html_display["is_myself"] = is_myself  # 存入显示
 
         # 处理被搜索人的信息，这里应该和“用户自己”区分开
-        join_pos_id_list = Position.objects.activated().filter(person=person)
+        join_pos_id_list = Position.objects.activated().filter(Q(person=person) & Q(show_post=True)) 
 
         # html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
 
