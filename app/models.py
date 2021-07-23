@@ -257,7 +257,7 @@ class TransferRecord(models.Model):
     corres_act = models.ForeignKey(Activity, related_name="有关活动", on_delete = models.SET_NULL, null=True, blank=True)
 
     class TransferStatus(models.IntegerChoices):
-        ACCEPTED = (0, "已接受")
+        ACCEPTED = (0, "已接收")
         WAITING = (1, "待确认")
         REFUSED = (2, "已拒绝")
         SUSPENDED = (3, "已终止")
