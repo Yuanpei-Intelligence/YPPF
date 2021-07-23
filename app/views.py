@@ -262,7 +262,7 @@ def stuinfo(request, name=None):
         html_display["is_myself"] = is_myself  # 存入显示
 
         # 处理被搜索人的信息，这里应该和“用户自己”区分开
-        join_pos_id_list = Position.objects.activated().filter(person=person)
+        join_pos_id_list = Position.objects.activated().filter(Q(person=person) & Q(show_post=True)) 
 
         # html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
 
@@ -565,6 +565,12 @@ def search(request):
         搜索组织
             支持使用组织名、组织类型搜索、一级负责人姓名
             组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
+
+            add by syb:
+            支持通过组织名、组织类型来搜索组织
+            支持通过公开关系的个人搜索组织，即如果某自然人用户可以被上面的人员搜索检出，
+            而且该用户选择公开其与组织的关系，那么该组织将在搜索界面呈现。
+            搜索结果的呈现内容见organization_field
     """
     try:
         valid, user_type, html_display = utils.check_user_type(request)
@@ -584,19 +590,16 @@ def search(request):
                 me, html_display["is_myself"], html_display
             )
         '''
-        # syb: 以上一段目前不注释掉运行还会报错，我去查查为什么;好像是position类里面缺一些相关的设置
-        # 或许我一会儿补一下下面报错的描述
 
         query = request.GET.get("Query", "")
         if query == "":
             return redirect("/welcome/")
 
+        not_found_message = "找不到符合搜索的信息或相关内容未公开！"
         # 首先搜索个人
         people_list = NaturalPerson.objects.filter(
-            Q(name__icontains=query)
-            | (Q(nickname__icontains=query) & Q(show_nickname=True))
-            | (Q(stu_major__icontains=query) & Q(show_major=True))
-        )
+            Q(name__icontains=query) | (Q(nickname__icontains=query) & Q(show_nickname=True)) |
+            (Q(stu_major__icontains=query) & Q(show_major=True)))
 
         # 接下来准备呈现的内容
         # 首先是准备搜索个人信息的部分
@@ -613,11 +616,19 @@ def search(request):
             "状态",
         ]  # 感觉将年级和班级分开呈现会简洁很多
 
+        # 搜索组织
+        # 先查找通过个人关联到的position_list
+        position_list = Position.objects.activated().filter(Q(person__in=people_list) & Q(show_post=True))
+        # 通过组织名、组织类名、个人关系查找
+        organization_list = Organization.objects.filter(
+            Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in = position_list.values('org')))
+
+        # 组织要呈现的具体内容
+        organization_field = ["组织名", "组织类型", "负责人", "近期活动"]
+
         return render(request, "search.html", locals())
     except Exception as e:
-        print(
-            f"Error was found in app/views.py, function search.\nError description: {str(e)}\n"
-        )
+        print(str(e))
         auth.logout(request)
         return redirect("/index/")
 
