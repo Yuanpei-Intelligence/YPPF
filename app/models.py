@@ -92,7 +92,6 @@ class NaturalPerson(models.Model):
         info = [self.name, self.stu_grade, self.stu_class]
         info.append(self.nickname if (self.show_nickname) else unpublished)
         info.append(
-<<<<<<< HEAD
             unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
         info.append(self.stu_major if (self.show_major) else unpublished)
         info.append(self.email if (self.show_email) else unpublished)
@@ -104,14 +103,6 @@ class NaturalPerson(models.Model):
         for i in range(len(info)):
             if info[i] == None:
                 info[i] = unpublished
-=======
-            unpublished if not self.show_gender else gender[self.gender])
-        info.append(self.stu_major if self.show_major else unpublished)
-        info.append(self.email if self.show_email else unpublished)
-        info.append(self.telephone if self.show_tel else unpublished)
-        info.append(self.stu_dorm if self.show_dorm else unpublished)
-        info.append('在校' if self.status == NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
->>>>>>> 6407f62b3a5f8414b5408a825b4ade41b5718448
         return info
 
 
