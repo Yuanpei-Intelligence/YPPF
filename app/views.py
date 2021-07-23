@@ -618,7 +618,7 @@ def search(request):
 
         # 搜索组织
         # 先查找通过个人关联到的position_list
-        position_list = Position.objects.filter(Q(person__in=people_list) & Q(show_post=True))
+        position_list = Position.objects.activated().filter(Q(person__in=people_list) & Q(show_post=True))
         # 通过组织名、组织类名、个人关系查找
         organization_list = Organization.objects.filter(
             Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in = position_list.values('org')))
