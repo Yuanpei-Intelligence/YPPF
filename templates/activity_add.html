@@ -9,170 +9,140 @@
     <div class="overlay"></div>
     <div class="search-overlay"></div>
 
-    <!--  BEGIN SIDEBAR  -->
-    <div class="sidebar-wrapper sidebar-theme">
-
-        <nav id="sidebar">
-            <div class="shadow-bottom"></div>
-
-            <ul class="list-unstyled menu-categories" id="accordionExample">
-                <li class="menu">
-                    <a href="#dashboard" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
-                        <div class="">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" class="feather feather-home">
-                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                                <polyline points="9 22 9 12 15 12 15 22"></polyline>
-                            </svg>
-                            <span>应用</span>
-                        </div>
-                        <div>
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" class="feather feather-chevron-right">
-                                <polyline points="9 18 15 12 9 6"></polyline>
-                            </svg>
-                        </div>
-                    </a>
-                    <ul class="collapse submenu list-unstyled" id="dashboard" data-parent="#accordionExample">
-                        <li>
-                            <a href="index.html"> 地下室预约 </a>
-                        </li>
-                        <li>
-                            <a href="index2.html"> 活动 </a>
-                        </li>
-                    </ul>
-                </li>
-
-                <li class="menu">
-                    <a href="/logout/" aria-expanded="false" class="dropdown-toggle">
-                        <div class="">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" class="feather feather-book">
-                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                            </svg>
-                            <span>Logout</span>
-                        </div>
-                    </a>
-                </li>
-
-                <li class="menu">
-                    <a href="/modpw/" aria-expanded="false" class="dropdown-toggle">
-                        <div class="">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
-                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                stroke-linejoin="round" class="feather feather-book">
-                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
-                            </svg>
-                            <span>Change Password</span>
-                        </div>
-                    </a>
-                </li>
-
-            </ul>
-
-        </nav>
-
-    </div>
-    <!--  END SIDEBAR  -->
+    {% include 'org_left_narbar.html' %}
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
         <div class="container">
             <div class="container">
-
                 <div class="row layout-top-spacing">
-
                     <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
                         <div class="row">
                             <div class="col-md-12 mb-4">
                                 <div class="statbox widget box box-shadow">
+                                    
+                                    <!--  BEGIN HEADER AREA  -->
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                <h4>填写详细信息</h4>
+                                                <h4>填写活动详细信息</h4>
                                             </div>
                                         </div>
                                     </div>
+
+                                    <!--  BEGIN CONTENT AREA  -->
                                     <div class="widget-content widget-content-area">
 
-                                        <div class="input-group mb-4">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text"
-                                                    id="inputGroup-sizing-default">Default</span>
-                                            </div>
-                                            <input type="text" class="form-control" aria-label="Default"
-                                                aria-describedby="inputGroup-sizing-default">
-                                        </div>
+                                        <form class="form-horizontal" role="form" method="POST">
 
-                                        <div class="input-group mb-4">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text"
-                                                    id="inputGroup-sizing-default">Default</span>
+                                            <div class="input-group mb-4">
+                                                <div class="input-group-prepend">
+                                                    <span class="input-group-text"
+                                                        id="inputGroup-sizing-default">活动名称
+                                                    </span>
+                                                </div>
+                                                <input type="text" id="aname" name="aname" class="form-control" aria-label="Default"
+                                                    aria-describedby="inputGroup-sizing-default">
                                             </div>
-                                            <input type="text" class="form-control" aria-label="Default"
-                                                aria-describedby="inputGroup-sizing-default">
-                                        </div>
 
-                                        <div class="input-group mb-4">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text"
-                                                    id="inputGroup-sizing-default">Default</span>
+                                            <div class="form-group">
+                                                <label for="aintro">活动简介</label>
+                                                <textarea id="aintro" name="aintro" class="form-control" rows="3"></textarea>
                                             </div>
-                                            <input type="text" class="form-control" aria-label="Default"
-                                                aria-describedby="inputGroup-sizing-default">
-                                        </div>
 
-                                        <div class="input-group mb-4">
-                                            <div class="input-group-prepend">
-                                                <span class="input-group-text"
-                                                    id="inputGroup-sizing-default">Default</span>
+                                            <div class="form-group">
+                                                <label for="signupSdate" class="col-sm-2 control-label">报名开始日期</label>
+                                                <input id="signupSdate" name="signupSdate" type="date">
+                                                <label for="signupStime" class="col-sm-2 control-label">报名开始时间</label>
+                                                <input id="signupStime" name="signupStime" type="time">
                                             </div>
-                                            <input type="text" class="form-control" aria-label="Default"
-                                                aria-describedby="inputGroup-sizing-default">
-                                        </div>
 
-                                        <div class="statbox widget box box-shadow">
-                                            <!-- <div class="widget-header">                                
-                                                <div class="row">
-                                                    <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                        <h4>Inline radio</h4>
+                                            <div class="form-group">
+                                                <label for="signupEdate" class="col-sm-2 control-label">报名截止日期</label>
+                                                <input id="signupEdate" name="signupEdate" type="date">
+                                                <label for="signupEtime" class="col-sm-2 control-label">报名截止时间</label>
+                                                <input id="signupEtime" name="signupEtime" type="time">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="actSdate" class="col-sm-2 control-label">活动开始日期</label>
+                                                <input id="actSdate" name="actSdate" type="date">
+                                                <label for="actStime" class="col-sm-2 control-label">活动开始时间</label>
+                                                <input id="actStime" name="actStime" type="time">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="actEdate" class="col-sm-2 control-label">活动结束日期</label>
+                                                <input id="actEdate" name="actEdate" type="date">
+                                                <label for="actEtime" class="col-sm-2 control-label">活动结束时间</label>
+                                                <input id="actEtime" name="actEtime" type="time">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="publishdate" class="col-sm-2 control-label">信息发布日期</label>
+                                                <input id="publishdate" name="publishdate" type="date">
+                                                <label for="publishtime" class="col-sm-2 control-label">信息发布时间</label>
+                                                <input id="publishtime" name="publishtime" type="time">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="price" class="col-sm-2 control-label">活动定价</label>
+                                                <input  type="number" id="aprice" name="aprice" step="0.1" placeholder="精确到小数点后一位" οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')"/>
+                                            </div>
+
+                                            <div class="input-group mb-4">
+                                                <div class="input-group-prepend">
+                                                    <span class="input-group-text"
+                                                        id="inputGroup-sizing-default">活动最大人数</span>
+                                                </div>
+                                                <input type="text" id="maxpeople" name="maxpeople" class="form-control" aria-label="Default" placeholder="最大100人" 
+                                                    aria-describedby="inputGroup-sizing-default">
+                                            </div>
+    
+                                            <div class="input-group mb-4">
+                                                <div class="input-group-prepend">
+                                                    <span class="input-group-text"
+                                                        id="inputGroup-sizing-default">活动链接(url)</span>
+                                                </div>
+                                                <input type="text" id="URL" name="URL" class="form-control" aria-label="Default"
+                                                    aria-describedby="inputGroup-sizing-default">
+                                            </div>
+
+                                            <div class="statbox widget box box-shadow">
+                                                <!-- <div class="widget-header">                                
+                                                    <div class="row">
+                                                        <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                            <h4>Inline radio</h4>
+                                                        </div>
+                                                    </div>
+                                                </div> -->
+                                                <div class="widget-content widget-content-area">
+                                                    <div class="custom-control custom-radio custom-control-inline">
+                                                        <input type="radio" id="customRadioInline1" name="customRadioInline1" class="custom-control-input">
+                                                        <label class="custom-control-label" for="customRadioInline1">给所有订阅者发消息</label>
+                                                        </div>
+                                                    <div class="custom-control custom-radio custom-control-inline">
+                                                        <input type="radio" id="customRadioInline2" name="customRadioInline1" class="custom-control-input">
+                                                        <label class="custom-control-label" for="customRadioInline2">仅给已报名者发消息</label>
                                                     </div>
                                                 </div>
-                                            </div> -->
-                                            <div class="widget-content widget-content-area">
-                                                <div class="custom-control custom-radio custom-control-inline">
-                                                    <input type="radio" id="customRadioInline1" name="customRadioInline1" class="custom-control-input">
-                                                    <label class="custom-control-label" for="customRadioInline1">给所有订阅者发消息</label>
-                                                    </div>
-                                                <div class="custom-control custom-radio custom-control-inline">
-                                                    <input type="radio" id="customRadioInline2" name="customRadioInline1" class="custom-control-input">
-                                                    <label class="custom-control-label" for="customRadioInline2">仅给已报名者发消息</label>
-                                                </div>
-            
-                                                
                                             </div>
-                                        </div>
 
-                                        
+                                        </form>
+
                                         <a href="javascript:void(0);" class="btn btn-success btn-block mb-4 mr-2">提交</a>
 
                                     </div>
+
                                 </div>
                             </div>
-
-
                         </div>
                     </div>
                 </div>
 
             </div>
-
         </div>
+
         <div class="footer-wrapper">
             <div class="footer-section f-section-1">
                 <p class="">Copyright © 2020 DesignReset, All rights Reserved.</p>
