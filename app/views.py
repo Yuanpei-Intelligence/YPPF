@@ -573,8 +573,6 @@ def search(request):
             html_display = utils.get_org_left_narbar(
                 me, html_display["is_myself"], html_display
             )
-        # syb: 以上一段目前不注释掉运行还会报错，我去查查为什么;好像是position类里面缺一些相关的设置
-        # 或许我一会儿补一下下面报错的描述
 
         query = request.GET.get("Query", "")
         if query == "":
@@ -602,12 +600,14 @@ def search(request):
         ]  # 感觉将年级和班级分开呈现会简洁很多
 
         # 搜索组织
-        incharge_list = NaturalPerson.objects.filter(
-            Q(name__icontains=query))  # 负责人姓名
-        manager_list = OrganizationType.objects.filter(
-            Q(otype_name__icontains=query) | Q(incharge__in=incharge_list))  # 负责人姓名 & 组织类名
-        organization_list = Organization.objects.filter(
-            Q(oname__icontains=query) | Q(otype__in=manager_list))  # 负责人姓名 & 组织类名 & 组织名
+        # incharge_list = NaturalPerson.objects.filter(
+        #     Q(name__icontains=query))  # 负责人姓名
+        # manager_list = OrganizationType.objects.filter(
+        #     Q(otype_name__icontains=query) | Q(incharge__in=incharge_list))  # 负责人姓名 & 组织类名
+        # organization_list = Organization.objects.filter(
+        #     Q(oname__icontains=query) | Q(otype__in=manager_list))  # 负责人姓名 & 组织类名 & 组织名
+        
+        
         # 组织要呈现的具体内容
         organization_field = ["组织名", "组织类型", "负责人", "近期活动"]
 

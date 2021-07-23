@@ -46,8 +46,7 @@
                                                 {% for attribute in person.show_info %}
                                                 {% if forloop.counter == 1 %}
                                                 <!-- 说明此时要展示姓名，关联链接 -->
-                                                <td><a
-                                                        href="/stuinfo/{{person.name}}+{{person.id}}">{{attribute}}</a>
+                                                <td><a href="/stuinfo/{{person.name}}+{{person.id}}">{{attribute}}</a>
                                                 </td>
                                                 {% else %}
                                                 <td> {{attribute}} </td>
@@ -85,9 +84,12 @@
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
-                                        <thead>
-                                        </thead>
                                         {% if organization_list.count != 0 %}
+                                        <thead>
+                                            {% for attribute in organization_field %}
+                                            <th> {{attribute}} </th>
+                                            {% endfor %}
+                                        </thead>
                                         <tbody>
                                             <!-- <tr>
                                                 <td class="text-center"><a
@@ -96,10 +98,19 @@
                                             {% for orgn in organization_list %}
                                             <tr>
                                                 <td>
+                                                    <a href="/orginfo/{{orgn.oname}}" class="link">{{orgn.oname}}</a>
+                                                </td>
+                                                <td>
+                                                    <a href="/orginfo/{{orgn.oname}}">{{orgn.oname}}</a>
+                                                </td>
+                                                <td>
+                                                    <a href="/orginfo/{{orgn.oname}}">{{orgn.oname}}</a>
+                                                </td>
+                                                <td>
                                                     <a href="/orginfo/{{orgn.oname}}">{{orgn.oname}}</a>
                                                 </td>
                                             </tr>
-                                            {% endfor%}
+                                            {% endfor %}
                                         </tbody>
                                         {% else %}
                                         <tbody>
