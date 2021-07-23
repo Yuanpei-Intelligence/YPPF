@@ -583,12 +583,9 @@ def search(request):
             html_display = utils.get_org_left_narbar(
                 me, html_display["is_myself"], html_display
             )
-<<<<<<< HEAD
-=======
         '''
         # syb: 以上一段目前不注释掉运行还会报错，我去查查为什么;好像是position类里面缺一些相关的设置
         # 或许我一会儿补一下下面报错的描述
->>>>>>> 6407f62b3a5f8414b5408a825b4ade41b5718448
 
         query = request.GET.get("Query", "")
         if query == "":
@@ -597,15 +594,8 @@ def search(request):
         not_found_message = "找不到符合搜索的信息或相关内容未公开！"
         # 首先搜索个人
         people_list = NaturalPerson.objects.filter(
-<<<<<<< HEAD
             Q(name__icontains=query) | (Q(nickname__icontains=query) & Q(show_nickname=True)) |
             (Q(stu_major__icontains=query) & Q(show_major=True)))
-=======
-            Q(name__icontains=query)
-            | (Q(nickname__icontains=query) & Q(show_nickname=True))
-            | (Q(stu_major__icontains=query) & Q(show_major=True))
-        )
->>>>>>> 6407f62b3a5f8414b5408a825b4ade41b5718448
 
         # 接下来准备呈现的内容
         # 首先是准备搜索个人信息的部分
@@ -1030,11 +1020,7 @@ def start_transaction(request):
     try:
         if recipient_type == "np":
             recipient = NaturalPerson.objects.get(
-<<<<<<< HEAD
-                person_id=recipient_id).person_id
-=======
                 person_id__username=recipient_id).person_id
->>>>>>> 6407f62b3a5f8414b5408a825b4ade41b5718448
         else:
             recipient = Organization.objects.get(
                 organization_id__username=recipient_id
