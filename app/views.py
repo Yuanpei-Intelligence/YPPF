@@ -11,7 +11,7 @@ from app.models import (
 import app.utils as utils
 from app.forms import UserForm
 from app.data_import import load, load_orgtype, load_org
-from app.utils import MyMD5PasswordHasher, MySHA256Hasher,check_time
+from app.utils import MyMD5PasswordHasher, MySHA256Hasher, check_time
 
 from django.shortcuts import render, redirect
 from django.http import HttpResponseRedirect, JsonResponse
@@ -232,8 +232,8 @@ def stuinfo(request, name=None):
         else:  # 有很多人，这时候假设加号后面的是user的id
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
                 if (
-                    user_type == "Person"
-                    and NaturalPerson.objects.activated().get(person_id=user).name == name
+                        user_type == "Person"
+                        and NaturalPerson.objects.activated().get(person_id=user).name == name
                 ):
                     person = NaturalPerson.objects.activated().get(person_id=user)
                 else:  # 不是自己，信息不全跳转搜索
@@ -259,7 +259,7 @@ def stuinfo(request, name=None):
 
         modpw_status = request.GET.get("modinfo", None)
         html_display["modpw_code"] = (
-            modpw_status is not None and modpw_status == "success"
+                modpw_status is not None and modpw_status == "success"
         )
         html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
         html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
@@ -372,7 +372,7 @@ def orginfo(request, name=None):
         # 再处理修改信息的回弹
         modpw_status = request.GET.get("modinfo", None)
         html_display["modpw_code"] = (
-            modpw_status is not None and modpw_status == "success"
+                modpw_status is not None and modpw_status == "success"
         )
 
         # 补充其余信息
@@ -679,13 +679,13 @@ def forget_password(request):
                     captcha = random.randrange(1000000)  # randint包含端点，randrange不包含
                     captcha = f"{captcha:06}"
                     msg = (
-                        f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
-                        "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
-                        f'<p style="color:orange">{captcha}'
-                        '<span style="color:gray">(仅当前页面有效)</span></p>'
-                        '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
-                        "<br/><br/><br/>"
-                        "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
+                            f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
+                            "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
+                            f'<p style="color:orange">{captcha}'
+                            '<span style="color:gray">(仅当前页面有效)</span></p>'
+                            '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
+                            "<br/><br/><br/>"
+                            "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
                         "toaddrs": [email],  # 收件人列表
@@ -1135,63 +1135,82 @@ def viewActivities(request):
 
     return render(request, "activity_info.html", locals())
 
+
 def check_ac_request(request):
     # oid的获取
-    oid = 1
 
     aname = str(request.POST["aname"])  # 活动名称
-    #organization_id = request.POST["organization_id"]  # 组织id
-    astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
-    afinish = request.POST["afinish"]#regstart,regfinish
-    #
-    content = str(request.POST["content"])
-    URL = str(request.POST["URL"])  # 活动推送链接
-    aprice = request.POST["aprice"]  # 活动价格
-    max_people = request.POST["places"]  # 活动最大参与人数
+    oid = 'zz00010'  # organization_id = request.POST["organization_id"]  # 组织id
+    publish_time = request.POST["publishdate"] + ' ' + request.POST["publishtime"] +':00' # 该活动信息发布时间
+    signup_start = request.POST["signupSdate"] + ' ' + request.POST["signupStime"]  +':00'# 活动报名时间
+    signup_end = request.POST["signupEdate"] + ' ' + request.POST["signupEtime"] +':00' # 活动报名结束时间
+    act_start = request.POST["actSdate"] + ' ' + request.POST["actStime"] +':00' # 活动开始时间
+    act_end = request.POST["actEdate"] + ' ' + request.POST["actEtime"]  +':00'# 活动结束时间
 
-    start_time = datetime.datetime.strptime(astart, '%Y-%m-%d %H:%M:%S')
-    end_time = datetime.datetime.strptime(afinish, '%Y-%m-%d %H:%M:%S')
+    #
+    content = str(request.POST["content"])#活动内容
+    URL = str(request.POST["URL"])  # 活动推送链接
+    aprice = float(request.POST["aprice"]) # 活动价格
+    max_people = int(request.POST["maxpeople"])  # 活动最大参与人数
+    power = int(request.POST["customRadioInline1"] ) # 1是给报名者发消息，0是给所有人发消息，之后设置
+
+    publish_time=datetime.strptime(publish_time, '%Y-%m-%d %H:%M:%S')
+    signup_start=datetime.strptime(signup_start, '%Y-%m-%d %H:%M:%S')
+    signup_end=datetime.strptime(signup_end, '%Y-%m-%d %H:%M:%S')
+    act_start=datetime.strptime(act_start, '%Y-%m-%d %H:%M:%S')
+    act_end=datetime.strptime(act_end, '%Y-%m-%d %H:%M:%S')
     if_ilegal = 0
-    if check_time(start_time, end_time) == False:
+    if publish_time<=signup_start<=act_start and check_time(signup_start, signup_end) == False \
+            and check_time(act_start,act_end)==False:
         if_ilegal = 1
     if aprice < 0:
         if_ilegal = 2
     if max_people <= 0:
         if_ilegal = 3
 
-    return aname, oid, start_time, end_time, URL, aprice, max_people, if_ilegal
+    return aname, oid, publish_time,signup_start, signup_end,act_start,act_end, content,URL, aprice, max_people, \
+           power,if_ilegal
 
 
 # 发起活动
 
-#@login_required(redirect_field_name="origin")
+# @login_required(redirect_field_name="origin")
 def addActivities(request):
     if request.method == "POST" and request.POST:
         context = dict()
         # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
-        aname, oid, astart, afinish, content, URL, YQP, max_people, if_ilegal = check_ac_request(request)
+        aname, oid, publish_time,signup_start, signup_end,act_start,act_end, content, URL, YQP, max_people, power,\
+        if_ilegal = check_ac_request(request)
+        user=User.objects.get(username=oid)
+        org=Organization.objects.get(organization_id =user)
         if if_ilegal == 0:
-            try:
-                with transaction.commit_on_success():
-                    new_act = Activity.objects.create(aname=aname, oid=oid, astart=astart, afinish=afinish,
-                                                      astatus=Activity.Astatus.Asta_Pending)  # 默认状态是报名中
+            with transaction.atomic():
+                new_act = Activity.objects.create(topic=aname, organization_id =org,
+                                                  status=Activity.Astatus.PENDING)  # 默认状态是报名中
 
-                    new_act.content = content
-                    new_act.URL = URL
-                    # new_act.QRcode = QRcode
-                    new_act.YQPoint = YQP
-                    new_act.places = max_people
-                    new_act.save()
-            except:
-                if_ilegal=4
+                new_act.content = content
+                new_act.publish_time = publish_time
+                new_act.sign_start = signup_start
+                new_act.sign_end = signup_end
+                new_act.start = act_start
+                new_act.end = act_end
+                new_act.URL = URL
+                # new_act.QRcode = QRcode
+                new_act.YQPoint = YQP
+                new_act.places = max_people
+                new_act.power = power
+                new_act.save()
 
-        if  if_ilegal==1:
+            #except:
+                #if_ilegal = 4
+
+        if if_ilegal == 1:
             context["msg"] = "The activity has to be in a month! or you have sent a wrong timeform!"
-        elif if_ilegal==2:
-            context["msg"] ="The price can't be below 0!"
-        elif if_ilegal==3:
-            context["msg"] ="Participants number can't be below 0!"
-        elif if_ilegal==4:
+        elif if_ilegal == 2:
+            context["msg"] = "The price can't be below 0!"
+        elif if_ilegal == 3:
+            context["msg"] = "Participants number can't be below 0!"
+        elif if_ilegal == 4:
             context["msg"] = "Can not launch this activity, please check time or if activity is reiterated "
         # 返回发起成功或者失败的页面
         return render(request, "activity_add.html", context)
