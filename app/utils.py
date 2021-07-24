@@ -1,8 +1,8 @@
 from django.contrib.auth.hashers import BasePasswordHasher, MD5PasswordHasher, mask_hash
-import hashlib
 from django.contrib import auth
 from django.conf import settings
 from boottest import local_dict
+import hashlib
 
 
 class MyMD5PasswordHasher(MD5PasswordHasher):

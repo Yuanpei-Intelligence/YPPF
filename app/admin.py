@@ -3,19 +3,20 @@ from app.models import *
 
 # Register your models here.
 class NaturalPersonAdmin(admin.ModelAdmin):
+    fieldsets = (
+        ["Commom Attributes", {"fields": ("person_id", "name", "gender", "identity")}],
+        [
+            "Student Attributes",
+            {
+                "classes": ("collapse",),
+                "fields": ("stu_grade", "stu_dorm", "stu_class", "stu_major"),
+            },
+        ],
+    )
     list_display = [
-        "name",
         "person_id",
-        "gender",
-        "stu_grade",
-        "stu_dorm",
-        "status",
+        "name",
         "identity",
-        "email",
-        "stu_class",
-        "stu_major",
-        "telephone",
-        "first_time_login",
     ]
     search_fields = ("person_id", "name")
 
