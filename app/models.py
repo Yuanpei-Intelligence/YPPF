@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from boottest import local_dict
 
 
@@ -67,7 +67,8 @@ class NaturalPerson(models.Model):
         UNDERGRADUATED = 0  # 未毕业
         GRADUATED = 1  # 毕业则注销
 
-    status = models.SmallIntegerField("在校状态", choices=GraduateStatus.choices, default=0)
+    status = models.SmallIntegerField(
+        "在校状态", choices=GraduateStatus.choices, default=0)
 
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
@@ -86,21 +87,25 @@ class NaturalPerson(models.Model):
             返回值为一个列表，在search.html中使用，按照如下顺序呈现：
             people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
             其中未公开的属性呈现为‘未公开’
+            注意：major, gender, nickname, email, tel, dorm可能为None
+            班级和年级现在好像也可以为None
         """
-        unpublished = "未公开"
-        gender = ["男", "女"]
+        unpublished = '未公开'
+        gender = ['男', '女']
         info = [self.name, self.stu_grade, self.stu_class]
-        info.append(self.nickname if self.show_nickname else unpublished)
-        info.append(unpublished if not self.show_gender else gender[self.gender])
-        info.append(self.stu_major if self.show_major else unpublished)
-        info.append(self.email if self.show_email else unpublished)
-        info.append(self.telephone if self.show_tel else unpublished)
-        info.append(self.stu_dorm if self.show_dorm else unpublished)
+        info.append(self.nickname if (self.show_nickname) else unpublished)
         info.append(
-            "在校"
-            if self.status == NaturalPerson.GraduateStatus.UNDERGRADUATED
-            else "已毕业"
-        )
+            unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
+        info.append(self.stu_major if (self.show_major) else unpublished)
+        info.append(self.email if (self.show_email) else unpublished)
+        info.append(self.telephone if (self.show_tel) else unpublished)
+        info.append(self.stu_dorm if (self.show_dorm) else unpublished)
+        info.append('在校' if self.status ==
+                            NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
+        # 防止显示None
+        for i in range(len(info)):
+            if info[i] == None:
+                info[i] = unpublished
         return info
 
 
@@ -151,7 +156,8 @@ class Organization(models.Model):
     objects = OrganizationManager()
 
     YQPoint = models.FloatField("元气值", default=0.0)
-    introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
+    introduction = models.TextField(
+        "介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
@@ -188,13 +194,18 @@ class Position(models.Model):
         to_field="person_id",
         on_delete=models.CASCADE,
     )
-    org = models.ForeignKey(Organization, related_name="org", on_delete=models.CASCADE)
+    org = models.ForeignKey(
+        Organization, related_name="org", on_delete=models.CASCADE)
 
     # 职务的逻辑应该是0最高，1次之这样，然后数字映射到名字是在组织类型表中体现的
     pos = models.IntegerField(verbose_name="职务等级", default=0)
 
+    # 是否选择公开当前的职务
+    show_post = models.BooleanField(default=True)
+
     # 表示是这个组织哪一年、哪个学期的成员
-    in_year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
+    in_year = models.IntegerField(
+        "当前学年", default=int(datetime.now().strftime("%Y")))
     in_semester = models.CharField(
         "当前学期", choices=Semester.choices, default=Semester.ANNUAL, max_length=15
     )
@@ -211,8 +222,10 @@ class Course(models.Model):
         to=Organization, on_delete=models.CASCADE, related_name="cid"
     )
     # 课程周期
-    year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
-    semester = models.CharField("当前学期", choices=Semester.choices, max_length=15)
+    year = models.IntegerField(
+        "当前学年", default=int(datetime.now().strftime("%Y")))
+    semester = models.CharField(
+        "当前学期", choices=Semester.choices, max_length=15)
 
     scheduler = models.CharField("上课时间", max_length=25)
     classroom = models.CharField("上课地点", max_length=25)
@@ -235,11 +248,17 @@ class Activity(models.Model):
         related_name="actoid",
         on_delete=models.CASCADE,
     )
-    year = models.IntegerField("活动年份", default=int(datetime.now().strftime("%Y")))
+    year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
     semester = models.CharField("活动学期", choices=Semester.choices, max_length=15)
-    start = models.DateTimeField("开始时间")
-    finish = models.DateTimeField("结束时间")
-    content = models.CharField("活动内容", max_length=225)
+    publish_time = models.DateTimeField("信息发布时间", blank=True,
+                                        default=datetime.now())  # 可以为空
+    sign_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now())
+    sign_end = models.DateTimeField("报名结束时间", blank=True, default=datetime.now())
+    start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now())
+    end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now())
+
+    location = models.CharField("活动地点", blank=True, max_length=200)
+    content = models.CharField("活动内容", max_length=225, blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
     # url,活动二维码
@@ -254,12 +273,8 @@ class Activity(models.Model):
 
     status = models.CharField("活动状态", choices=Astatus.choices, max_length=32)
     mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
-    YQPoint = ListCharField(
-        base_field=models.IntegerField(default=0), size=10, max_length=50, default=[0]
-    )
-    places = ListCharField(
-        base_field=models.IntegerField(default=0), size=10, max_length=50, default=[0]
-    )
+    YQPoint = models.FloatField("元气值定价", default=0.0)
+    capacity = models.IntegerField("活动最大参与人数", default=100)
 
     URL = models.URLField("相关网址", null=True, blank=True)
 
@@ -271,7 +286,7 @@ class TransferRecord(models.Model):
     class Meta:
         verbose_name = "转账信息"
         verbose_name_plural = verbose_name
-        ordering = ["time"]
+        ordering = ["-finish_time", "-start_time"]
 
     proposer = models.ForeignKey(
         User, related_name="proposer_id", on_delete=models.CASCADE
@@ -280,7 +295,8 @@ class TransferRecord(models.Model):
         User, related_name="recipient_id", on_delete=models.CASCADE
     )
     amount = models.FloatField("转账元气值数量", default=0)
-    time = models.DateTimeField("转账时间", auto_now_add=True)
+    start_time = models.DateTimeField("发起时间", auto_now_add=True)
+    finish_time = models.DateTimeField("处理时间", blank=True, null=True)
     message = models.CharField("备注信息", max_length=255, default="")
 
     corres_act = models.ForeignKey(
@@ -288,7 +304,7 @@ class TransferRecord(models.Model):
     )
 
     class TransferStatus(models.IntegerChoices):
-        ACCEPTED = (0, "已接受")
+        ACCEPTED = (0, "已接收")
         WAITING = (1, "待确认")
         REFUSED = (2, "已拒绝")
         SUSPENDED = (3, "已终止")
@@ -304,3 +320,13 @@ class Paticipant(models.Model):
 
     activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
     person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+
+    class AttendStatus(models.IntegerChoices):
+        APPLYING = 0  # 申请中
+        APLLYFAILED = 1  # 申请失败
+        APLLYSUCCESS = 2  # 已报名
+        ATTENDED = 3  # 已参与
+        UNATTENDED = 4  # 未参与
+        CANCELED = 5  # 放弃，如果学生取消活动，则设置这里
+
+    status = models.IntegerField('学生参与活动状态', choices=AttendStatus.choices, default=0)
