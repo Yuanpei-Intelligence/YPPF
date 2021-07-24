@@ -98,7 +98,7 @@ class NaturalPerson(models.Model):
         info.append(self.telephone if (self.show_tel) else unpublished)
         info.append(self.stu_dorm if (self.show_dorm) else unpublished)
         info.append('在校' if self.status ==
-                    NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
+                            NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
         # 防止显示None
         for i in range(len(info)):
             if info[i] == None:
@@ -219,17 +219,21 @@ class Course(models.Model):
 
 
 class Activity(models.Model):
-    topic = models.CharField("活动名称", max_length=25)
+    title = models.CharField("活动名称", max_length=25)
     organization_id = models.ForeignKey(
         Organization, to_field="organization_id", related_name="actoid", on_delete=models.CASCADE
     )
-    year = models.IntegerField(
-        "活动年份", default=int(datetime.now().strftime("%Y")))
-    semester = models.CharField(
-        "活动学期", choices=Semester.choices, max_length=15)
-    start = models.DateTimeField("开始时间")
-    finish = models.DateTimeField("结束时间")
-    content = models.CharField("活动内容", max_length=225)
+    year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
+    semester = models.CharField("活动学期", choices=Semester.choices, max_length=15)
+    publish_time = models.DateTimeField("信息发布时间", blank=True,
+                                        default=datetime.now())  # 可以为空
+    sign_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now())
+    sign_end = models.DateTimeField("报名结束时间", blank=True, default=datetime.now())
+    start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now())
+    end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now())
+
+    location = models.CharField("活动地点", blank=True, max_length=200)
+    content = models.CharField("活动内容", max_length=225, blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
     # url,活动二维码
@@ -244,12 +248,8 @@ class Activity(models.Model):
 
     status = models.CharField("活动状态", choices=Astatus.choices, max_length=32)
     mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
-    YQPoint = ListCharField(
-        base_field=models.IntegerField(default=0), size=10, max_length=50, default=[0]
-    )
-    places = ListCharField(
-        base_field=models.IntegerField(default=0), size=10, max_length=50, default=[0]
-    )
+    YQPoint = models.FloatField("元气值定价", default=0.0)
+    capacity = models.IntegerField("活动最大参与人数", default=100)
 
     URL = models.URLField("相关网址", null=True, blank=True)
 
@@ -261,7 +261,7 @@ class TransferRecord(models.Model):
     class Meta:
         verbose_name = "转账信息"
         verbose_name_plural = verbose_name
-        ordering = ["-finish_time","-start_time"]
+        ordering = ["-finish_time", "-start_time"]
 
     proposer = models.ForeignKey(
         User, related_name="proposer_id", on_delete=models.CASCADE
@@ -274,7 +274,7 @@ class TransferRecord(models.Model):
     finish_time = models.DateTimeField("处理时间", blank=True, null=True)
     message = models.CharField("备注信息", max_length=255, default="")
 
-    corres_act = models.ForeignKey(Activity, related_name="有关活动", on_delete = models.SET_NULL, null=True, blank=True)
+    corres_act = models.ForeignKey(Activity, related_name="有关活动", on_delete=models.SET_NULL, null=True, blank=True)
 
     class TransferStatus(models.IntegerChoices):
         ACCEPTED = (0, "已接收")
@@ -288,3 +288,13 @@ class TransferRecord(models.Model):
 class Paticipant(models.Model):
     activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
     person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+
+    class AttendStatus(models.IntegerChoices):
+        APPLYING = 0  # 申请中
+        APLLYFAILED = 1  # 申请失败
+        APLLYSUCCESS = 2  # 已报名
+        ATTENDED = 3  # 已参与
+        UNATTENDED = 4  # 未参与
+        CANCELED = 5  # 放弃，如果学生取消活动，则设置这里
+
+    status = models.IntegerField('学生参与活动状态', choices=AttendStatus.choices, default=0)
