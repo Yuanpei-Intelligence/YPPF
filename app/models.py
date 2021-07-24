@@ -76,6 +76,8 @@ class NaturalPerson(models.Model):
     show_major = models.BooleanField(default=True)
     show_dorm = models.BooleanField(default=False)
 
+    subscribe_list = models.ManyToManyField('Organization', related_name='subscribers', db_index=True)
+
     def __str__(self):
         return str(self.name)
 

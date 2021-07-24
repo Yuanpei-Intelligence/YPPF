@@ -1332,3 +1332,63 @@ def addActivities(request):
     person = True
 
     return render(request, "activity_add.html", locals())
+
+@login_required(redirect_field_name='origin')
+def subscribeActivities(request):
+    """
+    aname = str(request.POST["aname"])  # 活动名称
+    organization_id = request.POST["organization_id"]  # 组织id
+    astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
+    afinish = request.POST["afinish"]
+    content = str(request.POST["content"])
+    URL = str(request.POST["URL"])  # 活动推送链接
+    QRcode = request.POST["QRcode"]  # 收取元气值的二维码
+    aprice = request.POST["aprice"]  # 活动价格
+    places = request.POST["places"]  # 活动举办的地点，默认是list
+    """
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/index/')
+    me = get_person_or_org(request.user, user_type)
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
+
+    org_list = Organization.objects.all()
+    subscribe_list = list(me.subscribe_list.values_list("organization_id__username", flat=True))
+    ''' 测试用
+    class org:
+        def __init__(self, name, id):
+            self.name = name
+            self.id = id
+            self.status = "已订阅"
+    org_list = [org("元培学学学", 1), org("元培学生会", 2), org("元培团委", 3), org("元培地下电影院", 4), org(
+        "元培内联", 5), org("元培外联", 6), org("PPE学会", 7), org("整科学会", 8), org("元培综办", 9)]
+    '''
+    return render(request, "activity_subscribe.html", locals())
+
+@login_required(redirect_field_name='origin')
+def save_subscribe_status(request):
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/index/')
+    me = get_person_or_org(request.user, user_type)
+    url = request.get_full_path().split("?")[1]
+    subscribe = url[len("subscribe="):url.index("unsubscribe")].split('&')
+    unsubscribe = url[url.index("unsubscribe")+len("unsubscribe="):].split('&')
+    subscribe_list = list(me.subscribe_list.values_list("organization_id__username", flat=True))
+    with transaction.atomic():
+        for organization_id in subscribe:
+            org = me.subscribe_list.filter(organization_id__username=organization_id)
+            if not len(org):
+                me.subscribe_list.add(Organization.objects.get(organization_id__username=organization_id))
+        for organization_id in unsubscribe:
+            org = me.subscribe_list.filter(organization_id__username=organization_id)
+            if len(org):
+                me.subscribe_list.remove(org[0])
+        me.save()
+    return redirect("/subscribeActivities")

@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+
+{% block mainpage %}
+<!--  BEGIN MAIN CONTAINER  
+
+<style type='text/css'>
+    .table th,
+    .table td {
+        text-align: center;
+        vertical-align: middle !important;
+    }
+
+    table {
+        width: 100px;
+        table-layout: fixed;
+        /* 只有定义了表格的布局算法为fixed，下面td的定义才能起作用。 */
+    }
+
+    td {
+        width: 100%;
+        word-break: keep-all;
+        /* 不换行 */
+        white-space: nowrap;
+        /* 不换行 */
+        overflow: hidden;
+        /* 内容超出宽度时隐藏超出部分的内容 */
+        text-overflow: ellipsis;
+        /* 当对象内文本溢出时显示省略标记(...) ；需与overflow:hidden;一起使用*/
+        -o-text-overflow: ellipsis;
+        -icab-text-overflow: ellipsis;
+        -khtml-text-overflow: ellipsis;
+        -moz-text-overflow: ellipsis;
+        -webkit-text-overflow: ellipsis;
+    }
+
+    .table {
+        table-layout: fixed;
+    }
+</style>
+-->
+<div class="main-container" id="container">
+
+    <div class="overlay"></div>
+    <div class="search-overlay"></div>
+
+    {% include 'user_left_narbar.html' %}
+
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+        <div class="container">
+            <div class="container">
+
+
+
+                <div class="row layout-top-spacing">
+
+                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+                        <div class="statbox widget box box-shadow">
+                            <div class="widget-header">
+                                <div class="row">
+                                    <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                        <h4>您的订阅状态</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="widget-content widget-content-area">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered mb-4">
+                                        <thead>
+                                            <tr>
+                                                <th>组织名称</th>
+                                                <th>订阅状态</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for org in org_list %}
+                                                <tr>
+                                                    <td>{{org.oname}}</td>
+                                                    {%if org.organization_id.username in subscribe_list%} 
+                                                    <td bgColor="E8FFF5", id="{{org.organization_id.username}}", onclick="change_status(this)"}>已订阅</td>
+                                                    {%else%} 
+                                                    <td bgColor="FFD2D2", id="{{org.organization_id.username}}", onclick="change_status(this)"}>未订阅</td>
+                                                    {%endif%}
+                                                </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    
+                    <a onclick="save_subscribe_status()" class="btn btn-success btn-block mb-4 mr-2">保存修改</a>
+
+
+
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+    <!--  END CONTENT AREA  -->
+</div>
+<!-- END MAIN CONTAINER -->
+
+<script>
+    $('.nav-tabs').on('shown.bs.tab', 'a', function (e) {
+        if (e.relatedTarget) {
+            $(e.relatedTarget).removeClass('active');
+        }
+    })
+</script>
+
+<script>
+    $('.table').bootstrapTable({
+        onLoadSuccess: function () {
+            $('.table tr td').each(function () {
+
+                $(this).attr("title", $(this).text());
+                $(this).css("cursor", 'pointer');
+            });
+
+        }
+    })
+</script>
+<script>
+    var td_ls = document.getElementsByTagName('td')
+    function change_status(btn) {
+        var x = document.getElementById(btn.id);
+        if(x.innerHTML == "未订阅"){
+            x.innerHTML = "已订阅";
+            x.bgColor="E8FFF5";
+        }
+        else{
+            x.innerHTML = "未订阅";
+            x.bgColor="FFD2D2";
+        }
+    }
+    function save_subscribe_status() {
+        /*
+            向save_subscribe_status页面发送url，保存订阅设置。
+        */
+        subscribed_list = Array();
+        unsubscribed_list = Array();
+        for(var i=0;i<td_ls.length;i++){
+            if(td_ls[i].getAttribute('bgColor') == 'FFD2D2'){
+                unsubscribed_list.push(td_ls[i].getAttribute('id'));
+            }
+            else if(td_ls[i].getAttribute('bgColor') == 'E8FFF5'){
+                subscribed_list.push(td_ls[i].getAttribute('id'));
+            }
+        }
+        var urls = "save_subscribe_status?subscribe=";
+        for(var i=0;i<subscribed_list.length;i++){
+            if(!(i == 0)){
+                urls += "&";
+            }
+            urls += subscribed_list[i];
+        }
+        urls += "unsubscribe="
+        for(var i=0;i<unsubscribed_list.length;i++){
+            if(!(i == 0)){
+                urls += "&";
+            }
+            urls += unsubscribed_list[i];
+        }
+        alert("保存成功!")
+        window.location.href = urls;
+    }
+</script>
+{% endblock %}

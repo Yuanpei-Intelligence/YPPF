@@ -44,6 +44,8 @@ urlpatterns = [
     path("showActivities", views.showActivities, name="showActivities"),
     path("viewActivities", views.viewActivities, name="viewActivities"),
     path("addActivities", views.addActivities, name="addActivities"),
+    path("subscribeActivities", views.subscribeActivities, name="subscribeActivities"),
+    path("save_subscribe_status", views.save_subscribe_status, name="save_subscribe_status"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
