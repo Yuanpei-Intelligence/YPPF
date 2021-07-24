@@ -97,37 +97,63 @@ def get_org_left_narbar(org, is_myself, html_display):
 # 检查发起活动的request的合法性
 def check_ac_request(request):
     # oid的获取
-    aname = str(request.POST["aname"])  # 活动名称
+    context = dict()
+    context['warn_code'] = 0
 
     publish_time = request.POST["publishdate"] + ' ' + request.POST["publishtime"] + ':00'  # 该活动信息发布时间
     signup_start = request.POST["signupSdate"] + ' ' + request.POST["signupStime"] + ':00'  # 活动报名时间
     signup_end = request.POST["signupEdate"] + ' ' + request.POST["signupEtime"] + ':00'  # 活动报名结束时间
     act_start = request.POST["actSdate"] + ' ' + request.POST["actStime"] + ':00'  # 活动开始时间
     act_end = request.POST["actEdate"] + ' ' + request.POST["actEtime"] + ':00'  # 活动结束时间
+    capacity = 0
+    try:
+        capacity = int(request.POST["maxpeople"])
+        if capacity <= 0:
+            context['warn_code'] = 1
+            context['warn_msg'] = "The number of participants must exceed 0"
+    except:
+        context['warn_code'] = 2
+        context['warn_msg'] = "The number of participants must be an integer"
 
-    #
-    content = str(request.POST["content"])  # 活动内容
-    URL = str(request.POST["URL"])  # 活动推送链接
-    aprice = float(request.POST["aprice"])  # 活动价格
-    max_people = int(request.POST["maxpeople"])  # 活动最大参与人数
-    power = int(request.POST["customRadioInline1"])  # 1是给报名者发消息，0是给所有人发消息，之后设置
-    location = str(request.POST["location"])
-    publish_time = datetime.strptime(publish_time, '%Y-%m-%d %H:%M:%S')
-    signup_start = datetime.strptime(signup_start, '%Y-%m-%d %H:%M:%S')
-    signup_end = datetime.strptime(signup_end, '%Y-%m-%d %H:%M:%S')
-    act_start = datetime.strptime(act_start, '%Y-%m-%d %H:%M:%S')
-    act_end = datetime.strptime(act_end, '%Y-%m-%d %H:%M:%S')
-    if_ilegal = 0
-    if publish_time <= signup_start <= act_start and check_ac_time(signup_start, signup_end) == False \
-            and check_ac_time(act_start, act_end) == False:
-        if_ilegal = 1
-    if aprice < 0:
-        if_ilegal = 2
-    if max_people <= 0:
-        if_ilegal = 3
+    try:
+        aprice = float(request.POST["aprice"])
+        if aprice <= 0:
+            context['warn_code'] = 3
+            context['warn_msg'] = "The price must exceed 0!"
+    except:
+        context['warn_code'] = 4
+        context['warn_msg'] = "The price must be a floating point number one decimal place"
 
-    return aname, publish_time, signup_start, signup_end, act_start, act_end, location, content, URL, aprice, max_people, \
-           power, if_ilegal
+    try:
+        publish_time = datetime.strptime(publish_time, '%Y-%m-%d %H:%M:%S')
+        signup_start = datetime.strptime(signup_start, '%Y-%m-%d %H:%M:%S')
+        signup_end = datetime.strptime(signup_end, '%Y-%m-%d %H:%M:%S')
+        act_start = datetime.strptime(act_start, '%Y-%m-%d %H:%M:%S')
+        act_end = datetime.strptime(act_end, '%Y-%m-%d %H:%M:%S')
+        if publish_time <= signup_start <= act_start and check_ac_time(signup_start, signup_end) == False \
+                and check_ac_time(act_start, act_end) == False:
+            context['warn_code'] = 5
+            context['warn_msg'] = "The activity has to be in a month! "
+    except:
+        context['warn_code'] = 6
+        context['warn_msg'] = "you have sent a wrong time form!"
+
+    if context['warn_code'] != 0:
+        return context
+
+    context['aname'] = str(request.POST["aname"])  # 活动名称
+    context['content'] = str(request.POST["content"])  # 活动内容
+    context['location'] = str(request.POST["location"])
+    context['URL'] = str(request.POST["URL"])  # 活动推送链接
+    context['capacity'] = capacity
+    context['aprice'] = aprice  # 活动价格
+    context['publish_time'] = publish_time
+    context['signup_start'] = signup_start
+    context['signup_end'] = signup_end
+    context['act_start'] = act_start
+    context['act_end'] = act_end
+
+    return context
 
 
 # 时间合法性的检查，检查时间是否在当前时间的一个月以内，并且检查开始的时间是否早于结束的时间，

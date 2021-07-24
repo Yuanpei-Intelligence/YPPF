@@ -208,11 +208,11 @@ class Activity(models.Model):
     )
     year = models.IntegerField("活动年份", default=int(datetime.now().strftime("%Y")))
     semester = models.CharField("活动学期", choices=Semester.choices, max_length=15)
-    publish_time = models.DateTimeField("信息发布时间", blank=True, default=datetime.now())  # 可以为空
-    sign_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now())
-    sign_finish = models.DateTimeField("报名结束时间", blank=True, default=datetime.now())
-    start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now())
-    finish = models.DateTimeField("活动结束时间", blank=True, default=datetime.now())
+    publish_time = models.DateTimeField("信息发布时间", blank=True, auto_now_add=True)  # 可以为空
+    sign_start = models.DateTimeField("报名开始时间", blank=True, auto_now_add=True)
+    sign_finish = models.DateTimeField("报名结束时间", blank=True, auto_now_add=True)
+    start = models.DateTimeField("活动开始时间", blank=True, auto_now_add=True)
+    finish = models.DateTimeField("活动结束时间", blank=True, auto_now_add=True)
 
     location = models.CharField("活动地点", blank=True, max_length=200)
     content = models.CharField("活动内容", max_length=225, blank=True)
@@ -234,7 +234,6 @@ class Activity(models.Model):
     capacity = models.IntegerField("活动最大参与人数", default=100)
 
     URL = models.URLField("相关网址", null=True, blank=True)
-    power = models.IntegerField("发送权限", default=1)  # 权限：1是给报名者发消息，0是给所有人发消息（暂时如此）
 
     def __str__(self):
         return f"活动：{self.topic}"
