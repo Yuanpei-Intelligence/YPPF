@@ -208,11 +208,11 @@ class Activity(models.Model):
     )
     year = models.IntegerField("活动年份", default=int(datetime.now().strftime("%Y")))
     semester = models.CharField("活动学期", choices=Semester.choices, max_length=15)
-    publish_time = models.DateTimeField("信息发布时间", blank=True, auto_now_add=True)  # 可以为空
-    sign_start = models.DateTimeField("报名开始时间", blank=True, auto_now_add=True)
-    sign_finish = models.DateTimeField("报名结束时间", blank=True, auto_now_add=True)
-    start = models.DateTimeField("活动开始时间", blank=True, auto_now_add=True)
-    finish = models.DateTimeField("活动结束时间", blank=True, auto_now_add=True)
+    publish_time = models.DateTimeField("信息发布时间", blank=True, default=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))  # 可以为空
+    sign_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    sign_end = models.DateTimeField("报名结束时间", blank=True,default=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
+    end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now().strftime('%Y-%m-%d %H:%M:%S'))
 
     location = models.CharField("活动地点", blank=True, max_length=200)
     content = models.CharField("活动内容", max_length=225, blank=True)

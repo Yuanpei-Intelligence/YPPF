@@ -1167,8 +1167,8 @@ def addActivities(request):
                 new_act.URL = context['URL']
                 new_act.location = context['location']
                 # new_act.QRcode = QRcode
-                new_act.YQPoint = context['YQP']
-                new_act.capacity = context['max_people']
+                new_act.YQPoint = context['aprice']
+                new_act.capacity = context['capacity']
                 new_act.save()
         except:
             html_display['warn_code'] = 8
