@@ -123,7 +123,6 @@ def check_ac_request(request):
     except:
         context['warn_code'] = 4
         context['warn_msg'] = "The price must be a floating point number one decimal place"
-
     try:
         publish_time = datetime.strptime(publish_time, '%Y-%m-%d %H:%M:%S')
         signup_start = datetime.strptime(signup_start, '%Y-%m-%d %H:%M:%S')
