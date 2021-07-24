@@ -1,26 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 {% load static %}
+
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no">
     <title>{{html_display.title_name}}</title>
-    
+
     <!-- BEGIN GLOBAL MANDATORY STYLES -->
     <!-- Favicons -->
-	<link type="image/x-icon" href="{% static 'assets/img/yp_favicon.png' %} " rel="icon">
+    <link type="image/x-icon" href="{% static 'assets/img/yp_favicon.png' %} " rel="icon">
     <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet">
     <link href={% static "bootstrap/css/bootstrap.min.css" %} rel="stylesheet" type="text/css" />
     <link href={% static "assets/css/plugins.css" %} rel="stylesheet" type="text/css" />
     <!-- END GLOBAL MANDATORY STYLES -->
-    
+
     <!--  BEGIN CUSTOM STYLE FILE  -->
     <link href={% static "assets/css/users/user-profile.css" %} rel="stylesheet" type="text/css" />
     <!--  END CUSTOM STYLE FILE  -->
+
+    <link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.css">
 </head>
+
 <body>
-    
+
     <!--  BEGIN NAVBAR  -->
     <div class="header-container fixed-top">
         <header class="header navbar navbar-expand-sm">
@@ -38,10 +42,17 @@
 
             <ul class="navbar-item flex-row ml-md-0 ml-auto">
                 <li class="nav-item align-self-center search-animated">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-search toggle-search"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                    <form class="form-inline search-full form-inline search" role="search" method="GET" action="/search/">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                        class="feather feather-search toggle-search">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <form class="form-inline search-full form-inline search" role="search" method="GET"
+                        action="/search/">
                         <div class="search-bar">
-                            <input type="text" class="form-control search-form-control  ml-lg-auto" placeholder="输入姓名/组织名/昵称/专业查找" name="Query">
+                            <input type="text" class="form-control search-form-control  ml-lg-auto"
+                                placeholder="输入姓名/组织名/昵称/专业查找" name="Query">
                         </div>
                     </form>
                 </li>
@@ -49,8 +60,20 @@
 
             <ul class="navbar-item flex-row ml-md-auto">
                 <li class="nav-item dropdown message-dropdown">
-                    <a href="javascript:void(0);" class="nav-link dropdown-toggle" id="messageDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mail"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>
+                    <a href="javascript:void(0);" class="nav-link dropdown-toggle" id="messageDropdown"
+                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="feather feather-mail">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z">
+                            </path>
+
+                            <polyline points="22,6 12,13 2,6"></polyline>
+
+                        </svg>
+                        <span class="badge " style="background-color: black;color: currentColor;">3</span>
+
+
                     </a>
                     <div class="dropdown-menu p-0 position-absolute" aria-labelledby="messageDropdown">
                         <div class="">
@@ -59,7 +82,8 @@
 
                                     <div class="media">
                                         <div class="user-img">
-                                            <img class="usr-img rounded-circle" src={% static "assets/img/profile-11.jpeg.jpg" %} alt="profile">
+                                            <img class="usr-img rounded-circle" src={%
+                                                static "assets/img/profile-11.jpeg.jpg" %} alt="profile">
                                         </div>
                                         <div class="media-body">
                                             <div class="">
@@ -76,7 +100,8 @@
 
                                     <div class="media">
                                         <div class="user-img">
-                                            <img class="usr-img rounded-circle" src={% static "assets/img/profile-16.jpeg.jpg" %} alt="profile">
+                                            <img class="usr-img rounded-circle" src={%
+                                                static "assets/img/profile-16.jpeg.jpg" %} alt="profile">
                                         </div>
                                         <div class="media-body">
                                             <div class="">
@@ -85,7 +110,7 @@
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                 </div>
                             </a>
                             <a class="dropdown-item">
@@ -93,7 +118,8 @@
 
                                     <div class="media">
                                         <div class="user-img">
-                                            <img class="usr-img rounded-circle" src={% static "assets/img/profile-34.jpeg.jpg" %} alt="profile">
+                                            <img class="usr-img rounded-circle" src={%
+                                                static "assets/img/profile-34.jpeg.jpg" %} alt="profile">
                                         </div>
                                         <div class="media-body">
                                             <div class="">
@@ -102,68 +128,142 @@
                                             </div>
                                         </div>
                                     </div>
-                                    
+
                                 </div>
                             </a>
                         </div>
                     </div>
                 </li>
-
+                <!--
                 <li class="nav-item dropdown notification-dropdown">
-                    <a href="javascript:void(0);" class="nav-link dropdown-toggle" id="notificationDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-bell"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg><span class="badge badge-success"></span>
+                    <a href="javascript:void(0);" class="nav-link dropdown-toggle" id="notificationDropdown"
+                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="feather feather-bell">
+                            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+                        </svg>
+                        <span class="badge badge-success"></span>
                     </a>
                     <div class="dropdown-menu position-absolute" aria-labelledby="notificationDropdown">
                         <div class="notification-scroll">
 
                             <div class="dropdown-item">
                                 <div class="media">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-heart"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" class="feather feather-heart">
+                                        <path
+                                            d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z">
+                                        </path>
+                                    </svg>
                                     <div class="media-body">
-                                        <div class="notification-para"><span class="user-name">猛大</span> likes your photo.</div>
+                                        <div class="notification-para"><span class="user-name">猛大</span> likes your
+                                            photo.</div>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="dropdown-item">
                                 <div class="media">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-share-2"><circle cx="18" cy="5" r="3"></circle><circle cx="6" cy="12" r="3"></circle><circle cx="18" cy="19" r="3"></circle><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" class="feather feather-share-2">
+                                        <circle cx="18" cy="5" r="3"></circle>
+                                        <circle cx="6" cy="12" r="3"></circle>
+                                        <circle cx="18" cy="19" r="3"></circle>
+                                        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                                        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                                    </svg>
                                     <div class="media-body">
-                                        <div class="notification-para"><span class="user-name">3楼的学长</span> shared your post</div>
+                                        <div class="notification-para"><span class="user-name">3楼的学长</span> shared your
+                                            post</div>
                                     </div>
                                 </div>
                             </div>
 
                             <div class="dropdown-item">
                                 <div class="media">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-tag"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7" y2="7"></line></svg>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" class="feather feather-tag">
+                                        <path
+                                            d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z">
+                                        </path>
+                                        <line x1="7" y1="7" x2="7" y2="7"></line>
+                                    </svg>
                                     <div class="media-body">
-                                        <div class="notification-para"><span class="user-name">4楼的学姐</span> mentioned you in comment.</div>
+                                        <div class="notification-para"><span class="user-name">4楼的学姐</span> mentioned
+                                            you in comment.</div>
                                     </div>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </li>
+            -->
+                <li class="nav-item dropdown notification-dropdown">
+                    <a href="{{html_display.profile_url}}" class="nav-link dropdown-toggle" id="notificationDropdown"
+                        aria-haspopup="true" aria-expanded="false">
+
+                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="feather feather-home">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                        </svg>
+                    </a>
+                </li>
 
                 <li class="nav-item dropdown user-profile-dropdown">
-                    <a href="javascript:void(0);" class="nav-link dropdown-toggle user" id="userProfileDropdown" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                    <a href="javascript:void(0);" class="nav-link dropdown-toggle user" id="userProfileDropdown"
+                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
                         <img src={{html_display.avatar_path}} alt="avatar">
                     </a>
                     <div class="dropdown-menu position-absolute" aria-labelledby="userProfileDropdown">
                         <div class="">
+                            <!--
                             <div class="dropdown-item">
-                                <a class="" href="{{html_display.profile_url}}"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-user"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                                <a class="" href="{{html_display.profile_url}}"><svg xmlns="http://www.w3.org/2000/svg"
+                                        width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                        class="feather feather-user">
+                                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                        <circle cx="12" cy="7" r="4"></circle>
+                                    </svg>
                                     {{html_display.profile_name}}</a>
                             </div>
+                            -->
                             <div class="dropdown-item">
-                                <a class="" href="/user_account_setting/"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-activity"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+                                <a class="" href="/myYQPoint/">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentcolor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" class="feather feather-stop-circle">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <rect x="9" y="9" width="6" height="6"></rect>
+                                    </svg>
+                                    我的元气值</a>
+                            </div>
+                            <div class="dropdown-item">
+                                <a class="" href="/user_account_setting/"><svg xmlns="http://www.w3.org/2000/svg"
+                                        width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                        class="feather feather-activity">
+                                        <circle cx="12" cy="12" r="3"></circle>
+                                        <path
+                                            d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z">
+                                        </path>
+                                    </svg>
                                     信息与隐私</a>
                             </div>
+                            <!--
                             <div class="dropdown-item">
                                 <a class="" href="/modpw/"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-activity"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
                                     修改密码</a>
                             </div>
+                            -->
+
                             <!-- <div class="dropdown-item">
                                 <a class="" href=""><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-inbox"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"></polyline><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"></path></svg>
                                     Inbox</a>
@@ -173,7 +273,14 @@
                                     Lock Screen</a>
                             </div> -->
                             <div class="dropdown-item">
-                                <a class="" href="/logout/"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-log-out"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+                                <a class="" href="/logout/"><svg xmlns="http://www.w3.org/2000/svg" width="24"
+                                        height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                        class="feather feather-log-out">
+                                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                                        <polyline points="16 17 21 12 16 7"></polyline>
+                                        <line x1="21" y1="12" x2="9" y2="12"></line>
+                                    </svg>
                                     登出账户</a>
                             </div>
                         </div>
@@ -189,7 +296,14 @@
     <!--  BEGIN NAVBAR  -->
     <div class="sub-header-container">
         <header class="header navbar navbar-expand-sm expand-header">
-            <a href="javascript:void(0);" class="sidebarCollapse" data-placement="bottom"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-menu"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg></a>
+            <a href="javascript:void(0);" class="sidebarCollapse" data-placement="bottom"><svg
+                    xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                    class="feather feather-menu">
+                    <line x1="3" y1="12" x2="21" y2="12"></line>
+                    <line x1="3" y1="6" x2="21" y2="6"></line>
+                    <line x1="3" y1="18" x2="21" y2="18"></line>
+                </svg></a>
 
             <ul class="navbar-nav flex-row">
                 <li>
@@ -203,12 +317,28 @@
         </header>
     </div>
     <!--  END NAVBAR  -->
-    
+
 
     {% block mainpage %}
 
     {% endblock %}
-    
+
+    <footer>
+        <div class="footer-wrapper">
+            <div class="footer-section f-section-1">
+                <p class=''> </p>
+            </div>
+            <div class="footer-section f-section-2">
+                <p class="">Copyright © 2021 Yuanpei Intelligence Campus, All rights <a href="">Reserved </a>.</p>
+            </div>
+            <!--
+            <div class="footer-section f-section-2">
+                <p class="">Coded with <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-heart"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg></p>
+            </div>
+            -->
+        </div>
+    </footer>
+
     {% block load_js_file %}
     <!-- BEGIN GLOBAL MANDATORY SCRIPTS -->
     <script src={% static "assets/js/libs/jquery-3.1.1.min.js" %}></script>
@@ -216,14 +346,18 @@
     <script src={% static "bootstrap/js/bootstrap.min.js" %}></script>
     <script src={% static "plugins/perfect-scrollbar/perfect-scrollbar.min.js" %}></script>
     <script src={% static "assets/js/app.js" %}></script>
-    
+
     <script>
-        $(document).ready(function() {
+        $(document).ready(function () {
             App.init();
         });
     </script>
     <script src="assets/js/custom.js"></script>
     <!-- END GLOBAL MANDATORY SCRIPTS -->
     {% endblock %}
+
+
+
 </body>
+
 </html>

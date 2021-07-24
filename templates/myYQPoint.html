@@ -1,0 +1,313 @@
+{% extends "base.html" %}
+
+
+{% block mainpage %}
+<!--  BEGIN MAIN CONTAINER  
+
+<style type='text/css'>
+    .table th,
+    .table td {
+        text-align: center;
+        vertical-align: middle !important;
+    }
+
+    table {
+        width: 100px;
+        table-layout: fixed;
+        /* 只有定义了表格的布局算法为fixed，下面td的定义才能起作用。 */
+    }
+
+    td {
+        width: 100%;
+        word-break: keep-all;
+        /* 不换行 */
+        white-space: nowrap;
+        /* 不换行 */
+        overflow: hidden;
+        /* 内容超出宽度时隐藏超出部分的内容 */
+        text-overflow: ellipsis;
+        /* 当对象内文本溢出时显示省略标记(...) ；需与overflow:hidden;一起使用*/
+        -o-text-overflow: ellipsis;
+        -icab-text-overflow: ellipsis;
+        -khtml-text-overflow: ellipsis;
+        -moz-text-overflow: ellipsis;
+        -webkit-text-overflow: ellipsis;
+    }
+
+    .table {
+        table-layout: fixed;
+    }
+</style>
+-->
+<div class="main-container" id="container">
+
+    <div class="overlay"></div>
+    <div class="search-overlay"></div>
+
+    {% include 'user_left_narbar.html' %}
+
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+        {% if html_display.warn_code == 1 %}
+                <div class="alert alert-warning  text-center" >{{ html_display.warn_message }}</div>
+        {% elif html_display.warn_code == 2 %}
+        <div class="alert alert-success  text-center" >{{ html_display.warn_message }}</div>
+        {% endif %}
+        <div class="container">
+            <div class="container">
+
+
+
+                <div class="row layout-top-spacing">
+
+                    <div class="col-lg-12 col-12 layout-top-spacing">
+                        <div class="bio layout-spacing ">
+                            <div class="widget-content widget-content-area">
+                                <h3>元气值总览</h3>
+                                <div class="table-responsive">
+                                    <table class="table table-bordered mb-4">
+                                        <thead>
+                                            <tr>
+                                                <th>可用余额</th>
+                                                <th>待收入</th>
+                                                <th>待支出</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>{{me.YQPoint}}</td>
+                                                <td bgcolor="E8FFF5">{{amount.recv}}</td>
+                                                <td bgcolor="FFD2D2">{{amount.send}}</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="col-lg-12 col-12 layout-top-spacing">
+                        <div class="bio layout-spacing ">
+                            <div class="widget-content widget-content-area">
+                                <h3>元气值交易</h3>
+                                <!--
+                                        <ul class="nav nav-tabs nav-tabs-solid nav-justified">
+                                            <li class="nav-item">
+                                                <a class="nav-link " onclick="window.location='admin-index.html'"
+                                                    data-toggle="tab">未开始预约</a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link active" href="#solid-justified-tab2"
+                                                    data-toggle="tab">过去一周</a>
+                                            </li>
+                                        </ul>
+                                        -->
+                                <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                    <li class="nav-item">
+                                        <a class="nav-link active" onclick="window.location='/myYQPoint/'"
+                                            data-toggle="tab">
+                                            <h5>待处理</h5>
+                                        </a>
+                                    </li>
+
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="#issued" data-toggle="tab">
+                                            <h5>已处理</h5>
+                                        </a>
+                                    </li>
+
+                                </ul>
+
+                                <div id="myTabContent" class="tab-content">
+                                    <div class="tab-pane fade in active show" id="home">
+                                        {% if to_list|length == 0 %}
+                                        <p></p>
+                                        <p style="text-align: center;">没有待处理的转账记录.</p>
+                                        {% else %}
+                                        <div class="bio-skill-box">
+                                            <div class="row">
+                                                {% for record in to_list %}
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+
+                                                    {% if record.obj_direct == "From" %}
+                                                    <div class=" b-skills">
+                                                        {% else %}
+                                                        <div class=" b-skills">
+                                                            {% endif %}
+
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <h5>
+                                                                        {{record.obj_direct}} <a
+                                                                            href='{{record.obj_url}}'><u>{{record.obj}}</u></a>
+                                                                    </h5>
+                                                                </div>
+                                                                <div>
+                                                                    <h5>
+                                                                        <i class="	fa fa-rmb"></i>{{record.amount}}
+                                                                    </h5>
+                                                                </div>
+                                                            </div>
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <p style="color: rgb(66, 67, 68);"><i
+                                                                            class="fa fa-calendar-o"></i>
+                                                                        {{record.start_time}}</p>
+                                                                </div>
+                                                                <div>
+                                                                    <p style="color: rgb(66, 67, 68);">{{record.status}}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            {% if record.obj_direct == 'From' %}
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <p style="color: rgb(66, 67, 68);"><i
+                                                                            class="fa fa-envelope-o"></i>
+                                                                        {{record.message}}</p>
+                                                                </div>
+                                                                <form method="POST" >
+                                                                    <div style="margin-left: 8px; ">
+                                                                    <div class="btn-group btn-group-sm">
+                                                                        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"
+                                                                        style="display:block;
+                                                                        white-space:nowrap; 
+                                                                        overflow:hidden; ">
+                                                                          <span class="">操作</span>
+                                                                        </button>
+                                                                        <div class="dropdown-menu">
+                                                                          <button class="dropdown-item" type="submit" name='post_button'
+                                                                          value="{{record.id}}+accept" onclick="return confirm('确定接收来自{{record.obj}}的转账?')"
+                                                                          >接收</button>
+                                                                          <button class="dropdown-item" type="submit" name='post_button'
+                                                                          value="{{record.id}}+reject" onclick="return confirm('确定拒绝来自{{record.obj}}的转账?')"
+                                                                          >拒绝</button>
+                                                                        </div>
+                                                                      </div>
+                                                                    </div>
+                                                                </form>
+                                                            </div>
+                                                            {% else %}
+                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                                class="fa fa-envelope-o"></i>
+                                                            {{record.message}}</p>
+                                                            {% endif %}
+                                                        </div>
+
+
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+
+                                            </div>
+
+                                            {% endif %}
+                                        </div>
+                                        <div class="tab-pane fade" id="issued">
+                                            {% if issued_list|length == 0 %}
+                                            <p></p>
+                                            <p style="text-align: center;">没有已处理的转账记录.</p>
+                                            {% else %}
+
+
+                                            <div class="bio-skill-box">
+                                                <div class="row">
+                                                    {% for record in issued_list %}
+                                                    <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+
+                                                        {% if record.obj_direct == "From" %}
+                                                        <div class=" b-skills">
+                                                            {% else %}
+                                                            <div class=" b-skills">
+                                                                {% endif %}
+
+                                                                <div class="d-flex justify-content-between">
+                                                                    <div>
+                                                                        <h5>
+                                                                            {{record.obj_direct}} <a
+                                                                                href='{{record.obj_url}}'><u>{{record.obj}}</u></a>
+                                                                        </h5>
+                                                                    </div>
+                                                                    <div>
+                                                                        <h5>
+                                                                            <i class="	fa fa-rmb"></i>{{record.amount}}
+                                                                        </h5>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="d-flex justify-content-between">
+                                                                    <div>
+                                                                        <p style="color: rgb(66, 67, 68);"><i
+                                                                                class="fa fa-calendar-o"></i>
+                                                                            {{record.start_time}}发起</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p style="color: rgb(66, 67, 68);">
+                                                                            {{record.finish_time}}处理</p>
+                                                                    </div>
+                                                                    
+                                                                </div>
+                                                                <div class="d-flex justify-content-between">
+                                                                    <div>
+                                                                        <p style="color: rgb(66, 67, 68);"><i
+                                                                                class="fa fa-envelope-o"></i>
+                                                                            {{record.message}}</p>
+                                                                    </div>
+                                                                    <div>
+                                                                        <p style="color: rgb(66, 67, 68);
+                                                                        margin-left: 8px;
+                                                                        display:block;
+                                                                        white-space:nowrap; 
+                                                                        overflow:hidden; ">
+                                                                            {{record.status}}
+                                                                        </p>
+                                                                    </div>
+                                                                </div>
+
+                                                            </div>
+
+
+                                                        </div>
+                                                        {% endfor %}
+                                                    </div>
+
+                                                </div>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+
+                        </div>
+
+                    </div>
+                </div>
+
+            </div>
+            <!--  END CONTENT AREA  -->
+        </div>
+        <!-- END MAIN CONTAINER -->
+
+        <script>
+            $('.nav-tabs').on('shown.bs.tab', 'a', function (e) {
+                if (e.relatedTarget) {
+                    $(e.relatedTarget).removeClass('active');
+                }
+            })
+        </script>
+
+        <script>
+            $('.table').bootstrapTable({
+                onLoadSuccess: function () {
+                    $('.table tr td').each(function () {
+
+                        $(this).attr("title", $(this).text());
+                        $(this).css("cursor", 'pointer');
+                    });
+
+                }
+            })
+        </script>
+        {% endblock %}
