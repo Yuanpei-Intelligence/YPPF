@@ -10,7 +10,7 @@ from app.models import (
     TransferRecord,
     Paticipant,
 )
-from boottest import local_dict
+from boottest import local_dict, settings
 from app.utils import MyMD5PasswordHasher, MySHA256Hasher
 import json
 login_url = local_dict["url"]["login_url"]
@@ -29,7 +29,7 @@ scheduler.add_jobstore(DjangoJobStore(), "default")
 def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=True):
     '''底层实现发送到微信，是为了方便设置定时任务'''
     post_data = {
-        "tousers" : users,
+        "touser" : users,
         "content" : message,
         "toall" : True,
         "secret" : wechat_coder.encode(message)
@@ -56,6 +56,8 @@ def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=T
             errinfos = response["data"]["detail"]
             failed = [x[0] for x in errinfos]
             errmsg = errinfos[0][1]
+        elif response.get("errMsg"):
+            errmsg = response["errMsg"]
         raise OSError
     except:
         print(f"向企业微信发送失败：失败用户：{failed[:3]}等{len(failed)}人，主要失败原因：{errmsg}")
@@ -77,18 +79,35 @@ def publish_activity(aid):
         timeformat = "%Y年%m月%d日 %H:%M"   # 显示具体年份
     start = start.strftime(timeformat)
     finish = finish.strftime(timeformat)
-    message = "\n".join((
-        activity.topic,
-        f"组织者：{activity.organization_id.oname}",
-        f"活动时间：{start}-{finish}",
-        "活动内容：",
-        activity.content,
-        "点击查看详情"
-    ))
-    kws = {"card" : True}
-    if activity.URL:
-        kws["url"] = activity.URL
-        kws["btntxt"] = "阅读原文"
+    if len(activity.content) < 120:
+        kws = {"card" : True}
+        message = "\n".join((
+            activity.topic,
+            f"组织者：{activity.organization_id.oname}",
+            f"活动时间：{start}-{finish}",
+            "活动内容：",
+            activity.content,
+            "点击查看详情"
+        ))
+        if activity.URL:
+            kws["url"] = activity.URL
+            kws["btntxt"] = "阅读原文"
+    else:
+        kws = {"card" : False}
+        message = "\n".join((
+            activity.topic,
+            "",
+            "组织者：",
+            f"{activity.organization_id.oname}",
+            "活动时间：",
+            f"{start}-{finish}",
+            "活动简介：",
+            activity.content
+        ))
+        if activity.URL:
+            message += f"\n<a href=\"{activity.URL}\">阅读原文</a>"
+        else:
+            message += f"\n<a href=\"{settings.LOGIN_URL}\">点击查看详情</a>"
     for i in range(0, num, 500):
         userids = subcribers[i:i+500]
         '''
@@ -99,3 +118,4 @@ def publish_activity(aid):
             )
         '''
         base_send_wechat(userids, message, **kws) #不使用定时任务请改为这句
+    return True
