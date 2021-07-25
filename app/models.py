@@ -244,18 +244,33 @@ class Activity(models.Model):
         PROCESSING = "进行中"
         CANCELLED = "已取消"
         FINISH = "已结束"
-        REJECTED = "未通过"
+
+
 
     status = models.CharField("活动状态", choices=Astatus.choices, max_length=32)
+    bidding = models.BooleanField("是否投点竞价", default=False)
     mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
     YQPoint = models.FloatField("元气值定价", default=0.0)
     capacity = models.IntegerField("活动最大参与人数", default=100)
 
     URL = models.URLField("相关网址", null=True, blank=True)
 
+
     def __str__(self):
         return f"活动：{self.topic}"
-
+    #活动状态的变更，每次加载时更新活动状态，定时任务？双重保证？
+    def status_change(self):
+        #后期加入审核批准时，这里的筛选条件应当加上是否批准
+        if self.status!=self.Astatus.CANCELLED and self.status!=self.Astatus.FINISH:
+            now=datetime.now()
+            if self.sign_start<= now<self.sign_end :
+                self.status=self.Astatus.APPLYING
+            elif self.sign_end<=now<self.start:
+                self.status=self.Astatus.WAITING
+            elif self.start<=now<self.end:
+                self.status=self.Astatus.PROCESSING
+            elif now>=self.end:
+                self.status=self.Astatus.FINISH
 
 class TransferRecord(models.Model):
     class Meta:
