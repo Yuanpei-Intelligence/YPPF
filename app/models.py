@@ -242,7 +242,7 @@ class Activity(models.Model):
         verbose_name = "活动"
         verbose_name_plural = verbose_name
 
-    topic = models.CharField("活动名称", max_length=25)
+    title = models.CharField("活动名称", max_length=25)
     organization_id = models.ForeignKey(
         Organization,
         to_field="organization_id",
@@ -283,7 +283,7 @@ class Activity(models.Model):
 
 
     def __str__(self):
-        return f"活动：{self.topic}"
+        return f"活动：{self.title}"
     #活动状态的变更，每次加载时更新活动状态，定时任务？双重保证？
     def status_change(self):
         #后期加入审核批准时，这里的筛选条件应当加上是否批准
