@@ -582,66 +582,74 @@ def search(request):
             而且该用户选择公开其与组织的关系，那么该组织将在搜索界面呈现。
             搜索结果的呈现内容见organization_field
     """
-    try:
-        valid, user_type, html_display = utils.check_user_type(request)
-        if not valid:
-            return redirect("/logout/")
+    
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect("/logout/")
 
-        '''
-        is_person = True if user_type == "Person" else False
-        me = get_person_or_org(request.user, user_type)
-        html_display["is_myself"] = True
-        if is_person:
-            html_display = utils.get_user_left_narbar(
-                me, html_display["is_myself"], html_display
-            )
-        else:
-            html_display = utils.get_org_left_narbar(
-                me, html_display["is_myself"], html_display
-            )
-        '''
+    '''
+    is_person = True if user_type == "Person" else False
+    me = get_person_or_org(request.user, user_type)
+    html_display["is_myself"] = True
+    if is_person:
+        html_display = utils.get_user_left_narbar(
+            me, html_display["is_myself"], html_display
+        )
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display["is_myself"], html_display
+        )
+    '''
 
-        query = request.GET.get("Query", "")
-        if query == "":
-            return redirect("/welcome/")
+    query = request.GET.get("Query", "")
+    if query == "":
+        return redirect("/welcome/")
 
-        not_found_message = "找不到符合搜索的信息或相关内容未公开！"
-        # 首先搜索个人
-        people_list = NaturalPerson.objects.filter(
-            Q(name__icontains=query) | (Q(nickname__icontains=query) & Q(show_nickname=True)) |
-            (Q(stu_major__icontains=query) & Q(show_major=True)))
+    not_found_message = "找不到符合搜索的信息或相关内容未公开！"
+    # 首先搜索个人
+    people_list = NaturalPerson.objects.filter(
+        Q(name__icontains=query) | (Q(nickname__icontains=query) & Q(show_nickname=True)) |
+        (Q(stu_major__icontains=query) & Q(show_major=True)))
 
-        # 接下来准备呈现的内容
-        # 首先是准备搜索个人信息的部分
-        people_field = [
-            "姓名",
-            "年级",
-            "班级",
-            "昵称",
-            "性别",
-            "专业",
-            "邮箱",
-            "电话",
-            "宿舍",
-            "状态",
-        ]  # 感觉将年级和班级分开呈现会简洁很多
+    # 接下来准备呈现的内容
+    # 首先是准备搜索个人信息的部分
+    people_field = [
+        "姓名",
+        "年级",
+        "班级",
+        "昵称",
+        "性别",
+        "专业",
+        "邮箱",
+        "电话",
+        "宿舍",
+        "状态",
+    ]  # 感觉将年级和班级分开呈现会简洁很多
 
-        # 搜索组织
-        # 先查找通过个人关联到的position_list
-        position_list = Position.objects.activated().filter(
-            Q(person__in=people_list) & Q(show_post=True))
-        # 通过组织名、组织类名、个人关系查找
-        organization_list = Organization.objects.filter(
-            Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in=position_list.values('org')))
+    # 搜索组织
+    # 先查找通过个人关联到的position_list
+    position_list = Position.objects.activated().filter(
+        Q(person__in=people_list) & Q(show_post=True))
+    # 通过组织名、组织类名、个人关系查找
+    organization_list = Organization.objects.filter(
+        Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in=position_list.values('org')))
 
-        # 组织要呈现的具体内容
-        organization_field = ["组织名", "组织类型", "负责人", "近期活动"]
+    # 组织要呈现的具体内容
+    organization_field = ["组织名", "组织类型", "负责人", "近期活动"]
 
-        return render(request, "search.html", locals())
-    except Exception as e:
-        print(str(e))
-        auth.logout(request)
-        return redirect("/index/")
+    me = get_person_or_org(request.user, user_type)
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
+    # 补充一些呈现信息
+    html_display["title_name"] = "Search"
+    html_display["narbar_name"] = "信息搜索"  #
+
+    return render(request, "search.html", locals())
 
 
 def test(request):
@@ -1189,7 +1197,7 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
 def myYQPoint(request):
     valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
-        return redirect('/index/')
+        return redirect('/logout/')
 
     # 接下来处理POST相关的内容
     html_display['warn_code'] = 0
@@ -1220,7 +1228,7 @@ def myYQPoint(request):
         html_display = utils.get_org_left_narbar(
             me, html_display['is_myself'], html_display)
     # 补充一些呈现信息
-    html_display["title_name"] = "Welcome Page"
+    html_display["title_name"] = "My YQPoint"
     html_display["narbar_name"] = "我的元气值"  #
 
     to_send_set = TransferRecord.objects.filter(
@@ -1281,12 +1289,12 @@ def myYQPoint(request):
 
 def showActivities(request):
     notes = [
-        {"title": "活动名称1", "Date": "11/01/2019",
+        {"topic": "活动名称1", "Date": "11/01/2019",
             "Address": ["B107A", "B107B"]},
-        {"title": "活动名称2", "Date": "11/02/2019", "Address": ["B108A"]},
-        {"title": "活动名称3", "Date": "11/02/2019", "Address": ["B108A"]},
-        {"title": "活动名称4", "Date": "11/02/2019", "Address": ["B108A"]},
-        {"title": "活动名称5", "Date": "11/02/2019", "Address": ["B108A"]},
+        {"topic": "活动名称2", "Date": "11/02/2019", "Address": ["B108A"]},
+        {"topic": "活动名称3", "Date": "11/02/2019", "Address": ["B108A"]},
+        {"topic": "活动名称4", "Date": "11/02/2019", "Address": ["B108A"]},
+        {"topic": "活动名称5", "Date": "11/02/2019", "Address": ["B108A"]},
     ]
 
     person = True  # 人/法人
@@ -1331,7 +1339,7 @@ def addActivities(request):
             return render(request, "activity_add.html", locals())  # warn_code!=0失败
         try:
             with transaction.atomic():
-                new_act = Activity.objects.create(title=context['aname'], organization_id=org,
+                new_act = Activity.objects.create(topic=context['aname'], organization_id=org,
                                                   status=Activity.Astatus.PENDING)  # 默认状态是审核中
 
                 new_act.content = context['content']

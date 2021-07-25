@@ -22,11 +22,14 @@ class NaturalPersonManager(models.Manager):
 
 
 class NaturalPerson(models.Model):
+    class Meta:
+        verbose_name = "自然人"
+        verbose_name_plural = verbose_name
+
     # Common Attributes
     person_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
     name = models.CharField("姓名", max_length=10)
-    nickname = models.CharField(
-        "昵称", max_length=20, null=True, blank=True)  # 添加昵称
+    nickname = models.CharField("昵称", max_length=20, null=True, blank=True)
 
     class Gender(models.IntegerChoices):
         MALE = (0, "男")
@@ -80,13 +83,13 @@ class NaturalPerson(models.Model):
         return str(self.name)
 
     def show_info(self):
-        '''
+        """
             返回值为一个列表，在search.html中使用，按照如下顺序呈现：
             people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
             其中未公开的属性呈现为‘未公开’
             注意：major, gender, nickname, email, tel, dorm可能为None
             班级和年级现在好像也可以为None
-        '''
+        """
         unpublished = '未公开'
         gender = ['男', '女']
         info = [self.name, self.stu_grade, self.stu_class]
@@ -107,8 +110,11 @@ class NaturalPerson(models.Model):
 
 
 class OrganizationType(models.Model):
-    otype_id = models.SmallIntegerField(
-        "组织类型编号", unique=True, primary_key=True)
+    class Meta:
+        verbose_name = "组织类型"
+        verbose_name_plural = verbose_name
+
+    otype_id = models.SmallIntegerField("组织类型编号", unique=True, primary_key=True)
     otype_name = models.CharField("组织类型名称", max_length=25)
     otype_superior_id = models.SmallIntegerField("上级组织类型编号", default=0)
     incharge = models.ForeignKey(
@@ -138,6 +144,10 @@ class OrganizationManager(models.Manager):
 
 
 class Organization(models.Model):
+    class Meta:
+        verbose_name = "组织"
+        verbose_name_plural = verbose_name
+
     organization_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
     oname = models.CharField(max_length=32, unique=True)
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
@@ -174,6 +184,10 @@ class Position(models.Model):
     老师、助教、学生（课程）
     """
 
+    class Meta:
+        verbose_name = "职务"
+        verbose_name_plural = verbose_name
+
     person = models.ForeignKey(
         NaturalPerson,
         related_name="person",
@@ -200,6 +214,10 @@ class Position(models.Model):
 
 
 class Course(models.Model):
+    class Meta:
+        verbose_name = "课程"
+        verbose_name_plural = verbose_name
+
     cid = models.OneToOneField(
         to=Organization, on_delete=models.CASCADE, related_name="cid"
     )
@@ -219,9 +237,17 @@ class Course(models.Model):
 
 
 class Activity(models.Model):
-    title = models.CharField("活动名称", max_length=25)
+
+    class Meta:
+        verbose_name = "活动"
+        verbose_name_plural = verbose_name
+
+    topic = models.CharField("活动名称", max_length=25)
     organization_id = models.ForeignKey(
-        Organization, to_field="organization_id", related_name="actoid", on_delete=models.CASCADE
+        Organization,
+        to_field="organization_id",
+        related_name="actoid",
+        on_delete=models.CASCADE,
     )
     year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
     semester = models.CharField("活动学期", choices=Semester.choices, max_length=15)
@@ -289,7 +315,11 @@ class TransferRecord(models.Model):
     finish_time = models.DateTimeField("处理时间", blank=True, null=True)
     message = models.CharField("备注信息", max_length=255, default="")
 
-    corres_act = models.ForeignKey(Activity, related_name="有关活动", on_delete=models.SET_NULL, null=True, blank=True)
+
+    corres_act = models.ForeignKey(
+        Activity, related_name="有关活动", on_delete=models.SET_NULL, null=True, blank=True
+    )
+
 
     class TransferStatus(models.IntegerChoices):
         ACCEPTED = (0, "已接收")
@@ -301,6 +331,11 @@ class TransferRecord(models.Model):
 
 
 class Paticipant(models.Model):
+    class Meta:
+        verbose_name = "活动参与情况"
+        verbose_name_plural = verbose_name
+        ordering = ["activity_id"]
+
     activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
     person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
 
