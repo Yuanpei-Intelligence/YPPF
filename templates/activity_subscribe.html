@@ -78,9 +78,19 @@
                                                 <tr>
                                                     <td>{{org.oname}}</td>
                                                     {%if org.organization_id.username in subscribe_list%} 
-                                                    <td bgColor="E8FFF5", id="{{org.organization_id.username}}", onclick="change_status(this)"}>已订阅</td>
+                                                    <td bgColor="F3FDFF", id="td{{org.organization_id.username}}">
+                                                        <div class="custom-control custom-switch">
+                                                            <input type="checkbox" class="custom-control-input" id="{{org.organization_id.username}}" onclick="change_status(this)" checked>
+                                                            <label class="custom-control-label" for="{{org.organization_id.username}}" id="checkbox2{{org.organization_id.username}}"><font color="5F747B" id="checkbox3{{org.organization_id.username}}">已订阅</font></label>
+                                                        </div>
+                                                    </td>
                                                     {%else%} 
-                                                    <td bgColor="FFD2D2", id="{{org.organization_id.username}}", onclick="change_status(this)"}>未订阅</td>
+                                                    <td bgColor="FFFFFF", id="td{{org.organization_id.username}}">
+                                                        <div class="custom-control custom-switch">
+                                                            <input type="checkbox" class="custom-control-input" id="{{org.organization_id.username}}" onclick="change_status(this)">
+                                                            <label class="custom-control-label" for="{{org.organization_id.username}}" id="checkbox2{{org.organization_id.username}}"><font color="E1E1E1" id="checkbox3{{org.organization_id.username}}">未订阅</font></label>
+                                                        </div>
+                                                    </td>
                                                     {%endif%}
                                                 </tr>
                                             {% endfor %}
@@ -128,15 +138,15 @@
 </script>
 <script>
     var td_ls = document.getElementsByTagName('td')
-    function change_status(btn) {
-        var x = document.getElementById(btn.id);
-        if(x.innerHTML == "未订阅"){
-            x.innerHTML = "已订阅";
-            x.bgColor="E8FFF5";
+    function change_status(btn) {        
+        //alert(x.checked);
+        if(!x.checked){
+            document.getElementById("td"+btn.id).bgColor="F3FDFF";
+            save_subscribe_status();
         }
         else{
-            x.innerHTML = "未订阅";
-            x.bgColor="FFD2D2";
+            document.getElementById("td"+btn.id).bgColor="FFFFFF";
+            save_subscribe_status();
         }
     }
     function save_subscribe_status() {
@@ -146,10 +156,10 @@
         subscribed_list = Array();
         unsubscribed_list = Array();
         for(var i=0;i<td_ls.length;i++){
-            if(td_ls[i].getAttribute('bgColor') == 'FFD2D2'){
+            if(td_ls[i].getAttribute('bgColor') == 'FFFFFF'){
                 unsubscribed_list.push(td_ls[i].getAttribute('id'));
             }
-            else if(td_ls[i].getAttribute('bgColor') == 'E8FFF5'){
+            else if(td_ls[i].getAttribute('bgColor') == 'F3FDFF'){
                 subscribed_list.push(td_ls[i].getAttribute('id'));
             }
         }
@@ -167,7 +177,7 @@
             }
             urls += unsubscribed_list[i];
         }
-        alert("保存成功!")
+        //alert("保存成功!")
         window.location.href = urls;
     }
 </script>

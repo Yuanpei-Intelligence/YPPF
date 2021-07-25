@@ -1391,4 +1391,4 @@ def save_subscribe_status(request):
             if len(org):
                 me.subscribe_list.remove(org[0])
         me.save()
-    return redirect("/subscribeActivities")
+    return redirect("/subscribeActivities#")
