@@ -1289,12 +1289,12 @@ def myYQPoint(request):
 
 def showActivities(request):
     notes = [
-        {"topic": "活动名称1", "Date": "11/01/2019",
+        {"title": "活动名称1", "Date": "11/01/2019",
             "Address": ["B107A", "B107B"]},
-        {"topic": "活动名称2", "Date": "11/02/2019", "Address": ["B108A"]},
-        {"topic": "活动名称3", "Date": "11/02/2019", "Address": ["B108A"]},
-        {"topic": "活动名称4", "Date": "11/02/2019", "Address": ["B108A"]},
-        {"topic": "活动名称5", "Date": "11/02/2019", "Address": ["B108A"]},
+        {"title": "活动名称2", "Date": "11/02/2019", "Address": ["B108A"]},
+        {"title": "活动名称3", "Date": "11/02/2019", "Address": ["B108A"]},
+        {"title": "活动名称4", "Date": "11/02/2019", "Address": ["B108A"]},
+        {"title": "活动名称5", "Date": "11/02/2019", "Address": ["B108A"]},
     ]
 
     person = True  # 人/法人
@@ -1339,7 +1339,7 @@ def addActivities(request):
             return render(request, "activity_add.html", locals())  # warn_code!=0失败
         try:
             with transaction.atomic():
-                new_act = Activity.objects.create(topic=context['aname'], organization_id=org,
+                new_act = Activity.objects.create(title=context['aname'], organization_id=org,
                                                   status=Activity.Astatus.PENDING)  # 默认状态是审核中
 
                 new_act.content = context['content']
