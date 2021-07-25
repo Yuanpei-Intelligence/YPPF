@@ -30,9 +30,8 @@ urlpatterns = [
     path("minilogin", views.miniLogin, name="minilogin"),
     # re_path("^org([0-9]{2})",views.org_spec,name="org_spec"),
     path("getStuImg", views.get_stu_img, name="get_stu_img"),
-    path("transPage/", views.transaction_page, name="transPage"),
     path("transPage/<str:rid>", views.transaction_page, name="transPage"),
-    path("transPage/startTrans/", views.start_transaction, name="startTrans"),
+    path("startTrans/", views.start_transaction, name="startTrans"),
     #path("confirmTrans/", views.confirm_transaction, name="confirmTrans"),
     #path(
     #    "confirmTrans/<int:tid>/<int:reject>",

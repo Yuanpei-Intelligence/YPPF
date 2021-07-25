@@ -293,6 +293,7 @@ def stuinfo(request, name=None):
         html_display["title_name"] = "User Profile"
         html_display["narbar_name"] = "个人主页"
 
+
         return render(request, "stuinfo.html", locals())
 
 
@@ -872,6 +873,99 @@ def load_data(request):
     return render(request, "debugging.html", locals())
 
 
+# 调用者把 activity_id 作为参数传过来
+def engage_activity(request, activity_id, willingness):
+    context = dict()
+    context['success'] = False
+    try:
+        activity = Activity.objects.select_for_update().filter(id=activity_id)
+        payer = NaturalPerson.objects.select_for_update().filter(
+            person_id=request.user
+        )
+        with transaction.atomic():
+            assert len(activity) == 1
+            assert len(payer) == 1
+            activity = activity[0]
+            payer = payer[0]
+
+            if activity.status != Activity.Astatus.APPLYING:
+                context['msg'] = "The activity is not open."
+                return context
+
+            try:
+                panticipant = Paticipant.objects.get(
+                    activity_id=activity, person_id=payer
+                )
+                context[
+                    "msg"
+                ] = "You have already participated in the activity. If you are not deliberately do it, please contact the administrator to report this bug."
+                return context
+            except:
+                pass
+
+            organization_id = activity.organization_id_id
+            orgnization = Organization.objects.select_for_update().filter(
+                organization_id=organization_id
+            )
+            assert len(orgnization) == 1
+            orgnization = orgnization[0]
+
+            if not activity.bidding:
+                amount = float(activity.YQPoint)
+                cnt = activity.capacity
+                if cnt <= 0:
+                    context["msg"] = "Failed to fetch the ticket."
+                    return context
+                if payer.YQPoint < amount:
+                    context["msg"] = "No enough YQPoint"
+                    return context
+            else:
+                # 接受输入，* 10
+                amount = float(willingness) * 10
+
+            if payer.YQPoint < amount:
+                context['msg'] = 'Not enough YQPoint in account'
+                return context
+
+            payer.YQPoint -= amount
+
+            record = TransferRecord.objects.create(
+                proposer=request.user, recipient=orgnization.organization_id
+            )
+            record.amount = amount
+            record.message = f"Participate Activity {activity.topic}"
+            if not activity.bidding:
+                activity.capacity = cnt - 1
+                orgnization.YQPoint += float(amount)
+                record.status = TransferRecord.TransferStatus.ACCEPTED
+            else:
+                record.status = TransferRecord.TransferStatus.WAITING
+            record.time = str(datetime.now())
+            record.corres_act = activity
+
+            panticipant = Paticipant.objects.create(
+                activity_id=activity, person_id=payer
+            )
+            panticipant.status = Paticipant.AttendStatus.APLLYSUCCESS
+
+            panticipant.save()
+            record.save()
+            payer.save()
+            activity.save()
+            orgnization.save()
+
+    except:
+        context[
+            "msg"
+        ] = "Unexpected failure. If you are not deliberately do it, please contact the administrator to report this bug."
+        return context
+
+
+    context["msg"] = "Successfully participate the activity."
+    context['success'] = True
+    # return context
+    return context
+'''
 # 参与活动，get 传两个简单参数即可，活动 aid，价格等级
 # 再加一个 origin from，点一下即可返回 ( 可以看到已经报名 )
 # 活动的多字段怎么弄
@@ -953,6 +1047,7 @@ def engage_activity(request):
 
     context["msg"] = "Successfully participate the activity."
     return render(request, "msg.html", context)
+'''
 
 
 # 用已有的搜索，加一个转账的想他转账的 field
@@ -975,11 +1070,11 @@ def transaction_page(request, rid=None):
     try:
         if re.match("zz\d+", recipient_id) is not None:
             recipient = Organization.objects.get(
-                organization_id__username=recipient_id)
+                organization_id=recipient_id)
             recipient_type = "org"
         else:
             recipient = NaturalPerson.objects.get(
-                person_id__username=recipient_id)
+                person_id=recipient_id)
             recipient_type = "np"
     except:
         context[
@@ -988,8 +1083,16 @@ def transaction_page(request, rid=None):
         context["origin"] = origin
         return render(request, "msg.html", context)
 
+    # 不要转给自己
+    if int(rid) == request.user.id:
+        context[
+            "msg"
+        ] = "Unexpected recipient. If you are not deliberately doing this, please contact the administrator to report this bug."
+        context["origin"] = origin
+        return render(request, "msg.html", context)
+
     if recipient_type == "np":
-        name = recipient.nickname
+        name = recipient.name
         if name == "":
             name = recipient.name
         context["avatar"] = recipient.avatar
@@ -1022,6 +1125,7 @@ def start_transaction(request):
     try:
         # 允许一位小数，* 10 存成整数
         amount = int(float(amount) * 10)
+        assert amount > 0
     except:
         context[
             "msg"
@@ -1031,10 +1135,10 @@ def start_transaction(request):
     try:
         if recipient_type == "np":
             recipient = NaturalPerson.objects.get(
-                person_id__username=recipient_id).person_id
+                person_id=recipient_id).person_id
         else:
             recipient = Organization.objects.get(
-                organization_id__username=recipient_id
+                organization_id=recipient_id
             ).organization_id
     except:
         context[
@@ -1060,7 +1164,10 @@ def start_transaction(request):
         with transaction.atomic():
             assert len(payer) == 1
             payer = payer[0]
-            payer.YQPoint -= float(amount)
+            if payer.YQPoint >= float(amount):
+                payer.YQPoint -= float(amount)
+            else:
+                raise ValueError
             # TODO 目前用的是 nickname，可能需要改成 name
             # 需要确认 create 是否会在数据库产生记录，如果不会是否会有主键冲突？
             record = TransferRecord.objects.create(
@@ -1068,7 +1175,8 @@ def start_transaction(request):
             )
             record.amount = amount
             record.message = transaction_msg
-            record.status = 1  # Wating
+            # default 为 1
+            # record.status = TransferRecord.TransferStatus.WAITING  
             record.time = str(datetime.now())
             record.save()
 
@@ -1187,6 +1295,13 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
 
         # 状态
         lis[-1]['status'] = record.get_status_display()
+
+    # 对外展示为 1/10
+    '''
+    统一在前端修改
+    for key in amount:
+        amount[key] = amount[key]/10
+    '''
 
     return lis, amount
 
