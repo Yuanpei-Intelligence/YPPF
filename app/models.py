@@ -79,6 +79,7 @@ class NaturalPerson(models.Model):
     show_major = models.BooleanField(default=True)
     show_dorm = models.BooleanField(default=False)
 
+    # 注意：这是不订阅的列表！！
     subscribe_list = models.ManyToManyField('Organization', related_name='subscribers', db_index=True)
 
     def __str__(self):

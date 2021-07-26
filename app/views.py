@@ -1376,8 +1376,11 @@ def subscribeActivities(request):
             me, html_display['is_myself'], html_display)
 
     org_list = Organization.objects.all()
-    subscribe_list = list(me.subscribe_list.values_list("organization_id__username", flat=True))
-
+    org_name = list(set(list(Organization.objects.values_list('organization_id__username', flat=True))))
+    otype_list = sorted(list(set(list(Organization.objects.values_list('otype__otype_name', flat=True))))) 
+    # 给otype.otype_name排序，不然每次都不一样（后续可以写一个获取所有otype的接口，规定一个排序规则）
+    unsubscribe_list = list(me.subscribe_list.values_list("organization_id__username", flat=True)) # 获取不订阅列表（数据库里的是不订阅列表）
+    subscribe_list = [name for name in org_name if name not in unsubscribe_list]    # 获取订阅列表
     return render(request, "activity_subscribe.html", locals())
 
 @login_required(redirect_field_name='origin')
@@ -1386,12 +1389,12 @@ def save_subscribe_status(request):
     if not valid:
         return redirect('/index/')
     me = get_person_or_org(request.user, user_type)
-    # request.body = { id: 组织, status: checked状态 }
+    # request.body 展示为 { id: 组织, status: checked状态 }
     params = json.loads(request.body.decode("utf-8"))
     with transaction.atomic():
         if params['status']:
-            me.subscribe_list.add(Organization.objects.get(organization_id__username=params['id']))
-        else:
             me.subscribe_list.remove(Organization.objects.get(organization_id__username=params['id']))
+        else:
+            me.subscribe_list.add(Organization.objects.get(organization_id__username=params['id']))
         me.save()
     return JsonResponse({"success": True})
