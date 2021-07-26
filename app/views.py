@@ -918,7 +918,7 @@ def engage_activity(request, activity_id, willingness):
         if not activity.bidding:
             amount = float(activity.YQPoint)
             # transaction，直接减没事
-            if activity.current_participants < activity.capacity
+            if activity.current_participants < activity.capacity:
                 activity.current_participants += 1
             else:
                 context["msg"] = "Failed to fetch the ticket."
