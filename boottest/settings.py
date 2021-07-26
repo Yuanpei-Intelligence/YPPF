@@ -94,7 +94,7 @@ DATABASES = {
     # 使用自己的数据库的时候请修改这里的配置
     # 注意underground数据库需要事先创建
     # mysql -u root -p
-    # create database underground charset='utf8';
+    # create database underground charset='utf8mb4';
     "default": {
         "ENGINE": "django.db.backends.mysql",
         "NAME": local_dict["database"]["NAME"],
@@ -154,3 +154,5 @@ STATICFILES_DIRS = (os.path.join(BASE_DIR, "static"),)
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

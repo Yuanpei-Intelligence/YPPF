@@ -11,7 +11,6 @@ from app.models import (
 )
 import app.utils as utils
 from app.forms import UserForm
-from app.data_import import load, load_orgtype, load_org
 from app.utils import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.shortcuts import render, redirect
@@ -43,24 +42,6 @@ email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 def get_item(dictionary, key):
     return dictionary.get(key)
 
-
-def load_org_data(request):
-    if request.user.is_superuser:
-        load_type = request.GET.get("loadtype", None)
-        message = "加载失败！"
-        if load_type is None:
-            message = "没有得到loadtype参数:[org或otype]"
-        elif load_type == "otype":
-            load_orgtype()
-            message = "load type成功！"
-        elif load_type == "org":
-            load_org()
-            message = "load org成功！"
-        else:
-            message = "没有得到loadtype参数:[org或otype]"
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
 
 
 def get_person_or_org(user, user_type=None):
@@ -832,47 +813,6 @@ def modpw(request):
                 err_message = "原始密码不正确"
     return render(request, "modpw.html", locals())
 
-
-def load_data(request):
-    if request.user.is_superuser:
-        df_1819 = load()
-        for i in range(len(df_1819)):  # import 2018 stu info.
-            username = str(df_1819["学号"].iloc[i])
-            sno = username
-            password = sno
-            email = df_1819["邮箱"].iloc[i]
-            if email == "None":
-                if sno[0] == "2":
-                    email = sno + "@stu.pku.edu.cn"
-                else:
-                    email = sno + "@pku.edu.cn"
-            tel = str(df_1819["手机号"].iloc[i])
-            year = "20" + sno[0:2]
-            gender = df_1819["性别"].iloc[i]
-            major = df_1819["专业"].iloc[i]
-            name = df_1819["姓名"].iloc[i]
-            stu_class = df_1819["班级"].iloc[i]
-            user = User.objects.create(username=username)
-            user.set_password(password)
-            user.save()
-            stu = NaturalPerson.objects.create(person_id=user)
-            stu.email = email
-            stu.telephone = tel
-            stu.stu_grade = year
-            if gender == "男":
-                stu.gender = NaturalPerson.Gender.MALE
-            elif gender == "女":
-                stu.gender = NaturalPerson.Gender.FEMALE
-            else:
-                stu.gender = NaturalPerson.Gender.OTHER
-            stu.stu_major = major
-            stu.name = name
-            stu.stu_class = stu_class
-            stu.save()
-        message = "导入学生信息成功！"
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
 
 # 调用的时候最好用 try
 # 调用者把 activity_id 作为参数传过来
