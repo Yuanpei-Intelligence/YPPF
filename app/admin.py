@@ -4,7 +4,7 @@ from app.models import *
 # Register your models here.
 class NaturalPersonAdmin(admin.ModelAdmin):
     fieldsets = (
-        ["Commom Attributes", {"fields": ("person_id", "name", "gender", "identity")}],
+        ["Commom Attributes", {"fields": ("person_id", "name", "gender", "identity", "YQPoint")}],
         [
             "Student Attributes",
             {
