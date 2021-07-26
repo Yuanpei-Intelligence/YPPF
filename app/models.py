@@ -275,8 +275,11 @@ class Activity(models.Model):
     mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
     YQPoint = models.FloatField("元气值定价", default=0.0)
     capacity = models.IntegerField("活动最大参与人数", default=100)
+    bidding = models.BooleanField("是否投点竞价", default=False)
+
 
     URL = models.URLField("相关网址", null=True, blank=True)
+
 
     def __str__(self):
         return f"活动：{self.topic}"
