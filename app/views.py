@@ -942,6 +942,8 @@ def engage_activity(request, activity_id=1, willingness=2):
         )
         record.amount = amount
         record.message = f"Participate Activity {activity.topic}"
+        if not activity.bidding:
+            activity.capacity = cnt - 1
         orgnization.YQPoint += float(amount)
         record.status = TransferRecord.TransferStatus.ACCEPTED
 
@@ -995,7 +997,6 @@ def transaction_page(request, rid=None):
         ] = "Unexpected recipient. If you are not deliberately doing this, please contact the administrator to report this bug."
         context["origin"] = origin
         return render(request, "msg.html", context)
-
 
     name = recipient.name if hasattr(recipient, 'name') else recipient.oname
 
@@ -1356,3 +1357,37 @@ def addActivities(request):
         return render(request, "activity_add.html", locals())  # warn_code==0
     return render(request, "activity_add.html")
 
+@login_required(redirect_field_name='origin')
+def subscribeActivities(request):
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/index/')
+    me = get_person_or_org(request.user, user_type)
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
+
+    org_list = Organization.objects.all()
+    subscribe_list = list(me.subscribe_list.values_list("organization_id__username", flat=True))
+
+    return render(request, "activity_subscribe.html", locals())
+
+@login_required(redirect_field_name='origin')
+def save_subscribe_status(request):
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/index/')
+    me = get_person_or_org(request.user, user_type)
+    # request.body = { id: 组织, status: checked状态 }
+    params = json.loads(request.body.decode("utf-8"))
+    with transaction.atomic():
+        if params['status']:
+            me.subscribe_list.add(Organization.objects.get(organization_id__username=params['id']))
+        else:
+            me.subscribe_list.remove(Organization.objects.get(organization_id__username=params['id']))
+        me.save()
+    return JsonResponse({"success": True})
