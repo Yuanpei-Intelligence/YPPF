@@ -604,6 +604,10 @@ def search(request):
         )
     '''
 
+    query = request.GET.get("Query", "")
+    if query == "":
+        return redirect("/welcome/")
+
     not_found_message = "找不到符合搜索的信息或相关内容未公开！"
     # 首先搜索个人
     people_list = NaturalPerson.objects.filter(
@@ -638,8 +642,6 @@ def search(request):
     # activity_list = Activity.objects.filter(Q(topic__icontains=query) |
     #     Q(organization_id__in=organization_list.values('organization_id')))
     # print(activity_list)
-        
-        
 
     me = get_person_or_org(request.user, user_type)
     html_display['is_myself'] = True
