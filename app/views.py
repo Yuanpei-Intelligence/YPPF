@@ -876,7 +876,7 @@ def load_data(request):
 
 # 调用的时候最好用 try
 # 调用者把 activity_id 作为参数传过来
-def engage_activity(request, activity_id=1, willingness=2):
+def engage_activity(request, activity_id, willingness):
     context = dict()
     context['success'] = False
     with transaction.atomic():
@@ -917,8 +917,10 @@ def engage_activity(request, activity_id=1, willingness=2):
 
         if not activity.bidding:
             amount = float(activity.YQPoint)
-            cnt = activity.capacity
-            if cnt <= 0:
+            # transaction，直接减没事
+            if activity.current_participants < activity.capacity
+                activity.current_participants += 1
+            else:
                 context["msg"] = "Failed to fetch the ticket."
                 return context
         else:
