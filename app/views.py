@@ -252,8 +252,8 @@ def stuinfo(request, name=None):
         else:  # 有很多人，这时候假设加号后面的是user的id
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
                 if (
-                    user_type == "Person"
-                    and NaturalPerson.objects.activated().get(person_id=user).name == name
+                        user_type == "Person"
+                        and NaturalPerson.objects.activated().get(person_id=user).name == name
                 ):
                     person = NaturalPerson.objects.activated().get(person_id=user)
                 else:  # 不是自己，信息不全跳转搜索
@@ -281,7 +281,7 @@ def stuinfo(request, name=None):
 
         modpw_status = request.GET.get("modinfo", None)
         html_display["modpw_code"] = (
-            modpw_status is not None and modpw_status == "success"
+                modpw_status is not None and modpw_status == "success"
         )
         html_display["warn_code"] = request.GET.get(
             "warn_code", 0)  # 是否有来自外部的消息
@@ -393,11 +393,13 @@ def orginfo(request, name=None):
     # 判断是否为组织账户本身在登录
     html_display["is_myself"] = me == org
 
+
     # 再处理修改信息的回弹
     modpw_status = request.GET.get("modinfo", None)
     html_display["modpw_code"] = (
         modpw_status is not None and modpw_status == "success"
     )
+
 
     # 补充其余信息
     html_display = utils.get_org_left_narbar(
@@ -580,66 +582,74 @@ def search(request):
             而且该用户选择公开其与组织的关系，那么该组织将在搜索界面呈现。
             搜索结果的呈现内容见organization_field
     """
-    try:
-        valid, user_type, html_display = utils.check_user_type(request)
-        if not valid:
-            return redirect("/logout/")
+    
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect("/logout/")
 
-        '''
-        is_person = True if user_type == "Person" else False
-        me = get_person_or_org(request.user, user_type)
-        html_display["is_myself"] = True
-        if is_person:
-            html_display = utils.get_user_left_narbar(
-                me, html_display["is_myself"], html_display
-            )
-        else:
-            html_display = utils.get_org_left_narbar(
-                me, html_display["is_myself"], html_display
-            )
-        '''
+    '''
+    is_person = True if user_type == "Person" else False
+    me = get_person_or_org(request.user, user_type)
+    html_display["is_myself"] = True
+    if is_person:
+        html_display = utils.get_user_left_narbar(
+            me, html_display["is_myself"], html_display
+        )
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display["is_myself"], html_display
+        )
+    '''
 
-        query = request.GET.get("Query", "")
-        if query == "":
-            return redirect("/welcome/")
+    query = request.GET.get("Query", "")
+    if query == "":
+        return redirect("/welcome/")
 
-        not_found_message = "找不到符合搜索的信息或相关内容未公开！"
-        # 首先搜索个人
-        people_list = NaturalPerson.objects.filter(
-            Q(name__icontains=query) | (Q(nickname__icontains=query) & Q(show_nickname=True)) |
-            (Q(stu_major__icontains=query) & Q(show_major=True)))
+    not_found_message = "找不到符合搜索的信息或相关内容未公开！"
+    # 首先搜索个人
+    people_list = NaturalPerson.objects.filter(
+        Q(name__icontains=query) | (Q(nickname__icontains=query) & Q(show_nickname=True)) |
+        (Q(stu_major__icontains=query) & Q(show_major=True)))
 
-        # 接下来准备呈现的内容
-        # 首先是准备搜索个人信息的部分
-        people_field = [
-            "姓名",
-            "年级",
-            "班级",
-            "昵称",
-            "性别",
-            "专业",
-            "邮箱",
-            "电话",
-            "宿舍",
-            "状态",
-        ]  # 感觉将年级和班级分开呈现会简洁很多
+    # 接下来准备呈现的内容
+    # 首先是准备搜索个人信息的部分
+    people_field = [
+        "姓名",
+        "年级",
+        "班级",
+        "昵称",
+        "性别",
+        "专业",
+        "邮箱",
+        "电话",
+        "宿舍",
+        "状态",
+    ]  # 感觉将年级和班级分开呈现会简洁很多
 
-        # 搜索组织
-        # 先查找通过个人关联到的position_list
-        position_list = Position.objects.activated().filter(
-            Q(person__in=people_list) & Q(show_post=True))
-        # 通过组织名、组织类名、个人关系查找
-        organization_list = Organization.objects.filter(
-            Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in=position_list.values('org')))
+    # 搜索组织
+    # 先查找通过个人关联到的position_list
+    position_list = Position.objects.activated().filter(
+        Q(person__in=people_list) & Q(show_post=True))
+    # 通过组织名、组织类名、个人关系查找
+    organization_list = Organization.objects.filter(
+        Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in=position_list.values('org')))
 
-        # 组织要呈现的具体内容
-        organization_field = ["组织名", "组织类型", "负责人", "近期活动"]
+    # 组织要呈现的具体内容
+    organization_field = ["组织名", "组织类型", "负责人", "近期活动"]
 
-        return render(request, "search.html", locals())
-    except Exception as e:
-        print(str(e))
-        auth.logout(request)
-        return redirect("/index/")
+    me = get_person_or_org(request.user, user_type)
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
+    # 补充一些呈现信息
+    html_display["title_name"] = "Search"
+    html_display["narbar_name"] = "信息搜索"  #
+
+    return render(request, "search.html", locals())
 
 
 def test(request):
@@ -712,13 +722,13 @@ def forget_password(request):
                     captcha = random.randrange(1000000)
                     captcha = f"{captcha:06}"
                     msg = (
-                        f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
-                        "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
-                        f'<p style="color:orange">{captcha}'
-                        '<span style="color:gray">(仅当前页面有效)</span></p>'
-                        '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
-                        "<br/><br/><br/>"
-                        "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
+                            f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
+                            "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
+                            f'<p style="color:orange">{captcha}'
+                            '<span style="color:gray">(仅当前页面有效)</span></p>'
+                            '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
+                            "<br/><br/><br/>"
+                            "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
                         "toaddrs": [email],  # 收件人列表
@@ -873,12 +883,6 @@ def engage_activity(request):
         origin = "/"
     context = dict()
     context["origin"] = origin
-    choice = request.GET.get("choice")
-    # 默认是 0，没有分级的情况下可以只传 activity_id
-    if choice is None:
-        choice = 0
-    else:
-        choice = int(choice)
     activity_id = request.GET.get("activity_id")
     person_id = request.session["username"]
 
@@ -911,8 +915,8 @@ def engage_activity(request):
             assert len(orgnization) == 1
             orgnization = orgnization[0]
 
-            amount = float(activity.YQPoint[choice])
-            cnt = activity.places[choice]
+            amount = float(activity.YQPoint)
+            cnt = activity.capacity
             if cnt <= 0:
                 context["msg"] = "Failed to fetch the ticket."
                 return render(request, "msg.html", context)
@@ -920,14 +924,14 @@ def engage_activity(request):
                 context["msg"] = "No enough YQPoint"
                 return render(request, "msg.html", context)
             payer.YQPoint -= float(amount)
-            activity.places[choice] = cnt - 1
+            activity.capacity = cnt - 1
             orgnization.YQPoint += float(amount)
 
             record = TransferRecord.objects.create(
                 proposer=request.user, recipient=orgnization.organization_id
             )
             record.amount = amount
-            record.message = f"Participate Activity {activity.topic}"
+            record.message = f"Participate Activity {activity.title}"
             record.status = 0  # Wating
             record.time = str(datetime.now())
 
@@ -1193,7 +1197,7 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
 def myYQPoint(request):
     valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
-        return redirect('/index/')
+        return redirect('/logout/')
 
     # 接下来处理POST相关的内容
     html_display['warn_code'] = 0
@@ -1224,7 +1228,7 @@ def myYQPoint(request):
         html_display = utils.get_org_left_narbar(
             me, html_display['is_myself'], html_display)
     # 补充一些呈现信息
-    html_display["title_name"] = "Welcome Page"
+    html_display["title_name"] = "My YQPoint"
     html_display["narbar_name"] = "我的元气值"  #
 
     to_send_set = TransferRecord.objects.filter(
@@ -1308,7 +1312,7 @@ def viewActivities(request):
     URL = str(request.POST["URL"])  # 活动推送链接
     QRcode = request.POST["QRcode"]  # 收取元气值的二维码
     aprice = request.POST["aprice"]  # 活动价格
-    places = request.POST["places"]  # 活动举办的地点，默认是list
+    capacity = request.POST["capacity"]  # 活动举办的容量
     """
 
     person = True
@@ -1316,22 +1320,46 @@ def viewActivities(request):
     return render(request, "activity_info.html", locals())
 
 
+# 发起活动
 def addActivities(request):
-    """
-    aname = str(request.POST["aname"])  # 活动名称
-    organization_id = request.POST["organization_id"]  # 组织id
-    astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
-    afinish = request.POST["afinish"]
-    content = str(request.POST["content"])
-    URL = str(request.POST["URL"])  # 活动推送链接
-    QRcode = request.POST["QRcode"]  # 收取元气值的二维码
-    aprice = request.POST["aprice"]  # 活动价格
-    places = request.POST["places"]  # 活动举办的地点，默认是list
-    """
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/index/')
+    if user_type == 'Person':
+        return redirect('/welcome/')  # test
+    if request.method == "POST" and request.POST:
+        org = get_person_or_org(request.user, user_type)
+        # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
+        context = dict()
+        context = utils.check_ac_request(request)  # 合法性检查
+        if context['warn_code'] != 0:
+            html_display['warn_code'] = context['warn_code']
+            html_display['warn_message'] = context['warn_msg']
+            return render(request, "activity_add.html", locals())  # warn_code!=0失败
+        try:
+            with transaction.atomic():
+                new_act = Activity.objects.create(title=context['aname'], organization_id=org,
+                                                  status=Activity.Astatus.PENDING)  # 默认状态是报名中
 
-    person = True
+                new_act.content = context['content']
+                new_act.publish_time = context['publish_time']
+                new_act.sign_start = context['signup_start']
 
-    return render(request, "activity_add.html", locals())
+                new_act.sign_end = context['signup_end']
+                new_act.start = context['act_start']
+                new_act.end = context['act_end']
+                new_act.URL = context['URL']
+                new_act.location = context['location']
+                # new_act.QRcode = QRcode
+                new_act.YQPoint = context['aprice']
+                new_act.capacity = context['capacity']
+                new_act.save()
+        except:
+            html_display['warn_code'] = 8
+            html_display['warn_message'] = "Lauch activty has been failed! Please check your input twice!"
+        # 返回发起成功或者失败的页面
+        return render(request, "activity_add.html", locals())  # warn_code==0
+    return render(request, "activity_add.html")
 
 @login_required(redirect_field_name='origin')
 def subscribeActivities(request):
