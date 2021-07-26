@@ -917,8 +917,10 @@ def engage_activity(request, activity_id=1, willingness=2):
 
         if not activity.bidding:
             amount = float(activity.YQPoint)
-            cnt = activity.capacity
-            if cnt <= 0:
+            # transaction，直接减没事
+            if activity.current_participants < activity.capacity
+                activity.current_participants += 1
+            else:
                 context["msg"] = "Failed to fetch the ticket."
                 return context
         else:
@@ -940,8 +942,6 @@ def engage_activity(request, activity_id=1, willingness=2):
         )
         record.amount = amount
         record.message = f"Participate Activity {activity.topic}"
-        if not activity.bidding:
-            activity.capacity = cnt - 1
         orgnization.YQPoint += float(amount)
         record.status = TransferRecord.TransferStatus.ACCEPTED
 
@@ -996,14 +996,7 @@ def transaction_page(request, rid=None):
         context["origin"] = origin
         return render(request, "msg.html", context)
 
-    try:
-        name = recipient.name
-    except:
-        try:
-            name = recipient.oname
-        except:
-            context['msg'] = "Unexpected error. Please contact the administrator to report this bug."
-            return render(request, "msg.html", context)
+    name = recipient.name if hasattr(recipient, name) else recipient.oname
 
     context["avatar"] = recipient.avatar
     context["name"] = name
