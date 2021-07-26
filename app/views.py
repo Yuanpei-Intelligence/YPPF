@@ -996,7 +996,8 @@ def transaction_page(request, rid=None):
         context["origin"] = origin
         return render(request, "msg.html", context)
 
-    name = recipient.name if hasattr(recipient, name) else recipient.oname
+
+    name = recipient.name if hasattr(recipient, 'name') else recipient.oname
 
     context["avatar"] = recipient.avatar
     context["name"] = name
