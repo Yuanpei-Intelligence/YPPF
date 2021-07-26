@@ -70,25 +70,29 @@
                                         <thead>
                                             <tr>
                                                 <th>组织名称</th>
+                                                <th>组织类型</th>
                                                 <th>订阅状态</th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {% for org in org_list %}
                                                 <tr>
-                                                    <td>{{org.oname}}</td>
+                                                    <td><u><a href="/orginfo/{{org.oname}}">{{org.oname}}</a></u></td>
+                                                    <td>
+                                                        {{org.otype}}
+                                                    </td>
                                                     {%if org.organization_id.username in subscribe_list%} 
                                                     <td bgColor="F3FDFF", id="td{{org.organization_id.username}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input" id="{{org.organization_id.username}}" onclick="change_status.call(this)" checked>
-                                                            <label class="custom-control-label" for="{{org.organization_id.username}}" id="checkbox2{{org.organization_id.username}}"><font color="5F747B" id="checkbox3{{org.organization_id.username}}">已订阅</font></label>
+                                                            <label class="custom-control-label" for="{{org.organization_id.username}}" id="checkbox2{{org.organization_id.username}}"><font color="5F747B" id="font{{org.organization_id.username}}">已订阅</font></label>
                                                         </div>
                                                     </td>
                                                     {%else%} 
                                                     <td bgColor="FFFFFF", id="td{{org.organization_id.username}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input" id="{{org.organization_id.username}}" onclick="change_status.call(this)">
-                                                            <label class="custom-control-label" for="{{org.organization_id.username}}" id="checkbox2{{org.organization_id.username}}"><font color="E1E1E1" id="checkbox3{{org.organization_id.username}}">未订阅</font></label>
+                                                            <label class="custom-control-label" for="{{org.organization_id.username}}" id="checkbox2{{org.organization_id.username}}"><font color="E1E1E1" id="font{{org.organization_id.username}}">未订阅</font></label>
                                                         </div>
                                                     </td>
                                                     {%endif%}
@@ -141,11 +145,19 @@
         // alert(this.checked);
         if (!this.checked) {
             const success = await save_subscribe_status.call(this, false);
-            if (success) document.getElementById(`td${this.id}`).bgColor = "F3FDFF";
+            if (success) {
+                document.getElementById(`td${this.id}`).bgColor = "FFFFFF";
+                document.getElementById(`font${this.id}`).color = "E1E1E1";
+                document.getElementById(`font${this.id}`).innerHTML = "未订阅";
+            }
             else this.checked = true;
         } else {
             const success = await save_subscribe_status.call(this, true);
-            if (success) document.getElementById(`td${this.id}`).bgColor = "FFFFFF";
+            if (success) {
+                document.getElementById(`td${this.id}`).bgColor = "F3FDFF";
+                document.getElementById(`font${this.id}`).color = "5F747B";
+                document.getElementById(`font${this.id}`).innerHTML = "已订阅";
+            }
             else this.checked = false;
         }
     }
