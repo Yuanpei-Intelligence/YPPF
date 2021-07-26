@@ -996,14 +996,7 @@ def transaction_page(request, rid=None):
         context["origin"] = origin
         return render(request, "msg.html", context)
 
-    try:
-        name = recipient.name
-    except:
-        try:
-            name = recipient.oname
-        except:
-            context['msg'] = "Unexpected error. Please contact the administrator to report this bug."
-            return render(request, "msg.html", context)
+    name = recipient.name if hasattr(recipient, 'name') else recipient.oname
 
     context["avatar"] = recipient.avatar
     context["name"] = name
