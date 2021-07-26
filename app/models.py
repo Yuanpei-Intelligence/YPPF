@@ -275,7 +275,9 @@ class Activity(models.Model):
     status = models.CharField("活动状态", choices=Astatus.choices, max_length=32)
     mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
     YQPoint = models.FloatField("元气值定价", default=0.0)
+
     capacity = models.IntegerField("活动最大参与人数", default=100)
+    current_participants = models.IntegerField("活动当前报名人数", default=100)
     bidding = models.BooleanField("是否投点竞价", default=False)
 
 
