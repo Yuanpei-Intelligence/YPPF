@@ -876,7 +876,7 @@ def load_data(request):
 
 # 调用的时候最好用 try
 # 调用者把 activity_id 作为参数传过来
-def engage_activity(request, activity_id=1, willingness=2):
+def engage_activity(request, activity_id, willingness):
     context = dict()
     context['success'] = False
     with transaction.atomic():
