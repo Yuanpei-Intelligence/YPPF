@@ -348,24 +348,28 @@ def orginfo(request, name=None):
         org = Organization.objects.activated().get(oname=name)
         organization_name = name
         organization_type_name = org.otype.otype_name
+        org_avatar_path = utils.get_user_ava(org, user_type)
         # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
     except:
         return redirect("/welcome/")
 
     # 这一部分是负责人boss的信息
-    boss = Position.objects.activated().get(org=org, pos=0).person
+    boss = Position.objects.activated().filter(org=org, pos=0)
     # boss = NaturalPerson.objects.activated().get(person_id = bossid)
     boss_display = {}
+    if len(boss) >= 1:
+        boss = boss[0].person
+        boss_display["bossname"] = boss.name
+        boss_display["year"] = boss.stu_grade
+        boss_display["major"] = boss.stu_major
+        boss_display["email"] = boss.email
+        boss_display["tel"] = boss.telephone
 
-    boss_display["bossname"] = boss.name
-    boss_display["year"] = boss.stu_grade
-    boss_display["major"] = boss.stu_major
-    boss_display["email"] = boss.email
-    boss_display["tel"] = boss.telephone
+        # jobpos = Position.objects.activated().get(person=boss, org = org).pos
+        boss_display["job"] = org.otype.job_name_list[0]
 
-    # jobpos = Position.objects.activated().get(person=boss, org = org).pos
-    boss_display["job"] = org.otype.job_name_list[0]
+        boss_display['avatar_path'] = utils.get_user_ava(boss, 'Person')
 
     # 补充左边栏信息
     # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
@@ -412,6 +416,14 @@ def homepage(request):
     # 直接储存在html_display中
     # profile_name = "个人主页" if is_person else "组织主页"
     # profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
+
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
 
     # 补充一些呈现信息
     html_display["title_name"] = "Welcome Page"
@@ -1317,6 +1329,8 @@ def subscribeActivities(request):
     # 给otype.otype_name排序，不然每次都不一样（后续可以写一个获取所有otype的接口，规定一个排序规则）
     unsubscribe_list = list(me.subscribe_list.values_list("organization_id__username", flat=True)) # 获取不订阅列表（数据库里的是不订阅列表）
     subscribe_list = [name for name in org_name if name not in unsubscribe_list]    # 获取订阅列表
+    
+    subscribe_url = reverse('save_subscribe_status')
     return render(request, "activity_subscribe.html", locals())
 
 @login_required(redirect_field_name='origin')

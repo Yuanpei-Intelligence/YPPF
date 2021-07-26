@@ -40,10 +40,10 @@ urlpatterns = [
     #),
     path("engage", views.engage_activity, name="engage"),
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
-    path("showActivities", views.showActivities, name="showActivities"),
-    path("viewActivities", views.viewActivities, name="viewActivities"),
-    path("addActivities", views.addActivities, name="addActivities"),
-    path("subscribeActivities", views.subscribeActivities, name="subscribeActivities"),
+    path("showActivities/", views.showActivities, name="showActivities"),
+    path("viewActivities/", views.viewActivities, name="viewActivities"),
+    path("addActivities/", views.addActivities, name="addActivities"),
+    path("subscribeActivities/", views.subscribeActivities, name="subscribeActivities"),
     path("save_subscribe_status", views.save_subscribe_status, name="save_subscribe_status"),
 ]
 if settings.DEBUG:
