@@ -79,6 +79,7 @@ class NaturalPerson(models.Model):
     show_major = models.BooleanField(default=True)
     show_dorm = models.BooleanField(default=False)
 
+    # 注意：这是不订阅的列表！！
     subscribe_list = models.ManyToManyField('Organization', related_name='subscribers', db_index=True)
 
     def __str__(self):
@@ -275,7 +276,9 @@ class Activity(models.Model):
     status = models.CharField("活动状态", choices=Astatus.choices, max_length=32)
     mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
     YQPoint = models.FloatField("元气值定价", default=0.0)
+
     capacity = models.IntegerField("活动最大参与人数", default=100)
+    current_participants = models.IntegerField("活动当前报名人数", default=100)
     bidding = models.BooleanField("是否投点竞价", default=False)
 
 

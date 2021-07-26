@@ -816,7 +816,7 @@ def modpw(request):
 
 # 调用的时候最好用 try
 # 调用者把 activity_id 作为参数传过来
-def engage_activity(request, activity_id=1, willingness=2):
+def engage_activity(request, activity_id, willingness):
     context = dict()
     context['success'] = False
     with transaction.atomic():
@@ -857,8 +857,10 @@ def engage_activity(request, activity_id=1, willingness=2):
 
         if not activity.bidding:
             amount = float(activity.YQPoint)
-            cnt = activity.capacity
-            if cnt <= 0:
+            # transaction，直接减没事
+            if activity.current_participants < activity.capacity:
+                activity.current_participants += 1
+            else:
                 context["msg"] = "Failed to fetch the ticket."
                 return context
         else:
@@ -1310,8 +1312,11 @@ def subscribeActivities(request):
             me, html_display['is_myself'], html_display)
 
     org_list = Organization.objects.all()
-    subscribe_list = list(me.subscribe_list.values_list("organization_id__username", flat=True))
-
+    org_name = list(set(list(Organization.objects.values_list('organization_id__username', flat=True))))
+    otype_list = sorted(list(set(list(Organization.objects.values_list('otype__otype_name', flat=True))))) 
+    # 给otype.otype_name排序，不然每次都不一样（后续可以写一个获取所有otype的接口，规定一个排序规则）
+    unsubscribe_list = list(me.subscribe_list.values_list("organization_id__username", flat=True)) # 获取不订阅列表（数据库里的是不订阅列表）
+    subscribe_list = [name for name in org_name if name not in unsubscribe_list]    # 获取订阅列表
     return render(request, "activity_subscribe.html", locals())
 
 @login_required(redirect_field_name='origin')
@@ -1320,12 +1325,21 @@ def save_subscribe_status(request):
     if not valid:
         return redirect('/index/')
     me = get_person_or_org(request.user, user_type)
-    # request.body = { id: 组织, status: checked状态 }
     params = json.loads(request.body.decode("utf-8"))
     with transaction.atomic():
-        if params['status']:
-            me.subscribe_list.add(Organization.objects.get(organization_id__username=params['id']))
-        else:
-            me.subscribe_list.remove(Organization.objects.get(organization_id__username=params['id']))
+        if 'id' in params.keys():
+            if params['status']:
+                me.subscribe_list.remove(Organization.objects.get(organization_id__username=params['id']))
+            else:
+                me.subscribe_list.add(Organization.objects.get(organization_id__username=params['id']))
+        elif 'otype' in params.keys():
+            unsubscribed_list = me.subscribe_list.filter(otype__otype_name=params['otype'])
+            org_list = Organization.objects.all()
+            if params['status']: # 表示要订阅
+                for org in unsubscribed_list:
+                    me.subscribe_list.remove(org)
+            else: # 不订阅
+                for org in org_list:
+                    me.subscribe_list.add(org)
         me.save()
     return JsonResponse({"success": True})
