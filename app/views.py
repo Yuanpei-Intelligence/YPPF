@@ -43,7 +43,6 @@ def get_item(dictionary, key):
     return dictionary.get(key)
 
 
-
 def get_person_or_org(user, user_type=None):
     if user_type is None:
         if hasattr(user, 'naturalperson'):
@@ -262,7 +261,7 @@ def stuinfo(request, name=None):
 
         modpw_status = request.GET.get("modinfo", None)
         html_display["modpw_code"] = (
-                modpw_status is not None and modpw_status == "success"
+            modpw_status is not None and modpw_status == "success"
         )
         html_display["warn_code"] = request.GET.get(
             "warn_code", 0)  # 是否有来自外部的消息
@@ -378,7 +377,6 @@ def orginfo(request, name=None):
     )
     # 判断是否为组织账户本身在登录
     html_display["is_myself"] = me == org
-
 
     # 再处理修改信息的回弹
     modpw_status = request.GET.get("modinfo", None)
@@ -578,7 +576,7 @@ def search(request):
             而且该用户选择公开其与组织的关系，那么该组织将在搜索界面呈现。
             搜索结果的呈现内容见organization_field
     """
-    
+
     valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
         return redirect("/logout/")
@@ -718,13 +716,13 @@ def forget_password(request):
                     captcha = random.randrange(1000000)
                     captcha = f"{captcha:06}"
                     msg = (
-                            f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
-                            "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
-                            f'<p style="color:orange">{captcha}'
-                            '<span style="color:gray">(仅当前页面有效)</span></p>'
-                            '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
-                            "<br/><br/><br/>"
-                            "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
+                        f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
+                        "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
+                        f'<p style="color:orange">{captcha}'
+                        '<span style="color:gray">(仅当前页面有效)</span></p>'
+                        '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
+                        "<br/><br/><br/>"
+                        "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
                         "toaddrs": [email],  # 收件人列表
@@ -877,6 +875,8 @@ def engage_activity(request, activity_id, willingness):
                 return context
         else:
             amount = willingness
+            # 依然增加，此时current_participants统计的是报名的人数，是可以比总人数多的
+            activity.current_participants += 1
 
         try:
             assert amount == int(amount * 10) / 10
@@ -894,8 +894,6 @@ def engage_activity(request, activity_id, willingness):
         )
         record.amount = amount
         record.message = f"Participate Activity {activity.topic}"
-        if not activity.bidding:
-            activity.capacity = cnt - 1
         orgnization.YQPoint += float(amount)
         record.status = TransferRecord.TransferStatus.ACCEPTED
 
@@ -913,7 +911,6 @@ def engage_activity(request, activity_id, willingness):
         payer.save()
         activity.save()
         orgnization.save()
-
 
     context["msg"] = "Successfully participate the activity."
     context['success'] = True
@@ -1014,13 +1011,11 @@ def start_transaction(request):
 
             # TODO 发送微信消息
 
-
     except:
         context[
             "msg"
         ] = "Check if you have enough YQPoint. If so, please contact the administrator to report this bug."
         return render(request, "msg.html", context)
-
 
     context["msg"] = "Waiting the recipient to confirm the transaction."
     return render(request, "msg.html", context)
@@ -1190,15 +1185,16 @@ def myYQPoint(request):
 
     issued_recv_set = TransferRecord.objects.filter(recipient=request.user, status__in=[
         TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED])
-    
+
     # to_set 按照开始时间降序排列
     to_set = to_send_set.union(to_recv_set).order_by("-start_time")
     # issued_set 按照完成时间及降序排列
     # 这里应当要求所有已经issued的记录是有执行时间的
-    issued_set = issued_send_set.union(issued_recv_set).order_by("-finish_time")
+    issued_set = issued_send_set.union(
+        issued_recv_set).order_by("-finish_time")
 
     to_list, amount = record2Display(to_set, request.user)
-    issued_list, _  = record2Display(issued_set, request.user)
+    issued_list, _ = record2Display(issued_set, request.user)
 
     '''
     to_send_list, to_send_amount = record2Display(record_list=TransferRecord.objects.filter(
@@ -1283,7 +1279,8 @@ def addActivities(request):
         if context['warn_code'] != 0:
             html_display['warn_code'] = context['warn_code']
             html_display['warn_message'] = context['warn_msg']
-            return render(request, "activity_add.html", locals())  # warn_code!=0失败
+            # warn_code!=0失败
+            return render(request, "activity_add.html", locals())
         try:
             with transaction.atomic():
                 new_act = Activity.objects.create(title=context['aname'], organization_id=org,
@@ -1309,6 +1306,7 @@ def addActivities(request):
         return render(request, "activity_add.html", locals())  # warn_code==0
     return render(request, "activity_add.html")
 
+
 @login_required(redirect_field_name='origin')
 def subscribeActivities(request):
     valid, user_type, html_display = utils.check_user_type(request)
@@ -1324,14 +1322,19 @@ def subscribeActivities(request):
             me, html_display['is_myself'], html_display)
 
     org_list = Organization.objects.all()
-    org_name = list(set(list(Organization.objects.values_list('organization_id__username', flat=True))))
-    otype_list = sorted(list(set(list(Organization.objects.values_list('otype__otype_name', flat=True))))) 
+    org_name = list(set(list(Organization.objects.values_list(
+        'organization_id__username', flat=True))))
+    otype_list = sorted(list(
+        set(list(Organization.objects.values_list('otype__otype_name', flat=True)))))
     # 给otype.otype_name排序，不然每次都不一样（后续可以写一个获取所有otype的接口，规定一个排序规则）
-    unsubscribe_list = list(me.subscribe_list.values_list("organization_id__username", flat=True)) # 获取不订阅列表（数据库里的是不订阅列表）
-    subscribe_list = [name for name in org_name if name not in unsubscribe_list]    # 获取订阅列表
-    
+    unsubscribe_list = list(me.subscribe_list.values_list(
+        "organization_id__username", flat=True))  # 获取不订阅列表（数据库里的是不订阅列表）
+    subscribe_list = [
+        name for name in org_name if name not in unsubscribe_list]    # 获取订阅列表
+
     subscribe_url = reverse('save_subscribe_status')
     return render(request, "activity_subscribe.html", locals())
+
 
 @login_required(redirect_field_name='origin')
 def save_subscribe_status(request):
@@ -1343,16 +1346,19 @@ def save_subscribe_status(request):
     with transaction.atomic():
         if 'id' in params.keys():
             if params['status']:
-                me.subscribe_list.remove(Organization.objects.get(organization_id__username=params['id']))
+                me.subscribe_list.remove(Organization.objects.get(
+                    organization_id__username=params['id']))
             else:
-                me.subscribe_list.add(Organization.objects.get(organization_id__username=params['id']))
+                me.subscribe_list.add(Organization.objects.get(
+                    organization_id__username=params['id']))
         elif 'otype' in params.keys():
-            unsubscribed_list = me.subscribe_list.filter(otype__otype_name=params['otype'])
+            unsubscribed_list = me.subscribe_list.filter(
+                otype__otype_name=params['otype'])
             org_list = Organization.objects.all()
-            if params['status']: # 表示要订阅
+            if params['status']:  # 表示要订阅
                 for org in unsubscribed_list:
                     me.subscribe_list.remove(org)
-            else: # 不订阅
+            else:  # 不订阅
                 for org in org_list:
                     me.subscribe_list.add(org)
         me.save()
