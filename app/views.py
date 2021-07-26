@@ -1385,16 +1385,26 @@ def subscribeActivities(request):
 
 @login_required(redirect_field_name='origin')
 def save_subscribe_status(request):
+    #print(request)
     valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
         return redirect('/index/')
     me = get_person_or_org(request.user, user_type)
-    # request.body 展示为 { id: 组织, status: checked状态 }
     params = json.loads(request.body.decode("utf-8"))
     with transaction.atomic():
-        if params['status']:
-            me.subscribe_list.remove(Organization.objects.get(organization_id__username=params['id']))
-        else:
-            me.subscribe_list.add(Organization.objects.get(organization_id__username=params['id']))
+        if 'id' in params.keys():
+            if params['status']:
+                me.subscribe_list.remove(Organization.objects.get(organization_id__username=params['id']))
+            else:
+                me.subscribe_list.add(Organization.objects.get(organization_id__username=params['id']))
+        elif 'otype' in params.keys():
+            unsubscribed_list = me.subscribe_list.filter(otype__otype_name=params['otype'])
+            org_list = Organization.objects.all()
+            if params['status']: # 表示要订阅
+                for org in unsubscribed_list:
+                    me.subscribe_list.remove(org)
+            else: # 不订阅
+                for org in org_list:
+                    me.subscribe_list.add(org)
         me.save()
     return JsonResponse({"success": True})

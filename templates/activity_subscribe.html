@@ -194,9 +194,9 @@
 <script>
     async function turn_off_all() {
         lst = document.getElementsByClassName('custom-control-input');
+        const success = await save_all.call(this,false);
         for (var i = 0; i < lst.length; i += 1) {
             if (lst[i].checked && this.id == lst[i].id.substring(7)) {
-                const success = await save_subscribe_status.call(lst[i], false);
                 if (success) {
                     document.getElementById(`td${lst[i].id}`).bgColor = "FFFFFF";
                     document.getElementById(`font${lst[i].id}`).color = "E1E1E1";
@@ -208,9 +208,9 @@
     }
     async function turn_on_all() {
         lst = document.getElementsByClassName('custom-control-input');
+        const success = await save_all.call(this,true);
         for (var i = 0; i < lst.length; i += 1) {
             if (!lst[i].checked && this.id == lst[i].id.substring(7)) {
-                const success = await save_subscribe_status.call(lst[i], true);
                 if (success) {
                     document.getElementById(`td${lst[i].id}`).bgColor = "F3FDFF";
                     document.getElementById(`font${lst[i].id}`).color = "5F747B";
@@ -245,6 +245,16 @@
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
             body: JSON.stringify({ id: this.id.substring(0,7), status }),
+        })
+            .then((res) => res.json())
+            .catch(() => { success: false });
+        return success;
+    }
+    async function save_all(status){
+        const { success } = await fetch(`save_subscribe_status`, {
+            headers: { "Content-Type": `text/plain` },
+            method: `POST`,
+            body: JSON.stringify({ otype: this.id, status }),
         })
             .then((res) => res.json())
             .catch(() => { success: false });
