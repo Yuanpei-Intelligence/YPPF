@@ -573,6 +573,7 @@ def search(request):
             搜索结果的呈现内容见organization_field
         搜索活动
             支持通过活动名、组织来搜索活动。只要可以搜索到组织，组织对应的活动就也可以被搜到
+            搜索结果的呈现见activity_field
     """
     try:
         valid, user_type, html_display = utils.check_user_type(request)
@@ -620,7 +621,7 @@ def search(request):
 
         # 搜索组织
         # 先查找通过个人关联到的position_list
-        pos_list = Position.objects.activater().filter(Q(person__in=people_list) & Q(show_post=True))
+        pos_list = Position.objects.activated().filter(Q(person__in=people_list) & Q(show_post=True))
         # 通过组织名、组织类名、个人关系查找
         organization_list = Organization.objects.filter(
             Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in = pos_list.values('org')))
@@ -629,10 +630,13 @@ def search(request):
         organization_field = ["组织名", "组织类型", "负责人", "近期活动"]
 
         # 搜索活动
+        # activity_list = Activity.objects.filter(Q(topic__icontains=query) |
+        #     Q(organization_id__in=organization_list.values('organization_id')))
+        # print(activity_list)
         
         return render(request, "search.html", locals())
     except Exception as e:
-        print(str(e))
+        print(e)
         auth.logout(request)
         return redirect("/index/")
 
