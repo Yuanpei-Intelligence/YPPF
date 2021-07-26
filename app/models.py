@@ -22,11 +22,14 @@ class NaturalPersonManager(models.Manager):
 
 
 class NaturalPerson(models.Model):
+    class Meta:
+        verbose_name = "自然人"
+        verbose_name_plural = verbose_name
+
     # Common Attributes
     person_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
     name = models.CharField("姓名", max_length=10)
-    nickname = models.CharField(
-        "昵称", max_length=20, null=True, blank=True)  # 添加昵称
+    nickname = models.CharField("昵称", max_length=20, null=True, blank=True)
 
     class Gender(models.IntegerChoices):
         MALE = (0, "男")
@@ -80,13 +83,13 @@ class NaturalPerson(models.Model):
         return str(self.name)
 
     def show_info(self):
-        '''
+        """
             返回值为一个列表，在search.html中使用，按照如下顺序呈现：
             people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
             其中未公开的属性呈现为‘未公开’
             注意：major, gender, nickname, email, tel, dorm可能为None
             班级和年级现在好像也可以为None
-        '''
+        """
         unpublished = '未公开'
         gender = ['男', '女']
         info = [self.name, self.stu_grade, self.stu_class]
@@ -98,7 +101,7 @@ class NaturalPerson(models.Model):
         info.append(self.telephone if (self.show_tel) else unpublished)
         info.append(self.stu_dorm if (self.show_dorm) else unpublished)
         info.append('在校' if self.status ==
-                    NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
+                            NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
         # 防止显示None
         for i in range(len(info)):
             if info[i] == None:
@@ -107,8 +110,11 @@ class NaturalPerson(models.Model):
 
 
 class OrganizationType(models.Model):
-    otype_id = models.SmallIntegerField(
-        "组织类型编号", unique=True, primary_key=True)
+    class Meta:
+        verbose_name = "组织类型"
+        verbose_name_plural = verbose_name
+
+    otype_id = models.SmallIntegerField("组织类型编号", unique=True, primary_key=True)
     otype_name = models.CharField("组织类型名称", max_length=25)
     otype_superior_id = models.SmallIntegerField("上级组织类型编号", default=0)
     incharge = models.ForeignKey(
@@ -138,6 +144,10 @@ class OrganizationManager(models.Manager):
 
 
 class Organization(models.Model):
+    class Meta:
+        verbose_name = "组织"
+        verbose_name_plural = verbose_name
+
     organization_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
     oname = models.CharField(max_length=32, unique=True)
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
@@ -174,6 +184,10 @@ class Position(models.Model):
     老师、助教、学生（课程）
     """
 
+    class Meta:
+        verbose_name = "职务"
+        verbose_name_plural = verbose_name
+
     person = models.ForeignKey(
         NaturalPerson,
         related_name="person",
@@ -200,6 +214,10 @@ class Position(models.Model):
 
 
 class Course(models.Model):
+    class Meta:
+        verbose_name = "课程"
+        verbose_name_plural = verbose_name
+
     cid = models.OneToOneField(
         to=Organization, on_delete=models.CASCADE, related_name="cid"
     )
@@ -219,17 +237,28 @@ class Course(models.Model):
 
 
 class Activity(models.Model):
+    class Meta:
+        verbose_name = "活动"
+        verbose_name_plural = verbose_name
+
     topic = models.CharField("活动名称", max_length=25)
     organization_id = models.ForeignKey(
-        Organization, to_field="organization_id", related_name="actoid", on_delete=models.CASCADE
+        Organization,
+        to_field="organization_id",
+        related_name="actoid",
+        on_delete=models.CASCADE,
     )
-    year = models.IntegerField(
-        "活动年份", default=int(datetime.now().strftime("%Y")))
-    semester = models.CharField(
-        "活动学期", choices=Semester.choices, max_length=15)
-    start = models.DateTimeField("开始时间")
-    finish = models.DateTimeField("结束时间")
-    content = models.CharField("活动内容", max_length=225)
+    year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
+    semester = models.CharField("活动学期", choices=Semester.choices, max_length=15)
+    publish_time = models.DateTimeField("信息发布时间", blank=True,
+                                        default=datetime.now())  # 可以为空
+    sign_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now())
+    sign_end = models.DateTimeField("报名结束时间", blank=True, default=datetime.now())
+    start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now())
+    end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now())
+
+    location = models.CharField("活动地点", blank=True, max_length=200)
+    content = models.CharField("活动内容", max_length=225, blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
     # url,活动二维码
@@ -244,12 +273,8 @@ class Activity(models.Model):
 
     status = models.CharField("活动状态", choices=Astatus.choices, max_length=32)
     mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
-    YQPoint = ListCharField(
-        base_field=models.IntegerField(default=0), size=10, max_length=50, default=[0]
-    )
-    places = ListCharField(
-        base_field=models.IntegerField(default=0), size=10, max_length=50, default=[0]
-    )
+    YQPoint = models.FloatField("元气值定价", default=0.0)
+    capacity = models.IntegerField("活动最大参与人数", default=100)
 
     URL = models.URLField("相关网址", null=True, blank=True)
 
@@ -261,7 +286,7 @@ class TransferRecord(models.Model):
     class Meta:
         verbose_name = "转账信息"
         verbose_name_plural = verbose_name
-        ordering = ["time"]
+        ordering = ["-finish_time", "-start_time"]
 
     proposer = models.ForeignKey(
         User, related_name="proposer_id", on_delete=models.CASCADE
@@ -270,13 +295,16 @@ class TransferRecord(models.Model):
         User, related_name="recipient_id", on_delete=models.CASCADE
     )
     amount = models.FloatField("转账元气值数量", default=0)
-    time = models.DateTimeField("转账时间", auto_now_add=True)
+    start_time = models.DateTimeField("发起时间", auto_now_add=True)
+    finish_time = models.DateTimeField("处理时间", blank=True, null=True)
     message = models.CharField("备注信息", max_length=255, default="")
 
-    corres_act = models.ForeignKey(Activity, related_name="有关活动", on_delete = models.SET_NULL, null=True, blank=True)
+    corres_act = models.ForeignKey(
+        Activity, related_name="有关活动", on_delete=models.SET_NULL, null=True, blank=True
+    )
 
     class TransferStatus(models.IntegerChoices):
-        ACCEPTED = (0, "已接受")
+        ACCEPTED = (0, "已接收")
         WAITING = (1, "待确认")
         REFUSED = (2, "已拒绝")
         SUSPENDED = (3, "已终止")
@@ -285,5 +313,20 @@ class TransferRecord(models.Model):
 
 
 class Paticipant(models.Model):
+    class Meta:
+        verbose_name = "活动参与情况"
+        verbose_name_plural = verbose_name
+        ordering = ["activity_id"]
+
     activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
     person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+
+    class AttendStatus(models.IntegerChoices):
+        APPLYING = 0  # 申请中
+        APLLYFAILED = 1  # 申请失败
+        APLLYSUCCESS = 2  # 已报名
+        ATTENDED = 3  # 已参与
+        UNATTENDED = 4  # 未参与
+        CANCELED = 5  # 放弃，如果学生取消活动，则设置这里
+
+    status = models.IntegerField('学生参与活动状态', choices=AttendStatus.choices, default=0)
