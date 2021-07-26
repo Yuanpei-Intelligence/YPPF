@@ -252,12 +252,11 @@ class Activity(models.Model):
     )
     year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
     semester = models.CharField("活动学期", choices=Semester.choices, max_length=15)
-    publish_time = models.DateTimeField("信息发布时间", blank=True,
-                                        default=datetime.now())  # 可以为空
-    sign_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now())
-    sign_end = models.DateTimeField("报名结束时间", blank=True, default=datetime.now())
-    start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now())
-    end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now())
+    publish_time = models.DateTimeField("信息发布时间", auto_now_add=True)  # 可以为空
+    sign_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now)
+    sign_end = models.DateTimeField("报名结束时间", blank=True, default=datetime.now)
+    start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now)
+    end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now)
 
     location = models.CharField("活动地点", blank=True, max_length=200)
     content = models.CharField("活动内容", max_length=225, blank=True)
