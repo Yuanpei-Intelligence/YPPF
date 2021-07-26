@@ -253,12 +253,11 @@ class Activity(models.Model):
     )
     year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
     semester = models.CharField("活动学期", choices=Semester.choices, max_length=15)
-    publish_time = models.DateTimeField("信息发布时间", blank=True,
-                                        default=datetime.now())  # 可以为空
-    sign_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now())
-    sign_end = models.DateTimeField("报名结束时间", blank=True, default=datetime.now())
-    start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now())
-    end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now())
+    publish_time = models.DateTimeField("信息发布时间", auto_now_add=True)  # 可以为空
+    sign_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now)
+    sign_end = models.DateTimeField("报名结束时间", blank=True, default=datetime.now)
+    start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now)
+    end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now)
 
     location = models.CharField("活动地点", blank=True, max_length=200)
     content = models.CharField("活动内容", max_length=225, blank=True)
@@ -277,9 +276,14 @@ class Activity(models.Model):
     status = models.CharField("活动状态", choices=Astatus.choices, max_length=32)
     mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
     YQPoint = models.FloatField("元气值定价", default=0.0)
+
     capacity = models.IntegerField("活动最大参与人数", default=100)
+    current_participants = models.IntegerField("活动当前报名人数", default=100)
+    bidding = models.BooleanField("是否投点竞价", default=False)
+
 
     URL = models.URLField("相关网址", null=True, blank=True)
+
 
     def __str__(self):
         return f"活动：{self.topic}"

@@ -292,6 +292,7 @@ def stuinfo(request, name=None):
 
         html_display["title_name"] = "User Profile"
         html_display["narbar_name"] = "个人主页"
+        origin = request.get_full_path()
 
         return render(request, "stuinfo.html", locals())
 
@@ -400,7 +401,6 @@ def orginfo(request, name=None):
         modpw_status is not None and modpw_status == "success"
     )
 
-
     # 补充其余信息
     html_display = utils.get_org_left_narbar(
         org, html_display["is_myself"], html_display
@@ -411,6 +411,9 @@ def orginfo(request, name=None):
     # 补充一些呈现信息
     html_display["title_name"] = "Org. Profile"
     html_display["narbar_name"] = "组织主页"
+
+    # 转账后跳转
+    origin = request.get_full_path()
     return render(request, "orginfo.html", locals())
 
 
@@ -871,88 +874,98 @@ def load_data(request):
         message = "请先以超级账户登录后台后再操作！"
     return render(request, "debugging.html", locals())
 
-
-# 参与活动，get 传两个简单参数即可，活动 aid，价格等级
-# 再加一个 origin from，点一下即可返回 ( 可以看到已经报名 )
-# 活动的多字段怎么弄
-@require_GET
-@login_required(redirect_field_name="origin")
-def engage_activity(request):
-    origin = request.GET.get("origin")
-    if origin is None:
-        origin = "/"
+# 调用的时候最好用 try
+# 调用者把 activity_id 作为参数传过来
+def engage_activity(request, activity_id, willingness):
     context = dict()
-    context["origin"] = origin
-    activity_id = request.GET.get("activity_id")
-    person_id = request.session["username"]
+    context['success'] = False
+    with transaction.atomic():
+        try:
+            activity = Activity.objects.select_for_update().get(id=activity_id)
+            payer = NaturalPerson.objects.select_for_update().get(person_id=request.user)
+        except:
+            context['msg'] = "Can not find activity. If you are not deliberately do it, please contact the administrator to report this bug."
+            return context
+        '''
+        assert len(activity) == 1
+        assert len(payer) == 1
+        activity = activity[0]
+        payer = payer[0]
+        '''
+        if activity.status != Activity.Astatus.APPLYING:
+            context['msg'] = "The activity is not open for applying."
+            return context
 
-    try:
-        activity = Activity.objects.select_for_update().filter(id=activity_id)
-        payer = NaturalPerson.objects.select_for_update().filter(
-            person_id__username=person_id
-        )
-        with transaction.atomic():
-            assert len(activity) == 1
-            assert len(payer) == 1
-            activity = activity[0]
-            payer = payer[0]
-
-            try:
-                panticipant = Paticipant.objects.get(
-                    activity_id=activity, person_id=payer
-                )
-                context[
-                    "msg"
-                ] = "You have already participated in the activity. If you are not deliberately do it, please contact the administrator to report this bug."
-                return render(request, "msg.html", context)
-            except:
-                pass
-
-            organization_id = activity.organization_id_id
-            orgnization = Organization.objects.select_for_update().filter(
-                organization_id=organization_id
-            )
-            assert len(orgnization) == 1
-            orgnization = orgnization[0]
-
-            amount = float(activity.YQPoint)
-            cnt = activity.capacity
-            if cnt <= 0:
-                context["msg"] = "Failed to fetch the ticket."
-                return render(request, "msg.html", context)
-            if payer.YQPoint < amount:
-                context["msg"] = "No enough YQPoint"
-                return render(request, "msg.html", context)
-            payer.YQPoint -= float(amount)
-            activity.capacity = cnt - 1
-            orgnization.YQPoint += float(amount)
-
-            record = TransferRecord.objects.create(
-                proposer=request.user, recipient=orgnization.organization_id
-            )
-            record.amount = amount
-            record.message = f"Participate Activity {activity.title}"
-            record.status = 0  # Wating
-            record.time = str(datetime.now())
-
-            panticipant = Paticipant.objects.create(
+        try:
+            panticipant = Paticipant.objects.get(
                 activity_id=activity, person_id=payer
             )
+            context[
+                "msg"
+            ] = "You have already participated in the activity. If you are not deliberately do it, please contact the administrator to report this bug."
+            return context
+        except:
+            pass
+        organization_id = activity.organization_id_id
+        orgnization = Organization.objects.select_for_update().get(
+            organization_id=organization_id
+        )
+        '''
+        assert len(orgnization) == 1
+        orgnization = orgnization[0]
+        '''
 
-            panticipant.save()
-            record.save()
-            payer.save()
-            activity.save()
-            orgnization.save()
+        if not activity.bidding:
+            amount = float(activity.YQPoint)
+            # transaction，直接减没事
+            if activity.current_participants < activity.capacity
+                activity.current_participants += 1
+            else:
+                context["msg"] = "Failed to fetch the ticket."
+                return context
+        else:
+            amount = willingness
 
-    except:
-        context[
-            "msg"
-        ] = "Unexpected failure. If you are not deliberately do it, please contact the administrator to report this bug."
-        return render(request, "msg.html", context)
+        try:
+            assert amount == int(amount * 10) / 10
+        except:
+            context['msg'] = "Not supported precision"
+
+        if payer.YQPoint < amount:
+            context['msg'] = 'Not enough YQPoint in account'
+            return context
+
+        payer.YQPoint -= amount
+
+        record = TransferRecord.objects.create(
+            proposer=request.user, recipient=orgnization.organization_id
+        )
+        record.amount = amount
+        record.message = f"Participate Activity {activity.topic}"
+        if not activity.bidding:
+            activity.capacity = cnt - 1
+        orgnization.YQPoint += float(amount)
+        record.status = TransferRecord.TransferStatus.ACCEPTED
+
+        record.time = str(datetime.now())
+        record.corres_act = activity
+
+        panticipant = Paticipant.objects.create(
+            activity_id=activity, person_id=payer
+        )
+        if not activity.bidding:
+            panticipant.status = Paticipant.AttendStatus.APLLYSUCCESS
+
+        panticipant.save()
+        record.save()
+        payer.save()
+        activity.save()
+        orgnization.save()
+
 
     context["msg"] = "Successfully participate the activity."
-    return render(request, "msg.html", context)
+    context['success'] = True
+    return context
 
 
 # 用已有的搜索，加一个转账的想他转账的 field
@@ -961,26 +974,15 @@ def engage_activity(request):
 @require_GET
 @login_required(redirect_field_name="origin")
 def transaction_page(request, rid=None):
-    # recipient_id = request.GET.get("rid")
-    recipient_id = rid
     origin = request.GET.get("origin")
     if origin is None:
         origin = "/"
-    # 可以有一个默认金额，但好像用不到
-    # amount = request.GET.get('amount')
+
     context = dict()
 
-    # r_user = User.objects.get(id=recipient_id)
-
     try:
-        if re.match("zz\d+", recipient_id) is not None:
-            recipient = Organization.objects.get(
-                organization_id__username=recipient_id)
-            recipient_type = "org"
-        else:
-            recipient = NaturalPerson.objects.get(
-                person_id__username=recipient_id)
-            recipient_type = "np"
+        user = User.objects.get(id=rid)
+        recipient = get_person_or_org(user)
     except:
         context[
             "msg"
@@ -988,16 +990,19 @@ def transaction_page(request, rid=None):
         context["origin"] = origin
         return render(request, "msg.html", context)
 
-    if recipient_type == "np":
-        name = recipient.nickname
-        if name == "":
-            name = recipient.name
-        context["avatar"] = recipient.avatar
-    else:
-        name = recipient.oname
+    # 不要转给自己
+    if int(rid) == request.user.id:
+        context[
+            "msg"
+        ] = "Unexpected recipient. If you are not deliberately doing this, please contact the administrator to report this bug."
+        context["origin"] = origin
+        return render(request, "msg.html", context)
+
+    name = recipient.name if hasattr(recipient, 'name') else recipient.oname
+
+    context["avatar"] = recipient.avatar
     context["name"] = name
-    context["rid"] = recipient_id
-    context["rtype"] = recipient_type
+    context["rid"] = rid
     context["origin"] = origin
     return render(request, "transaction_page.html", context)
 
@@ -1008,20 +1013,21 @@ def transaction_page(request, rid=None):
 @require_POST
 @login_required(redirect_field_name="origin")
 def start_transaction(request):
-    recipient_id = request.POST.get("rid")  # index
-    recipient_type = request.POST.get("rtype")
+    rid = request.POST.get("rid")  # index
     origin = request.POST.get("origin")
     amount = request.POST.get("amount")
+    amount = float(amount)
     transaction_msg = request.POST.get("msg")
     name = request.POST.get("name")
     context = dict()
     context["origin"] = origin
 
-    # r_user = User.objects.get(username=recipient_id)
+    user = User.objects.get(id=rid)
 
     try:
-        # 允许一位小数，* 10 存成整数
-        amount = int(float(amount) * 10)
+        # 允许一位小数
+        assert amount == int(float(amount) * 10)/10
+        assert amount > 0
     except:
         context[
             "msg"
@@ -1029,57 +1035,40 @@ def start_transaction(request):
         return render(request, "msg.html", context)
 
     try:
-        if recipient_type == "np":
-            recipient = NaturalPerson.objects.get(
-                person_id__username=recipient_id).person_id
-        else:
-            recipient = Organization.objects.get(
-                organization_id__username=recipient_id
-            ).organization_id
+        user = User.objects.get(id=rid)
     except:
         context[
             "msg"
         ] = "Unexpected recipient. If you are not deliberately doing this, please contact the administrator to report this bug."
         return render(request, "msg.html", context)
 
-    payer_id = request.session["username"]
-    if re.match("zz\d+", payer_id) is not None:
-        payer = Organization.objects.get(organization_id=request.user)
-    else:
-        payer = NaturalPerson.objects.get(person_id=request.user)
-
     try:
-        if re.match("zz\d+", payer_id) is not None:
-            payer = Organization.objects.select_for_update().filter(
-                organization_id=request.user
-            )
-        else:
-            payer = NaturalPerson.objects.select_for_update().filter(
-                person_id=request.user
-            )
+        payer = get_person_or_org(request.user)
         with transaction.atomic():
-            assert len(payer) == 1
-            payer = payer[0]
-            payer.YQPoint -= float(amount)
+            if payer.YQPoint >= float(amount):
+                payer.YQPoint -= float(amount)
+            else:
+                raise ValueError
             # TODO 目前用的是 nickname，可能需要改成 name
             # 需要确认 create 是否会在数据库产生记录，如果不会是否会有主键冲突？
             record = TransferRecord.objects.create(
-                proposer=request.user, recipient=recipient
+                proposer=request.user, recipient=user
             )
             record.amount = amount
             record.message = transaction_msg
-            record.status = 1  # Wating
             record.time = str(datetime.now())
             record.save()
-
-            # TODO 确认 save 之后会释放锁？
             payer.save()
+
+            # TODO 发送微信消息
+
 
     except:
         context[
             "msg"
         ] = "Check if you have enough YQPoint. If so, please contact the administrator to report this bug."
         return render(request, "msg.html", context)
+
 
     context["msg"] = "Waiting the recipient to confirm the transaction."
     return render(request, "msg.html", context)
@@ -1187,6 +1176,13 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
 
         # 状态
         lis[-1]['status'] = record.get_status_display()
+
+    # 对外展示为 1/10
+    '''
+    统一在前端修改
+    for key in amount:
+        amount[key] = amount[key]/10
+    '''
 
     return lis, amount
 
@@ -1385,7 +1381,6 @@ def subscribeActivities(request):
 
 @login_required(redirect_field_name='origin')
 def save_subscribe_status(request):
-    #print(request)
     valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
         return redirect('/index/')

@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 
+<<<<<<< HEAD
 {% block add_css_file %}
 <style class="text/css">
     [data-toggle="collapse"] .fa:before {
@@ -13,6 +14,8 @@
     }
 </style>
 {% endblock %}
+=======
+>>>>>>> upstream/develop
 
 {% block mainpage %}
 <!--  BEGIN MAIN CONTAINER  
@@ -67,12 +70,18 @@
 
 
                 <div class="row layout-top-spacing">
+<<<<<<< HEAD
                     {% for otype in otype_list %}
                     <div id="tableDropdown{{otype}}" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+=======
+
+                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+>>>>>>> upstream/develop
                         <div class="statbox widget box box-shadow">
                             <div class="widget-header">
                                 <div class="row">
                                     <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+<<<<<<< HEAD
                                         <div data-toggle="collapse" href="#orgsearch{{otype}}" role="button"
                                             aria-expanded="false" aria-controls="collapseExample">
                                             <div class="d-flex justify-content-between">
@@ -142,10 +151,46 @@
                                                                 <font color="E1E1E1"
                                                                     id="font{{org.organization_id.username}}{{otype}}">未订阅</font>
                                                             </label>
+=======
+                                        <h4>您的订阅状态</h4>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="widget-content widget-content-area">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered mb-4">
+                                        <thead>
+                                            <tr>
+                                                <th>组织名称</th>
+                                                <th>组织类型</th>
+                                                <th>订阅状态</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for org in org_list %}
+                                                <tr>
+                                                    <td><u><a href="/orginfo/{{org.oname}}">{{org.oname}}</a></u></td>
+                                                    <td>
+                                                        {{org.otype}}
+                                                    </td>
+                                                    {%if org.organization_id.username in subscribe_list%} 
+                                                    <td bgColor="F3FDFF", id="td{{org.organization_id.username}}">
+                                                        <div class="custom-control custom-switch">
+                                                            <input type="checkbox" class="custom-control-input" id="{{org.organization_id.username}}" onclick="change_status.call(this)" checked>
+                                                            <label class="custom-control-label" for="{{org.organization_id.username}}" id="checkbox2{{org.organization_id.username}}"><font color="5F747B" id="font{{org.organization_id.username}}">已订阅</font></label>
+                                                        </div>
+                                                    </td>
+                                                    {%else%} 
+                                                    <td bgColor="FFFFFF", id="td{{org.organization_id.username}}">
+                                                        <div class="custom-control custom-switch">
+                                                            <input type="checkbox" class="custom-control-input" id="{{org.organization_id.username}}" onclick="change_status.call(this)">
+                                                            <label class="custom-control-label" for="{{org.organization_id.username}}" id="checkbox2{{org.organization_id.username}}"><font color="E1E1E1" id="font{{org.organization_id.username}}">未订阅</font></label>
+>>>>>>> upstream/develop
                                                         </div>
                                                     </td>
                                                     {%endif%}
                                                 </tr>
+<<<<<<< HEAD
                                                 {% endif %}
                                                 {% endfor %}
                                             </tbody>
@@ -157,6 +202,17 @@
                     </div>
                     {% endfor %}
 
+=======
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    
+>>>>>>> upstream/develop
                     <!-- <a onclick="save_subscribe_status()" class="btn btn-success btn-block mb-4 mr-2">保存修改</a> -->
 
 
