@@ -80,14 +80,14 @@
                                                     {%if org.organization_id.username in subscribe_list%} 
                                                     <td bgColor="F3FDFF", id="td{{org.organization_id.username}}">
                                                         <div class="custom-control custom-switch">
-                                                            <input type="checkbox" class="custom-control-input" id="{{org.organization_id.username}}" onclick="change_status(this)" checked>
+                                                            <input type="checkbox" class="custom-control-input" id="{{org.organization_id.username}}" onclick="change_status.call(this)" checked>
                                                             <label class="custom-control-label" for="{{org.organization_id.username}}" id="checkbox2{{org.organization_id.username}}"><font color="5F747B" id="checkbox3{{org.organization_id.username}}">已订阅</font></label>
                                                         </div>
                                                     </td>
                                                     {%else%} 
                                                     <td bgColor="FFFFFF", id="td{{org.organization_id.username}}">
                                                         <div class="custom-control custom-switch">
-                                                            <input type="checkbox" class="custom-control-input" id="{{org.organization_id.username}}" onclick="change_status(this)">
+                                                            <input type="checkbox" class="custom-control-input" id="{{org.organization_id.username}}" onclick="change_status.call(this)">
                                                             <label class="custom-control-label" for="{{org.organization_id.username}}" id="checkbox2{{org.organization_id.username}}"><font color="E1E1E1" id="checkbox3{{org.organization_id.username}}">未订阅</font></label>
                                                         </div>
                                                     </td>
@@ -102,7 +102,7 @@
                     </div>
 
                     
-                    <a onclick="save_subscribe_status()" class="btn btn-success btn-block mb-4 mr-2">保存修改</a>
+                    <!-- <a onclick="save_subscribe_status()" class="btn btn-success btn-block mb-4 mr-2">保存修改</a> -->
 
 
 
@@ -137,48 +137,27 @@
     })
 </script>
 <script>
-    var td_ls = document.getElementsByTagName('td')
-    function change_status(btn) {        
-        //alert(x.checked);
-        if(!x.checked){
-            document.getElementById("td"+btn.id).bgColor="F3FDFF";
-            save_subscribe_status();
-        }
-        else{
-            document.getElementById("td"+btn.id).bgColor="FFFFFF";
-            save_subscribe_status();
+    async function change_status() {
+        // alert(this.checked);
+        if (!this.checked) {
+            const success = await save_subscribe_status.call(this, false);
+            if (success) document.getElementById(`td${this.id}`).bgColor = "F3FDFF";
+            else this.checked = true;
+        } else {
+            const success = await save_subscribe_status.call(this, true);
+            if (success) document.getElementById(`td${this.id}`).bgColor = "FFFFFF";
+            else this.checked = false;
         }
     }
-    function save_subscribe_status() {
-        /*
-            向save_subscribe_status页面发送url，保存订阅设置。
-        */
-        subscribed_list = Array();
-        unsubscribed_list = Array();
-        for(var i=0;i<td_ls.length;i++){
-            if(td_ls[i].getAttribute('bgColor') == 'FFFFFF'){
-                unsubscribed_list.push(td_ls[i].getAttribute('id'));
-            }
-            else if(td_ls[i].getAttribute('bgColor') == 'F3FDFF'){
-                subscribed_list.push(td_ls[i].getAttribute('id'));
-            }
-        }
-        var urls = "save_subscribe_status?subscribe=";
-        for(var i=0;i<subscribed_list.length;i++){
-            if(!(i == 0)){
-                urls += "&";
-            }
-            urls += subscribed_list[i];
-        }
-        urls += "unsubscribe="
-        for(var i=0;i<unsubscribed_list.length;i++){
-            if(!(i == 0)){
-                urls += "&";
-            }
-            urls += unsubscribed_list[i];
-        }
-        //alert("保存成功!")
-        window.location.href = urls;
+    async function save_subscribe_status(status) {
+        const { success } = await fetch(`save_subscribe_status`, {
+            headers: { "Content-Type": `text/plain` },
+            method: `POST`,
+            body: JSON.stringify({ id: this.id, status }),
+        })
+            .then((res) => res.json())
+            .catch(() => { success: false });
+        return success;
     }
 </script>
 {% endblock %}

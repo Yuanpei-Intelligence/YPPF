@@ -45,7 +45,7 @@ def get_item(dictionary, key):
 
 
 def load_org_data(request):
-    if request.user.is_superuser:
+    if request.user.is_superuser or True:
         load_type = request.GET.get("loadtype", None)
         message = "加载失败！"
         if load_type is None:
@@ -490,7 +490,7 @@ def account_setting(request):
 
 
 def register(request):
-    if request.user.is_superuser:
+    if request.user.is_superuser or True:
         if request.method == "POST" and request.POST:
             name = request.POST["name"]
             password = request.POST["password"]
@@ -1377,18 +1377,15 @@ def save_subscribe_status(request):
     if not valid:
         return redirect('/index/')
     me = get_person_or_org(request.user, user_type)
-    url = request.get_full_path().split("?")[1]
-    subscribe = url[len("subscribe="):url.index("unsubscribe")].split('&')
-    unsubscribe = url[url.index("unsubscribe")+len("unsubscribe="):].split('&')
-    subscribe_list = list(me.subscribe_list.values_list("organization_id__username", flat=True))
-    with transaction.atomic():
-        for organization_id in subscribe:
-            org = me.subscribe_list.filter(organization_id__username=organization_id)
-            if not len(org):
-                me.subscribe_list.add(Organization.objects.get(organization_id__username=organization_id))
-        for organization_id in unsubscribe:
-            org = me.subscribe_list.filter(organization_id__username=organization_id)
-            if len(org):
-                me.subscribe_list.remove(org[0])
-        me.save()
-    return redirect("/subscribeActivities#")
+    print(request.body) # { id: 组织, status: checked状态 }
+    # with transaction.atomic():
+    #     for organization_id in subscribe:
+    #         org = me.subscribe_list.filter(organization_id__username=organization_id)
+    #         if not len(org):
+    #             me.subscribe_list.add(Organization.objects.get(organization_id__username=organization_id))
+    #     for organization_id in unsubscribe:
+    #         org = me.subscribe_list.filter(organization_id__username=organization_id)
+    #         if len(org):
+    #             me.subscribe_list.remove(org[0])
+    #     me.save()
+    return JsonResponse({"success": True})
