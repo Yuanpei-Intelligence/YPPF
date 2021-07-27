@@ -14,7 +14,7 @@ from app.forms import UserForm
 from app.utils import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.shortcuts import render, redirect
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.contrib import auth, messages
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
@@ -32,6 +32,7 @@ from boottest import local_dict
 import re
 import random
 import requests  # 发送验证码
+import io, csv
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
@@ -1262,6 +1263,54 @@ def viewActivities(request):
     person = True
 
     return render(request, "activity_info.html", locals())
+
+
+# GET参数?activityid=id&infotype=sign[&output=id,name,gender,telephone][&format=csv|excel]
+# example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign
+# example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign&output=id,wtf
+# example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign&format=excel
+def getActivityInfo(request):
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/index/')
+    try:
+        activity_id = request.GET.get('activityid', None)
+        activity = Activity.objects.get(id=activity_id)
+
+        organization = get_person_or_org(request.user, 'Organization')
+        assert(activity.organization_id == organization), f'Not Activity Organizer ({activity.organization_id} != {organization})'
+ 
+        info_type = request.GET.get('infotype', None)
+        if info_type == 'sign':
+            assert(activity.status != "审核中" and activity.status != "报名中"), f'Registration Not Over ({activity.status})'
+            assert(activity.sign_end <= datetime.now()), f'Registration Not Over {activity.sign_end}'
+
+            # are you sure it's 'Paticipant' not 'Participant' ??
+            paticipants = Paticipant.objects.filter(activity_id=activity_id)
+            paticipants = paticipants.filter(status=2)  # APLLYSUCCESS = 2  # 已报名
+
+            output = request.GET.get('output', 'id,name,gender,telephone')
+            fields = output.split(',')
+            for field in fields:
+                assert(NaturalPerson._meta.get_field(field_name=field)), f'Invalid Field {field}'
+
+            filename = f'{activity_id}-{info_type}-{output}'
+            content = map(lambda paticipant: map(lambda key: paticipant[key], fields), paticipants)
+
+            format = request.GET.get('format', 'csv')
+            if format == 'csv':
+                buffer = io.StringIO()
+                csv.writer(buffer).writerows(content), buffer.seek(0)
+                response = HttpResponse(buffer, content_type='text/csv')
+                response['Content-Disposition'] = f'attachment; filename={filename}.csv'
+                return response  # downloadable
+            elif format == 'excel':
+                return HttpResponse('.xls Not Implemented')
+            
+            raise NameError('Format Not Supported')
+    except Exception as e:
+        print(e)
+        return redirect('/index/')
 
 
 # 发起活动
