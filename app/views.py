@@ -11,7 +11,6 @@ from app.models import (
 )
 import app.utils as utils
 from app.forms import UserForm
-from app.data_import import load, load_orgtype, load_org
 from app.utils import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.shortcuts import render, redirect
@@ -42,25 +41,6 @@ email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 @register.filter
 def get_item(dictionary, key):
     return dictionary.get(key)
-
-
-def load_org_data(request):
-    if request.user.is_superuser:
-        load_type = request.GET.get("loadtype", None)
-        message = "加载失败！"
-        if load_type is None:
-            message = "没有得到loadtype参数:[org或otype]"
-        elif load_type == "otype":
-            load_orgtype()
-            message = "load type成功！"
-        elif load_type == "org":
-            load_org()
-            message = "load org成功！"
-        else:
-            message = "没有得到loadtype参数:[org或otype]"
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
 
 
 def get_person_or_org(user, user_type=None):
@@ -281,7 +261,7 @@ def stuinfo(request, name=None):
 
         modpw_status = request.GET.get("modinfo", None)
         html_display["modpw_code"] = (
-                modpw_status is not None and modpw_status == "success"
+            modpw_status is not None and modpw_status == "success"
         )
         html_display["warn_code"] = request.GET.get(
             "warn_code", 0)  # 是否有来自外部的消息
@@ -367,24 +347,28 @@ def orginfo(request, name=None):
         org = Organization.objects.activated().get(oname=name)
         organization_name = name
         organization_type_name = org.otype.otype_name
+        org_avatar_path = utils.get_user_ava(org, user_type)
         # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
     except:
         return redirect("/welcome/")
 
     # 这一部分是负责人boss的信息
-    boss = Position.objects.activated().get(org=org, pos=0).person
+    boss = Position.objects.activated().filter(org=org, pos=0)
     # boss = NaturalPerson.objects.activated().get(person_id = bossid)
     boss_display = {}
+    if len(boss) >= 1:
+        boss = boss[0].person
+        boss_display["bossname"] = boss.name
+        boss_display["year"] = boss.stu_grade
+        boss_display["major"] = boss.stu_major
+        boss_display["email"] = boss.email
+        boss_display["tel"] = boss.telephone
 
-    boss_display["bossname"] = boss.name
-    boss_display["year"] = boss.stu_grade
-    boss_display["major"] = boss.stu_major
-    boss_display["email"] = boss.email
-    boss_display["tel"] = boss.telephone
+        # jobpos = Position.objects.activated().get(person=boss, org = org).pos
+        boss_display["job"] = org.otype.job_name_list[0]
 
-    # jobpos = Position.objects.activated().get(person=boss, org = org).pos
-    boss_display["job"] = org.otype.job_name_list[0]
+        boss_display['avatar_path'] = utils.get_user_ava(boss, 'Person')
 
     # 补充左边栏信息
     # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
@@ -393,7 +377,6 @@ def orginfo(request, name=None):
     )
     # 判断是否为组织账户本身在登录
     html_display["is_myself"] = me == org
-
 
     # 再处理修改信息的回弹
     modpw_status = request.GET.get("modinfo", None)
@@ -431,6 +414,14 @@ def homepage(request):
     # 直接储存在html_display中
     # profile_name = "个人主页" if is_person else "组织主页"
     # profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
+
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
 
     # 补充一些呈现信息
     html_display["title_name"] = "Welcome Page"
@@ -585,7 +576,7 @@ def search(request):
             而且该用户选择公开其与组织的关系，那么该组织将在搜索界面呈现。
             搜索结果的呈现内容见organization_field
     """
-    
+
     valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
         return redirect("/logout/")
@@ -725,13 +716,13 @@ def forget_password(request):
                     captcha = random.randrange(1000000)
                     captcha = f"{captcha:06}"
                     msg = (
-                            f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
-                            "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
-                            f'<p style="color:orange">{captcha}'
-                            '<span style="color:gray">(仅当前页面有效)</span></p>'
-                            '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
-                            "<br/><br/><br/>"
-                            "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
+                        f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
+                        "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
+                        f'<p style="color:orange">{captcha}'
+                        '<span style="color:gray">(仅当前页面有效)</span></p>'
+                        '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
+                        "<br/><br/><br/>"
+                        "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
                         "toaddrs": [email],  # 收件人列表
@@ -833,47 +824,6 @@ def modpw(request):
     return render(request, "modpw.html", locals())
 
 
-def load_data(request):
-    if request.user.is_superuser:
-        df_1819 = load()
-        for i in range(len(df_1819)):  # import 2018 stu info.
-            username = str(df_1819["学号"].iloc[i])
-            sno = username
-            password = sno
-            email = df_1819["邮箱"].iloc[i]
-            if email == "None":
-                if sno[0] == "2":
-                    email = sno + "@stu.pku.edu.cn"
-                else:
-                    email = sno + "@pku.edu.cn"
-            tel = str(df_1819["手机号"].iloc[i])
-            year = "20" + sno[0:2]
-            gender = df_1819["性别"].iloc[i]
-            major = df_1819["专业"].iloc[i]
-            name = df_1819["姓名"].iloc[i]
-            stu_class = df_1819["班级"].iloc[i]
-            user = User.objects.create(username=username)
-            user.set_password(password)
-            user.save()
-            stu = NaturalPerson.objects.create(person_id=user)
-            stu.email = email
-            stu.telephone = tel
-            stu.stu_grade = year
-            if gender == "男":
-                stu.gender = NaturalPerson.Gender.MALE
-            elif gender == "女":
-                stu.gender = NaturalPerson.Gender.FEMALE
-            else:
-                stu.gender = NaturalPerson.Gender.OTHER
-            stu.stu_major = major
-            stu.name = name
-            stu.stu_class = stu_class
-            stu.save()
-        message = "导入学生信息成功！"
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
-
 # 调用的时候最好用 try
 # 调用者把 activity_id 作为参数传过来
 def engage_activity(request, activity_id, willingness):
@@ -925,6 +875,8 @@ def engage_activity(request, activity_id, willingness):
                 return context
         else:
             amount = willingness
+            # 依然增加，此时current_participants统计的是报名的人数，是可以比总人数多的
+            activity.current_participants += 1
 
         try:
             assert amount == int(amount * 10) / 10
@@ -942,8 +894,6 @@ def engage_activity(request, activity_id, willingness):
         )
         record.amount = amount
         record.message = f"Participate Activity {activity.topic}"
-        if not activity.bidding:
-            activity.capacity = cnt - 1
         orgnization.YQPoint += float(amount)
         record.status = TransferRecord.TransferStatus.ACCEPTED
 
@@ -961,7 +911,6 @@ def engage_activity(request, activity_id, willingness):
         payer.save()
         activity.save()
         orgnization.save()
-
 
     context["msg"] = "Successfully participate the activity."
     context['success'] = True
@@ -1062,13 +1011,11 @@ def start_transaction(request):
 
             # TODO 发送微信消息
 
-
     except:
         context[
             "msg"
         ] = "Check if you have enough YQPoint. If so, please contact the administrator to report this bug."
         return render(request, "msg.html", context)
-
 
     context["msg"] = "Waiting the recipient to confirm the transaction."
     return render(request, "msg.html", context)
@@ -1238,15 +1185,16 @@ def myYQPoint(request):
 
     issued_recv_set = TransferRecord.objects.filter(recipient=request.user, status__in=[
         TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED])
-    
+
     # to_set 按照开始时间降序排列
     to_set = to_send_set.union(to_recv_set).order_by("-start_time")
     # issued_set 按照完成时间及降序排列
     # 这里应当要求所有已经issued的记录是有执行时间的
-    issued_set = issued_send_set.union(issued_recv_set).order_by("-finish_time")
+    issued_set = issued_send_set.union(
+        issued_recv_set).order_by("-finish_time")
 
     to_list, amount = record2Display(to_set, request.user)
-    issued_list, _  = record2Display(issued_set, request.user)
+    issued_list, _ = record2Display(issued_set, request.user)
 
     '''
     to_send_list, to_send_amount = record2Display(record_list=TransferRecord.objects.filter(
@@ -1331,7 +1279,8 @@ def addActivities(request):
         if context['warn_code'] != 0:
             html_display['warn_code'] = context['warn_code']
             html_display['warn_message'] = context['warn_msg']
-            return render(request, "activity_add.html", locals())  # warn_code!=0失败
+            # warn_code!=0失败
+            return render(request, "activity_add.html", locals())
         try:
             with transaction.atomic():
                 new_act = Activity.objects.create(title=context['aname'], organization_id=org,
@@ -1357,6 +1306,7 @@ def addActivities(request):
         return render(request, "activity_add.html", locals())  # warn_code==0
     return render(request, "activity_add.html")
 
+
 @login_required(redirect_field_name='origin')
 def subscribeActivities(request):
     valid, user_type, html_display = utils.check_user_type(request)
@@ -1372,12 +1322,19 @@ def subscribeActivities(request):
             me, html_display['is_myself'], html_display)
 
     org_list = Organization.objects.all()
-    org_name = list(set(list(Organization.objects.values_list('organization_id__username', flat=True))))
-    otype_list = sorted(list(set(list(Organization.objects.values_list('otype__otype_name', flat=True))))) 
+    org_name = list(set(list(Organization.objects.values_list(
+        'organization_id__username', flat=True))))
+    otype_list = sorted(list(
+        set(list(Organization.objects.values_list('otype__otype_name', flat=True)))))
     # 给otype.otype_name排序，不然每次都不一样（后续可以写一个获取所有otype的接口，规定一个排序规则）
-    unsubscribe_list = list(me.subscribe_list.values_list("organization_id__username", flat=True)) # 获取不订阅列表（数据库里的是不订阅列表）
-    subscribe_list = [name for name in org_name if name not in unsubscribe_list]    # 获取订阅列表
+    unsubscribe_list = list(me.subscribe_list.values_list(
+        "organization_id__username", flat=True))  # 获取不订阅列表（数据库里的是不订阅列表）
+    subscribe_list = [
+        name for name in org_name if name not in unsubscribe_list]    # 获取订阅列表
+
+    subscribe_url = reverse('save_subscribe_status')
     return render(request, "activity_subscribe.html", locals())
+
 
 @login_required(redirect_field_name='origin')
 def save_subscribe_status(request):
@@ -1389,16 +1346,19 @@ def save_subscribe_status(request):
     with transaction.atomic():
         if 'id' in params.keys():
             if params['status']:
-                me.subscribe_list.remove(Organization.objects.get(organization_id__username=params['id']))
+                me.subscribe_list.remove(Organization.objects.get(
+                    organization_id__username=params['id']))
             else:
-                me.subscribe_list.add(Organization.objects.get(organization_id__username=params['id']))
+                me.subscribe_list.add(Organization.objects.get(
+                    organization_id__username=params['id']))
         elif 'otype' in params.keys():
-            unsubscribed_list = me.subscribe_list.filter(otype__otype_name=params['otype'])
+            unsubscribed_list = me.subscribe_list.filter(
+                otype__otype_name=params['otype'])
             org_list = Organization.objects.all()
-            if params['status']: # 表示要订阅
+            if params['status']:  # 表示要订阅
                 for org in unsubscribed_list:
                     me.subscribe_list.remove(org)
-            else: # 不订阅
+            else:  # 不订阅
                 for org in org_list:
                     me.subscribe_list.add(org)
         me.save()

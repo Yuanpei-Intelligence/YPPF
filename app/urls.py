@@ -1,6 +1,6 @@
 from django.urls import path, re_path
 from django.conf.urls.static import static
-from . import views
+from . import views, data_import
 from django.conf import settings
 
 urlpatterns = [
@@ -23,8 +23,8 @@ urlpatterns = [
     path("forgetpw/", views.forget_password, name="forgetpw"),
     path("modpw/", views.modpw, name="modpw"),
     path("test/", views.test, name="test"),
-    path("loaddata/", views.load_data, name="load_data"),
-    path("loadorgdata/", views.load_org_data, name="load_org_data"),
+    path("loaddata/", data_import.load_stu_info, name="load_data"),
+    path("loadorgdata/", data_import.load_org_info, name="load_org_data"),
     path("user_account_setting/", views.account_setting, name="user_account_setting"),
     path("search/", views.search, name="search"),
     path("minilogin", views.miniLogin, name="minilogin"),
@@ -40,10 +40,10 @@ urlpatterns = [
     #),
     path("engage", views.engage_activity, name="engage"),
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
-    path("showActivities", views.showActivities, name="showActivities"),
-    path("viewActivities", views.viewActivities, name="viewActivities"),
-    path("addActivities", views.addActivities, name="addActivities"),
-    path("subscribeActivities", views.subscribeActivities, name="subscribeActivities"),
+    path("showActivities/", views.showActivities, name="showActivities"),
+    path("viewActivities/", views.viewActivities, name="viewActivities"),
+    path("addActivities/", views.addActivities, name="addActivities"),
+    path("subscribeActivities/", views.subscribeActivities, name="subscribeActivities"),
     path("save_subscribe_status", views.save_subscribe_status, name="save_subscribe_status"),
 ]
 if settings.DEBUG:

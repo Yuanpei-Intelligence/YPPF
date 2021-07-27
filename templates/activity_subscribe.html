@@ -93,10 +93,10 @@
                                 <div class="widget-content widget-content-area">
                                     <div>
                                         <button type="button" class="btn btn-outline-primary" id="{{otype}}"
-                                            onclick="turn_on_all.call(this)">全部开启</button>
+                                            onclick="turn_on_all.call(this);this.blur();">全部开启</button>
                                         &nbsp;
                                         <button type="button" class="btn btn-outline-primary" id="{{otype}}"
-                                            onclick="turn_off_all.call(this)">全部关闭</button>
+                                            onclick="turn_off_all.call(this);this.blur();">全部关闭</button>
                                         </br></br>
                                     </div>
                                     <div class="table-responsive">
@@ -104,7 +104,7 @@
                                             <thead>
                                                 <tr>
                                                     <th>组织名称</th>
-                                                    <th>组织类型</th>
+                                                    <!--<th>组织类型</th>-->
                                                     <th>订阅状态</th>
                                                 </tr>
                                             </thead>
@@ -113,15 +113,15 @@
                                                 {% if org.otype.otype_name == otype %}
                                                 <tr>
                                                     <td><u><a href="/orginfo/{{org.oname}}">{{org.oname}}</a></u></td>
-                                                    <td>
+                                                    <!--<td>
                                                         {{org.otype.otype_name}}
-                                                    </td>
+                                                    </td>-->
                                                     {%if org.organization_id.username in subscribe_list%}
                                                     <td bgColor="F3FDFF" , id="td{{org.organization_id.username}}_{{otype}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
                                                                 id="{{org.organization_id.username}}_{{otype}}"
-                                                                onclick="change_status.call(this)" checked>
+                                                                onclick="change_status.call(this);this.blur();" checked>
                                                             <label class="custom-control-label"
                                                                 for="{{org.organization_id.username}}_{{otype}}"
                                                                 id="checkbox2{{org.organization_id.username}}_{{otype}}">
@@ -135,7 +135,7 @@
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
                                                                 id="{{org.organization_id.username}}_{{otype}}"
-                                                                onclick="change_status.call(this)">
+                                                                onclick="change_status.call(this);this.blur();">
                                                             <label class="custom-control-label"
                                                                 for="{{org.organization_id.username}}_{{otype}}"
                                                                 id="checkbox2{{org.organization_id.username}}_{{otype}}">
@@ -151,7 +151,7 @@
                                             </tbody>
                                         </table>
                                     </div>
-                                </div>>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -170,6 +170,11 @@
     <!--  END CONTENT AREA  -->
 </div>
 <!-- END MAIN CONTAINER -->
+
+{% endblock %}
+
+
+{% block add_js_file %}
 
 <script>
     $('.nav-tabs').on('shown.bs.tab', 'a', function (e) {
@@ -241,7 +246,17 @@
         }
     }
     async function save_subscribe_status(status) {
-        const { success } = await fetch(`save_subscribe_status`, {
+        const { success } = await fetch(`/save_subscribe_status`, {
+            headers: { "Content-Type": `text/plain` },
+            method: `POST`,
+            body: JSON.stringify({ id: this.id.substring(0,7), status }),
+        })
+            .then((res) => res.json())
+            .catch(() => { success: false });
+        return success;
+    }
+    async function save_all(status){
+        const { success } = await fetch(`/save_subscribe_status`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
             body: JSON.stringify({ id: this.id.substring(0,this.id.indexOf('_')), status }),
