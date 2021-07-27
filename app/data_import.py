@@ -19,7 +19,7 @@ def load_orgtype():
     Nperson.name = username
     Nperson.save()
     org_type_df = load_file("orgtypeinf.csv")
-    for _, otype_dict in org_type_df:
+    for _, otype_dict in org_type_df.iterrows():
         type_id = int(otype_dict["otype_id"])
         type_name = otype_dict["otype_name"]
         # type_superior_id = int(otype_dict["otype_superior_id"])
@@ -35,7 +35,7 @@ def load_orgtype():
 
 def load_org():
     org_df = load_file("orginf.csv")
-    for _, org_dict in org_df:
+    for _, org_dict in org_df.iterrows():
         username = org_dict["organization_id"]
         if username[:2] == "zz":
             password = "YPPFtest"
