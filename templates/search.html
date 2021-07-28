@@ -22,7 +22,11 @@
     <div class="overlay"></div>
     <div class="search-overlay"></div>
 
+    {% if html_display.user_type == "Person" %}
     {% include 'user_left_narbar.html' %}
+    {% else %}
+    {% include 'org_left_narbar.html' %}
+    {% endif %}
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
@@ -94,7 +98,7 @@
                                                     {% if forloop.counter == 1 %}
                                                     <!-- 说明此时要展示姓名，关联链接 -->
                                                     <td><u><a
-                                                                href="stuinfo/{{person.name}}+{{person.id}}">{{attribute}}</a></u>
+                                                                href="/stuinfo/{{person.name}}+{{person.id}}">{{attribute}}</a></u>
                                                     </td>
                                                     {% else %}
                                                     <td> {{attribute}} </td>

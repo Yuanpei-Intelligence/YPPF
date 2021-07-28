@@ -52,13 +52,14 @@ def check_user_type(request):  # return Valid(Bool), otype
         html_display["profile_url"] = "/orginfo/"
         org = Organization.objects.get(organization_id=request.user)
         html_display["avatar_path"] = get_user_ava(org,user_type)
-        # 不确定Org的结构，这里先空着（组织就没有头像了）
+        html_display['user_type'] = user_type
     else:
         user_type = "Person"
         person = NaturalPerson.objects.activated().get(person_id=request.user)
         html_display["profile_name"] = "个人主页"
         html_display["profile_url"] = "/stuinfo/"
         html_display["avatar_path"] = get_user_ava(person,user_type)
+        html_display['user_type'] = user_type
 
     return True, user_type, html_display
 
@@ -94,6 +95,8 @@ def get_org_left_narbar(org, is_myself, html_display):
             "is_myself" in html_display.keys()
     ), "Forget to tell the website whether this is the user itself!"
     html_display["switch_org_name"] = org.oname
+    html_display["underground_url"] = local_dict["url"]["base_url"]
+
     return html_display
 
 
