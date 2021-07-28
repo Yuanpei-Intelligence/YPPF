@@ -2,6 +2,12 @@
 
 {% load static %}
 
+{% block add_css_file %}
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker-standalone.css" %} rel="stylesheet" type="text/css" />
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker.css" %} rel="stylesheet" type="text/css" />
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker.min.css" %} rel="stylesheet" type="text/css" />
+{% endblock %}
+
 {% block mainpage %}
 <!--  BEGIN MAIN CONTAINER  -->
 <div class="main-container" id="container">
@@ -15,7 +21,11 @@
     <div id="content" class="main-content">
         <div class="container">
             <div class="container">
+                {% if html_display.warn_code %}
+                <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+                {% endif %}
                 <div class="row layout-top-spacing">
+
                     <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
                         <div class="row">
                             <div class="col-md-12 mb-4">
@@ -25,7 +35,7 @@
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                <h4>详细信息</h4>
+                                                <h4>创建活动</h4>
                                             </div>
                                         </div>
                                     </div>
@@ -33,28 +43,139 @@
                                     <!--  BEGIN CONTENT AREA  -->
                                     <div class="widget-content widget-content-area">
 
-                                        <form class="form-horizontal" role="form" method="POST">
+                                        <form role="form" method="POST">
+                                            <p>活动信息</p>
+                                            <div class="form-group">
+                                                <input type="text" id="aname" name="aname" class="form-control"
+                                                       aria-label="Default" placeholder="活动名称">
+                                            </div>
+                                            <div class="form-group">
+                                                <input type="text" id="location" name="location" class="form-control"
+                                                       aria-label="Default" placeholder="活动地点">
+                                            </div>
 
+                                            <div class="form-group">
+                                                <div class="row">
+                                                    <div class="col">
+                                                        <input type="text" id="maxpeople" name="maxpeople"
+                                                               class="form-control" aria-label="Default"
+                                                               placeholder="人数限制">
+                                                    </div>
+                                                    <div class="col"
+                                                         style="display: flex; flex-direction: column;justify-content: center;text-align: center;">
+                                                        <center>
+                                                            <div class="form-check"
+                                                                 style="align-content: center; vertical-align: middle;">
+                                                                <input class="form-check-input" type="checkbox"
+                                                                       value="1"
+                                                                       id="unlimited_capacity"
+                                                                       name="unlimited_capacity">
+
+                                                                <label class="form-check-label" for="defaultCheck1">
+                                                                    无人数限制
+                                                                </label>
+                                                            </div>
+                                                        </center>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div class="form-group">
+
+                                                <div class="row">
+                                                    <div class="col">
+                                                        <input type='text' class="form-control" id='datetimepicker3'
+                                                               name="actstart"
+                                                               placeholder="活动开始时间"/>
+                                                    </div>
+                                                    <div class="col">
+                                                        <input type='text' class="form-control" id='datetimepicker4'
+                                                               name="actend"
+                                                               placeholder="活动截止时间"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+
+                                            <!--
                                             <div class="input-group mb-4">
                                                 <div class="input-group-prepend">
-                                                    <span class="input-group-text"
-                                                          id="inputGroup-sizing-default">活动名称
+                                                    <span class="input-group-text" id="inputGroup-sizing-default">活动名称
                                                     </span>
                                                 </div>
                                                 <input type="text" id="aname" name="aname" class="form-control"
-                                                       aria-label="Default"
-                                                       aria-describedby="inputGroup-sizing-default">
+                                                    aria-label="Default" aria-describedby="inputGroup-sizing-default">
                                             </div>
 
+                                            
+                                            -->
+                                            <hr>
+                                            <p>报名信息</p>
+                                            <!--
                                             <div class="form-group">
-                                                <label for="aintro">活动简介</label>
-                                                <textarea id="aintro" name="content" class="form-control"
-                                                          rows="3"></textarea>
+                                                <label for="price" class="col-sm-2 control-label">活动定价</label>
+                                                <input type="number" id="aprice" name="aprice" step="0.1"
+                                                    placeholder="精确到小数点后一位"
+                                                    οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')" />
+                                            </div>
+                                            -->
+                                            <div class="form-group">
+                                                <div class="input-group mb-3">
+                                                    <div class="input-group-prepend">
+                                                        <button class="btn btn-outline-primary dropdown-toggle"
+                                                                type="button" data-toggle="dropdown"
+                                                                aria-haspopup="true"
+                                                                aria-expanded="false" id="pricebutton">报名模式
+                                                        </button>
+                                                        <div class="dropdown-menu">
+                                                            <a class="dropdown-item"
+                                                               onclick="shows($(this).text())" name="get" value="get">先到先得</a>
+                                                            <a class="dropdown-item"
+                                                               onclick="shows($(this).text())" name="bid" value="bid">投点参与</a>
+                                                        </div>
+                                                       <input type="hidden" id= "signschema" name="signschema" value="" />
+                                                    </div>
+                                                    <input type="number" class="form-control"
+                                                           aria-label="Text input with dropdown button" id="aprice"
+                                                           name="aprice"
+                                                           placeholder="最小精度为0.1" step="0.1"
+                                                           οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')">
+                                                </div>
+                                            </div>
+                                            <div class="form-group">
+
+                                                <div class="row">
+                                                    <div class="col">
+                                                        <input type='text' class="form-control" id='datetimepicker1'
+                                                               name="signstart"
+                                                               placeholder="报名开始时间"/>
+                                                    </div>
+                                                    <div class="col">
+                                                        <input type='text' class="form-control" id='datetimepicker2'
+                                                               name="signend"
+                                                               placeholder="报名截止时间"/>
+                                                    </div>
+                                                </div>
                                             </div>
 
+                                            <!--
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" value=""
+                                                    id="whether_record" name="whether_record">
+                                                
+                                                <label class="form-check-label" for="defaultCheck1">
+                                                    活动已备案?
+                                                </label>
+                                                
+                                            </div>
+                                            -->
+
+
+                                            <!--
                                             <div class="form-group">
                                                 <label for="signupSdate" class="col-sm-2 control-label">报名开始日期</label>
-                                                <input id="signupSdate" name="signupSdate" type="date">
+                                                <input id="signupSdate" name="signupSdate" type="date"
+                                                    value="{{html_display.today}}">
                                                 <label for="signupStime" class="col-sm-2 control-label">报名开始时间</label>
                                                 <input id="signupStime" name="signupStime" type="time">
                                             </div>
@@ -80,44 +201,48 @@
                                                 <input id="actEtime" name="actEtime" type="time">
                                             </div>
 
-                                            <div class="form-group">
-                                                <label for="publishdate" class="col-sm-2 control-label">信息发布日期</label>
-                                                <input id="publishdate" name="publishdate" type="date">
-                                                <label for="publishtime" class="col-sm-2 control-label">信息发布时间</label>
-                                                <input id="publishtime" name="publishtime" type="time">
-                                            </div>
+
+
+                                            
                                             <div class="form-group">
                                                 <label for="location" class="col-sm-2 control-label">活动地点</label>
                                                 <input type="text" id="location" name="location" aria-label="Default"
-                                                       aria-describedby="inputGroup-sizing-default">
-                                            </div>
-                                            <div class="form-group">
-                                                <label for="price" class="col-sm-2 control-label">活动定价</label>
-                                                <input type="number" id="aprice" name="aprice" step="0.1"
-                                                       placeholder="精确到小数点后一位"
-                                                       οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')"/>
-                                            </div>
-
-                                            <div class="input-group mb-4">
+                                                    aria-describedby="inputGroup-sizing-default">
+                                            </div>                                            <div class="input-group mb-4">
                                                 <div class="input-group-prepend">
                                                     <span class="input-group-text"
-                                                          id="inputGroup-sizing-default">活动最大人数</span>
+                                                        id="inputGroup-sizing-default">活动最大人数</span>
                                                 </div>
                                                 <input type="text" id="maxpeople" name="maxpeople" class="form-control"
-                                                       aria-label="Default" placeholder="最大100人"
-                                                       aria-describedby="inputGroup-sizing-default">
+                                                    aria-label="Default" placeholder="最大100人"
+                                                    aria-describedby="inputGroup-sizing-default">
                                             </div>
+                                            -->
+                                            <hr>
 
+                                            <p>宣传信息</p>
+                                            <div class="form-group">
+                                                <label for="aintro">活动简介</label>
+                                                <textarea id="aintro" name="content" class="form-control" rows="3"
+                                                          placeholder="(必填)简介会随活动基本信息一同推送至订阅者的微信"></textarea>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="aintro">活动推送链接(url)</label>
+                                                <input type="text" id="URL" name="URL" class="form-control"
+                                                       placeholder="(可选)填写活动推送的链接">
+                                            </div>
+                                            <!--
                                             <div class="input-group mb-4">
                                                 <div class="input-group-prepend">
                                                     <span class="input-group-text"
-                                                          id="inputGroup-sizing-default">活动链接(url)</span>
+                                                        id="inputGroup-sizing-default">活动推送链接(url)</span>
                                                 </div>
                                                 <input type="text" id="URL" name="URL" class="form-control"
-                                                       aria-label="Default"
-                                                       aria-describedby="inputGroup-sizing-default">
+                                                    aria-label="Default" aria-describedby="inputGroup-sizing-default"
+                                                    placeholder="">
                                             </div>
-                                            <button type="submit" class="btn btn-success btn-block mb-4 mr-2" value="">
+                                            -->
+                                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
                                                 提交
                                             </button>
                                         </form>
@@ -137,4 +262,56 @@
 </div>
 <!-- END MAIN CONTAINER -->
 
+{% endblock %}
+
+{% block add_js_file %}
+<!--<script src={% static "datetimepicker/js/collapse.js" %}></script>-->
+<script src={% static "datetimepicker/js/bootstrap-datetimepicker.min.js" %}></script>
+
+
+<script>
+    $("input[name='unlimited_capacity']").on('change', function () {
+        //输出选中状态
+        if (false === $(this).prop("checked")) {
+            document.getElementById('maxpeople').disabled = false;
+        } else {
+            document.getElementById('maxpeople').disabled = true;
+            document.getElementById('maxpeople').value = "";
+        }
+    });
+    function shows(a) {
+        $('#pricebutton').text(a);
+        if ("先到先得" === a) {
+            document.getElementById('aprice').value = "";
+            document.getElementById('aprice').placeholder = "参与活动元气值价格";
+            document.getElementById('signschema').value="0"
+        } else {
+            document.getElementById('aprice').value = "";
+            document.getElementById('aprice').placeholder = "元气值投点最低额度";
+            document.getElementById('signschema').value="1"
+        }
+    }
+
+</script>
+<script type="text/javascript">
+    $(function () {
+        $('#datetimepicker1').datetimepicker({
+            //format: 'LT'
+            sideBySide: true,
+        });
+        $('#datetimepicker2').datetimepicker({
+            //format: 'LT'
+            sideBySide: true
+        });
+        $('#datetimepicker3').datetimepicker({
+            //format: 'LT'
+            sideBySide: true
+        });
+        $('#datetimepicker4').datetimepicker({
+            //format: 'LT'
+            sideBySide: true
+        });
+    });
+
+</script>
 {% endblock %}
