@@ -1262,6 +1262,8 @@ def viewActivities(request):
 
     person = True
 
+
+
     return render(request, "activity_info.html", locals())
 
 
@@ -1336,6 +1338,47 @@ def getActivityInfo(request):
     html_display['warn_code'] = 1
     html_display['warn_message'] = f'不支持的信息{info_type}'
     return render(request, '某个页面.html', locals())
+
+
+# participant checkin activity
+# GET参数?activityid=id
+# example: http://127.0.0.1:8000/checkinActivity?activityid=1
+def checkinActivity(request):
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/index/')
+    
+    # check activity existence
+    activity_id = request.GET.get('activityid', None)
+    try:
+        Activity.objects.get(id=activity_id)
+    except:
+        msg = '活动不存在'
+        origin = '/welcome/'
+        return render(request, 'msg.html', locals())
+
+    # check person existance and registration to activity
+    person = get_person_or_org(request.user, 'naturalperson')
+    try:
+        paticipant = Paticipant.objects.get(activity_id=activity_id, person_id=person.id)
+        if paticipant.status == 1:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '您没有参与这项活动：申请失败'
+        elif paticipant.status == 2:
+            paticipant.status = 3
+            html_display['warn_code'] = 2
+            html_display['warn_message'] = '签到成功'
+        elif paticipant.status == 3:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '重复签到'
+        elif paticipant.status == 5:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '您没有参与这项活动：已取消'
+    except:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = '您没有参与这项活动：未报名'
+    
+    return redirect('/viewActivities/')  # context incomplete
 
 
 # 发起活动
