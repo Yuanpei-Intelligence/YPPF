@@ -117,30 +117,30 @@
                                                         {{org.otype.otype_name}}
                                                     </td>-->
                                                     {%if org.organization_id.username in subscribe_list%}
-                                                    <td bgColor="F3FDFF" , id="td{{org.organization_id.username}}{{otype}}">
+                                                    <td bgColor="F3FDFF" , id="td{{org.organization_id.username}}_{{otype}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
-                                                                id="{{org.organization_id.username}}{{otype}}"
+                                                                id="{{org.organization_id.username}}_{{otype}}"
                                                                 onclick="change_status.call(this);this.blur();" checked>
                                                             <label class="custom-control-label"
-                                                                for="{{org.organization_id.username}}{{otype}}"
-                                                                id="checkbox2{{org.organization_id.username}}{{otype}}">
+                                                                for="{{org.organization_id.username}}_{{otype}}"
+                                                                id="checkbox2{{org.organization_id.username}}_{{otype}}">
                                                                 <font color="5F747B"
-                                                                    id="font{{org.organization_id.username}}{{otype}}">已订阅</font>
+                                                                    id="font{{org.organization_id.username}}_{{otype}}">已订阅</font>
                                                             </label>
                                                         </div>
                                                     </td>
                                                     {%else%}
-                                                    <td bgColor="FFFFFF" , id="td{{org.organization_id.username}}{{otype}}">
+                                                    <td bgColor="FFFFFF" , id="td{{org.organization_id.username}}_{{otype}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
-                                                                id="{{org.organization_id.username}}{{otype}}"
+                                                                id="{{org.organization_id.username}}_{{otype}}"
                                                                 onclick="change_status.call(this);this.blur();">
                                                             <label class="custom-control-label"
-                                                                for="{{org.organization_id.username}}{{otype}}"
-                                                                id="checkbox2{{org.organization_id.username}}{{otype}}">
+                                                                for="{{org.organization_id.username}}_{{otype}}"
+                                                                id="checkbox2{{org.organization_id.username}}_{{otype}}">
                                                                 <font color="E1E1E1"
-                                                                    id="font{{org.organization_id.username}}{{otype}}">未订阅</font>
+                                                                    id="font{{org.organization_id.username}}_{{otype}}">未订阅</font>
                                                             </label>
                                                         </div>
                                                     </td>
@@ -201,7 +201,7 @@
         lst = document.getElementsByClassName('custom-control-input');
         const success = await save_all.call(this,false);
         for (var i = 0; i < lst.length; i += 1) {
-            if (lst[i].checked && this.id == lst[i].id.substring(7)) {
+            if (lst[i].checked && this.id == lst[i].id.substring(lst[i].id.indexOf("_")+1)) {
                 if (success) {
                     document.getElementById(`td${lst[i].id}`).bgColor = "FFFFFF";
                     document.getElementById(`font${lst[i].id}`).color = "E1E1E1";
@@ -215,7 +215,7 @@
         lst = document.getElementsByClassName('custom-control-input');
         const success = await save_all.call(this,true);
         for (var i = 0; i < lst.length; i += 1) {
-            if (!lst[i].checked && this.id == lst[i].id.substring(7)) {
+            if (!lst[i].checked && this.id == lst[i].id.substring(lst[i].id.indexOf("_")+1)) {
                 if (success) {
                     document.getElementById(`td${lst[i].id}`).bgColor = "F3FDFF";
                     document.getElementById(`font${lst[i].id}`).color = "5F747B";
@@ -249,7 +249,7 @@
         const { success } = await fetch(`/save_subscribe_status`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
-            body: JSON.stringify({ id: this.id.substring(0,7), status }),
+            body: JSON.stringify({ id: this.id.substring(0,this.id.indexOf('_')), status }),
         })
             .then((res) => res.json())
             .catch(() => { success: false });

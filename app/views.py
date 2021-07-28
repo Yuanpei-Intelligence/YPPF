@@ -220,7 +220,7 @@ def stuinfo(request, name=None):
                 oneself = NaturalPerson.objects.activated().get(person_id=user)
             except:
                 return redirect("/welcome/")
-            return redirect("/stuinfo/" + oneself.name)
+            return redirect("/stuinfo/" + oneself.name + "?" + request.get_full_path().split("?")[1])
     else:
         # 先对可能的加号做处理
         name_list = name.split("+")
@@ -1320,6 +1320,11 @@ def addActivities(request):
         return redirect('/index/')
     if user_type == 'Person':
         return redirect('/welcome/')  # test
+    me = get_person_or_org(request.user)
+    html_display['is_myself'] = True
+    html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
+
     if request.method == "POST" and request.POST:
         org = get_person_or_org(request.user, user_type)
         # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
@@ -1336,7 +1341,6 @@ def addActivities(request):
                                                   status=Activity.Astatus.PENDING)  # 默认状态是报名中
 
                 new_act.content = context['content']
-                new_act.publish_time = context['publish_time']
                 new_act.sign_start = context['signup_start']
 
                 new_act.sign_end = context['signup_end']
@@ -1353,7 +1357,11 @@ def addActivities(request):
             html_display['warn_message'] = "Lauch activty has been failed! Please check your input twice!"
         # 返回发起成功或者失败的页面
         return render(request, "activity_add.html", locals())  # warn_code==0
-    return render(request, "activity_add.html")
+    
+    # 补充一些实用的信息
+    html_display["today"] = datetime.now().strftime("%Y-%m-%d")
+
+    return render(request, "activity_add.html",locals())
 
 
 @login_required(redirect_field_name='origin')
