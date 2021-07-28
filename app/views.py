@@ -630,12 +630,14 @@ def search(request):
         Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in = pos_list.values('org')))
 
     # 组织要呈现的具体内容
-    organization_field = ["组织名", "组织类型", "负责人", "近期活动"]
+    organization_field = ["组织名称", "组织类型", "负责人", "近期活动"]
 
     # 搜索活动
-    # activity_list = Activity.objects.filter(Q(topic__icontains=query) |
-    #     Q(organization_id__in=organization_list.values('organization_id')))
-    # print(activity_list)
+    activity_list = Activity.objects.filter(Q(topic__icontains=query) |
+        Q(organization_id__in=organization_list.values('organization_id')))
+
+    # 活动要呈现的内容
+    activity_field = ['活动名称', '承办组织', '状态']
 
     me = get_person_or_org(request.user, user_type)
     html_display['is_myself'] = True
