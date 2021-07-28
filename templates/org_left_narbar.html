@@ -19,15 +19,21 @@
                         </a>
                         <ul class="collapse submenu list-unstyled" id="app" data-parent="#accordionExample">
                             <li>
-                                <a href="apps_chat.html"> 活动发起 </a>
+                                <a href="/addActivities/"> 活动发起 </a>
                             </li>
                             <li>
                                 <a href="apps_mailbox.html"> 经费申请  </a>
                             </li>
-                            <li>
-                                <a href="index.html"> 信息与隐私 </a>
-                            </li>
                             
+                            <li>
+                                <a href="{{html_display.underground_url}}"> 地下室预约 </a>
+                            </li>
+                            <li>
+                                <a href="/myYQPoint/"> 我的元气值 </a>
+                            </li>
+                            <li>
+                                <a href="/user_account_setting/"> 信息与隐私 </a>
+                            </li>
                         </ul>
                     </li>
                     {% endif %}
@@ -89,6 +95,17 @@
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /> <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /> <polyline points="3.27 6.96 12 12.01 20.73 6.96" /> <line x1="12" y1="22.08" x2="12" y2="12" /> </svg>
                                 <span>切换账号</span>
+                            </div>
+                        </a>
+                    </li>
+                    {% endif %}
+
+                    {% if not html_display.is_myself %}
+                    <li class="menu">
+                        <a href="/transPage/{{org.organization_id_id}}?origin={{origin}}"  aria-expanded="false" class="dropdown-toggle">
+                            <div class="">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /> <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /> <polyline points="3.27 6.96 12 12.01 20.73 6.96" /> <line x1="12" y1="22.08" x2="12" y2="12" /> </svg>
+                                <span>元气值转账</span>
                             </div>
                         </a>
                     </li>

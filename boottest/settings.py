@@ -94,7 +94,7 @@ DATABASES = {
     # 使用自己的数据库的时候请修改这里的配置
     # 注意underground数据库需要事先创建
     # mysql -u root -p
-    # create database underground charset='utf8';
+    # create database underground charset='utf8mb4';
     "default": {
         "ENGINE": "django.db.backends.mysql",
         "NAME": local_dict["database"]["NAME"],
@@ -138,7 +138,11 @@ USE_I18N = True
 
 USE_L10N = True
 
-USE_TZ = True
+# USE_TZ限制了Datetime等时间Field被存入数据库时是否必须包含时区信息
+# 这导致定时任务和常用的datetime.now()等无时区时间在存入时被强制-8h转化为UTC时间
+# 从而使数据库可读性差，存储前需要强制增加时区信息，且发送消息容易出错
+# 从数据库取出的数据将是有时区信息的，几乎与datetime.now()不可比
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
@@ -150,3 +154,5 @@ STATICFILES_DIRS = (os.path.join(BASE_DIR, "static"),)
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"

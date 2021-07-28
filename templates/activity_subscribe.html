@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block add_css_file %}
+<style class="text/css">
+    [data-toggle="collapse"] .fa:before {
+        font-family: 'FontAwesome';
+        content: "\f068";
+        float: right;
+    }
+
+    [data-toggle="collapse"].collapsed .fa:before {
+        content: "\f067";
+    }
+</style>
+{% endblock %}
+
+{% block mainpage %}
+<!--  BEGIN MAIN CONTAINER  
+
+<style type='text/css'>
+    .table th,
+    .table td {
+        text-align: center;
+        vertical-align: middle !important;
+    }
+
+    table {
+        width: 100px;
+        table-layout: fixed;
+        /* 只有定义了表格的布局算法为fixed，下面td的定义才能起作用。 */
+    }
+
+    td {
+        width: 100%;
+        word-break: keep-all;
+        /* 不换行 */
+        white-space: nowrap;
+        /* 不换行 */
+        overflow: hidden;
+        /* 内容超出宽度时隐藏超出部分的内容 */
+        text-overflow: ellipsis;
+        /* 当对象内文本溢出时显示省略标记(...) ；需与overflow:hidden;一起使用*/
+        -o-text-overflow: ellipsis;
+        -icab-text-overflow: ellipsis;
+        -khtml-text-overflow: ellipsis;
+        -moz-text-overflow: ellipsis;
+        -webkit-text-overflow: ellipsis;
+    }
+
+    .table {
+        table-layout: fixed;
+    }
+</style>
+-->
+<div class="main-container" id="container">
+
+    <div class="overlay"></div>
+    <div class="search-overlay"></div>
+
+    {% include 'user_left_narbar.html' %}
+
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+        <div class="container">
+            <div class="container">
+
+
+
+                <div class="row layout-top-spacing">
+                    {% for otype in otype_list %}
+                    <div id="tableDropdown{{otype}}" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+                        <div class="statbox widget box box-shadow">
+                            <div class="widget-header">
+                                <div class="row">
+                                    <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                        <div data-toggle="collapse" href="#orgsearch{{otype}}" role="button"
+                                            aria-expanded="false" aria-controls="collapseExample">
+                                            <div class="d-flex justify-content-between">
+                                                <div>
+                                                    <h4>{{otype}}</h4>
+                                                </div>
+                                                <div style="display:flex;
+                                            justify-content: center;
+                                            align-items: center;">
+                                                    <i class="fa" aria-hidden="true"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="collapse show" id="orgsearch{{otype}}">
+                                <div class="widget-content widget-content-area">
+                                    <div>
+                                        <button type="button" class="btn btn-outline-primary" id="{{otype}}"
+                                            onclick="turn_on_all.call(this);this.blur();">全部开启</button>
+                                        &nbsp;
+                                        <button type="button" class="btn btn-outline-primary" id="{{otype}}"
+                                            onclick="turn_off_all.call(this);this.blur();">全部关闭</button>
+                                        </br></br>
+                                    </div>
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered mb-4">
+                                            <thead>
+                                                <tr>
+                                                    <th>组织名称</th>
+                                                    <!--<th>组织类型</th>-->
+                                                    <th>订阅状态</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for org in org_list%}
+                                                {% if org.otype.otype_name == otype %}
+                                                <tr>
+                                                    <td><u><a href="/orginfo/{{org.oname}}">{{org.oname}}</a></u></td>
+                                                    <!--<td>
+                                                        {{org.otype.otype_name}}
+                                                    </td>-->
+                                                    {%if org.organization_id.username in subscribe_list%}
+                                                    <td bgColor="F3FDFF" , id="td{{org.organization_id.username}}{{otype}}">
+                                                        <div class="custom-control custom-switch">
+                                                            <input type="checkbox" class="custom-control-input"
+                                                                id="{{org.organization_id.username}}{{otype}}"
+                                                                onclick="change_status.call(this);this.blur();" checked>
+                                                            <label class="custom-control-label"
+                                                                for="{{org.organization_id.username}}{{otype}}"
+                                                                id="checkbox2{{org.organization_id.username}}{{otype}}">
+                                                                <font color="5F747B"
+                                                                    id="font{{org.organization_id.username}}{{otype}}">已订阅</font>
+                                                            </label>
+                                                        </div>
+                                                    </td>
+                                                    {%else%}
+                                                    <td bgColor="FFFFFF" , id="td{{org.organization_id.username}}{{otype}}">
+                                                        <div class="custom-control custom-switch">
+                                                            <input type="checkbox" class="custom-control-input"
+                                                                id="{{org.organization_id.username}}{{otype}}"
+                                                                onclick="change_status.call(this);this.blur();">
+                                                            <label class="custom-control-label"
+                                                                for="{{org.organization_id.username}}{{otype}}"
+                                                                id="checkbox2{{org.organization_id.username}}{{otype}}">
+                                                                <font color="E1E1E1"
+                                                                    id="font{{org.organization_id.username}}{{otype}}">未订阅</font>
+                                                            </label>
+                                                        </div>
+                                                    </td>
+                                                    {%endif%}
+                                                </tr>
+                                                {% endif %}
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+
+                    <!-- <a onclick="save_subscribe_status()" class="btn btn-success btn-block mb-4 mr-2">保存修改</a> -->
+
+
+
+                </div>
+
+            </div>
+        </div>
+
+    </div>
+    <!--  END CONTENT AREA  -->
+</div>
+<!-- END MAIN CONTAINER -->
+
+{% endblock %}
+
+
+{% block add_js_file %}
+
+<script>
+    $('.nav-tabs').on('shown.bs.tab', 'a', function (e) {
+        if (e.relatedTarget) {
+            $(e.relatedTarget).removeClass('active');
+        }
+    })
+</script>
+
+<script>
+    $('.table').bootstrapTable({
+        onLoadSuccess: function () {
+            $('.table tr td').each(function () {
+
+                $(this).attr("title", $(this).text());
+                $(this).css("cursor", 'pointer');
+            });
+
+        }
+    })
+</script>
+<script>
+    async function turn_off_all() {
+        lst = document.getElementsByClassName('custom-control-input');
+        const success = await save_all.call(this,false);
+        for (var i = 0; i < lst.length; i += 1) {
+            if (lst[i].checked && this.id == lst[i].id.substring(7)) {
+                if (success) {
+                    document.getElementById(`td${lst[i].id}`).bgColor = "FFFFFF";
+                    document.getElementById(`font${lst[i].id}`).color = "E1E1E1";
+                    document.getElementById(`font${lst[i].id}`).innerHTML = "未订阅";
+                    lst[i].checked = false;
+                }
+            }
+        }
+    }
+    async function turn_on_all() {
+        lst = document.getElementsByClassName('custom-control-input');
+        const success = await save_all.call(this,true);
+        for (var i = 0; i < lst.length; i += 1) {
+            if (!lst[i].checked && this.id == lst[i].id.substring(7)) {
+                if (success) {
+                    document.getElementById(`td${lst[i].id}`).bgColor = "F3FDFF";
+                    document.getElementById(`font${lst[i].id}`).color = "5F747B";
+                    document.getElementById(`font${lst[i].id}`).innerHTML = "已订阅";
+                    lst[i].checked = true;
+                }
+            }
+        }
+    }
+    async function change_status() {
+        // alert(this.checked);
+        if (!this.checked) {
+            const success = await save_subscribe_status.call(this, false);
+            if (success) {
+                document.getElementById(`td${this.id}`).bgColor = "FFFFFF";
+                document.getElementById(`font${this.id}`).color = "E1E1E1";
+                document.getElementById(`font${this.id}`).innerHTML = "未订阅";
+            }
+            else this.checked = true;
+        } else {
+            const success = await save_subscribe_status.call(this, true);
+            if (success) {
+                document.getElementById(`td${this.id}`).bgColor = "F3FDFF";
+                document.getElementById(`font${this.id}`).color = "5F747B";
+                document.getElementById(`font${this.id}`).innerHTML = "已订阅";
+            }
+            else this.checked = false;
+        }
+    }
+    async function save_subscribe_status(status) {
+        const { success } = await fetch(`/save_subscribe_status`, {
+            headers: { "Content-Type": `text/plain` },
+            method: `POST`,
+            body: JSON.stringify({ id: this.id.substring(0,7), status }),
+        })
+            .then((res) => res.json())
+            .catch(() => { success: false });
+        return success;
+    }
+    async function save_all(status){
+        const { success } = await fetch(`/save_subscribe_status`, {
+            headers: { "Content-Type": `text/plain` },
+            method: `POST`,
+            body: JSON.stringify({ otype: this.id, status }),
+        })
+            .then((res) => res.json())
+            .catch(() => { success: false });
+        return success;
+    }
+</script>
+{% endblock %}
