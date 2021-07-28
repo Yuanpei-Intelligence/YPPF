@@ -240,7 +240,6 @@ class Course(models.Model):
 
 
 class Activity(models.Model):
-
     class Meta:
         verbose_name = "活动"
         verbose_name_plural = verbose_name
@@ -265,17 +264,8 @@ class Activity(models.Model):
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
     # url,活动二维码
-    class Astatus(models.TextChoices):
-        PENDING = "审核中"
-        APPLYING = "报名中"
-        WAITING = "等待中"
-        PROCESSING = "进行中"
-        CANCELLED = "已取消"
-        FINISH = "已结束"
 
-
-
-    status = models.CharField("活动状态", choices=Astatus.choices, max_length=32)
+    cancel = models.BooleanField("活动是否取消", default=False)
     bidding = models.BooleanField("是否投点竞价", default=False)
     mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
     YQPoint = models.FloatField("元气值定价", default=0.0)
@@ -284,23 +274,29 @@ class Activity(models.Model):
     current_participants = models.IntegerField("活动当前报名人数", default=100)
     bidding = models.BooleanField("是否投点竞价", default=False)
 
-
     URL = models.URLField("相关网址", null=True, blank=True)
+
     def __str__(self):
         return f"活动：{self.title}"
-    #活动状态的变更，每次加载时更新活动状态，定时任务？双重保证？
-    def status_change(self):
-        #后期加入审核批准时，这里的筛选条件应当加上是否批准
-        if self.status!=self.Astatus.CANCELLED and self.status!=self.Astatus.FINISH:
-            now=datetime.now()
-            if self.sign_start<= now<self.sign_end :
-                self.status=self.Astatus.APPLYING
-            elif self.sign_end<=now<self.start:
-                self.status=self.Astatus.WAITING
-            elif self.start<=now<self.end:
-                self.status=self.Astatus.PROCESSING
-            elif now>=self.end:
-                self.status=self.Astatus.FINISH
+
+    # 活动状态的变更，每次加载时更新活动状态，定时任务？双重保证？
+    def status(self):
+        # 后期加入审核批准时，这里的筛选条件应当加上是否批准
+        strstatus = "审核中"  # 默认为审核中
+        if self.cancel == True:
+            strstatus = "已取消"
+            return strstatus
+        now = datetime.now()
+        if self.sign_start <= now < self.sign_end:
+            strstatus = "报名中"
+        elif self.sign_end <= now < self.start:
+            strstatus = "等待中"
+        elif self.start <= now < self.end:
+            strstatus = "进行中"
+        elif now >= self.end:
+            strstatus = "已结束"
+        return strstatus
+
 
 class TransferRecord(models.Model):
     class Meta:
@@ -319,11 +315,9 @@ class TransferRecord(models.Model):
     finish_time = models.DateTimeField("处理时间", blank=True, null=True)
     message = models.CharField("备注信息", max_length=255, default="")
 
-
     corres_act = models.ForeignKey(
         Activity, related_name="有关活动", on_delete=models.SET_NULL, null=True, blank=True
     )
-
 
     class TransferStatus(models.IntegerChoices):
         ACCEPTED = (0, "已接收")
