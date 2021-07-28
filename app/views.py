@@ -1273,44 +1273,69 @@ def getActivityInfo(request):
     valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
         return redirect('/index/')
+
+    # check activity existence
+    activity_id = request.GET.get('activityid', None)
     try:
-        activity_id = request.GET.get('activityid', None)
         activity = Activity.objects.get(id=activity_id)
+    except:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = f'活动{activity_id}不存在'
+        return render(request, '某个页面.html', locals())
 
-        organization = get_person_or_org(request.user, 'Organization')
-        assert(activity.organization_id == organization), f'Not Activity Organizer ({activity.organization_id} != {organization})'
+    # check organization existance and ownership to activity
+    organization = get_person_or_org(request.user, 'Organization')
+    if activity.organization_id != organization:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = f'{organization}不是活动的组织者'
+        return render(request, '某个页面.html', locals())
  
-        info_type = request.GET.get('infotype', None)
-        if info_type == 'sign':
-            assert(activity.status != "审核中" and activity.status != "报名中"), f'Registration Not Over ({activity.status})'
-            assert(activity.sign_end <= datetime.now()), f'Registration Not Over {activity.sign_end}'
+    info_type = request.GET.get('infotype', None)
+    if info_type == 'sign': # get registration information
+        # make sure registration has ended
+        if activity.status == "审核中" or activity.status == "报名中":
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '报名尚未截止'
+            return render(request, '某个页面.html', locals())
 
-            # are you sure it's 'Paticipant' not 'Participant' ??
-            paticipants = Paticipant.objects.filter(activity_id=activity_id)
-            paticipants = paticipants.filter(status=2)  # APLLYSUCCESS = 2  # 已报名
+        # get participants
+        # are you sure it's 'Paticipant' not 'Participant' ??
+        paticipants = Paticipant.objects.filter(activity_id=activity_id)
+        paticipants = paticipants.filter(status=2)  # APLLYSUCCESS = 2  # 已报名
 
-            output = request.GET.get('output', 'id,name,gender,telephone')
-            fields = output.split(',')
-            for field in fields:
-                assert(NaturalPerson._meta.get_field(field_name=field)), f'Invalid Field {field}'
+        # get required fields
+        output = request.GET.get('output', 'id,name,gender,telephone')
+        fields = output.split(',')
 
-            filename = f'{activity_id}-{info_type}-{output}'
-            content = map(lambda paticipant: map(lambda key: paticipant[key], fields), paticipants)
+        # check field existence
+        for field in fields:
+            try:
+                NaturalPerson._meta.get_field(field_name=field)
+            except:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = f'不合法的字段名{field}'
+                return render(request, '某个页面.html', locals())
 
-            format = request.GET.get('format', 'csv')
-            if format == 'csv':
-                buffer = io.StringIO()
-                csv.writer(buffer).writerows(content), buffer.seek(0)
-                response = HttpResponse(buffer, content_type='text/csv')
-                response['Content-Disposition'] = f'attachment; filename={filename}.csv'
-                return response  # downloadable
-            elif format == 'excel':
-                return HttpResponse('.xls Not Implemented')
-            
-            raise NameError('Format Not Supported')
-    except Exception as e:
-        print(e)
-        return redirect('/index/')
+        filename = f'{activity_id}-{info_type}-{output}'
+        content = map(lambda paticipant: map(lambda key: paticipant[key], fields), paticipants)
+
+        format = request.GET.get('format', 'csv')
+        if format == 'csv':
+            buffer = io.StringIO()
+            csv.writer(buffer).writerows(content), buffer.seek(0)
+            response = HttpResponse(buffer, content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename={filename}.csv'
+            return response  # downloadable
+        elif format == 'excel':
+            return HttpResponse('.xls Not Implemented')
+
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = f'不支持的格式{format}'
+        return render(request, '某个页面.html', locals())
+
+    html_display['warn_code'] = 1
+    html_display['warn_message'] = f'不支持的信息{info_type}'
+    return render(request, '某个页面.html', locals())
 
 
 # 发起活动
