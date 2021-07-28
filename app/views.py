@@ -1289,8 +1289,7 @@ def addActivities(request):
             return render(request, "activity_add.html", locals())
 
         with transaction.atomic():
-            new_act = Activity.objects.create(title=context['aname'], organization_id=org,
-                                              status=Activity.Astatus.PENDING)  # 默认状态是审核中
+            new_act = Activity.objects.create(title=context['aname'], organization_id=org)  # 默认状态是审核中
 
             new_act.content = context['content']
             new_act.sign_start = context['signup_start']
@@ -1305,13 +1304,6 @@ def addActivities(request):
             if context['signschema']==1:
                 new_act.bidding=True
             new_act.save()
-
-
-
-
-        """except:
-            html_display['warn_code'] = 8
-            html_display['warn_message'] = "Lauch activty has been failed! Please check your input twice!"""
         # 返回发起成功或者失败的页面
         return render(request, "activity_add.html", locals())  # warn_code==0
     
