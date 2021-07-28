@@ -18,7 +18,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         "name",
         "identity",
     ]
-    search_fields = ("person_id", "name")
+    search_fields = ("person_id__username", "name")
 
 
 class OrganizationAdmin(admin.ModelAdmin):
