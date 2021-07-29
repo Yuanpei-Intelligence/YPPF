@@ -1359,7 +1359,7 @@ def checkinActivity(request):
     # check activity existence
     activity_id = request.GET.get('activityid', None)
     try:
-        Activity.objects.get(id=activity_id)
+        activity = Activity.objects.get(id=activity_id)
     except:
         msg = '活动不存在'
         origin = '/welcome/'
@@ -1373,9 +1373,13 @@ def checkinActivity(request):
             html_display['warn_code'] = 1
             html_display['warn_message'] = '您没有参与这项活动：申请失败'
         elif paticipant.status == 2:
-            paticipant.status = 3
-            html_display['warn_code'] = 2
-            html_display['warn_message'] = '签到成功'
+            if activity.end > datetime.now():
+                paticipant.status = 3
+                html_display['warn_code'] = 2
+                html_display['warn_message'] = '签到成功'
+            else:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = '签到失败：活动已结束'
         elif paticipant.status == 3:
             html_display['warn_code'] = 1
             html_display['warn_message'] = '重复签到'
