@@ -1267,10 +1267,16 @@ def viewActivities(request):
     return render(request, "activity_info.html", locals())
 
 
+# 通过GET获得活动信息表下载链接
 # GET参数?activityid=id&infotype=sign[&output=id,name,gender,telephone][&format=csv|excel]
+#   activity_id : 活动id
+#   infotype    : sign报名信息 or 其他（以后可以拓展）
+#   output      : [可选]','分隔的需要返回的的field名
+#   format      : csv or excel
 # example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign
 # example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign&output=id,wtf
 # example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign&format=excel
+# TODO: 前端页面待对接
 def getActivityInfo(request):
     valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
@@ -1342,7 +1348,9 @@ def getActivityInfo(request):
 
 # participant checkin activity
 # GET参数?activityid=id
+#   activity_id : 活动id
 # example: http://127.0.0.1:8000/checkinActivity?activityid=1
+# TODO: 前端页面待对接
 def checkinActivity(request):
     valid, user_type, html_display = utils.check_user_type(request)
     if not valid:
