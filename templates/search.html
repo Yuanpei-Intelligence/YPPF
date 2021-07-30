@@ -1,13 +1,32 @@
 {% extends "base.html" %}
 
+{% block add_css_file %}
+<style class="text/css">
+    [data-toggle="collapse"] .fa:before {
+        font-family: 'FontAwesome';  
+        content: "\f068";
+        float: right; 
+    }
+
+    [data-toggle="collapse"].collapsed .fa:before {
+        content: "\f067"; 
+    }
+</style>
+{% endblock %}
+
 {% block mainpage %}
 <!--  BEGIN MAIN CONTAINER  -->
+
 <div class="main-container" id="container">
 
     <div class="overlay"></div>
     <div class="search-overlay"></div>
 
+    {% if html_display.user_type == "Person" %}
     {% include 'user_left_narbar.html' %}
+    {% else %}
+    {% include 'org_left_narbar.html' %}
+    {% endif %}
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
@@ -25,30 +44,43 @@
                             <div class="widget-header">
                                 <div class="row">
                                     <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                        <h4>人员搜索</h4>
+                                        <div data-toggle="collapse" href="#personsearch" role="button"
+                                            aria-expanded="false" aria-controls="collapseExample">
+                                            <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h4>人员搜索</h4>
+                                            </div>
+                                            <div style="display:flex;
+                                            justify-content: center;
+                                            align-items: center;">
+                                                <i class="fa" aria-hidden="true"></i>
+                                            </div>
+                                        </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="widget-content widget-content-area">
-                                <div class="table-responsive">
-                                    <table class="table table-bordered mb-4">
-                                        {% if people_list.count != 0 %}
-                                        <thead>
-                                            <tr>
-                                                <!-- <th>Name</th>
+                            <div class="collapse show" id="personsearch">
+                                <div class="widget-content widget-content-area">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered mb-4">
+                                            {% if people_list.count != 0 %}
+                                            <thead>
+                                                <tr>
+                                                    <!-- <th>Name</th>
                                                 <th>Gender</th>
                                                 <th>Year</th>
                                                 <th class="text-center">Major</th> -->
-                                                
-                                                {% for attribute in people_field %}
-                                                <th class="text-center"> {{attribute}} </th>
-                                                {% endfor %}
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {% for person in people_list %}
-                                            <tr>
-                                                <!--
+
+                                                    {% for attribute in people_field %}
+                                                    <th class="text-center"> {{attribute}} </th>
+                                                    {% endfor %}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for person in people_list %}
+                                                <tr>
+                                                    <!--
                                                 <td><a
                                                         href=../../stuinfo/{{person.pname}}+{{person.id}}>{{person.pname}}</a>
                                                 </td>
@@ -61,46 +93,63 @@
                                                             role="button">向Ta发起元气值转账</a></center>
                                                 </td>
                                                 -->
-                                                <!-- <td class="text-center"><span class="badge badge-success">元培学生</span></td> -->
-                                                {% for attribute in person.show_info %}
-                                                {% if forloop.counter == 1 %}
-                                                <!-- 说明此时要展示姓名，关联链接 -->
-                                                <td><u><a
-                                                        href="stuinfo/{{person.name}}+{{person.id}}">{{attribute}}</a></u>
-                                                </td>
-                                                {% else %}
-                                                <td> {{attribute}} </td>
-                                                {% endif %}
-                                                {% endfor %}
-                                                {% endfor %}
-                                        </tbody>
-                                        {% else %}
-                                        <!-- 如果列表为空 -->
-                                        <thead></thead>
-                                        <tbody>
-                                            <tr>
-                                                <td> {{not_found_message}}</td>
-                                            </tr>
-                                        </tbody>
-                                        {% endif %}
-                                    </table>
+                                                    <!-- <td class="text-center"><span class="badge badge-success">元培学生</span></td> -->
+                                                    {% for attribute in person.show_info %}
+                                                    {% if forloop.counter == 1 %}
+                                                    <!-- 说明此时要展示姓名，关联链接 -->
+                                                    <td><u><a
+                                                                href="/stuinfo/{{person.name}}+{{person.id}}">{{attribute}}</a></u>
+                                                    </td>
+                                                    {% else %}
+                                                    <td> {{attribute}} </td>
+                                                    {% endif %}
+                                                    {% endfor %}
+                                                    {% endfor %}
+                                            </tbody>
+                                            {% else %}
+                                            <!-- 如果列表为空 -->
+                                            <thead></thead>
+                                            <tbody>
+                                                <tr>
+                                                    <td> {{not_found_message}}</td>
+                                                </tr>
+                                            </tbody>
+                                            {% endif %}
+                                        </table>
+                                    </div>
+
+
+
                                 </div>
-
-
-
                             </div>
                         </div>
                     </div>
+
+
+
                     <!-- add by syb -->
                     <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
                         <div class="statbox widget box box-shadow">
                             <div class="widget-header">
                                 <div class="row">
                                     <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                        <h4>组织搜索</h4>
+                                        <div data-toggle="collapse" href="#orgsearch" role="button"
+                                            aria-expanded="false" aria-controls="collapseExample">
+                                            <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h4>组织搜索</h4>
+                                            </div>
+                                            <div style="display:flex;
+                                            justify-content: center;
+                                            align-items: center;">
+                                                <i class="fa" aria-hidden="true"></i>
+                                            </div>
+                                        </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
+                            <div class="collapse show" id="orgsearch">
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
@@ -147,6 +196,7 @@
 
                             </div>
                         </div>
+                        </div>
                     </div>
 
 
@@ -160,5 +210,8 @@
     </div>
     <!--  END CONTENT AREA  -->
 </div>
+
 <!-- END MAIN CONTAINER -->
 {% endblock %}
+
+
