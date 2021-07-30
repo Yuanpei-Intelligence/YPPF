@@ -14,7 +14,7 @@ from app.forms import UserForm
 from app.utils import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.shortcuts import render, redirect
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.contrib import auth, messages
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
@@ -27,11 +27,13 @@ from django.views.decorators.http import require_POST, require_GET
 
 import json
 from time import mktime
-from datetime import datetime
+from datetime import date, datetime
 from boottest import local_dict
 import re
 import random
 import requests  # 发送验证码
+import io
+import csv
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
@@ -1381,6 +1383,156 @@ def viewActivities(request):
     person = True
 
     return render(request, "activity_info.html", locals())
+
+
+# 通过GET获得活动信息表下载链接
+# GET参数?activityid=id&infotype=sign[&output=id,name,gender,telephone][&format=csv|excel]
+#   activity_id : 活动id
+#   infotype    : sign报名信息 or 其他（以后可以拓展）
+#   output      : [可选]','分隔的需要返回的的field名
+#   format      : csv or excel
+# example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign
+# example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign&output=id,wtf
+# example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign&format=excel
+# TODO: 前端页面待对接
+def getActivityInfo(request):
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/index/')
+
+    # check activity existence
+    activity_id = request.GET.get('activityid', None)
+    try:
+        activity = Activity.objects.get(id=activity_id)
+    except:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = f'活动{activity_id}不存在'
+        return render(request, '某个页面.html', locals())
+
+    # check organization existance and ownership to activity
+    organization = get_person_or_org(request.user, 'organization')
+    if activity.organization_id != organization:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = f'{organization}不是活动的组织者'
+        return render(request, '某个页面.html', locals())
+
+    info_type = request.GET.get('infotype', None)
+    if info_type == 'sign':  # get registration information
+        # make sure registration is over
+        if activity.status == Activity.Status.AUDIT:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '活动正在审核'
+            return render(request, '某个页面.html', locals())
+        elif activity.status == Activity.Status.CANCELED:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '活动已取消'
+            return render(request, '某个页面.html', locals())
+        elif activity.status == Activity.Status.REGISTRATION:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '报名尚未截止'
+            return render(request, '某个页面.html', locals())
+
+        # get participants
+        # are you sure it's 'Paticipant' not 'Participant' ??
+        paticipants = Paticipant.objects.filter(activity_id=activity_id)
+        paticipants = paticipants.filter(
+            status=Paticipant.AttendStatus.APLLYSUCCESS)
+
+        # get required fields
+        output = request.GET.get('output', 'id,name,gender,telephone')
+        fields = output.split(',')
+
+        # check field existence
+        for field in fields:
+            try:
+                NaturalPerson._meta.get_field(field_name=field)
+            except:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = f'不合法的字段名{field}'
+                return render(request, '某个页面.html', locals())
+
+        filename = f'{activity_id}-{info_type}-{output}'
+        content = map(lambda paticipant: map(
+            lambda key: paticipant[key], fields), paticipants)
+
+        format = request.GET.get('format', 'csv')
+        if format == 'csv':
+            buffer = io.StringIO()
+            csv.writer(buffer).writerows(content), buffer.seek(0)
+            response = HttpResponse(buffer, content_type='text/csv')
+            response['Content-Disposition'] = f'attachment; filename={filename}.csv'
+            return response  # downloadable
+        elif format == 'excel':
+            return HttpResponse('.xls Not Implemented')
+
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = f'不支持的格式{format}'
+        return render(request, '某个页面.html', locals())
+
+    html_display['warn_code'] = 1
+    html_display['warn_message'] = f'不支持的信息{info_type}'
+    return render(request, '某个页面.html', locals())
+
+
+# participant checkin activity
+# GET参数?activityid=id
+#   activity_id : 活动id
+# example: http://127.0.0.1:8000/checkinActivity?activityid=1
+# TODO: 前端页面待对接
+def checkinActivity(request):
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/index/')
+
+    # check activity existence
+    activity_id = request.GET.get('activityid', None)
+    try:
+        activity = Activity.objects.get(id=activity_id)
+        if activity.status() != Activity.Status.WAITING and activity.status() != Activity.Status.PROGRESS:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = f'签到失败：活动{activity.status()}'
+            return redirect('/viewActivities/')  # context incomplete
+    except:
+        msg = '活动不存在'
+        origin = '/welcome/'
+        return render(request, 'msg.html', locals())
+
+    # check person existance and registration to activity
+    person = get_person_or_org(request.user, 'naturalperson')
+    try:
+        paticipant = Paticipant.objects.get(
+            activity_id=activity_id, person_id=person.id)
+        if paticipant.status == Paticipant.AttendStatus.APLLYFAILED:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '您没有参与这项活动：申请失败'
+        elif paticipant.status == Paticipant.AttendStatus.APLLYSUCCESS:
+            #  其实我觉得这里可以增加一个让发起者设定签到区间的功能
+            #    或是有一个管理界面，管理一个“签到开关”的值
+            if datetime.now().date() < activity.end.date():
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = '签到失败：签到未开始'
+            elif datetime.now() >= activity.end:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = '签到失败：签到已结束'
+            else:
+                paticipant.status = Paticipant.AttendStatus.ATTENDED
+                html_display['warn_code'] = 2
+                html_display['warn_message'] = '签到成功'
+        elif paticipant.status == Paticipant.AttendStatus.ATTENDED:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '重复签到'
+        elif paticipant.status == Paticipant.AttendStatus.CANCELED:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '您没有参与这项活动：已取消'
+        else:
+            msg = f'不合理的参与状态：{paticipant.status}'
+            origin = '/welcome/'
+            return render(request, 'msg.html', locals())
+    except:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = '您没有参与这项活动：未报名'
+
+    return redirect('/viewActivities/')  # context incomplete
 
 
 # 发起活动
