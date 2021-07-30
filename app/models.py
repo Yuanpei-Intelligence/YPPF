@@ -279,22 +279,30 @@ class Activity(models.Model):
     def __str__(self):
         return f"活动：{self.title}"
 
+    class Status(models.TextChoices):
+        AUDIT = "审核中"
+        CANCELED = "已取消"
+        REGISTRATION = "报名中"
+        WAITING = "等待中"
+        PROGRESS = "进行中"
+        ENDED = "已结束"
+
     # 活动状态的变更，每次加载时更新活动状态，定时任务？双重保证？
     def status(self):
         # 后期加入审核批准时，这里的筛选条件应当加上是否批准
-        strstatus = "审核中"  # 默认为审核中
+        strstatus = self.Status.AUDIT  # 默认为审核中
         if self.cancel == True:
-            strstatus = "已取消"
+            strstatus = self.Status.CANCELED
             return strstatus
         now = datetime.now()
         if self.sign_start <= now < self.sign_end:
-            strstatus = "报名中"
+            strstatus = self.Status.REGISTRATION
         elif self.sign_end <= now < self.start:
-            strstatus = "等待中"
+            strstatus = self.Status.WAITING
         elif self.start <= now < self.end:
-            strstatus = "进行中"
+            strstatus = self.Status.PROGRESS
         elif now >= self.end:
-            strstatus = "已结束"
+            strstatus = self.Status.ENDED
         return strstatus
 
 
