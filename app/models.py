@@ -146,11 +146,11 @@ class Semester(models.TextChoices):
 
     def get(semester):  # read a string indicating the semester, return the correspoding status
         if semester == "Fall":
-            return self.FALL
+            return Semester.FALL
         elif semester == "Spring":
-            return self.SPRING
+            return Semester.SPRING
         elif semester == "Annual":
-            return self.ANNUAL
+            return Semester.ANNUAL
         else:
             raise NotImplementedError("出现未设计的学期状态")
 
@@ -256,15 +256,34 @@ class Course(models.Model):
         return str(self.cid)
 
 
+class ActivityManager(models.Manager):
+    def activated(self):
+        # 选择学年相同，并且学期相同或者覆盖的
+        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
+            semester__contains=local_dict["semester_data"]["semester"]
+        )
+
 class Activity(models.Model):
     class Meta:
         verbose_name = "活动"
         verbose_name_plural = verbose_name
+    
+    '''
+    Jul 30晚, Activity类经历了较大的更新, 请阅读群里[活动发起逻辑]文档，看一下活动发起需要用到的变量
+    (1) 删除是否允许改变价格, 直接允许价格变动, 取消政策见文档【不允许投点的价格变动】
+    (2) 取消活动报名时间的填写, 改为选择在活动结束前多久结束报名，选项见EndBefore
+    (3) 活动容量[capacity]允许是正无穷
+    (4) 增加活动状态类, 恢复之前的活动状态记录方式, 通过定时任务来改变 #TODO
+    (5) 除了定价方式[bidding]之外的量都可以改变, 其中[capicity]不能低于目前已经报名人数, 活动的开始时间不能早于当前时间+1h
+    (6) 修改活动时间同步导致报名时间的修改, 当然也需要考虑EndBefore的修改; 这部分修改通过定时任务的时间体现, 详情请见地下室schedule任务的新建和取消
+    (7) 增加活动管理的接口, activated, 筛选出这个学期的活动(见class [ActivityManager])
+
+    '''
 
     title = models.CharField("活动名称", max_length=25)
     organization_id = models.ForeignKey(
         Organization,
-        to_field="organization_id",
+        # to_field="organization_id", 删除掉to_field, 保持纯净对象操作
         related_name="actoid",
         on_delete=models.CASCADE,
     )
@@ -272,7 +291,7 @@ class Activity(models.Model):
     semester = models.CharField("活动学期", choices=Semester.choices, max_length=15, default=Semester.get(local_dict["semester_data"]["semester"]))
     publish_time = models.DateTimeField("信息发布时间", auto_now_add=True)  # 可以为空
     
-    # 删除显示报名时间, 保留一个字段表示报名截止于活动开始前多久：1h / 1d / 3d/ 7d
+    # 删除显示报名时间, 保留一个字段表示报名截止于活动开始前多久：1h / 1d / 3d / 7d
     class EndBefore(models.IntegerChoices):
         onehour = (0, "一小时")
         oneday = (1,"一天")
@@ -296,36 +315,25 @@ class Activity(models.Model):
     capacity = models.IntegerField("活动最大参与人数", default=100)
     current_participants = models.IntegerField("活动当前报名人数", default=100)
     
-    URL = models.URLField("相关网址", null=True, blank=True)
+    URL = models.URLField("活动相关(推送)网址", null=True, blank=True)
 
     def __str__(self):
         return f"活动：{self.title}"
-        
-    class Status(models.TextChoices):
-        AUDIT = "审核中"
-        CANCELED = "已取消"
-        REGISTRATION = "报名中"
-        WAITING = "等待中"
-        PROGRESS = "进行中"
-        ENDED = "已结束"
 
-    # 活动状态的变更，每次加载时更新活动状态，定时任务？双重保证？
-    def status(self):
-        # 后期加入审核批准时，这里的筛选条件应当加上是否批准
-        strstatus = "审核中"  # 默认为审核中
-        if self.cancel == True:
-            strstatus = "已取消"
-            return strstatus
-        now = datetime.now()
-        if self.sign_start <= now < self.sign_end:
-            strstatus = "报名中"
-        elif self.sign_end <= now < self.start:
-            strstatus = "等待中"
-        elif self.start <= now < self.end:
-            strstatus = "进行中"
-        elif now >= self.end:
-            strstatus = "已结束"
-        return strstatus
+    class Status(models.TextChoices):
+        REVIEWING = "审核中"
+        CANCELED = "已取消"
+        APPLYING = "报名中"
+        WAITING = "等待中"
+        PROGRESSING = "进行中"
+        END = "已结束"
+
+    # 恢复活动状态的类别
+    status = models.CharField(
+        "活动状态", choices=Status.choices, default=Status.APPLYING, max_length=32
+    )
+
+    objects = ActivityManager()
 
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
