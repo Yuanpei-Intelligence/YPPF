@@ -54,40 +54,18 @@
                                                     aria-label="Default" placeholder="活动地点">
                                             </div>
 
-                                            <div class="form-group">
-                                                <div class="row">
-                                                    <div class="col">
-                                                        <input type="text" id="maxpeople" name="maxpeople"
-                                                            class="form-control" aria-label="Default"
-                                                            placeholder="人数限制">
-                                                    </div>
-                                                    <div class="col"
-                                                        style="display: flex; flex-direction: column;justify-content: center;text-align: center;">
-                                                        <center>
-                                                            <div class="form-check"
-                                                                style="align-content: center; vertical-align: middle;">
-                                                                <input class="form-check-input" type="checkbox" value=""
-                                                                    id="unlimited_capacity" name="unlimited_capacity">
 
-                                                                <label class="form-check-label" for="defaultCheck1">
-                                                                    无人数限制
-                                                                </label>
-                                                            </div>
-                                                        </center>
-                                                    </div>
-                                                </div>
-                                            </div>
 
                                             <div class="form-group">
 
                                                 <div class="row">
                                                     <div class="col">
                                                         <input type='text' class="form-control" id='datetimepicker3'
-                                                            placeholder="活动开始时间" />
+                                                            name="actstart" placeholder="活动开始时间" />
                                                     </div>
                                                     <div class="col">
                                                         <input type='text' class="form-control" id='datetimepicker4'
-                                                            placeholder="活动截止时间" />
+                                                            name="actend" placeholder="活动截止时间" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -120,34 +98,74 @@
                                                     <div class="input-group-prepend">
                                                         <button class="btn btn-outline-primary dropdown-toggle"
                                                             type="button" data-toggle="dropdown" aria-haspopup="true"
-                                                            aria-expanded="false" id="pricebutton">报名模式</button>
+                                                            aria-expanded="false" id="pricebutton">报名模式
+                                                        </button>
                                                         <div class="dropdown-menu">
-                                                            <a class="dropdown-item"
-                                                                onclick="shows($(this).text())">先到先得</a>
-                                                            <a class="dropdown-item"
-                                                                onclick="shows($(this).text())">投点参与</a>
+                                                            <a class="dropdown-item" onclick="shows($(this).text())"
+                                                                name="get" value="get">先到先得</a>
+                                                            <a class="dropdown-item" onclick="shows($(this).text())"
+                                                                name="bid" value="bid">投点参与</a>
                                                         </div>
+                                                        <input type="hidden" id="signschema" name="signschema"
+                                                            value="" />
                                                     </div>
                                                     <input type="number" class="form-control"
                                                         aria-label="Text input with dropdown button" id="aprice"
-                                                        placeholder="最小精度为0.1" step="0.1"
+                                                        name="aprice" placeholder="最小精度为0.1" step="0.1"
                                                         οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')">
                                                 </div>
                                             </div>
+
+                                            <div class="form-group">
+                                                <div class="row">
+                                                    <div class="col">
+                                                        <input type="text" id="maxpeople" name="maxpeople"
+                                                            class="form-control" aria-label="Default"
+                                                            placeholder="人数限制">
+                                                    </div>
+                                                    <div class="col"
+                                                        style="display: flex; flex-direction: column;justify-content: center;text-align: center;">
+                                                        <center>
+                                                            <div class="form-check"
+                                                                style="align-content: center; vertical-align: middle;">
+                                                                <input class="form-check-input" type="checkbox"
+                                                                    value="1" id="unlimited_capacity"
+                                                                    name="unlimited_capacity">
+
+                                                                <label class="form-check-label" for="defaultCheck1">
+                                                                    无人数限制
+                                                                </label>
+                                                            </div>
+                                                        </center>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <!--
                                             <div class="form-group">
 
                                                 <div class="row">
                                                     <div class="col">
                                                         <input type='text' class="form-control" id='datetimepicker1'
-                                                            placeholder="报名开始时间" />
+                                                            name="signstart" placeholder="报名开始时间" />
                                                     </div>
                                                     <div class="col">
                                                         <input type='text' class="form-control" id='datetimepicker2'
-                                                            placeholder="报名截止时间" />
+                                                            name="signend" placeholder="报名截止时间" />
                                                     </div>
                                                 </div>
                                             </div>
-
+                                            -->
+                                            <div class="form-group">
+                                                <label for="aintro">报名截止于</label>
+                                                
+                                                <select id="inputState" class="form-control selectpicker">
+                                                    <option>活动开始前1小时</option>
+                                                    <option selected>活动开始前1天</option>
+                                                    <option>活动开始前3天</option>
+                                                    <option>活动开始前1周</option>
+                                                </select>
+                                            </div>
                                             <!--
                                             <div class="form-check">
                                                 <input class="form-check-input" type="checkbox" value=""
@@ -159,7 +177,6 @@
                                                 
                                             </div>
                                             -->
-
 
 
                                             <!--
@@ -275,9 +292,11 @@
         if ("先到先得" === a) {
             document.getElementById('aprice').value = "";
             document.getElementById('aprice').placeholder = "参与活动元气值价格";
+            document.getElementById('signschema').value = "0"
         } else {
             document.getElementById('aprice').value = "";
             document.getElementById('aprice').placeholder = "元气值投点最低额度";
+            document.getElementById('signschema').value = "1"
         }
     }
 
@@ -301,5 +320,6 @@
             sideBySide: true
         });
     });
+
 </script>
 {% endblock %}

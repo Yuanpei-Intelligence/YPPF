@@ -1260,6 +1260,7 @@ def viewActivities(request):
     capacity = request.POST["capacity"]  # 活动举办的容量
     """
 
+
     person = True
 
 
@@ -1415,26 +1416,23 @@ def addActivities(request):
             html_display['warn_message'] = context['warn_msg']
             # warn_code!=0失败
             return render(request, "activity_add.html", locals())
-        try:
-            with transaction.atomic():
-                new_act = Activity.objects.create(title=context['aname'], organization_id=org,
-                                                  status=Activity.Astatus.PENDING)  # 默认状态是报名中
 
-                new_act.content = context['content']
-                new_act.sign_start = context['signup_start']
+        with transaction.atomic():
+            new_act = Activity.objects.create(title=context['aname'], organization_id=org)  # 默认状态是审核中
 
-                new_act.sign_end = context['signup_end']
-                new_act.start = context['act_start']
-                new_act.end = context['act_end']
-                new_act.URL = context['URL']
-                new_act.location = context['location']
-                # new_act.QRcode = QRcode
-                new_act.YQPoint = context['aprice']
-                new_act.capacity = context['capacity']
-                new_act.save()
-        except:
-            html_display['warn_code'] = 8
-            html_display['warn_message'] = "Lauch activty has been failed! Please check your input twice!"
+            new_act.content = context['content']
+            new_act.sign_start = context['signup_start']
+            new_act.sign_end = context['signup_end']
+            new_act.start = context['act_start']
+            new_act.end = context['act_end']
+            new_act.URL = context['URL']
+            new_act.location = context['location']
+            # new_act.QRcode = QRcode
+            new_act.YQPoint = context['aprice']
+            new_act.capacity = context['capacity']
+            if context['signschema']==1:
+                new_act.bidding=True
+            new_act.save()
         # 返回发起成功或者失败的页面
         return render(request, "activity_add.html", locals())  # warn_code==0
     
