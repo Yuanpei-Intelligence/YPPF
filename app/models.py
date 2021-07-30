@@ -144,6 +144,15 @@ class Semester(models.TextChoices):
     SPRING = "Spring"
     ANNUAL = "Fall+Spring"
 
+    def get(semester):  # read a string indicating the semester, return the correspoding status
+        if semester == "Fall":
+            return self.FALL
+        elif semester == "Spring":
+            return self.SPRING
+        elif semester == "Annual":
+            return self.ANNUAL
+        else:
+            raise NotImplementedError("出现未设计的学期状态")
 
 class OrganizationManager(models.Manager):
     def activated(self):
@@ -260,33 +269,38 @@ class Activity(models.Model):
         on_delete=models.CASCADE,
     )
     year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
-    semester = models.CharField("活动学期", choices=Semester.choices, max_length=15)
+    semester = models.CharField("活动学期", choices=Semester.choices, max_length=15, default=Semester.get(local_dict["semester_data"]["semester"]))
     publish_time = models.DateTimeField("信息发布时间", auto_now_add=True)  # 可以为空
-    sign_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now)
-    sign_end = models.DateTimeField("报名结束时间", blank=True, default=datetime.now)
+    
+    # 删除显示报名时间, 保留一个字段表示报名截止于活动开始前多久：1h / 1d / 3d/ 7d
+    class EndBefore(models.IntegerChoices):
+        onehour = (0, "一小时")
+        oneday = (1,"一天")
+        threeday = (2,"三天")
+        oneweek = (3,"一周")
+    
+    endbefore = models.SmallIntegerField("报名截止于", choices=EndBefore.choices, default= EndBefore.oneday)
     start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now)
     end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now)
 
     location = models.CharField("活动地点", blank=True, max_length=200)
-    content = models.CharField("活动内容", max_length=225, blank=True)
+    introduction = models.TextField("活动简介", max_length=225, blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
     # url,活动二维码
 
-    cancel = models.BooleanField("活动是否取消", default=False)
     bidding = models.BooleanField("是否投点竞价", default=False)
-    mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
-    YQPoint = models.FloatField("元气值定价", default=0.0)
+    YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
 
+    # 允许是正无穷, 可以考虑用INTINF
     capacity = models.IntegerField("活动最大参与人数", default=100)
     current_participants = models.IntegerField("活动当前报名人数", default=100)
-    bidding = models.BooleanField("是否投点竞价", default=False)
-
+    
     URL = models.URLField("相关网址", null=True, blank=True)
 
     def __str__(self):
         return f"活动：{self.title}"
-
+        
     class Status(models.TextChoices):
         AUDIT = "审核中"
         CANCELED = "已取消"
@@ -298,19 +312,19 @@ class Activity(models.Model):
     # 活动状态的变更，每次加载时更新活动状态，定时任务？双重保证？
     def status(self):
         # 后期加入审核批准时，这里的筛选条件应当加上是否批准
-        strstatus = self.Status.AUDIT  # 默认为审核中
+        strstatus = "审核中"  # 默认为审核中
         if self.cancel == True:
-            strstatus = self.Status.CANCELED
+            strstatus = "已取消"
             return strstatus
         now = datetime.now()
         if self.sign_start <= now < self.sign_end:
-            strstatus = self.Status.REGISTRATION
+            strstatus = "报名中"
         elif self.sign_end <= now < self.start:
-            strstatus = self.Status.WAITING
+            strstatus = "等待中"
         elif self.start <= now < self.end:
-            strstatus = self.Status.PROGRESS
+            strstatus = "进行中"
         elif now >= self.end:
-            strstatus = self.Status.ENDED
+            strstatus = "已结束"
         return strstatus
 
     def save(self, *args, **kwargs):
