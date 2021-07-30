@@ -111,6 +111,10 @@ class NaturalPerson(models.Model):
                 info[i] = unpublished
         return info
 
+    def save(self, *args, **kwargs):
+        self.YQPoint = round(self.YQPoint, 1)
+        super(NaturalPerson, self).save(*args, **kwargs)
+
 
 class OrganizationType(models.Model):
     class Meta:
@@ -168,6 +172,10 @@ class Organization(models.Model):
 
     def __str__(self):
         return str(self.oname)
+
+    def save(self, *args, **kwargs):
+        self.YQPoint = round(self.YQPoint, 1)
+        super(Organization, self).save(*args, **kwargs)
 
 
 class PositionManager(models.Manager):
@@ -297,6 +305,10 @@ class Activity(models.Model):
             strstatus = "已结束"
         return strstatus
 
+    def save(self, *args, **kwargs):
+        self.YQPoint = round(self.YQPoint, 1)
+        super(Activity, self).save(*args, **kwargs)
+
 
 class TransferRecord(models.Model):
     class Meta:
@@ -326,6 +338,10 @@ class TransferRecord(models.Model):
         SUSPENDED = (3, "已终止")
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
+
+    def save(self, *args, **kwargs):
+        self.amount = round(self.amount, 1)
+        super(TransferRecord, self).save(*args, **kwargs)
 
 
 class Paticipant(models.Model):
