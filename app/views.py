@@ -606,6 +606,9 @@ def search(request):
             支持通过公开关系的个人搜索组织，即如果某自然人用户可以被上面的人员搜索检出，
             而且该用户选择公开其与组织的关系，那么该组织将在搜索界面呈现。
             搜索结果的呈现内容见organization_field
+        搜索活动
+            支持通过活动名、组织来搜索活动。只要可以搜索到组织，组织对应的活动就也可以被搜到
+            搜索结果的呈现见activity_field
     """
 
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -635,7 +638,6 @@ def search(request):
     people_list = NaturalPerson.objects.filter(
         Q(name__icontains=query) | (Q(nickname__icontains=query) & Q(show_nickname=True)) |
         (Q(stu_major__icontains=query) & Q(show_major=True)))
-
     # 接下来准备呈现的内容
     # 首先是准备搜索个人信息的部分
     people_field = [
@@ -653,14 +655,20 @@ def search(request):
 
     # 搜索组织
     # 先查找通过个人关联到的position_list
-    position_list = Position.objects.activated().filter(
-        Q(person__in=people_list) & Q(show_post=True))
+    pos_list = Position.objects.activated().filter(Q(person__in=people_list) & Q(show_post=True))
     # 通过组织名、组织类名、个人关系查找
     organization_list = Organization.objects.filter(
-        Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in=position_list.values('org')))
+        Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in = pos_list.values('org')))
 
     # 组织要呈现的具体内容
-    organization_field = ["组织名", "组织类型", "负责人", "近期活动"]
+    organization_field = ["组织名称", "组织类型", "负责人", "近期活动"]
+
+    # 搜索活动
+    activity_list = Activity.objects.filter(Q(topic__icontains=query) |
+        Q(organization_id__in=organization_list.values('organization_id')))
+
+    # 活动要呈现的内容
+    activity_field = ['活动名称', '承办组织', '状态']
 
     me = get_person_or_org(request.user, user_type)
     html_display['is_myself'] = True
