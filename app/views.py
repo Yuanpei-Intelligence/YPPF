@@ -938,7 +938,7 @@ def engage_activity(request, activity_id, willingness):
             proposer=request.user, recipient=orgnization.organization_id
         )
         record.amount = amount
-        record.message = f"Participate Activity {activity.topic}"
+        record.message = f"Participate Activity {activity.title}"
         orgnization.YQPoint += float(amount)
         record.status = TransferRecord.TransferStatus.ACCEPTED
 
@@ -1237,7 +1237,7 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
         lis[-1]['message'] = record.message
         lis[-1]['if_act_url'] = False
         if record.corres_act is not None:
-            lis[-1]['message'] = '活动' + record.corres_act.topic + '积分'
+            lis[-1]['message'] = '活动' + record.corres_act.title + '积分'
             # TODO 这里还需要补充一个活动跳转链接
 
         # 状态
