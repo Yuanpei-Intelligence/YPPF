@@ -664,7 +664,7 @@ def search(request):
     organization_field = ["组织名称", "组织类型", "负责人", "近期活动"]
 
     # 搜索活动
-    activity_list = Activity.objects.filter(Q(topic__icontains=query) |
+    activity_list = Activity.objects.filter(Q(title__icontains=query) |
         Q(organization_id__in=organization_list.values('organization_id')))
 
     # 活动要呈现的内容
