@@ -18,10 +18,7 @@
     <!--  BEGIN CONTENT PART  -->
     <div id="content" class="main-content">
         <div class="layout-px-spacing">
-            <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
-            {% if html_display.warn_code == 11trans %}
-                <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
-            {% elif html_display.warn_code == 2trans %}
+            {% if html_display.warn_code == 2 %}
                 <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
             {% elif html_display.warn_code == 1%}
                 <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>

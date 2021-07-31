@@ -66,8 +66,8 @@ def index(request):
     alert = request.GET.get('alert')
     if alert is not None:
         html_display = dict()
-        html_display['warn_code'] = 10
-        html_display['warn_message'] = "Malicious URL detected. Please contact the administrator to report this."
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = "检测到恶意 URL，请联系与系统管理员进行联系。"
         return render(request, "index.html", locals())
 
 
@@ -116,7 +116,7 @@ def index(request):
 
                 if not check_cross_site(request, arg_origin):
                     html_display = dict()
-                    html_display['warn_code'] = 11
+                    html_display['warn_code'] = 1
                     html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                     return render(request, "welcome_page.html", locals())
 
@@ -167,7 +167,7 @@ def index(request):
 
             if not check_cross_site(request, arg_origin):
                 html_display = dict()
-                html_display['warn_code'] = 11
+                html_display['warn_code'] = 1
                 html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                 return render(request, "welcome_page.html", locals())
 
