@@ -97,7 +97,7 @@
                                                     {% if forloop.counter == 1 %}
                                                     <!-- 说明此时要展示姓名，关联链接 -->
                                                     <td><u><a
-                                                                href="/stuinfo/{{person.name}}+{{person.id}}">{{attribute}}</a></u>
+                                                                href="/stuinfo/{{person.name}}+{{person.person_id.id}}">{{attribute}}</a></u>
                                                     </td>
                                                     {% else %}
                                                     <td> {{attribute}} </td>
@@ -239,9 +239,12 @@
                                                 <td>
                                                     {{act.status}}
                                                 </td>
+<<<<<<< HEAD
                                                 <td>
                                                     {{act.url}}
                                                 </td>
+=======
+>>>>>>> 57b39ee7c8148a15b9ae9475dc62a074232664f1
                                             </tr>
                                             {% endfor %}
                                         </tbody>
