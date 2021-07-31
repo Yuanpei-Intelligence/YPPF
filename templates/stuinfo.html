@@ -65,6 +65,7 @@
                                                 <line x1="3" y1="10" x2="21" y2="10"></line>
                                             </svg>
                                             {{ html_display.userinfo.stu_grade }}
+
                                         </li>
                                         <!--
                                         <li class="contacts-block__item">
@@ -103,8 +104,10 @@
                                             </svg>
                                             {{html_display.userinfo.telephone}}
                                         </li>
+
                                         
-                                        {% html_display.is_myself == False %}
+                                        {% if html_display.is_myself == False %}
+
                                         <li class="contacts-block__item">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -117,7 +120,6 @@
                                             </svg> <a href="/transPage/{{html_display.userinfo.person_id_id}}">向ta转账</a>
                                         </li>
                                         {% endif %}
-
                                     </ul>
                                 </div>
                             </div>

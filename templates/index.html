@@ -28,6 +28,12 @@
                 <div class="form-container">
                     <div class="form-content">
 
+                        {% if html_display.warn_code == 1 %}
+                            <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+                        {% elif html_display.warn_code == 2 %}
+                            <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+                        {% endif %}
+
                         <h1 class="" align="center">
                             <a href="#"><span class="brand-name"> Yuanpei Profile</span></a>
                         </h1>
@@ -104,12 +110,6 @@
                             </div>
 
                         </form>
-                        {% if invalid == True %}
-                        <div class="alert alert-warning  text-center">{{message}}</div>
-                        {% endif %}
-                        {% if modpw_status == 'yes' %}
-                        <div class="alert alert-success  text-center"> 修改密码成功！</div>
-                        {% endif %}
                         <p class="terms-conditions" align='center'>© Yuanpei Intelligence Campus <a href="">All Rights
                                 Reserved </a>.
                             <a href="/index/">Yuanpei Profile</a> is a product of Yuanpei College.
@@ -122,7 +122,7 @@
 
         <div class="form-image">
             <div class="l-image">
-                <img style="width: 100%;" src={% static "assets/img/yuanpeibg.png" %}>
+                <img style="width: 100%;" src={% static "/assets/img/yuanpeibg.png" %}>
             </div>
         </div>
 
