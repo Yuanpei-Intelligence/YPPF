@@ -1462,12 +1462,11 @@ def getActivityInfo(request):
             fields = output.split(',')
 
             # check field existence
+            allowed_fields = ['id', 'name', 'gender', 'telephone']
             for field in fields:
-                try:
-                    NaturalPerson._meta.get_field(field_name=field)
-                except:
+                if not field in allowed_fields:
                     html_display['warn_code'] = 1
-                    html_display['warn_message'] = f'不合法的字段名{field}'
+                    html_display['warn_message'] = f'不允许的字段名{field}'
                     return render(request, '某个页面.html', locals())
 
             filename = f'{activity_id}-{info_type}-{output}'
