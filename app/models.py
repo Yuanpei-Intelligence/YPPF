@@ -401,6 +401,12 @@ class Scheduled_YQPoint_Distribute(models.Model):
         Yes = 1
         No = 0
     
+    class Schedule_Type(models.IntegerField):
+        # 定期发放的类型：按月发放为0，按年发放为1；
+        # 这两种类型各最多有一个Distribute_Status为Yes的实例
+        MONTH = 0
+        SEMESTER = 1
+    
     # 发放元气值的上限，多于此值则不发放
     person_max_distribute_YQPoint = models.FloatField(name="自然人发放元气值上限")
     org_max_distribute_YQPoint = models.FloatField(name="组织发放元气值上限")
@@ -410,6 +416,7 @@ class Scheduled_YQPoint_Distribute(models.Model):
     org_YQPoint_rate = models.FloatField(name="组织获得的元气值比例", default=0)
 
     stauts = models.IntegerField("是否应用", choices=Distribute_Status.choices, default=Distribute_Status.No)
+    type = models.IntegerField("发放类型", choices=Schedule_Type.choices)
 
     def is_valid(self):
         if self.person_YQPoint_rate < 0 or self.org_YQPoint_rate < 0 or (self.person_YQPoint_rate + self.org_YQPoint_rate) > 1:
