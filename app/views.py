@@ -1,3 +1,4 @@
+from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
 from app.models import (
     NaturalPerson,
@@ -8,6 +9,7 @@ from app.models import (
     Activity,
     TransferRecord,
     Paticipant,
+    Notification,
 )
 import app.utils as utils
 from app.forms import UserForm
@@ -397,6 +399,14 @@ def orginfo(request, name=None):
 
     # 转账后跳转
     origin = request.get_full_path()
+
+    # 补充订阅该组织的按钮
+    show_subscribe = False
+    if user_type == "Person":
+        show_subscribe = True
+        subscribe_flag = True   # 默认在订阅列表中 
+        if organization_name in me.subscribe_list.values_list('oname', flat=True):
+            subscribe_flag = False
     return render(request, "orginfo.html", locals())
 
 
@@ -1259,7 +1269,6 @@ def viewActivities(request):
     capacity = request.POST["capacity"]  # 活动举办的容量
     """
 
-
     person = True
 
     return render(request, "activity_info.html", locals())
@@ -1275,7 +1284,7 @@ def addActivities(request):
     me = get_person_or_org(request.user)
     html_display['is_myself'] = True
     html_display = utils.get_org_left_narbar(
-            me, html_display['is_myself'], html_display)
+        me, html_display['is_myself'], html_display)
 
     if request.method == "POST" and request.POST:
         org = get_person_or_org(request.user, user_type)
@@ -1289,7 +1298,8 @@ def addActivities(request):
             return render(request, "activity_add.html", locals())
 
         with transaction.atomic():
-            new_act = Activity.objects.create(title=context['aname'], organization_id=org)  # 默认状态是审核中
+            new_act = Activity.objects.create(
+                title=context['aname'], organization_id=org)  # 默认状态是审核中
 
             new_act.content = context['content']
             new_act.sign_start = context['signup_start']
@@ -1301,16 +1311,16 @@ def addActivities(request):
             # new_act.QRcode = QRcode
             new_act.YQPoint = context['aprice']
             new_act.capacity = context['capacity']
-            if context['signschema']==1:
-                new_act.bidding=True
+            if context['signschema'] == 1:
+                new_act.bidding = True
             new_act.save()
         # 返回发起成功或者失败的页面
         return render(request, "activity_add.html", locals())  # warn_code==0
-    
+
     # 补充一些实用的信息
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
 
-    return render(request, "activity_add.html",locals())
+    return render(request, "activity_add.html", locals())
 
 
 @login_required(redirect_field_name='origin')
@@ -1369,3 +1379,113 @@ def save_subscribe_status(request):
                     me.subscribe_list.add(org)
         me.save()
     return JsonResponse({"success": True})
+
+
+def notification2Display(notification_list):
+    lis = []
+    # 储存这个列表中所有record的元气值的和
+    for notification in notification_list:
+        lis.append({})
+
+        # id
+        lis[-1]['id'] = notification.id
+
+        # 时间
+        lis[-1]['start_time'] = notification.start_time.strftime("%m/%d %H:%M")
+        if notification.finish_time is not None:
+            lis[-1]['finish_time'] = notification.finish_time.strftime(
+                "%m/%d %H:%M")
+
+        # 留言
+        lis[-1]['content'] = notification.content
+
+        # 状态
+        lis[-1]['status'] = notification.get_status_display()
+        lis[-1]['URL'] = notification.URL
+        lis[-1]['type'] = notification.get_type_display()
+        lis[-1]['title'] = notification.get_title_display()
+
+    return lis
+
+
+def notification_done(notification_id):
+    '''
+    调用该函数以完成一项通知。对于知晓类通知，在接收到用户点击按钮后的post表单，该函数会被调用。
+    对于需要完成的待处理通知，需要在对应的事务结束判断处，调用该函数。
+    '''
+    context = dict()
+    context['warn_code'] = 1
+    with transaction.atomic():
+        notification = Notification.objects.select_for_update().get(id=notification_id)
+        receiver = notification.receiver
+        try:
+            if hasattr(receiver, 'naturalperson'):
+                receiver = NaturalPerson.objects.activated(
+                ).select_for_update().get(person_id=receiver)
+            else:
+                receiver = Organization.objects.select_for_update().get(organization_id=receiver)
+        except:
+            context['warn_message'] = "通知对象不存在或已毕业, 请联系管理员!"
+            return context
+
+        notification.status = Notification.NotificationStatus.DONE
+        notification.finish_time = datetime.now()  # 交易完成时间
+        notification.save()
+        context['warn_code'] = 2
+        context['warn_message'] = '您已成功阅读一条通知~'
+        return context
+    context['warn_message'] = '通知失败！请联系管理员！'
+    return context
+
+
+def notification_create(receiver, type, title, content, URL):
+    '''
+    对于一个需要创建通知的事件，请调用该函数创建通知！
+        receiver: org 或 nat_person，使用object.get获取的对象
+        type: 知晓类 或 处理类
+        title: 请在数据表中查找相应事件类型，若找不到，直接创建一个新的choice
+        content: 输入通知的内容
+        URL: 需要跳转到处理事务的页面
+    '''
+    Notification.objects.create(
+        receiver=receiver, type=type, title=title, content=content, URL=URL)
+
+
+@login_required(redirect_field_name='origin')
+def notifications(request):
+    valid, user_type, html_display = utils.check_user_type(request)
+    if not valid:
+        return redirect('/index/')
+    # 接下来处理POST相关的内容
+
+    if request.method == "POST":  # 发生了通知处理的事件
+        post_args = request.POST.get("post_button")
+        notification_id = post_args
+        context = notification_done(notification_id)
+        html_display['warn_code'] = context['warn_code']
+        html_display['warn_message'] = context['warn_message']
+    me = get_person_or_org(request.user, user_type)
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
+
+    html_display["title_name"] = "Notifications"
+    html_display["narbar_name"] = "通知信箱"
+
+    done_set = Notification.objects.filter(
+        receiver=request.user, status=Notification.NotificationStatus.DONE)
+
+    undone_set = Notification.objects.filter(
+        receiver=request.user, status=Notification.NotificationStatus.UNDONE
+    )
+
+    done_list = notification2Display(
+        list(done_set.union(done_set).order_by("-finish_time")))
+    undone_list = notification2Display(
+        list(undone_set.union(undone_set).order_by("-start_time")))
+
+    return render(request, "notifications.html", locals())

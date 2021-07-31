@@ -17,9 +17,9 @@
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
         {% if html_display.warn_code == 1 %}
-                <div class="alert alert-warning  text-center" >{{ html_display.warn_message }}</div>
+        <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
         {% elif html_display.warn_code == 2 %}
-        <div class="alert alert-success  text-center" >{{ html_display.warn_message }}</div>
+        <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
         {% endif %}
         <div class="container">
             <div class="container">
@@ -136,31 +136,34 @@
                                                                             class="fa fa-envelope-o"></i>
                                                                         {{record.message}}</p>
                                                                 </div>
-                                                                <form method="POST" >
+                                                                <form method="POST">
                                                                     <div style="margin-left: 8px; ">
-                                                                    <div class="btn-group btn-group-sm">
-                                                                        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"
-                                                                        style="display:block;
+                                                                        <div class="btn-group btn-group-sm">
+                                                                            <button type="button"
+                                                                                class="btn btn-primary dropdown-toggle dropdown-toggle-split"
+                                                                                data-toggle="dropdown" style="display:block;
                                                                         white-space:nowrap; 
                                                                         overflow:hidden; ">
-                                                                          <span class="">操作</span>
-                                                                        </button>
-                                                                        <div class="dropdown-menu">
-                                                                          <button class="dropdown-item" type="submit" name='post_button'
-                                                                          value="{{record.id}}+accept" onclick="return confirm('确定接收来自{{record.obj}}的转账?')"
-                                                                          >接收</button>
-                                                                          <button class="dropdown-item" type="submit" name='post_button'
-                                                                          value="{{record.id}}+reject" onclick="return confirm('确定拒绝来自{{record.obj}}的转账?')"
-                                                                          >拒绝</button>
+                                                                                <span class="">操作</span>
+                                                                            </button>
+                                                                            <div class="dropdown-menu">
+                                                                                <button class="dropdown-item"
+                                                                                    type="submit" name='post_button'
+                                                                                    value="{{record.id}}+accept"
+                                                                                    onclick="return confirm('确定接收来自{{record.obj}}的转账?')">接收</button>
+                                                                                <button class="dropdown-item"
+                                                                                    type="submit" name='post_button'
+                                                                                    value="{{record.id}}+reject"
+                                                                                    onclick="return confirm('确定拒绝来自{{record.obj}}的转账?')">拒绝</button>
+                                                                            </div>
                                                                         </div>
-                                                                      </div>
                                                                     </div>
                                                                 </form>
                                                             </div>
                                                             {% else %}
                                                             <p style="color: rgb(66, 67, 68);"><i
-                                                                class="fa fa-envelope-o"></i>
-                                                            {{record.message}}</p>
+                                                                    class="fa fa-envelope-o"></i>
+                                                                {{record.message}}</p>
                                                             {% endif %}
                                                         </div>
 
@@ -214,7 +217,7 @@
                                                                         <p style="color: rgb(66, 67, 68);">
                                                                             {{record.finish_time}}处理</p>
                                                                     </div>
-                                                                    
+
                                                                 </div>
                                                                 <div class="d-flex justify-content-between">
                                                                     <div>

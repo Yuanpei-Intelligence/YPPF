@@ -83,7 +83,7 @@ def publish_activity(aid, only_activated=False):
         print(f"未找到id为{aid}的活动")
         return False
     org = activity.organization_id
-    subcribers = org.subscribers                # flat=True时必须只有一个键
+    subcribers = NaturalPerson.objects.difference(org.unsubsribers)               # flat=True时必须只有一个键
     if only_activated:
         subcribers = subcribers.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
     subcribers = list(subcribers.values_list("person_id__username", flat=True))
