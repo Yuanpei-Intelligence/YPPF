@@ -34,6 +34,7 @@ import random
 import requests  # 发送验证码
 import io
 import csv
+import qrcode
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
@@ -1269,9 +1270,14 @@ def viewActivities(request):
 # 通过GET获得活动信息表下载链接
 # GET参数?activityid=id&infotype=sign[&output=id,name,gender,telephone][&format=csv|excel]
 #   activity_id : 活动id
-#   infotype    : sign报名信息 or 其他（以后可以拓展）
-#   output      : [可选]','分隔的需要返回的的field名
-#   format      : csv or excel
+#   infotype    : sign报名信息 or qrcode or 其他（以后可以拓展）
+#     sign:
+#       output  : [可选]','分隔的需要返回的的field名
+#                 [默认]id,name,gender,telephone
+#       format  : [可选]csv or excel
+#                 [默认]csv
+#     qrcode:
+#       format  : [可选]
 # example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign
 # example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign&output=id,wtf
 # example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign&format=excel
@@ -1349,6 +1355,11 @@ def getActivityInfo(request):
         html_display['warn_code'] = 1
         html_display['warn_message'] = f'不支持的格式{format}'
         return render(request, '某个页面.html', locals())
+
+    elif info_type == 'qrcode':
+        # checkin begins 1 hour ahead
+        # if datetime.now() < activity.
+        pass
 
     html_display['warn_code'] = 1
     html_display['warn_message'] = f'不支持的信息{info_type}'
