@@ -13,6 +13,13 @@
     {% else %}
     {% include 'org_left_narbar.html' %}
     {% endif %}
+
+    {% if alert_for_cross_site %}
+        <script type="text/javascript">
+            var a = "{{alert_text}}"
+            alert(a);
+        </script>
+    {% endif %}
     
     <!--  BEGIN CONTENT PART  -->
     <div id="content" class="main-content">

@@ -258,6 +258,7 @@ class Activity(models.Model):
     sign_end = models.DateTimeField("报名结束时间", blank=True, default=datetime.now)
     start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now)
     end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now)
+    prepare_time = models.FloatField("活动准备小时数", default=24.0)
 
     location = models.CharField("活动地点", blank=True, max_length=200)
     content = models.CharField("活动内容", max_length=225, blank=True)
@@ -267,12 +268,11 @@ class Activity(models.Model):
 
     cancel = models.BooleanField("活动是否取消", default=False)
     bidding = models.BooleanField("是否投点竞价", default=False)
-    mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
+    # mutable_YQ = models.BooleanField("是否可以调整价格", default=False)
     YQPoint = models.FloatField("元气值定价", default=0.0)
 
     capacity = models.IntegerField("活动最大参与人数", default=100)
     current_participants = models.IntegerField("活动当前报名人数", default=100)
-    bidding = models.BooleanField("是否投点竞价", default=False)
 
     URL = models.URLField("相关网址", null=True, blank=True)
 

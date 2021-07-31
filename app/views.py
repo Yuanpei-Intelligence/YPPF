@@ -11,7 +11,7 @@ from app.models import (
 )
 import app.utils as utils
 from app.forms import UserForm
-from app.utils import MyMD5PasswordHasher, MySHA256Hasher
+from app.utils import MyMD5PasswordHasher, MySHA256Hasher, url_check, check_cross_site
 
 from django.shortcuts import render, redirect
 from django.http import HttpResponseRedirect, JsonResponse
@@ -74,6 +74,11 @@ def index(request):
                 return render(request, 'index.html', locals())
             return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
             """
+    # 恶意的 origin
+    if not url_check(arg_origin):
+        return redirect("/welcome/")
+
+
     if request.method == "POST" and request.POST:
         username = request.POST["username"]
         password = request.POST["password"]
@@ -98,9 +103,13 @@ def index(request):
             auth.login(request, userinfo)
             request.session["username"] = username
             if arg_origin is not None:
-                # 加时间戳
-                # 以及可以判断一下 arg_origin 在哪
-                # 看看是不是 '/' 开头就行
+
+                if not check_cross_site(request, arg_origin):
+                    alert_for_cross_site = True
+                    alert_text = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
+                    return render(request, "welcome_page.html", locals())
+
+
                 d = datetime.utcnow()
                 t = mktime(datetime.timetuple(d))
                 timeStamp = str(int(t))
@@ -142,6 +151,15 @@ def index(request):
     # 非 post 过来的
     if arg_origin is not None:
         if request.user.is_authenticated:
+
+
+            if not check_cross_site(request, arg_origin):
+                alert_for_cross_site = True
+                alert_text = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
+                print("?????????")
+                return render(request, "welcome_page.html", locals())
+
+
             d = datetime.utcnow()
             t = mktime(datetime.timetuple(d))
             timeStamp = str(int(t))

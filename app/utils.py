@@ -5,6 +5,7 @@ from boottest import local_dict
 
 from datetime import datetime
 import hashlib
+import re
 
 
 class MyMD5PasswordHasher(MD5PasswordHasher):
@@ -188,3 +189,28 @@ def check_ac_time(start_time, end_time):
         return False
 
     return False
+
+
+def url_check(arg_url):
+    if arg_url is None:
+        return True
+    for url in local_dict["url"].values():
+        base = re.findall('^https?://[^/]*/?', url)[0]
+        # print('base:', base)
+        if re.match(base, arg_url):
+            return True
+    return False
+
+# 允许进行 cross site 授权时，return True
+def check_cross_site(request, arg_url):
+    if arg_url is None:
+        return True
+    # 这里 base_url 最好可以改一下
+    appointment = local_dict["url"]["base_url"]
+    appointment_base = re.findall('^https?://[^/]*/', appointment)[0]
+    if re.match(appointment_base, arg_url):
+        valid, user_type, html_display = check_user_type(request)
+        if not valid or user_type == "Organization":
+            return False
+    return True
+
