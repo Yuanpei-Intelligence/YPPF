@@ -60,14 +60,20 @@ def get_person_or_org(user, user_type=None):
 
 def index(request):
     arg_origin = request.GET.get("origin")
-    modpw_status = request.GET.get("success")
+    modpw_status = request.GET.get("modinfo")
     # request.GET['success'] = "no"
     arg_islogout = request.GET.get("is_logout")
     alert = request.GET.get('alert')
+    html_display = dict()
+    if modpw_status is not None and modpw_status == "success":
+        html_display["warn_code"] = 2
+        html_display["warn_message"] = "修改密码成功!"
+        auth.logout(request)
+        return render(request, "index.html", locals())
+
     if alert is not None:
-        html_display = dict()
         html_display['warn_code'] = 1
-        html_display['warn_message'] = "检测到恶意 URL，请联系与系统管理员进行联系。"
+        html_display['warn_message'] = "检测到恶意 URL，请与系统管理员进行联系。"
         return render(request, "index.html", locals())
 
 
@@ -105,8 +111,8 @@ def index(request):
         except:
             # if arg_origin is not None:
             #    redirect(f'/login/?origin={arg_origin}')
-            message = local_dict["msg"]["404"]
-            invalid = True
+            html_display["warn_message"] = local_dict["msg"]["404"]
+            html_display["warn_code"] = 1
             return render(request, "index.html", locals())
         userinfo = auth.authenticate(username=username, password=password)
         if userinfo:
@@ -115,7 +121,6 @@ def index(request):
             if arg_origin is not None:
 
                 if not check_cross_site(request, arg_origin):
-                    html_display = dict()
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                     return render(request, "welcome_page.html", locals())
@@ -157,8 +162,8 @@ def index(request):
                 return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
                 """
         else:
-            invalid = True
-            message = local_dict["msg"]["406"]
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = local_dict["msg"]["406"]
 
     # 非 post 过来的
     if arg_origin is not None:
@@ -893,7 +898,7 @@ def modpw(request):
                     if forgetpw:
                         request.session.pop("forgetpw")  # 删除session记录
 
-                    urls = reverse("index") + "?success=yes"
+                    urls = reverse("index") + "?modinfo=success"
                     return redirect(urls)
                 except:  # modified by pht: 之前使用的if检查是错误的
                     err_code = 3

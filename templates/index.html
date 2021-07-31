@@ -30,6 +30,8 @@
 
                         {% if html_display.warn_code == 1 %}
                             <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+                        {% elif html_display.warn_code == 2 %}
+                            <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
                         {% endif %}
 
                         <h1 class="" align="center">
@@ -108,12 +110,6 @@
                             </div>
 
                         </form>
-                        {% if invalid == True %}
-                        <div class="alert alert-warning  text-center">{{message}}</div>
-                        {% endif %}
-                        {% if modpw_status == 'yes' %}
-                        <div class="alert alert-success  text-center"> 修改密码成功！</div>
-                        {% endif %}
                         <p class="terms-conditions" align='center'>© Yuanpei Intelligence Campus <a href="">All Rights
                                 Reserved </a>.
                             <a href="/index/">Yuanpei Profile</a> is a product of Yuanpei College.
