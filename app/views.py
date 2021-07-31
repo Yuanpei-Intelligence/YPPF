@@ -1766,24 +1766,11 @@ def notification_done(notification_id):
     context['warn_code'] = 1
     with transaction.atomic():
         notification = Notification.objects.select_for_update().get(id=notification_id)
-        receiver = notification.receiver
-        try:
-            if hasattr(receiver, 'naturalperson'):
-                receiver = NaturalPerson.objects.activated(
-                ).select_for_update().get(person_id=receiver)
-            else:
-                receiver = Organization.objects.select_for_update().get(organization_id=receiver)
-        except:
-            context['warn_message'] = "通知对象不存在或已毕业, 请联系管理员!"
-            return context
-
         notification.status = Notification.NotificationStatus.DONE
-        notification.finish_time = datetime.now()  # 交易完成时间
+        notification.finish_time = datetime.now()  # 通知完成时间
         notification.save()
-        context['warn_code'] = 2
-        context['warn_message'] = '您已成功阅读一条通知~'
+        context['warn_code'] = 0
         return context
-    context['warn_message'] = '通知失败！请联系管理员！'
     return context
 
 
@@ -1802,7 +1789,7 @@ def notification_create(receiver, type, title, content, URL):
 
 @login_required(redirect_field_name='origin')
 def notifications(request):
-    valid, user_type, html_display = utils.check_user_type(request)
+    valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect('/index/')
     # 接下来处理POST相关的内容
@@ -1812,7 +1799,6 @@ def notifications(request):
         notification_id = post_args
         context = notification_done(notification_id)
         html_display['warn_code'] = context['warn_code']
-        html_display['warn_message'] = context['warn_message']
     me = get_person_or_org(request.user, user_type)
     html_display['is_myself'] = True
     if user_type == 'Person':
