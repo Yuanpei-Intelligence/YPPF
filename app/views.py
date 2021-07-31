@@ -320,7 +320,7 @@ def orginfo(request, name=None):
         只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个组织界面都是【不可管理/编辑组织信息】
     """
     user = request.user
-    valid, user_type, html_display = utils.check_user_type(request)
+    valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(user, user_type)
 
     if not valid:
@@ -342,40 +342,10 @@ def orginfo(request, name=None):
         org = Organization.objects.activated().get(oname=name)
         organization_name = name
         organization_type_name = org.otype.otype_name
+        org_avatar_path = utils.get_user_ava(org, user_type)
         # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
-        # 这一部分是负责人boss的信息
-        boss = Position.objects.activated().get(org=org, pos=0).person
-        boss_display = {}
-
-        boss_display["bossname"] = boss.name
-        boss_display["year"] = boss.stu_grade
-        boss_display["major"] = boss.stu_major
-        boss_display["email"] = boss.email
-        boss_display["tel"] = boss.telephone
-        boss_display["job"] = org.otype.job_name_list[0]
-
-        # 补充左边栏信息
-        # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
-        html_display["isboss"] = (
-            True if (user_type == "Person" and boss.person_id == user) else False
-        )
-        # 判断是否为组织账户本身在登录
-        html_display["is_myself"] = me == org
-
-        # 再处理修改信息的回弹
-        modpw_status = request.GET.get("modinfo", None)
-        html_display["modpw_code"] = (
-            modpw_status is not None and modpw_status == "success"
-        )
-
-        # 补充其余信息
-        html_display = utils.get_org_left_narbar(
-            org, html_display["is_myself"], html_display
-        )
-
         # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
-
         continuing_activity_list = Activity.objects.activated().filter(
                 organization_id = org.organization_id_id
             ).filter(
@@ -404,18 +374,71 @@ def orginfo(request, name=None):
         positions = Position.objects.activated().filter(org = org).order_by("pos") # 升序
         member_list = []
         for p in positions:
-            # if p.person.show_post == True :
-            member = {}
-            member["person"] = p.person
-            member["job"] = org.otype.job_name_list[p.pos]
-            member_list.append(member)
+            if p.person.show_post == True :
+                member = {}
+                member["person"] = p.person
+                member["job"] = org.otype.job_name_list[p.pos]
+                member_list.append(member)
 
     except:
         return redirect("/welcome/")
 
+    try:
+        html_display["warn_code"] = int(request.GET.get(
+            "warn_code", 0))  # 是否有来自外部的消息
+    except:
+        return redirect("/welcome/")
+
+    html_display["warn_message"] = request.GET.get(
+        "warn_message", "")  # 提醒的具体内容
+
+    modpw_status = request.GET.get("modinfo", None)
+    if modpw_status is not None and modpw_status == "success":
+        html_display["warn_code"] = 2
+        html_display["warn_message"] = "修改个人信息成功!"
+
+    # 这一部分是负责人boss的信息
+    boss = Position.objects.activated().filter(org=org, pos=0)
+    boss_display = {}
+    if len(boss) >= 1:
+        boss = boss[0].person
+        boss_display["bossname"] = boss.name
+        boss_display["year"] = boss.stu_grade
+        boss_display["major"] = boss.stu_major
+        boss_display["email"] = boss.email
+        boss_display["tel"] = boss.telephone
+
+        # jobpos = Position.objects.activated().get(person=boss, org = org).pos
+        boss_display["job"] = org.otype.job_name_list[0]
+        boss_display['avatar_path'] = utils.get_user_ava(boss, 'Person')
+
+    # 补充左边栏信息
+    # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
+    html_display["isboss"] = (
+        True if (user_type == "Person" and boss.person_id == user) else False
+    )
+    # 判断是否为组织账户本身在登录
+    html_display["is_myself"] = me == org
+
+    # 再处理修改信息的回弹
+    modpw_status = request.GET.get("modinfo", None)
+    html_display["modpw_code"] = (
+        modpw_status is not None and modpw_status == "success"
+    )
+
+    # 补充其余信息
+    html_display = utils.get_org_left_narbar(
+        org, html_display["is_myself"], html_display
+    )
+
+    # 组织活动的信息
+
     # 补充一些呈现信息
     html_display["title_name"] = "Org. Profile"
     html_display["narbar_name"] = "组织主页"
+
+    # 转账后跳转
+    origin = request.get_full_path()
     return render(request, "orginfo.html", locals())
 
 
