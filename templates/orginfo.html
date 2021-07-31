@@ -10,13 +10,15 @@
 
     {% include 'org_left_narbar.html' %}
 
-    <!--  BEGIN CONTENT AREA  -->
-    <div id="content" class="main-content">
-        <div class="layout-px-spacing">
-            {% if html_display.modpw_code %}
-            <div class="alert alert-success  text-center">修改个人信息成功</div>
-            {% endif %}
-            <div class="row layout-spacing">
+        <!--  BEGIN CONTENT AREA  -->
+        <div id="content" class="main-content">
+            <div class="layout-px-spacing">
+                {% if html_display.warn_code == 2 %}
+                    <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+                {% elif html_display.warn_code == 1%}
+                    <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+                {% endif %}
+                <div class="row layout-spacing">
 
                 <!-- Content -->
                 <div class="col-xl-8 col-lg-6 col-md-7 col-sm-12 layout-top-spacing">
@@ -50,6 +52,7 @@
                                     {% endif %}
                                 </div>
 
+<<<<<<< HEAD
                                 <div class=" user-info-list">
 
                                                     <div class="">
@@ -82,6 +85,31 @@
 
                                                         </ul>
                                                     </div>
+=======
+                                    <div class="">
+                                        <ul class="contacts-block list-unstyled">
+                                            <li class="contacts-block__item">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="2" y="7" width="20" height="14" rx="2" ry="2" /> <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /> </svg> {{organization_type_name}}
+                                            </li>
+                                            <li class="contacts-block__item">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <polyline points="20 12 20 22 4 22 4 12" /> <rect x="2" y="7" width="20" height="5" /> <line x1="12" y1="22" x2="12" y2="7" /> <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /> <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /> </svg>元气值{{org.YQPoint}}
+                                            </li>
+
+                                            <li class="contacts-block__item">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                                    stroke-linecap="round" stroke-linejoin="round">
+                                                    <polyline points="20 12 20 22 4 22 4 12" />
+                                                    <rect x="2" y="7" width="20" height="5" />
+                                                    <line x1="12" y1="22" x2="12" y2="7" />
+                                                    <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+                                                    <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+                                                </svg> <a href="/transPage/{{html_display.org.organization_id_id}}">向ta转账</a>
+                                            </li>
+                                            
+                                        </ul>
+                                    </div>                                    
+>>>>>>> upstream/develop
                                 </div>
 
                             </div>
