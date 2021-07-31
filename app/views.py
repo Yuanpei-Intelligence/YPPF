@@ -65,7 +65,7 @@ def index(request):
     arg_islogout = request.GET.get("is_logout")
     alert = request.GET.get('alert')
     html_display = dict()
-    if modpw_status is not None and modpw_status == "success":
+    if request.method == "GET" and modpw_status is not None and modpw_status == "success":
         html_display["warn_code"] = 2
         html_display["warn_message"] = "修改密码成功!"
         auth.logout(request)
