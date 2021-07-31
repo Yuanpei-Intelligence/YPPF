@@ -301,7 +301,8 @@ class Activity(models.Model):
     endbefore = models.SmallIntegerField("报名截止于", choices=EndBefore.choices, default= EndBefore.oneday)
     start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now)
     end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now)
-    prepare_time = models.FloatField("活动准备小时数", default=24.0)
+    # prepare_time = models.FloatField("活动准备小时数", default=24.0)
+    # apply_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now)
 
     location = models.CharField("活动地点", blank=True, max_length=200)
     introduction = models.TextField("活动简介", max_length=225, blank=True)
@@ -315,7 +316,7 @@ class Activity(models.Model):
 
     # 允许是正无穷, 可以考虑用INTINF
     capacity = models.IntegerField("活动最大参与人数", default=100)
-    current_participants = models.IntegerField("活动当前报名人数", default=100)
+    current_participants = models.IntegerField("活动当前报名人数", default=0)
     
     URL = models.URLField("活动相关(推送)网址", null=True, blank=True)
 
