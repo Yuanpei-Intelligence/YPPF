@@ -1,3 +1,4 @@
+from django.template.defaulttags import register
 from app.models import (
     NaturalPerson,
     Position,
@@ -10,11 +11,10 @@ from app.models import (
 )
 import app.utils as utils
 from app.forms import UserForm
-from app.data_import import load, load_orgtype, load_org
-from app.utils import MyMD5PasswordHasher, MySHA256Hasher, get_user_ava
+from app.utils import MyMD5PasswordHasher, MySHA256Hasher, url_check, check_cross_site
 
 from django.shortcuts import render, redirect
-from django.http import HttpResponseRedirect, JsonResponse
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.contrib import auth, messages
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
@@ -27,36 +27,32 @@ from django.views.decorators.http import require_POST, require_GET
 
 import json
 from time import mktime
-from datetime import datetime
+from datetime import date, datetime, timedelta
+from urllib import parse
 from boottest import local_dict
 import re
-import random, requests  # 发送验证码
+import random
+import requests  # 发送验证码
+import io
+import csv
+import qrcode
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
 
-def load_org_data(request):
-    if request.user.is_superuser:
-        load_type = request.GET.get("loadtype", None)
-        message = "加载失败！"
-        if load_type is None:
-            message = "没有得到loadtype参数:[org或otype]"
-        elif load_type == "otype":
-            load_orgtype()
-            message = "load type成功！"
-        elif load_type == "org":
-            load_org()
-            message = "load org成功！"
+@register.filter
+def get_item(dictionary, key):
+    return dictionary.get(key)
+
+
+def get_person_or_org(user, user_type=None):
+    if user_type is None:
+        if hasattr(user, 'naturalperson'):
+            return user.naturalperson
         else:
-            message = "没有得到loadtype参数:[org或otype]"
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
-
-
-def get_person_or_org(user, user_type):
+            return user.organization
     return (
         NaturalPerson.objects.get(person_id=user)
         if user_type == "Person"
@@ -66,9 +62,24 @@ def get_person_or_org(user, user_type):
 
 def index(request):
     arg_origin = request.GET.get("origin")
-    modpw_status = request.GET.get("success")
+    modpw_status = request.GET.get("modinfo")
     # request.GET['success'] = "no"
     arg_islogout = request.GET.get("is_logout")
+    alert = request.GET.get('alert')
+    html_display = dict()
+    if request.method == "GET" and modpw_status is not None and modpw_status == "success":
+        html_display["warn_code"] = 2
+        html_display["warn_message"] = "修改密码成功!"
+        auth.logout(request)
+        return render(request, "index.html", locals())
+
+    if alert is not None:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = "检测到恶意 URL，请与系统管理员进行联系。"
+        auth.logout(request)
+        return render(request, "index.html", locals())
+
+
     if arg_islogout is not None:
         if request.user.is_authenticated:
             auth.logout(request)
@@ -77,31 +88,47 @@ def index(request):
         if request.user.is_authenticated:
             return redirect("/welcome/")
             """
-            valid, user_type , html_display = utils.check_user_type(request)
+            valid, user_type , html_display = utils.check_user_type(request.user)
             if not valid:
                 return render(request, 'index.html', locals())
             return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
             """
+    # 恶意的 origin
+    if not url_check(arg_origin):
+        return redirect("/index/?alert=1")
+
+
     if request.method == "POST" and request.POST:
         username = request.POST["username"]
         password = request.POST["password"]
 
         try:
-            user = User.objects.get(username=username)
+            user = User.objects.filter(username=username)
+            if len(user) == 0:
+                org = Organization.objects.get(
+                    oname=username)  # 如果get不到，就是账号不存在了
+                user = org.organization_id
+                username = user.username
+            else:
+                user = user[0]
         except:
             # if arg_origin is not None:
             #    redirect(f'/login/?origin={arg_origin}')
-            message = local_dict["msg"]["404"]
-            invalid = True
+            html_display["warn_message"] = local_dict["msg"]["404"]
+            html_display["warn_code"] = 1
             return render(request, "index.html", locals())
         userinfo = auth.authenticate(username=username, password=password)
         if userinfo:
             auth.login(request, userinfo)
             request.session["username"] = username
             if arg_origin is not None:
-                # 加时间戳
-                # 以及可以判断一下 arg_origin 在哪
-                # 看看是不是 '/' 开头就行
+
+                if not check_cross_site(request, arg_origin):
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
+                    return render(request, "welcome_page.html", locals())
+
+
                 d = datetime.utcnow()
                 t = mktime(datetime.timetuple(d))
                 timeStamp = str(int(t))
@@ -122,7 +149,8 @@ def index(request):
                     )
             else:
                 # 先处理初次登录
-                valid, user_type, html_display = utils.check_user_type(request)
+                valid, user_type, html_display = utils.check_user_type(
+                    request.user)
                 if not valid:
                     return redirect("/logout/")
                 me = get_person_or_org(userinfo, user_type)
@@ -131,18 +159,27 @@ def index(request):
 
                 return redirect("/welcome/")
                 """
-                valid, user_type , html_display = utils.check_user_type(request)
+                valid, user_type , html_display = utils.check_user_type(request.user)
                 if not valid:
                     return render(request, 'index.html', locals())
                 return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
                 """
         else:
-            invalid = True
-            message = local_dict["msg"]["406"]
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = local_dict["msg"]["406"]
 
     # 非 post 过来的
     if arg_origin is not None:
         if request.user.is_authenticated:
+
+
+            if not check_cross_site(request, arg_origin):
+                html_display = dict()
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
+                return render(request, "welcome_page.html", locals())
+
+
             d = datetime.utcnow()
             t = mktime(datetime.timetuple(d))
             timeStamp = str(int(t))
@@ -151,7 +188,8 @@ def index(request):
             username = request.session["username"]
             en_pw = hash_coder.encode(username + timeStamp)
             return redirect(
-                arg_origin + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
+                arg_origin +
+                f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
             )
 
     return render(request, "index.html", locals())
@@ -206,7 +244,7 @@ def stuinfo(request, name=None):
     """
 
     user = request.user
-    valid, user_type, html_display = utils.check_user_type(request)
+    valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect("/logout/")
 
@@ -219,7 +257,10 @@ def stuinfo(request, name=None):
                 oneself = NaturalPerson.objects.activated().get(person_id=user)
             except:
                 return redirect("/welcome/")
-            return redirect("/stuinfo/" + oneself.name)
+            full_path = request.get_full_path()
+            append_url = "" if (
+                "?" not in full_path) else "?" + full_path.split("?")[1]
+            return redirect("/stuinfo/" + oneself.name + append_url)
     else:
         # 先对可能的加号做处理
         name_list = name.split("+")
@@ -232,8 +273,8 @@ def stuinfo(request, name=None):
         else:  # 有很多人，这时候假设加号后面的是user的id
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
                 if (
-                    user_type == "Person"
-                    and NaturalPerson.objects.activated().get(person_id=user).name == name
+                        user_type == "Person"
+                        and NaturalPerson.objects.activated().get(person_id=user).name == name
                 ):
                     person = NaturalPerson.objects.activated().get(person_id=user)
                 else:  # 不是自己，信息不全跳转搜索
@@ -249,25 +290,34 @@ def stuinfo(request, name=None):
         html_display["is_myself"] = is_myself  # 存入显示
 
         # 处理被搜索人的信息，这里应该和“用户自己”区分开
-        join_pos_id_list = Position.objects.activated().filter(person=person)
+        join_pos_id_list = Position.objects.activated().filter(
+            Q(person=person) & Q(show_post=True))
 
         # html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
 
         # 呈现信息
         # 首先是左边栏
-        html_display = utils.get_user_left_narbar(person, is_myself, html_display)
+        html_display = utils.get_user_left_narbar(
+            person, is_myself, html_display)
+
+        try:
+            html_display["warn_code"] = int(request.GET.get(
+                "warn_code", 0))  # 是否有来自外部的消息
+        except:
+            return redirect("/welcome/")
+        html_display["warn_message"] = request.GET.get(
+            "warn_message", "")  # 提醒的具体内容
 
         modpw_status = request.GET.get("modinfo", None)
-        html_display["modpw_code"] = (
-            modpw_status is not None and modpw_status == "success"
-        )
-        html_display["warn_code"] = request.GET.get("warn_code", 0)  # 是否有来自外部的消息
-        html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+        if modpw_status is not None and modpw_status == "success":
+            html_display["warn_code"] = 2
+            html_display["warn_message"] = "修改个人信息成功!"
 
         html_display["userinfo"] = person
 
         html_display["title_name"] = "User Profile"
         html_display["narbar_name"] = "个人主页"
+        origin = request.get_full_path()
 
         return render(request, "stuinfo.html", locals())
 
@@ -280,7 +330,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         如果个人账户对应的是name对应的组织的最高权限人，那么允许登录，否则跳转回stuinfo并warning
     """
     user = request.user
-    valid, user_type, html_display = utils.check_user_type(request)
+    valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect("/logout/")
     if user_type == "Organization":
@@ -444,7 +494,7 @@ def orginfo(request, name=None):
 
 @login_required(redirect_field_name="origin")
 def homepage(request):
-    valid, user_type, html_display = utils.check_user_type(request)
+    valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = True if user_type == "Person" else False
     if not valid:
         return redirect("/logout/")
@@ -457,6 +507,22 @@ def homepage(request):
     # profile_name = "个人主页" if is_person else "组织主页"
     # profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
 
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
+
+    try:
+        html_display["warn_code"] = int(request.GET.get(
+            "warn_code", 0))  # 是否有来自外部的消息
+    except:
+        return redirect("/welcome/")
+    html_display["warn_message"] = request.GET.get(
+        "warn_message", "")  # 提醒的具体内容
+
     # 补充一些呈现信息
     html_display["title_name"] = "Welcome Page"
     html_display["narbar_name"] = "近期要闻"  #
@@ -465,7 +531,7 @@ def homepage(request):
 
 @login_required(redirect_field_name="origin")
 def account_setting(request):
-    valid, user_type, html_display = utils.check_user_type(request)
+    valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect("/logout/")
 
@@ -520,7 +586,7 @@ def account_setting(request):
 
 
 def register(request):
-    if True:
+    if request.user.is_superuser:
         if request.method == "POST" and request.POST:
             name = request.POST["name"]
             password = request.POST["password"]
@@ -585,13 +651,8 @@ def get_stu_img(request):
     stuId = request.GET.get("stuId")
     if stuId is not None:
         try:
-            print(stuId)
-            img_path = NaturalPerson.objects.get(person_id=stuId).avatar
-            if str(img_path) == "":
-                img_path = settings.MEDIA_URL + "avatar/codecat.jpg"
-            else:
-                img_path = settings.MEDIA_URL + str(img_path)
-            print(img_path)
+            stu = NaturalPerson.objects.get(person_id=stuId)
+            img_path = utils.get_user_ava(stu, 'Person')
             return JsonResponse({"path": img_path}, status=200)
         except:
             return JsonResponse({"message": "Image not found!"}, status=404)
@@ -608,60 +669,88 @@ def search(request):
         搜索组织
             支持使用组织名、组织类型搜索、一级负责人姓名
             组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
+            add by syb:
+            支持通过组织名、组织类型来搜索组织
+            支持通过公开关系的个人搜索组织，即如果某自然人用户可以被上面的人员搜索检出，
+            而且该用户选择公开其与组织的关系，那么该组织将在搜索界面呈现。
+            搜索结果的呈现内容见organization_field
+        搜索活动
+            支持通过活动名、组织来搜索活动。只要可以搜索到组织，组织对应的活动就也可以被搜到
+            搜索结果的呈现见activity_field
     """
-    try:
 
-        valid, user_type, html_display = utils.check_user_type(request)
-        if not valid:
-            return redirect("/logout/")
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect("/logout/")
 
-        is_person = True if user_type == "Person" else False
-        me = get_person_or_org(request.user, user_type)
-        html_display["is_myself"] = True
-        if is_person:
-            html_display = utils.get_user_left_narbar(
-                me, html_display["is_myself"], html_display
-            )
-        else:
-            html_display = utils.get_org_left_narbar(
-                me, html_display["is_myself"], html_display
-            )
-        # syb: 以上一段目前不注释掉运行还会报错，我去查查为什么;好像是position类里面缺一些相关的设置
-        # 或许我一会儿补一下下面报错的描述
-
-        query = request.GET.get("Query", "")
-        if query == "":
-            return redirect("/welcome/")
-
-        # 首先搜索个人
-        people_list = NaturalPerson.objects.filter(
-            Q(name__icontains=query)
-            | (Q(nickname__icontains=query) & Q(show_nickname=True))
-            | (Q(stu_major__icontains=query) & Q(show_major=True))
+    '''
+    is_person = True if user_type == "Person" else False
+    me = get_person_or_org(request.user, user_type)
+    html_display["is_myself"] = True
+    if is_person:
+        html_display = utils.get_user_left_narbar(
+            me, html_display["is_myself"], html_display
         )
-
-        # 接下来准备呈现的内容
-        # 首先是准备搜索个人信息的部分
-        people_field = [
-            "姓名",
-            "年级",
-            "班级",
-            "昵称",
-            "性别",
-            "专业",
-            "邮箱",
-            "电话",
-            "宿舍",
-            "状态",
-        ]  # 感觉将年级和班级分开呈现会简洁很多
-
-        return render(request, "search.html", locals())
-    except Exception as e:
-        print(
-            f"Error was found in app/views.py, function search.\nError description: {str(e)}\n"
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display["is_myself"], html_display
         )
-        auth.logout(request)
-        return redirect("/index/")
+    '''
+
+    query = request.GET.get("Query", "")
+    if query == "":
+        return redirect("/welcome/")
+
+    not_found_message = "找不到符合搜索的信息或相关内容未公开！"
+    # 首先搜索个人
+    people_list = NaturalPerson.objects.filter(
+        Q(name__icontains=query) | (Q(nickname__icontains=query) & Q(show_nickname=True)) |
+        (Q(stu_major__icontains=query) & Q(show_major=True)))
+    # 接下来准备呈现的内容
+    # 首先是准备搜索个人信息的部分
+    people_field = [
+        "姓名",
+        "年级",
+        "班级",
+        "昵称",
+        "性别",
+        "专业",
+        "邮箱",
+        "电话",
+        "宿舍",
+        "状态",
+    ]  # 感觉将年级和班级分开呈现会简洁很多
+
+    # 搜索组织
+    # 先查找通过个人关联到的position_list
+    pos_list = Position.objects.activated().filter(Q(person__in=people_list) & Q(show_post=True))
+    # 通过组织名、组织类名、个人关系查找
+    organization_list = Organization.objects.filter(
+        Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in = pos_list.values('org')))
+
+    # 组织要呈现的具体内容
+    organization_field = ["组织名称", "组织类型", "负责人", "近期活动"]
+
+    # 搜索活动
+    activity_list = Activity.objects.filter(Q(title__icontains=query) |
+        Q(organization_id__in=organization_list.values('organization_id')))
+
+    # 活动要呈现的内容
+    activity_field = ['活动名称', '承办组织', '状态']
+
+    me = get_person_or_org(request.user, user_type)
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
+    # 补充一些呈现信息
+    html_display["title_name"] = "Search"
+    html_display["narbar_name"] = "信息搜索"  #
+
+    return render(request, "search.html", locals())
 
 
 def test(request):
@@ -672,13 +761,11 @@ def test(request):
 def forget_password(request):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
-
         页面效果
         -------
         - 根据（邮箱）验证码完成登录，提交后跳转到修改密码界面
         - 本质是登录而不是修改密码
         - 如果改成支持验证码登录只需修改页面和跳转（记得修改函数和页面名）
-
         页面逻辑
         -------
         1. 发送验证码
@@ -686,7 +773,6 @@ def forget_password(request):
         2. 输入验证码
             2.5 保留表单信息
         3. 错误提醒和邮件发送提醒
-
         实现逻辑
         -------
         - 通过脚本使按钮提供不同的`send_captcha`值，区分按钮
@@ -698,7 +784,6 @@ def forget_password(request):
             - `err_code`=`0`或`4`是预设的提醒值，额外弹出提示框
             - forget_password.html中可以进一步修改
         - 尝试发送验证码后总是弹出提示框，通知用户验证码的发送情况
-
         注意事项
         -------
         - 尝试忘记密码的不一定是本人，一定要做好隐私和逻辑处理
@@ -730,7 +815,8 @@ def forget_password(request):
                     err_code = 3
                     err_message = "您没有设置邮箱，请发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"  # 记得填
                 else:
-                    captcha = random.randrange(1000000)  # randint包含端点，randrange不包含
+                    # randint包含端点，randrange不包含
+                    captcha = random.randrange(1000000)
                     captcha = f"{captcha:06}"
                     msg = (
                         f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
@@ -757,7 +843,8 @@ def forget_password(request):
                     if len(pre) > 5:
                         pre = pre[:2] + "*" * len(pre[2:-3]) + pre[-3:]
                     try:
-                        response = requests.post(email_url, post_data, timeout=6)
+                        response = requests.post(
+                            email_url, post_data, timeout=6)
                         response = response.json()
                         if response["status"] != 200:
                             err_code = 4
@@ -791,18 +878,29 @@ def forget_password(request):
 
 @login_required(redirect_field_name="origin")
 def modpw(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect('/index/')
+    me = get_person_or_org(request.user, user_type)
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
+
+    # 补充一些呈现信息
+    html_display["title_name"] = "Modify Password"
+    html_display["narbar_name"] = "修改密码"
+
     err_code = 0
     err_message = None
     forgetpw = request.session.get("forgetpw", "") == "yes"  # added by pht
     user = request.user
     username = user.username
-    valid, user_type, html_display = utils.check_user_type(request)
-    useroj = get_person_or_org(user, user_type)
-    isFirst = useroj.first_time_login
-    if str(useroj.avatar) == "":
-        avatar_path = settings.MEDIA_URL + "avatar/codecat.jpg"
-    else:
-        avatar_path = settings.MEDIA_URL + str(useroj.avatar)
+
+    isFirst = me.first_time_login
     if request.method == "POST" and request.POST:
         oldpassword = request.POST["pw"]
         newpw = request.POST["new"]
@@ -818,20 +916,21 @@ def modpw(request):
             err_code = 5
             err_message = "两次输入的密码不匹配"
         else:
-            userauth = auth.authenticate(username=username, password=oldpassword)
+            userauth = auth.authenticate(
+                username=username, password=oldpassword)
             if forgetpw:  # added by pht: 这是不好的写法，可改进
                 userauth = True
             if userauth:
                 try:  # modified by pht: if检查是错误的，不存在时get会报错
                     user.set_password(newpw)
                     user.save()
-                    useroj.first_time_login = False
-                    useroj.save()
+                    me.first_time_login = False
+                    me.save()
 
                     if forgetpw:
                         request.session.pop("forgetpw")  # 删除session记录
 
-                    urls = reverse("index") + "?success=yes"
+                    urls = reverse("index") + "?modinfo=success"
                     return redirect(urls)
                 except:  # modified by pht: 之前使用的if检查是错误的
                     err_code = 3
@@ -842,179 +941,210 @@ def modpw(request):
     return render(request, "modpw.html", locals())
 
 
-def load_data(request):
-    if request.user.is_superuser:
-        df_1819 = load()
-        for i in range(len(df_1819)):  # import 2018 stu info.
-            username = str(df_1819["学号"].iloc[i])
-            sno = username
-            password = sno
-            email = df_1819["邮箱"].iloc[i]
-            if email == "None":
-                if sno[0] == "2":
-                    email = sno + "@stu.pku.edu.cn"
-                else:
-                    email = sno + "@pku.edu.cn"
-            tel = str(df_1819["手机号"].iloc[i])
-            year = "20" + sno[0:2]
-            gender = df_1819["性别"].iloc[i]
-            major = df_1819["专业"].iloc[i]
-            name = df_1819["姓名"].iloc[i]
-            stu_class = df_1819["班级"].iloc[i]
-            user = User.objects.create(username=username)
-            user.set_password(password)
-            user.save()
-            stu = NaturalPerson.objects.create(person_id=user)
-            stu.email = email
-            stu.telephone = tel
-            stu.stu_grade = year
-            if gender == "男":
-                stu.gender = NaturalPerson.Gender.MALE
-            elif gender == "女":
-                stu.gender = NaturalPerson.Gender.FEMALE
-            else:
-                stu.gender = NaturalPerson.Gender.OTHER
-            stu.stu_major = major
-            stu.name = name
-            stu.stu_class = stu_class
-            stu.save()
-        message = "导入学生信息成功！"
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
-
-
-# 参与活动，get 传两个简单参数即可，活动 aid，价格等级
-# 再加一个 origin from，点一下即可返回 ( 可以看到已经报名 )
-# 活动的多字段怎么弄
-@require_GET
-@login_required(redirect_field_name="origin")
-def engage_activity(request):
-    origin = request.GET.get("origin")
-    if origin is None:
-        origin = "/"
+# 调用的时候最好用 try
+# 调用者把 activity_id 作为参数传过来
+def engage_activity(request, activity_id, willingness):
     context = dict()
-    context["origin"] = origin
-    choice = request.GET.get("choice")
-    # 默认是 0，没有分级的情况下可以只传 activity_id
-    if choice is None:
-        choice = 0
-    else:
-        choice = int(choice)
-    activity_id = request.GET.get("activity_id")
-    person_id = request.session["username"]
+    context['success'] = False
+    with transaction.atomic():
+        try:
+            activity = Activity.objects.select_for_update().get(id=activity_id)
+            payer = NaturalPerson.objects.select_for_update().get(person_id=request.user)
+        except:
+            context['msg'] = "Can not find activity. If you are not deliberately do it, please contact the administrator to report this bug."
+            return context
+        '''
+        assert len(activity) == 1
+        assert len(payer) == 1
+        activity = activity[0]
+        payer = payer[0]
+        '''
+        if activity.status != Activity.Astatus.APPLYING:
+            context['msg'] = "The activity is not open for applying."
+            return context
 
-    try:
-        activity = Activity.objects.select_for_update().filter(id=activity_id)
-        payer = NaturalPerson.objects.select_for_update().filter(
-            person_id__username=person_id
-        )
-        with transaction.atomic():
-            assert len(activity) == 1
-            assert len(payer) == 1
-            activity = activity[0]
-            payer = payer[0]
-
-            try:
-                panticipant = Paticipant.objects.get(
-                    activity_id=activity, person_id=payer
-                )
-                context[
-                    "msg"
-                ] = "You have already participated in the activity. If you are not deliberately do it, please contact the administrator to report this bug."
-                return render(request, "msg.html", context)
-            except:
-                pass
-
-            organization_id = activity.organization_id_id
-            orgnization = Organization.objects.select_for_update().filter(
-                organization_id=organization_id
-            )
-            assert len(orgnization) == 1
-            orgnization = orgnization[0]
-
-            amount = float(activity.YQPoint[choice])
-            cnt = activity.places[choice]
-            if cnt <= 0:
-                context["msg"] = "Failed to fetch the ticket."
-                return render(request, "msg.html", context)
-            if payer.YQPoint < amount:
-                context["msg"] = "No enough YQPoint"
-                return render(request, "msg.html", context)
-            payer.YQPoint -= float(amount)
-            activity.places[choice] = cnt - 1
-            orgnization.YQPoint += float(amount)
-
-            record = TransferRecord.objects.create(
-                proposer=request.user, recipient=orgnization.organization_id
-            )
-            record.amount = amount
-            record.message = f"Participate Activity {activity.topic}"
-            record.status = 0  # Wating
-            record.time = str(datetime.now())
-
-            panticipant = Paticipant.objects.create(
+        try:
+            panticipant = Paticipant.objects.get(
                 activity_id=activity, person_id=payer
             )
+            context[
+                "msg"
+            ] = "You have already participated in the activity. If you are not deliberately do it, please contact the administrator to report this bug."
+            return context
+        except:
+            pass
+        organization_id = activity.organization_id_id
+        orgnization = Organization.objects.select_for_update().get(
+            organization_id=organization_id
+        )
+        '''
+        assert len(orgnization) == 1
+        orgnization = orgnization[0]
+        '''
 
-            panticipant.save()
-            record.save()
-            payer.save()
-            activity.save()
-            orgnization.save()
+        if not activity.bidding:
+            amount = float(activity.YQPoint)
+            # transaction，直接减没事
+            if activity.current_participants < activity.capacity:
+                activity.current_participants += 1
+            else:
+                context["msg"] = "Failed to fetch the ticket."
+                return context
+        else:
+            amount = willingness
+            # 依然增加，此时current_participants统计的是报名的人数，是可以比总人数多的
+            activity.current_participants += 1
 
-    except:
-        context[
-            "msg"
-        ] = "Unexpected failure. If you are not deliberately do it, please contact the administrator to report this bug."
-        return render(request, "msg.html", context)
+        try:
+            assert amount == int(amount * 10) / 10
+        except:
+            context['msg'] = "Not supported precision"
+
+        if payer.YQPoint < amount:
+            context['msg'] = 'Not enough YQPoint in account'
+            return context
+
+        payer.YQPoint -= amount
+
+        record = TransferRecord.objects.create(
+            proposer=request.user, recipient=orgnization.organization_id
+        )
+        record.amount = amount
+        record.message = f"Participate Activity {activity.title}"
+        orgnization.YQPoint += float(amount)
+        record.status = TransferRecord.TransferStatus.ACCEPTED
+
+        record.time = str(datetime.now())
+        record.corres_act = activity
+
+        panticipant = Paticipant.objects.create(
+            activity_id=activity, person_id=payer
+        )
+        if not activity.bidding:
+            panticipant.status = Paticipant.AttendStatus.APLLYSUCCESS
+
+        panticipant.save()
+        record.save()
+        payer.save()
+        activity.save()
+        orgnization.save()
 
     context["msg"] = "Successfully participate the activity."
-    return render(request, "msg.html", context)
+    context['success'] = True
+    return context
 
 
 # 用已有的搜索，加一个转账的想他转账的 field
 # 调用的时候传一下 url 到 origin
 # 搜索不希望出现学号，rid 为 User 的 index
-@require_GET
 @login_required(redirect_field_name="origin")
-def transaction_page(request):
-    recipient_id = request.GET.get("rid")
-    origin = request.GET.get("origin")
-    if origin is None:
-        origin = "/"
-    # 可以有一个默认金额，但好像用不到
-    # amount = request.GET.get('amount')
-    context = dict()
-
-    # r_user = User.objects.get(id=recipient_id)
-
-    try:
-        if re.match("zz\d+", recipient_id) is not None:
-            recipient = Organization.objects.get(organization_id=recipient_id)
-            recipient_type = "org"
-        else:
-            recipient = NaturalPerson.objects.get(person_id=recipient_id)
-            recipient_type = "np"
-    except:
-        context[
-            "msg"
-        ] = "Unexpected recipient. If you are not deliberately doing this, please contact the administrator to report this bug."
-        context["origin"] = origin
-        return render(request, "msg.html", context)
-
-    if recipient_type == "np":
-        name = recipient.nickname
-        if name == "":
-            name = recipient.name
-        context["avatar"] = recipient.avatar
+def transaction_page(request, rid=None):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect('/index/')
+    me = get_person_or_org(request.user, user_type)
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
     else:
-        name = recipient.oname
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
+
+    # 补充一些呈现信息
+    html_display["title_name"] = "Transaction"
+    html_display["narbar_name"] = "发起转账"
+
+    context = dict()
+    if request.method == "POST":
+        # 如果是post方法，从数据中读取rid
+        rid = request.POST.get("rid")  # index
+
+    # 同样首先进行合法性检查
+    try:
+        user = User.objects.get(id=rid)
+        recipient = get_person_or_org(user)
+    except:
+        urls = "/welcome/" + "?warn_code=1&warn_message=遭遇非法收款人!如有问题, 请联系管理员!"
+        return redirect(urls)
+
+    # 不要转给自己
+    if int(rid) == request.user.id:
+        urls = "/welcome/" + "?warn_code=1&warn_message=遭遇非法收款人!如有问题, 请联系管理员!"
+        return redirect(urls)
+
+    # 获取名字
+    _, _, context = utils.check_user_type(user)
+    name = recipient.name if context["user_type"] == "Person" else recipient.oname
     context["name"] = name
-    context["rid"] = recipient_id
-    context["rtype"] = recipient_type
-    context["origin"] = origin
-    return render(request, "transaction_page.html", context)
+    context["rid"] = rid
+    context["YQPoint"] = me.YQPoint
+
+    # 储存返回跳转的url
+    if context["user_type"] == "Person":
+        context["return_url"] = context["profile_url"] + context["name"] + "+" + context["rid"]
+    else:
+        context["return_url"] = context["profile_url"] + context["name"]
+
+    # 如果是post, 说明发起了一起转账
+    # 到这里, rid没有问题, 接收方和发起方都已经确定
+    if request.method == "POST":
+        # 获取转账消息, 如果没有消息, 则为空
+        transaction_msg = request.POST.get("msg", "")
+
+        # 检查发起转账的数据
+        try:
+            amount = float(request.POST.get("amount", None))
+            assert amount is not None
+            assert amount > 0
+        except:
+            html_display["warn_code"] = 1
+            html_display["warn_message"] = "转账金额为空或为负数, 请填写合法的金额!"
+            return render(request, "transaction_page.html", locals())
+
+        if int(amount * 10) / 10 != amount:
+            html_display["warn_code"] = 1
+            html_display["warn_message"] = "转账金额的最大精度为0.1, 请填写合法的金额!"
+            return render(request, "transaction_page.html", locals())
+
+        # 到这里, 参数的合法性检查完成了, 接下来应该是检查发起人的账户, 够钱就转
+        try:
+            with transaction.atomic():
+                # 首先锁定用户
+                if user_type == "Person":
+                    payer = NaturalPerson.objects.activated(
+                    ).select_for_update().get(person_id=request.user)
+                else:
+                    payer = Organization.objects.activated().select_for_update().get(
+                        organization_id=request.user)
+
+                # 接下来确定金额
+                if payer.YQPoint < amount:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "现存元气值余额为" + str(payer.YQPoint) + ", 不足以发起额度为" + str(amount) +"的转账!"
+                else:
+                    payer.YQPoint -= amount
+                    record = TransferRecord.objects.create(
+                        proposer=request.user, recipient=user, amount = amount, message = transaction_msg
+                    )
+                    record.save()
+                    payer.save()
+                    warn_message =  "成功发起向" + name + "的转账! 元气值将在对方确认后到账。"
+
+                    # TODO 发送微信消息
+
+                    # 跳转回主页, 首先先get主页位置
+                    urls = context["return_url"] + f"?warn_code=2&warn_message={warn_message}"
+                    return redirect(urls)        
+                    
+
+        except:
+            html_display["warn_code"] = 1
+            html_display["warn_message"] = "出现无法预料的问题, 请联系管理员!"
+
+
+
+    return render(request, "transaction_page.html", locals())
 
 
 # 涉及表单，一般就用 post 吧
@@ -1023,20 +1153,21 @@ def transaction_page(request):
 @require_POST
 @login_required(redirect_field_name="origin")
 def start_transaction(request):
-    recipient_id = request.POST.get("rid")  # index
-    recipient_type = request.POST.get("rtype")
+    rid = request.POST.get("rid")  # index
     origin = request.POST.get("origin")
     amount = request.POST.get("amount")
+    amount = float(amount)
     transaction_msg = request.POST.get("msg")
     name = request.POST.get("name")
     context = dict()
     context["origin"] = origin
 
-    # r_user = User.objects.get(username=recipient_id)
+    user = User.objects.get(id=rid)
 
     try:
-        # 允许一位小数，* 10 存成整数
-        amount = int(float(amount) * 10)
+        # 允许一位小数
+        assert amount == int(float(amount) * 10)/10
+        assert amount > 0
     except:
         context[
             "msg"
@@ -1044,50 +1175,32 @@ def start_transaction(request):
         return render(request, "msg.html", context)
 
     try:
-        if recipient_type == "np":
-            recipient = NaturalPerson.objects.get(person_id=recipient_id).person_id
-        else:
-            recipient = Organization.objects.get(
-                organization_id=recipient_id
-            ).organization_id
+        user = User.objects.get(id=rid)
     except:
         context[
             "msg"
         ] = "Unexpected recipient. If you are not deliberately doing this, please contact the administrator to report this bug."
         return render(request, "msg.html", context)
 
-    payer_id = request.session["username"]
-    if re.match("zz\d+", payer_id) is not None:
-        payer = Organization.objects.get(organization_id=request.user)
-    else:
-        payer = NaturalPerson.objects.get(person_id=request.user)
-
     try:
-        if re.match("zz\d+", payer_id) is not None:
-            payer = Organization.objects.select_for_update().filter(
-                organization_id=request.user
-            )
-        else:
-            payer = NaturalPerson.objects.select_for_update().filter(
-                person_id=request.user
-            )
+        payer = get_person_or_org(request.user)
         with transaction.atomic():
-            assert len(payer) == 1
-            payer = payer[0]
-            payer.YQPoint -= float(amount)
+            if payer.YQPoint >= float(amount):
+                payer.YQPoint -= float(amount)
+            else:
+                raise ValueError
             # TODO 目前用的是 nickname，可能需要改成 name
             # 需要确认 create 是否会在数据库产生记录，如果不会是否会有主键冲突？
             record = TransferRecord.objects.create(
-                proposer=request.user, recipient=recipient
+                proposer=request.user, recipient=user
             )
             record.amount = amount
             record.message = transaction_msg
-            record.status = 1  # Wating
             record.time = str(datetime.now())
             record.save()
-
-            # TODO 确认 save 之后会释放锁？
             payer.save()
+
+            # TODO 发送微信消息
 
     except:
         context[
@@ -1099,74 +1212,218 @@ def start_transaction(request):
     return render(request, "msg.html", context)
 
 
-@require_GET
-@login_required(redirect_field_name="origin")
-def confirm_transaction(request):
-    tid = request.GET.get("tid")
-    reject = request.GET.get("reject")
-    origin = request.GET.get("origin")
-    if origin is None:
-        origin = "/"
+def confirm_transaction(request, tid=None, reject=None):
     context = dict()
-    try:
-        record = TransferRecord.objects.select_for_update().filter(id=tid)
-        with transaction.atomic():
-            assert len(record) == 1
-            record = record[0]
-            if record.recipient != request.user:
-                context[
-                    "msg"
-                ] = "The transaction is not yours. If you are not deliberately doing this, please contact the administrator to report this bug."
-                return render(request, "msg.html", context)
-            if record.status != 1:
-                context[
-                    "msg"
-                ] = "The transaction has already been dealt. If you are not deliberately doing this, please contact the administrator to report this bug."
-                return render(request, "msg.html", context)
-            payer = record.proposer
-            if re.match("zz\d+", payer.username) is not None:
-                payer = Organization.objects.select_for_update().filter(
-                    organization_id=payer
-                )
+    context['warn_code'] = 1    # 先假设有问题
+    with transaction.atomic():
+        try:
+            record = TransferRecord.objects.select_for_update().get(
+                id=tid, recipient=request.user)
+
+        except Exception as e:
+
+            context[
+                "warn_message"
+            ] = "交易遇到问题, 请联系管理员!" + str(e)
+            return context
+
+        if record.status != TransferRecord.TransferStatus.WAITING:
+            context[
+                "warn_message"
+            ] = "交易已经完成, 请不要重复操作!"
+            return context
+
+        payer = record.proposer
+        try:
+            if hasattr(payer, 'naturalperson'):
+                payer = NaturalPerson.objects.activated().select_for_update().get(person_id=payer)
             else:
-                payer = NaturalPerson.objects.select_for_update().filter(
-                    person_id=payer
-                )
-            assert len(payer) == 1
-            payer = payer[0]
-            recipient = record.recipient
-            if re.match("zz\d+", recipient.username) is not None:
-                recipient = Organization.objects.select_for_update().filter(
-                    organization_id=recipient
-                )
-            else:
-                recipient = NaturalPerson.objects.select_for_update().filter(
-                    person_id=recipient
-                )
-            assert len(recipient) == 1
-            recipient = recipient[0]
-            if reject == "True":
-                record.status = 2
-                payer.YQPoint += record.amount
-            else:
-                record.status = 0
-                recipient.YQPoint += record.amount
-            record.save()
+                payer = Organization.objects.select_for_update().get(organization_id=payer)
+        except:
+            context['warn_message'] = "交易对象不存在或已毕业, 请联系管理员!"
+            return context
+
+        recipient = record.recipient
+        if hasattr(recipient, 'naturalperson'):
+            recipient = NaturalPerson.objects.activated(
+            ).select_for_update().get(person_id=recipient)
+        else:
+            recipient = Organization.objects.select_for_update().get(organization_id=recipient)
+
+        if reject is True:
+            record.status = TransferRecord.TransferStatus.REFUSED
+            payer.YQPoint += record.amount
             payer.save()
+            context['warn_message'] = "拒绝转账成功!"
+        else:
+            record.status = TransferRecord.TransferStatus.ACCEPTED
+            recipient.YQPoint += record.amount
             recipient.save()
-        context["msg"] = "Confirmed transaction."
-        context["origin"] = origin
-        return render(request, "msg.html", context)
-    except:
-        context[
-            "msg"
-        ] = "Can not find the transaction record. If you are not deliberately doing this, please contact the administrator to report this bug."
-        return render(request, "msg.html", context)
+            context['warn_message'] = "交易成功!"
+        record.finish_time = datetime.now()  # 交易完成时间
+        record.save()
+        context["warn_code"] = 2
+
+        return context
+
+    context['warn_message'] = "交易遇到问题, 请联系管理员!"
+    return context
+
+
+def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_list
+    lis = []
+    amount = {'send': 0.0,
+              'recv': 0.0}
+    # 储存这个列表中所有record的元气值的和
+    for record in record_list:
+        lis.append({})
+
+        # 确定类型
+        record_type = 'send' if record.proposer.username == user.username else 'recv'
+
+        # id
+        lis[-1]['id'] = record.id
+
+        # 时间
+        lis[-1]['start_time'] = record.start_time.strftime("%m/%d %H:%M")
+        if record.finish_time is not None:
+            lis[-1]['finish_time'] = record.finish_time.strftime("%m/%d %H:%M")
+
+        # 对象
+        # 如果是给出列表，那么对象就是接收者
+        obj_user = record.recipient if record_type == 'send' else record.proposer
+        lis[-1]['obj_direct'] = 'To  ' if record_type == 'send' else 'From'
+        if hasattr(obj_user, 'naturalperson'):  # 如果OneToOne Field在个人上
+            lis[-1]['obj'] = obj_user.naturalperson.name
+            lis[-1]['obj_url'] = '/stuinfo/' + \
+                lis[-1]['obj'] + "+" + str(obj_user.id)
+        else:
+            lis[-1]['obj'] = obj_user.organization.oname
+            lis[-1]['obj_url'] = '/orginfo/' + lis[-1]['obj']
+
+        # 金额
+        lis[-1]['amount'] = record.amount
+        amount[record_type] += record.amount
+
+        # 留言
+        lis[-1]['message'] = record.message
+        lis[-1]['if_act_url'] = False
+        if record.corres_act is not None:
+            lis[-1]['message'] = '活动' + record.corres_act.title + '积分'
+            # TODO 这里还需要补充一个活动跳转链接
+
+        # 状态
+        lis[-1]['status'] = record.get_status_display()
+
+    # 对外展示为 1/10
+    '''
+    统一在前端修改
+    for key in amount:
+        amount[key] = amount[key]/10
+    '''
+    # 由于误差, 将amount调整为小数位数不超过2
+    for key in amount.keys():
+        amount[key] = round(amount[key],1)
+    return lis, amount
+
+
+# modified by Kinnuch
+
+@login_required(redirect_field_name='origin')
+def myYQPoint(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect('/logout/')
+
+    # 接下来处理POST相关的内容
+    html_display['warn_code'] = 0
+    if request.method == "POST":  # 发生了交易处理的事件
+        try:  # 检查参数合法性
+            post_args = request.POST.get("post_button")
+            record_id, action = post_args.split(
+                "+")[0], post_args.split("+")[1]
+            assert action in ['accept', 'reject']
+            reject = (action == 'reject')
+        except:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "交易遇到问题,请不要非法修改参数!"
+
+        if html_display['warn_code'] == 0:  # 如果传入参数没有问题
+            # 调用确认预约API
+            context = confirm_transaction(request, record_id, reject)
+            # 此时warn_code一定是1或者2，必定需要提示
+            html_display['warn_code'] = context['warn_code']
+            html_display['warn_message'] = context['warn_message']
+
+    me = get_person_or_org(request.user, user_type)
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
+    # 补充一些呈现信息
+    html_display["title_name"] = "My YQPoint"
+    html_display["narbar_name"] = "我的元气值"  #
+
+    to_send_set = TransferRecord.objects.filter(
+        proposer=request.user, status=TransferRecord.TransferStatus.WAITING)
+
+    to_recv_set = TransferRecord.objects.filter(
+        recipient=request.user, status=TransferRecord.TransferStatus.WAITING)
+
+    issued_send_set = TransferRecord.objects.filter(proposer=request.user, status__in=[
+        TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED])
+
+    issued_recv_set = TransferRecord.objects.filter(recipient=request.user, status__in=[
+        TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED])
+
+    # to_set 按照开始时间降序排列
+    to_set = to_send_set.union(to_recv_set).order_by("-start_time")
+    # issued_set 按照完成时间及降序排列
+    # 这里应当要求所有已经issued的记录是有执行时间的
+    issued_set = issued_send_set.union(
+        issued_recv_set).order_by("-finish_time")
+
+    to_list, amount = record2Display(to_set, request.user)
+    issued_list, _ = record2Display(issued_set, request.user)
+
+    '''
+    to_send_list, to_send_amount = record2Display(record_list=TransferRecord.objects.filter(
+        proposer=request.user, status=TransferRecord.TransferStatus.WAITING),
+        record_type='send')
+    to_recv_list, to_recv_amount = record2Display(record_list=TransferRecord.objects.filter(
+        recipient=request.user, status=TransferRecord.TransferStatus.WAITING),
+        record_type='recv')
+    issued_send_list, _ = record2Display(record_list=TransferRecord.objects.filter(proposer=request.user, status__in=[
+        TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED]),
+        record_type='send')
+    issued_recv_list, _ = record2Display(record_list=TransferRecord.objects.filter(recipient=request.user, status__in=[
+        TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED]),
+        record_type='recv')
+    to_list = to_recv_list + to_send_list
+    issued_list = issued_recv_list + issued_send_list
+    # to_list 按照发起时间倒序排列
+    to_list = sorted(to_list, key=lambda x: x['finish_time'], reverse=...)
+    # issued_list 按照处理时间倒序排列
+    '''
+
+    show_table = {
+        'obj': '对象',
+        'time': '时间',
+        'amount': '金额',
+        'message': '留言',
+        'status': '状态'
+    }
+
+    return render(request, 'myYQPoint.html', locals())
 
 
 def showActivities(request):
     notes = [
-        {"title": "活动名称1", "Date": "11/01/2019", "Address": ["B107A", "B107B"]},
+        {"title": "活动名称1", "Date": "11/01/2019",
+            "Address": ["B107A", "B107B"]},
         {"title": "活动名称2", "Date": "11/02/2019", "Address": ["B108A"]},
         {"title": "活动名称3", "Date": "11/02/2019", "Address": ["B108A"]},
         {"title": "活动名称4", "Date": "11/02/2019", "Address": ["B108A"]},
@@ -1179,21 +1436,6 @@ def showActivities(request):
 
 
 def viewActivities(request):
-    
-    activity_display = {
-        "aname":"名称待定",
-        "signupStart":"none",
-        "signupEnd":"none",
-        "actStart":"none",
-        "actEnd":"none",
-        "aintro":"这里什么都没有哦～",
-        "URL":"none",
-        "aprice":"zero",
-        "host":"元培学院",
-        "places":["地下室B117","地下室B119"]
-    }
-
-    
     """
     aname = str(request.POST["aname"])  # 活动名称
     organization_id = request.POST["organization_id"]  # 组织id
@@ -1203,7 +1445,7 @@ def viewActivities(request):
     URL = str(request.POST["URL"])  # 活动推送链接
     QRcode = request.POST["QRcode"]  # 收取元气值的二维码
     aprice = request.POST["aprice"]  # 活动价格
-    places = request.POST["places"]  # 活动举办的地点，默认是list
+    capacity = request.POST["capacity"]  # 活动举办的容量
     """
 
     person = True
@@ -1211,20 +1453,293 @@ def viewActivities(request):
     return render(request, "activity_info.html", locals())
 
 
-def addActivities(request):
-    """
-    aname = str(request.POST["aname"])  # 活动名称
-    organization_id = request.POST["organization_id"]  # 组织id
-    astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
-    afinish = request.POST["afinish"]
-    content = str(request.POST["content"])
-    URL = str(request.POST["URL"])  # 活动推送链接
-    QRcode = request.POST["QRcode"]  # 收取元气值的二维码
-    aprice = request.POST["aprice"]  # 活动价格
-    places = request.POST["places"]  # 活动举办的地点，默认是list
-    """
+# 通过GET获得活动信息表下载链接
+# GET参数?activityid=id&infotype=sign[&output=id,name,gender,telephone][&format=csv|excel]
+# GET参数?activityid=id&infotype=qrcode
+#   activity_id : 活动id
+#   infotype    : sign or qrcode or 其他（以后可以拓展）
+#     sign报名信息:
+#       output  : [可选]','分隔的需要返回的的field名
+#                 [默认]id,name,gender,telephone
+#       format  : [可选]csv or excel
+#                 [默认]csv
+#     qrcode签到二维码
+# example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign
+# example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign&output=id,wtf
+# example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign&format=excel
+# example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=qrcode
+# TODO: 前端页面待对接
+def getActivityInfo(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect('/index/')
 
-    person = True
+    # check activity existence
+    activity_id = request.GET.get('activityid', None)
+    try:
+        activity = Activity.objects.get(id=activity_id)
+    except:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = f'活动{activity_id}不存在'
+        return render(request, '某个页面.html', locals())
+
+    # check organization existance and ownership to activity
+    organization = get_person_or_org(request.user, 'organization')
+    if activity.organization_id != organization:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = f'{organization}不是活动的组织者'
+        return render(request, '某个页面.html', locals())
+
+    info_type = request.GET.get('infotype', None)
+    if info_type == 'sign':  # get registration information
+        # make sure registration is over
+        if activity.status == Activity.Status.REVIEWING:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '活动正在审核'
+            return render(request, '某个页面.html', locals())
+
+        elif activity.status == Activity.Status.CANCELED:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '活动已取消'
+            return render(request, '某个页面.html', locals())
+
+        elif activity.status == Activity.Status.APPLYING:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '报名尚未截止'
+            return render(request, '某个页面.html', locals())
+
+        else:
+            # get participants
+            # are you sure it's 'Paticipant' not 'Participant' ??
+            paticipants = Paticipant.objects.filter(activity_id=activity_id)
+            paticipants = paticipants.filter(
+                status=Paticipant.AttendStatus.APLLYSUCCESS)
+
+            # get required fields
+            output = request.GET.get('output', 'id,name,gender,telephone')
+            fields = output.split(',')
+
+            # check field existence
+            allowed_fields = ['id', 'name', 'gender', 'telephone']
+            for field in fields:
+                if not field in allowed_fields:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = f'不允许的字段名{field}'
+                    return render(request, '某个页面.html', locals())
+
+            filename = f'{activity_id}-{info_type}-{output}'
+            content = map(lambda paticipant: map(
+                lambda key: paticipant[key], fields), paticipants)
+
+            format = request.GET.get('format', 'csv')
+            if format == 'csv':
+                buffer = io.StringIO()
+                csv.writer(buffer).writerows(content), buffer.seek(0)
+                response = HttpResponse(buffer, content_type='text/csv')
+                response['Content-Disposition'] = f'attachment; filename={filename}.csv'
+                return response  # downloadable
+
+            elif format == 'excel':
+                return HttpResponse('.xls Not Implemented')
+            
+            else:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = f'不支持的格式{format}'
+                return render(request, '某个页面.html', locals())
+
+    elif info_type == 'qrcode':
+        # checkin begins 1 hour ahead
+        if datetime.now() < activity.start - timedelta(hours=1):
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '签到失败：签到未开始'
+            return render(request, '某个页面.html', locals())
+
+        else:
+            checkin_url = f'/checkinActivity?activityid={activity.id}'
+            origin_url = request.scheme + '://' + request.META['HTTP_HOST']
+            checkin_url = parse.urljoin(origin_url, checkin_url)  # require full path
+
+            buffer = io.BytesIO()
+            qr = qrcode.QRCode(version=1, box_size=10, border=5)
+            qr.add_data(checkin_url), qr.make(fit=True)
+            img = qr.make_image(fill_color='black', back_color='white')
+            img.save(buffer, 'jpeg'), buffer.seek(0)
+            response = HttpResponse(buffer, content_type='img/jpeg')
+            return response
+
+    else:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = f'不支持的信息{info_type}'
+        return render(request, '某个页面.html', locals())
+
+
+# participant checkin activity
+# GET参数?activityid=id
+#   activity_id : 活动id
+# example: http://127.0.0.1:8000/checkinActivity?activityid=1
+# TODO: 前端页面待对接
+def checkinActivity(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect('/index/')
+
+    # check activity existence
+    activity_id = request.GET.get('activityid', None)
+    try:
+        activity = Activity.objects.get(id=activity_id)
+        if activity.status != Activity.Status.WAITING and activity.status != Activity.Status.PROGRESSING:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = f'签到失败：活动{activity.status}'
+            return redirect('/viewActivities/')  # context incomplete
+    except:
+        msg = '活动不存在'
+        origin = '/welcome/'
+        return render(request, 'msg.html', locals())
+
+    # check person existance and registration to activity
+    person = get_person_or_org(request.user, 'naturalperson')
+    try:
+        paticipant = Paticipant.objects.get(
+            activity_id=activity_id, person_id=person.id)
+        if paticipant.status == Paticipant.AttendStatus.APLLYFAILED:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '您没有参与这项活动：申请失败'
+        elif paticipant.status == Paticipant.AttendStatus.APLLYSUCCESS:
+            #  其实我觉得这里可以增加一个让发起者设定签到区间的功能
+            #    或是有一个管理界面，管理一个“签到开关”的值
+            if datetime.now().date() < activity.end.date():
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = '签到失败：签到未开始'
+            elif datetime.now() >= activity.end:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = '签到失败：签到已结束'
+            else:
+                paticipant.status = Paticipant.AttendStatus.ATTENDED
+                html_display['warn_code'] = 2
+                html_display['warn_message'] = '签到成功'
+        elif paticipant.status == Paticipant.AttendStatus.ATTENDED:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '重复签到'
+        elif paticipant.status == Paticipant.AttendStatus.CANCELED:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '您没有参与这项活动：已取消'
+        else:
+            msg = f'不合理的参与状态：{paticipant.status}'
+            origin = '/welcome/'
+            return render(request, 'msg.html', locals())
+    except:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = '您没有参与这项活动：未报名'
+
+    return redirect('/viewActivities/')  # context incomplete
+
+
+# 发起活动
+def addActivities(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect('/index/')
+    if user_type == 'Person':
+        return redirect('/welcome/')  # test
+    me = get_person_or_org(request.user)
+    html_display['is_myself'] = True
+    html_display = utils.get_org_left_narbar(
+        me, html_display['is_myself'], html_display)
+
+    if request.method == "POST" and request.POST:
+        org = get_person_or_org(request.user, user_type)
+        # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
+        context = dict()
+        context = utils.check_ac_request(request)  # 合法性检查
+        if context['warn_code'] != 0:
+            html_display['warn_code'] = context['warn_code']
+            html_display['warn_message'] = context['warn_message']
+            # warn_code!=0失败
+            return render(request, "activity_add.html", locals())
+
+        with transaction.atomic():
+            new_act = Activity.objects.create(
+                title=context['aname'], organization_id=org)  # 默认状态是审核中
+
+            new_act.content = context['content']
+            new_act.sign_start = context['signup_start']
+            new_act.sign_end = context['signup_end']
+            new_act.start = context['act_start']
+            new_act.end = context['act_end']
+            new_act.URL = context['URL']
+            new_act.location = context['location']
+            # new_act.QRcode = QRcode
+            new_act.YQPoint = context['aprice']
+            new_act.capacity = context['capacity']
+            if context['signschema'] == 1:
+                new_act.bidding = True
+            new_act.save()
+        # 返回发起成功或者失败的页面
+        return render(request, "activity_add.html", locals())  # warn_code==0
+
+    # 补充一些实用的信息
+    html_display["today"] = datetime.now().strftime("%Y-%m-%d")
 
     return render(request, "activity_add.html", locals())
 
+
+@login_required(redirect_field_name='origin')
+def subscribeActivities(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect('/index/')
+    me = get_person_or_org(request.user, user_type)
+    html_display['is_myself'] = True
+    if user_type == 'Person':
+        html_display = utils.get_user_left_narbar(
+            me, html_display['is_myself'], html_display)
+    else:
+        html_display = utils.get_org_left_narbar(
+            me, html_display['is_myself'], html_display)
+
+    # 补充一些呈现信息
+    html_display["title_name"] = "Subscribe"
+    html_display["narbar_name"] = "我的订阅"  #
+
+    org_list = Organization.objects.all()
+    org_name = list(set(list(Organization.objects.values_list(
+        'organization_id__username', flat=True))))
+    otype_list = sorted(list(
+        set(list(Organization.objects.values_list('otype__otype_name', flat=True)))))
+    # 给otype.otype_name排序，不然每次都不一样（后续可以写一个获取所有otype的接口，规定一个排序规则）
+    unsubscribe_list = list(me.subscribe_list.values_list(
+        "organization_id__username", flat=True))  # 获取不订阅列表（数据库里的是不订阅列表）
+    subscribe_list = [
+        name for name in org_name if name not in unsubscribe_list]    # 获取订阅列表
+
+    subscribe_url = reverse('save_subscribe_status')
+    return render(request, "activity_subscribe.html", locals())
+
+
+@login_required(redirect_field_name='origin')
+def save_subscribe_status(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect('/index/')
+    me = get_person_or_org(request.user, user_type)
+    params = json.loads(request.body.decode("utf-8"))
+    with transaction.atomic():
+        if 'id' in params.keys():
+            if params['status']:
+                me.subscribe_list.remove(Organization.objects.get(
+                    organization_id__username=params['id']))
+            else:
+                me.subscribe_list.add(Organization.objects.get(
+                    organization_id__username=params['id']))
+        elif 'otype' in params.keys():
+            unsubscribed_list = me.subscribe_list.filter(
+                otype__otype_name=params['otype'])
+            org_list = Organization.objects.all()
+            if params['status']:  # 表示要订阅
+                for org in unsubscribed_list:
+                    me.subscribe_list.remove(org)
+            else:  # 不订阅
+                for org in org_list:
+                    me.subscribe_list.add(org)
+        me.save()
+    return JsonResponse({"success": True})
