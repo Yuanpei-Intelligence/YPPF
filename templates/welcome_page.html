@@ -24,7 +24,11 @@
     <!--  BEGIN CONTENT PART  -->
     <div id="content" class="main-content">
         <div class="layout-px-spacing">
-
+            {% if html_display.warn_code == 2trans %}
+                <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+            {% elif html_display.warn_code == 1%}
+                <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+            {% endif %}
             <div class="row layout-top-spacing">
                 <div class="jumbotron">
                     <div class="container">
