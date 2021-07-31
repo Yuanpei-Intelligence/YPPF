@@ -98,7 +98,7 @@ def publish_activity(aid, only_activated=False):
     if len(activity.content) < 120:         # 卡片类型消息最多显示256字（512字节）
         kws = {"card" : True}               # 因留白等原因，内容120字左右就超出了
         message = "\n".join((
-            activity.topic,
+            activity.title,
             f"组织者：{activity.organization_id.oname}",
             f"活动时间：{start}-{finish}",
             "活动内容：",
@@ -111,7 +111,7 @@ def publish_activity(aid, only_activated=False):
     else:                                   # 超出卡片字数范围的消息使用文本格式发送
         kws = {"card" : False}
         message = "\n".join((
-            activity.topic,
+            activity.title,
             "",
             "组织者：",
             f"{activity.organization_id.oname}",
