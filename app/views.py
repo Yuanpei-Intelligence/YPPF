@@ -664,19 +664,11 @@ def search(request):
     organization_field = ["组织名称", "组织类型", "负责人", "近期活动"]
 
     # 搜索活动
-<<<<<<< HEAD
-    activity_list = Activity.objects.filter(Q(topic__icontains=query) |
-        Q(organization_id__in=organization_list.values('organization_id')))
-
-    # 活动要呈现的内容
-    activity_field = ['活动名称', '承办组织', '状态', '推送链接']
-=======
     activity_list = Activity.objects.filter(Q(title__icontains=query) |
         Q(organization_id__in=organization_list.values('organization_id')))
 
     # 活动要呈现的内容
-    activity_field = ['活动名称', '承办组织', '状态']
->>>>>>> 57b39ee7c8148a15b9ae9475dc62a074232664f1
+    activity_field = ['活动名称', '承办组织', '状态', '推送链接']
 
     me = get_person_or_org(request.user, user_type)
     html_display['is_myself'] = True
@@ -1660,7 +1652,3 @@ def save_subscribe_status(request):
                     me.subscribe_list.add(org)
         me.save()
     return JsonResponse({"success": True})
-
-
-def temporary_YQPoint_distribute(request):
-    pass

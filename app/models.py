@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models.enums import Choices
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
@@ -392,3 +393,32 @@ class Paticipant(models.Model):
         CANCELED = 5  # 放弃，如果学生取消活动，则设置这里
 
     status = models.IntegerField('学生参与活动状态', choices=AttendStatus.choices, default=0)
+
+
+class Scheduled_YQPoint_Distribute(models.Model):
+    class Distribute_Status(models.IntegerChoices):
+        # 是否按照当前设定进行发放，是则为Yes；在发放时检测是否有且仅有1个是Yes，不是则报错
+        Yes = 1
+        No = 0
+    
+    # 发放元气值的上限，多于此值则不发放
+    person_max_distribute_YQPoint = models.FloatField(name="自然人发放元气值上限")
+    org_max_distribute_YQPoint = models.FloatField(name="组织发放元气值上限")
+    # 个人和组织所能平分的元气值比例
+    # 发放时，从学院剩余元气值中，抽取向自然人分发的比例，平分给元气值低于上限的自然人；组织同理
+    person_YQPoint_rate = models.FloatField(name="自然人获得的元气值比例", default=0)
+    org_YQPoint_rate = models.FloatField(name="组织获得的元气值比例", default=0)
+
+    stauts = models.IntegerField("是否应用", choices=Distribute_Status.choices, default=Distribute_Status.No)
+
+    def is_valid(self):
+        if self.person_YQPoint_rate < 0 or self.org_YQPoint_rate < 0 or (self.person_YQPoint_rate + self.org_YQPoint_rate) > 1:
+            return (False, "发放比例小于零，或者合起来大于一！")
+        elif self.person_max_distribute_YQPoint < 0 or self.org_max_distribute_YQPoint < 0:
+            return (False, "向用户发放的上限小于零！")
+        else:
+            return (True, "")
+
+    class Meta:
+        verbose_name = "元气值定期发放"
+        verbose_name_plural = verbose_name
