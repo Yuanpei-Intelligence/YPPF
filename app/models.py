@@ -401,7 +401,7 @@ class Scheduled_YQPoint_Distribute(models.Model):
         Yes = 1
         No = 0
     
-    class Schedule_Type(models.IntegerField):
+    class Schedule_Type(models.IntegerChoices):
         # 定期发放的类型：按月发放为0，按年发放为1；
         # 这两种类型各最多有一个Distribute_Status为Yes的实例
         MONTH = 0
