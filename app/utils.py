@@ -1,3 +1,5 @@
+from django.dispatch.dispatcher import receiver
+from app.models import Notification
 from django.contrib.auth.hashers import BasePasswordHasher, MD5PasswordHasher, mask_hash
 from django.contrib import auth
 from django.conf import settings
@@ -61,6 +63,7 @@ def check_user_type(user):  # return Valid(Bool), otype
         html_display["profile_url"] = "/stuinfo/"
         html_display["avatar_path"] = get_user_ava(person, user_type)
         html_display['user_type'] = user_type
+        html_display['mail_num'] = Notification.objects.filter(receiver=user, status=Notification.NotificationStatus.UNDONE).count()
 
     return True, user_type, html_display
 
