@@ -637,7 +637,7 @@ def search(request):
         Q(organization_id__in=organization_list.values('organization_id')))
 
     # 活动要呈现的内容
-    activity_field = ['活动名称', '承办组织', '状态']
+    activity_field = ['活动名称', '承办组织', '状态', '推送链接']
 
     me = get_person_or_org(request.user, user_type)
     html_display['is_myself'] = True
@@ -1379,3 +1379,7 @@ def save_subscribe_status(request):
                     me.subscribe_list.add(org)
         me.save()
     return JsonResponse({"success": True})
+
+
+def temporary_YQPoint_distribute(request):
+    pass
