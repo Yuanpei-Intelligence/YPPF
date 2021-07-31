@@ -22,7 +22,11 @@
     <div class="overlay"></div>
     <div class="search-overlay"></div>
 
+    {% if html_display.user_type == "Person" %}
     {% include 'user_left_narbar.html' %}
+    {% else %}
+    {% include 'org_left_narbar.html' %}
+    {% endif %}
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
@@ -34,7 +38,6 @@
                 </div>
 
                 <div class="row layout-top-spacing">
-
                     <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
                         <div class="statbox widget box box-shadow">
                             <div class="widget-header">
@@ -94,7 +97,7 @@
                                                     {% if forloop.counter == 1 %}
                                                     <!-- 说明此时要展示姓名，关联链接 -->
                                                     <td><u><a
-                                                                href="stuinfo/{{person.name}}+{{person.id}}">{{attribute}}</a></u>
+                                                                href="/stuinfo/{{person.name}}+{{person.person_id.id}}">{{attribute}}</a></u>
                                                     </td>
                                                     {% else %}
                                                     <td> {{attribute}} </td>
@@ -113,16 +116,13 @@
                                             {% endif %}
                                         </table>
                                     </div>
-
-
-
                                 </div>
                             </div>
                         </div>
                     </div>
-
-
-
+                </div>
+                
+                <div class="row layout-top-spacing">
                     <!-- add by syb -->
                     <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
                         <div class="statbox widget box box-shadow">
@@ -141,9 +141,9 @@
                                                 <i class="fa" aria-hidden="true"></i>
                                             </div>
                                         </div>
-                                        </div>
                                     </div>
                                 </div>
+                            </div>
                             </div>
                             <div class="collapse show" id="orgsearch">
                             <div class="widget-content widget-content-area">
@@ -187,20 +187,76 @@
                                         {% endif %}
                                     </table>
                                 </div>
-
-
-
+                            </div>
                             </div>
                         </div>
-                        </div>
-                    </div>
-
-
-
-
-
+                    </div>                 
                 </div>
 
+                <div class="row layout-top-spacing">
+                    <!-- add by syb -->
+                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+                        <div class="statbox widget box box-shadow">
+                            <div class="widget-header">
+                                <div class="row">
+                                    <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                        <div data-toggle="collapse" href="#activitysearch" role="button"
+                                            aria-expanded="false" aria-controls="collapseExample">
+                                            <div class="d-flex justify-content-between">
+                                            <div>
+                                                <h4>活动搜索</h4>
+                                            </div>
+                                            <div style="display:flex;
+                                            justify-content: center;
+                                            align-items: center;">
+                                                <i class="fa" aria-hidden="true"></i>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            </div>
+                            <div class="collapse show" id="activitysearch">
+                            <div class="widget-content widget-content-area">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered mb-4">
+                                        {% if organization_list.count != 0 %}
+                                        <thead>
+                                            {% for attribute in activity_field %}
+                                            <th> {{attribute}} </th>
+                                            {% endfor %}
+                                        </thead>
+                                        <tbody>
+                                            {% for act in activity_list %}
+                                            <tr>
+                                                <td>
+                                                    <u><a href="viewActivity">{{act}}</a></u>
+                                                    {% comment %} 这个页面还没做好，可能要留下来修改 {% endcomment %}
+                                                </td>
+                                                <td>
+                                                    <u><a href="/orginfo/{{act.organization_id}}">{{act.organization_id}}</a></u>
+                                                </td>
+                                                <td>
+                                                    {{act.status}}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                        {% else %}
+                                        <thead></thead>
+                                        <tbody>
+                                            <tr>
+                                                <td>{{not_found_message}}</td>
+                                            </tr>
+                                        </tbody>
+                                        {% endif %}
+                                    </table>
+                                </div>
+                            </div>
+                            </div>
+                        </div>
+                    </div>                 
+                </div>
             </div>
         </div>
     </div>

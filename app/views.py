@@ -457,8 +457,6 @@ def orginfo(request, name=None):
         boss_display["major"] = boss.stu_major
         boss_display["email"] = boss.email
         boss_display["tel"] = boss.telephone
-
-        # jobpos = Position.objects.activated().get(person=boss, org = org).pos
         boss_display["job"] = org.otype.job_name_list[0]
         boss_display['avatar_path'] = utils.get_user_ava(boss, 'Person')
 
@@ -1049,7 +1047,7 @@ def transaction_page(request, rid=None):
             me, html_display['is_myself'], html_display)
     else:
         html_display = utils.get_org_left_narbar(
-            me, html_display['is_myself'], html_display)
+            me, html_display['is_myself'], html_display
 
     # 补充一些呈现信息
     html_display["title_name"] = "Transaction"
