@@ -3,7 +3,7 @@ from django.contrib import auth
 from django.conf import settings
 from boottest import local_dict
 
-from datetime import datetime
+from datetime import datetime, timedelta
 import hashlib
 import re
 
@@ -107,10 +107,18 @@ def check_ac_request(request):
     context = dict()
     context['warn_code'] = 0
     # signup_start = request.POST["actstar"]
-    signup_start = request.POST["actstart"]  # 活动报名时间
-    signup_end = request.POST["actend"]  # 活动报名结束时间
-    act_start = request.POST["signstart"]  # 活动开始时间
-    act_end = request.POST["signend"]  # 活动结束时间
+    act_start = request.POST.get("actstart")  # 活动报名时间
+    act_end = request.POST.get("actend")  # 活动报名结束时间
+    prepare_scheme = request.POST.get("prepare_scheme")
+    try:
+        prepare_scheme = int(prepare_scheme)
+        prepare_times = [1, 24, 72, 168]
+        prepare_time = prepare_times[prepare_scheme]
+    except:
+        context['warn_code'] = 10
+        context['warn_msg'] = "Unexpected exception. If you are not doing it deliberately, please contact the administrator to report this bug."
+        return context
+
     capacity = 0
     schema = 0  # 投点模式，默认0为先到先得
     URL = ""
@@ -133,24 +141,49 @@ def check_ac_request(request):
 
     try:
         aprice = float(request.POST["aprice"])
-        if aprice <= 0:
+        if aprice < 0:
             context['warn_code'] = 3
-            context['warn_msg'] = "The price must exceed 0!"
+            context['warn_msg'] = "The price should be no less than 0!"
     except:
         context['warn_code'] = 4
         context['warn_msg'] = "The price must be a floating point number one decimal place"
+
+
     try:
-        signup_start = datetime.strptime(signup_start, '%m/%d/%Y %H:%M %p')
-        signup_end = datetime.strptime(signup_end, '%m/%d/%Y %H:%M %p')
         act_start = datetime.strptime(act_start, '%m/%d/%Y %H:%M %p')
         act_end = datetime.strptime(act_end, '%m/%d/%Y %H:%M %p')
-        if signup_start <= act_start and check_ac_time(signup_start, signup_end) == False \
-                and check_ac_time(act_start, act_end) == False:
+
+        now_time = datetime.now()
+
+        # 创建活动即开始报名
+        signup_start = now_time
+        signup_end = act_start - timedelta(hours=prepare_time)
+
+        print('now', now_time)
+        print('end', signup_end)
+
+        if signup_start >= signup_end:
+            context['warn_code'] = 7
+            context['warn_msg'] = "No enough time to prepare."
+            return context
+
+        # 至少提前一小时发起活动，但上面的逻辑已经包含了
+        '''
+        if act_start < now_time + datetime.timedelta(hours=1):
+            context['warn_code'] = 8
+            context['warn_msg'] = "No enough time to prepare."
+        '''
+        if now_time + timedelta(days=30) < act_start == False:
             context['warn_code'] = 5
             context['warn_msg'] = "The activity has to be in a month! "
+
+
     except:
         context['warn_code'] = 6
         context['warn_msg'] = "you have sent a wrong time form!"
+
+
+
     try:
         URL = str(request.POST["URL"])
     except:
@@ -173,6 +206,7 @@ def check_ac_request(request):
     context['signup_end'] = signup_end
     context['act_start'] = act_start
     context['act_end'] = act_end
+    context['prepare_scheme'] = prepare_scheme
     context['signschema'] = schema
     return context
 

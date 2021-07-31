@@ -1562,7 +1562,9 @@ def checkinActivity(request):
 
 
 # 发起活动
+# TODO 定时任务
 def addActivities(request):
+
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect('/index/')
@@ -1589,8 +1591,7 @@ def addActivities(request):
                 title=context['aname'], organization_id=org)  # 默认状态是审核中
 
             new_act.content = context['content']
-            new_act.sign_start = context['signup_start']
-            new_act.sign_end = context['signup_end']
+            new_act.endbefore = context['prepare_scheme']
             new_act.start = context['act_start']
             new_act.end = context['act_end']
             new_act.URL = context['URL']
