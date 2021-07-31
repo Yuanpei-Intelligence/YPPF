@@ -301,7 +301,6 @@ class Activity(models.Model):
     endbefore = models.SmallIntegerField("报名截止于", choices=EndBefore.choices, default= EndBefore.oneday)
     start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now)
     end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now)
-    prepare_time = models.FloatField("活动准备小时数", default=24.0)
 
     location = models.CharField("活动地点", blank=True, max_length=200)
     introduction = models.TextField("活动简介", max_length=225, blank=True)

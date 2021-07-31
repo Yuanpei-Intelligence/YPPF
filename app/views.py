@@ -63,6 +63,14 @@ def index(request):
     modpw_status = request.GET.get("success")
     # request.GET['success'] = "no"
     arg_islogout = request.GET.get("is_logout")
+    alert = request.GET.get('alert')
+    if alert is not None:
+        html_display = dict()
+        html_display['warn_code'] = 10
+        html_display['warn_message'] = "Malicious URL detected. Please contact the administrator to report this."
+        return render(request, "index.html", locals())
+
+
     if arg_islogout is not None:
         if request.user.is_authenticated:
             auth.logout(request)
@@ -78,7 +86,7 @@ def index(request):
             """
     # 恶意的 origin
     if not url_check(arg_origin):
-        return redirect("/welcome/")
+        return redirect("/index/?alert=1&logout=1")
 
 
     if request.method == "POST" and request.POST:
@@ -107,8 +115,9 @@ def index(request):
             if arg_origin is not None:
 
                 if not check_cross_site(request, arg_origin):
-                    alert_for_cross_site = True
-                    alert_text = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
+                    html_display = dict()
+                    html_display['warn_code'] = 11
+                    html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                     return render(request, "welcome_page.html", locals())
 
 
@@ -157,9 +166,9 @@ def index(request):
 
 
             if not check_cross_site(request, arg_origin):
-                alert_for_cross_site = True
-                alert_text = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
-                print("?????????")
+                html_display = dict()
+                html_display['warn_code'] = 11
+                html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                 return render(request, "welcome_page.html", locals())
 
 
@@ -1580,7 +1589,7 @@ def addActivities(request):
         context = utils.check_ac_request(request)  # 合法性检查
         if context['warn_code'] != 0:
             html_display['warn_code'] = context['warn_code']
-            html_display['warn_message'] = context['warn_msg']
+            html_display['warn_message'] = context['warn_message']
             # warn_code!=0失败
             return render(request, "activity_add.html", locals())
 

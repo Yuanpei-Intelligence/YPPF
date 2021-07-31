@@ -208,7 +208,7 @@ def check_cross_site(request, arg_url):
     appointment = local_dict["url"]["base_url"]
     appointment_base = re.findall('^https?://[^/]*/', appointment)[0]
     if re.match(appointment_base, arg_url):
-        valid, user_type, html_display = check_user_type(request)
+        valid, user_type, html_display = check_user_type(request.user)
         if not valid or user_type == "Organization":
             return False
     return True

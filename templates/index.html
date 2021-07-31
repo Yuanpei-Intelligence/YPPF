@@ -23,10 +23,17 @@
 
 
     <div class="form-container ">
+        {% if html_display.warn_code == 10trans %}
+            <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+        {% endif %}
         <div class="form-form">
             <div class="form-form-wrap">
                 <div class="form-container">
                     <div class="form-content">
+
+                        {% if html_display.warn_code == 10 %}
+                            <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+                        {% endif %}
 
                         <h1 class="" align="center">
                             <a href="#"><span class="brand-name"> Yuanpei Profile</span></a>
