@@ -43,21 +43,20 @@ class MySHA256Hasher(object):
 from app.models import NaturalPerson, Organization, Position
 
 
-def check_user_type(request):  # return Valid(Bool), otype
+def check_user_type(user):  # return Valid(Bool), otype
     html_display = {}
-    if request.user.is_superuser:
-        auth.logout(request)
+    if user.is_superuser:
         return False, "", html_display
-    if request.user.username[:2] == "zz":
+    if user.username[:2] == "zz":
         user_type = "Organization"
         html_display["profile_name"] = "组织主页"
         html_display["profile_url"] = "/orginfo/"
-        org = Organization.objects.get(organization_id=request.user)
+        org = Organization.objects.get(organization_id=user)
         html_display["avatar_path"] = get_user_ava(org, user_type)
         html_display['user_type'] = user_type
     else:
         user_type = "Person"
-        person = NaturalPerson.objects.activated().get(person_id=request.user)
+        person = NaturalPerson.objects.activated().get(person_id=user)
         html_display["profile_name"] = "个人主页"
         html_display["profile_url"] = "/stuinfo/"
         html_display["avatar_path"] = get_user_ava(person, user_type)
@@ -98,7 +97,7 @@ def get_org_left_narbar(org, is_myself, html_display):
     ), "Forget to tell the website whether this is the user itself!"
     html_display["switch_org_name"] = org.oname
     html_display["underground_url"] = local_dict["url"]["base_url"]
-
+    html_display['org'] = org
     return html_display
 
 
@@ -214,3 +213,13 @@ def check_cross_site(request, arg_url):
             return False
     return True
 
+
+def get_url_params(request,html_display):
+    full_path = request.get_full_path()
+    if "?" in full_path:
+        params = full_path.split["?"][1]
+        params = params.split['&']
+        for param in params:
+            key, value = param.split["="][0],param.split["="][1]
+            if key not in html_display.keys():  #禁止覆盖
+                html_display[key] = value
