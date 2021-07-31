@@ -74,6 +74,7 @@ def index(request):
     if alert is not None:
         html_display['warn_code'] = 1
         html_display['warn_message'] = "检测到恶意 URL，请与系统管理员进行联系。"
+        auth.logout(request)
         return render(request, "index.html", locals())
 
 
@@ -92,7 +93,7 @@ def index(request):
             """
     # 恶意的 origin
     if not url_check(arg_origin):
-        return redirect("/index/?alert=1&logout=1")
+        return redirect("/index/?alert=1")
 
 
     if request.method == "POST" and request.POST:
