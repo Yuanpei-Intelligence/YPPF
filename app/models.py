@@ -408,12 +408,12 @@ class Scheduled_YQPoint_Distribute(models.Model):
         SEMESTER = "按年发放"
     
     # 发放元气值的上限，多于此值则不发放
-    per_max_YQPoint = models.FloatField(name="自然人发放元气值上限")
-    org_max_YQPoint = models.FloatField(name="组织发放元气值上限")
+    per_max_dis_YQPoint = models.FloatField("自然人发放元气值上限")
+    org_max_dis_YQPoint = models.FloatField("组织发放元气值上限")
     # 个人和组织所能平分的元气值比例
     # 发放时，从学院剩余元气值中，抽取向自然人分发的比例，平分给元气值低于上限的自然人；组织同理
-    per_dis_rate = models.FloatField(name="自然人获得的元气值比例", default=0)
-    org_dis_rate = models.FloatField(name="组织获得的元气值比例", default=0)
+    per_YQPoint_rate = models.FloatField("自然人获得的元气值比例", default=0)
+    org_YQPoint_rate = models.FloatField("组织获得的元气值比例", default=0)
 
     status = models.IntegerField("是否应用", choices=Distribute_Status.choices, default=Distribute_Status.No)
     type = models.CharField("发放类型", choices=Schedule_Type.choices, max_length=32)
