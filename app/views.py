@@ -11,7 +11,7 @@ from app.models import (
 )
 import app.utils as utils
 from app.forms import UserForm
-from app.utils import MyMD5PasswordHasher, MySHA256Hasher
+from app.utils import MyMD5PasswordHasher, MySHA256Hasher, url_check, check_cross_site
 
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
@@ -62,9 +62,24 @@ def get_person_or_org(user, user_type=None):
 
 def index(request):
     arg_origin = request.GET.get("origin")
-    modpw_status = request.GET.get("success")
+    modpw_status = request.GET.get("modinfo")
     # request.GET['success'] = "no"
     arg_islogout = request.GET.get("is_logout")
+    alert = request.GET.get('alert')
+    html_display = dict()
+    if request.method == "GET" and modpw_status is not None and modpw_status == "success":
+        html_display["warn_code"] = 2
+        html_display["warn_message"] = "修改密码成功!"
+        auth.logout(request)
+        return render(request, "index.html", locals())
+
+    if alert is not None:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = "检测到恶意 URL，请与系统管理员进行联系。"
+        auth.logout(request)
+        return render(request, "index.html", locals())
+
+
     if arg_islogout is not None:
         if request.user.is_authenticated:
             auth.logout(request)
@@ -78,6 +93,11 @@ def index(request):
                 return render(request, 'index.html', locals())
             return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
             """
+    # 恶意的 origin
+    if not url_check(arg_origin):
+        return redirect("/index/?alert=1")
+
+
     if request.method == "POST" and request.POST:
         username = request.POST["username"]
         password = request.POST["password"]
@@ -94,17 +114,21 @@ def index(request):
         except:
             # if arg_origin is not None:
             #    redirect(f'/login/?origin={arg_origin}')
-            message = local_dict["msg"]["404"]
-            invalid = True
+            html_display["warn_message"] = local_dict["msg"]["404"]
+            html_display["warn_code"] = 1
             return render(request, "index.html", locals())
         userinfo = auth.authenticate(username=username, password=password)
         if userinfo:
             auth.login(request, userinfo)
             request.session["username"] = username
             if arg_origin is not None:
-                # 加时间戳
-                # 以及可以判断一下 arg_origin 在哪
-                # 看看是不是 '/' 开头就行
+
+                if not check_cross_site(request, arg_origin):
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
+                    return render(request, "welcome_page.html", locals())
+
+
                 d = datetime.utcnow()
                 t = mktime(datetime.timetuple(d))
                 timeStamp = str(int(t))
@@ -141,12 +165,21 @@ def index(request):
                 return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
                 """
         else:
-            invalid = True
-            message = local_dict["msg"]["406"]
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = local_dict["msg"]["406"]
 
     # 非 post 过来的
     if arg_origin is not None:
         if request.user.is_authenticated:
+
+
+            if not check_cross_site(request, arg_origin):
+                html_display = dict()
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
+                return render(request, "welcome_page.html", locals())
+
+
             d = datetime.utcnow()
             t = mktime(datetime.timetuple(d))
             timeStamp = str(int(t))
@@ -868,7 +901,7 @@ def modpw(request):
                     if forgetpw:
                         request.session.pop("forgetpw")  # 删除session记录
 
-                    urls = reverse("index") + "?success=yes"
+                    urls = reverse("index") + "?modinfo=success"
                     return redirect(urls)
                 except:  # modified by pht: 之前使用的if检查是错误的
                     err_code = 3
@@ -1595,7 +1628,7 @@ def addActivities(request):
         context = utils.check_ac_request(request)  # 合法性检查
         if context['warn_code'] != 0:
             html_display['warn_code'] = context['warn_code']
-            html_display['warn_message'] = context['warn_msg']
+            html_display['warn_message'] = context['warn_message']
             # warn_code!=0失败
             return render(request, "activity_add.html", locals())
 
