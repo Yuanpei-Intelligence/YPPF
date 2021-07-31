@@ -1789,7 +1789,7 @@ def notification_create(receiver, type, title, content, URL):
 
 @login_required(redirect_field_name='origin')
 def notifications(request):
-    valid, user_type, html_display = utils.check_user_type(request)
+    valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect('/index/')
     # 接下来处理POST相关的内容
