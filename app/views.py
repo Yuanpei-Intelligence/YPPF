@@ -13,7 +13,7 @@ from app.models import (
 )
 import app.utils as utils
 from app.forms import UserForm
-from app.utils import MyMD5PasswordHasher, MySHA256Hasher
+from app.utils import MyMD5PasswordHasher, MySHA256Hasher, url_check, check_cross_site
 
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
@@ -29,13 +29,15 @@ from django.views.decorators.http import require_POST, require_GET
 
 import json
 from time import mktime
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+from urllib import parse
 from boottest import local_dict
 import re
 import random
 import requests  # 发送验证码
 import io
 import csv
+import qrcode
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
@@ -62,9 +64,24 @@ def get_person_or_org(user, user_type=None):
 
 def index(request):
     arg_origin = request.GET.get("origin")
-    modpw_status = request.GET.get("success")
+    modpw_status = request.GET.get("modinfo")
     # request.GET['success'] = "no"
     arg_islogout = request.GET.get("is_logout")
+    alert = request.GET.get('alert')
+    html_display = dict()
+    if request.method == "GET" and modpw_status is not None and modpw_status == "success":
+        html_display["warn_code"] = 2
+        html_display["warn_message"] = "修改密码成功!"
+        auth.logout(request)
+        return render(request, "index.html", locals())
+
+    if alert is not None:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = "检测到恶意 URL，请与系统管理员进行联系。"
+        auth.logout(request)
+        return render(request, "index.html", locals())
+
+
     if arg_islogout is not None:
         if request.user.is_authenticated:
             auth.logout(request)
@@ -78,6 +95,11 @@ def index(request):
                 return render(request, 'index.html', locals())
             return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
             """
+    # 恶意的 origin
+    if not url_check(arg_origin):
+        return redirect("/index/?alert=1")
+
+
     if request.method == "POST" and request.POST:
         username = request.POST["username"]
         password = request.POST["password"]
@@ -94,17 +116,21 @@ def index(request):
         except:
             # if arg_origin is not None:
             #    redirect(f'/login/?origin={arg_origin}')
-            message = local_dict["msg"]["404"]
-            invalid = True
+            html_display["warn_message"] = local_dict["msg"]["404"]
+            html_display["warn_code"] = 1
             return render(request, "index.html", locals())
         userinfo = auth.authenticate(username=username, password=password)
         if userinfo:
             auth.login(request, userinfo)
             request.session["username"] = username
             if arg_origin is not None:
-                # 加时间戳
-                # 以及可以判断一下 arg_origin 在哪
-                # 看看是不是 '/' 开头就行
+
+                if not check_cross_site(request, arg_origin):
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
+                    return render(request, "welcome_page.html", locals())
+
+
                 d = datetime.utcnow()
                 t = mktime(datetime.timetuple(d))
                 timeStamp = str(int(t))
@@ -141,12 +167,21 @@ def index(request):
                 return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
                 """
         else:
-            invalid = True
-            message = local_dict["msg"]["406"]
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = local_dict["msg"]["406"]
 
     # 非 post 过来的
     if arg_origin is not None:
         if request.user.is_authenticated:
+
+
+            if not check_cross_site(request, arg_origin):
+                html_display = dict()
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
+                return render(request, "welcome_page.html", locals())
+
+
             d = datetime.utcnow()
             t = mktime(datetime.timetuple(d))
             timeStamp = str(int(t))
@@ -876,7 +911,7 @@ def modpw(request):
                     if forgetpw:
                         request.session.pop("forgetpw")  # 删除session记录
 
-                    urls = reverse("index") + "?success=yes"
+                    urls = reverse("index") + "?modinfo=success"
                     return redirect(urls)
                 except:  # modified by pht: 之前使用的if检查是错误的
                     err_code = 3
@@ -1405,16 +1440,22 @@ def viewActivities(request):
 
 # 通过GET获得活动信息表下载链接
 # GET参数?activityid=id&infotype=sign[&output=id,name,gender,telephone][&format=csv|excel]
+# GET参数?activityid=id&infotype=qrcode
 #   activity_id : 活动id
-#   infotype    : sign报名信息 or 其他（以后可以拓展）
-#   output      : [可选]','分隔的需要返回的的field名
-#   format      : csv or excel
+#   infotype    : sign or qrcode or 其他（以后可以拓展）
+#     sign报名信息:
+#       output  : [可选]','分隔的需要返回的的field名
+#                 [默认]id,name,gender,telephone
+#       format  : [可选]csv or excel
+#                 [默认]csv
+#     qrcode签到二维码
 # example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign
 # example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign&output=id,wtf
 # example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=sign&format=excel
+# example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=qrcode
 # TODO: 前端页面待对接
 def getActivityInfo(request):
-    valid, user_type, html_display = utils.check_user_type(request)
+    valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect('/index/')
 
@@ -1437,59 +1478,84 @@ def getActivityInfo(request):
     info_type = request.GET.get('infotype', None)
     if info_type == 'sign':  # get registration information
         # make sure registration is over
-        if activity.status == Activity.Status.AUDIT:
+        if activity.status == Activity.Status.REVIEWING:
             html_display['warn_code'] = 1
             html_display['warn_message'] = '活动正在审核'
             return render(request, '某个页面.html', locals())
+
         elif activity.status == Activity.Status.CANCELED:
             html_display['warn_code'] = 1
             html_display['warn_message'] = '活动已取消'
             return render(request, '某个页面.html', locals())
-        elif activity.status == Activity.Status.REGISTRATION:
+
+        elif activity.status == Activity.Status.APPLYING:
             html_display['warn_code'] = 1
             html_display['warn_message'] = '报名尚未截止'
             return render(request, '某个页面.html', locals())
 
-        # get participants
-        # are you sure it's 'Paticipant' not 'Participant' ??
-        paticipants = Paticipant.objects.filter(activity_id=activity_id)
-        paticipants = paticipants.filter(
-            status=Paticipant.AttendStatus.APLLYSUCCESS)
+        else:
+            # get participants
+            # are you sure it's 'Paticipant' not 'Participant' ??
+            paticipants = Paticipant.objects.filter(activity_id=activity_id)
+            paticipants = paticipants.filter(
+                status=Paticipant.AttendStatus.APLLYSUCCESS)
 
-        # get required fields
-        output = request.GET.get('output', 'id,name,gender,telephone')
-        fields = output.split(',')
+            # get required fields
+            output = request.GET.get('output', 'id,name,gender,telephone')
+            fields = output.split(',')
 
-        # check field existence
-        for field in fields:
-            try:
-                NaturalPerson._meta.get_field(field_name=field)
-            except:
+            # check field existence
+            allowed_fields = ['id', 'name', 'gender', 'telephone']
+            for field in fields:
+                if not field in allowed_fields:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = f'不允许的字段名{field}'
+                    return render(request, '某个页面.html', locals())
+
+            filename = f'{activity_id}-{info_type}-{output}'
+            content = map(lambda paticipant: map(
+                lambda key: paticipant[key], fields), paticipants)
+
+            format = request.GET.get('format', 'csv')
+            if format == 'csv':
+                buffer = io.StringIO()
+                csv.writer(buffer).writerows(content), buffer.seek(0)
+                response = HttpResponse(buffer, content_type='text/csv')
+                response['Content-Disposition'] = f'attachment; filename={filename}.csv'
+                return response  # downloadable
+
+            elif format == 'excel':
+                return HttpResponse('.xls Not Implemented')
+            
+            else:
                 html_display['warn_code'] = 1
-                html_display['warn_message'] = f'不合法的字段名{field}'
+                html_display['warn_message'] = f'不支持的格式{format}'
                 return render(request, '某个页面.html', locals())
 
-        filename = f'{activity_id}-{info_type}-{output}'
-        content = map(lambda paticipant: map(
-            lambda key: paticipant[key], fields), paticipants)
+    elif info_type == 'qrcode':
+        # checkin begins 1 hour ahead
+        if datetime.now() < activity.start - timedelta(hours=1):
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = '签到失败：签到未开始'
+            return render(request, '某个页面.html', locals())
 
-        format = request.GET.get('format', 'csv')
-        if format == 'csv':
-            buffer = io.StringIO()
-            csv.writer(buffer).writerows(content), buffer.seek(0)
-            response = HttpResponse(buffer, content_type='text/csv')
-            response['Content-Disposition'] = f'attachment; filename={filename}.csv'
-            return response  # downloadable
-        elif format == 'excel':
-            return HttpResponse('.xls Not Implemented')
+        else:
+            checkin_url = f'/checkinActivity?activityid={activity.id}'
+            origin_url = request.scheme + '://' + request.META['HTTP_HOST']
+            checkin_url = parse.urljoin(origin_url, checkin_url)  # require full path
 
+            buffer = io.BytesIO()
+            qr = qrcode.QRCode(version=1, box_size=10, border=5)
+            qr.add_data(checkin_url), qr.make(fit=True)
+            img = qr.make_image(fill_color='black', back_color='white')
+            img.save(buffer, 'jpeg'), buffer.seek(0)
+            response = HttpResponse(buffer, content_type='img/jpeg')
+            return response
+
+    else:
         html_display['warn_code'] = 1
-        html_display['warn_message'] = f'不支持的格式{format}'
+        html_display['warn_message'] = f'不支持的信息{info_type}'
         return render(request, '某个页面.html', locals())
-
-    html_display['warn_code'] = 1
-    html_display['warn_message'] = f'不支持的信息{info_type}'
-    return render(request, '某个页面.html', locals())
 
 
 # participant checkin activity
@@ -1498,7 +1564,7 @@ def getActivityInfo(request):
 # example: http://127.0.0.1:8000/checkinActivity?activityid=1
 # TODO: 前端页面待对接
 def checkinActivity(request):
-    valid, user_type, html_display = utils.check_user_type(request)
+    valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect('/index/')
 
@@ -1506,9 +1572,9 @@ def checkinActivity(request):
     activity_id = request.GET.get('activityid', None)
     try:
         activity = Activity.objects.get(id=activity_id)
-        if activity.status() != Activity.Status.WAITING and activity.status() != Activity.Status.PROGRESS:
+        if activity.status != Activity.Status.WAITING and activity.status != Activity.Status.PROGRESSING:
             html_display['warn_code'] = 1
-            html_display['warn_message'] = f'签到失败：活动{activity.status()}'
+            html_display['warn_message'] = f'签到失败：活动{activity.status}'
             return redirect('/viewActivities/')  # context incomplete
     except:
         msg = '活动不存在'
@@ -1572,7 +1638,7 @@ def addActivities(request):
         context = utils.check_ac_request(request)  # 合法性检查
         if context['warn_code'] != 0:
             html_display['warn_code'] = context['warn_code']
-            html_display['warn_message'] = context['warn_msg']
+            html_display['warn_message'] = context['warn_message']
             # warn_code!=0失败
             return render(request, "activity_add.html", locals())
 
