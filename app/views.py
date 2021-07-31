@@ -1799,7 +1799,6 @@ def notifications(request):
         notification_id = post_args
         context = notification_done(notification_id)
         html_display['warn_code'] = context['warn_code']
-        html_display['warn_message'] = context['warn_message']
     me = get_person_or_org(request.user, user_type)
     html_display['is_myself'] = True
     if user_type == 'Person':
