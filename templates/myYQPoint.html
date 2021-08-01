@@ -17,9 +17,9 @@
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
         {% if html_display.warn_code == 1 %}
-                <div class="alert alert-warning  text-center" >{{ html_display.warn_message }}</div>
+        <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
         {% elif html_display.warn_code == 2 %}
-        <div class="alert alert-success  text-center" >{{ html_display.warn_message }}</div>
+        <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
         {% endif %}
         <div class="container">
             <div class="container">
@@ -73,7 +73,7 @@
                                         -->
                                 <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
                                     <li class="nav-item">
-                                        <a class="nav-link active" onclick="window.location='/myYQPoint/'"
+                                        <a class="nav-link active" href="#home"
                                             data-toggle="tab">
                                             <h5>待处理</h5>
                                         </a>
@@ -98,185 +98,182 @@
                                                 {% for record in to_list %}
                                                 <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
 
-                                                    {% if record.obj_direct == "From" %}
                                                     <div class=" b-skills">
-                                                        {% else %}
-                                                        <div class=" b-skills">
-                                                            {% endif %}
 
-                                                            <div class="d-flex justify-content-between">
-                                                                <div>
-                                                                    <h5>
-                                                                        {{record.obj_direct}} <a
-                                                                            href='{{record.obj_url}}'><u>{{record.obj}}</u></a>
-                                                                    </h5>
-                                                                </div>
-                                                                <div>
-                                                                    <h5>
-                                                                        <i class="	fa fa-rmb"></i>
-                                                                        {{record.amount}}
-                                                                    </h5>
-                                                                </div>
+
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <h5>
+                                                                    {{record.obj_direct}} <a
+                                                                        href='{{record.obj_url}}'><u>{{record.obj}}</u></a>
+                                                                </h5>
                                                             </div>
-                                                            <div class="d-flex justify-content-between">
-                                                                <div>
-                                                                    <p style="color: rgb(66, 67, 68);"><i
-                                                                            class="fa fa-calendar-o"></i>
-                                                                        {{record.start_time}}</p>
-                                                                </div>
-                                                                <div>
-                                                                    <p style="color: rgb(66, 67, 68);">{{record.status}}
-                                                                    </p>
-                                                                </div>
+                                                            <div>
+                                                                <h5>
+                                                                    <i class="	fa fa-rmb"></i>
+                                                                    {{record.amount}}
+                                                                </h5>
                                                             </div>
-                                                            {% if record.obj_direct == 'From' %}
-                                                            <div class="d-flex justify-content-between">
-                                                                <div>
-                                                                    <p style="color: rgb(66, 67, 68);"><i
-                                                                            class="fa fa-envelope-o"></i>
-                                                                        {{record.message}}</p>
-                                                                </div>
-                                                                <form method="POST" >
-                                                                    <div style="margin-left: 8px; ">
+                                                        </div>
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <p style="color: rgb(66, 67, 68);"><i
+                                                                        class="fa fa-calendar-o"></i>
+                                                                    {{record.start_time}}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p style="color: rgb(66, 67, 68);">{{record.status}}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        {% if record.obj_direct == 'From' %}
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <p style="color: rgb(66, 67, 68);"><i
+                                                                        class="fa fa-envelope-o"></i>
+                                                                    {{record.message}}</p>
+                                                            </div>
+                                                            <form method="POST">
+                                                                <div style="margin-left: 8px; ">
                                                                     <div class="btn-group btn-group-sm">
-                                                                        <button type="button" class="btn btn-primary dropdown-toggle dropdown-toggle-split" data-toggle="dropdown"
-                                                                        style="display:block;
+                                                                        <button type="button"
+                                                                            class="btn btn-primary dropdown-toggle dropdown-toggle-split"
+                                                                            data-toggle="dropdown" style="display:block;
                                                                         white-space:nowrap; 
                                                                         overflow:hidden; ">
-                                                                          <span class="">操作</span>
+                                                                            <span class="">操作</span>
                                                                         </button>
                                                                         <div class="dropdown-menu">
-                                                                          <button class="dropdown-item" type="submit" name='post_button'
-                                                                          value="{{record.id}}+accept" onclick="return confirm('确定接收来自{{record.obj}}的转账?')"
-                                                                          >接收</button>
-                                                                          <button class="dropdown-item" type="submit" name='post_button'
-                                                                          value="{{record.id}}+reject" onclick="return confirm('确定拒绝来自{{record.obj}}的转账?')"
-                                                                          >拒绝</button>
+                                                                            <button class="dropdown-item" type="submit"
+                                                                                name='post_button'
+                                                                                value="{{record.id}}+accept"
+                                                                                onclick="return confirm('确定接收来自{{record.obj}}的转账?')">接收</button>
+                                                                            <button class="dropdown-item" type="submit"
+                                                                                name='post_button'
+                                                                                value="{{record.id}}+reject"
+                                                                                onclick="return confirm('确定拒绝来自{{record.obj}}的转账?')">拒绝</button>
                                                                         </div>
-                                                                      </div>
                                                                     </div>
-                                                                </form>
-                                                            </div>
-                                                            {% else %}
-                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                                </div>
+                                                            </form>
+                                                        </div>
+                                                        {% else %}
+                                                        <p style="color: rgb(66, 67, 68);"><i
                                                                 class="fa fa-envelope-o"></i>
                                                             {{record.message}}</p>
-                                                            {% endif %}
-                                                        </div>
-
-
+                                                        {% endif %}
                                                     </div>
-                                                    {% endfor %}
-                                                </div>
 
+
+                                                </div>
+                                                {% endfor %}
                                             </div>
 
-                                            {% endif %}
                                         </div>
-                                        <div class="tab-pane fade" id="issued">
-                                            {% if issued_list|length == 0 %}
-                                            <p></p>
-                                            <p style="text-align: center;">没有已处理的转账记录.</p>
-                                            {% else %}
+
+                                        {% endif %}
+                                    </div>
+                                    <div class="tab-pane fade" id="issued">
+                                        {% if issued_list|length == 0 %}
+                                        <p></p>
+                                        <p style="text-align: center;">没有已处理的转账记录.</p>
+                                        {% else %}
 
 
-                                            <div class="bio-skill-box">
-                                                <div class="row">
-                                                    {% for record in issued_list %}
-                                                    <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                        <div class="bio-skill-box">
+                                            <div class="row">
+                                                {% for record in issued_list %}
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
 
-                                                        {% if record.obj_direct == "From" %}
-                                                        <div class=" b-skills">
-                                                            {% else %}
-                                                            <div class=" b-skills">
-                                                                {% endif %}
+                                                    <div class=" b-skills">
 
-                                                                <div class="d-flex justify-content-between">
-                                                                    <div>
-                                                                        <h5>
-                                                                            {{record.obj_direct}} <a
-                                                                                href='{{record.obj_url}}'><u>{{record.obj}}</u></a>
-                                                                        </h5>
-                                                                    </div>
-                                                                    <div>
-                                                                        <h5>
-                                                                            <i class="	fa fa-rmb"></i>{{record.amount}}
-                                                                        </h5>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="d-flex justify-content-between">
-                                                                    <div>
-                                                                        <p style="color: rgb(66, 67, 68);"><i
-                                                                                class="fa fa-calendar-o"></i>
-                                                                            {{record.start_time}}发起</p>
-                                                                    </div>
-                                                                    <div>
-                                                                        <p style="color: rgb(66, 67, 68);">
-                                                                            {{record.finish_time}}处理</p>
-                                                                    </div>
-                                                                    
-                                                                </div>
-                                                                <div class="d-flex justify-content-between">
-                                                                    <div>
-                                                                        <p style="color: rgb(66, 67, 68);"><i
-                                                                                class="fa fa-envelope-o"></i>
-                                                                            {{record.message}}</p>
-                                                                    </div>
-                                                                    <div>
-                                                                        <p style="color: rgb(66, 67, 68);
+
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <h5>
+                                                                    {{record.obj_direct}} <a
+                                                                        href='{{record.obj_url}}'><u>{{record.obj}}</u></a>
+                                                                </h5>
+                                                            </div>
+                                                            <div>
+                                                                <h5>
+                                                                    <i class="	fa fa-rmb"></i>{{record.amount}}
+                                                                </h5>
+                                                            </div>
+                                                        </div>
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <p style="color: rgb(66, 67, 68);"><i
+                                                                        class="fa fa-calendar-o"></i>
+                                                                    {{record.start_time}}发起</p>
+                                                            </div>
+                                                            <div>
+                                                                <p style="color: rgb(66, 67, 68);">
+                                                                    {{record.finish_time}}处理</p>
+                                                            </div>
+
+                                                        </div>
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <p style="color: rgb(66, 67, 68);"><i
+                                                                        class="fa fa-envelope-o"></i>
+                                                                    {{record.message}}</p>
+                                                            </div>
+                                                            <div>
+                                                                <p style="color: rgb(66, 67, 68);
                                                                         margin-left: 8px;
                                                                         display:block;
                                                                         white-space:nowrap; 
                                                                         overflow:hidden; ">
-                                                                            {{record.status}}
-                                                                        </p>
-                                                                    </div>
-                                                                </div>
-
+                                                                    {{record.status}}
+                                                                </p>
                                                             </div>
-
-
                                                         </div>
-                                                        {% endfor %}
+
                                                     </div>
 
+
                                                 </div>
-                                                {% endif %}
+                                                {% endfor %}
                                             </div>
+
                                         </div>
+                                        {% endif %}
                                     </div>
                                 </div>
                             </div>
-
-
                         </div>
-
                     </div>
+
+
                 </div>
 
             </div>
-            <!--  END CONTENT AREA  -->
         </div>
-        <!-- END MAIN CONTAINER -->
 
-        <script>
-            $('.nav-tabs').on('shown.bs.tab', 'a', function (e) {
-                if (e.relatedTarget) {
-                    $(e.relatedTarget).removeClass('active');
-                }
-            })
-        </script>
+    </div>
+    <!--  END CONTENT AREA  -->
+</div>
+<!-- END MAIN CONTAINER -->
 
-        <script>
-            $('.table').bootstrapTable({
-                onLoadSuccess: function () {
-                    $('.table tr td').each(function () {
+<script>
+    $('.nav-tabs').on('shown.bs.tab', 'a', function (e) {
+        if (e.relatedTarget) {
+            $(e.relatedTarget).removeClass('active');
+        }
+    })
+</script>
 
-                        $(this).attr("title", $(this).text());
-                        $(this).css("cursor", 'pointer');
-                    });
+<script>
+    $('.table').bootstrapTable({
+        onLoadSuccess: function () {
+            $('.table tr td').each(function () {
 
-                }
-            })
-        </script>
-        {% endblock %}
+                $(this).attr("title", $(this).text());
+                $(this).css("cursor", 'pointer');
+            });
+
+        }
+    })
+</script>
+{% endblock %}
