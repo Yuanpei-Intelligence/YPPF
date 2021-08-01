@@ -36,8 +36,26 @@
                                         </div>
         
                                         <div class="text-center user-info">
-                                            <img src={{ html_display.avatar_path }} height="90px" width="90px" alt="avatar">
+                                            <img src="{{org_avatar_path}}" height="90px" width="90px" alt="avatar">
                                             <p class="">{{organization_name}}</p>
+
+                                            {% if show_subscribe %}
+                                                <div class="custom-control custom-switch">
+                                                    {% if subscribe_flag %}
+                                                    <input type="checkbox" class="custom-control-input" id="switch button"
+                                                        onclick="change_status.call(this);this.blur();" checked>
+                                                    <label class="custom-control-label" for="switch button">
+                                                        <font color="5F747B" id="subscribe">已订阅</font>
+                                                    </label>
+                                                    {% else %}
+                                                    <input type="checkbox" class="custom-control-input" id="switch button"
+                                                        onclick="change_status.call(this);this.blur();">
+                                                    <label class="custom-control-label" for="switch button">
+                                                        <font color="E1E1E1" id="subscribe">未订阅</font>
+                                                    </label>
+                                                    {% endif %}
+                                                </div>
+                                            {% endif %}
                                         </div>
         
                                         <div class="user-info-list">
@@ -50,17 +68,9 @@
                                                     <li class="contacts-block__item">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <line x1="12" y1="1" x2="12" y2="23" /> <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" /></svg> 元气值{{org.YQPoint}} 
                                                     </li>
-                                                  {% if html_display.is_myself == False %}
-                                                     <li class="contacts-block__item">
-                                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                          viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                          stroke-linecap="round" stroke-linejoin="round">
-                                                          <polyline points="20 12 20 22 4 22 4 12" />
-                                                          <rect x="2" y="7" width="20" height="5" />
-                                                         <line x1="12" y1="22" x2="12" y2="7" />
-                                                          <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
-                                                          <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-                                                      </svg> <a href="/transPage/{{html_display.org.organization_id_id}}">向ta转账</a>
+                                                    {% if html_display.is_myself == False %}
+                                                    <li class="contacts-block__item"> 
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <polyline points="20 12 20 22 4 22 4 12" />  <rect x="2" y="7" width="20" height="5" /> <line x1="12" y1="22" x2="12" y2="7" /><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /> <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /></svg> <a href="/transPage/{{html_display.org.organization_id_id}}">向ta转账</a>
                                                     </li>
                                                     {% endif %}
                                                 </ul>
@@ -182,7 +192,7 @@
                                                                             个人：本身的状态/报名截止（primary/danger)
                                                                         报名中：
                                                                             组织：success
-                                                                            个人：其他状态/未报名（primary/secondary）
+                                                                            个人：其他状态/未报名（primary/danger/secondary）
                                                                         等待中：
                                                                             组织：info
                                                                             个人：本身的状态/报名截止（primary/danger)
@@ -199,26 +209,19 @@
                                                                                 <span class="badge badge-pill badge-success">{{rec.act.status}}</span>
                                                                             {% endif %}
                                                                         {% else %}
-                                                                            {% if rec.act.status == "报名中" %}
-                                                                                <!--
-                                                                                    逻辑是：对未参加的用户显示未报名，对其他用户显示原本的状态
-                                                                                -->
-                                                                                {% if rec.status == "未参与" %}
+
+                                                                            {% if rec.status == "无记录" %}
+                                                                                {% if rec.act.status == "报名中" %}
                                                                                     <span class="badge badge-pill badge-secondary">未报名</span>
                                                                                 {% else %}
-                                                                                    <span class="badge badge-pill badge-primary">rec.status</span>
-                                                                                {% endif %}
-                                                                            {% else %}
-                                                                                <!--
-                                                                                    逻辑是：对未参加的用户显示报名截止，对其他用户显示原本的状态
-                                                                                -->
-                                                                                {% if rec.status == "未参与" %}
                                                                                     <span class="badge badge-pill badge-danger">报名截止</span>
-                                                                                {% else %}
-                                                                                    <span class="badge badge-pill badge-primary">rec.status</span>
                                                                                 {% endif %}
-
+                                                                            {% elif rec.status == "申请失败" or rec.status == "未参与" or rec.status == "取消" %}
+                                                                                <span class="badge badge-pill badge-primary">rec.status</span>
+                                                                            {% else %}
+                                                                                <span class="badge badge-pill badge-primary">rec.status</span>
                                                                             {% endif %}
+
                                                                         {% endif %}
                                                                     {% endif %}
 
@@ -247,7 +250,7 @@
                                                                 {% if rec.act.status == "报名中" %}
                                                                     {% if rec.status == "申请中" or rec.status == "已报名" or rec.status == "已参加" %}
                                                                         <a href="/welcome/" class="btn btn-primary btn-sm" role="button">退出</a>
-                                                                    {% elif rec.status == "未参与" %}
+                                                                    {% elif rec.status == "无记录" %}
                                                                         <a href="/welcome/" class="btn btn-primary btn-sm" role="button">加入</a>
                                                                     {% endif %}
                                                                 {% elif rec.act.status != "审核中" %}
@@ -383,4 +386,37 @@
     </div>
     <!-- END MAIN CONTAINER -->
     
+{% endblock %}
+
+
+{% block add_js_file %}
+<script>
+    async function change_status() {
+        if (!this.checked) {
+            const success = await save_subscribe_status.call(this, false);
+            if (success) {
+                document.getElementById(`subscribe`).color = "E1E1E1";
+                document.getElementById(`subscribe`).innerHTML = "未订阅";
+            }
+            else this.checked = true;
+        } else {
+            const success = await save_subscribe_status.call(this, true);
+            if (success) {
+                document.getElementById(`subscribe`).color = "5F747B";
+                document.getElementById(`subscribe`).innerHTML = "已订阅";
+            }
+            else this.checked = false;
+        }
+    }
+    async function save_subscribe_status(status) {
+        const { success } = await fetch(`/save_subscribe_status`, {
+            headers: { "Content-Type": `text/plain` },
+            method: `POST`,
+            body: JSON.stringify({ id: '{{org.organization_id.username}}', status }),
+        })
+            .then((res) => res.json())
+            .catch(() => { success: false });
+        return success;
+    }
+</script>
 {% endblock %}
