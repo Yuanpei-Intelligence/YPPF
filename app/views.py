@@ -81,7 +81,6 @@ def index(request):
         auth.logout(request)
         return render(request, "index.html", locals())
 
-
     if arg_islogout is not None:
         if request.user.is_authenticated:
             auth.logout(request)
@@ -98,7 +97,6 @@ def index(request):
     # 恶意的 origin
     if not url_check(arg_origin):
         return redirect("/index/?alert=1")
-
 
     if request.method == "POST" and request.POST:
         username = request.POST["username"]
@@ -129,7 +127,6 @@ def index(request):
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                     return render(request, "welcome_page.html", locals())
-
 
                 d = datetime.utcnow()
                 t = mktime(datetime.timetuple(d))
@@ -174,13 +171,11 @@ def index(request):
     if arg_origin is not None:
         if request.user.is_authenticated:
 
-
             if not check_cross_site(request, arg_origin):
                 html_display = dict()
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                 return render(request, "welcome_page.html", locals())
-
 
             d = datetime.utcnow()
             t = mktime(datetime.timetuple(d))
@@ -462,7 +457,7 @@ def orginfo(request, name=None):
     show_subscribe = False
     if user_type == "Person":
         show_subscribe = True
-        subscribe_flag = True   # 默认在订阅列表中 
+        subscribe_flag = True   # 默认在订阅列表中
         if organization_name in me.subscribe_list.values_list('oname', flat=True):
             subscribe_flag = False
     return render(request, "orginfo.html", locals())
@@ -700,17 +695,18 @@ def search(request):
 
     # 搜索组织
     # 先查找通过个人关联到的position_list
-    pos_list = Position.objects.activated().filter(Q(person__in=people_list) & Q(show_post=True))
+    pos_list = Position.objects.activated().filter(
+        Q(person__in=people_list) & Q(show_post=True))
     # 通过组织名、组织类名、个人关系查找
     organization_list = Organization.objects.filter(
-        Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in = pos_list.values('org')))
+        Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in=pos_list.values('org')))
 
     # 组织要呈现的具体内容
     organization_field = ["组织名称", "组织类型", "负责人", "近期活动"]
 
     # 搜索活动
     activity_list = Activity.objects.filter(Q(title__icontains=query) |
-        Q(organization_id__in=organization_list.values('organization_id')))
+                                            Q(organization_id__in=organization_list.values('organization_id')))
 
     # 活动要呈现的内容
     activity_field = ['活动名称', '承办组织', '状态']
@@ -1063,7 +1059,8 @@ def transaction_page(request, rid=None):
 
     # 储存返回跳转的url
     if context["user_type"] == "Person":
-        context["return_url"] = context["profile_url"] + context["name"] + "+" + context["rid"]
+        context["return_url"] = context["profile_url"] + \
+            context["name"] + "+" + context["rid"]
     else:
         context["return_url"] = context["profile_url"] + context["name"]
 
@@ -1102,28 +1099,28 @@ def transaction_page(request, rid=None):
                 # 接下来确定金额
                 if payer.YQPoint < amount:
                     html_display["warn_code"] = 1
-                    html_display["warn_message"] = "现存元气值余额为" + str(payer.YQPoint) + ", 不足以发起额度为" + str(amount) +"的转账!"
+                    html_display["warn_message"] = "现存元气值余额为" + \
+                        str(payer.YQPoint) + ", 不足以发起额度为" + \
+                        str(amount) + "的转账!"
                 else:
                     payer.YQPoint -= amount
                     record = TransferRecord.objects.create(
-                        proposer=request.user, recipient=user, amount = amount, message = transaction_msg
+                        proposer=request.user, recipient=user, amount=amount, message=transaction_msg
                     )
                     record.save()
                     payer.save()
-                    warn_message =  "成功发起向" + name + "的转账! 元气值将在对方确认后到账。"
+                    warn_message = "成功发起向" + name + "的转账! 元气值将在对方确认后到账。"
 
                     # TODO 发送微信消息
 
                     # 跳转回主页, 首先先get主页位置
-                    urls = context["return_url"] + f"?warn_code=2&warn_message={warn_message}"
-                    return redirect(urls)        
-                    
+                    urls = context["return_url"] + \
+                        f"?warn_code=2&warn_message={warn_message}"
+                    return redirect(urls)
 
         except:
             html_display["warn_code"] = 1
             html_display["warn_message"] = "出现无法预料的问题, 请联系管理员!"
-
-
 
     return render(request, "transaction_page.html", locals())
 
@@ -1304,7 +1301,7 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
     '''
     # 由于误差, 将amount调整为小数位数不超过2
     for key in amount.keys():
-        amount[key] = round(amount[key],1)
+        amount[key] = round(amount[key], 1)
     return lis, amount
 
 
@@ -1526,7 +1523,7 @@ def getActivityInfo(request):
 
             elif format == 'excel':
                 return HttpResponse('.xls Not Implemented')
-            
+
             else:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = f'不支持的格式{format}'
@@ -1542,7 +1539,8 @@ def getActivityInfo(request):
         else:
             checkin_url = f'/checkinActivity?activityid={activity.id}'
             origin_url = request.scheme + '://' + request.META['HTTP_HOST']
-            checkin_url = parse.urljoin(origin_url, checkin_url)  # require full path
+            checkin_url = parse.urljoin(
+                origin_url, checkin_url)  # require full path
 
             buffer = io.BytesIO()
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
@@ -1753,11 +1751,14 @@ def notification2Display(notification_list):
         lis[-1]['URL'] = notification.URL
         lis[-1]['type'] = notification.get_type_display()
         lis[-1]['title'] = notification.get_title_display()
-
+        if notification.sender.username[0] == 'z':
+            lis[-1]['sender'] = Organization.objects.get(organization_id__username=notification.sender.username).oname
+        else:
+            lis[-1]['sender'] = NaturalPerson.objects.get(person_id__username=notification.sender.username).name
     return lis
 
 
-def notification_done(notification_id):
+def notification_status_change(notification_id):
     '''
     调用该函数以完成一项通知。对于知晓类通知，在接收到用户点击按钮后的post表单，该函数会被调用。
     对于需要完成的待处理通知，需要在对应的事务结束判断处，调用该函数。
@@ -1766,11 +1767,19 @@ def notification_done(notification_id):
     context['warn_code'] = 1
     with transaction.atomic():
         notification = Notification.objects.select_for_update().get(id=notification_id)
-        notification.status = Notification.NotificationStatus.DONE
-        notification.finish_time = datetime.now()  # 通知完成时间
-        notification.save()
-        context['warn_code'] = 0
+        if notification.status == Notification.NotificationStatus.UNDONE:
+            notification.status = Notification.NotificationStatus.DONE
+            notification.finish_time = datetime.now()  # 通知完成时间
+            notification.save()
+            context['warn_code'] = 2
+            context['warn_message'] = '您已成功阅读一条通知！'
+        elif notification.status == Notification.NotificationStatus.DONE:
+            notification.status = Notification.NotificationStatus.UNDONE
+            notification.save()
+            context['warn_code'] = 2
+            context['warn_message'] = '成功设置一条通知为未读！'
         return context
+    context['warn_message'] = '在阅读通知的过程中发生错误，请联系管理员！'
     return context
 
 
@@ -1797,8 +1806,9 @@ def notifications(request):
     if request.method == "POST":  # 发生了通知处理的事件
         post_args = request.POST.get("post_button")
         notification_id = post_args
-        context = notification_done(notification_id)
+        context = notification_status_change(notification_id)
         html_display['warn_code'] = context['warn_code']
+        html_display['warn_message'] = context['warn_message']
     me = get_person_or_org(request.user, user_type)
     html_display['is_myself'] = True
     if user_type == 'Person':
