@@ -1,3 +1,5 @@
+from django.dispatch.dispatcher import receiver
+from app.models import Notification
 from django.contrib.auth.hashers import BasePasswordHasher, MD5PasswordHasher, mask_hash
 from django.contrib import auth
 from django.conf import settings
@@ -61,6 +63,8 @@ def check_user_type(user):  # return Valid(Bool), otype
         html_display["profile_url"] = "/stuinfo/"
         html_display["avatar_path"] = get_user_ava(person, user_type)
         html_display['user_type'] = user_type
+    
+    html_display['mail_num'] = Notification.objects.filter(receiver=user, status=Notification.NotificationStatus.UNDONE).count()
 
     return True, user_type, html_display
 
@@ -77,12 +81,10 @@ def get_user_ava(obj, user_type):
             return settings.MEDIA_URL + "avatar/org_default.png"
 
 
-def get_user_left_narbar(
-        person, is_myself, html_display
-):  # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
-    assert (
-            "is_myself" in html_display.keys()
-    ), "Forget to tell the website whether this is the user itself!"
+def get_user_left_narbar(person, is_myself, html_display):  # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
+    #assert (
+    #        "is_myself" in html_display.keys()
+    #), "Forget to tell the website whether this is the user itself!"
     html_display["underground_url"] = local_dict["url"]["base_url"]
 
     my_org_id_list = Position.objects.activated().filter(person=person).filter(pos=0)
@@ -92,9 +94,9 @@ def get_user_left_narbar(
 
 
 def get_org_left_narbar(org, is_myself, html_display):
-    assert (
-            "is_myself" in html_display.keys()
-    ), "Forget to tell the website whether this is the user itself!"
+    #assert (
+    #        "is_myself" in html_display.keys()
+    #), "Forget to tell the website whether this is the user itself!"
     html_display["switch_org_name"] = org.oname
     html_display["underground_url"] = local_dict["url"]["base_url"]
     html_display['org'] = org
@@ -265,7 +267,7 @@ def check_cross_site(request, arg_url):
     appointment = local_dict["url"]["base_url"]
     appointment_base = re.findall('^https?://[^/]*/', appointment)[0]
     if re.match(appointment_base, arg_url):
-        valid, user_type, html_display = check_user_type(request)
+        valid, user_type, html_display = check_user_type(request.user)
         if not valid or user_type == "Organization":
             return False
     return True
