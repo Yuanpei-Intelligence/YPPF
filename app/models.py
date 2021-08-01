@@ -409,7 +409,9 @@ class Notification(models.Model):
     receiver = models.ForeignKey(
         User, related_name="receiver_id", on_delete=models.CASCADE
     )
-
+    sender = models.ForeignKey(
+        User, related_name="sender_id", on_delete=models.CASCADE
+    )
     class NotificationStatus(models.IntegerChoices):
         DONE = (0, "已处理")
         UNDONE = (1, "待处理")
