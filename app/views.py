@@ -310,7 +310,10 @@ def stuinfo(request, name=None):
             html_display["warn_code"] = 2
             html_display["warn_message"] = "修改个人信息成功!"
 
-        html_display["userinfo"] = person
+        # 存储被查询人的信息
+        context = dict()
+        context["userinfo"] = person
+        context["avatar_path"] = utils.get_user_ava(person, "Person")
 
         html_display["title_name"] = "User Profile"
         html_display["narbar_name"] = "个人主页"
@@ -368,10 +371,11 @@ def orginfo(request, name=None):
     """
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
-    me = get_person_or_org(user, user_type)
 
     if not valid:
         return redirect("/logout/")
+
+    me = get_person_or_org(user, user_type)
 
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if user_type == "Person":
@@ -387,50 +391,61 @@ def orginfo(request, name=None):
         # 下面是组织信息
 
         org = Organization.objects.activated().get(oname=name)
-        organization_name = name
-        organization_type_name = org.otype.otype_name
-        org_avatar_path = utils.get_user_ava(org, user_type)
-        # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
-
-        # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
-        continuing_activity_list = Activity.objects.activated().filter(
-                organization_id = org.organization_id_id
-            ).filter(
-                status__in = [Activity.Status.REVIEWING, Activity.Status.APPLYING, Activity.Status.WAITING, Activity.Status.PROGRESSING]
-            ).order_by("-start")
-
-        ended_activity_list = Activity.objects.activated().filter(
-                organization_id = org.organization_id_id
-            ).filter(
-                status__in = [Activity.Status.CANCELED, Activity.Status.END]
-            ).order_by("-start")
-
-        # 如果是用户登陆的话，就记录一下用户有没有加入该活动，用字典存每个活动的状态，再把字典存在列表里
-        continuing_activity_list_participantrec = []
-        participant_status = ["申请中","申请失败","已报名","已参与","未参与","放弃"]
-        for act in continuing_activity_list:
-            dictmp = {}
-            dictmp["act"] = act
-            if user_type == "Person":
-                existlist = Paticipant.objects.filter(activity_id_id = act.id).filter(person_id_id = me.person_id_id)
-                if existlist: # 判断是否非空
-                    dictmp["status"] = participant_status[existlist[0].status]
-                else :
-                    dictmp["status"] = "无记录"
-            continuing_activity_list_participantrec.append(dictmp)
-
-        # 组织成员list
-        positions = Position.objects.activated().filter(org = org).order_by("pos") # 升序
-        member_list = []
-        for p in positions:
-            if p.person.show_post == True :
-                member = {}
-                member["person"] = p.person
-                member["job"] = org.otype.job_name_list[p.pos]
-                member_list.append(member)
 
     except:
         return redirect("/welcome/")
+    
+    organization_name = name
+    organization_type_name = org.otype.otype_name
+    org_avatar_path = utils.get_user_ava(org, "Organization")
+    # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
+
+    # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
+    continuing_activity_list = Activity.objects.activated().filter(
+            organization_id = org.organization_id_id
+        ).filter(
+            status__in = [Activity.Status.REVIEWING, Activity.Status.APPLYING, Activity.Status.WAITING, Activity.Status.PROGRESSING]
+        ).order_by("-start")
+
+    ended_activity_list = Activity.objects.activated().filter(
+            organization_id = org.organization_id_id
+        ).filter(
+            status__in = [Activity.Status.CANCELED, Activity.Status.END]
+        ).order_by("-start")
+
+    # 如果是用户登陆的话，就记录一下用户有没有加入该活动，用字典存每个活动的状态，再把字典存在列表里
+    continuing_activity_list_participantrec = []
+    participant_status = ["申请中","申请失败","已报名","已参与","未参与","放弃"]
+    for act in continuing_activity_list:
+        dictmp = {}
+        dictmp["act"] = act
+        if user_type == "Person":
+            existlist = Paticipant.objects.filter(activity_id_id = act.id).filter(person_id_id = me.person_id_id)
+            if existlist: # 判断是否非空
+                dictmp["status"] = participant_status[existlist[0].status]
+            else :
+                dictmp["status"] = "无记录"
+        continuing_activity_list_participantrec.append(dictmp)
+
+    
+    # 判断我是不是老大, 首先设置为false, 然后如果有person_id和user一样, 就为True
+    html_display["isboss"] = False
+
+    # 组织成员list
+    positions = Position.objects.activated().filter(org = org).order_by("pos") # 升序
+    member_list = []
+    for p in positions:
+        if p.person.person_id == user and p.pos == 0:
+                html_display["isboss"] = True
+        if p.show_post == True or p.pos == 0:
+            member = {}
+            member["person"] = p.person
+            member["job"] = org.otype.get_name(p.pos)
+            member["highest"] = True if p.pos == 0 else False
+            member["avatar_path"] = utils.get_user_ava(member['person'],'Person')
+            member_list.append(member)
+
+    
 
     try:
         html_display["warn_code"] = int(request.GET.get(
@@ -446,26 +461,10 @@ def orginfo(request, name=None):
         html_display["warn_code"] = 2
         html_display["warn_message"] = "修改个人信息成功!"
 
-    # 这一部分是负责人boss的信息
-    boss = Position.objects.activated().filter(org=org, pos=0)
-    boss_display = {}
-    if len(boss) >= 1:
-        boss = boss[0].person
-        boss_display["bossname"] = boss.name
-        boss_display["year"] = boss.stu_grade
-        boss_display["major"] = boss.stu_major
-        boss_display["email"] = boss.email
-        boss_display["tel"] = boss.telephone
-
-        # jobpos = Position.objects.activated().get(person=boss, org = org).pos
-        boss_display["job"] = org.otype.job_name_list[0]
-        boss_display['avatar_path'] = utils.get_user_ava(boss, 'Person')
+    
 
     # 补充左边栏信息
-    # 判断是否是负责人，如果是，在html的sidebar里要加上一个【切换账号】的按钮
-    html_display["isboss"] = (
-        True if (user_type == "Person" and boss.person_id == user) else False
-    )
+    
     # 判断是否为组织账户本身在登录
     html_display["is_myself"] = me == org
 
@@ -730,19 +729,27 @@ def search(request):
     ]  # 感觉将年级和班级分开呈现会简洁很多
 
     # 搜索组织
-    # 先查找通过个人关联到的position_list
+    # 先查找query作为姓名包含在字段中的职务信息, 选的是post为true或者职务等级为0
     pos_list = Position.objects.activated().filter(
-        Q(person__in=people_list) & Q(show_post=True))
-    # 通过组织名、组织类名、个人关系查找
+        Q(person__name__icontains=query) & (Q(show_post=True) | Q(pos=0)))
+    # 通过组织名、组织类名、和上述的职务信息对应的组织信息
     organization_list = Organization.objects.filter(
-        Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in=pos_list.values('org')))
+        Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(id__in = pos_list.values('org'))).prefetch_related("position_set")
+
+    org_display_list = []
+    for org in organization_list:
+        org_display_list.append({
+            "oname": org.oname,
+            "otype":org.otype,
+            "pos0": [w['person__name'] for w in list(org.position_set.activated().filter(pos=0).values("person__name"))]
+        })
 
     # 组织要呈现的具体内容
     organization_field = ["组织名称", "组织类型", "负责人", "近期活动"]
 
     # 搜索活动
     activity_list = Activity.objects.filter(Q(title__icontains=query) |
-                                            Q(organization_id__in=organization_list.values('organization_id')))
+                                            Q(organization_id__oname__icontains=query))
 
     # 活动要呈现的内容
     activity_field = ['活动名称', '承办组织', '状态']
