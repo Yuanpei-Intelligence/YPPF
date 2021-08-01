@@ -15,7 +15,8 @@ class NaturalPersonManager(models.Manager):
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
         datas = NaturalPerson.objects.activated()
         year = datetime.now().strftime("%Y")
-        datas.objects.filter(stu_grade=str(int(year) - 4)).update(GraduateStatus=1)
+        datas.objects.filter(stu_grade=str(int(year) - 4)
+                             ).update(GraduateStatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
@@ -80,7 +81,8 @@ class NaturalPerson(models.Model):
     show_dorm = models.BooleanField(default=False)
 
     # 注意：这是不订阅的列表！！
-    subscribe_list = models.ManyToManyField('Organization', related_name='subscribers', db_index=True)
+    subscribe_list = models.ManyToManyField(
+        'Organization', related_name='unsubsribers', db_index=True)
 
     def __str__(self):
         return str(self.name)
@@ -104,7 +106,7 @@ class NaturalPerson(models.Model):
         info.append(self.telephone if (self.show_tel) else unpublished)
         info.append(self.stu_dorm if (self.show_dorm) else unpublished)
         info.append('在校' if self.status ==
-                            NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
+                    NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
         # 防止显示None
         for i in range(len(info)):
             if info[i] == None:
@@ -121,7 +123,8 @@ class OrganizationType(models.Model):
         verbose_name = "组织类型"
         verbose_name_plural = verbose_name
 
-    otype_id = models.SmallIntegerField("组织类型编号", unique=True, primary_key=True)
+    otype_id = models.SmallIntegerField(
+        "组织类型编号", unique=True, primary_key=True)
     otype_name = models.CharField("组织类型名称", max_length=25)
     otype_superior_id = models.SmallIntegerField("上级组织类型编号", default=0)
     incharge = models.ForeignKey(
@@ -368,7 +371,8 @@ class TransferRecord(models.Model):
         REFUSED = (2, "已拒绝")
         SUSPENDED = (3, "已终止")
 
-    status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
+    status = models.SmallIntegerField(
+        choices=TransferStatus.choices, default=1)
 
     def save(self, *args, **kwargs):
         self.amount = round(self.amount, 1)
@@ -392,4 +396,40 @@ class Paticipant(models.Model):
         UNATTENDED = 4  # 未参与
         CANCELED = 5  # 放弃，如果学生取消活动，则设置这里
 
-    status = models.IntegerField('学生参与活动状态', choices=AttendStatus.choices, default=0)
+    status = models.IntegerField(
+        '学生参与活动状态', choices=AttendStatus.choices, default=0)
+
+
+class Notification(models.Model):
+    class Meta:
+        verbose_name = "通知消息"
+        verbose_name_plural = verbose_name
+        ordering = ["id"]
+
+    receiver = models.ForeignKey(
+        User, related_name="receiver_id", on_delete=models.CASCADE
+    )
+
+    class NotificationStatus(models.IntegerChoices):
+        DONE = (0, "已处理")
+        UNDONE = (1, "待处理")
+
+    class NotificationType(models.IntegerChoices):
+        NEEDREAD = (0, '知晓类')    # 只需选择“已读”即可
+        NEEDDO = (1, '处理类')      # 需要处理的事务
+
+    class NotificationTitle(models.IntegerChoices):
+        # 等待逻辑补充
+        TRANSFER_CONFIRM = (0, '转账确认通知')
+        ACTIVITY_INFORM = (1, '活动状态通知')
+        VERIFY_INFORM = (2, '审核信息通知')
+        PERSITION_INFORM = (3, '人事变动通知')
+
+    status = models.SmallIntegerField(choices=NotificationStatus.choices, default=1)
+    title = models.SmallIntegerField(choices=NotificationTitle.choices, blank=True, null=True)
+    content = models.CharField("通知内容", max_length=225, blank=True)
+    start_time = models.DateTimeField("通知发出时间", auto_now_add=True)
+    finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
+    type = models.SmallIntegerField(choices=NotificationType.choices, default=0)
+    
+    URL = models.URLField("相关网址", null=True, blank=True)
