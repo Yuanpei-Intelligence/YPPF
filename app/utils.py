@@ -106,49 +106,81 @@ def check_ac_request(request):
     # oid的获取
     context = dict()
     context['warn_code'] = 0
+
+    try:
+        assert request.POST['edit'] == "True"
+        edit = True
+    except:
+        edit = False
+
     # signup_start = request.POST["actstar"]
     act_start = request.POST.get("actstart")  # 活动报名时间
     act_end = request.POST.get("actend")  # 活动报名结束时间
     prepare_scheme = request.POST.get("prepare_scheme")
+
+    # edit 不能改预算和报名方式
+    if not edit:
+        try:
+            budget = float(request.POST["budget"])
+            context['budget'] = budget
+            context['need_check'] = False
+            if context['budget'] > local_dict['thresholds']['activity_budget']:
+                context['need_check'] = True
+        except:
+            budget = local_dict['thresholds']['activity_budget']
+        try:
+            schema = int(request.POST["signschema"])
+        except:
+            schema = 0
+        context['signschema'] = schema
+
+    # 准备时间
     try:
         prepare_scheme = int(prepare_scheme)
         prepare_times = [1, 24, 72, 168]
         prepare_time = prepare_times[prepare_scheme]
+        context['prepare_scheme'] = prepare_scheme
     except:
-        context['warn_code'] = 10
-        context['warn_msg'] = "Unexpected exception. If you are not doing it deliberately, please contact the administrator to report this bug."
-        return context
+        if not edit:
+            context['warn_code'] = 1
+            context['warn_msg'] = "Unexpected exception. If you are not doing it deliberately, please contact the administrator to report this bug."
+            return context
 
-    capacity = 0
-    schema = 0  # 投点模式，默认0为先到先得
-    URL = ""
+    # 人数限制
     try:
         t = int(request.POST["unlimited_capacity"])
-        capacity = -1
+        capacity = 10000
     except:
         capacity = 0
     try:
         if capacity == 0:
             capacity = int(request.POST["maxpeople"])
-        elif capacity == -1:
-            capacity = 10000
         if capacity <= 0:
             context['warn_code'] = 1
-            context['warn_msg'] = "The number of participants must exceed 0"
+            context['warn_msg'] = "The number of participants must exceed 0."
+            return context
+        context['capacity'] = capacity
     except:
-        context['warn_code'] = 2
-        context['warn_msg'] = "The number of participants must be an integer"
+        if not edit:
+            context['warn_code'] = 1
+            context['warn_msg'] = "The number of participants must be an integer."
+            return context
 
+    # 价格
     try:
         aprice = float(request.POST["aprice"])
         if aprice < 0:
-            context['warn_code'] = 3
+            context['warn_code'] = 1
             context['warn_msg'] = "The price should be no less than 0!"
+            return context
+        context['aprice'] = aprice
     except:
-        context['warn_code'] = 4
-        context['warn_msg'] = "The price must be a floating point number one decimal place"
+        if not edit:
+            context['warn_code'] = 1
+            context['warn_msg'] = "The price must be a floating point number one decimal place"
+            return context
 
-
+    # 时间
     try:
         act_start = datetime.strptime(act_start, '%m/%d/%Y %H:%M %p')
         act_end = datetime.strptime(act_end, '%m/%d/%Y %H:%M %p')
@@ -163,51 +195,42 @@ def check_ac_request(request):
         print('end', signup_end)
 
         if signup_start >= signup_end:
-            context['warn_code'] = 7
+            context['warn_code'] = 1
             context['warn_msg'] = "No enough time to prepare."
             return context
 
-        # 至少提前一小时发起活动，但上面的逻辑已经包含了
-        '''
-        if act_start < now_time + datetime.timedelta(hours=1):
-            context['warn_code'] = 8
-            context['warn_msg'] = "No enough time to prepare."
-        '''
         if now_time + timedelta(days=30) < act_start == False:
-            context['warn_code'] = 5
+            context['warn_code'] = 1
             context['warn_msg'] = "The activity has to be in a month! "
-
+            return context
+            
+        context['signup_start'] = signup_start
+        context['signup_end'] = signup_end
+        context['act_start'] = act_start
+        context['act_end'] = act_end
 
     except:
-        context['warn_code'] = 6
-        context['warn_msg'] = "you have sent a wrong time form!"
-
-
+        if not edit:
+            context['warn_code'] = 1
+            context['warn_msg'] = "you have sent a wrong time form!"
+            return context
 
     try:
-        URL = str(request.POST["URL"])
+        context['URL'] = request.POST["URL"]
     except:
-        URL = ""
-    try:
-        schema = int(request.POST["signschema"])
-    except:
-        schema = 0
+        pass
     if context['warn_code'] != 0:
         return context
 
-    context['aname'] = str(request.POST["aname"])  # 活动名称
-    context['content'] = str(request.POST["content"])  # 活动内容
-    context['location'] = str(request.POST["location"])  # 活动地点
-    context['URL'] = str(request.POST["URL"])  # 活动推送链接
-    context['capacity'] = capacity
-    context['aprice'] = aprice  # 活动价格
-    context['URL'] = URL
-    context['signup_start'] = signup_start
-    context['signup_end'] = signup_end
-    context['act_start'] = act_start
-    context['act_end'] = act_end
-    context['prepare_scheme'] = prepare_scheme
-    context['signschema'] = schema
+    try: 
+        context['aname'] = str(request.POST["aname"])  # 活动名称
+        context['content'] = str(request.POST["content"])  # 活动内容
+        context['location'] = str(request.POST["location"])  # 活动地点
+    except:
+        if not edit:
+            context['warn_code'] = 1
+            context['warn_msg'] = "请检查您的输入是否正确。"
+
     return context
 
 
