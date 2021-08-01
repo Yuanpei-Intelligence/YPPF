@@ -416,8 +416,10 @@ def orginfo(request, name=None):
             dictmp["act"] = act
             if user_type == "Person":
                 existlist = Paticipant.objects.filter(activity_id_id = act.id).filter(person_id_id = me.person_id_id)
-                # 既然有未参与这一项，就必然非空。
-                dictmp["status"] = participant_status[existlist[0].status]
+                if existlist: # 判断是否非空
+                    dictmp["status"] = participant_status[existlist[0].status]
+                else :
+                    dictmp["status"] = "无记录"
             continuing_activity_list_participantrec.append(dictmp)
 
         # 组织成员list
@@ -457,6 +459,8 @@ def orginfo(request, name=None):
         boss_display["major"] = boss.stu_major
         boss_display["email"] = boss.email
         boss_display["tel"] = boss.telephone
+
+        # jobpos = Position.objects.activated().get(person=boss, org = org).pos
         boss_display["job"] = org.otype.job_name_list[0]
         boss_display['avatar_path'] = utils.get_user_ava(boss, 'Person')
 
@@ -487,6 +491,15 @@ def orginfo(request, name=None):
 
     # 转账后跳转
     origin = request.get_full_path()
+
+    # 补充订阅该组织的按钮
+    show_subscribe = False
+    if user_type == "Person":
+        show_subscribe = True
+        subscribe_flag = True   # 默认在订阅列表中 
+        if organization_name in me.subscribe_list.values_list('oname', flat=True):
+            subscribe_flag = False
+            
     return render(request, "orginfo.html", locals())
 
 
@@ -1047,7 +1060,7 @@ def transaction_page(request, rid=None):
             me, html_display['is_myself'], html_display)
     else:
         html_display = utils.get_org_left_narbar(
-            me, html_display['is_myself'], html_display
+            me, html_display['is_myself'], html_display)
 
     # 补充一些呈现信息
     html_display["title_name"] = "Transaction"
