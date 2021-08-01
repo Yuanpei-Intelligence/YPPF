@@ -397,6 +397,43 @@ def orginfo(request, name=None):
         org_avatar_path = utils.get_user_ava(org, user_type)
         # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
+        # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
+        continuing_activity_list = Activity.objects.activated().filter(
+                organization_id = org.organization_id_id
+            ).filter(
+                status__in = [Activity.Status.REVIEWING, Activity.Status.APPLYING, Activity.Status.WAITING, Activity.Status.PROGRESSING]
+            ).order_by("-start")
+
+        ended_activity_list = Activity.objects.activated().filter(
+                organization_id = org.organization_id_id
+            ).filter(
+                status__in = [Activity.Status.CANCELED, Activity.Status.END]
+            ).order_by("-start")
+
+        # 如果是用户登陆的话，就记录一下用户有没有加入该活动，用字典存每个活动的状态，再把字典存在列表里
+        continuing_activity_list_participantrec = []
+        participant_status = ["申请中","申请失败","已报名","已参与","未参与","放弃"]
+        for act in continuing_activity_list:
+            dictmp = {}
+            dictmp["act"] = act
+            if user_type == "Person":
+                existlist = Paticipant.objects.filter(activity_id_id = act.id).filter(person_id_id = me.person_id_id)
+                if existlist: # 判断是否非空
+                    dictmp["status"] = participant_status[existlist[0].status]
+                else :
+                    dictmp["status"] = "无记录"
+            continuing_activity_list_participantrec.append(dictmp)
+
+        # 组织成员list
+        positions = Position.objects.activated().filter(org = org).order_by("pos") # 升序
+        member_list = []
+        for p in positions:
+            if p.person.show_post == True :
+                member = {}
+                member["person"] = p.person
+                member["job"] = org.otype.job_name_list[p.pos]
+                member_list.append(member)
+
     except:
         return redirect("/welcome/")
 
@@ -405,6 +442,7 @@ def orginfo(request, name=None):
             "warn_code", 0))  # 是否有来自外部的消息
     except:
         return redirect("/welcome/")
+
     html_display["warn_message"] = request.GET.get(
         "warn_message", "")  # 提醒的具体内容
 
@@ -415,7 +453,6 @@ def orginfo(request, name=None):
 
     # 这一部分是负责人boss的信息
     boss = Position.objects.activated().filter(org=org, pos=0)
-    # boss = NaturalPerson.objects.activated().get(person_id = bossid)
     boss_display = {}
     if len(boss) >= 1:
         boss = boss[0].person
@@ -427,7 +464,6 @@ def orginfo(request, name=None):
 
         # jobpos = Position.objects.activated().get(person=boss, org = org).pos
         boss_display["job"] = org.otype.job_name_list[0]
-
         boss_display['avatar_path'] = utils.get_user_ava(boss, 'Person')
 
     # 补充左边栏信息
@@ -465,6 +501,7 @@ def orginfo(request, name=None):
         subscribe_flag = True   # 默认在订阅列表中 
         if organization_name in me.subscribe_list.values_list('oname', flat=True):
             subscribe_flag = False
+
     return render(request, "orginfo.html", locals())
 
 
@@ -645,7 +682,6 @@ def search(request):
         搜索组织
             支持使用组织名、组织类型搜索、一级负责人姓名
             组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
-
             add by syb:
             支持通过组织名、组织类型来搜索组织
             支持通过公开关系的个人搜索组织，即如果某自然人用户可以被上面的人员搜索检出，
@@ -738,13 +774,11 @@ def test(request):
 def forget_password(request):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
-
         页面效果
         -------
         - 根据（邮箱）验证码完成登录，提交后跳转到修改密码界面
         - 本质是登录而不是修改密码
         - 如果改成支持验证码登录只需修改页面和跳转（记得修改函数和页面名）
-
         页面逻辑
         -------
         1. 发送验证码
@@ -752,7 +786,6 @@ def forget_password(request):
         2. 输入验证码
             2.5 保留表单信息
         3. 错误提醒和邮件发送提醒
-
         实现逻辑
         -------
         - 通过脚本使按钮提供不同的`send_captcha`值，区分按钮
@@ -764,7 +797,6 @@ def forget_password(request):
             - `err_code`=`0`或`4`是预设的提醒值，额外弹出提示框
             - forget_password.html中可以进一步修改
         - 尝试发送验证码后总是弹出提示框，通知用户验证码的发送情况
-
         注意事项
         -------
         - 尝试忘记密码的不一定是本人，一定要做好隐私和逻辑处理
@@ -1377,20 +1409,16 @@ def myYQPoint(request):
     to_recv_list, to_recv_amount = record2Display(record_list=TransferRecord.objects.filter(
         recipient=request.user, status=TransferRecord.TransferStatus.WAITING),
         record_type='recv')
-
     issued_send_list, _ = record2Display(record_list=TransferRecord.objects.filter(proposer=request.user, status__in=[
         TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED]),
         record_type='send')
     issued_recv_list, _ = record2Display(record_list=TransferRecord.objects.filter(recipient=request.user, status__in=[
         TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED]),
         record_type='recv')
-
     to_list = to_recv_list + to_send_list
     issued_list = issued_recv_list + issued_send_list
-
     # to_list 按照发起时间倒序排列
     to_list = sorted(to_list, key=lambda x: x['finish_time'], reverse=...)
-
     # issued_list 按照处理时间倒序排列
     '''
 
@@ -1727,6 +1755,7 @@ def save_subscribe_status(request):
                 for org in org_list:
                     me.subscribe_list.add(org)
         me.save()
+
     return JsonResponse({"success": True})
 
 
