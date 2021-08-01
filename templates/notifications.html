@@ -33,7 +33,7 @@
                             <div class="widget-content widget-content-area">
                                 <h3>通知信箱</h3>
                                 <p>欢迎来到你的通知信箱！这里汇集了您在<strong>Yuanpei Profile</strong>中「已处理」和「未处理」的事务通知~</p>
-                                <p>对于「知晓类」通知，点击「知道了」按钮，就可以将通知放入「已处理」信箱中啦！</p>
+                                <p>对于「知晓类」通知，点击「知道了」按钮，就可以将通知放入「已处理」信箱中啦！当然，你也可以将已读消息设置为未读。</p>
                                 <p>对于需要您手动处理的事务，您可以通过点击<u>标题链接</u>到达相应页面进行事务的处理，处理完毕后，该通知会自动进入「已处理」信箱！</p>
                                 </br>
                                 <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
@@ -68,7 +68,7 @@
                                                         <div class="d-flex justify-content-between">
                                                             <div>
                                                                 <h5>
-                                                                    <a href={{note.URL}}><u>{{note.title}}</u></a>
+                                                                    <a href={{note.URL}}><u>{{note.title}}</u></a><br />
                                                                 </h5>
                                                             </div>
                                                             <div>
@@ -99,6 +99,8 @@
                                                         <p style="color: rgb(66, 67, 68);"><i
                                                                 class="fa fa-envelope-o"></i>
                                                             {{note.content}}</p>
+                                                        <p style="color: rgb(66, 67, 68);">
+                                                            发送者：{{note.sender}}</p>
                                                     </div>
                                                 </div>
                                                 {% endfor %}
@@ -149,7 +151,23 @@
                                                                     {{note.content}}</p>
                                                             </div>
                                                         </div>
-
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <p style="color: rgb(66, 67, 68);">
+                                                                    发送者：{{note.sender}}</p>
+                                                            </div>
+                                                            <div>
+                                                                {% if note.type == "知晓类" %}
+                                                                <div class="btn-group">
+                                                                    <form method="POST">
+                                                                        <button class="btn btn-light" type='submit' name='post_button' value="{{note.id}}">
+                                                                            我忘了
+                                                                        </button>
+                                                                    </form>
+                                                                </div>
+                                                                {% endif %}
+                                                            </div>
+                                                        </div>
                                                     </div>
 
 
