@@ -81,7 +81,7 @@
                                                 <tr>
                                                     <!--
                                                 <td><a
-                                                        href=../../stuinfo/{{person.pname}}+{{person.id}}>{{person.pname}}</a>
+                                                        href=../../stuinfo/{{person.name}}+{{person.id}}>{{person.name}}</a>
                                                 </td>
                                                 <td>{{person.pgender}}</td>
                                                 <td>{{person.pyear}}</td>
@@ -133,7 +133,7 @@
                                             aria-expanded="false" aria-controls="collapseExample">
                                             <div class="d-flex justify-content-between">
                                             <div>
-                                                <h4>组织搜索({{organization_list|length}}条)</h4>
+                                                <h4>组织搜索({{org_display_list|length}}条)</h4>
                                             </div>
                                             <div style="display:flex;
                                             justify-content: center;
@@ -149,7 +149,7 @@
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
-                                        {% if organization_list.count != 0 %}
+                                        {% if org_display_list|length != 0 %}
                                         <thead>
                                             {% for attribute in organization_field %}
                                             <th> {{attribute}} </th>
@@ -160,7 +160,7 @@
                                                 <td class="text-center"><a
                                                     href=../../orginfo/{{orgn.oname}}>{{attribute}}</a>
                                             </tr> -->
-                                            {% for orgn in organization_list %}
+                                            {% for orgn in org_display_list %}
                                             <tr>
                                                 <td>
                                                     <u><a href="/orginfo/{{orgn.oname}}">{{orgn.oname}}</a></u>
@@ -169,7 +169,12 @@
                                                     {{orgn.otype}}
                                                 </td>
                                                 <td>
-                                                    {{orgn.otype.incharge}}
+                                                    {% for pos_person in orgn.pos0 %}
+                                                   <a href="/stuinfo/{{pos_person}}">
+                                                    <u>{{pos_person}}</u> 
+                                                    </a>
+                                                    
+                                                    {% endfor %}
                                                 </td>
                                                 <td>
                                                     摸鱼

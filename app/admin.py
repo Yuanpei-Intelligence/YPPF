@@ -29,7 +29,7 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 class PositionAdmin(admin.ModelAdmin):
     list_display = ["person", "org", "pos"]
-    search_fields = ("person__pname", "org__oname", "pos__person")
+    search_fields = ("person__name", "org__oname", "pos")
 
 
 admin.site.register(NaturalPerson, NaturalPersonAdmin)

@@ -81,12 +81,10 @@ def get_user_ava(obj, user_type):
             return settings.MEDIA_URL + "avatar/org_default.png"
 
 
-def get_user_left_narbar(
-        person, is_myself, html_display
-):  # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
-    assert (
-            "is_myself" in html_display.keys()
-    ), "Forget to tell the website whether this is the user itself!"
+def get_user_left_narbar(person, is_myself, html_display):  # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
+    #assert (
+    #        "is_myself" in html_display.keys()
+    #), "Forget to tell the website whether this is the user itself!"
     html_display["underground_url"] = local_dict["url"]["base_url"]
 
     my_org_id_list = Position.objects.activated().filter(person=person).filter(pos=0)
@@ -96,9 +94,9 @@ def get_user_left_narbar(
 
 
 def get_org_left_narbar(org, is_myself, html_display):
-    assert (
-            "is_myself" in html_display.keys()
-    ), "Forget to tell the website whether this is the user itself!"
+    #assert (
+    #        "is_myself" in html_display.keys()
+    #), "Forget to tell the website whether this is the user itself!"
     html_display["switch_org_name"] = org.oname
     html_display["underground_url"] = local_dict["url"]["base_url"]
     html_display['org'] = org
