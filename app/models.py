@@ -90,7 +90,7 @@ class NaturalPerson(models.Model):
     def show_info(self):
         """
             返回值为一个列表，在search.html中使用，按照如下顺序呈现：
-            people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
+            people_field = ['姓名', '年级', '班级', '专业', '状态']
             其中未公开的属性呈现为‘未公开’
             注意：major, gender, nickname, email, tel, dorm可能为None
             班级和年级现在好像也可以为None
@@ -98,13 +98,13 @@ class NaturalPerson(models.Model):
         unpublished = '未公开'
         gender = ['男', '女']
         info = [self.name, self.stu_grade, self.stu_class]
-        info.append(self.nickname if (self.show_nickname) else unpublished)
-        info.append(
-            unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
+        #info.append(self.nickname if (self.show_nickname) else unpublished)
+        #info.append(
+        #    unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
         info.append(self.stu_major if (self.show_major) else unpublished)
-        info.append(self.email if (self.show_email) else unpublished)
-        info.append(self.telephone if (self.show_tel) else unpublished)
-        info.append(self.stu_dorm if (self.show_dorm) else unpublished)
+        #info.append(self.email if (self.show_email) else unpublished)
+        #info.append(self.telephone if (self.show_tel) else unpublished)
+        #info.append(self.stu_dorm if (self.show_dorm) else unpublished)
         info.append('在校' if self.status ==
                     NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
         # 防止显示None
@@ -140,6 +140,11 @@ class OrganizationType(models.Model):
 
     def __str__(self):
         return str(self.otype_name)
+
+    def get_name(self, pos):
+        if pos >= len(self.job_name_list):
+            return "成员"
+        return self.job_name_list[pos]
 
 
 class Semester(models.TextChoices):
@@ -213,12 +218,11 @@ class Position(models.Model):
 
     person = models.ForeignKey(
         NaturalPerson,
-        related_name="person",
         to_field="person_id",
         on_delete=models.CASCADE,
     )
     org = models.ForeignKey(
-        Organization, related_name="org", on_delete=models.CASCADE)
+        Organization, on_delete=models.CASCADE)
 
     # 职务的逻辑应该是0最高，1次之这样，然后数字映射到名字是在组织类型表中体现的
     pos = models.IntegerField(verbose_name="职务等级", default=0)
@@ -242,7 +246,7 @@ class Course(models.Model):
         verbose_name_plural = verbose_name
 
     cid = models.OneToOneField(
-        to=Organization, on_delete=models.CASCADE, related_name="cid"
+        to=Organization, on_delete=models.CASCADE, 
     )
     # 课程周期
     year = models.IntegerField(
@@ -287,7 +291,6 @@ class Activity(models.Model):
     organization_id = models.ForeignKey(
         Organization,
         # to_field="organization_id", 删除掉to_field, 保持纯净对象操作
-        related_name="actoid",
         on_delete=models.CASCADE,
     )
     year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
@@ -351,10 +354,10 @@ class TransferRecord(models.Model):
         ordering = ["-finish_time", "-start_time"]
 
     proposer = models.ForeignKey(
-        User, related_name="proposer_id", on_delete=models.CASCADE
+        User, related_name="send_trans", on_delete=models.CASCADE
     )
     recipient = models.ForeignKey(
-        User, related_name="recipient_id", on_delete=models.CASCADE
+        User, related_name="recv_trans", on_delete=models.CASCADE
     )
     amount = models.FloatField("转账元气值数量", default=0)
     start_time = models.DateTimeField("发起时间", auto_now_add=True)
@@ -362,7 +365,7 @@ class TransferRecord(models.Model):
     message = models.CharField("备注信息", max_length=255, default="")
 
     corres_act = models.ForeignKey(
-        Activity, related_name="有关活动", on_delete=models.SET_NULL, null=True, blank=True
+        Activity, on_delete=models.SET_NULL, null=True, blank=True
     )
 
     class TransferStatus(models.IntegerChoices):
@@ -407,10 +410,10 @@ class Notification(models.Model):
         ordering = ["id"]
 
     receiver = models.ForeignKey(
-        User, related_name="receiver_id", on_delete=models.CASCADE
+        User, related_name="recv_notice", on_delete=models.CASCADE
     )
     sender = models.ForeignKey(
-        User, related_name="sender_id", on_delete=models.CASCADE
+        User, related_name="send_notice", on_delete=models.CASCADE
     )
     class NotificationStatus(models.IntegerChoices):
         DONE = (0, "已处理")
