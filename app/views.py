@@ -1796,14 +1796,14 @@ def notification_status_change(notification_id):
     context['warn_code'] = 1
     with transaction.atomic():
         notification = Notification.objects.select_for_update().get(id=notification_id)
-        if notification.status == Notification.NotificationStatus.UNDONE:
-            notification.status = Notification.NotificationStatus.DONE
+        if notification.status == Notification.Status.UNDONE:
+            notification.status = Notification.Status.DONE
             notification.finish_time = datetime.now()  # 通知完成时间
             notification.save()
             context['warn_code'] = 2
             context['warn_message'] = '您已成功阅读一条通知！'
-        elif notification.status == Notification.NotificationStatus.DONE:
-            notification.status = Notification.NotificationStatus.UNDONE
+        elif notification.status == Notification.Status.DONE:
+            notification.status = Notification.Status.UNDONE
             notification.save()
             context['warn_code'] = 2
             context['warn_message'] = '成功设置一条通知为未读！'
@@ -1812,17 +1812,18 @@ def notification_status_change(notification_id):
     return context
 
 
-def notification_create(receiver, type, title, content, URL):
+def notification_create(receiver, sender, typename, title, content, URL):
     '''
     对于一个需要创建通知的事件，请调用该函数创建通知！
         receiver: org 或 nat_person，使用object.get获取的对象
+        sender: org 或 nat_person，使用object.get获取的对象
         type: 知晓类 或 处理类
         title: 请在数据表中查找相应事件类型，若找不到，直接创建一个新的choice
         content: 输入通知的内容
         URL: 需要跳转到处理事务的页面
     '''
     Notification.objects.create(
-        receiver=receiver, type=type, title=title, content=content, URL=URL)
+        receiver=receiver, sender=sender, typename=typename, title=title, content=content, URL=URL)
 
 
 @login_required(redirect_field_name='origin')
@@ -1851,10 +1852,10 @@ def notifications(request):
     html_display["narbar_name"] = "通知信箱"
 
     done_set = Notification.objects.filter(
-        receiver=request.user, status=Notification.NotificationStatus.DONE)
+        receiver=request.user, status=Notification.Status.DONE)
 
     undone_set = Notification.objects.filter(
-        receiver=request.user, status=Notification.NotificationStatus.UNDONE
+        receiver=request.user, status=Notification.Status.UNDONE
     )
 
     done_list = notification2Display(

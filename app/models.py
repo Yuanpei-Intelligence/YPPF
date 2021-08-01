@@ -412,26 +412,26 @@ class Notification(models.Model):
     sender = models.ForeignKey(
         User, related_name="sender_id", on_delete=models.CASCADE
     )
-    class NotificationStatus(models.IntegerChoices):
+    class Status(models.IntegerChoices):
         DONE = (0, "已处理")
         UNDONE = (1, "待处理")
 
-    class NotificationType(models.IntegerChoices):
+    class Type(models.IntegerChoices):
         NEEDREAD = (0, '知晓类')    # 只需选择“已读”即可
         NEEDDO = (1, '处理类')      # 需要处理的事务
 
-    class NotificationTitle(models.IntegerChoices):
+    class Title(models.IntegerChoices):
         # 等待逻辑补充
         TRANSFER_CONFIRM = (0, '转账确认通知')
         ACTIVITY_INFORM = (1, '活动状态通知')
         VERIFY_INFORM = (2, '审核信息通知')
         PERSITION_INFORM = (3, '人事变动通知')
 
-    status = models.SmallIntegerField(choices=NotificationStatus.choices, default=1)
-    title = models.SmallIntegerField(choices=NotificationTitle.choices, blank=True, null=True)
+    status = models.SmallIntegerField(choices=Status.choices, default=1)
+    title = models.SmallIntegerField(choices=Title.choices, blank=True, null=True)
     content = models.CharField("通知内容", max_length=225, blank=True)
     start_time = models.DateTimeField("通知发出时间", auto_now_add=True)
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
-    type = models.SmallIntegerField(choices=NotificationType.choices, default=0)
+    typename = models.SmallIntegerField(choices=Type.choices, default=0)
     
     URL = models.URLField("相关网址", null=True, blank=True)
