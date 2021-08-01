@@ -679,9 +679,9 @@ def search(request):
         return redirect("/welcome/")
 
     not_found_message = "找不到符合搜索的信息或相关内容未公开！"
-    # 首先搜索个人
+    # 首先搜索个人, 允许搜索姓名或者公开的专业, 删去小名搜索
     people_list = NaturalPerson.objects.filter(
-        Q(name__icontains=query) | (Q(nickname__icontains=query) & Q(show_nickname=True)) |
+        Q(name__icontains=query) | #(Q(nickname__icontains=query) & Q(show_nickname=True)) |
         (Q(stu_major__icontains=query) & Q(show_major=True)))
     # 接下来准备呈现的内容
     # 首先是准备搜索个人信息的部分
@@ -689,12 +689,12 @@ def search(request):
         "姓名",
         "年级",
         "班级",
-        "昵称",
-        "性别",
+        #"昵称",
+        #"性别",
         "专业",
-        "邮箱",
-        "电话",
-        "宿舍",
+        #"邮箱",
+        #"电话",
+        #"宿舍",
         "状态",
     ]  # 感觉将年级和班级分开呈现会简洁很多
 

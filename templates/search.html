@@ -47,7 +47,7 @@
                                             aria-expanded="false" aria-controls="collapseExample">
                                             <div class="d-flex justify-content-between">
                                             <div>
-                                                <h4>人员搜索</h4>
+                                                <h4>人员搜索({{people_list|length}}条)</h4>
                                             </div>
                                             <div style="display:flex;
                                             justify-content: center;
@@ -133,7 +133,7 @@
                                             aria-expanded="false" aria-controls="collapseExample">
                                             <div class="d-flex justify-content-between">
                                             <div>
-                                                <h4>组织搜索</h4>
+                                                <h4>组织搜索({{organization_list|length}}条)</h4>
                                             </div>
                                             <div style="display:flex;
                                             justify-content: center;
@@ -204,7 +204,7 @@
                                             aria-expanded="false" aria-controls="collapseExample">
                                             <div class="d-flex justify-content-between">
                                             <div>
-                                                <h4>活动搜索</h4>
+                                                <h4>活动搜索({{activity_list|length}}条)</h4>
                                             </div>
                                             <div style="display:flex;
                                             justify-content: center;
@@ -220,7 +220,7 @@
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
-                                        {% if organization_list.count != 0 %}
+                                        {% if activity_list.count != 0 %}
                                         <thead>
                                             {% for attribute in activity_field %}
                                             <th> {{attribute}} </th>
