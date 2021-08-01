@@ -64,9 +64,10 @@
                                                 <line x1="8" y1="2" x2="8" y2="6"></line>
                                                 <line x1="3" y1="10" x2="21" y2="10"></line>
                                             </svg>
-                                            Unknown
-                                        </li>
+                                            {{ html_display.userinfo.stu_grade }}
 
+                                        </li>
+                                        <!--
                                         <li class="contacts-block__item">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -77,7 +78,7 @@
                                             </svg>
                                             Beijing, China
                                         </li>
-
+                                        -->
                                         <li class="contacts-block__item">
                                             <a href="mailto: {{ html_display.userinfo.email }}"></a><svg
                                                 xmlns="http://www.w3.org/2000/svg" width="24" height="24"
@@ -104,6 +105,9 @@
                                             {{html_display.userinfo.telephone}}
                                         </li>
 
+                                        
+                                        {% if html_display.is_myself == False %}
+
                                         <li class="contacts-block__item">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -115,8 +119,7 @@
                                                 <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
                                             </svg> <a href="/transPage/{{html_display.userinfo.person_id_id}}">向ta转账</a>
                                         </li>
-
-
+                                        {% endif %}
                                     </ul>
                                 </div>
                             </div>

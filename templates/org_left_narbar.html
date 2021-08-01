@@ -5,8 +5,9 @@
             <nav id="sidebar">
                 <div class="shadow-bottom"></div>
 
-                <ul class="list-unstyled menu-categories ps ps--active-y" id="accordionExample">
-                {% if html_display.is_myself %}
+                <ul class="list-unstyled menu-categories ps ps--active-y nav nav-tabs flex-column" id="accordionExample">
+                    
+                    {% if html_display.is_myself %}
                     <li class="menu">
                         <a href="#app" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
                             <div class="">
@@ -22,7 +23,7 @@
                                 <a href="/addActivities/"> 活动发起 </a>
                             </li>
                             <li>
-                                <a href="apps_mailbox.html"> 经费申请  </a>
+                                <a href="/welcome/"> 经费申请  </a>
                             </li>
                             
                             <li>
@@ -37,57 +38,43 @@
                         </ul>
                     </li>
                     {% endif %}
-                    
-                    <!--
-                    <li class="menu">
-                        <a href="#dashboard" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
-                            <div class="">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-home"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-                                <span>组织动态</span>
-                            </div>
-                            <div>
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg>
-                            </div>
-                        </a>
-                        <ul class="collapse submenu list-unstyled" id="dashboard" data-parent="#accordionExample">
-                            <li>
-                                <a href="/welcom/"> 组织人员 </a>
-                            </li>
-                            <li>
-                                <a href="/welcom/"> 组织活动 </a>
-                            </li>
-                        </ul>
-                    </li>
-                    -->
-                    
-                    
-                    <li class="menu">
-                        <a href="/welcome/" aria-expanded="false" class="dropdown-toggle">
+
+                    <li class="menu nav-item">
+                        <a href="#d0" data-toggle="tab" aria-expanded="false" class="dropdown-toggle nav-link active">
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /> </svg>
-                                <span>组织成员</span>
+                                <span>组织信息</span>
                             </div>
                         </a>
                     </li>
 
-                    <li class="menu">
-                        <a href="/welcome/" aria-expanded="false" class="dropdown-toggle">
+                    <li class="menu nav-item">
+                        <a href="#d1" data-toggle="tab" aria-expanded="false" class="dropdown-toggle nav-link">
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" /> <path d="M13.73 21a2 2 0 0 1-3.46 0" /> </svg>
                                 <span>组织活动</span>
                             </div>
                         </a>
                     </li>
+                    <!--
+                    <li class="menu nav-item">
+                        <a href="#d2" data-toggle="tab" aria-expanded="false" class="dropdown-toggle nav-link">
+                            <div class="">                                
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /> </svg>
+                                <span>组织成员</span>
+                            </div>
+                        </a>
+                    </li>
 
-                    <li class="menu">
-                        <a href="/welcome/" aria-expanded="false" class="dropdown-toggle">
+                    <li class="menu nav-item">
+                        <a href="#d3" data-toggle="tab" aria-expanded="false" class="dropdown-toggle nav-link">
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" > <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" /> </svg>
                                 <span>组织动态</span>
                             </div>
                         </a>
                     </li>
-                    
+                    -->
 
                     {% if html_display.isboss %}
                     <li class="menu">

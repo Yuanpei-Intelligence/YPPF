@@ -409,7 +409,9 @@ class Notification(models.Model):
     receiver = models.ForeignKey(
         User, related_name="receiver_id", on_delete=models.CASCADE
     )
-
+    sender = models.ForeignKey(
+        User, related_name="sender_id", on_delete=models.CASCADE
+    )
     class NotificationStatus(models.IntegerChoices):
         DONE = (0, "已处理")
         UNDONE = (1, "待处理")
@@ -420,10 +422,10 @@ class Notification(models.Model):
 
     class NotificationTitle(models.IntegerChoices):
         # 等待逻辑补充
-        TYPE1 = (0, '转账确认通知')
-        TYPE2 = (1, '活动状态通知')
-        TYPE3 = (2, '审核信息通知')
-        TYPE4 = (3, '人事变动通知')
+        TRANSFER_CONFIRM = (0, '转账确认通知')
+        ACTIVITY_INFORM = (1, '活动状态通知')
+        VERIFY_INFORM = (2, '审核信息通知')
+        PERSITION_INFORM = (3, '人事变动通知')
 
     status = models.SmallIntegerField(choices=NotificationStatus.choices, default=1)
     title = models.SmallIntegerField(choices=NotificationTitle.choices, blank=True, null=True)
