@@ -81,7 +81,6 @@ def index(request):
         auth.logout(request)
         return render(request, "index.html", locals())
 
-
     if arg_islogout is not None:
         if request.user.is_authenticated:
             auth.logout(request)
@@ -98,7 +97,6 @@ def index(request):
     # 恶意的 origin
     if not url_check(arg_origin):
         return redirect("/index/?alert=1")
-
 
     if request.method == "POST" and request.POST:
         username = request.POST["username"]
@@ -129,7 +127,6 @@ def index(request):
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                     return render(request, "welcome_page.html", locals())
-
 
                 d = datetime.utcnow()
                 t = mktime(datetime.timetuple(d))
@@ -174,13 +171,11 @@ def index(request):
     if arg_origin is not None:
         if request.user.is_authenticated:
 
-
             if not check_cross_site(request, arg_origin):
                 html_display = dict()
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                 return render(request, "welcome_page.html", locals())
-
 
             d = datetime.utcnow()
             t = mktime(datetime.timetuple(d))
@@ -397,6 +392,43 @@ def orginfo(request, name=None):
         org_avatar_path = utils.get_user_ava(org, user_type)
         # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
+        # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
+        continuing_activity_list = Activity.objects.activated().filter(
+                organization_id = org.organization_id_id
+            ).filter(
+                status__in = [Activity.Status.REVIEWING, Activity.Status.APPLYING, Activity.Status.WAITING, Activity.Status.PROGRESSING]
+            ).order_by("-start")
+
+        ended_activity_list = Activity.objects.activated().filter(
+                organization_id = org.organization_id_id
+            ).filter(
+                status__in = [Activity.Status.CANCELED, Activity.Status.END]
+            ).order_by("-start")
+
+        # 如果是用户登陆的话，就记录一下用户有没有加入该活动，用字典存每个活动的状态，再把字典存在列表里
+        continuing_activity_list_participantrec = []
+        participant_status = ["申请中","申请失败","已报名","已参与","未参与","放弃"]
+        for act in continuing_activity_list:
+            dictmp = {}
+            dictmp["act"] = act
+            if user_type == "Person":
+                existlist = Paticipant.objects.filter(activity_id_id = act.id).filter(person_id_id = me.person_id_id)
+                if existlist: # 判断是否非空
+                    dictmp["status"] = participant_status[existlist[0].status]
+                else :
+                    dictmp["status"] = "无记录"
+            continuing_activity_list_participantrec.append(dictmp)
+
+        # 组织成员list
+        positions = Position.objects.activated().filter(org = org).order_by("pos") # 升序
+        member_list = []
+        for p in positions:
+            if p.person.show_post == True :
+                member = {}
+                member["person"] = p.person
+                member["job"] = org.otype.job_name_list[p.pos]
+                member_list.append(member)
+
     except:
         return redirect("/welcome/")
 
@@ -405,6 +437,7 @@ def orginfo(request, name=None):
             "warn_code", 0))  # 是否有来自外部的消息
     except:
         return redirect("/welcome/")
+
     html_display["warn_message"] = request.GET.get(
         "warn_message", "")  # 提醒的具体内容
 
@@ -415,7 +448,6 @@ def orginfo(request, name=None):
 
     # 这一部分是负责人boss的信息
     boss = Position.objects.activated().filter(org=org, pos=0)
-    # boss = NaturalPerson.objects.activated().get(person_id = bossid)
     boss_display = {}
     if len(boss) >= 1:
         boss = boss[0].person
@@ -427,7 +459,6 @@ def orginfo(request, name=None):
 
         # jobpos = Position.objects.activated().get(person=boss, org = org).pos
         boss_display["job"] = org.otype.job_name_list[0]
-
         boss_display['avatar_path'] = utils.get_user_ava(boss, 'Person')
 
     # 补充左边栏信息
@@ -462,9 +493,10 @@ def orginfo(request, name=None):
     show_subscribe = False
     if user_type == "Person":
         show_subscribe = True
-        subscribe_flag = True   # 默认在订阅列表中 
+        subscribe_flag = True   # 默认在订阅列表中
         if organization_name in me.subscribe_list.values_list('oname', flat=True):
             subscribe_flag = False
+
     return render(request, "orginfo.html", locals())
 
 
@@ -645,7 +677,6 @@ def search(request):
         搜索组织
             支持使用组织名、组织类型搜索、一级负责人姓名
             组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
-
             add by syb:
             支持通过组织名、组织类型来搜索组织
             支持通过公开关系的个人搜索组织，即如果某自然人用户可以被上面的人员搜索检出，
@@ -700,17 +731,18 @@ def search(request):
 
     # 搜索组织
     # 先查找通过个人关联到的position_list
-    pos_list = Position.objects.activated().filter(Q(person__in=people_list) & Q(show_post=True))
+    pos_list = Position.objects.activated().filter(
+        Q(person__in=people_list) & Q(show_post=True))
     # 通过组织名、组织类名、个人关系查找
     organization_list = Organization.objects.filter(
-        Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in = pos_list.values('org')))
+        Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(org__in=pos_list.values('org')))
 
     # 组织要呈现的具体内容
     organization_field = ["组织名称", "组织类型", "负责人", "近期活动"]
 
     # 搜索活动
     activity_list = Activity.objects.filter(Q(title__icontains=query) |
-        Q(organization_id__in=organization_list.values('organization_id')))
+                                            Q(organization_id__in=organization_list.values('organization_id')))
 
     # 活动要呈现的内容
     activity_field = ['活动名称', '承办组织', '状态']
@@ -738,13 +770,11 @@ def test(request):
 def forget_password(request):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
-
         页面效果
         -------
         - 根据（邮箱）验证码完成登录，提交后跳转到修改密码界面
         - 本质是登录而不是修改密码
         - 如果改成支持验证码登录只需修改页面和跳转（记得修改函数和页面名）
-
         页面逻辑
         -------
         1. 发送验证码
@@ -752,7 +782,6 @@ def forget_password(request):
         2. 输入验证码
             2.5 保留表单信息
         3. 错误提醒和邮件发送提醒
-
         实现逻辑
         -------
         - 通过脚本使按钮提供不同的`send_captcha`值，区分按钮
@@ -764,7 +793,6 @@ def forget_password(request):
             - `err_code`=`0`或`4`是预设的提醒值，额外弹出提示框
             - forget_password.html中可以进一步修改
         - 尝试发送验证码后总是弹出提示框，通知用户验证码的发送情况
-
         注意事项
         -------
         - 尝试忘记密码的不一定是本人，一定要做好隐私和逻辑处理
@@ -1063,7 +1091,8 @@ def transaction_page(request, rid=None):
 
     # 储存返回跳转的url
     if context["user_type"] == "Person":
-        context["return_url"] = context["profile_url"] + context["name"] + "+" + context["rid"]
+        context["return_url"] = context["profile_url"] + \
+            context["name"] + "+" + context["rid"]
     else:
         context["return_url"] = context["profile_url"] + context["name"]
 
@@ -1102,28 +1131,28 @@ def transaction_page(request, rid=None):
                 # 接下来确定金额
                 if payer.YQPoint < amount:
                     html_display["warn_code"] = 1
-                    html_display["warn_message"] = "现存元气值余额为" + str(payer.YQPoint) + ", 不足以发起额度为" + str(amount) +"的转账!"
+                    html_display["warn_message"] = "现存元气值余额为" + \
+                        str(payer.YQPoint) + ", 不足以发起额度为" + \
+                        str(amount) + "的转账!"
                 else:
                     payer.YQPoint -= amount
                     record = TransferRecord.objects.create(
-                        proposer=request.user, recipient=user, amount = amount, message = transaction_msg
+                        proposer=request.user, recipient=user, amount=amount, message=transaction_msg
                     )
                     record.save()
                     payer.save()
-                    warn_message =  "成功发起向" + name + "的转账! 元气值将在对方确认后到账。"
+                    warn_message = "成功发起向" + name + "的转账! 元气值将在对方确认后到账。"
 
                     # TODO 发送微信消息
 
                     # 跳转回主页, 首先先get主页位置
-                    urls = context["return_url"] + f"?warn_code=2&warn_message={warn_message}"
-                    return redirect(urls)        
-                    
+                    urls = context["return_url"] + \
+                        f"?warn_code=2&warn_message={warn_message}"
+                    return redirect(urls)
 
         except:
             html_display["warn_code"] = 1
             html_display["warn_message"] = "出现无法预料的问题, 请联系管理员!"
-
-
 
     return render(request, "transaction_page.html", locals())
 
@@ -1304,7 +1333,7 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
     '''
     # 由于误差, 将amount调整为小数位数不超过2
     for key in amount.keys():
-        amount[key] = round(amount[key],1)
+        amount[key] = round(amount[key], 1)
     return lis, amount
 
 
@@ -1377,20 +1406,16 @@ def myYQPoint(request):
     to_recv_list, to_recv_amount = record2Display(record_list=TransferRecord.objects.filter(
         recipient=request.user, status=TransferRecord.TransferStatus.WAITING),
         record_type='recv')
-
     issued_send_list, _ = record2Display(record_list=TransferRecord.objects.filter(proposer=request.user, status__in=[
         TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED]),
         record_type='send')
     issued_recv_list, _ = record2Display(record_list=TransferRecord.objects.filter(recipient=request.user, status__in=[
         TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED]),
         record_type='recv')
-
     to_list = to_recv_list + to_send_list
     issued_list = issued_recv_list + issued_send_list
-
     # to_list 按照发起时间倒序排列
     to_list = sorted(to_list, key=lambda x: x['finish_time'], reverse=...)
-
     # issued_list 按照处理时间倒序排列
     '''
 
@@ -1526,7 +1551,7 @@ def getActivityInfo(request):
 
             elif format == 'excel':
                 return HttpResponse('.xls Not Implemented')
-            
+
             else:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = f'不支持的格式{format}'
@@ -1542,7 +1567,8 @@ def getActivityInfo(request):
         else:
             checkin_url = f'/checkinActivity?activityid={activity.id}'
             origin_url = request.scheme + '://' + request.META['HTTP_HOST']
-            checkin_url = parse.urljoin(origin_url, checkin_url)  # require full path
+            checkin_url = parse.urljoin(
+                origin_url, checkin_url)  # require full path
 
             buffer = io.BytesIO()
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
@@ -1727,6 +1753,7 @@ def save_subscribe_status(request):
                 for org in org_list:
                     me.subscribe_list.add(org)
         me.save()
+
     return JsonResponse({"success": True})
 
 
@@ -1753,11 +1780,14 @@ def notification2Display(notification_list):
         lis[-1]['URL'] = notification.URL
         lis[-1]['type'] = notification.get_type_display()
         lis[-1]['title'] = notification.get_title_display()
-
+        if notification.sender.username[0] == 'z':
+            lis[-1]['sender'] = Organization.objects.get(organization_id__username=notification.sender.username).oname
+        else:
+            lis[-1]['sender'] = NaturalPerson.objects.get(person_id__username=notification.sender.username).name
     return lis
 
 
-def notification_done(notification_id):
+def notification_status_change(notification_id):
     '''
     调用该函数以完成一项通知。对于知晓类通知，在接收到用户点击按钮后的post表单，该函数会被调用。
     对于需要完成的待处理通知，需要在对应的事务结束判断处，调用该函数。
@@ -1766,24 +1796,19 @@ def notification_done(notification_id):
     context['warn_code'] = 1
     with transaction.atomic():
         notification = Notification.objects.select_for_update().get(id=notification_id)
-        receiver = notification.receiver
-        try:
-            if hasattr(receiver, 'naturalperson'):
-                receiver = NaturalPerson.objects.activated(
-                ).select_for_update().get(person_id=receiver)
-            else:
-                receiver = Organization.objects.select_for_update().get(organization_id=receiver)
-        except:
-            context['warn_message'] = "通知对象不存在或已毕业, 请联系管理员!"
-            return context
-
-        notification.status = Notification.NotificationStatus.DONE
-        notification.finish_time = datetime.now()  # 交易完成时间
-        notification.save()
-        context['warn_code'] = 2
-        context['warn_message'] = '您已成功阅读一条通知~'
+        if notification.status == Notification.NotificationStatus.UNDONE:
+            notification.status = Notification.NotificationStatus.DONE
+            notification.finish_time = datetime.now()  # 通知完成时间
+            notification.save()
+            context['warn_code'] = 2
+            context['warn_message'] = '您已成功阅读一条通知！'
+        elif notification.status == Notification.NotificationStatus.DONE:
+            notification.status = Notification.NotificationStatus.UNDONE
+            notification.save()
+            context['warn_code'] = 2
+            context['warn_message'] = '成功设置一条通知为未读！'
         return context
-    context['warn_message'] = '通知失败！请联系管理员！'
+    context['warn_message'] = '在阅读通知的过程中发生错误，请联系管理员！'
     return context
 
 
@@ -1802,7 +1827,7 @@ def notification_create(receiver, type, title, content, URL):
 
 @login_required(redirect_field_name='origin')
 def notifications(request):
-    valid, user_type, html_display = utils.check_user_type(request)
+    valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect('/index/')
     # 接下来处理POST相关的内容
@@ -1810,7 +1835,7 @@ def notifications(request):
     if request.method == "POST":  # 发生了通知处理的事件
         post_args = request.POST.get("post_button")
         notification_id = post_args
-        context = notification_done(notification_id)
+        context = notification_status_change(notification_id)
         html_display['warn_code'] = context['warn_code']
         html_display['warn_message'] = context['warn_message']
     me = get_person_or_org(request.user, user_type)

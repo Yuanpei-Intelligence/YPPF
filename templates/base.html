@@ -65,7 +65,7 @@
 
             <ul class="navbar-item flex-row ml-md-auto">
                 <li class="nav-item dropdown message-dropdown">
-                    <a href="javascript:void(0);" class="nav-link dropdown-toggle" id="messageDropdown"
+                    <a href="javascript:void(0);" onclick="window.location='/notifications/'" class="nav-link dropdown-toggle" id="messageDropdown"
                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
@@ -76,65 +76,11 @@
                             <polyline points="22,6 12,13 2,6"></polyline>
 
                         </svg>
+                        {% if html_display.mail_num %}
                         <span class="badge " style="background-color: black;color: currentColor;">{{html_display.mail_num}}</span>
-
+                        {% endif %}
 
                     </a>
-                    <div class="dropdown-menu p-0 position-absolute" aria-labelledby="messageDropdown">
-                        <div class="">
-                            <a class="dropdown-item">
-                                <div class="">
-
-                                    <div class="media">
-                                        <div class="user-img">
-                                            <img class="usr-img rounded-circle" src={% static "assets/img/profile-11.jpeg.jpg" %} alt="profile">
-                                        </div>
-                                        <div class="media-body">
-                                            <div class="">
-                                                <h5 class="usr-name">学姐</h5>
-                                                <p class="msg-title">ACCOUNT UPDATE</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </a>
-                            <a class="dropdown-item">
-                                <div class="">
-
-                                    <div class="media">
-                                        <div class="user-img">
-                                            <img class="usr-img rounded-circle" src={% static "assets/img/profile-16.jpeg.jpg" %} alt="profile">
-                                        </div>
-                                        <div class="media-body">
-                                            <div class="">
-                                                <h5 class="usr-name">学姐</h5>
-                                                <p class="msg-title">ACCOUNT UPDATE</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </a>
-                            <a class="dropdown-item">
-                                <div class="">
-
-                                    <div class="media">
-                                        <div class="user-img">
-                                            <img class="usr-img rounded-circle" src={% static "assets/img/profile-34.jpeg.jpg" %} alt="profile">
-                                        </div>
-                                        <div class="media-body">
-                                            <div class="">
-                                                <h5 class="usr-name">学长</h5>
-                                                <p class="msg-title">ACCOUNT UPDATE</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </a>
-                        </div>
-                    </div>
                 </li>
                 <!--
                 <li class="nav-item dropdown notification-dropdown">
