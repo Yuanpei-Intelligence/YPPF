@@ -3,6 +3,7 @@ import os
 from app.models import NaturalPerson, Position, Organization, OrganizationType
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
+from tqdm import tqdm
 
 
 def load_file(file):
@@ -37,8 +38,8 @@ def load_org():
     org_df = load_file("orginf.csv")
     for _, org_dict in org_df.iterrows():
         username = org_dict["organization_id"]
+        password = "YPPFtest"
         if username[:2] == "zz":
-            password = "YPPFtest"
             oname = org_dict["oname"]
             type_id = org_dict["otype_id"]
             person = org_dict["person"]
@@ -53,7 +54,7 @@ def load_org():
             org.save()
 
             people, mid = NaturalPerson.objects.get_or_create(name=person)
-            pos, mid = Position.objects.get_or_create(person=people, org=org)
+            pos, mid = Position.objects.get_or_create(person=people, org=org, status=Position.Status.INSERVICE, pos=0)
             pos.save()
             # orgtype=OrganizationType.objects.create(otype_id=type_id)
             # orgtype.otype
@@ -79,43 +80,48 @@ def load_org_info(request):
 
 
 def load_stu_info(request):
-    if request.user.is_superuser:
-        stu_df = load_file("stuinf.csv")
-        for _, stu_dict in stu_df.iterrows():
-            sid = username = stu_dict["学号"]
-            password = username
-            name = stu_dict["姓名"]
-            gender = stu_dict["性别"]
-            stu_major = stu_dict["专业"]
-            stu_grade = "20" + sid[0:2]
-            stu_class = stu_dict["班级"]
-            email = stu_dict["邮箱"]
-            if email == "None":
-                if sid[0] == "2":
-                    email = sid + "@stu.pku.edu.cn"
-                else:
-                    email = sid + "@pku.edu.cn"
-            tel = stu_dict["手机号"]
+    if not request.user.is_superuser:
+        context = {"message": "请先以超级账户登录后台后再操作！"}
+        return render(request, "debugging.html", context)
 
-            user = User.objects.create(username=username)
-            user.set_password(password)
-            user.save()
-            stu = NaturalPerson.objects.create(person_id=user)
-            stu.name = name
-            if gender == "男":
-                stu.gender = NaturalPerson.Gender.MALE
-            elif gender == "女":
-                stu.gender = NaturalPerson.Gender.FEMALE
+    stu_df = load_file("stuinf.csv")
+    stu_list = []
+    Char2Gender = {"男": NaturalPerson.Gender.MALE, "女": NaturalPerson.Gender.FEMALE}
+    for _, stu_dict in tqdm(stu_df.iterrows()):
+        sid = username = stu_dict["学号"]
+        password = username
+        name = stu_dict["姓名"]
+        gender = Char2Gender[stu_dict["性别"]]
+        stu_major = stu_dict["专业"]
+        stu_grade = "20" + sid[:2]
+        stu_class = stu_dict["班级"]
+        email = stu_dict["邮箱"]
+        if email == "None":
+            if sid[0] == "2":
+                email = sid + "@stu.pku.edu.cn"
             else:
-                stu.gender = NaturalPerson.Gender.OTHER
-            stu.stu_major = stu_major
-            stu.stu_grade = stu_grade
-            stu.stu_class = stu_class
+                email = sid + "@pku.edu.cn"
+        tel = stu_dict["手机号"]
 
-            stu.email = email
-            stu.telephone = tel
-            stu.save()
-        message = "导入学生信息成功！"
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
+        user = User.objects.create(username=username)
+        user.set_password(password)  # 这一步的PBKDF2加密算法太慢了
+        user.save()
+
+        # 批量导入比循环导入快很多，但可惜由于外键person_id的存在，必须先保存user，User模型无法批量导入。
+        # 但重点还是 set_password 的加密算法太 TM 的慢了！
+        stu_list.append(
+            NaturalPerson(
+                person_id=user,
+                name=name,
+                gender=gender,
+                stu_major=stu_major,
+                stu_grade=stu_grade,
+                stu_class=stu_class,
+                email=email,
+                telephone=tel,
+            )
+        )
+    NaturalPerson.objects.bulk_create(stu_list)
+
+    context = {"message": "导入学生信息成功！"}
+    return render(request, "debugging.html", context)
