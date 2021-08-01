@@ -312,6 +312,7 @@ class Activity(models.Model):
 
     bidding = models.BooleanField("是否投点竞价", default=False)
     YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
+    budget = models.FloatField("预算", default=0.0)
 
 
     # 允许是正无穷, 可以考虑用INTINF
@@ -369,6 +370,7 @@ class TransferRecord(models.Model):
         WAITING = (1, "待确认")
         REFUSED = (2, "已拒绝")
         SUSPENDED = (3, "已终止")
+        REDUND = (4, "已退回")
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
 
@@ -377,7 +379,7 @@ class TransferRecord(models.Model):
         super(TransferRecord, self).save(*args, **kwargs)
 
 
-class Paticipant(models.Model):
+class Participant(models.Model):
     class Meta:
         verbose_name = "活动参与情况"
         verbose_name_plural = verbose_name
