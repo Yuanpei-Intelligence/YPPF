@@ -1449,7 +1449,7 @@ def showActivities(request):
         {"title": "活动名称5", "Date": "11/02/2019", "Address": ["B108A"]},
     ]
 
-    penerson = True  # 人/法人
+    person = True  # 人/法人
 
     return render(request, "notes.html", locals())
 
