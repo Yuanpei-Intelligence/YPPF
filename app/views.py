@@ -1454,6 +1454,20 @@ def showActivities(request):
     return render(request, "notes.html", locals())
 
 
+
+
+'''
+页面逻辑：
+方法为 GET 时，展示一个活动的详情。
+如果当前用户是个人，有立即报名/已报名的 button
+如果当前用户是组织，并且是该活动的所有者，有修改和取消活动的 button
+方法为 POST 时，通过 option 确定操作
+如果修改活动，跳转到 addActivity
+如果取消活动，本函数处理
+如果报名活动，本函数处理 ( 还未实现 )
+# TODO
+个人操作，包括报名与取消
+'''
 @login_required(redirect_field_name='origin')
 def viewActivity(request, aid=None):
     """
@@ -1771,9 +1785,20 @@ def checkinActivity(request):
     return redirect('/viewActivities/')  # context incomplete
 
 
-# 发起活动
 # TODO 定时任务
-# 接受 Get， Post 两种方法。并且都会有是否编辑的情况。
+'''
+发起活动与修改活动页
+
+---------------
+页面逻辑：
+使用 GET 方法时，如果存在 edit=True 参数，展示修改活动的界面，否则展示创建活动的界面。
+创建活动的界面，placeholder 为 prompt
+编辑活动的界面，表单的 placeholder 会被修改为活动的旧值。并且添加两个 hidden input，分别提交 edit=True 和活动的 id
+
+当请求方法为 POST 时，处理请求并修改数据库，如果没有问题，跳转到展示活动信息的界面
+存在 edit=True 参数时，为编辑操作，否则为创建操作
+编辑操作时，input 并不包含 model 所有 field 的数据，只修改其中出现的
+'''
 @login_required(redirect_field_name='origin')
 def addActivities(request):
 
