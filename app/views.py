@@ -1773,6 +1773,7 @@ def checkinActivity(request):
 
 # 发起活动
 # TODO 定时任务
+# 接受 Get， Post 两种方法。并且都会有是否编辑的情况。
 @login_required(redirect_field_name='origin')
 def addActivities(request):
 
@@ -1813,26 +1814,55 @@ def addActivities(request):
 
         with transaction.atomic():
             if edit is not None:
-                new_act = Activity.objects.select_for_update().get(id=aid)
+                # 编辑的情况下，查表取出 activity
+                try:
+                    new_act = Activity.objects.select_for_update().get(id=aid)
+                except:
+                    html_display['warn_code'] = context['warn_code']
+                    html_display['warn_message'] = "不存在的活动。"
+                    edit = False
+                    return render(request, "activity_add.html", locals())
+
             else:
+                # 非编辑，创建一个 activity
                 new_act = Activity.objects.create(
-                    title=context['aname'], organization_id=org)  # 默认状态是审核中
+                    title=context['aname'], organization_id=org) 
                 if context['signschema'] == 1:
                     new_act.bidding = True
                     new_act.budget = context['budget']
+                 # 默认状态是报名中，可能需要审核
                 if not context['need_check']:
                     new_act.status = Activity.Status.APPLYING
 
+            # 不一定需要改这些内容，edit 情况下不一定会提交这些内容
+            # 问题是怎么优雅一点......
             try:
-                # 不一定需要改这些内容，edit 情况下
                 new_act.content = context['content']
+            except:
+                pass
+            try:
                 new_act.endbefore = context['prepare_scheme']
+            except:
+                pass
+            try:
                 new_act.start = context['act_start']
+            except:
+                pass
                 new_act.end = context['act_end']
+            try:
                 new_act.URL = context['URL']
+            except:
+                pass
+            try:
                 new_act.location = context['location']
+            except:
+                pass
                 # new_act.QRcode = QRcode
+            try:
                 new_act.YQPoint = context['aprice']
+            except:
+                pass
+            try:
                 new_act.capacity = context['capacity']
             except:
                 pass
@@ -1841,9 +1871,10 @@ def addActivities(request):
             return redirect(f"/viewActivity/{new_act.id}")
         return render(request, "activity_add.html", locals())  # warn_code==0
 
-
+    # get 请求
     edit = request.GET.get("edit")
     if edit is None or edit != "True":
+        # 非编辑，place holder prompt
         edit = False
         title = "活动名称"
         location = "活动地点"
@@ -1854,6 +1885,7 @@ def addActivities(request):
         introduction = "(必填)简介会随活动基本信息一同推送至订阅者的微信"
         url = "(可选)填写活动推送的链接"
     else:
+        # 编辑状态下，placeholder 为原值
         edit = True
         try:
             aid = request.GET['aid']
