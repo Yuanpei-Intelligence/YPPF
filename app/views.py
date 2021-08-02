@@ -1493,7 +1493,7 @@ def viewActivity(request, aid=None):
     org_name = org.oname
     start_time = activity.start
     end_time = activity.end
-    prepare_times = [1, 24, 72, 168]
+    prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.start - timedelta(hours=prepare_times[activity.endbefore])
     introduction = activity.introduction
     aURL = activity.URL
@@ -1860,37 +1860,24 @@ def addActivities(request):
                     new_act.status = Activity.Status.APPLYING
 
             # 不一定需要改这些内容，edit 情况下不一定会提交这些内容
-            # 问题是怎么优雅一点......
-            try:
+            # 如果没有，就不修改
+            if context.get('content'):
                 new_act.content = context['content']
-            except:
-                pass
-            try:
+            if context.get('prepare_scheme'):
                 new_act.endbefore = context['prepare_scheme']
-            except:
-                pass
-            try:
+            if context.get('act_start'):
                 new_act.start = context['act_start']
-            except:
-                pass
+            if context.get('act_end'):
                 new_act.end = context['act_end']
-            try:
+            if context.get('URL'):
                 new_act.URL = context['URL']
-            except:
-                pass
-            try:
+            if context.get('location'):
                 new_act.location = context['location']
-            except:
-                pass
-                # new_act.QRcode = QRcode
-            try:
+            # new_act.QRcode = QRcode
+            if context.get('aprice'):
                 new_act.YQPoint = context['aprice']
-            except:
-                pass
-            try:
+            if context.get('capacity'):
                 new_act.capacity = context['capacity']
-            except:
-                pass
             new_act.save()
         if context['warn_code'] == 0:
             return redirect(f"/viewActivity/{new_act.id}")
