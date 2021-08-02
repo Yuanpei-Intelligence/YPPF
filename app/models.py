@@ -303,10 +303,15 @@ class Activity(models.Model):
         oneday = (1,"一天")
         threeday = (2,"三天")
         oneweek = (3,"一周")
+
+    class EndBeforeHours:
+        prepare_times = [1, 24, 72, 168]
     
     endbefore = models.SmallIntegerField("报名截止于", choices=EndBefore.choices, default= EndBefore.oneday)
     start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now)
     end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now)
+    # prepare_time = models.FloatField("活动准备小时数", default=24.0)
+    # apply_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now)
 
     location = models.CharField("活动地点", blank=True, max_length=200)
     introduction = models.TextField("活动简介", max_length=225, blank=True)
@@ -316,11 +321,13 @@ class Activity(models.Model):
 
     bidding = models.BooleanField("是否投点竞价", default=False)
     YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
+    budget = models.FloatField("预算", default=0.0)
+
 
 
     # 允许是正无穷, 可以考虑用INTINF
     capacity = models.IntegerField("活动最大参与人数", default=100)
-    current_participants = models.IntegerField("活动当前报名人数", default=100)
+    current_participants = models.IntegerField("活动当前报名人数", default=0)
     
     URL = models.URLField("活动相关(推送)网址", null=True, blank=True)
 
@@ -373,6 +380,7 @@ class TransferRecord(models.Model):
         WAITING = (1, "待确认")
         REFUSED = (2, "已拒绝")
         SUSPENDED = (3, "已终止")
+        REDUND = (4, "已退回")
 
     status = models.SmallIntegerField(
         choices=TransferStatus.choices, default=1)
@@ -382,7 +390,7 @@ class TransferRecord(models.Model):
         super(TransferRecord, self).save(*args, **kwargs)
 
 
-class Paticipant(models.Model):
+class Participant(models.Model):
     class Meta:
         verbose_name = "活动参与情况"
         verbose_name_plural = verbose_name
