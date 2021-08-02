@@ -35,7 +35,11 @@
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                {% if edit %}
+                                                <h4>编辑活动</h4>
+                                                {% else %}
                                                 <h4>创建活动</h4>
+                                                {% endif %}
                                             </div>
                                         </div>
                                     </div>
@@ -47,11 +51,21 @@
                                             <p>活动信息</p>
                                             <div class="form-group">
                                                 <input type="text" id="aname" name="aname" class="form-control"
-                                                    aria-label="Default" placeholder="活动名称">
+                                                    aria-label="Default" placeholder="{{title}}">
                                             </div>
                                             <div class="form-group">
                                                 <input type="text" id="location" name="location" class="form-control"
-                                                    aria-label="Default" placeholder="活动地点">
+                                                    aria-label="Default" placeholder="{{location}}">
+                                            </div>
+                                            <div class="form-group">
+                                                {% if edit %}
+                                                <p class="form-control">
+                                                    {{budget}}
+                                                </p>
+                                                {% else %}
+                                                <input type="text" id="budget" name="budget" class="form-control"
+                                                    aria-label="Default" placeholder="活动预算">
+                                                {% endif %}
                                             </div>
 
 
@@ -61,11 +75,11 @@
                                                 <div class="row">
                                                     <div class="col">
                                                         <input type='text' class="form-control" id='datetimepicker3'
-                                                            name="actstart" placeholder="活动开始时间" />
+                                                            name="actstart" placeholder="{{start}}" />
                                                     </div>
                                                     <div class="col">
                                                         <input type='text' class="form-control" id='datetimepicker4'
-                                                            name="actend" placeholder="活动截止时间" />
+                                                            name="actend" placeholder="{{end}}" />
                                                     </div>
                                                 </div>
                                             </div>
@@ -95,6 +109,18 @@
                                             -->
                                             <div class="form-group">
                                                 <div class="input-group mb-3">
+                                                    {% if edit %}
+                                                    <div class="input-group-prepend">
+                                                        <button class="btn btn-outline-primary"
+                                                            type="button"
+                                                            aria-expanded="false">{{signscheme}}
+                                                        </button>
+                                                    </div>
+                                                    <input type="number" class="form-control"
+                                                        aria-label="Text input with dropdown button" id="aprice"
+                                                        name="aprice" placeholder="{{amount}}" step="0.1"
+                                                        οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')">
+                                                    {% else %}
                                                     <div class="input-group-prepend">
                                                         <button class="btn btn-outline-primary dropdown-toggle"
                                                             type="button" data-toggle="dropdown" aria-haspopup="true"
@@ -113,6 +139,7 @@
                                                         aria-label="Text input with dropdown button" id="aprice"
                                                         name="aprice" placeholder="最小精度为0.1" step="0.1"
                                                         οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')">
+                                                    {% endif %}
                                                 </div>
                                             </div>
 
@@ -121,20 +148,26 @@
                                                     <div class="col">
                                                         <input type="text" id="maxpeople" name="maxpeople"
                                                             class="form-control" aria-label="Default"
-                                                            placeholder="人数限制">
+                                                            placeholder="{{capacity}}">
                                                     </div>
                                                     <div class="col"
                                                         style="display: flex; flex-direction: column;justify-content: center;text-align: center;">
                                                         <center>
                                                             <div class="form-check"
                                                                 style="align-content: center; vertical-align: middle;">
+                                                                {% if no_limit %}
+                                                                <input class="form-check-input" type="checkbox"
+                                                                    value="1" id="unlimited_capacity"
+                                                                    name="unlimited_capacity" checked>
+                                                                {% else %}
                                                                 <input class="form-check-input" type="checkbox"
                                                                     value="1" id="unlimited_capacity"
                                                                     name="unlimited_capacity">
-
+                                                                {% endif %}
                                                                 <label class="form-check-label" for="defaultCheck1">
                                                                     无人数限制
                                                                 </label>
+
                                                             </div>
                                                         </center>
                                                     </div>
@@ -159,11 +192,11 @@
                                             <div class="form-group">
                                                 <label for="aintro">报名截止于</label>
                                                 
-                                                <select id="inputState" class="form-control selectpicker">
-                                                    <option>活动开始前1小时</option>
-                                                    <option selected>活动开始前1天</option>
-                                                    <option>活动开始前3天</option>
-                                                    <option>活动开始前1周</option>
+                                                <select id="inputState" name="prepare_scheme" class="form-control selectpicker">
+                                                    <option value="0">活动开始前1小时</option>
+                                                    <option value="1" selected>活动开始前1天</option>
+                                                    <option value="2">活动开始前3天</option>
+                                                    <option value="3">活动开始前1周</option>
                                                 </select>
                                             </div>
                                             <!--
@@ -232,12 +265,12 @@
                                             <div class="form-group">
                                                 <label for="aintro">活动简介</label>
                                                 <textarea id="aintro" name="content" class="form-control" rows="3"
-                                                    placeholder="(必填)简介会随活动基本信息一同推送至订阅者的微信"></textarea>
+                                                    placeholder="{{introduction}}"></textarea>
                                             </div>
                                             <div class="form-group">
                                                 <label for="aintro">活动推送链接(url)</label>
                                                 <input type="text" id="URL" name="URL" class="form-control"
-                                                    placeholder="(可选)填写活动推送的链接">
+                                                    placeholder="{{url}}">
                                             </div>
                                             <!--
                                             <div class="input-group mb-4">
@@ -250,6 +283,10 @@
                                                     placeholder="">
                                             </div>
                                             -->
+                                            {% if edit %}
+                                            <input type="hidden" name="edit" value="True">
+                                            <input type="hidden" name="aid", value="{{aid}}">
+                                            {% endif %}
                                             <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
                                                 提交
                                             </button>
@@ -284,7 +321,7 @@
             document.getElementById('maxpeople').disabled = false;
         } else {
             document.getElementById('maxpeople').disabled = true;
-            document.getElementById('maxpeople').value = "";
+            document.getElementById('maxpeople').placeholder = "";
         }
     });
     function shows(a) {
@@ -322,4 +359,17 @@
     });
 
 </script>
+{% if edit %}
+
+<script type="text/javascript">
+    var obj=document.getElementById("inputState");
+    obj.value={{endbefore}}
+</script>
+{% endif %}
+{% if no_limit  %}
+<script type="text/javascript">
+    document.getElementById('maxpeople').disabled = true;
+    document.getElementById('maxpeople').placeholder = "";
+</script>
+{% endif %}
 {% endblock %}
