@@ -38,15 +38,16 @@ urlpatterns = [
     #    views.confirm_transaction,
     #    name="confirmTrans",
     #),
-    path("engage", views.engage_activity, name="engage"),
+    path("applyActivity/<str:aid>", views.applyActivity, name="applyActivity"),
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
     path("showActivities/", views.showActivities, name="showActivities"),
-    path("viewActivities/", views.viewActivities, name="viewActivities"),
+    path("viewActivity/<str:aid>", views.viewActivity, name="viewActivity"),
     path("getActivityInfo/", views.getActivityInfo, name="getActivityInfo"),
     path("checkinActivity/", views.checkinActivity, name="checkinActivity"),
     path("addActivities/", views.addActivities, name="addActivities"),
     path("subscribeActivities/", views.subscribeActivities, name="subscribeActivities"),
     path("save_subscribe_status", views.save_subscribe_status, name="save_subscribe_status"),
+    path("notifications/", views.notifications, name="notifications"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
