@@ -18,7 +18,7 @@ scheduler.add_jobstore(DjangoJobStore(), "default")
 
 
 
-@register_job(scheduler, 'interval', id='weekly_distribute_YQPoint', weeks=0, seconds=2)
+@register_job(scheduler, 'interval', id='weekly_distribute_YQPoint', weeks=1, seconds=2)
 def scheduled_distribute_YQPoint():
     try:
         distributer = Scheduled_YQPoint_Distribute.objects.get(type=Scheduled_YQPoint_Distribute.Schedule_Type.WEEK,
@@ -35,9 +35,8 @@ def scheduled_distribute_YQPoint():
         YQPoint__lte=distributer.org_max_dis_YQPoint).exclude(oname="元培学院")
     # 由学院账号给大家发放
     YPcollege = Organization.objects.get(oname="元培学院")
+    trans_msg = "haoye!!!"
 
-    print(f"阶段1用时：{(datetime.now()-time_record).seconds}s,{(datetime.now()-time_record).microseconds}ms")
-    time_record = datetime.now()
     # 计算发放给每个人/组织的多少，进行更改，写入数据库
 
     try:
@@ -52,12 +51,6 @@ def scheduled_distribute_YQPoint():
     YPcollege.YQPoint -= org_to_dis.count() * distributer.org_YQPoints
     YPcollege.save()
 
-    print(f"阶段2用时：{(datetime.now()-time_record).seconds}s,{(datetime.now()-time_record).microseconds}ms")
-    time_record = datetime.now()
-
-    trans_msg = "haoye!!!"
-    print(f"阶段3用时：{(datetime.now()-time_record).seconds}s,{(datetime.now()-time_record).microseconds}ms")
-    time_record = datetime.now()
     # 添加转账记录
     transfer_record_lst = []
     for per_id in per_to_dis:
