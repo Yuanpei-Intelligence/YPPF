@@ -2,251 +2,460 @@
 
 {% block mainpage %}
 
-    <!--  BEGIN MAIN CONTAINER  -->
-    <div class="main-container" id="container">
+<!--  BEGIN MAIN CONTAINER  -->
+<div class="main-container" id="container">
 
-        <div class="overlay"></div>
-        <div class="search-overlay"></div>
+    <div class="overlay"></div>
+    <div class="search-overlay"></div>
 
-        {% include 'org_left_narbar.html' %}
+    {% include 'org_left_narbar.html' %}
 
-        <!--  BEGIN CONTENT AREA  -->
-        <div id="content" class="main-content">
-            <div class="layout-px-spacing">
-                {% if html_display.warn_code == 2 %}
-                    <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
-                {% elif html_display.warn_code == 1%}
-                    <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
-                {% endif %}
-                <div class="row layout-spacing">
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+        <div class="layout-px-spacing">
+            {% if html_display.warn_code == 2 %}
+            <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+            {% elif html_display.warn_code == 1%}
+            <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+            {% endif %}
 
-                    <!-- Content -->
-                    <div class="col-xl-8 col-lg-6 col-md-7 col-sm-12 layout-top-spacing">
 
-                        <div class="user-profile layout-spacing">
-                            <div class="widget-content widget-content-area">
-                                
-                                <div class="d-flex justify-content-between">
-                                    <h3 class="">Organization</h3>
-                                </div>
+            <div class="row ">
 
-                                <div class="text-center user-info">
-                                    <img src="{{org_avatar_path}}" height="90px" width="90px" alt="avatar">
-                                    <p class="">{{organization_name}}</p>
-                                </div>
-
-                                <div class="user-info-list">
-
-                                    <div class="">
-                                        <ul class="contacts-block list-unstyled">
-                                            <li class="contacts-block__item">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <rect x="2" y="7" width="20" height="14" rx="2" ry="2" /> <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" /> </svg> {{organization_type_name}}
-                                            </li>
-                                            <li class="contacts-block__item">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <polyline points="20 12 20 22 4 22 4 12" /> <rect x="2" y="7" width="20" height="5" /> <line x1="12" y1="22" x2="12" y2="7" /> <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" /> <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" /> </svg>元气值{{org.YQPoint}}
-                                            </li>
-
-                                            <li class="contacts-block__item">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                    stroke-linecap="round" stroke-linejoin="round">
-                                                    <polyline points="20 12 20 22 4 22 4 12" />
-                                                    <rect x="2" y="7" width="20" height="5" />
-                                                    <line x1="12" y1="22" x2="12" y2="7" />
-                                                    <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
-                                                    <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-                                                </svg> <a href="/transPage/{{html_display.org.organization_id_id}}">向ta转账</a>
-                                            </li>
-                                            
-                                        </ul>
-                                    </div>                                    
-                                </div>
-
-                            </div>
-                        </div>
-
-                        <div class="bio layout-spacing ">
-                            <div class="widget-content widget-content-area">
-
-                                <h3 class="">Intro</h3>
-                                <p>{{org.introduction}}</p>
-
-                                <div class="bio-skill-box">
-
-                                    <div class="row">
-                                        
-                                        <div class="col-12 col-xl-6 col-lg-12 mb-xl-5 mb-5 ">
-                                            
-                                            <div class="d-flex b-skills">
-                                                <div>
-                                                </div>
-                                                <div class="">
-                                                    <h5>活动1</h5>
-                                                    <p>Duis aute irure dolor in reprehenderit in voluptate velit esse eu fugiat nulla pariatur.</p>
-                                                </div>
-                                            </div>
-
+                <div class="col-xl-8 col-lg-6 col-md-7 col-sm-12 layout-top-spacing">
+                    <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#organization_info" data-toggle="tab">
+                                组织信息
+                            </a>
+                        </li>
+                
+                        <li class="nav-item">
+                            <a class="nav-link" href="#member_info" data-toggle="tab">
+                                成员信息
+                            </a>
+                        </li>
+                
+                    </ul>
+                    <div id="myTabContent" class="tab-content">
+                        <div class="tab-pane fade in active show" id="organization_info">
+                            <div class="user-profile layout-spacing">
+                                <div class="widget-content widget-content-area">
+                
+                                    <div class="d-flex justify-content-between">
+                                        <h3 class="">Organization</h3>
+                                        <br /><br />
+                                    </div>
+                
+                
+                                    <div class="text-center user-info">
+                                        <img src="{{org_avatar_path}}" height="90px" width="90px" alt="avatar">
+                                        <p class="">{{organization_name}}</p>
+                
+                                        {% if show_subscribe %}
+                                        <div class="custom-control custom-switch">
+                                            {% if subscribe_flag %}
+                                            <input type="checkbox" class="custom-control-input" id="switch button"
+                                                onclick="change_status.call(this);this.blur();" checked>
+                                            <label class="custom-control-label" for="switch button">
+                                                <font color="5F747B" id="subscribe">已订阅</font>
+                                            </label>
+                                            {% else %}
+                                            <input type="checkbox" class="custom-control-input" id="switch button"
+                                                onclick="change_status.call(this);this.blur();">
+                                            <label class="custom-control-label" for="switch button">
+                                                <font color="E1E1E1" id="subscribe">未订阅</font>
+                                            </label>
+                                            {% endif %}
                                         </div>
-
-                                        <div class="col-12 col-xl-6 col-lg-12 mb-xl-5 mb-5 ">
-                                            
-                                            <div class="d-flex b-skills">
-                                                <div>
-                                                </div>
-                                                <div class="">
-                                                    <h5>活动2</h5>
-                                                    <p>Ut enim ad minim veniam, quis nostrud exercitation aliquip ex ea commodo consequat.</p>
-                                                </div>
-                                            </div>
-
-                                        </div>
-
-                                        <div class="col-12 col-xl-6 col-lg-12 mb-xl-5 mb-5 ">
-                                            
-                                            <div class="d-flex b-skills">
-                                                <div>
-                                                </div>
-                                                <div class="">
-                                                    <h5>活动3</h5>
-                                                    <p>Duis aute irure dolor in reprehenderit in voluptate velit esse eu fugiat nulla pariatur.</p>
-                                                </div>
-                                            </div>
-
-                                        </div>
-
-                                        <div class="col-12 col-xl-6 col-lg-12 mb-xl-0 mb-0 ">
-                                            
-                                            <div class="d-flex b-skills">
-                                                <div>
-                                                </div>
-                                                <div class="">
-                                                    <h5>活动4</h5>
-                                                    <p>Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do et dolore magna aliqua.</p>
-                                                </div>
-                                            </div>
-
+                                        {% endif %}
+                                    </div>
+                                    <div class="user-info-list">
+                
+                                        <div class="">
+                                            <ul class="contacts-block list-unstyled">
+                                                <li class="contacts-block__item">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                        stroke-linejoin="round">
+                                                        <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
+                                                        <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                                                    </svg> {{organization_type_name}}
+                                                </li>
+                                                <li class="contacts-block__item">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                        stroke-linejoin="round">
+                                                        <line x1="12" y1="1" x2="12" y2="23" />
+                                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                                    </svg> 元气值{{org.YQPoint}}
+                                                </li>
+                                                {% if html_display.is_myself == False %}
+                                                <li class="contacts-block__item">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                        stroke-linejoin="round">
+                                                        <polyline points="20 12 20 22 4 22 4 12" />
+                                                        <rect x="2" y="7" width="20" height="5" />
+                                                        <line x1="12" y1="22" x2="12" y2="7" />
+                                                        <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+                                                        <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+                                                    </svg> <a href="/transPage/{{html_display.org.organization_id_id}}">向ta转账</a>
+                                                </li>
+                                                {% endif %}
+                                            </ul>
                                         </div>
                                     </div>
-
+                                    <div class="d-flex justify-content-between">
+                                        <h3 class="">Intro</h3>
+                                        <br /><br />
+                                    </div>
+                                    <p>{{org.introduction}}</p>
+                                    <br />
                                 </div>
-
-                            </div>                                
+                            </div>
                         </div>
-
+                        <div class="tab-pane fade" id="member_info">
+                            <div class="bio layout-spacing">
+                                <div class="widget-content widget-content-area" >
+                                    <div class="d-flex justify-content-between">
+                                        <h3 class="">People</h3>
+                                        <br /><br />
+                                    </div>
+                                    <div class="bio-skill-box" style="padding: 2%;">
+                                        <div class="row">
+                                            {% for member in member_list %}
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                
+                                                <div class=" b-skills" style="padding: 5%;">
+                
+                
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h5>
+                                                            <img src={{ member.avatar_path }} width="24"
+                                                                height="24" alt="avatar">
+                                                            <a
+                                                                    href='/stuinfo/{{member.person.name}}'><u>{{member.person.name}}</u></a>
+                                                            </h5>
+                                                        </div>
+                                                        <div>
+                                                            <h5>
+                                                                {% if member.highest %}
+                                                                <i class="fa fa-user-plus"></i>
+                                                                {% else %}
+                                                                <i class="fa fa-user"></i>
+                                                                {% endif %}
+                                                                {{member.job}}
+                                                            </h5>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);">{{member.person.stu_grade}}级</p>
+                                                        </div>
+                                                        <div>
+                                                            {% if member.person.show_major %}
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                {{member.person.stu_major}}</p>
+                                                            {% else %}
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                专业未公开</p>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                
+                                                </div>
+                
+                
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-
-                    <div class="col-xl-4 col-lg-6 col-md-5 col-sm-12 layout-top-spacing">
-
-                        <div class="user-profile layout-spacing">
-                            <div class="widget-content widget-content-area">
-                                
-                                <div class="d-flex justify-content-between">
-                                    <h3 class="">Manager</h3>
-                                </div>
-
-                                <div class="text-center user-info">
-                                    <img src="{{boss_display.avatar_path}}" height="90px" width="90px" alt="avatar">
-                                    <p class="">{{boss_display.bossname}}</p>
-                                </div>
-
-                                <div class="user-info-list">
-
-                                    <div class="">
-                                        <ul class="contacts-block list-unstyled">
-                                            <li class="contacts-block__item">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-coffee"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg> {{boss_display.job}}
-                                            </li>
-                                            <li class="contacts-block__item">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>{{boss_display.year}}
-                                            </li>
-                                            <li class="contacts-block__item">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-map-pin"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>{{boss_display.major}}
-                                            </li>
-                                            <li class="contacts-block__item">
-                                                <a href="mailto:example@mail.com"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-mail"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path><polyline points="22,6 12,13 2,6"></polyline></svg>{{boss_display.email}}</a>
-                                            </li>
-                                            <li class="contacts-block__item">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-phone"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"></path></svg> {{boss_display.tel}}
-                                            </li>
-                                            
-                                        </ul>
-                                    </div>                                    
-                                </div>
-
-                            </div>
-                        </div>
-
-                        <div class="education layout-spacing ">
-                            <div class="widget-content widget-content-area">
-                                <h3 class="">Event</h3>
-                                <div class="timeline-alter">
-                                    <div class="item-timeline">
-                                        <div class="t-meta-date">
-                                            <p class="">04 Mar 2009</p>
-                                        </div>
-                                        <div class="t-dot" data-original-title="" title="">
-                                        </div>
-                                        <div class="t-text">
-                                            <p>Royal Collage of Art</p>
-                                            <p>Designer Illustrator</p>
-                                        </div>
+                
+                
+                </div>
+                
+                <!--
+                        <div class="col-xl-4 col-lg-6 col-md-5 col-sm-12 layout-top-spacing">
+                            <div class="layout-spacing">
+                                <div class="widget-content widget-content-area">
+                                    {% for member in member_list %}
+                                    <div class="card">
+                                        <a href="../../stuinfo/{{member.person.name}}+{{member.person.id}}" class="card-body">
+                                            <div class="row">
+                                                <div class="col-xl-2 ">
+                                                    <img class="avatar avatar-user" src={{ member.avatar_path }} width="48"
+                                                        height="48" alt="avatar">
+                                                </div>
+                                                <div class="col-xl-10">
+                                                    <h4 class="card-title">{{member.person.name}}</h4>
+                                                    {% if member.person.show_nickname == True %}
+                                                    <p> {{member.person.nickname}} </p>
+                                                    {% endif %}
+                                                    <p class="card-text"><svg xmlns="http://www.w3.org/2000/svg" width="20"
+                                                            height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                                            <circle cx="12" cy="8" r="7" />
+                                                            <polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
+                                                        </svg>
+                                                        {{member.job}}
+                                                    </p>
+                                                    <p class="card-text"> {{member.person.biography}} </p>
+                                                </div>
+                                            </div>
+                                        </a>
                                     </div>
-                                    <div class="item-timeline">
-                                        <div class="t-meta-date">
-                                            <p class="">25 Apr 2014</p>
-                                        </div>
-                                        <div class="t-dot" data-original-title="" title="">
-                                        </div>
-                                        <div class="t-text">
-                                            <p>Massachusetts Institute of Technology (MIT)</p>
-                                            <p>Designer Illustrator</p>
-                                        </div>
-                                    </div>
-                                    <div class="item-timeline">
-                                        <div class="t-meta-date">
-                                            <p class="">04 Apr 2018</p>
-                                        </div>
-                                        <div class="t-dot" data-original-title="" title="">
-                                        </div>
-                                        <div class="t-text">
-                                            <p>School of Art Institute of Chicago (SAIC)</p>
-                                            <p>Designer Illustrator</p>
-                                        </div>
-                                    </div>
+                                    {% endfor %}
                                 </div>
                             </div>
                         </div>
-
-                        <div class="activity layout-spacing ">
-                            <div class="widget-content widget-content-area">
-                                <h3 class="">Activation</h3>
-                                <div class="progress br-30">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 65%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><div class="progress-title"><span>Freshman</span> <span>65%</span> </div></div>
-                                </div>
-                                <div class="progress br-30">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 50%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><div class="progress-title"><span>Sophomore</span> <span>50%</span> </div></div>
-                                </div>
-                                <div class="progress br-30">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 70%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><div class="progress-title"><span>Junior</span> <span>70%</span> </div></div>
-                                </div>
-                                <div class="progress br-30">
-                                    <div class="progress-bar bg-primary" role="progressbar" style="width: 60%" aria-valuenow="25" aria-valuemin="0" aria-valuemax="100"><div class="progress-title"><span>Senior</span> <span>60%</span> </div></div>
-                                </div>
-
-                            </div>
-                        </div>
-
                     </div>
-                    <!-- Content Ends -->
+                -->
+                <div class="col-xl-4 col-lg-6 col-md-5 col-sm-12 layout-top-spacing">
+                                <div class="education layout-spacing ">
+                                    <div class="widget-content widget-content-area">
 
+                                        <h3 class="">Monument</h3>
+                                        <div class="timeline-alter">
+                                            <div class="item-timeline">
+                                                <div class="t-meta-date">
+                                                    <p class="">04 Mar 2009</p>
+                                                </div>
+                                                <div class="t-dot" data-original-title="" title="">
+                                                </div>
+                                                <div class="t-text">
+                                                    <p>Royal Collage of Art</p>
+                                                    <p>Designer Illustrator</p>
+                                                </div>
+                                            </div>
+                                            <div class="item-timeline">
+                                                <div class="t-meta-date">
+                                                    <p class="">25 Apr 2014</p>
+                                                </div>
+                                                <div class="t-dot" data-original-title="" title="">
+                                                </div>
+                                                <div class="t-text">
+                                                    <p>Massachusetts Institute of Technology (MIT)</p>
+                                                    <p>Designer Illustrator</p>
+                                                </div>
+                                            </div>
+                                            <div class="item-timeline">
+                                                <div class="t-meta-date">
+                                                    <p class="">04 Apr 2018</p>
+                                                </div>
+                                                <div class="t-dot" data-original-title="" title="">
+                                                </div>
+                                                <div class="t-text">
+                                                    <p>School of Art Institute of Chicago (SAIC)</p>
+                                                    <p>Designer Illustrator</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                </div>
+
+            </div>
+            <div class="row ">
+                <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 layout-top-spacing">
+                    <div class="bio layout-spacing ">
+                        <div class="widget-content widget-content-area">
+
+                            <h3 class="">Activities</h3>
+
+                            
+                            
+                            <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                <li class="nav-item">
+                                    <a class="nav-link active" href="#act0" data-toggle="tab">
+                                        未结束
+                                    </a>
+                                </li>
+                        
+                                <li class="nav-item">
+                                    <a class="nav-link" href="#act1" data-toggle="tab">
+                                        已结束
+                                    </a>
+                                </li>
+                        
+                            </ul>
+
+                            <div class="tab-content">
+
+                                <div id="act0" class="tab-pane active">
+                                    <div class="bio-skill-box">
+                                        <div class="row">
+                                            {% for rec in continuing_activity_list_participantrec %}
+                                            <div class="col-12 col-xl-4 col-lg-6 mb-xl-5 mb-5 ">
+                                                <div class="d-flex b-skills">
+                                                    <div class="">
+                                                        <div class="d-flex justify-content-between">
+                                                            <h5>{{rec.act.title}}
+                                                                <!--一个判断：
+                                                                    进行中：
+                                                                        组织：success
+                                                                        个人：本身的状态/报名截止（primary/danger)
+                                                                    报名中：
+                                                                        组织：success
+                                                                        个人：其他状态/未报名（primary/danger/secondary）
+                                                                    等待中：
+                                                                        组织：info
+                                                                        个人：本身的状态/报名截止（primary/danger)
+                                                                    审核中：都是warning
+                                                                -->
+
+                                                                {% if rec.act.status == "审核中" %}
+                                                                    <span class="badge badge-pill badge-warning">{{rec.act.status}}</span>
+                                                                {% else %}
+                                                                    {% if user_type == "Organization" %}
+                                                                        {% if rec.act.status == "等待中" %}
+                                                                            <span class="badge badge-pill badge-info">{{rec.act.status}}</span>
+                                                                        {% else %}
+                                                                            <span class="badge badge-pill badge-success">{{rec.act.status}}</span>
+                                                                        {% endif %}
+                                                                    {% else %}
+
+                                                                        {% if rec.status == "无记录" %}
+                                                                            {% if rec.act.status == "报名中" %}
+                                                                                <span class="badge badge-pill badge-secondary">未报名</span>
+                                                                            {% else %}
+                                                                                <span class="badge badge-pill badge-danger">报名截止</span>
+                                                                            {% endif %}
+                                                                        {% elif rec.status == "申请失败" or rec.status == "未参与" or rec.status == "取消" %}
+                                                                            <span class="badge badge-pill badge-primary">rec.status</span>
+                                                                        {% else %}
+                                                                            <span class="badge badge-pill badge-primary">rec.status</span>
+                                                                        {% endif %}
+
+                                                                    {% endif %}
+                                                                {% endif %}
+
+                                                            </h5>
+                                                        </div>
+
+                                                        <p>{{rec.act.introduction}}</p>
+                                                        <p>报名结束时间： 距活动开始{{rec.act.endbefore}}</p>
+                                                        <p>活动开始时间： {{rec.act.start}}</p>
+                                                        <p>已报名/最大人数：{{rec.act.current_participants}}/{{rec.act.capacity}}</p>
+                                                        <div class="row">
+                                                            <div class="col">
+                                                                <p>价格：{{rec.act.YQPoint}}</p>
+                                                            </div>
+                                                            <div class="col">
+                                                                <p>地点：{{rec.act.location}}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    {% if html_display.is_myself == True %}
+                                                        <div class="text-right">
+                                                            <a href="/welcome/" class="btn btn-primary btn-sm" role="button">管理</a>
+                                                        </div>
+                                                    {% elif user_type == "Person" %}
+                                                        <div class="text-right">
+                                                            {% if rec.act.status == "报名中" %}
+                                                                {% if rec.status == "申请中" or rec.status == "已报名" or rec.status == "已参加" %}
+                                                                    <a href="/welcome/" class="btn btn-primary btn-sm" role="button">退出</a>
+                                                                {% elif rec.status == "无记录" %}
+                                                                    <a href="/welcome/" class="btn btn-primary btn-sm" role="button">加入</a>
+                                                                {% endif %}
+                                                            {% elif rec.act.status != "审核中" %}
+                                                                {% if rec.status == "申请中" or rec.status == "已报名" or rec.status == "已参加" %}
+                                                                    <a href="/welcome/" class="btn btn-primary btn-sm" role="button">退出</a>
+                                                                {% endif %}
+                                                            {% endif %}
+                                                        </div>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="act1" class="tab-pane fade">
+                                    <div class = "bio-skill-box ">
+                                        <div class="row">
+                                            {% for act in ended_activity_list %}
+                                            <div class="col-12 col-xl-4 col-lg-6 mb-xl-5 mb-5 ">
+                                                <div class="d-flex b-skills">
+                                                    <div class="">
+                                                        <div class="d-flex justify-content-between">
+                                                            <h5>{{act.topic}}
+                                                                <span class="badge badge-pill badge-danger">{{act.status}}</span>
+                                                            </h5>
+                                                        </div>
+
+                                                        <p>{{rec.act.introduction}}</p>
+                                                        <p>报名结束时间： 距活动开始{{rec.act.endbefore}}</p>
+                                                        <p>活动开始时间： {{rec.act.start}}</p>
+                                                        <p>已报名/最大人数：{{rec.act.current_participants}}/{{rec.act.capacity}}</p>
+                                                        <div class="row">
+                                                            <div class="col">
+                                                                <p>价格：{{rec.act.YQPoint}}</p>
+                                                            </div>
+                                                            <div class="col">
+                                                                <p>地点：{{rec.act.location}}</p>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>                                
+                    </div>
                 </div>
             </div>
 
-            
-        </div>
-        <!--  END CONTENT AREA  -->
 
+
+        
+        </div>
     </div>
-    <!-- END MAIN CONTAINER -->
-    
+<!--  END CONTENT AREA  -->
+
+</div>
+<!-- END MAIN CONTAINER -->
+
+{% endblock %}
+
+
+{% block add_js_file %}
+<script>
+    async function change_status() {
+        if (!this.checked) {
+            const success = await save_subscribe_status.call(this, false);
+            if (success) {
+                document.getElementById(`subscribe`).color = "E1E1E1";
+                document.getElementById(`subscribe`).innerHTML = "未订阅";
+            }
+            else this.checked = true;
+        } else {
+            const success = await save_subscribe_status.call(this, true);
+            if (success) {
+                document.getElementById(`subscribe`).color = "5F747B";
+                document.getElementById(`subscribe`).innerHTML = "已订阅";
+            }
+            else this.checked = false;
+        }
+    }
+    async function save_subscribe_status(status) {
+        const { success } = await fetch(`/save_subscribe_status`, {
+            headers: { "Content-Type": `text/plain` },
+            method: `POST`,
+            body: JSON.stringify({ id: '{{org.organization_id.username}}', status }),
+        })
+            .then((res) => res.json())
+            .catch(() => { success: false });
+        return success;
+    }
+</script>
 {% endblock %}

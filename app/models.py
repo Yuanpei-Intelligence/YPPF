@@ -16,7 +16,8 @@ class NaturalPersonManager(models.Manager):
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
         datas = NaturalPerson.objects.activated()
         year = datetime.now().strftime("%Y")
-        datas.objects.filter(stu_grade=str(int(year) - 4)).update(GraduateStatus=1)
+        datas.objects.filter(stu_grade=str(int(year) - 4)
+                             ).update(GraduateStatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
@@ -81,7 +82,8 @@ class NaturalPerson(models.Model):
     show_dorm = models.BooleanField(default=False)
 
     # 注意：这是不订阅的列表！！
-    subscribe_list = models.ManyToManyField('Organization', related_name='subscribers', db_index=True)
+    subscribe_list = models.ManyToManyField(
+        'Organization', related_name='unsubsribers', db_index=True)
 
     def __str__(self):
         return str(self.name)
@@ -89,7 +91,7 @@ class NaturalPerson(models.Model):
     def show_info(self):
         """
             返回值为一个列表，在search.html中使用，按照如下顺序呈现：
-            people_field = ['姓名', '年级&班级', '昵称', '性别', '专业', '邮箱', '电话', '宿舍', '状态']
+            people_field = ['姓名', '年级', '班级', '专业', '状态']
             其中未公开的属性呈现为‘未公开’
             注意：major, gender, nickname, email, tel, dorm可能为None
             班级和年级现在好像也可以为None
@@ -97,15 +99,15 @@ class NaturalPerson(models.Model):
         unpublished = '未公开'
         gender = ['男', '女']
         info = [self.name, self.stu_grade, self.stu_class]
-        info.append(self.nickname if (self.show_nickname) else unpublished)
-        info.append(
-            unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
+        #info.append(self.nickname if (self.show_nickname) else unpublished)
+        #info.append(
+        #    unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
         info.append(self.stu_major if (self.show_major) else unpublished)
-        info.append(self.email if (self.show_email) else unpublished)
-        info.append(self.telephone if (self.show_tel) else unpublished)
-        info.append(self.stu_dorm if (self.show_dorm) else unpublished)
+        #info.append(self.email if (self.show_email) else unpublished)
+        #info.append(self.telephone if (self.show_tel) else unpublished)
+        #info.append(self.stu_dorm if (self.show_dorm) else unpublished)
         info.append('在校' if self.status ==
-                            NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
+                    NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
         # 防止显示None
         for i in range(len(info)):
             if info[i] == None:
@@ -122,7 +124,8 @@ class OrganizationType(models.Model):
         verbose_name = "组织类型"
         verbose_name_plural = verbose_name
 
-    otype_id = models.SmallIntegerField("组织类型编号", unique=True, primary_key=True)
+    otype_id = models.SmallIntegerField(
+        "组织类型编号", unique=True, primary_key=True)
     otype_name = models.CharField("组织类型名称", max_length=25)
     otype_superior_id = models.SmallIntegerField("上级组织类型编号", default=0)
     incharge = models.ForeignKey(
@@ -138,6 +141,11 @@ class OrganizationType(models.Model):
 
     def __str__(self):
         return str(self.otype_name)
+
+    def get_name(self, pos):
+        if pos >= len(self.job_name_list):
+            return "成员"
+        return self.job_name_list[pos]
 
 
 class Semester(models.TextChoices):
@@ -211,12 +219,11 @@ class Position(models.Model):
 
     person = models.ForeignKey(
         NaturalPerson,
-        related_name="person",
         to_field="person_id",
         on_delete=models.CASCADE,
     )
     org = models.ForeignKey(
-        Organization, related_name="org", on_delete=models.CASCADE)
+        Organization, on_delete=models.CASCADE)
 
     # 职务的逻辑应该是0最高，1次之这样，然后数字映射到名字是在组织类型表中体现的
     pos = models.IntegerField(verbose_name="职务等级", default=0)
@@ -240,7 +247,7 @@ class Course(models.Model):
         verbose_name_plural = verbose_name
 
     cid = models.OneToOneField(
-        to=Organization, on_delete=models.CASCADE, related_name="cid"
+        to=Organization, on_delete=models.CASCADE, 
     )
     # 课程周期
     year = models.IntegerField(
@@ -285,7 +292,6 @@ class Activity(models.Model):
     organization_id = models.ForeignKey(
         Organization,
         # to_field="organization_id", 删除掉to_field, 保持纯净对象操作
-        related_name="actoid",
         on_delete=models.CASCADE,
     )
     year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
@@ -298,10 +304,15 @@ class Activity(models.Model):
         oneday = (1,"一天")
         threeday = (2,"三天")
         oneweek = (3,"一周")
+
+    class EndBeforeHours:
+        prepare_times = [1, 24, 72, 168]
     
     endbefore = models.SmallIntegerField("报名截止于", choices=EndBefore.choices, default= EndBefore.oneday)
     start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now)
     end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now)
+    # prepare_time = models.FloatField("活动准备小时数", default=24.0)
+    # apply_start = models.DateTimeField("报名开始时间", blank=True, default=datetime.now)
 
     location = models.CharField("活动地点", blank=True, max_length=200)
     introduction = models.TextField("活动简介", max_length=225, blank=True)
@@ -311,10 +322,13 @@ class Activity(models.Model):
 
     bidding = models.BooleanField("是否投点竞价", default=False)
     YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
+    budget = models.FloatField("预算", default=0.0)
+
+
 
     # 允许是正无穷, 可以考虑用INTINF
     capacity = models.IntegerField("活动最大参与人数", default=100)
-    current_participants = models.IntegerField("活动当前报名人数", default=100)
+    current_participants = models.IntegerField("活动当前报名人数", default=0)
     
     URL = models.URLField("活动相关(推送)网址", null=True, blank=True)
 
@@ -348,10 +362,10 @@ class TransferRecord(models.Model):
         ordering = ["-finish_time", "-start_time"]
 
     proposer = models.ForeignKey(
-        User, related_name="proposer_id", on_delete=models.CASCADE
+        User, related_name="send_trans", on_delete=models.CASCADE
     )
     recipient = models.ForeignKey(
-        User, related_name="recipient_id", on_delete=models.CASCADE
+        User, related_name="recv_trans", on_delete=models.CASCADE
     )
     amount = models.FloatField("转账元气值数量", default=0)
     start_time = models.DateTimeField("发起时间", auto_now_add=True)
@@ -359,7 +373,7 @@ class TransferRecord(models.Model):
     message = models.CharField("备注信息", max_length=255, default="")
 
     corres_act = models.ForeignKey(
-        Activity, related_name="有关活动", on_delete=models.SET_NULL, null=True, blank=True
+        Activity, on_delete=models.SET_NULL, null=True, blank=True
     )
 
     class TransferStatus(models.IntegerChoices):
@@ -367,15 +381,17 @@ class TransferRecord(models.Model):
         WAITING = (1, "待确认")
         REFUSED = (2, "已拒绝")
         SUSPENDED = (3, "已终止")
+        REDUND = (4, "已退回")
 
-    status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
+    status = models.SmallIntegerField(
+        choices=TransferStatus.choices, default=1)
 
     def save(self, *args, **kwargs):
         self.amount = round(self.amount, 1)
         super(TransferRecord, self).save(*args, **kwargs)
 
 
-class Paticipant(models.Model):
+class Participant(models.Model):
     class Meta:
         verbose_name = "活动参与情况"
         verbose_name_plural = verbose_name
@@ -392,6 +408,7 @@ class Paticipant(models.Model):
         UNATTENDED = 4  # 未参与
         CANCELED = 5  # 放弃，如果学生取消活动，则设置这里
 
+<<<<<<< HEAD
     status = models.IntegerField('学生参与活动状态', choices=AttendStatus.choices, default=0)
 
 
@@ -422,3 +439,44 @@ class Scheduled_YQPoint_Distribute(models.Model):
     class Meta:
         verbose_name = "元气值定期发放"
         verbose_name_plural = verbose_name
+=======
+    status = models.IntegerField(
+        '学生参与活动状态', choices=AttendStatus.choices, default=0)
+
+
+class Notification(models.Model):
+    class Meta:
+        verbose_name = "通知消息"
+        verbose_name_plural = verbose_name
+        ordering = ["id"]
+
+    receiver = models.ForeignKey(
+        User, related_name="recv_notice", on_delete=models.CASCADE
+    )
+    sender = models.ForeignKey(
+        User, related_name="send_notice", on_delete=models.CASCADE
+    )
+    class NotificationStatus(models.IntegerChoices):
+        DONE = (0, "已处理")
+        UNDONE = (1, "待处理")
+
+    class NotificationType(models.IntegerChoices):
+        NEEDREAD = (0, '知晓类')    # 只需选择“已读”即可
+        NEEDDO = (1, '处理类')      # 需要处理的事务
+
+    class NotificationTitle(models.IntegerChoices):
+        # 等待逻辑补充
+        TRANSFER_CONFIRM = (0, '转账确认通知')
+        ACTIVITY_INFORM = (1, '活动状态通知')
+        VERIFY_INFORM = (2, '审核信息通知')
+        PERSITION_INFORM = (3, '人事变动通知')
+
+    status = models.SmallIntegerField(choices=NotificationStatus.choices, default=1)
+    title = models.SmallIntegerField(choices=NotificationTitle.choices, blank=True, null=True)
+    content = models.CharField("通知内容", max_length=225, blank=True)
+    start_time = models.DateTimeField("通知发出时间", auto_now_add=True)
+    finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
+    type = models.SmallIntegerField(choices=NotificationType.choices, default=0)
+    
+    URL = models.URLField("相关网址", null=True, blank=True)
+>>>>>>> bf2759d670dd7c2772529ed378252014decf1a44

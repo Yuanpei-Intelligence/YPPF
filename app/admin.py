@@ -9,7 +9,8 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             "Student Attributes",
             {
                 "classes": ("collapse",),
-                "fields": ("stu_grade", "stu_dorm", "stu_class", "stu_major"),
+                "fields": ("stu_grade", "stu_dorm", "stu_class", "stu_major",
+                "show_nickname", "show_gender", "show_email", "show_tel", "show_major", "show_dorm"),
             },
         ],
     )
@@ -28,7 +29,7 @@ class OrganizationAdmin(admin.ModelAdmin):
 
 class PositionAdmin(admin.ModelAdmin):
     list_display = ["person", "org", "pos"]
-    search_fields = ("person__pname", "org__oname", "pos__person")
+    search_fields = ("person__name", "org__oname", "pos")
 
 
 admin.site.register(NaturalPerson, NaturalPersonAdmin)
@@ -38,5 +39,9 @@ admin.site.register(Position, PositionAdmin)
 admin.site.register(OrganizationType)
 admin.site.register(Activity)
 admin.site.register(TransferRecord)
+<<<<<<< HEAD
 
 admin.site.register(Scheduled_YQPoint_Distribute)
+=======
+admin.site.register(Notification)
+>>>>>>> bf2759d670dd7c2772529ed378252014decf1a44
