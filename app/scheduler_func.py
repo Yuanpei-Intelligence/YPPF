@@ -9,7 +9,7 @@ from django.urls import reverse
 from datetime import datetime, timedelta, timezone, time, date
 from django.db import transaction  # 原子化更改数据库
 
-from app.models import Organization, NaturalPerson, Scheduled_YQPoint_Distribute, TransferRecord
+from app.models import Organization, NaturalPerson, Scheduled_YQPoint_Distribute, TransferRecord, User
 from app.wechat_send import base_send_wechat
 
 # 定时任务生成器
@@ -60,13 +60,14 @@ def scheduled_distribute_YQPoint():
     time_record = datetime.now()
 
     trans_msg = "haoye!!!"
-    
+    print(f"阶段3用时：{(datetime.now()-time_record).seconds}s,{(datetime.now()-time_record).microseconds}ms")
+    time_record = datetime.now()
     # 添加转账记录
     transfer_record_lst = []
-    for person in per_to_dis:
+    for per_id in per_to_dis:
         transfer_record_lst.append(TransferRecord(
             proposer=YPcollege.organization_id,
-            recipient=person.person_id,
+            recipient=per_id.person_id,
             amount=distributer.per_YQPoints,
             start_time=trans_time,
             finish_time=trans_time,
@@ -74,6 +75,7 @@ def scheduled_distribute_YQPoint():
             status=TransferRecord.TransferStatus.ACCEPTED
         )
         )
+    
     for org in org_to_dis:
         transfer_record_lst.append(TransferRecord(
             proposer=YPcollege.organization_id,
@@ -85,8 +87,7 @@ def scheduled_distribute_YQPoint():
             status=TransferRecord.TransferStatus.ACCEPTED
         )
         )
-    print(f"阶段3用时：{(datetime.now()-time_record).seconds}s,{(datetime.now()-time_record).microseconds}ms")
-    time_record = datetime.now()
+    
 
     
     TransferRecord.objects.bulk_create(transfer_record_lst)
