@@ -81,6 +81,15 @@ def get_user_ava(obj, user_type):
             return settings.MEDIA_URL + "avatar/org_default.png"
 
 
+def get_user_wallpaper(person):
+    try:
+        wallpaper = person.wallpaper
+        assert wallpaper != ""
+        return settings.MEDIA_URL + str(wallpaper)
+    except:
+        return settings.MEDIA_URL + "wallpaper/default.jpg"
+
+
 def get_user_left_narbar(person, is_myself, html_display):  # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
     #assert (
     #        "is_myself" in html_display.keys()

@@ -290,7 +290,12 @@ def stuinfo(request, name=None):
         join_pos_id_list = Position.objects.activated().filter(
             Q(person=person) & Q(show_post=True))
 
-        # html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
+        # 制作属于组织的卡片（头像，名称，职位，链接（由id制作））
+        join_org_list = Organization.objects.filter(
+            id__in=join_pos_id_list.values('org'))  # 我属于的组织
+        org_pos_list = join_pos_id_list.values('pos')
+        html_display['join_org_list'] = [
+            (org.avatar, org.oname, org.id, pos) for org, pos in zip(join_org_list, org_pos_list)]
 
         # 呈现信息
         # 首先是左边栏
@@ -314,6 +319,7 @@ def stuinfo(request, name=None):
         context = dict()
         context["userinfo"] = person
         context["avatar_path"] = utils.get_user_ava(person, "Person")
+        context["wallpaper_path"] = utils.get_user_wallpaper(person)
 
         html_display["title_name"] = "User Profile"
         html_display["narbar_name"] = "个人主页"
