@@ -10,16 +10,47 @@
     {% include 'user_left_narbar.html' %}
 
     <!--  BEGIN CONTENT AREA  -->
-    <div id="content" class="main-content">
+    <div id="content" class="main-content" style="height: 100vh">
         <div class="layout-px-spacing">
             {% if html_display.warn_code == 2 %}
-                <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+            <div class="alert alert-success text-center">{{html_display.warn_message}}</div>
             {% elif html_display.warn_code == 1%}
-                <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+            <div class="alert alert-warning text-center">{{html_display.warn_message}}</div>
             {% endif %}
-            <div class="row layout-spacing">
+            <div class="container-fluid">
+            </div>
+        </div>
+        <div class="d-flex m-0 p-0 overflow-hidden" style="height: 35%">
+            <img class="d-flex w-100 align-self-center" src={{ context.wallpaper_path }} alt="wallpaper">
+            <div class="row w-100 align-self-center" style="position: absolute">
+                <div class="col-1"></div>
+                <div class="row col-6">
+                    <div class="col-0">
+                        <img class="img-thumbnail" src={{ context.avatar_path }} height="90px" width="90px"
+                            alt="avatar">
+                    </div>
+                    <div class="row col-1"></div>
+                    <div class="row col">
+                        <h1 class="align-self-center font-weight-bold" style="font-size: 70px">{{ context.userinfo.name
+                            }}</h3>
+                    </div>
+                    <div class="row col-1 mr-1"></div>
+                    <div class="row col">
+                        <p class="align-self-end">{{ context.userinfo.biography }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="layout-px-spacing">
+            {% if html_display.warn_code == 2 %}
+            <div class="alert alert-success text-center">{{html_display.warn_message}}</div>
+            {% elif html_display.warn_code == 1%}
+            <div class="alert alert-warning text-center">{{html_display.warn_message}}</div>
+            {% endif %}
+            <div class="container-fluid">
 
                 <!-- Content -->
+
 
                 <div class="col-xl-4 col-lg-6 col-md-5 col-sm-12 layout-top-spacing">
 
@@ -32,7 +63,6 @@
                             </div>
 
                             <div class="text-center user-info">
-                                <img src={{ context.avatar_path }} height="90px" width="90px" alt="avatar">
                                 <p class="">{{ context.userinfo.name }}</p>
                             </div>
 
@@ -105,7 +135,7 @@
                                             {{context.userinfo.telephone}}
                                         </li>
 
-                                        
+
                                         {% if html_display.is_myself == False %}
 
                                         <li class="contacts-block__item">
