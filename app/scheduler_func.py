@@ -16,10 +16,6 @@ from app.wechat_send import base_send_wechat
 scheduler = BackgroundScheduler()
 scheduler.add_jobstore(DjangoJobStore(), "default")
 
-# @register_job(scheduler, 'cron', id='test', day=1, hour=15, minute=23)
-# def test():
-#     # 具体要执行的代码
-#     print("\n\n\nthis is a test register job!\n\n\n")
 
 
 @register_job(scheduler, 'interval', id='weekly_distribute_YQPoint', weeks=0, seconds=2)
