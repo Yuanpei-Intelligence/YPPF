@@ -408,7 +408,6 @@ class Participant(models.Model):
         UNATTENDED = 4  # 未参与
         CANCELED = 5  # 放弃，如果学生取消活动，则设置这里
 
-<<<<<<< HEAD
     status = models.IntegerField('学生参与活动状态', choices=AttendStatus.choices, default=0)
 
 
@@ -439,9 +438,6 @@ class Scheduled_YQPoint_Distribute(models.Model):
     class Meta:
         verbose_name = "元气值定期发放"
         verbose_name_plural = verbose_name
-=======
-    status = models.IntegerField(
-        '学生参与活动状态', choices=AttendStatus.choices, default=0)
 
 
 class Notification(models.Model):
@@ -479,4 +475,3 @@ class Notification(models.Model):
     type = models.SmallIntegerField(choices=NotificationType.choices, default=0)
     
     URL = models.URLField("相关网址", null=True, blank=True)
->>>>>>> bf2759d670dd7c2772529ed378252014decf1a44
