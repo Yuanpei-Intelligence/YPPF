@@ -53,11 +53,10 @@
                                 <a href="/stuinfo/{{record.person}}"
                                   ><u>{{record.person}}</u></a
                                 >
-                                {{record.status}}
                               </h5>
                             </div>
                             <div>
-                              <h5>{{record.job_name}}</h5>
+                              <h5>{{record.apply_type}}</h5>
                             </div>
                           </div>
                           <div class="d-flex justify-content-between">
@@ -69,7 +68,7 @@
                             </div>
                             <div>
                               <p style="color: rgb(66, 67, 68)">
-                                {{record.status}}
+                                {{record.job_name}}
                               </p>
                             </div>
                           </div>
@@ -78,16 +77,19 @@
                             <div>
                               <p style="color: rgb(66, 67, 68)">
                                 <i class="fa fa-envelope-o"></i>
-                                {{record.message}}
+                                {{record.apply_status}}
                               </p>
                             </div>
-                            <form action="/verifyPersonnelMobilization/" method="POST">
+                            <form
+                              action="/personnelMobilization/"
+                              method="POST"
+                            >
                               <div class="btn-group btn-group-sm">
                                 <button
                                   class="btn btn-primary"
                                   type="submit"
                                   name="confirm"
-                                  value='{"id":"{{record.id}}", "status":"PASS"}'
+                                  value='{"id":"{{record.id}}", "apply_status":"PASS"}'
                                   onclick="return confirm('确定通过来自【{{record.person}}】的申请？')"
                                 >
                                   <span class="">通过</span>
@@ -96,7 +98,7 @@
                                   class="btn btn-danger"
                                   type="submit"
                                   name="confirm"
-                                  value='{"id":"{{record.id}}", "status":"REJECT"}'
+                                  value='{"id":"{{record.id}}", "apply_status":"REJECT"}'
                                   onclick="return confirm('确定拒绝来自【{{record.person}}】的申请？')"
                                 >
                                   <span class="">拒绝</span>
@@ -131,27 +133,22 @@
                         <div class="b-skills">
                           <div class="d-flex justify-content-between">
                             <div>
-                              <h5>
-                                {{record.person}}
-                                {{record.status}}
-                              </h5>
+                              <h5>{{record.person}}</h5>
                             </div>
                             <div>
-                              <h5>
-                                {{record.job_name}}
-                              </h5>
+                              <h5>{{record.apply_type}}</h5>
                             </div>
                           </div>
                           <div class="d-flex justify-content-between">
                             <div>
                               <p style="color: rgb(66, 67, 68)">
                                 <i class="fa fa-calendar-o"></i>
-                                {{record.start_time}}发起
+                                {{record.in_year}} {{record.in_semester}}
                               </p>
                             </div>
                             <div>
                               <p style="color: rgb(66, 67, 68)">
-                                {{record.finish_time}}处理
+                                {{record.job_name}}
                               </p>
                             </div>
                           </div>
@@ -159,7 +156,7 @@
                             <div>
                               <p style="color: rgb(66, 67, 68)">
                                 <i class="fa fa-envelope-o"></i>
-                                {{record.message}}
+                                {{record.apply_status}}
                               </p>
                             </div>
                             <div>

@@ -355,7 +355,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
             position = Position.objects.activated().filter(org=org, person=me)
             assert len(position) == 1
             position = position[0]
-            assert position.position == 0
+            assert position.pos == 0
         except:
             urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该组织账户的权限!"
             return redirect(urls)
@@ -396,58 +396,66 @@ def orginfo(request, name=None):
 
     except:
         return redirect("/welcome/")
-    
+
     organization_name = name
     organization_type_name = org.otype.otype_name
     org_avatar_path = utils.get_user_ava(org, "Organization")
     # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
     # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
-    continuing_activity_list = Activity.objects.activated().filter(
-            organization_id = org.organization_id_id
-        ).filter(
-            status__in = [Activity.Status.REVIEWING, Activity.Status.APPLYING, Activity.Status.WAITING, Activity.Status.PROGRESSING]
-        ).order_by("-start")
+    continuing_activity_list = (
+        Activity.objects.activated()
+        .filter(organization_id=org.organization_id_id)
+        .filter(
+            status__in=[
+                Activity.Status.REVIEWING,
+                Activity.Status.APPLYING,
+                Activity.Status.WAITING,
+                Activity.Status.PROGRESSING,
+            ]
+        )
+        .order_by("-start")
+    )
 
-    ended_activity_list = Activity.objects.activated().filter(
-            organization_id = org.organization_id_id
-        ).filter(
-            status__in = [Activity.Status.CANCELED, Activity.Status.END]
-        ).order_by("-start")
+    ended_activity_list = (
+        Activity.objects.activated()
+        .filter(organization_id=org.organization_id_id)
+        .filter(status__in=[Activity.Status.CANCELED, Activity.Status.END])
+        .order_by("-start")
+    )
 
     # 如果是用户登陆的话，就记录一下用户有没有加入该活动，用字典存每个活动的状态，再把字典存在列表里
     continuing_activity_list_participantrec = []
-    participant_status = ["申请中","申请失败","已报名","已参与","未参与","放弃"]
+    participant_status = ["申请中", "申请失败", "已报名", "已参与", "未参与", "放弃"]
     for act in continuing_activity_list:
         dictmp = {}
         dictmp["act"] = act
         if user_type == "Person":
-            existlist = Paticipant.objects.filter(activity_id_id = act.id).filter(person_id_id = me.person_id_id)
-            if existlist: # 判断是否非空
+            existlist = Paticipant.objects.filter(activity_id_id=act.id).filter(
+                person_id_id=me.person_id_id
+            )
+            if existlist:  # 判断是否非空
                 dictmp["status"] = participant_status[existlist[0].status]
-            else :
+            else:
                 dictmp["status"] = "无记录"
         continuing_activity_list_participantrec.append(dictmp)
 
-    
     # 判断我是不是老大, 首先设置为false, 然后如果有person_id和user一样, 就为True
     html_display["isboss"] = False
 
     # 组织成员list
-    positions = Position.objects.activated().filter(org = org).order_by("pos") # 升序
+    positions = Position.objects.activated().filter(org=org).order_by("pos")  # 升序
     member_list = []
     for p in positions:
         if p.person.person_id == user and p.pos == 0:
-                html_display["isboss"] = True
+            html_display["isboss"] = True
         if p.show_post == True or p.pos == 0:
             member = {}
             member["person"] = p.person
             member["job"] = org.otype.get_name(p.pos)
             member["highest"] = True if p.pos == 0 else False
-            member["avatar_path"] = utils.get_user_ava(member['person'],'Person')
+            member["avatar_path"] = utils.get_user_ava(member["person"], "Person")
             member_list.append(member)
-
-    
 
     try:
         html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
@@ -460,10 +468,8 @@ def orginfo(request, name=None):
         html_display["warn_code"] = 2
         html_display["warn_message"] = "修改个人信息成功!"
 
-    
-
     # 补充左边栏信息
-    
+
     # 判断是否为组织账户本身在登录
     html_display["is_myself"] = me == org
 
@@ -708,45 +714,62 @@ def search(request):
     not_found_message = "找不到符合搜索的信息或相关内容未公开！"
     # 首先搜索个人, 允许搜索姓名或者公开的专业, 删去小名搜索
     people_list = NaturalPerson.objects.filter(
-        Q(name__icontains=query) | #(Q(nickname__icontains=query) & Q(show_nickname=True)) |
-        (Q(stu_major__icontains=query) & Q(show_major=True)))
+        Q(name__icontains=query)
+        | (  # (Q(nickname__icontains=query) & Q(show_nickname=True)) |
+            Q(stu_major__icontains=query) & Q(show_major=True)
+        )
+    )
     # 接下来准备呈现的内容
     # 首先是准备搜索个人信息的部分
     people_field = [
         "姓名",
         "年级",
         "班级",
-        #"昵称",
-        #"性别",
+        # "昵称",
+        # "性别",
         "专业",
-        #"邮箱",
-        #"电话",
-        #"宿舍",
+        # "邮箱",
+        # "电话",
+        # "宿舍",
         "状态",
     ]  # 感觉将年级和班级分开呈现会简洁很多
 
     # 搜索组织
     # 先查找query作为姓名包含在字段中的职务信息, 选的是post为true或者职务等级为0
     pos_list = Position.objects.activated().filter(
-        Q(person__name__icontains=query) & (Q(show_post=True) | Q(pos=0)))
+        Q(person__name__icontains=query) & (Q(show_post=True) | Q(pos=0))
+    )
     # 通过组织名、组织类名、和上述的职务信息对应的组织信息
     organization_list = Organization.objects.filter(
-        Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(id__in = pos_list.values('org'))).prefetch_related("position_set")
+        Q(oname__icontains=query)
+        | Q(otype__otype_name__icontains=query)
+        | Q(id__in=pos_list.values("org"))
+    ).prefetch_related("position_set")
 
     org_display_list = []
     for org in organization_list:
-        org_display_list.append({
-            "oname": org.oname,
-            "otype":org.otype,
-            "pos0": [w['person__name'] for w in list(org.position_set.activated().filter(pos=0).values("person__name"))]
-        })
+        org_display_list.append(
+            {
+                "oname": org.oname,
+                "otype": org.otype,
+                "pos0": [
+                    w["person__name"]
+                    for w in list(
+                        org.position_set.activated()
+                        .filter(pos=0)
+                        .values("person__name")
+                    )
+                ],
+            }
+        )
 
     # 组织要呈现的具体内容
     organization_field = ["组织名称", "组织类型", "负责人", "近期活动"]
 
     # 搜索活动
-    activity_list = Activity.objects.filter(Q(title__icontains=query) |
-                                            Q(organization_id__oname__icontains=query))
+    activity_list = Activity.objects.filter(
+        Q(title__icontains=query) | Q(organization_id__oname__icontains=query)
+    )
 
     # 活动要呈现的内容
     activity_field = ["活动名称", "承办组织", "状态"]
@@ -1831,47 +1854,87 @@ def save_subscribe_status(request):
 
 @login_required(redirect_field_name="origin")
 def apply_position(request, oid=None):
+    """ apply for position in organization, including join, withdraw, transfer
+    Args:
+        - oid <str>: Organization ID in URL path, while actually is the ID of User.
+        - apply_type <str>: Application type, including "JOIN", "WITHDRAW", "TRANSFER".
+        - apply_pos <int>: Position applied for.
+    Return:
+        - Personal `/notification/` web page
+    """
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid or user_type != "Person":
         return redirect("/index/")
     me = get_person_or_org(request.user, user_type)
-
-    if request.method == "GET":
-        status = request.GET["status"]
-    elif request.method == "POST":
-        oid = request.POST["oid"]
-        org = Organization.objects.get(oname=request.POST["oname"])
-        status = request.POST["status"]
     user = User.objects.get(id=int(oid))
     org = Organization.objects.get(organization_id=user)
 
-    application, created = Position.objects.get_or_create(person=me, org=org, pos=2)
-    if status == "JOIN":
-        application.status = Position.Status.JOIN
-        contents = ["加入申请已提交审核", "加入申请审核"]
-    elif status == "WITHDRAW":
-        application.status = Position.Status.WITHDRAW
-        contents = ["退出申请已提交审核", "退出申请审核"]
-    elif status == "TRANSFER":
-        application.status = Position.Status.TRANSFER
-        contents = ["交接申请已提交审核", "交接申请审核"]
-    elif status == "CANCEL":
-        application.status = Position.Status.CANCEL
-        contents = ["申请已取消", "申请已取消"]
-    application.save()
+    if request.method == "GET":
+        apply_type = request.GET.get("apply_type", "JOIN")
+        apply_pos = int(request.GET.get("apply_pos", 10))
+    elif request.method == "POST":
+        apply_type = request.POST.get("apply_type", "JOIN")
+        apply_pos = int(request.POST.get("apply_pos", 10))
+
+    warn_duplicate_message = "There has already been an application of this state!"
+
+    try:
+        with transaction.atomic():
+            if apply_type == "JOIN":
+                apply_type = Position.ApplyType.JOIN
+                application, created = Position.objects.activated().get_or_create(
+                    person=me, org=org, apply_type=apply_type, apply_pos=apply_pos
+                )
+                assert created, warn_duplicate_message
+            elif apply_type == "WITHDRAW":
+                application = (
+                    Position.objects.activated()
+                    .select_for_update()
+                    .get(person=me, org=org, status=Position.Status.INSERVICE)
+                )
+                assert (
+                    application.apply_type != Position.ApplyType.WITHDRAW
+                ), warn_duplicate_message
+                application.apply_type = Position.ApplyType.WITHDRAW
+            elif apply_type == "TRANSFER":
+                application = (
+                    Position.objects.activated()
+                    .select_for_update()
+                    .get(person=me, org=org, status=Position.Status.INSERVICE)
+                )
+                assert (
+                    application.apply_type != Position.ApplyType.TRANSFER
+                ), warn_duplicate_message
+                application.apply_type = Position.ApplyType.TRANSFER
+                application.apply_pos = int(apply_pos)
+                assert (
+                    application.apply_pos < application.pos
+                ), "TRANSFER must apply for higher position!"
+            else:
+                raise ValueError(
+                    f"Not available attributes for apply_type: {apply_type}"
+                )
+            application.apply_status = Position.ApplyStatus.PENDING
+            application.save()
+    except Exception as e:
+        print(e)
+        return redirect(f"/orginfo/{org.oname}")
+
+    contents = [f"{apply_type}申请已提交审核", f"{apply_type}申请审核"]
     notification_create(
         me.person_id,
         org.organization_id,
         Notification.NotificationType.NEEDREAD,
         Notification.NotificationTitle.POSITION_INFORM,
-        contents[0]
+        contents[0],
+        "/personnelMobilization/",
     )
     notification_create(
         org.organization_id,
         me.person_id,
         Notification.NotificationType.NEEDDO,
         Notification.NotificationTitle.POSITION_INFORM,
-        contents[1]
+        contents[1],
     )
     return redirect("/notifications/")
 
@@ -1883,33 +1946,51 @@ def personnel_mobilization(request):
         return redirect("/index/")
     me = get_person_or_org(request.user, user_type)
 
-    issued_status = Q(status=Position.Status.INSERVICE) | Q(status=Position.Status.DEPART)
-    pending_list = me.position.exclude(issued_status)
-    for record in pending_list:
-        record.job_name = me.otype.job_name_list[record.pos]
-    issued_list = me.position.filter(issued_status)
-    return render(request, "personnel_mobilization.html", locals())
+    if request.method == "GET":  # 展示页面
+        issued_status = (
+            Q(apply_status=Position.ApplyStatus.PASS)
+            | Q(apply_status=Position.ApplyStatus.REJECT)
+            | Q(apply_status=Position.ApplyStatus.NONE)
+        )
 
+        pending_list = me.position_set.activated().exclude(issued_status)
+        for record in pending_list:
+            record.job_name = me.otype.get_name(record.apply_pos)
 
-@login_required(redirect_field_name="origin")
-def verify_personnel_mobilization(request):
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid or user_type != "Organization":
-        return redirect("/index/")
-    me = get_person_or_org(request.user, user_type)
+        issued_list = me.position_set.activated().filter(issued_status)
+        for record in issued_list:
+            record.job_name = me.otype.get_name(record.pos)
+        return render(request, "personnel_mobilization.html", locals())
 
-    params = json.loads(request.POST["confirm"])
-    application = Position.objects.get(id=params["id"])
-    status = params["status"]
-    if status == "PASS":
-        if application.status == Position.Status.JOIN:
-            application.status = Position.Status.INSERVICE
-        elif application.status == Position.Status.TRANSFER:
-            application.pos = 0
-    elif status == "REJECT":
-        application.status = Position.Status.REJECT
-    application.save()
-    return redirect("/personnelMobilization/")
+    elif request.method == "POST":  # 审核申请
+        params = json.loads(request.POST.get("confirm", None))
+        if params is None:
+            redirect(f"/orginfo/{me.oname}")
+
+        with transaction.atomic():
+            application = Position.objects.select_for_update().get(id=params["id"])
+            apply_status = params["apply_status"]
+            if apply_status == "PASS":
+                if application.apply_type == Position.ApplyType.JOIN:
+                    application.status = Position.Status.INSERVICE
+                    application.pos = application.apply_pos
+                elif application.apply_type == Position.ApplyType.WITHDRAW:
+                    application.status = Position.Status.DEPART
+                elif application.apply_type == Position.AppltType.TRANSFER:
+                    application.pos = application.apply_pos
+                application.apply_status = Position.ApplyStatus.PASS
+            elif status == "REJECT":
+                application.apply_status = Position.ApplyStatus.REJECT
+            application.save()
+
+        notification_create(
+            application.person.person_id,
+            me.organization_id,
+            Notification.NotificationType.NEEDREAD,
+            Notification.NotificationTitle.POSITION_INFORM,
+            f"{application.apply_type}申请{application.apply_status}",
+        )
+        return redirect("/personnelMobilization/")
 
 
 def notification2Display(notification_list):
