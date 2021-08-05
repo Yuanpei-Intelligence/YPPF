@@ -290,12 +290,47 @@ def stuinfo(request, name=None):
         join_pos_id_list = Position.objects.activated().filter(
             Q(person=person) & Q(show_post=True))
 
-        # 制作属于组织的卡片（头像，名称，职位，链接（由id制作））
+        # 制作属于组织的卡片（头像，名称（+链接），介绍，职位）
         join_org_list = Organization.objects.filter(
             id__in=join_pos_id_list.values('org'))  # 我属于的组织
         org_pos_list = join_pos_id_list.values('pos')
-        html_display['join_org_list'] = [
-            (org.avatar, org.oname, org.id, pos) for org, pos in zip(join_org_list, org_pos_list)]
+        html_display['join_org_list'] = zip(join_org_list, org_pos_list)
+
+        # for activity in Activity.objects.all():
+        #     print(activity)
+        #     Participant.objects.create(activity_id=activity, person_id=person)
+
+        # 制作参与活动的卡片（时间，名称（+链接），组织，地点，介绍，状态）
+        participants = Participant.objects.filter(person_id=person.id)
+        activities = Activity.objects.filter(
+            id__in=participants.values('activity_id'))
+        participate_status_list = participants.values('status')
+        participate_status_list = [info['status']
+                                   for info in participate_status_list]
+        status_color = {
+            Activity.Status.REVIEWING: 'primary',
+            Activity.Status.CANCELED: 'secondary',
+            Activity.Status.APPLYING: 'info',
+            Activity.Status.WAITING: 'warning',
+            Activity.Status.PROGRESSING: 'success',
+            Activity.Status.END: 'danger',
+
+            Participant.AttendStatus.APPLYING: 'primary',
+            Participant.AttendStatus.APLLYFAILED: 'danger',
+            Participant.AttendStatus.APLLYSUCCESS: 'info',
+            Participant.AttendStatus.ATTENDED: 'success',
+            Participant.AttendStatus.UNATTENDED: 'warning',
+            Participant.AttendStatus.CANCELED: 'secondary'
+        }
+        activity_color_list = [status_color[activity.status]
+                               for activity in activities]
+        attend_color_list = [status_color[status]
+                             for status in participate_status_list]
+        activity_info = list(
+            zip(activities, participate_status_list, activity_color_list, attend_color_list))
+        activity_info.sort(
+            key=lambda a: a[0].start, reverse=True)
+        html_display['activity_info'] = activity_info
 
         # 呈现信息
         # 首先是左边栏
