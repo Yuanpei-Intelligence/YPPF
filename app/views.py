@@ -10,6 +10,7 @@ from app.models import (
     TransferRecord,
     Participant,
     Notification,
+    YQPoint_Distribute
 )
 import app.utils as utils
 from app.forms import UserForm

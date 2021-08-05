@@ -9,7 +9,7 @@ from django.urls import reverse
 from datetime import datetime, timedelta, timezone, time, date
 from django.db import transaction  # 原子化更改数据库
 
-from app.models import Organization, NaturalPerson, Scheduled_YQPoint_Distribute, TransferRecord, User
+from app.models import Organization, NaturalPerson, YQPoint_Distribute, TransferRecord, User
 from app.wechat_send import base_send_wechat
 
 # 定时任务生成器
@@ -49,13 +49,9 @@ def distribute_YQPoint_to_User(proposer, recipients, YQPoints, trans_time):
     TransferRecord.objects.bulk_create(transfer_list)
     
 
-
-@register_job(scheduler, 'interval', id='weekly_distribute_YQPoint', weeks=0, seconds=10)
-def scheduled_distribute_YQPoint():
+def distribute_YQPoint():
     try:
-        distributer = Scheduled_YQPoint_Distribute.objects.get(type=Scheduled_YQPoint_Distribute.Schedule_Type.WEEK,
-                                                               status=Scheduled_YQPoint_Distribute.Distribute_Status.Yes)
-
+        distributer = YQPoint_Distribute.objects.get(type=YQPoint_Distribute.Schedule_Type.WEEK, status=True)
     except Exception as e:
         print("\n按周发放元气值失败，原因可能是没有状态为YES或者有多个状态为YES的发放实例\n" + str(e))
     trans_time = datetime.now()
@@ -74,3 +70,21 @@ def scheduled_distribute_YQPoint():
     
     debug_msg = f"已向{per_to_dis.count()}个自然人和{org_to_dis.count()}个组织转账，用时{(end_time - trans_time).seconds}s,{(end_time - trans_time).microseconds}microsecond\n"
     print(debug_msg)
+
+
+
+def YQPoint_Distributions(request):
+    context = dict()
+    context['YQPoint_Distributions'] = YQPoint_Distribute.objects.all()
+    return render(request, "YQPoint_Distributions.html", context)
+
+def YQPoint_Distribution(request, dis_id):
+    context = dict()
+    dis = YQPoint_Distribute.objects.get(id=dis_id)
+    context["dis"] = dis
+    return render(request, "YQPoint_Distribution.html", context)
+
+'''
+    现在的逻辑是：临时发放和长期发放都是YQPoint_Distribute类的实例，用一个字段来区分
+    在新增实例之后，用add_job的方法来新增长期任务/短期任务
+'''

@@ -411,18 +411,14 @@ class Participant(models.Model):
     status = models.IntegerField('学生参与活动状态', choices=AttendStatus.choices, default=0)
 
 
-class Scheduled_YQPoint_Distribute(models.Model):
-    class Distribute_Status(models.IntegerChoices):
-        # 是否按照当前设定进行发放，是则为Yes；在发放时检测是否有且仅有1个是Yes，不是则报错
-        Yes = 1
-        No = 0
-    
-    class Schedule_Type(models.TextChoices):
-        # 定期发放的类型：按月发放为0，按年发放为1；
-        # 这两种类型各最多有一个Distribute_Status为Yes的实例
-        WEEK = 1
-        SEMESTER = 26 # 一年有52周
-        TWO_WEEK = 2
+class YQPoint_Distribute(models.Model):
+    class Schedule_Type(models.IntegerChoices):
+        # 定期发放的类型
+        # 每类型各最多有一个status为Yes的实例
+        TEMPORARY = (0, "临时发放")
+        WEEK = (1, "每周发放一次")
+        TWO_WEEK = (2, "每月发放一次")
+        SEMESTER = (26, "每学期发放一次") # 一年有52周
     
     # 发放元气值的上限，多于此值则不发放
     per_max_dis_YQPoint = models.FloatField("自然人发放元气值上限")
@@ -432,11 +428,13 @@ class Scheduled_YQPoint_Distribute(models.Model):
     per_YQPoints = models.FloatField("自然人获得的元气值", default=0)
     org_YQPoints = models.FloatField("组织获得的元气值", default=0)
 
-    status = models.IntegerField("是否应用", choices=Distribute_Status.choices, default=Distribute_Status.No)
-    type = models.CharField("发放类型", choices=Schedule_Type.choices, max_length=32)
+    start_time = models.DateTimeField("开始时间", auto_now_add=True)
+
+    status = models.BooleanField("是否应用", default=False)
+    type = models.IntegerField("发放类型", choices=Schedule_Type.choices)
 
     class Meta:
-        verbose_name = "元气值定期发放"
+        verbose_name = "元气值发放"
         verbose_name_plural = verbose_name
 
 
