@@ -962,12 +962,14 @@ def modpw(request):
 def applyActivity(request, activity_id, willingness):
     context = dict()
     context['success'] = False
+    CREATE = True
     with transaction.atomic():
+        print("GOTCHA")
         try:
             activity = Activity.objects.select_for_update().get(id=activity_id)
             payer = NaturalPerson.objects.select_for_update().get(person_id=request.user)
         except:
-            context['msg'] = "Can not find activity. If you are not deliberately do it, please contact the administrator to report this bug."
+            context['msg'] = "未能找到活动"
             return context
         '''
         assert len(activity) == 1
@@ -975,23 +977,28 @@ def applyActivity(request, activity_id, willingness):
         activity = activity[0]
         payer = payer[0]
         '''
-        if activity.status != Activity.Astatus.APPLYING:
-            context['msg'] = "The activity is not open for applying."
+        if activity.status != Activity.Status.APPLYING:
+            context['msg'] = "活动未开放报名."
             return context
 
         try:
-            participant = Participant.objects.get(
+            participant = Participant.objects.select_for_update().get(
                 activity_id=activity, person_id=payer
             )
-            context[
-                "msg"
-            ] = "You have already participated in the activity. If you are not deliberately do it, please contact the administrator to report this bug."
-            return context
+            if participant.status == Participant.AttendStatus.APPLYING or participant.status == Participant.AttendStatus.APLLYSUCCESS:
+                context["msg"] = "您已申请报名过该活动。"
+                return context
+            elif participant.status == Participant.AttendStatus.ATTENDED or participant.status == Participant.AttendStatus.APPLYING.UNATTENDED:
+                context['msg'] = "活动已开始。"
+                return context
+            elif participant.status == Participant.AttendStatus.CANCELED:
+                CREATE = False
         except:
             pass
         organization_id = activity.organization_id_id
+        print(organization_id)
         orgnization = Organization.objects.select_for_update().get(
-            organization_id=organization_id
+            id=organization_id
         )
         '''
         assert len(orgnization) == 1
@@ -1004,20 +1011,26 @@ def applyActivity(request, activity_id, willingness):
             if activity.current_participants < activity.capacity:
                 activity.current_participants += 1
             else:
-                context["msg"] = "Failed to fetch the ticket."
+                context["msg"] = "活动已报满，请稍后再试。"
                 return context
         else:
-            amount = willingness
+            amount = float(willingness)
+            try:
+                assert activity.YQPoint <= amount <= activity.YQPoint * 3
+            except:
+                context['msg'] = "投点范围为基础值的 1-3 倍"
+                return context
             # 依然增加，此时current_participants统计的是报名的人数，是可以比总人数多的
             activity.current_participants += 1
 
         try:
             assert amount == int(amount * 10) / 10
         except:
-            context['msg'] = "Not supported precision"
+            context['msg'] = "精度最高为一位小数"
+            return context
 
         if payer.YQPoint < amount:
-            context['msg'] = 'Not enough YQPoint in account'
+            context['msg'] = '没有足够的元气值。'
             return context
 
         payer.YQPoint -= amount
@@ -1033,11 +1046,12 @@ def applyActivity(request, activity_id, willingness):
         record.time = str(datetime.now())
         record.corres_act = activity
 
-        participant = Participant.objects.create(
-            activity_id=activity, person_id=payer
-        )
+        if CREATE:
+            participant = Participant.objects.create(activity_id=activity, person_id=payer)
         if not activity.bidding:
             participant.status = Participant.AttendStatus.APLLYSUCCESS
+        else:
+            participant.status = Participant.AttendStatus.APPLYING
 
         participant.save()
         record.save()
@@ -1045,7 +1059,8 @@ def applyActivity(request, activity_id, willingness):
         activity.save()
         orgnization.save()
 
-    context["msg"] = "Successfully participate the activity."
+    context['pStatus'] = participant.status
+    context["msg"] = "操作成功。"
     context['success'] = True
     return context
 
@@ -1457,16 +1472,24 @@ def showActivities(request):
 
 
 '''
+-----------------------------
 页面逻辑：
-方法为 GET 时，展示一个活动的详情。
-如果当前用户是个人，有立即报名/已报名的 button
-如果当前用户是组织，并且是该活动的所有者，有修改和取消活动的 button
-方法为 POST 时，通过 option 确定操作
-如果修改活动，跳转到 addActivity
-如果取消活动，本函数处理
-如果报名活动，本函数处理 ( 还未实现 )
+1. 方法为 GET 时，展示一个活动的详情。
+    a. 如果当前用户是个人，有立即报名/已报名的 button
+    b. 如果当前用户是组织，并且是该活动的所有者，有修改和取消活动的 button
+2. 方法为 POST 时，通过 option 确定操作
+    a. 如果修改活动，跳转到 addActivity
+    b. 如果取消活动，本函数处理
+    c. 如果报名活动，本函数处理 ( 还未实现 )
 # TODO
 个人操作，包括报名与取消
+
+----------------------------
+活动逻辑
+1. 活动开始前一小时，不能修改活动
+2. 活动开始当天晚上之前，不能再取消活动 ( 目前用的 12 小时，感觉基本差不多 )
+
+
 '''
 @login_required(redirect_field_name='origin')
 def viewActivity(request, aid=None):
@@ -1513,7 +1536,8 @@ def viewActivity(request, aid=None):
     if user_type == "Person":
         person = True
         try:
-            participant = Participant.objects.get(activity_id=activity, person_id=request.user)
+            np = NaturalPerson.objects.activated().get(person_id=request.user)
+            participant = Participant.objects.get(activity_id=activity, person_id=np)
             pStatus = participant.status
         except:
             # 未参与
@@ -1521,7 +1545,7 @@ def viewActivity(request, aid=None):
     ownership = False
     if not person and org.organization_id == request.user:
         ownership = True
-
+    aStatus = activity.status
 
     if request.method == "GET":
         return render(request, "activity_info.html", locals())
@@ -1533,71 +1557,158 @@ def viewActivity(request, aid=None):
 
 
     # 处理 post 请求
-    try:
-        option = request.POST.get("option")
-        if option == "cancel": 
-            if activity.status == activity.Status.CANCELED or activity.status == activity.Status.END:
-                html_display['warn_code'] = 1
-                html_display['warn_message'] = "当前活动已取消或结束。"
-                return render(request, "activity_info.html", locals())
-
-            if activity.status == activity.Status.PROGRESSING:
-                if activity.start + timedelta(hours=12) < datetime.now():
-                    html_display['warn_code'] = 1
-                    html_display['warn_message'] = "活动已进行 12 小时以上，不能取消。"
-                    return render(request, "activity_info.html", locals())
-
-            with transaction.atomic():
-                org = Organization.objects.select_for_update().get(organization_id=request.user)
-                if bidding:
-                    participants = Participant.objects.select_for_update().filter(status=Participant.AttendStatus.APLLYING)
-                else:
-                    participants = Participant.objects.select_for_update().filter(status=Participant.AttendStatus.APLLYSUCCESS)
-                records = TransferRecord.objects.select_for_update().filter(status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity)
-                sumYQPoint = 0.0
-                for record in records:
-                    sumYQPoint += record.amount
-                if org.YQPoint < sumYQPoint:
-                    html_display['warn_code'] = 1
-                    html_display['warn_message'] = "没有足够的元气值退回给已参与的同学，无法取消活动。"
-                    return render(request, "activity_info.html", locals())
-                else:
-                    org.YQPoint -= sumYQPoint
-                    org.save()
-                    for record in records:
-                        proposer = record.proposer
-                        proposer = NaturalPerson.objects.select_for_update().get(person_id=proposer)
-                        proposer.YQPoint += record.amount
-                        record.status = TransferRecord.TransferStatus.REFUND
-                        proposer.save()
-                        record.save()
-                    for participant in participants:
-                        participant.status = Participant.AttendStatus.APLLYFAILED
-                        participant.save()
-                activity.status = activity.Status.CANCELED
-                activity.save()
-            html_display['warn_code'] = 2
-            html_display['warn_message'] = "成功取消活动。"
-            # TODO 第一次点只会提醒已经成功取消活动，但是活动状态还是进行中，看看怎么修一下
+    #try:
+    option = request.POST.get("option")
+    if option == "cancel": 
+        if activity.status == activity.Status.CANCELED or activity.status == activity.Status.END:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "当前活动已取消或结束。"
             return render(request, "activity_info.html", locals())
-        elif option == "edit":
-            if activity.status == activity.Status.APPLYING or activity.status == activity.Status.REVIEWING:
-                return redirect(f'/addActivities/?edit=True&aid={aid}')
-            else:
+
+        if activity.status == activity.Status.PROGRESSING:
+            if activity.start + timedelta(hours=12) < datetime.now():
                 html_display['warn_code'] = 1
-                html_display['warn_message'] = f"活动状态为{activity.status}, 不能修改。"
+                html_display['warn_message'] = "活动已进行 12 小时以上，不能取消。"
                 return render(request, "activity_info.html", locals())
 
+        with transaction.atomic():
+            org = Organization.objects.select_for_update().get(organization_id=request.user)
+            if bidding:
+                participants = Participant.objects.select_for_update().filter(status=Participant.AttendStatus.APLLYING)
+            else:
+                participants = Participant.objects.select_for_update().filter(status=Participant.AttendStatus.APLLYSUCCESS)
+            records = TransferRecord.objects.select_for_update().filter(status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity)
+            sumYQPoint = 0.0
+            for record in records:
+                sumYQPoint += record.amount
+            if org.YQPoint < sumYQPoint:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "没有足够的元气值退回给已参与的同学，无法取消活动。"
+                return render(request, "activity_info.html", locals())
+            else:
+                org.YQPoint -= sumYQPoint
+                org.save()
+                for record in records:
+                    proposer = record.proposer
+                    proposer = NaturalPerson.objects.select_for_update().get(person_id=proposer)
+                    proposer.YQPoint += record.amount
+                    record.status = TransferRecord.TransferStatus.REFUND
+                    proposer.save()
+                    record.save()
+                for participant in participants:
+                    participant.status = Participant.AttendStatus.APLLYFAILED
+                    participant.save()
+            activity.status = activity.Status.CANCELED
+            activity.save()
+        html_display['warn_code'] = 2
+        html_display['warn_message'] = "成功取消活动。"
+        aStatus = activity.status
+        # TODO 第一次点只会提醒已经成功取消活动，但是活动状态还是进行中，看看怎么修一下
+        return render(request, "activity_info.html", locals())
+    elif option == "edit":
+        if activity.status == activity.Status.APPLYING or activity.status == activity.Status.REVIEWING:
+            return redirect(f'/addActivities/?edit=True&aid={aid}')
+        if activity.status == activity.Status.WAITING:
+            if start + timedelta(hours=1) > datetime.now():
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = f"活动即将开始, 不能修改活动。"
+                return render(request, "activity_info.html", locals())
         else:
             html_display['warn_code'] = 1
-            html_display['warn_message'] = "非法的 POST 请求。如果您不是故意操作，请联系管理员汇报此 Bug."
+            html_display['warn_message'] = f"活动状态为{activity.status}, 不能修改。"
             return render(request, "activity_info.html", locals())
 
+    elif option == "apply":
+        aid = request.POST.get("aid")
+        willingness = None
+        if bidding:
+            willingness = request.POST.get("willingness")
+            try:
+                willingness = float(willingness)
+            except:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "请输入投点数值。"
+                return render(request, "activity_info.html", locals())
+        try:
+            context = applyActivity(request, int(aid), willingness)
+            if context['success'] == False:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] =context['msg']
+            else:
+                html_display['warn_code'] = 2
+                if bidding:
+                    html_display['warn_message'] = "投点成功"
+                    pStatus = context['pStatus']
+                else:
+                    html_display['warn_message'] = "报名成功"
+                pStatus = context['pStatus']
+                current_participants += 1
+        except:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "非预期的异常，请联系管理员汇报。"
+        return render(request, "activity_info.html", locals())
 
+
+    elif option == "withdraw":
+        with transaction.atomic():
+            np = NaturalPerson.objects.select_for_update().get(person_id=request.user)
+            org = Organization.objects.select_for_update().get(organization_id=activity.organization_id.organization_id)
+            participant = Participant.objects.select_for_update().get(activity_id=activity, person_id=np, status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYSUCCESS])
+            record = TransferRecord.objects.select_for_update().get(corres_act=activity, proposer=request.user, status=TransferRecord.TransferStatus.ACCEPTED)
+            activity = Activity.objects.select_for_update().get(id=aid)
+
+
+            # 报名截止前，全额退还
+            if aStatus == Activity.Status.APPLYING:
+                amount = record.amount
+            elif aStatus == Activity.Status.WAITING:
+                cur_time = datetime.now()
+                if cur_time + timedelta(hours=1) > activity.start:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "活动即将开始，不能取消报名。"
+                    return render(request, "activity_info.html", locals())
+                if bidding:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "投点类活动在报名截止后不能取消。"
+                amount = int(10 * record.amount * 0.5) / 10
+            else:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "活动已开始或结束，无法取消。"
+                return render(request, "activity_info.html", locals())
+
+            if org.YQPoint < amount:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "组织账户元气值不足，请与组织负责人联系。"
+                return render(request, "activity_info.html", locals())
+            org.YQPoint -= amount
+            np.YQPoint += amount
+            participant.status = Participant.AttendStatus.CANCELED
+            record.status = TransferRecord.TransferStatus.REDUND
+            activity.current_participants -= 1
+            org.save()
+            np.save()
+            record.save()
+            participant.save()
+            activity.save()
+            current_participants = activity.current_participants
+
+        html_display['warn_code'] = 2
+        html_display['warn_message'] = "成功取消报名。"
+        pStatus = Participant.AttendStatus.CANCELED
+        return render(request, "activity_info.html", locals())
+
+
+    else:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = "非法的 POST 请求。如果您不是故意操作，请联系管理员汇报此 Bug."
+        return render(request, "activity_info.html", locals())
+
+    '''
     except:
         html_display['warn_code'] = 1
         html_display['warn_message'] = "非法预期的错误。请联系管理员汇报此 Bug."
         return render(request, "activity_info.html", locals())
+    '''
 
 
 
@@ -1833,55 +1944,55 @@ def addActivities(request):
         if context['warn_code'] != 0:
             html_display['warn_code'] = context['warn_code']
             html_display['warn_message'] = "创建/修改活动失败。" + context['warn_msg']
-            edit = False
-            return render(request, "activity_add.html", locals())
+            # return render(request, "activity_add.html", locals())
+            # 这里不返回，走到下面 GET 的逻辑，如果是修改，还能展示修改页面
 
+        else:
+            with transaction.atomic():
+                if edit is not None:
+                    # 编辑的情况下，查表取出 activity
+                    try:
+                        new_act = Activity.objects.select_for_update().get(id=aid)
+                    except:
+                        html_display['warn_code'] = context['warn_code']
+                        html_display['warn_message'] = "不存在的活动。"
+                        edit = False
+                        return render(request, "activity_add.html", locals())
 
-        with transaction.atomic():
-            if edit is not None:
-                # 编辑的情况下，查表取出 activity
-                try:
-                    new_act = Activity.objects.select_for_update().get(id=aid)
-                except:
-                    html_display['warn_code'] = context['warn_code']
-                    html_display['warn_message'] = "不存在的活动。"
-                    edit = False
-                    return render(request, "activity_add.html", locals())
+                else:
+                    # 非编辑，创建一个 activity
+                    new_act = Activity.objects.create(
+                        title=context['aname'], organization_id=org) 
+                    if context['signschema'] == 1:
+                        new_act.bidding = True
+                        new_act.budget = context['budget']
+                     # 默认状态是报名中，可能需要审核
+                    if not context['need_check']:
+                        new_act.status = Activity.Status.APPLYING
 
-            else:
-                # 非编辑，创建一个 activity
-                new_act = Activity.objects.create(
-                    title=context['aname'], organization_id=org) 
-                if context['signschema'] == 1:
-                    new_act.bidding = True
-                    new_act.budget = context['budget']
-                 # 默认状态是报名中，可能需要审核
-                if not context['need_check']:
-                    new_act.status = Activity.Status.APPLYING
-
-            # 不一定需要改这些内容，edit 情况下不一定会提交这些内容
-            # 如果没有，就不修改
-            if context.get('content'):
-                new_act.content = context['content']
-            if context.get('prepare_scheme'):
-                new_act.endbefore = context['prepare_scheme']
-            if context.get('act_start'):
-                new_act.start = context['act_start']
-            if context.get('act_end'):
-                new_act.end = context['act_end']
-            if context.get('URL'):
-                new_act.URL = context['URL']
-            if context.get('location'):
-                new_act.location = context['location']
-            # new_act.QRcode = QRcode
-            if context.get('aprice'):
-                new_act.YQPoint = context['aprice']
-            if context.get('capacity'):
-                new_act.capacity = context['capacity']
-            new_act.save()
-        if context['warn_code'] == 0:
-            return redirect(f"/viewActivity/{new_act.id}")
-        return render(request, "activity_add.html", locals())  # warn_code==0
+                # 不一定需要改这些内容，edit 情况下不一定会提交这些内容
+                # 如果没有，就不修改
+                if context.get('content'):
+                    new_act.content = context['content']
+                if context.get('prepare_scheme'):
+                    new_act.endbefore = context['prepare_scheme']
+                if context.get('act_start'):
+                    new_act.start = context['act_start']
+                if context.get('act_end'):
+                    new_act.end = context['act_end']
+                if context.get('URL'):
+                    new_act.URL = context['URL']
+                if context.get('location'):
+                    new_act.location = context['location']
+                # new_act.QRcode = QRcode
+                if context.get('aprice'):
+                    new_act.YQPoint = context['aprice']
+                if context.get('capacity'):
+                    new_act.capacity = context['capacity']
+                new_act.save()
+            if context['warn_code'] == 0:
+                return redirect(f"/viewActivity/{new_act.id}")
+            return render(request, "activity_add.html", locals())  # warn_code==0
 
     # get 请求
     edit = request.GET.get("edit")
