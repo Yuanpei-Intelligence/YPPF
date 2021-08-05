@@ -964,7 +964,6 @@ def applyActivity(request, activity_id, willingness):
     context['success'] = False
     CREATE = True
     with transaction.atomic():
-        print("GOTCHA")
         try:
             activity = Activity.objects.select_for_update().get(id=activity_id)
             payer = NaturalPerson.objects.select_for_update().get(person_id=request.user)
@@ -996,7 +995,6 @@ def applyActivity(request, activity_id, willingness):
         except:
             pass
         organization_id = activity.organization_id_id
-        print(organization_id)
         orgnization = Organization.objects.select_for_update().get(
             id=organization_id
         )
