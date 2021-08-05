@@ -81,14 +81,17 @@
                             <h3 class="mb-0">加入的组织</h3>
                             <div class="bio-skill-box overflow-auto" style="white-space: nowrap;">
 
-                                {% for org, pos in html_display.join_org_list %}
+                                {% for org, ava, pos in html_display.join_org_list %}
                                 <div class="col-12 col-xl-5 col-lg-12" style="display: inline-block">
-                                    <div class="b-skills">
-                                        <div class="">
-                                            <a href="/orginfo/{{ org.oname }}">
-                                                <h5>{{ org.oname }}</h5>
-                                            </a>
-                                            <p>{{ org.introduction }}</p>
+                                    <div
+                                        style="background-image: url({{ ava }}); background-size: 55%; background-repeat: no-repeat; background-position: right;">
+                                        <div class="b-skills" style="background-color: #ffffffcc;">
+                                            <div class="container-fluid">
+                                                <a href="/orginfo/{{ org.oname }}">
+                                                    <h5>{{ org.oname }}</h5>
+                                                </a>
+                                                <p>{{ org.introduction }}</p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
