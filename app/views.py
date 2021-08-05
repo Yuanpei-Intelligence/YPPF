@@ -293,8 +293,9 @@ def stuinfo(request, name=None):
         # 制作属于组织的卡片（头像，名称（+链接），介绍，职位）
         join_org_list = Organization.objects.filter(
             id__in=join_pos_id_list.values('org'))  # 我属于的组织
+        org_ava_list = [utils.get_user_ava(org, "organization") for org in join_org_list]
         org_pos_list = join_pos_id_list.values('pos')
-        html_display['join_org_list'] = zip(join_org_list, org_pos_list)
+        html_display['join_org_list'] = zip(join_org_list, org_ava_list, org_pos_list)
 
         # for activity in Activity.objects.all():
         #     print(activity)
