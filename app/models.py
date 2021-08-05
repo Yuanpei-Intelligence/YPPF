@@ -15,8 +15,7 @@ class NaturalPersonManager(models.Manager):
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
         datas = NaturalPerson.objects.activated()
         year = datetime.now().strftime("%Y")
-        datas.objects.filter(stu_grade=str(int(year) - 4)
-                             ).update(GraduateStatus=1)
+        datas.objects.filter(stu_grade=str(int(year) - 4)).update(GraduateStatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
@@ -81,7 +80,8 @@ class NaturalPerson(models.Model):
 
     # 注意：这是不订阅的列表！！
     subscribe_list = models.ManyToManyField(
-        'Organization', related_name='unsubsribers', db_index=True)
+        "Organization", related_name="unsubsribers", db_index=True
+    )
 
     def __str__(self):
         return str(self.name)
@@ -97,15 +97,18 @@ class NaturalPerson(models.Model):
         unpublished = "未公开"
         gender = ["男", "女"]
         info = [self.name, self.stu_grade, self.stu_class]
-        #info.append(self.nickname if (self.show_nickname) else unpublished)
-        #info.append(
+        # info.append(self.nickname if (self.show_nickname) else unpublished)
+        # info.append(
         #    unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
         info.append(self.stu_major if (self.show_major) else unpublished)
-        #info.append(self.email if (self.show_email) else unpublished)
-        #info.append(self.telephone if (self.show_tel) else unpublished)
-        #info.append(self.stu_dorm if (self.show_dorm) else unpublished)
-        info.append('在校' if self.status ==
-                    NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
+        # info.append(self.email if (self.show_email) else unpublished)
+        # info.append(self.telephone if (self.show_tel) else unpublished)
+        # info.append(self.stu_dorm if (self.show_dorm) else unpublished)
+        info.append(
+            "在校"
+            if self.status == NaturalPerson.GraduateStatus.UNDERGRADUATED
+            else "已毕业"
+        )
         # 防止显示None
         for i in range(len(info)):
             if info[i] == None:
@@ -122,8 +125,7 @@ class OrganizationType(models.Model):
         verbose_name = "组织类型"
         verbose_name_plural = verbose_name
 
-    otype_id = models.SmallIntegerField(
-        "组织类型编号", unique=True, primary_key=True)
+    otype_id = models.SmallIntegerField("组织类型编号", unique=True, primary_key=True)
     otype_name = models.CharField("组织类型名称", max_length=25)
     otype_superior_id = models.SmallIntegerField("上级组织类型编号", default=0)
     incharge = models.ForeignKey(
@@ -140,7 +142,7 @@ class OrganizationType(models.Model):
     def __str__(self):
         return str(self.otype_name)
 
-    def get_name(self, pos):
+    def get_name(self, pos: int):
         if pos >= len(self.job_name_list):
             return "成员"
         return self.job_name_list[pos]
@@ -218,20 +220,15 @@ class Position(models.Model):
         verbose_name_plural = verbose_name
 
     person = models.ForeignKey(
-        NaturalPerson,
-        related_name="position",  # 这个字段留着还是有用的
-        to_field="person_id",
-        on_delete=models.CASCADE,
+        NaturalPerson, related_name="position_set", on_delete=models.CASCADE,
     )
     org = models.ForeignKey(
-        Organization,
-        related_name="position",
-        to_field="organization_id",  # 同上
-        on_delete=models.CASCADE,
+        Organization, related_name="position_set", on_delete=models.CASCADE,
     )
 
     # 职务的逻辑应该是0最高，1次之这样，然后数字映射到名字是在组织类型表中体现的
-    pos = models.IntegerField(verbose_name="职务等级", default=0)
+    # 10 没有特定含义，只表示最低等级
+    pos = models.SmallIntegerField(verbose_name="职务等级", default=10)
 
     # 是否选择公开当前的职务
     show_post = models.BooleanField(default=True)
@@ -242,18 +239,36 @@ class Position(models.Model):
         "当前学期", choices=Semester.choices, default=Semester.ANNUAL, max_length=15
     )
 
-    objects = PositionManager()
+    class Status(models.TextChoices):  # 职务状态
+        INSERVICE = "在职"
+        DEPART = "离职"
+        NONE = "无职务状态"  # 用于第一次加入组织申请
 
-    class Status(models.TextChoices):  # 申请加入组织、成员换届
+    status = models.CharField(
+        "职务状态", choices=Status.choices, max_length=32, default=Status.NONE
+    )
+
+    class ApplyType(models.TextChoices):  # 人事变动申请类型
         JOIN = "加入组织"
         WITHDRAW = "退出组织"
-        TRANSFER = "交接"
-        CANCEL = "已取消"
-        REJECT = "未通过"
-        INSERVICE = "在职"
-        DEPART = "离开"
+        TRANSFER = "交接职务"
+        NONE = "无申请流程"  # 指派职务
 
-    status = models.CharField("职位状态", choices=Status.choices, max_length=32)
+    class ApplyStatus(models.TextChoices):  # 人事变动申请状态
+        PENDING = "等待中"
+        PASS = "已通过"
+        REJECT = "未通过"
+        NONE = ""  # 对应“无申请流程”
+
+    apply_type = models.CharField(
+        "申请类型", choices=ApplyType.choices, max_length=32, default=ApplyType.NONE
+    )
+    apply_status = models.CharField(
+        "申请状态", choices=ApplyStatus.choices, max_length=32, default=ApplyStatus.NONE
+    )
+    apply_pos = models.SmallIntegerField(verbose_name="申请职务等级", default=10)
+
+    objects = PositionManager()
 
 
 class Course(models.Model):
@@ -261,9 +276,7 @@ class Course(models.Model):
         verbose_name = "课程"
         verbose_name_plural = verbose_name
 
-    cid = models.OneToOneField(
-        to=Organization, on_delete=models.CASCADE, 
-    )
+    cid = models.OneToOneField(to=Organization, on_delete=models.CASCADE)
     # 课程周期
     year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
     semester = models.CharField("当前学期", choices=Semester.choices, max_length=15)
@@ -395,8 +408,7 @@ class TransferRecord(models.Model):
         REFUSED = (2, "已拒绝")
         SUSPENDED = (3, "已终止")
 
-    status = models.SmallIntegerField(
-        choices=TransferStatus.choices, default=1)
+    status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
 
     def save(self, *args, **kwargs):
         self.amount = round(self.amount, 1)
@@ -420,8 +432,7 @@ class Paticipant(models.Model):
         UNATTENDED = 4  # 未参与
         CANCELED = 5  # 放弃，如果学生取消活动，则设置这里
 
-    status = models.IntegerField(
-        '学生参与活动状态', choices=AttendStatus.choices, default=0)
+    status = models.IntegerField("学生参与活动状态", choices=AttendStatus.choices, default=0)
 
 
 class Notification(models.Model):
@@ -436,23 +447,26 @@ class Notification(models.Model):
     sender = models.ForeignKey(
         User, related_name="send_notice", on_delete=models.CASCADE
     )
+
     class NotificationStatus(models.IntegerChoices):
         DONE = (0, "已处理")
         UNDONE = (1, "待处理")
 
     class NotificationType(models.IntegerChoices):
-        NEEDREAD = (0, '知晓类')    # 只需选择“已读”即可
-        NEEDDO = (1, '处理类')      # 需要处理的事务
+        NEEDREAD = (0, "知晓类")  # 只需选择“已读”即可
+        NEEDDO = (1, "处理类")  # 需要处理的事务
 
     class NotificationTitle(models.IntegerChoices):
         # 等待逻辑补充
-        TRANSFER_CONFIRM = (0, '转账确认通知')
-        ACTIVITY_INFORM = (1, '活动状态通知')
-        VERIFY_INFORM = (2, '审核信息通知')
-        POSITION_INFORM = (3, '人事变动通知')
+        TRANSFER_CONFIRM = (0, "转账确认通知")
+        ACTIVITY_INFORM = (1, "活动状态通知")
+        VERIFY_INFORM = (2, "审核信息通知")
+        POSITION_INFORM = (3, "人事变动通知")
 
     status = models.SmallIntegerField(choices=NotificationStatus.choices, default=1)
-    title = models.SmallIntegerField(choices=NotificationTitle.choices, blank=True, null=True)
+    title = models.SmallIntegerField(
+        choices=NotificationTitle.choices, blank=True, null=True
+    )
     content = models.CharField("通知内容", max_length=225, blank=True)
     start_time = models.DateTimeField("通知发出时间", auto_now_add=True)
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)

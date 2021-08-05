@@ -50,7 +50,6 @@ urlpatterns = [
     path("save_subscribe_status", views.save_subscribe_status, name="save_subscribe_status"),
     path("notifications/", views.notifications, name="notifications"),
     path("personnelMobilization/", views.personnel_mobilization, name="personnel_mobilization"),
-    path("verifyPersonnelMobilization/", views.verify_personnel_mobilization, name="verify_personnel_mobilization"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
