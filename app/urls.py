@@ -31,6 +31,7 @@ urlpatterns = [
     # re_path("^org([0-9]{2})",views.org_spec,name="org_spec"),
     path("getStuImg", views.get_stu_img, name="get_stu_img"),
     path("transPage/<str:rid>", views.transaction_page, name="transPage"),
+    path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"),
     path("startTrans/", views.start_transaction, name="startTrans"),
     #path("confirmTrans/", views.confirm_transaction, name="confirmTrans"),
     #path(
@@ -48,8 +49,12 @@ urlpatterns = [
     path("subscribeActivities/", views.subscribeActivities, name="subscribeActivities"),
     path("save_subscribe_status", views.save_subscribe_status, name="save_subscribe_status"),
     path("notifications/", views.notifications, name="notifications"),
+<<<<<<< HEAD
     path("YQPoint_Distributions", scheduler_func.YQPoint_Distributions, name="YQPoint_Distributions"),
     path("YQPoint_Distribution/<int:dis_id>", scheduler_func.YQPoint_Distribution, name="YQPoint_Distributions")
+=======
+    path("personnelMobilization/", views.personnel_mobilization, name="personnel_mobilization"),
+>>>>>>> 2fd0a5ef7082d39dbfc4c738557eef865aaf8dd3
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
