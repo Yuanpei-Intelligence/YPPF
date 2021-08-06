@@ -1,6 +1,6 @@
 from django import forms
 from django.db.models import fields
-from .models import YQPoint_Distribute
+from .models import YQPointDistribute
 
 
 class UserForm(forms.Form):
@@ -10,7 +10,7 @@ class UserForm(forms.Form):
     )
 
 
-class YQPoint_DistributionForm(forms.ModelForm):
+class YQPointDistributionForm(forms.ModelForm):
     class Meta:
-        model = YQPoint_Distribute
+        model = YQPointDistribute
         exclude = []
