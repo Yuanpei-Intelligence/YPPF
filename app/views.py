@@ -781,11 +781,7 @@ def search(request):
     )
 
     # 活动要呈现的内容
-<<<<<<< HEAD
-    activity_field = ['活动名称', '承办组织', '状态', '推送链接']
-=======
     activity_field = ["活动名称", "承办组织", "状态"]
->>>>>>> 2fd0a5ef7082d39dbfc4c738557eef865aaf8dd3
 
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
