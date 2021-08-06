@@ -412,12 +412,12 @@ class Participant(models.Model):
 
 
 class YQPoint_Distribute(models.Model):
-    class Schedule_Type(models.IntegerChoices):
+    class DistributionType(models.IntegerChoices):
         # 定期发放的类型
         # 每类型各最多有一个status为Yes的实例
         TEMPORARY = (0, "临时发放")
         WEEK = (1, "每周发放一次")
-        TWO_WEEK = (2, "每月发放一次")
+        TWO_WEEK = (2, "每两周发放一次")
         SEMESTER = (26, "每学期发放一次") # 一年有52周
     
     # 发放元气值的上限，多于此值则不发放
@@ -428,10 +428,10 @@ class YQPoint_Distribute(models.Model):
     per_YQPoints = models.FloatField("自然人获得的元气值", default=0)
     org_YQPoints = models.FloatField("组织获得的元气值", default=0)
 
-    start_time = models.DateTimeField("开始时间", auto_now_add=True)
+    start_time = models.DateTimeField("开始时间")
 
     status = models.BooleanField("是否应用", default=False)
-    type = models.IntegerField("发放类型", choices=Schedule_Type.choices)
+    type = models.IntegerField("发放类型", choices=DistributionType.choices)
 
     class Meta:
         verbose_name = "元气值发放"
