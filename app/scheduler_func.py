@@ -11,6 +11,7 @@ from django.db import transaction  # 原子化更改数据库
 
 from app.models import Organization, NaturalPerson, YQPoint_Distribute, TransferRecord, User
 from app.wechat_send import base_send_wechat
+from app.forms import YQPoint_DistributionForm
 
 # 定时任务生成器
 scheduler = BackgroundScheduler()
@@ -20,6 +21,8 @@ def distribute_YQPoint_to_User(proposer, recipients, YQPoints, trans_time):
     '''
         由proposer账户(默认为一个组织账户)，向每一个在recipidents中的账户中发起数额为YQPoints的转账
         并且自动生成默认为ACCEPTED的转账记录以便查阅
+
+        可能在之后也有用
     '''
     try:
         assert proposer.YQPoint >= recipients.count() * YQPoints
@@ -49,12 +52,8 @@ def distribute_YQPoint_to_User(proposer, recipients, YQPoints, trans_time):
     TransferRecord.objects.bulk_create(transfer_list)
     
 
-def distribute_YQPoint():
-    try:
-        distributer = YQPoint_Distribute.objects.get(type=YQPoint_Distribute.Schedule_Type.WEEK, status=True)
-    except Exception as e:
-        print("\n按周发放元气值失败，原因可能是没有状态为YES或者有多个状态为YES的发放实例\n" + str(e))
-    trans_time = datetime.now()
+def distribute_YQPoint(distributer):
+    trans_time = distributer.start_time
 
     # 没有问题，找到要发放元气值的人和组织
     per_to_dis = NaturalPerson.objects.activated().filter(
@@ -72,19 +71,43 @@ def distribute_YQPoint():
     print(debug_msg)
 
 
+def add_YQPoints_distribute(dtype):
+    '''
+        用于注册已知type=dtype的发放元气值的实例
+        每种类型（临时发放、每周发放、每两周发放）都必须只有一个正在应用的实例
+    '''
+    try:
+        distributer = YQPoint_Distribute.objects.get(type=dtype, status=True)
+    except Exception as e:
+        print(f"按类型{dtype}发放元气值失败，原因可能是没有状态为YES或者有多个状态为YES的发放实例\n" + str(e))
+    if dtype == YQPoint_Distribute.DistributionType.TEMPORARY:
+        # 说明此时是临时发放
+        scheduler.add_job(distribute_YQPoint, "date", id="temporary_YQP_distribute", 
+                        run_date=distributer.start_time, args = [distributer])
+    else:
+        # 说明此时是定期发放
+        scheduler.add_job(distribute_YQPoint, "interval", id=f"{dtype}weeks_interval_YQP_distribute", 
+                        weeks=distributer.type, next_run_time=distributer.start_time, args=[distributer])
+
 
 def YQPoint_Distributions(request):
     context = dict()
     context['YQPoint_Distributions'] = YQPoint_Distribute.objects.all()
     return render(request, "YQPoint_Distributions.html", context)
 
-def YQPoint_Distribution(request, dis_id):
-    context = dict()
-    dis = YQPoint_Distribute.objects.get(id=dis_id)
-    context["dis"] = dis
-    return render(request, "YQPoint_Distribution.html", context)
 
-'''
-    现在的逻辑是：临时发放和长期发放都是YQPoint_Distribute类的实例，用一个字段来区分
-    在新增实例之后，用add_job的方法来新增长期任务/短期任务
-'''
+def YQPoint_Distribution(request, dis_id):  
+    dis = YQPoint_Distribute.objects.get(id=dis_id)
+    dis_form = YQPoint_DistributionForm()
+    if request.method == 'POST':
+        dis_form = YQPoint_DistributionForm(request.POST)
+        if dis_form.is_valid():
+            dis_form = YQPoint_DistributionForm(request.POST, instance=dis)
+            dis_form.save()
+            if dis.status == True:
+                # 在这里注册scheduler
+                add_YQPoints_distribute(dis.type)
+    context = dict()
+    context["dis"] = dis
+    context["dis_form"] = dis_form
+    return render(request, "YQPoint_Distribution.html", context)
