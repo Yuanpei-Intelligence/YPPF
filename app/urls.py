@@ -49,12 +49,9 @@ urlpatterns = [
     path("subscribeActivities/", views.subscribeActivities, name="subscribeActivities"),
     path("save_subscribe_status", views.save_subscribe_status, name="save_subscribe_status"),
     path("notifications/", views.notifications, name="notifications"),
-<<<<<<< HEAD
     path("YQPoint_Distributions", scheduler_func.YQPoint_Distributions, name="YQPoint_Distributions"),
-    path("YQPoint_Distribution/<int:dis_id>", scheduler_func.YQPoint_Distribution, name="YQPoint_Distributions")
-=======
+    path("YQPoint_Distribution/<int:dis_id>", scheduler_func.YQPoint_Distribution, name="YQPoint_Distributions"),
     path("personnelMobilization/", views.personnel_mobilization, name="personnel_mobilization"),
->>>>>>> 2fd0a5ef7082d39dbfc4c738557eef865aaf8dd3
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
