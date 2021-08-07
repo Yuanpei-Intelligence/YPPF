@@ -20,8 +20,11 @@ scheduler.add_jobstore(DjangoJobStore(), "default")
 def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
     '''
         内容：
-        由proposer账户(默认为一个组织账户)，向每一个在recipidents中的账户中发起数额为YQPoints的转账
+        由proposer账户(默认为一个组织账户)，向每一个在recipients中的账户中发起数额为YQPoints的转账
         并且自动生成默认为ACCEPTED的转账记录以便查阅
+
+        这里的recipients期待为一个Queryset，要么全为自然人，要么全为组织
+        proposer默认为一个组织账户
     '''
     try:
         assert proposer.YQPoint >= recipients.count() * YQPoints
@@ -55,6 +58,8 @@ def distribute_YQPoint(distributer):
     '''
         调用distribute_YQPoint_to_users, 给大家发放元气值
         这个函数的内容：根据distributer，找到发放对象，调用函数完成发放，（统计时间）
+
+        distributer应该为一个YQPointDistribute类的实例
     '''
     trans_time = distributer.start_time
 
@@ -111,7 +116,10 @@ def YQPoint_Distributions(request):
 
 def YQPoint_Distribution(request, dis_id):
     '''
-        可以更改已经存在的YQPointDistribute类，更改后，如果应用状态status为True，会完成该任务的注册
+        显示，也可以更改已经存在的YQPointDistribute类
+        更改后，如果应用状态status为True，会完成该任务的注册
+
+        如果之前有相同类型的实例存在，注册会失败！
     ''' 
     if not request.user.is_superuser:
         message =  "请先以超级账户登录后台后再操作！"
