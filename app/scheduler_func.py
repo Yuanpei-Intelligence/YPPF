@@ -119,7 +119,10 @@ def YQPoint_Distribution(request, dis_id):
             dis_form.save()
             if dis.status == True:
                 # 在这里注册scheduler
-                add_YQPoints_distribute(dis.type)
+                try:
+                    add_YQPoints_distribute(dis.type)
+                except:
+                    print("注册定时任务失败，可能是有多个status为Yes的实例")
     context = dict()
     context["dis"] = dis
     context["dis_form"] = dis_form
@@ -127,6 +130,9 @@ def YQPoint_Distribution(request, dis_id):
 
 
 def new_YQP_distribute(request):
+    '''
+        创建新的发放instance，如果status为True,会尝试注册
+    '''
     dis = YQPointDistribute()
     dis_form = YQPointDistributionForm()
     if request.method == 'POST':
@@ -136,6 +142,10 @@ def new_YQP_distribute(request):
             dis_form.save()
             if dis.status == True:
                 # 在这里注册scheduler
-                add_YQPoints_distribute(dis.type)
+                try:
+                    add_YQPoints_distribute(dis.type)
+                except:
+                    print("注册定时任务失败，可能是有多个status为Yes的实例")
+                    return redirect("new_YQP_distribution")
         return redirect("YQPoint_Distributions")
     return render(request, "new_YQP_distribution.html", {"dis_form": dis_form})
