@@ -1778,7 +1778,7 @@ def notification2Display(notification_list):
         # 状态
         lis[-1]['status'] = notification.get_status_display()
         lis[-1]['URL'] = notification.URL
-        lis[-1]['type'] = notification.get_type_display()
+        lis[-1]['type'] = notification.get_typename_display()
         lis[-1]['title'] = notification.get_title_display()
         if notification.sender.username[0] == 'z':
             lis[-1]['sender'] = Organization.objects.get(organization_id__username=notification.sender.username).oname
