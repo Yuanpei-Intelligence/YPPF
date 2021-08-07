@@ -141,10 +141,15 @@
                                 </div>
 
                                 <div class="code-section-container show-code">
-                                    <h3>title</h3>
+
+                                    <h3>{{title}}</h3>
                                     <div class="media">
                                         <div class="media-body">
-                                            <h6 class="user-name">User name</h6>
+                                            <h6 class="user-name">{{org_name}}</h6>
+                                            <div class="code-section text-left">
+                                                <pre>{{introduction}}</pre>
+                                            </div>
+                                            <p> 活动状态 {{status}} </p>
                                             <p class="meta-time">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                     viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -155,19 +160,101 @@
                                                     <line x1="8" y1="2" x2="8" y2="6"></line>
                                                     <line x1="3" y1="10" x2="21" y2="10"></line>
                                                 </svg>
-                                                May, 14 2019
+                                                活动时间：{{start_time}} - {{end_time}}
                                             </p>
+                                            <p class="meta-time">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                    class="feather feather-calendar">
+                                                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                                                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                                                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                                                </svg>
+                                                报名截止时间：{{apply_deadline}}
+                                            </p>
+                                            {% if bidding %}
+                                            <p> 投点类型 </p>
+                                            <p> 投点基础价格 {{price}}</p>
+                                            {% else %}
+                                            <p> 元气值定价 {{price}}</p>
+                                            {% endif %}
+
+                                            <p> 已报名/人数上限 {{current_participants}}/{{capacity}}</p>
+                                            <a href="{{aURL}}">详情信息</a>
                                         </div>
                                     </div>
 
-                                    <div class="code-section text-left">
-                                        <pre>活动详细介绍</pre>
-                                    </div>
-
+                                    {% if aStatus == "已结束" %}
+                                        <a href="javascript:void(0);" class="btn btn-success btn-block mb-4 mr-2">活动已结束</a>
+                                    {% else %}
                                     {% if person %}
-                                    <a href="javascript:void(0);" class="btn btn-success btn-block mb-4 mr-2">立即报名</a>
-                                    {% elif not person%}
-                                    <a href="javascript:void(0);" class="btn btn-success btn-block mb-4 mr-2">修改信息</a>
+                                        {% if pStatus == 2 %}
+                                            <a href="javascript:void(0);" class="btn btn-success btn-block mb-4 mr-2">已报名</a>
+                                            <form method="POST">
+                                                <input type="hidden" name="aid" value={{aid}}>
+                                                <input type="hidden" name="option" value="withdraw">
+                                                <button class="btn btn-success btn-block mb-4 mr-2">取消报名</button>
+                                            </form>
+                                        {% elif pStatus == 3 or pStatus == 4 %}
+                                            <!--  活动开始后，设置为 UNATTENDED, 且不能再取消活动  -->
+                                            <a href="javascript:void(0);" class="btn btn-success btn-block mb-4 mr-2">活动正在进行中</a>
+                                        {% else %}
+                                            {% if aStatus == "报名中" %}
+                                                {% if pStatus == -1 or pStatus == 5 %}
+
+                                                <form method="POST">
+                                                    {% if bidding %}
+                                                    <input type="text" name="willingness" placeholder="投点范围为基础价格的 1-3 倍" class="form-control">
+                                                    <p></p>
+                                                    {% endif %}
+                                                    <input type="hidden" name="aid" value={{aid}}>
+                                                    <input type="hidden" name="option" value="apply">
+                                                    <button class="btn btn-success btn-block mb-4 mr-2" onclick="return confirm('确定要报名活动？')">立即报名</button>
+                                                </form>
+                                                {% elif pStatus == 0 %}
+                                                <a href="javascript:void(0);" class="btn btn-success btn-block mb-4 mr-2">申请中</a>
+                                                <form method="POST">
+                                                    <input type="hidden" name="aid" value={{aid}}>
+                                                    <input type="hidden" name="option" value="withdraw">
+                                                    <button class="btn btn-success btn-block mb-4 mr-2" onclick="return confirm('确定取消报名？')">取消报名</button>
+                                                </form>
+                                                {% elif pStatus == 1 %}
+                                                <a href="javascript:void(0);" class="btn btn-success btn-block mb-4 mr-2">申请失败</a>
+                                                {% endif %}
+                                            {% elif aStatus == "审核中" %}
+                                                <a href="javascript:void(0);" class="btn btn-success btn-block mb-4 mr-2">活动正在审核</a>
+                                            {% elif aStatus == "已取消" %}
+                                                <a href="javascript:void(0);" class="btn btn-success btn-block mb-4 mr-2">活动已取消</a>
+                                            {% elif aStatus == "等待中" %}  
+                                                <a href="javascript:void(0);" class="btn btn-success btn-block mb-4 mr-2">活动报名已截止</a>
+                                                {% if pStatus == 0 or pStatus == 2 %}
+                                                <form method="POST">
+                                                    <input type="hidden" name="aid" value={{aid}}>
+                                                    <input type="hidden" name="option" value="withdraw">
+                                                    <button class="btn btn-success btn-block mb-4 mr-2" onclick="return confirm('活动报名已截止，只能退还一半的元气值，确定取消报名？')">取消报名</button>
+                                                </form>
+                                                {% endif %}
+                                            {% endif %}
+                                        {% endif %}
+                                    {% elif ownership %}
+                                        {% if aStatus != "已取消" %}
+                                            {% if aStatus != "进行中" %}
+                                            <form method="POST">
+                                                <input type="hidden" name="option" value="edit">
+                                                <button class="btn btn-success btn-block mb-4 mr-2">修改信息</button>
+                                            </form>
+                                            {% endif %}
+                                        <form method="POST">
+                                            <input type="hidden" name="option" value="cancel">
+                                            <!-- TODO 加个确认吧 -->
+                                            <button class="btn btn-success btn-block mb-4 mr-2" onclick="return confirm('确定要取消活动? ( 学生报名的元气值将退还。 )')">取消活动</button>
+                                        </form>
+                                        {% else %}
+                                        <a href="javascript:void(0);" class="btn btn-success btn-block mb-4 mr-2">活动已取消</a>
+                                        {% endif %}
+                                    {% endif %}
                                     {% endif %}
                                 </div>
 

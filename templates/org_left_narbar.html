@@ -5,8 +5,8 @@
             <nav id="sidebar">
                 <div class="shadow-bottom"></div>
 
-                <ul class="list-unstyled menu-categories ps ps--active-y nav nav-tabs flex-column" id="accordionExample">
-                    
+                <ul class="list-unstyled menu-categories ps ps--active-y" id="accordionExample">
+
                     {% if html_display.is_myself %}
                     <li class="menu">
                         <a href="#app" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
@@ -40,12 +40,23 @@
                     {% endif %}
 
                     <li class="menu nav-item">
-                        <a href="#d0" data-toggle="tab" aria-expanded="false" class="dropdown-toggle nav-link active">
+                        <a href="#info" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle nav-link active">
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /> </svg>
-                                <span>组织信息</span>
+                                <span>组织成员</span>
+                            </div>
+                            <div>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg>
                             </div>
                         </a>
+                        <ul class="collapse submenu list-unstyled" id="info" data-parent="#accordionExample">
+                            <li>
+                                <a href=""> 在职成员 </a>
+                            </li>
+                            <li>
+                                <a href="/personnelMobilization/"> 人事变动  </a>
+                            </li>
+                        </ul>
                     </li>
 
                     <li class="menu nav-item">
@@ -57,15 +68,6 @@
                         </a>
                     </li>
                     <!--
-                    <li class="menu nav-item">
-                        <a href="#d2" data-toggle="tab" aria-expanded="false" class="dropdown-toggle nav-link">
-                            <div class="">                                
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /> <circle cx="12" cy="7" r="4" /> </svg>
-                                <span>组织成员</span>
-                            </div>
-                        </a>
-                    </li>
-
                     <li class="menu nav-item">
                         <a href="#d3" data-toggle="tab" aria-expanded="false" class="dropdown-toggle nav-link">
                             <div class="">
@@ -93,6 +95,14 @@
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /> <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /> <polyline points="3.27 6.96 12 12.01 20.73 6.96" /> <line x1="12" y1="22.08" x2="12" y2="12" /> </svg>
                                 <span>向ta转账</span>
+                            </div>
+                        </a>
+                    </li>
+                    <li class="menu">
+                        <a href="/applyPosition/{{html_display.org.organization_id_id}}?apply_type=JOIN"  aria-expanded="false" class="dropdown-toggle">
+                            <div class="">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /> <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /> <polyline points="3.27 6.96 12 12.01 20.73 6.96" /> <line x1="12" y1="22.08" x2="12" y2="12" /> </svg>
+                                <span>我要加入</span>
                             </div>
                         </a>
                     </li>

@@ -122,6 +122,13 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 
+# 加快测试时的数据导入速度，降低加密算法的迭代次数
+# 正式上线时要去掉这里！如果先导入数据再修改hasher可能会出现账号无法登录！
+# if DEBUG:
+#     PASSWORD_HASHERS = [
+#         "boottest.hasher.MyPBKDF2PasswordHasher",
+#     ]
+
 # Internationalization
 # https://docs.djangoproject.com/en/2.1/topics/i18n/
 
@@ -156,3 +163,21 @@ MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+'''
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+        },
+    },
+}
+'''
