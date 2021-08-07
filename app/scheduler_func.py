@@ -86,7 +86,7 @@ def add_YQPoints_distribute(dtype):
     try:
         distributer = YQPointDistribute.objects.get(type=dtype, status=True)
     except Exception as e:
-        print(f"按类型{dtype}发放元气值失败，原因可能是没有状态为YES或者有多个状态为YES的发放实例\n" + str(e))
+        print(f"按类型{dtype}注册任务失败，原因可能是没有状态为YES或者有多个状态为YES的发放实例\n" + str(e))
     if dtype == YQPointDistribute.DistributionType.TEMPORARY:
         # 说明此时是临时发放
         scheduler.add_job(distribute_YQPoint, "date", id="temporary_YQP_distribute", 
@@ -111,7 +111,7 @@ def YQPoint_Distribution(request, dis_id):
         可以更改已经存在的YQPointDistribute类，更改后，如果应用状态status为True，会完成该任务的注册
     ''' 
     dis = YQPointDistribute.objects.get(id=dis_id)
-    dis_form = YQPointDistributionForm()
+    dis_form = YQPointDistributionForm(instance=dis)
     if request.method == 'POST':
         dis_form = YQPointDistributionForm(request.POST)
         if dis_form.is_valid():
@@ -124,3 +124,18 @@ def YQPoint_Distribution(request, dis_id):
     context["dis"] = dis
     context["dis_form"] = dis_form
     return render(request, "YQP_Distribution.html", context)
+
+
+def new_YQP_distribute(request):
+    dis = YQPointDistribute()
+    dis_form = YQPointDistributionForm()
+    if request.method == 'POST':
+        dis_form = YQPointDistributionForm(request.POST)
+        if dis_form.is_valid():
+            dis_form = YQPointDistributionForm(request.POST, instance=dis)
+            dis_form.save()
+            if dis.status == True:
+                # 在这里注册scheduler
+                add_YQPoints_distribute(dis.type)
+        return redirect("YQPoint_Distributions")
+    return render(request, "new_YQP_distribution.html", {"dis_form": dis_form})
