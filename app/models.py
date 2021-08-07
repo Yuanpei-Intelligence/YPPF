@@ -15,7 +15,8 @@ class NaturalPersonManager(models.Manager):
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
         datas = NaturalPerson.objects.activated()
         year = datetime.now().strftime("%Y")
-        datas.objects.filter(stu_grade=str(int(year) - 4)).update(GraduateStatus=1)
+        datas.objects.filter(stu_grade=str(int(year) - 4)
+                             ).update(GraduateStatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
@@ -67,7 +68,8 @@ class NaturalPerson(models.Model):
         UNDERGRADUATED = 0  # 未毕业
         GRADUATED = 1  # 毕业则注销
 
-    status = models.SmallIntegerField("在校状态", choices=GraduateStatus.choices, default=0)
+    status = models.SmallIntegerField(
+        "在校状态", choices=GraduateStatus.choices, default=0)
 
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
@@ -125,7 +127,8 @@ class OrganizationType(models.Model):
         verbose_name = "组织类型"
         verbose_name_plural = verbose_name
 
-    otype_id = models.SmallIntegerField("组织类型编号", unique=True, primary_key=True)
+    otype_id = models.SmallIntegerField(
+        "组织类型编号", unique=True, primary_key=True)
     otype_name = models.CharField("组织类型名称", max_length=25)
     otype_superior_id = models.SmallIntegerField("上级组织类型编号", default=0)
     incharge = models.ForeignKey(
@@ -184,7 +187,8 @@ class Organization(models.Model):
     objects = OrganizationManager()
 
     YQPoint = models.FloatField("元气值", default=0.0)
-    introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
+    introduction = models.TextField(
+        "介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
@@ -234,7 +238,8 @@ class Position(models.Model):
     show_post = models.BooleanField(default=True)
 
     # 表示是这个组织哪一年、哪个学期的成员
-    in_year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
+    in_year = models.IntegerField(
+        "当前学年", default=int(datetime.now().strftime("%Y")))
     in_semester = models.CharField(
         "当前学期", choices=Semester.choices, default=Semester.ANNUAL, max_length=15
     )
@@ -278,8 +283,10 @@ class Course(models.Model):
 
     cid = models.OneToOneField(to=Organization, on_delete=models.CASCADE)
     # 课程周期
-    year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
-    semester = models.CharField("当前学期", choices=Semester.choices, max_length=15)
+    year = models.IntegerField(
+        "当前学年", default=int(datetime.now().strftime("%Y")))
+    semester = models.CharField(
+        "当前学期", choices=Semester.choices, max_length=15)
 
     scheduler = models.CharField("上课时间", max_length=25)
     classroom = models.CharField("上课地点", max_length=25)
@@ -321,7 +328,8 @@ class Activity(models.Model):
         # to_field="organization_id", 删除掉to_field, 保持纯净对象操作
         on_delete=models.CASCADE,
     )
-    year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
+    year = models.IntegerField("活动年份", default=int(
+        local_dict["semester_data"]["year"]))
     semester = models.CharField(
         "活动学期",
         choices=Semester.choices,
@@ -354,7 +362,6 @@ class Activity(models.Model):
     bidding = models.BooleanField("是否投点竞价", default=False)
     YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
     budget = models.FloatField("预算", default=0.0)
-
 
     # 允许是正无穷, 可以考虑用INTINF
     capacity = models.IntegerField("活动最大参与人数", default=100)
@@ -413,7 +420,8 @@ class TransferRecord(models.Model):
         SUSPENDED = (3, "已终止")
         REDUND = (4, "已退回")
 
-    status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
+    status = models.SmallIntegerField(
+        choices=TransferStatus.choices, default=1)
 
     def save(self, *args, **kwargs):
         self.amount = round(self.amount, 1)
@@ -437,7 +445,8 @@ class Participant(models.Model):
         UNATTENDED = 4  # 未参与
         CANCELED = 5  # 放弃，如果学生取消活动，则设置这里
 
-    status = models.IntegerField("学生参与活动状态", choices=AttendStatus.choices, default=0)
+    status = models.IntegerField(
+        "学生参与活动状态", choices=AttendStatus.choices, default=0)
 
 
 class Notification(models.Model):
@@ -452,6 +461,7 @@ class Notification(models.Model):
     sender = models.ForeignKey(
         User, related_name="send_notice", on_delete=models.CASCADE
     )
+
     class Status(models.IntegerChoices):
         DONE = (0, "已处理")
         UNDONE = (1, "待处理")
@@ -466,12 +476,15 @@ class Notification(models.Model):
         ACTIVITY_INFORM = (1, "活动状态通知")
         VERIFY_INFORM = (2, "审核信息通知")
         POSITION_INFORM = (3, "人事变动通知")
+        TRANSFER_FEEDBACK = (4, "转账回执")
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
-    title = models.SmallIntegerField(choices=Title.choices, blank=True, null=True)
+    title = models.SmallIntegerField(
+        choices=Title.choices, blank=True, null=True)
     content = models.CharField("通知内容", max_length=225, blank=True)
     start_time = models.DateTimeField("通知发出时间", auto_now_add=True)
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
     typename = models.SmallIntegerField(choices=Type.choices, default=0)
-    
     URL = models.URLField("相关网址", null=True, blank=True)
+    relate_TransferRecord = models.ForeignKey(
+        TransferRecord, related_name="transfer_notification", on_delete=models.CASCADE, blank=True, null=True,)

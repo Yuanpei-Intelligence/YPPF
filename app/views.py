@@ -110,7 +110,8 @@ def index(request):
         try:
             user = User.objects.filter(username=username)
             if len(user) == 0:
-                org = Organization.objects.get(oname=username)  # 如果get不到，就是账号不存在了
+                org = Organization.objects.get(
+                    oname=username)  # 如果get不到，就是账号不存在了
                 user = org.organization_id
                 username = user.username
             else:
@@ -152,7 +153,8 @@ def index(request):
                     )
             else:
                 # 先处理初次登录
-                valid, user_type, html_display = utils.check_user_type(request.user)
+                valid, user_type, html_display = utils.check_user_type(
+                    request.user)
                 if not valid:
                     return redirect("/logout/")
                 me = get_person_or_org(userinfo, user_type)
@@ -188,7 +190,8 @@ def index(request):
             username = request.session["username"]
             en_pw = hash_coder.encode(username + timeStamp)
             return redirect(
-                arg_origin + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
+                arg_origin +
+                f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
             )
 
     return render(request, "index.html", locals())
@@ -257,7 +260,8 @@ def stuinfo(request, name=None):
             except:
                 return redirect("/welcome/")
             full_path = request.get_full_path()
-            append_url = "" if ("?" not in full_path) else "?" + full_path.split("?")[1]
+            append_url = "" if (
+                "?" not in full_path) else "?" + full_path.split("?")[1]
             return redirect("/stuinfo/" + oneself.name + append_url)
     else:
         # 先对可能的加号做处理
@@ -299,7 +303,8 @@ def stuinfo(request, name=None):
 
         # 呈现信息
         # 首先是左边栏
-        html_display = utils.get_user_left_narbar(person, is_myself, html_display)
+        html_display = utils.get_user_left_narbar(
+            person, is_myself, html_display)
 
         try:
             html_display["warn_code"] = int(
@@ -307,7 +312,8 @@ def stuinfo(request, name=None):
             )  # 是否有来自外部的消息
         except:
             return redirect("/welcome/")
-        html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+        html_display["warn_message"] = request.GET.get(
+            "warn_message", "")  # 提醒的具体内容
 
         modpw_status = request.GET.get("modinfo", None)
         if modpw_status is not None and modpw_status == "success":
@@ -454,14 +460,17 @@ def orginfo(request, name=None):
             member["person"] = p.person
             member["job"] = org.otype.get_name(p.pos)
             member["highest"] = True if p.pos == 0 else False
-            member["avatar_path"] = utils.get_user_ava(member["person"], "Person")
+            member["avatar_path"] = utils.get_user_ava(
+                member["person"], "Person")
             member_list.append(member)
 
     try:
-        html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
+        html_display["warn_code"] = int(
+            request.GET.get("warn_code", 0))  # 是否有来自外部的消息
     except:
         return redirect("/welcome/")
-    html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+    html_display["warn_message"] = request.GET.get(
+        "warn_message", "")  # 提醒的具体内容
 
     modpw_status = request.GET.get("modinfo", None)
     if modpw_status is not None and modpw_status == "success":
@@ -528,10 +537,12 @@ def homepage(request):
         )
 
     try:
-        html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
+        html_display["warn_code"] = int(
+            request.GET.get("warn_code", 0))  # 是否有来自外部的消息
     except:
         return redirect("/welcome/")
-    html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+    html_display["warn_message"] = request.GET.get(
+        "warn_message", "")  # 提醒的具体内容
 
     # 补充一些呈现信息
     html_display["title_name"] = "Welcome Page"
@@ -881,7 +892,8 @@ def forget_password(request):
                     if len(pre) > 5:
                         pre = pre[:2] + "*" * len(pre[2:-3]) + pre[-3:]
                     try:
-                        response = requests.post(email_url, post_data, timeout=6)
+                        response = requests.post(
+                            email_url, post_data, timeout=6)
                         response = response.json()
                         if response["status"] != 200:
                             err_code = 4
@@ -955,7 +967,8 @@ def modpw(request):
             err_code = 5
             err_message = "两次输入的密码不匹配"
         else:
-            userauth = auth.authenticate(username=username, password=oldpassword)
+            userauth = auth.authenticate(
+                username=username, password=oldpassword)
             if forgetpw:  # added by pht: 这是不好的写法，可改进
                 userauth = True
             if userauth:
@@ -1069,7 +1082,8 @@ def applyActivity(request, activity_id, willingness):
         record.corres_act = activity
 
         if CREATE:
-            participant = Participant.objects.create(activity_id=activity, person_id=payer)
+            participant = Participant.objects.create(
+                activity_id=activity, person_id=payer)
         if not activity.bidding:
             participant.status = Participant.AttendStatus.APLLYSUCCESS
         else:
@@ -1204,7 +1218,15 @@ def transaction_page(request, rid=None):
                     warn_message = "成功发起向" + name + "的转账! 元气值将在对方确认后到账。"
 
                     # TODO 发送微信消息
-
+                    notification_create(
+                        receiver=user,
+                        sender=request.user,
+                        typename=Notification.Type.NEEDDO,
+                        title=Notification.Title.TRANSFER_CONFIRM,
+                        content=transaction_msg,
+                        URL='/myYQPoint/',
+                        relate_TransferRecord=record
+                    )
                     # 跳转回主页, 首先先get主页位置
                     urls = (
                         context["return_url"]
@@ -1335,11 +1357,33 @@ def confirm_transaction(request, tid=None, reject=None):
             payer.YQPoint += record.amount
             payer.save()
             context["warn_message"] = "拒绝转账成功!"
+            notification_create(
+                receiver=record.proposer,
+                sender=record.recipient,
+                typename=Notification.Type.NEEDREAD,
+                title=Notification.Title.TRANSFER_FEEDBACK,
+                content=f"{str(record.recipient)}拒绝了您的转账。",
+                URL='/myYQpoint/'
+            )
+            notification_status_change(
+                record.transfer_notification.id
+            )
         else:
             record.status = TransferRecord.TransferStatus.ACCEPTED
             recipient.YQPoint += record.amount
             recipient.save()
             context["warn_message"] = "交易成功!"
+            notification_create(
+                receiver=record.proposer,
+                sender=record.recipient,
+                typename=Notification.Type.NEEDREAD,
+                title=Notification.Title.TRANSFER_FEEDBACK,
+                content=f"{str(record.recipient)}接受了您的转账。",
+                URL='/myYQpoint/'
+            )
+            notification_status_change(
+                record.transfer_notification.get().id
+            )
         record.finish_time = datetime.now()  # 交易完成时间
         record.save()
         context["warn_code"] = 2
@@ -1374,7 +1418,8 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
         lis[-1]["obj_direct"] = "To  " if record_type == "send" else "From"
         if hasattr(obj_user, "naturalperson"):  # 如果OneToOne Field在个人上
             lis[-1]["obj"] = obj_user.naturalperson.name
-            lis[-1]["obj_url"] = "/stuinfo/" + lis[-1]["obj"] + "+" + str(obj_user.id)
+            lis[-1]["obj_url"] = "/stuinfo/" + \
+                lis[-1]["obj"] + "+" + str(obj_user.id)
         else:
             lis[-1]["obj"] = obj_user.organization.oname
             lis[-1]["obj_url"] = "/orginfo/" + lis[-1]["obj"]
@@ -1419,7 +1464,8 @@ def myYQPoint(request):
     if request.method == "POST":  # 发生了交易处理的事件
         try:  # 检查参数合法性
             post_args = request.POST.get("post_button")
-            record_id, action = post_args.split("+")[0], post_args.split("+")[1]
+            record_id, action = post_args.split(
+                "+")[0], post_args.split("+")[1]
             assert action in ["accept", "reject"]
             reject = action == "reject"
         except:
@@ -1483,7 +1529,8 @@ def myYQPoint(request):
     to_set = to_send_set.union(to_recv_set).order_by("-start_time")
     # issued_set 按照完成时间及降序排列
     # 这里应当要求所有已经issued的记录是有执行时间的
-    issued_set = issued_send_set.union(issued_recv_set).order_by("-finish_time")
+    issued_set = issued_send_set.union(
+        issued_recv_set).order_by("-finish_time")
 
     to_list, amount = record2Display(to_set, request.user)
     issued_list, _ = record2Display(issued_set, request.user)
@@ -1524,7 +1571,8 @@ def showActivities(request):
 
     # TODO 改一下前端，感觉一条一条的更好看一点？ 以及链接到下面的 viewActivity
     notes = [
-        {"title": "活动名称1", "Date": "11/01/2019", "Address": ["B107A", "B107B"]},
+        {"title": "活动名称1", "Date": "11/01/2019",
+            "Address": ["B107A", "B107B"]},
         {"title": "活动名称2", "Date": "11/02/2019", "Address": ["B108A"]},
         {"title": "活动名称3", "Date": "11/02/2019", "Address": ["B108A"]},
         {"title": "活动名称4", "Date": "11/02/2019", "Address": ["B108A"]},
@@ -1554,6 +1602,8 @@ def showActivities(request):
 1. 活动开始前一小时，不能修改活动
 2. 活动开始当天晚上之前，不能再取消活动 ( 目前用的 12 小时，感觉基本差不多 )
 """
+
+
 @login_required(redirect_field_name='origin')
 def viewActivity(request, aid=None):
     """
@@ -1579,7 +1629,8 @@ def viewActivity(request, aid=None):
     start_time = activity.start
     end_time = activity.end
     prepare_times = Activity.EndBeforeHours.prepare_times
-    apply_deadline = activity.start - timedelta(hours=prepare_times[activity.endbefore])
+    apply_deadline = activity.start - \
+        timedelta(hours=prepare_times[activity.endbefore])
     introduction = activity.introduction
     aURL = activity.URL
 
@@ -1599,7 +1650,8 @@ def viewActivity(request, aid=None):
         person = True
         try:
             np = NaturalPerson.objects.activated().get(person_id=request.user)
-            participant = Participant.objects.get(activity_id=activity, person_id=np)
+            participant = Participant.objects.get(
+                activity_id=activity, person_id=np)
             pStatus = participant.status
         except:
             # 未参与
@@ -1620,7 +1672,7 @@ def viewActivity(request, aid=None):
     # 处理 post 请求
     #try:
     option = request.POST.get("option")
-    if option == "cancel": 
+    if option == "cancel":
         if activity.status == activity.Status.CANCELED or activity.status == activity.Status.END:
             html_display['warn_code'] = 1
             html_display['warn_message'] = "当前活动已取消或结束。"
@@ -1635,10 +1687,13 @@ def viewActivity(request, aid=None):
         with transaction.atomic():
             org = Organization.objects.select_for_update().get(organization_id=request.user)
             if bidding:
-                participants = Participant.objects.select_for_update().filter(status=Participant.AttendStatus.APLLYING)
+                participants = Participant.objects.select_for_update().filter(
+                    status=Participant.AttendStatus.APLLYING)
             else:
-                participants = Participant.objects.select_for_update().filter(status=Participant.AttendStatus.APLLYSUCCESS)
-            records = TransferRecord.objects.select_for_update().filter(status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity)
+                participants = Participant.objects.select_for_update().filter(
+                    status=Participant.AttendStatus.APLLYSUCCESS)
+            records = TransferRecord.objects.select_for_update().filter(
+                status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity)
             sumYQPoint = 0.0
             for record in records:
                 sumYQPoint += record.amount
@@ -1694,7 +1749,7 @@ def viewActivity(request, aid=None):
             context = applyActivity(request, int(aid), willingness)
             if context['success'] == False:
                 html_display['warn_code'] = 1
-                html_display['warn_message'] =context['msg']
+                html_display['warn_message'] = context['msg']
             else:
                 html_display['warn_code'] = 2
                 if bidding:
@@ -1709,15 +1764,16 @@ def viewActivity(request, aid=None):
             html_display['warn_message'] = "非预期的异常，请联系管理员汇报。"
         return render(request, "activity_info.html", locals())
 
-
     elif option == "withdraw":
         with transaction.atomic():
             np = NaturalPerson.objects.select_for_update().get(person_id=request.user)
-            org = Organization.objects.select_for_update().get(organization_id=activity.organization_id.organization_id)
-            participant = Participant.objects.select_for_update().get(activity_id=activity, person_id=np, status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYSUCCESS])
-            record = TransferRecord.objects.select_for_update().get(corres_act=activity, proposer=request.user, status=TransferRecord.TransferStatus.ACCEPTED)
+            org = Organization.objects.select_for_update().get(
+                organization_id=activity.organization_id.organization_id)
+            participant = Participant.objects.select_for_update().get(activity_id=activity, person_id=np,
+                                                                      status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYSUCCESS])
+            record = TransferRecord.objects.select_for_update().get(corres_act=activity,
+                                                                    proposer=request.user, status=TransferRecord.TransferStatus.ACCEPTED)
             activity = Activity.objects.select_for_update().get(id=aid)
-
 
             # 报名截止前，全额退还
             if aStatus == Activity.Status.APPLYING:
@@ -1757,7 +1813,6 @@ def viewActivity(request, aid=None):
         html_display['warn_message'] = "成功取消报名。"
         pStatus = Participant.AttendStatus.CANCELED
         return render(request, "activity_info.html", locals())
-
 
     else:
         html_display['warn_code'] = 1
@@ -1850,7 +1905,8 @@ def getActivityInfo(request):
 
             filename = f"{activity_id}-{info_type}-{output}"
             content = map(
-                lambda paticipant: map(lambda key: paticipant[key], fields), paticipants
+                lambda paticipant: map(
+                    lambda key: paticipant[key], fields), paticipants
             )
 
             format = request.GET.get("format", "csv")
@@ -1879,7 +1935,8 @@ def getActivityInfo(request):
         else:
             checkin_url = f"/checkinActivity?activityid={activity.id}"
             origin_url = request.scheme + "://" + request.META["HTTP_HOST"]
-            checkin_url = parse.urljoin(origin_url, checkin_url)  # require full path
+            checkin_url = parse.urljoin(
+                origin_url, checkin_url)  # require full path
 
             buffer = io.BytesIO()
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
@@ -2030,7 +2087,7 @@ def addActivities(request):
                 else:
                     # 非编辑，创建一个 activity
                     new_act = Activity.objects.create(
-                        title=context['aname'], organization_id=org) 
+                        title=context['aname'], organization_id=org)
                     if context['signschema'] == 1:
                         new_act.bidding = True
                         new_act.budget = context['budget']
@@ -2060,7 +2117,8 @@ def addActivities(request):
                 new_act.save()
             if context['warn_code'] == 0:
                 return redirect(f"/viewActivity/{new_act.id}")
-            return render(request, "activity_add.html", locals())  # warn_code==0
+            # warn_code==0
+            return render(request, "activity_add.html", locals())
 
     # get 请求
     edit = request.GET.get("edit")
@@ -2136,13 +2194,15 @@ def subscribeActivities(request):
     org_name = list(
         set(
             list(
-                Organization.objects.values_list("organization_id__username", flat=True)
+                Organization.objects.values_list(
+                    "organization_id__username", flat=True)
             )
         )
     )
     otype_list = sorted(
         list(
-            set(list(Organization.objects.values_list("otype__otype_name", flat=True)))
+            set(list(Organization.objects.values_list(
+                "otype__otype_name", flat=True)))
         )
     )
     # 给otype.otype_name排序，不然每次都不一样（后续可以写一个获取所有otype的接口，规定一个排序规则）
@@ -2168,11 +2228,13 @@ def save_subscribe_status(request):
         if "id" in params.keys():
             if params["status"]:
                 me.subscribe_list.remove(
-                    Organization.objects.get(organization_id__username=params["id"])
+                    Organization.objects.get(
+                        organization_id__username=params["id"])
                 )
             else:
                 me.subscribe_list.add(
-                    Organization.objects.get(organization_id__username=params["id"])
+                    Organization.objects.get(
+                        organization_id__username=params["id"])
                 )
         elif "otype" in params.keys():
             unsubscribed_list = me.subscribe_list.filter(
@@ -2307,7 +2369,8 @@ def personnel_mobilization(request):
             redirect(f"/orginfo/{me.oname}")
 
         with transaction.atomic():
-            application = Position.objects.select_for_update().get(id=params["id"])
+            application = Position.objects.select_for_update().get(
+                id=params["id"])
             apply_status = params["apply_status"]
             if apply_status == "PASS":
                 if application.apply_type == Position.ApplyType.JOIN:
@@ -2344,7 +2407,8 @@ def notification2Display(notification_list):
         # 时间
         lis[-1]["start_time"] = notification.start_time.strftime("%m/%d %H:%M")
         if notification.finish_time is not None:
-            lis[-1]["finish_time"] = notification.finish_time.strftime("%m/%d %H:%M")
+            lis[-1]["finish_time"] = notification.finish_time.strftime(
+                "%m/%d %H:%M")
 
         # 留言
         lis[-1]["content"] = notification.content
@@ -2352,7 +2416,7 @@ def notification2Display(notification_list):
         # 状态
         lis[-1]["status"] = notification.get_status_display()
         lis[-1]["URL"] = notification.URL
-        lis[-1]["type"] = notification.get_type_display()
+        lis[-1]["type"] = notification.get_typename_display()
         lis[-1]["title"] = notification.get_title_display()
         if notification.sender.username[0] == "z":
             lis[-1]["sender"] = Organization.objects.get(
@@ -2390,7 +2454,7 @@ def notification_status_change(notification_id):
     return context
 
 
-def notification_create(receiver, sender, typename, title, content, URL):
+def notification_create(receiver, sender, typename, title, content, URL, relate_TransferRecord=None):
     '''
     对于一个需要创建通知的事件，请调用该函数创建通知！
         receiver: org 或 nat_person，使用object.get获取的 user 对象
@@ -2400,8 +2464,12 @@ def notification_create(receiver, sender, typename, title, content, URL):
         content: 输入通知的内容
         URL: 需要跳转到处理事务的页面
     '''
-    Notification.objects.create(
-        receiver=receiver, sender=sender, typename=typename, title=title, content=content, URL=URL)
+    if relate_TransferRecord is None:
+        Notification.objects.create(
+            receiver=receiver, sender=sender, typename=typename, title=title, content=content, URL=URL)
+    else:
+        Notification.objects.create(
+            receiver=receiver, sender=sender, typename=typename, title=title, content=content, URL=URL, relate_TransferRecord=relate_TransferRecord)
 
 
 @login_required(redirect_field_name="origin")
