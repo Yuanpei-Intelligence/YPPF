@@ -391,12 +391,14 @@ def orginfo(request, name=None):
         return redirect("/orginfo/" + org.oname)
 
     try:  # 指定名字访问组织账号的，可以是自然人也可以是法人。在html里要注意区分！
+
         # 下面是组织信息
+
         org = Organization.objects.activated().get(oname=name)
 
     except:
         return redirect("/welcome/")
-
+    
     organization_name = name
     organization_type_name = org.otype.otype_name
     org_avatar_path = utils.get_user_ava(org, "Organization")
@@ -425,57 +427,82 @@ def orginfo(request, name=None):
     )
 
     # 如果是用户登陆的话，就记录一下用户有没有加入该活动，用字典存每个活动的状态，再把字典存在列表里
+
+    participant_status = ["申请中","申请失败","已报名","已参与","未参与","放弃"]
+    prepare_times = Activity.EndBeforeHours.prepare_times
+
     continuing_activity_list_participantrec = []
-    participant_status = ["申请中", "申请失败", "已报名", "已参与", "未参与", "放弃"]
     for act in continuing_activity_list:
         dictmp = {}
         dictmp["act"] = act
+        dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
         if user_type == "Person":
-            existlist = Paticipant.objects.filter(activity_id_id=act.id).filter(
-                person_id_id=me.person_id_id
-            )
-            if existlist:  # 判断是否非空
+            existlist = Participant.objects.filter(activity_id_id = act.id).filter(
+                person_id_id = me.person_id_id)
+            if existlist: # 判断是否非空
                 dictmp["status"] = participant_status[existlist[0].status]
-            else:
+            else :
                 dictmp["status"] = "无记录"
         continuing_activity_list_participantrec.append(dictmp)
+    
+    ended_activity_list_participantrec = []
+    for act in ended_activity_list:
+        dictmp = {}
+        dictmp["act"] = act
+        dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
+        if user_type == "Person":
+            existlist = Participant.objects.filter(activity_id_id = act.id).filter(
+                person_id_id = me.person_id_id)
+            if existlist: # 判断是否非空
+                dictmp["status"] = participant_status[existlist[0].status]
+            else :
+                dictmp["status"] = "无记录"
+        ended_activity_list_participantrec.append(dictmp)
 
+    
     # 判断我是不是老大, 首先设置为false, 然后如果有person_id和user一样, 就为True
     html_display["isboss"] = False
 
     # 组织成员list
-    positions = Position.objects.activated().filter(org=org).order_by("pos")  # 升序
+    positions = Position.objects.activated().filter(org = org).order_by("pos") # 升序
     member_list = []
     for p in positions:
         if p.person.person_id == user and p.pos == 0:
-            html_display["isboss"] = True
+                html_display["isboss"] = True
         if p.show_post == True or p.pos == 0:
             member = {}
             member["person"] = p.person
             member["job"] = org.otype.get_name(p.pos)
             member["highest"] = True if p.pos == 0 else False
-            member["avatar_path"] = utils.get_user_ava(member["person"], "Person")
+            member["avatar_path"] = utils.get_user_ava(member['person'],'Person')
             member_list.append(member)
 
+    
     try:
-        html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
+        html_display["warn_code"] = int(request.GET.get(
+            "warn_code", 0))  # 是否有来自外部的消息
     except:
         return redirect("/welcome/")
-    html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+
+    html_display["warn_message"] = request.GET.get(
+        "warn_message", "")  # 提醒的具体内容
 
     modpw_status = request.GET.get("modinfo", None)
     if modpw_status is not None and modpw_status == "success":
         html_display["warn_code"] = 2
         html_display["warn_message"] = "修改个人信息成功!"
 
-    # 补充左边栏信息
 
+    # 补充左边栏信息
+    
     # 判断是否为组织账户本身在登录
     html_display["is_myself"] = me == org
 
     # 再处理修改信息的回弹
     modpw_status = request.GET.get("modinfo", None)
-    html_display["modpw_code"] = modpw_status is not None and modpw_status == "success"
+    html_display["modpw_code"] = (
+        modpw_status is not None and modpw_status == "success"
+    )
 
     # 补充其余信息
     html_display = utils.get_org_left_narbar(
@@ -495,8 +522,8 @@ def orginfo(request, name=None):
     show_subscribe = False
     if user_type == "Person":
         show_subscribe = True
-        subscribe_flag = True  # 默认在订阅列表中
-        if organization_name in me.subscribe_list.values_list("oname", flat=True):
+        subscribe_flag = True   # 默认在订阅列表中
+        if organization_name in me.subscribe_list.values_list('oname', flat=True):
             subscribe_flag = False
 
     return render(request, "orginfo.html", locals())
@@ -1006,7 +1033,7 @@ def applyActivity(request, activity_id, willingness):
 
         try:
             participant = Participant.objects.select_for_update().get(
-                activity_id=activity, person_id=payer
+                activity_id=activity, person_id=payer.person_id_id
             )
             if participant.status == Participant.AttendStatus.APPLYING or participant.status == Participant.AttendStatus.APLLYSUCCESS:
                 context["msg"] = "您已申请报名过该活动。"
@@ -1548,7 +1575,6 @@ def showActivities(request):
     c. 如果报名活动，本函数处理 ( 还未实现 )
 # TODO
 个人操作，包括报名与取消
-
 ----------------------------
 活动逻辑
 1. 活动开始前一小时，不能修改活动
@@ -1571,52 +1597,57 @@ def viewActivity(request, aid=None):
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
     except:
-        return redirect("/showActivities/")
+        return redirect('/showActivities/')
 
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect('/showActivities/')
+    me = get_person_or_org(request.user, user_type)
+
+    # 活动全部基本信息
     title = activity.title
-    org = activity.organization_id
+    org = Organization.objects.activated().get(organization_id_id = activity.organization_id_id)
     org_name = org.oname
+    org_avatar_path = utils.get_user_ava(org, "Organization")
+    org_type = OrganizationType.objects.get(otype_id = org.otype_id).otype_name
     start_time = activity.start
     end_time = activity.end
     prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.start - timedelta(hours=prepare_times[activity.endbefore])
     introduction = activity.introduction
     aURL = activity.URL
-
+    aQRcode = activity.QRcode
     bidding = activity.bidding
     price = activity.YQPoint
     current_participants = activity.current_participants
+    status = activity.status
     capacity = activity.capacity
     if capacity == -1 or capacity == 10000:
         capacity = "INF"
-    status = activity.status
-
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/showActivities/")
+    
+    # 特判
     person = False
     if user_type == "Person":
         person = True
         try:
-            np = NaturalPerson.objects.activated().get(person_id=request.user)
-            participant = Participant.objects.get(activity_id=activity, person_id=np)
+            participant = Participant.objects.get(activity_id=activity, person_id=me.person_id_id)
             pStatus = participant.status
         except:
-            # 未参与
+            # 无记录
             pStatus = -1
     ownership = False
     if not person and org.organization_id == request.user:
         ownership = True
-    aStatus = activity.status
 
+    # 处理 get 请求
     if request.method == "GET":
         return render(request, "activity_info.html", locals())
+
     html_display = dict()
     if request.POST is None:
-        html_display["warn_code"] = 1
-        html_display["warn_message"] = "非法的 POST 请求。如果您不是故意操作，请联系管理员汇报此 Bug."
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = "非法的 POST 请求。如果您不是故意操作，请联系管理员汇报此 Bug."
         return render(request, "activity_info.html", locals())
-
     # 处理 post 请求
     #try:
     option = request.POST.get("option")
@@ -1666,6 +1697,7 @@ def viewActivity(request, aid=None):
         aStatus = activity.status
         # TODO 第一次点只会提醒已经成功取消活动，但是活动状态还是进行中，看看怎么修一下
         return render(request, "activity_info.html", locals())
+    
     elif option == "edit":
         if activity.status == activity.Status.APPLYING or activity.status == activity.Status.REVIEWING:
             return redirect(f'/addActivities/?edit=True&aid={aid}')
@@ -1708,7 +1740,6 @@ def viewActivity(request, aid=None):
             html_display['warn_code'] = 1
             html_display['warn_message'] = "非预期的异常，请联系管理员汇报。"
         return render(request, "activity_info.html", locals())
-
 
     elif option == "withdraw":
         with transaction.atomic():
@@ -1757,7 +1788,6 @@ def viewActivity(request, aid=None):
         html_display['warn_message'] = "成功取消报名。"
         pStatus = Participant.AttendStatus.CANCELED
         return render(request, "activity_info.html", locals())
-
 
     else:
         html_display['warn_code'] = 1
@@ -1964,13 +1994,11 @@ def checkinActivity(request):
 # TODO 定时任务
 """
 发起活动与修改活动页
-
 ---------------
 页面逻辑：
 使用 GET 方法时，如果存在 edit=True 参数，展示修改活动的界面，否则展示创建活动的界面。
 创建活动的界面，placeholder 为 prompt
 编辑活动的界面，表单的 placeholder 会被修改为活动的旧值。并且添加两个 hidden input，分别提交 edit=True 和活动的 id
-
 当请求方法为 POST 时，处理请求并修改数据库，如果没有问题，跳转到展示活动信息的界面
 存在 edit=True 参数时，为编辑操作，否则为创建操作
 编辑操作时，input 并不包含 model 所有 field 的数据，只修改其中出现的
