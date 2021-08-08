@@ -380,7 +380,7 @@ class TransferRecord(models.Model):
         WAITING = (1, "待确认")
         REFUSED = (2, "已拒绝")
         SUSPENDED = (3, "已终止")
-        REDUND = (4, "已退回")
+        REFUND = (4, "已退回")
 
     status = models.SmallIntegerField(
         choices=TransferStatus.choices, default=1)

@@ -1651,7 +1651,12 @@ def viewActivity(request, aid=None):
         with transaction.atomic():
             np = NaturalPerson.objects.select_for_update().get(person_id=request.user)
             org = Organization.objects.select_for_update().get(organization_id=activity.organization_id.organization_id)
-            participant = Participant.objects.select_for_update().get(activity_id=activity, person_id=np, status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYSUCCESS])
+            try:
+                participant = Participant.objects.select_for_update().get(activity_id=activity, person_id=np, status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYSUCCESS])
+            except:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "未找到报名记录。"
+                return render(request, "activity_info.html", locals())
             record = TransferRecord.objects.select_for_update().get(corres_act=activity, proposer=request.user, status=TransferRecord.TransferStatus.ACCEPTED)
             activity = Activity.objects.select_for_update().get(id=aid)
 
@@ -1681,7 +1686,7 @@ def viewActivity(request, aid=None):
             org.YQPoint -= amount
             np.YQPoint += amount
             participant.status = Participant.AttendStatus.CANCELED
-            record.status = TransferRecord.TransferStatus.REDUND
+            record.status = TransferRecord.TransferStatus.REFUND
             activity.current_participants -= 1
             org.save()
             np.save()
