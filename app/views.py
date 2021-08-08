@@ -1028,7 +1028,7 @@ def applyActivity(request, activity_id, willingness):
 
         try:
             participant = Participant.objects.select_for_update().get(
-                activity_id=activity, person_id=payer.person_id_id
+                activity_id=activity, person_id=payer
             )
             if (
                 participant.status == Participant.AttendStatus.APPLYING
@@ -1609,9 +1609,13 @@ def viewActivity(request, aid=None):
 
     # 活动全部基本信息
     title = activity.title
+    '''
     org = Organization.objects.activated().get(
         organization_id_id=activity.organization_id_id
     )
+    '''
+    org = activity.organization_id
+
     org_name = org.oname
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
@@ -1714,7 +1718,7 @@ def viewActivity(request, aid=None):
             activity.save()
         html_display["warn_code"] = 2
         html_display["warn_message"] = "成功取消活动。"
-        aStatus = activity.status
+        status = activity.status
         # TODO 第一次点只会提醒已经成功取消活动，但是活动状态还是进行中，看看怎么修一下
         return render(request, "activity_info.html", locals())
 
@@ -1764,20 +1768,25 @@ def viewActivity(request, aid=None):
             html_display["warn_message"] = "非预期的异常，请联系管理员汇报。"
         return render(request, "activity_info.html", locals())
 
-    elif option == "withdraw":
+    elif option == "quit":
         with transaction.atomic():
             np = NaturalPerson.objects.select_for_update().get(person_id=request.user)
             org = Organization.objects.select_for_update().get(
                 organization_id=activity.organization_id.organization_id
             )
-            participant = Participant.objects.select_for_update().get(
-                activity_id=activity,
-                person_id=np,
-                status__in=[
-                    Participant.AttendStatus.APPLYING,
-                    Participant.AttendStatus.APLLYSUCCESS,
-                ],
-            )
+            try:
+                participant = Participant.objects.select_for_update().get(
+                    activity_id=activity,
+                    person_id=np,
+                    status__in=[
+                        Participant.AttendStatus.APPLYING,
+                        Participant.AttendStatus.APLLYSUCCESS,
+                    ],
+                )
+            except:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "未找到报名记录。"
+                return render(request, "activity_info.html", locals())
             record = TransferRecord.objects.select_for_update().get(
                 corres_act=activity,
                 proposer=request.user,
@@ -1786,9 +1795,9 @@ def viewActivity(request, aid=None):
             activity = Activity.objects.select_for_update().get(id=aid)
 
             # 报名截止前，全额退还
-            if aStatus == Activity.Status.APPLYING:
+            if status == Activity.Status.APPLYING:
                 amount = record.amount
-            elif aStatus == Activity.Status.WAITING:
+            elif status == Activity.Status.WAITING:
                 cur_time = datetime.now()
                 if cur_time + timedelta(hours=1) > activity.start:
                     html_display["warn_code"] = 1
@@ -1810,7 +1819,7 @@ def viewActivity(request, aid=None):
             org.YQPoint -= amount
             np.YQPoint += amount
             participant.status = Participant.AttendStatus.CANCELED
-            record.status = TransferRecord.TransferStatus.REDUND
+            record.status = TransferRecord.TransferStatus.REFUND
             activity.current_participants -= 1
             org.save()
             np.save()
@@ -1822,6 +1831,10 @@ def viewActivity(request, aid=None):
         html_display["warn_code"] = 2
         html_display["warn_message"] = "成功取消报名。"
         pStatus = Participant.AttendStatus.CANCELED
+        return render(request, "activity_info.html", locals())
+
+    elif option == "payment":
+        raise NotImplementedError
         return render(request, "activity_info.html", locals())
 
     else:
