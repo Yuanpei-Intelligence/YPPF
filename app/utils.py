@@ -2,12 +2,24 @@ from django.dispatch.dispatcher import receiver
 from app.models import Notification
 from django.contrib.auth.hashers import BasePasswordHasher, MD5PasswordHasher, mask_hash
 from django.contrib import auth
+from django.contrib.auth.models import User
 from django.conf import settings
 from boottest import local_dict
-
 from datetime import datetime, timedelta
 import hashlib
 import re
+from app.models import (
+    NaturalPerson,
+    Position,
+    Organization,
+    OrganizationType,
+    Position,
+    Activity,
+    TransferRecord,
+    Participant,
+    Notification,
+    Preorgnization,
+)
 
 
 class MyMD5PasswordHasher(MD5PasswordHasher):
@@ -63,8 +75,9 @@ def check_user_type(user):  # return Valid(Bool), otype
         html_display["profile_url"] = "/stuinfo/"
         html_display["avatar_path"] = get_user_ava(person, user_type)
         html_display['user_type'] = user_type
-    
-    html_display['mail_num'] = Notification.objects.filter(receiver=user, status=Notification.NotificationStatus.UNDONE).count()
+
+    html_display['mail_num'] = Notification.objects.filter(receiver=user,
+                                                           status=Notification.NotificationStatus.UNDONE).count()
 
     return True, user_type, html_display
 
@@ -82,9 +95,9 @@ def get_user_ava(obj, user_type):
 
 
 def get_user_left_narbar(person, is_myself, html_display):  # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
-    #assert (
+    # assert (
     #        "is_myself" in html_display.keys()
-    #), "Forget to tell the website whether this is the user itself!"
+    # ), "Forget to tell the website whether this is the user itself!"
     html_display["underground_url"] = local_dict["url"]["base_url"]
 
     my_org_id_list = Position.objects.activated().filter(person=person).filter(pos=0)
@@ -94,9 +107,9 @@ def get_user_left_narbar(person, is_myself, html_display):  # 获取左边栏的
 
 
 def get_org_left_narbar(org, is_myself, html_display):
-    #assert (
+    # assert (
     #        "is_myself" in html_display.keys()
-    #), "Forget to tell the website whether this is the user itself!"
+    # ), "Forget to tell the website whether this is the user itself!"
     html_display["switch_org_name"] = org.oname
     html_display["underground_url"] = local_dict["url"]["base_url"]
     html_display['org'] = org
@@ -145,7 +158,8 @@ def check_ac_request(request):
     except:
         if not edit:
             context['warn_code'] = 1
-            context['warn_msg'] = "Unexpected exception. If you are not doing it deliberately, please contact the administrator to report this bug."
+            context[
+                'warn_msg'] = "Unexpected exception. If you are not doing it deliberately, please contact the administrator to report this bug."
             return context
 
     # 人数限制
@@ -205,7 +219,7 @@ def check_ac_request(request):
             context['warn_code'] = 1
             context['warn_msg'] = "The activity has to be in a month! "
             return context
-            
+
         context['signup_start'] = signup_start
         context['signup_end'] = signup_end
         context['act_start'] = act_start
@@ -224,7 +238,7 @@ def check_ac_request(request):
     if context['warn_code'] != 0:
         return context
 
-    try: 
+    try:
         context['aname'] = str(request.POST["aname"])  # 活动名称
         context['content'] = str(request.POST["content"])  # 活动内容
         context['location'] = str(request.POST["location"])  # 活动地点
@@ -259,6 +273,7 @@ def url_check(arg_url):
             return True
     return False
 
+
 # 允许进行 cross site 授权时，return True
 def check_cross_site(request, arg_url):
     if arg_url is None:
@@ -273,12 +288,53 @@ def check_cross_site(request, arg_url):
     return True
 
 
-def get_url_params(request,html_display):
+def get_url_params(request, html_display):
     full_path = request.get_full_path()
     if "?" in full_path:
         params = full_path.split["?"][1]
         params = params.split['&']
         for param in params:
-            key, value = param.split["="][0],param.split["="][1]
-            if key not in html_display.keys():  #禁止覆盖
+            key, value = param.split["="][0], param.split["="][1]
+            if key not in html_display.keys():  # 禁止覆盖
                 html_display[key] = value
+
+
+# 检查neworg request参数的合法性
+def check_neworg_request(request):
+    # oname
+    # otype 团委部门(15-20),学生会 书院课程（10）
+    """
+    7,书院俱乐部,0,负责人,YPadmin
+    8,学生小组,0,负责人,YPadmin
+        10,书院课程,0,助教,YPadmin
+    """
+    # introduction
+    # avatar 图片
+    # 职位设置 负责人，助教（人员搜索）
+    # 申请理由：
+    context = dict()
+    context['warn_code'] = 0
+    oname = str(request.POST['oname'])
+    if len(oname) >= 100:
+        context['warn_code'] = 1
+        context['warn_msg'] = "The length of orgnization_name can't exceed 100 bytes!"
+        return context
+    try:
+        otype = int(request.POST.get('otype'))
+        if otype not in [7, 8, 10]:  # 7 for 书院俱乐部，8 for 学生小组 ，10 for 书院课程
+            context['warn_code'] = 2
+            context['warn_msg'] = "You should select choices from [academy club,student group,academy course]!"
+            return context
+    except:
+        context['warn_code'] = 2
+        context['warn_msg'] = "You should input Interger!"  # user can't see it . we use it for debugging
+        return context
+    context['oname'] = oname  # 组织名字
+    context['otype'], mid = OrganizationType.objects.get_or_create(otype_id=otype)  # 组织类型，必须有
+    context['pos'] = request.user  # 负责人，必须有滴
+    context['introduction'] = str(request.POST.get('introduction', ""))  # 组织介绍，可能为空
+
+    context['avatar'] = request.POST.get('avatar')  # TODO 测试有无bug
+
+    context['application'] = str(request.POST.get('application', ""))  # 申请理由
+    return context

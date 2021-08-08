@@ -48,6 +48,8 @@ urlpatterns = [
     path("subscribeActivities/", views.subscribeActivities, name="subscribeActivities"),
     path("save_subscribe_status", views.save_subscribe_status, name="save_subscribe_status"),
     path("notifications/", views.notifications, name="notifications"),
+    path("addOrgnization/",views.addOrgnization,name="addOrgnization"),
+    path("auditOrgnization/",views.auditOrgnization,name="auditOrgnization"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

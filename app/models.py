@@ -98,15 +98,15 @@ class NaturalPerson(models.Model):
         unpublished = '未公开'
         gender = ['男', '女']
         info = [self.name, self.stu_grade, self.stu_class]
-        #info.append(self.nickname if (self.show_nickname) else unpublished)
-        #info.append(
+        # info.append(self.nickname if (self.show_nickname) else unpublished)
+        # info.append(
         #    unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
         info.append(self.stu_major if (self.show_major) else unpublished)
-        #info.append(self.email if (self.show_email) else unpublished)
-        #info.append(self.telephone if (self.show_tel) else unpublished)
-        #info.append(self.stu_dorm if (self.show_dorm) else unpublished)
+        # info.append(self.email if (self.show_email) else unpublished)
+        # info.append(self.telephone if (self.show_tel) else unpublished)
+        # info.append(self.stu_dorm if (self.show_dorm) else unpublished)
         info.append('在校' if self.status ==
-                    NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
+                            NaturalPerson.GraduateStatus.UNDERGRADUATED else '已毕业')
         # 防止显示None
         for i in range(len(info)):
             if info[i] == None:
@@ -162,6 +162,7 @@ class Semester(models.TextChoices):
         else:
             raise NotImplementedError("出现未设计的学期状态")
 
+
 class OrganizationManager(models.Manager):
     def activated(self):
         return self.exclude(status=False)
@@ -173,7 +174,7 @@ class Organization(models.Model):
         verbose_name_plural = verbose_name
 
     organization_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
-    oname = models.CharField(max_length=32, unique=True)
+    oname = models.CharField(max_length=100, unique=True)
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
     status = models.BooleanField("激活状态", default=True)  # 表示一个组织是否上线(或者是已经被下线)
 
@@ -246,7 +247,7 @@ class Course(models.Model):
         verbose_name_plural = verbose_name
 
     cid = models.OneToOneField(
-        to=Organization, on_delete=models.CASCADE, 
+        to=Organization, on_delete=models.CASCADE,
     )
     # 课程周期
     year = models.IntegerField(
@@ -270,11 +271,12 @@ class ActivityManager(models.Manager):
             semester__contains=local_dict["semester_data"]["semester"]
         )
 
+
 class Activity(models.Model):
     class Meta:
         verbose_name = "活动"
         verbose_name_plural = verbose_name
-    
+
     '''
     Jul 30晚, Activity类经历了较大的更新, 请阅读群里[活动发起逻辑]文档，看一下活动发起需要用到的变量
     (1) 删除是否允许改变价格, 直接允许价格变动, 取消政策见文档【不允许投点的价格变动】
@@ -294,20 +296,21 @@ class Activity(models.Model):
         on_delete=models.CASCADE,
     )
     year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
-    semester = models.CharField("活动学期", choices=Semester.choices, max_length=15, default=Semester.get(local_dict["semester_data"]["semester"]))
+    semester = models.CharField("活动学期", choices=Semester.choices, max_length=15,
+                                default=Semester.get(local_dict["semester_data"]["semester"]))
     publish_time = models.DateTimeField("信息发布时间", auto_now_add=True)  # 可以为空
-    
+
     # 删除显示报名时间, 保留一个字段表示报名截止于活动开始前多久：1h / 1d / 3d / 7d
     class EndBefore(models.IntegerChoices):
         onehour = (0, "一小时")
-        oneday = (1,"一天")
-        threeday = (2,"三天")
-        oneweek = (3,"一周")
+        oneday = (1, "一天")
+        threeday = (2, "三天")
+        oneweek = (3, "一周")
 
     class EndBeforeHours:
         prepare_times = [1, 24, 72, 168]
-    
-    endbefore = models.SmallIntegerField("报名截止于", choices=EndBefore.choices, default= EndBefore.oneday)
+
+    endbefore = models.SmallIntegerField("报名截止于", choices=EndBefore.choices, default=EndBefore.oneday)
     start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now)
     end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now)
     # prepare_time = models.FloatField("活动准备小时数", default=24.0)
@@ -323,12 +326,10 @@ class Activity(models.Model):
     YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
     budget = models.FloatField("预算", default=0.0)
 
-
-
     # 允许是正无穷, 可以考虑用INTINF
     capacity = models.IntegerField("活动最大参与人数", default=100)
     current_participants = models.IntegerField("活动当前报名人数", default=0)
-    
+
     URL = models.URLField("活动相关(推送)网址", null=True, blank=True)
 
     def __str__(self):
@@ -417,22 +418,24 @@ class Notification(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["id"]
 
+
     receiver = models.ForeignKey(
         User, related_name="recv_notice", on_delete=models.CASCADE
     )
     sender = models.ForeignKey(
         User, related_name="send_notice", on_delete=models.CASCADE
     )
+
     class NotificationStatus(models.IntegerChoices):
         DONE = (0, "已处理")
         UNDONE = (1, "待处理")
 
     class NotificationType(models.IntegerChoices):
-        NEEDREAD = (0, '知晓类')    # 只需选择“已读”即可
-        NEEDDO = (1, '处理类')      # 需要处理的事务
+        NEEDREAD = (0, '知晓类')  # 只需选择“已读”即可
+        NEEDDO = (1, '处理类')  # 需要处理的事务
 
     class NotificationTitle(models.IntegerChoices):
-        # 等待逻辑补充
+        # 等待逻辑补充时
         TRANSFER_CONFIRM = (0, '转账确认通知')
         ACTIVITY_INFORM = (1, '活动状态通知')
         VERIFY_INFORM = (2, '审核信息通知')
@@ -444,5 +447,43 @@ class Notification(models.Model):
     start_time = models.DateTimeField("通知发出时间", auto_now_add=True)
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
     type = models.SmallIntegerField(choices=NotificationType.choices, default=0)
-    
+
     URL = models.URLField("相关网址", null=True, blank=True)
+
+
+class Preorgnization(models.Model):
+    class Meta:
+        verbose_name = "申请建立组织的信息"
+        verbose_name_plural = verbose_name
+
+    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的组织信息
+    oname = models.CharField(max_length=100, unique=True)
+    otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
+
+    introduction = models.TextField(
+        "介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
+    avatar = models.ImageField(upload_to=f"avatar/", blank=True)
+    QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
+    application = models.TextField("申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~")
+    class Preorgstatus(models.IntegerChoices):  # 表示申请组织的请求的状态
+        WAITING = (0, "待确认")
+        CONFIRMED = (1, "主管老师已同意")  # 审过同意
+        Tobemodified = (2, "需要修改")
+        CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
+
+    status = models.SmallIntegerField(choices=Preorgstatus.choices, default=0)
+    pos = models.ForeignKey(User, on_delete=models.CASCADE)  # 负责人
+
+    def __str__(self):
+        return str(self.oname)
+
+
+class Org_comment(models.Model):
+    class Meta:
+        verbose_name = "审核新建组织的通知的评论"
+        verbose_name_plural = verbose_name
+
+    preorg = models.ForeignKey(Preorgnization, on_delete=models.CASCADE)  #外键
+    commentator = models.ForeignKey(User, on_delete=models.CASCADE)  # 评论者，
+    text = models.TextField("文字内容", default="", blank=True)
+    time = models.DateTimeField("评论时间", auto_now_add=True)  # 每次按照评论时间排序

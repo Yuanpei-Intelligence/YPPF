@@ -10,7 +10,10 @@ from app.models import (
     TransferRecord,
     Participant,
     Notification,
+    Preorgnization,
+    Org_comment
 )
+from django.db.models import Max
 import app.utils as utils
 from app.forms import UserForm
 from app.utils import MyMD5PasswordHasher, MySHA256Hasher, url_check, check_cross_site
@@ -256,7 +259,7 @@ def stuinfo(request, name=None):
                 return redirect("/welcome/")
             full_path = request.get_full_path()
             append_url = "" if (
-                "?" not in full_path) else "?" + full_path.split("?")[1]
+                    "?" not in full_path) else "?" + full_path.split("?")[1]
             return redirect("/stuinfo/" + oneself.name + append_url)
     else:
         # 先对可能的加号做处理
@@ -394,7 +397,7 @@ def orginfo(request, name=None):
 
     except:
         return redirect("/welcome/")
-    
+
     organization_name = name
     organization_type_name = org.otype.otype_name
     org_avatar_path = utils.get_user_ava(org, "Organization")
@@ -402,50 +405,48 @@ def orginfo(request, name=None):
 
     # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = Activity.objects.activated().filter(
-            organization_id = org.organization_id_id
-        ).filter(
-            status__in = [Activity.Status.REVIEWING, Activity.Status.APPLYING, Activity.Status.WAITING, Activity.Status.PROGRESSING]
-        ).order_by("-start")
+        organization_id=org.organization_id_id
+    ).filter(
+        status__in=[Activity.Status.REVIEWING, Activity.Status.APPLYING, Activity.Status.WAITING,
+                    Activity.Status.PROGRESSING]
+    ).order_by("-start")
 
     ended_activity_list = Activity.objects.activated().filter(
-            organization_id = org.organization_id_id
-        ).filter(
-            status__in = [Activity.Status.CANCELED, Activity.Status.END]
-        ).order_by("-start")
+        organization_id=org.organization_id_id
+    ).filter(
+        status__in=[Activity.Status.CANCELED, Activity.Status.END]
+    ).order_by("-start")
 
     # 如果是用户登陆的话，就记录一下用户有没有加入该活动，用字典存每个活动的状态，再把字典存在列表里
     continuing_activity_list_participantrec = []
-    participant_status = ["申请中","申请失败","已报名","已参与","未参与","放弃"]
+    participant_status = ["申请中", "申请失败", "已报名", "已参与", "未参与", "放弃"]
     for act in continuing_activity_list:
         dictmp = {}
         dictmp["act"] = act
         if user_type == "Person":
-            existlist = Paticipant.objects.filter(activity_id_id = act.id).filter(person_id_id = me.person_id_id)
-            if existlist: # 判断是否非空
+            existlist = Paticipant.objects.filter(activity_id_id=act.id).filter(person_id_id=me.person_id_id)
+            if existlist:  # 判断是否非空
                 dictmp["status"] = participant_status[existlist[0].status]
-            else :
+            else:
                 dictmp["status"] = "无记录"
         continuing_activity_list_participantrec.append(dictmp)
 
-    
     # 判断我是不是老大, 首先设置为false, 然后如果有person_id和user一样, 就为True
     html_display["isboss"] = False
 
     # 组织成员list
-    positions = Position.objects.activated().filter(org = org).order_by("pos") # 升序
+    positions = Position.objects.activated().filter(org=org).order_by("pos")  # 升序
     member_list = []
     for p in positions:
         if p.person.person_id == user and p.pos == 0:
-                html_display["isboss"] = True
+            html_display["isboss"] = True
         if p.show_post == True or p.pos == 0:
             member = {}
             member["person"] = p.person
             member["job"] = org.otype.get_name(p.pos)
             member["highest"] = True if p.pos == 0 else False
-            member["avatar_path"] = utils.get_user_ava(member['person'],'Person')
+            member["avatar_path"] = utils.get_user_ava(member['person'], 'Person')
             member_list.append(member)
-
-    
 
     try:
         html_display["warn_code"] = int(request.GET.get(
@@ -461,17 +462,15 @@ def orginfo(request, name=None):
         html_display["warn_code"] = 2
         html_display["warn_message"] = "修改个人信息成功!"
 
-    
-
     # 补充左边栏信息
-    
+
     # 判断是否为组织账户本身在登录
     html_display["is_myself"] = me == org
 
     # 再处理修改信息的回弹
     modpw_status = request.GET.get("modinfo", None)
     html_display["modpw_code"] = (
-        modpw_status is not None and modpw_status == "success"
+            modpw_status is not None and modpw_status == "success"
     )
 
     # 补充其余信息
@@ -492,7 +491,7 @@ def orginfo(request, name=None):
     show_subscribe = False
     if user_type == "Person":
         show_subscribe = True
-        subscribe_flag = True   # 默认在订阅列表中
+        subscribe_flag = True  # 默认在订阅列表中
         if organization_name in me.subscribe_list.values_list('oname', flat=True):
             subscribe_flag = False
 
@@ -711,7 +710,7 @@ def search(request):
     not_found_message = "找不到符合搜索的信息或相关内容未公开！"
     # 首先搜索个人, 允许搜索姓名或者公开的专业, 删去小名搜索
     people_list = NaturalPerson.objects.filter(
-        Q(name__icontains=query) | #(Q(nickname__icontains=query) & Q(show_nickname=True)) |
+        Q(name__icontains=query) |  # (Q(nickname__icontains=query) & Q(show_nickname=True)) |
         (Q(stu_major__icontains=query) & Q(show_major=True)))
     # 接下来准备呈现的内容
     # 首先是准备搜索个人信息的部分
@@ -719,12 +718,12 @@ def search(request):
         "姓名",
         "年级",
         "班级",
-        #"昵称",
-        #"性别",
+        # "昵称",
+        # "性别",
         "专业",
-        #"邮箱",
-        #"电话",
-        #"宿舍",
+        # "邮箱",
+        # "电话",
+        # "宿舍",
         "状态",
     ]  # 感觉将年级和班级分开呈现会简洁很多
 
@@ -734,13 +733,14 @@ def search(request):
         Q(person__name__icontains=query) & (Q(show_post=True) | Q(pos=0)))
     # 通过组织名、组织类名、和上述的职务信息对应的组织信息
     organization_list = Organization.objects.filter(
-        Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(id__in = pos_list.values('org'))).prefetch_related("position_set")
+        Q(oname__icontains=query) | Q(otype__otype_name__icontains=query) | Q(
+            id__in=pos_list.values('org'))).prefetch_related("position_set")
 
     org_display_list = []
     for org in organization_list:
         org_display_list.append({
             "oname": org.oname,
-            "otype":org.otype,
+            "otype": org.otype,
             "pos0": [w['person__name'] for w in list(org.position_set.activated().filter(pos=0).values("person__name"))]
         })
 
@@ -835,13 +835,13 @@ def forget_password(request):
                     captcha = random.randrange(1000000)
                     captcha = f"{captcha:06}"
                     msg = (
-                        f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
-                        "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
-                        f'<p style="color:orange">{captcha}'
-                        '<span style="color:gray">(仅当前页面有效)</span></p>'
-                        '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
-                        "<br/><br/><br/>"
-                        "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
+                            f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
+                            "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
+                            f'<p style="color:orange">{captcha}'
+                            '<span style="color:gray">(仅当前页面有效)</span></p>'
+                            '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
+                            "<br/><br/><br/>"
+                            "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
                         "toaddrs": [email],  # 收件人列表
@@ -967,7 +967,8 @@ def applyActivity(request, activity_id, willingness):
             activity = Activity.objects.select_for_update().get(id=activity_id)
             payer = NaturalPerson.objects.select_for_update().get(person_id=request.user)
         except:
-            context['msg'] = "Can not find activity. If you are not deliberately do it, please contact the administrator to report this bug."
+            context[
+                'msg'] = "Can not find activity. If you are not deliberately do it, please contact the administrator to report this bug."
             return context
         '''
         assert len(activity) == 1
@@ -1099,7 +1100,7 @@ def transaction_page(request, rid=None):
     # 储存返回跳转的url
     if context["user_type"] == "Person":
         context["return_url"] = context["profile_url"] + \
-            context["name"] + "+" + context["rid"]
+                                context["name"] + "+" + context["rid"]
     else:
         context["return_url"] = context["profile_url"] + context["name"]
 
@@ -1139,8 +1140,8 @@ def transaction_page(request, rid=None):
                 if payer.YQPoint < amount:
                     html_display["warn_code"] = 1
                     html_display["warn_message"] = "现存元气值余额为" + \
-                        str(payer.YQPoint) + ", 不足以发起额度为" + \
-                        str(amount) + "的转账!"
+                                                   str(payer.YQPoint) + ", 不足以发起额度为" + \
+                                                   str(amount) + "的转账!"
                 else:
                     payer.YQPoint -= amount
                     record = TransferRecord.objects.create(
@@ -1154,7 +1155,7 @@ def transaction_page(request, rid=None):
 
                     # 跳转回主页, 首先先get主页位置
                     urls = context["return_url"] + \
-                        f"?warn_code=2&warn_message={warn_message}"
+                           f"?warn_code=2&warn_message={warn_message}"
                     return redirect(urls)
 
         except:
@@ -1183,7 +1184,7 @@ def start_transaction(request):
 
     try:
         # 允许一位小数
-        assert amount == int(float(amount) * 10)/10
+        assert amount == int(float(amount) * 10) / 10
         assert amount > 0
     except:
         context[
@@ -1231,7 +1232,7 @@ def start_transaction(request):
 
 def confirm_transaction(request, tid=None, reject=None):
     context = dict()
-    context['warn_code'] = 1    # 先假设有问题
+    context['warn_code'] = 1  # 先假设有问题
     with transaction.atomic():
         try:
             record = TransferRecord.objects.select_for_update().get(
@@ -1313,7 +1314,7 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
         if hasattr(obj_user, 'naturalperson'):  # 如果OneToOne Field在个人上
             lis[-1]['obj'] = obj_user.naturalperson.name
             lis[-1]['obj_url'] = '/stuinfo/' + \
-                lis[-1]['obj'] + "+" + str(obj_user.id)
+                                 lis[-1]['obj'] + "+" + str(obj_user.id)
         else:
             lis[-1]['obj'] = obj_user.organization.oname
             lis[-1]['obj_url'] = '/orginfo/' + lis[-1]['obj']
@@ -1436,13 +1437,13 @@ def myYQPoint(request):
 
     return render(request, 'myYQPoint.html', locals())
 
+
 @login_required(redirect_field_name='origin')
 def showActivities(request):
-
     # TODO 改一下前端，感觉一条一条的更好看一点？ 以及链接到下面的 viewActivity
     notes = [
         {"title": "活动名称1", "Date": "11/01/2019",
-            "Address": ["B107A", "B107B"]},
+         "Address": ["B107A", "B107B"]},
         {"title": "活动名称2", "Date": "11/02/2019", "Address": ["B108A"]},
         {"title": "活动名称3", "Date": "11/02/2019", "Address": ["B108A"]},
         {"title": "活动名称4", "Date": "11/02/2019", "Address": ["B108A"]},
@@ -1452,8 +1453,6 @@ def showActivities(request):
     person = True  # 人/法人
 
     return render(request, "notes.html", locals())
-
-
 
 
 '''
@@ -1468,6 +1467,8 @@ def showActivities(request):
 # TODO
 个人操作，包括报名与取消
 '''
+
+
 @login_required(redirect_field_name='origin')
 def viewActivity(request, aid=None):
     """
@@ -1486,7 +1487,6 @@ def viewActivity(request, aid=None):
         activity = Activity.objects.get(id=aid)
     except:
         return redirect('/showActivities/')
-
 
     title = activity.title
     org = activity.organization_id
@@ -1522,7 +1522,6 @@ def viewActivity(request, aid=None):
     if not person and org.organization_id == request.user:
         ownership = True
 
-
     if request.method == "GET":
         return render(request, "activity_info.html", locals())
     html_display = dict()
@@ -1531,11 +1530,10 @@ def viewActivity(request, aid=None):
         html_display['warn_message'] = "非法的 POST 请求。如果您不是故意操作，请联系管理员汇报此 Bug."
         return render(request, "activity_info.html", locals())
 
-
     # 处理 post 请求
     try:
         option = request.POST.get("option")
-        if option == "cancel": 
+        if option == "cancel":
             if activity.status == activity.Status.CANCELED or activity.status == activity.Status.END:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "当前活动已取消或结束。"
@@ -1550,10 +1548,13 @@ def viewActivity(request, aid=None):
             with transaction.atomic():
                 org = Organization.objects.select_for_update().get(organization_id=request.user)
                 if bidding:
-                    participants = Participant.objects.select_for_update().filter(status=Participant.AttendStatus.APLLYING)
+                    participants = Participant.objects.select_for_update().filter(
+                        status=Participant.AttendStatus.APLLYING)
                 else:
-                    participants = Participant.objects.select_for_update().filter(status=Participant.AttendStatus.APLLYSUCCESS)
-                records = TransferRecord.objects.select_for_update().filter(status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity)
+                    participants = Participant.objects.select_for_update().filter(
+                        status=Participant.AttendStatus.APLLYSUCCESS)
+                records = TransferRecord.objects.select_for_update().filter(
+                    status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity)
                 sumYQPoint = 0.0
                 for record in records:
                     sumYQPoint += record.amount
@@ -1598,7 +1599,6 @@ def viewActivity(request, aid=None):
         html_display['warn_code'] = 1
         html_display['warn_message'] = "非法预期的错误。请联系管理员汇报此 Bug."
         return render(request, "activity_info.html", locals())
-
 
 
 # 通过GET获得活动信息表下载链接
@@ -1799,9 +1799,10 @@ def checkinActivity(request):
 存在 edit=True 参数时，为编辑操作，否则为创建操作
 编辑操作时，input 并不包含 model 所有 field 的数据，只修改其中出现的
 '''
+
+
 @login_required(redirect_field_name='origin')
 def addActivities(request):
-
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect('/index/')
@@ -1836,7 +1837,6 @@ def addActivities(request):
             edit = False
             return render(request, "activity_add.html", locals())
 
-
         with transaction.atomic():
             if edit is not None:
                 # 编辑的情况下，查表取出 activity
@@ -1851,11 +1851,11 @@ def addActivities(request):
             else:
                 # 非编辑，创建一个 activity
                 new_act = Activity.objects.create(
-                    title=context['aname'], organization_id=org) 
+                    title=context['aname'], organization_id=org)
                 if context['signschema'] == 1:
                     new_act.bidding = True
                     new_act.budget = context['budget']
-                 # 默认状态是报名中，可能需要审核
+                # 默认状态是报名中，可能需要审核
                 if not context['need_check']:
                     new_act.status = Activity.Status.APPLYING
 
@@ -1927,8 +1927,6 @@ def addActivities(request):
         if capacity == 10000:
             no_limit = True
 
-
-
     # 补充一些实用的信息
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
 
@@ -1962,7 +1960,7 @@ def subscribeActivities(request):
     unsubscribe_list = list(me.subscribe_list.values_list(
         "organization_id__username", flat=True))  # 获取不订阅列表（数据库里的是不订阅列表）
     subscribe_list = [
-        name for name in org_name if name not in unsubscribe_list]    # 获取订阅列表
+        name for name in org_name if name not in unsubscribe_list]  # 获取订阅列表
 
     subscribe_url = reverse('save_subscribe_status')
     return render(request, "activity_subscribe.html", locals())
@@ -2053,7 +2051,7 @@ def notification_status_change(notification_id):
     return context
 
 
-def notification_create(receiver, type, title, content, URL):
+def notification_create(receiver, sender, type, title, content, URL):
     '''
     对于一个需要创建通知的事件，请调用该函数创建通知！
         receiver: org 或 nat_person，使用object.get获取的对象
@@ -2062,8 +2060,15 @@ def notification_create(receiver, type, title, content, URL):
         content: 输入通知的内容
         URL: 需要跳转到处理事务的页面
     '''
-    Notification.objects.create(
-        receiver=receiver, type=type, title=title, content=content, URL=URL)
+    new_notification = Notification.objects.create(
+        receiver=receiver,
+        sender=sender,
+        type=type,
+        title=title,
+        content=content,
+        URL=URL,
+    )
+    return new_notification
 
 
 @login_required(redirect_field_name='origin')
@@ -2104,3 +2109,317 @@ def notifications(request):
         list(undone_set.union(undone_set).order_by("-start_time")))
 
     return render(request, "notifications.html", locals())
+
+
+# 新建组织 or 修改新建组织信息
+@login_required(redirect_field_name='origin')
+def addOrgnization(request):
+    """
+    新建组织，首先是由check_neworg_request（）检查输入的合法性，再存储申请信息到Preorgnization的一个实例中
+    之后便是创建给对应审核老师的通知
+    """
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect('/index/')
+    me = get_person_or_org(request.user)
+    html_display['is_myself'] = True
+
+    try:
+        get_post = request.get_full_path().split("?")[1].split("&")
+        get_post = {i.split("=")[0]: i.split("=")[1] for i in get_post}
+        edit = 1
+    except:
+        edit = 0
+    if edit:  # 第一次打开页面信息的准备
+        try:  # 获取申请信息
+            id = int(get_post['neworg_id'])  # 新建组织ID
+            notification_id = int(get_post['notifi_id'])  # 通知ID
+            preorg = Preorgnization.objects.get(id=id)
+        except:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
+            return redirect('/notifications/', locals())
+        comments = Org_comment.objects.filter(preorg=preorg).order_by('-time')  # 加载评论
+        html_display['oname'] = preorg.oname
+        html_display['otype'] = preorg.otype.otype_id
+        html_display['pos'] = preorg.pos
+        html_display['introduction'] = preorg.introduction
+        html_display['application'] = preorg.application
+
+    if request.method == "POST" and request.POST:
+
+        if request.POST.get('comment') != None:  # 新建评论信息，并保存
+            text = str(request.POST.get('comment'))
+            try:
+                Org_comment.objects.create(preorg=preorg, commentator=request.user, text=text)
+            except:
+                html_display['warn_code'] = 2
+                html_display['warn_message'] = "新建评论失败。请联系管理员"
+
+        else:
+
+            # 参数合法性检查
+            context = dict()
+            context = utils.check_neworg_request(request)  # check
+            if context['warn_code'] != 0:
+                html_display['warn_code'] = context['warn_code']
+                html_display['warn_message'] = "新建组织申请失败。" + context['warn_msg']
+                return render(request, "orgnization_add.html", locals())
+
+            # 新建组织申请
+            if edit == 0:
+
+                try:
+                    with transaction.atomic():
+                        new_org = Preorgnization.objects.create(oname=context['oname'], otype=context['otype'],
+                                                                pos=context['pos'])
+                        new_org.introduction = context['introduction']
+                        new_org.avatar = context['avatar']
+                        new_org.application = context['application']
+                        new_org.save()
+                except:
+                    html_display['warn_code'] = 3
+                    html_display['warn_message'] = "创建预备组织信息失败。请检查输入or联系管理员"
+                    return render(request, "orgnization_add.html", locals())
+
+                try:
+                    with transaction.atomic():
+                        content = "新建组织申请！"
+                        username = local_dict["audit_teacher"]["Neworg"]  # 在local_json.json新增审批人员信息,暂定为YPadmin
+                        Auditor = User.objects.get(username=username)
+
+                        URL = ""
+                        new_notification = notification_create(Auditor, request.user,
+                                                               Notification.NotificationType.NEEDDO,
+                                                               Notification.NotificationTitle.VERIFY_INFORM, content,
+                                                               URL)
+
+                        URL = "/auditOrgnization?neworg_id={id}&notifi_id={nid}".format(id=new_org.id,
+                                                                                        nid=new_notification.id)
+                        new_notification.URL = URL
+                        new_notification.save()
+
+                except:
+                    html_display['warn_code'] = 4
+                    html_display['warn_message'] = "创建通知失败。请检查输入or联系管理员"
+                    return render(request, "orgnization_add.html", locals())
+
+                # 成功新建组织申请
+                html_display['warn_code'] = 1989
+                html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
+                return render(request, "orgnization_add.html", locals())
+
+
+            # 修改组织申请
+            else:
+                # 修改信息
+                try:
+                    with transaction.atomic():
+                        preorg.oname = context['oname']
+                        preorg.otype = context['otype']
+                        preorg.introduction = context['introduction']
+                        preorg.avatar = context['avatar']
+                        preorg.application = context['application']
+                        preorg.save()
+                except:
+                    html_display['warn_code'] = 5
+                    html_display['warn_message'] = "修改申请失败。请检查输入or联系管理员"
+                    return render(request, "orgnization_add.html", locals())
+
+                # 发送通知
+                try:
+                    with transaction.atomic():
+                        content = "新建组织申请！"
+                        username = local_dict["audit_teacher"]["Neworg"]  # 在local_json.json新增审批人员信息,暂定为YPadmin
+                        Auditor = User.objects.get(username=username)
+
+                        URL = ""
+                        new_notification = notification_create(Auditor, request.user,
+                                                               Notification.NotificationType.NEEDDO,
+                                                               Notification.NotificationTitle.VERIFY_INFORM, content,
+                                                               URL)
+
+                        URL = "/auditOrgnization?neworg_id={id}&notifi_id={nid}".format(id=preorg.id,
+                                                                                        nid=new_notification.id)
+                        new_notification.URL = URL
+                        new_notification.save()
+                except:
+                    html_display['warn_code'] = 4
+                    html_display['warn_message'] = "创建通知失败。请检查输入or联系管理员"
+                    return render(request, "orgnization_add.html", locals())
+                context = notification_status_change(notification_id)
+                # 成功新建组织申请
+                html_display['warn_code'] = 1989
+                html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
+                if context['warn_code']!=0:
+                    html_display['warn_message'] = context['warn_message']
+                return redirect('/notifications/', locals())
+
+
+    return render(request, "orgnization_add.html", locals())
+
+
+# 修改和审批申请新建组织的信息，只用该函数即可
+@login_required(redirect_field_name='origin')
+def auditOrgnization(request):
+    """
+    对于审核老师老师：第一次进入的审核，如果申请需要修改，则有之后的下一次审核等
+    对于申请的学生来说，通知
+    """
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect('/index/')
+    me = get_person_or_org(request.user)
+    html_display['is_myself'] = True
+    html_display['warn_code'] = 0
+
+    get_post = request.get_full_path().split("?")[1].split("&")
+    get_post = {i.split("=")[0]: i.split("=")[1] for i in get_post}
+    try:  # 获取申请信息
+        id = int(get_post['neworg_id'])  # 新建组织ID
+        notification_id = int(get_post['notifi_id'])  # 通知ID
+        preorg = Preorgnization.objects.get(id=id)
+    except:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
+        return redirect('/notifications/', locals())
+
+    if request.method == "POST" and request.POST:
+        if request.POST.get('comment') != None:  # 新建评论信息，并保存
+            text = str(request.POST.get('comment'))
+            try:
+                Org_comment.objects.create(preorg=preorg, commentator=request.user, text=text)
+            except:
+                html_display['warn_code'] = 2
+                html_display['warn_message'] = "新建评论失败。请联系管理员"
+        # 对于审核老师来说，有三种操作，通过，申请需要修改和拒绝
+        else:
+            submit = int(request.POST.get('submit', -1))
+
+            if submit == 1:  # 修改
+                try:  # 发送给申请者的需要修改通知
+                    with transaction.atomic():
+
+                        content = "新建组织申请信息需要修改！"
+                        receiver = preorg.pos  # 通知接收者
+                        URL = ""
+                        new_notification = notification_create(request.user, receiver,
+                                                               Notification.NotificationType.NEEDDO,
+                                                               Notification.NotificationTitle.VERIFY_INFORM, content,
+                                                               URL)
+                        URL = "/addOrgnization/?neworg_id={id}&notifi_id={nid}".format(id=preorg.id,
+                                                                                       nid=new_notification.id)
+                        new_notification.URL = URL
+                        new_notification.save()
+                except:
+                    html_display['warn_code'] = 6
+                    html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
+                    return render(request, "audit_orgnization.html", locals())
+                context = notification_status_change(notification_id)
+                html_display['warn_code'] = 1989
+                html_display['warn_message'] = context['warn_message']
+                return redirect('/notifications/', locals())
+            if submit == 2:  # 通过
+
+                try:
+                    with transaction.atomic():  # 新建组织
+
+                        username = preorg.oname  # 组织的代号，应为 zz000 ，后期需要修改
+
+                        user = User.objects.create(username=username)
+                        password = local_dict["testword"]["test"]
+                        user.set_password(password)  # 统一密码
+                        user.save()
+
+                        org = Organization.objects.create(
+                            organization_id=user, otype=preorg.otype
+                        )  # 实质创建组织
+                        org.oname = preorg.oname
+                        org.YQPoint = 0.0
+                        org.introduction = preorg.introduction
+                        org.avatar = preorg.avatar
+                        org.save()
+
+                        charger = get_person_or_org(preorg.pos)  # 负责人
+                        pos = Position.objects.create(person=charger, org=org)
+                        pos.save()
+                except:
+                    html_display['warn_code'] = 4
+                    html_display['warn_message'] = "创建组织失败。请联系管理员！"
+                    return render(request, "audit_orgnization.html", locals())
+
+                try:  # 发送给申请者的通过通知
+                    with transaction.atomic():
+                        content = "新建组织申请已通过，组织代号为 “{username}” ，初始密码为 “{password}” ，请尽快修改密码。" \
+                            .format(username=username, password=password)
+                        receiver = preorg.pos  # 通知接收者
+                        URL = "/notifications/"
+
+                        # 如果老师另留有评论的话,将评论放在content里
+                        comments = Org_comment.objects.filter(preorg=preorg)
+                        if len(comments):
+                            text = ""
+                            for comment in comments:
+                                text += comment.text
+                            content += " 老师给你留言啦："
+                            content += text
+
+                        notification_create(request.user, receiver, Notification.NotificationType.NEEDREAD,
+                                            Notification.NotificationTitle.VERIFY_INFORM, content, URL)
+                        preorg.status = preorg.Preorgstatus.CANCELED
+                except:
+                    html_display['warn_code'] = 5
+                    html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
+                    return render(request, "audit_orgnization.html", locals())
+
+                context = notification_status_change(notification_id)
+                # 成功新建组织申请
+                html_display['warn_code'] = 1989
+                html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
+                if context['warn_code'] != 0:
+                    html_display['warn_message'] = context['warn_message']
+                return redirect('/notifications/', locals())
+            elif submit == 3:  # 拒绝
+                try:  # 发送给申请者的拒绝通知
+                    with transaction.atomic():
+                        content = "很遗憾，新建组织申请未通过！"
+                        receiver = preorg.pos  # 通知接收者
+                        URL = "/notifications/"
+
+                        # 如果老师另留有评论的话,将评论放在content里
+                        comments = Org_comment.objects.filter(preorg=preorg)
+                        if len(comments):
+                            text = ""
+                            for comment in comments:
+                                text += comment.text
+                            content += " 老师给你的留言请查收："
+                            content += text
+
+                        notification_create(request.user, receiver, Notification.NotificationType.NEEDREAD,
+                                            Notification.NotificationTitle.VERIFY_INFORM, content, URL)
+                        preorg.status = preorg.Preorgstatus.CANCELED
+                except:
+                    html_display['warn_code'] = 5
+                    html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
+                    return render(request, "audit_orgnization.html", locals())
+
+                context = notification_status_change(notification_id)
+                # 成功新建组织申请
+                html_display['warn_code'] = 1989
+                html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
+                if context['warn_code'] != 0:
+                    html_display['warn_message'] = context['warn_message']
+                return redirect('/notifications/', locals())
+            else:
+                html_display['warn_code'] = 3
+                html_display['warn_message'] = "系统出现问题，请联系管理员"
+                return redirect('/notifications/', locals())
+
+    comments = Org_comment.objects.filter(preorg=preorg).order_by('-time')  # 加载评论
+    html_display['oname'] = preorg.oname
+    html_display['otype'] = preorg.otype
+    html_display['pos'] = preorg.pos
+    html_display['introduction'] = preorg.introduction
+    html_display['application'] = preorg.application
+
+    return render(request, "audit_orgnization.html", locals())
