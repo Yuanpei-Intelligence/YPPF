@@ -2214,49 +2214,11 @@ def apply_position(request, oid=None):
         apply_type = request.POST.get("apply_type", "JOIN")
         apply_pos = int(request.POST.get("apply_pos", 10))
 
-    warn_duplicate_message = "There has already been an application of this state!"
-
     try:
-        with transaction.atomic():
-            if apply_type == "JOIN":
-                apply_type = Position.ApplyType.JOIN
-                application, created = Position.objects.activated().get_or_create(
-                    person=me, org=org, apply_type=apply_type, apply_pos=apply_pos
-                )
-                assert created, warn_duplicate_message
-            elif apply_type == "WITHDRAW":
-                application = (
-                    Position.objects.activated()
-                    .select_for_update()
-                    .get(person=me, org=org, status=Position.Status.INSERVICE)
-                )
-                assert (
-                    application.apply_type != Position.ApplyType.WITHDRAW
-                ), warn_duplicate_message
-                application.apply_type = Position.ApplyType.WITHDRAW
-            elif apply_type == "TRANSFER":
-                application = (
-                    Position.objects.activated()
-                    .select_for_update()
-                    .get(person=me, org=org, status=Position.Status.INSERVICE)
-                )
-                assert (
-                    application.apply_type != Position.ApplyType.TRANSFER
-                ), warn_duplicate_message
-                application.apply_type = Position.ApplyType.TRANSFER
-                application.apply_pos = int(apply_pos)
-                assert (
-                    application.apply_pos < application.pos
-                ), "TRANSFER must apply for higher position!"
-            else:
-                raise ValueError(
-                    f"Not available attributes for apply_type: {apply_type}"
-                )
-            application.apply_status = Position.ApplyStatus.PENDING
-            application.save()
+        Position.objects.create_application(me, org, apply_type, apply_pos)
     except Exception as e:
         print(e)
-        return redirect(f"/orginfo/{org.oname}")
+        return redirect(f"/orginfo/{org.oname}?warn_code=1&warn_message={e}")
 
     contents = [f"{apply_type}申请已提交审核", f"{apply_type}申请审核"]
     notification_create(
