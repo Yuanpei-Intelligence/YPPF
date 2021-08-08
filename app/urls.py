@@ -31,13 +31,14 @@ urlpatterns = [
     # re_path("^org([0-9]{2})",views.org_spec,name="org_spec"),
     path("getStuImg", views.get_stu_img, name="get_stu_img"),
     path("transPage/<str:rid>", views.transaction_page, name="transPage"),
+    path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"),
     path("startTrans/", views.start_transaction, name="startTrans"),
-    #path("confirmTrans/", views.confirm_transaction, name="confirmTrans"),
-    #path(
+    # path("confirmTrans/", views.confirm_transaction, name="confirmTrans"),
+    # path(
     #    "confirmTrans/<int:tid>/<int:reject>",
     #    views.confirm_transaction,
     #    name="confirmTrans",
-    #),
+    # ),
     path("applyActivity/<str:aid>", views.applyActivity, name="applyActivity"),
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
     path("showActivities/", views.showActivities, name="showActivities"),
@@ -48,9 +49,9 @@ urlpatterns = [
     path("subscribeActivities/", views.subscribeActivities, name="subscribeActivities"),
     path("save_subscribe_status", views.save_subscribe_status, name="save_subscribe_status"),
     path("notifications/", views.notifications, name="notifications"),
-    path("addOrgnization/",views.addOrgnization,name="addOrgnization"),
-    path("auditOrgnization/",views.auditOrgnization,name="auditOrgnization"),
+    path("personnelMobilization/", views.personnel_mobilization, name="personnel_mobilization"),
+    path("addOrgnization/", views.addOrgnization, name="addOrgnization"),
+    path("auditOrgnization/", views.auditOrgnization, name="auditOrgnization"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
