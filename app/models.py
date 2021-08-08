@@ -1,5 +1,9 @@
+<<<<<<< HEAD
 from django.db import models
 from django.db.models.enums import Choices
+=======
+from django.db import models, transaction
+>>>>>>> d474936360fd16e151ea7e3d592c34f540662be8
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
@@ -196,24 +200,71 @@ class Organization(models.Model):
 
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
-        super(Organization, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
 
 class PositionManager(models.Manager):
     def activated(self):
-        # 选择学年相同，并且学期相同或者覆盖的
-        return self.filter(in_year=int(local_dict["semester_data"]["year"])).filter(
-            in_semester__contains=local_dict["semester_data"]["semester"]
+        return self.filter(
+            in_year=int(local_dict["semester_data"]["year"]),
+            in_semester__contains=local_dict["semester_data"]["semester"],
         )
+
+    def create_application(self, person, org, apply_type, apply_pos):
+        warn_duplicate_message = "There has already been an application of this state!"
+        with transaction.atomic():
+            if apply_type == "JOIN":
+                apply_type = Position.ApplyType.JOIN
+                application, created = self.activated().get_or_create(
+                    person=person, org=org, apply_type=apply_type, apply_pos=apply_pos
+                )
+                assert created, warn_duplicate_message
+            elif apply_type == "WITHDRAW":
+                application = (
+                    self.activated()
+                    .select_for_update()
+                    .get(person=person, org=org, status=Position.Status.INSERVICE)
+                )
+                assert (
+                    application.apply_type != Position.ApplyType.WITHDRAW
+                ), warn_duplicate_message
+                application.apply_type = Position.ApplyType.WITHDRAW
+            elif apply_type == "TRANSFER":
+                application = (
+                    self.activated()
+                    .select_for_update()
+                    .get(person=person, org=org, status=Position.Status.INSERVICE)
+                )
+                assert (
+                    application.apply_type != Position.ApplyType.TRANSFER
+                ), warn_duplicate_message
+                application.apply_type = Position.ApplyType.TRANSFER
+                application.apply_pos = int(apply_pos)
+                assert (
+                    application.apply_pos < application.pos
+                ), "TRANSFER must apply for higher position!"
+            else:
+                raise ValueError(
+                    f"Not available attributes for apply_type: {apply_type}"
+                )
+            application.apply_status = Position.ApplyStatus.PENDING
+            application.save()
 
 
 class Position(models.Model):
-    """
-    主席、部长、党支书
-    副主席、副部长
-    顾问
-    部员、干事
-    老师、助教、学生（课程）
+    """ 职务
+    职务相关：
+        - person: 自然人
+        - org: 组织
+        - pos: 职务等级
+        - status: 职务状态
+        - show_post: 是否公开职务
+        - in_year: 学年
+        - in_semester: 学期
+    人事变动申请相关：
+        - apply_type: 申请类型
+        - apply_status: 申请状态
+        - apply_pos: 申请职务等级
     """
 
     class Meta:
@@ -338,6 +389,10 @@ class Activity(models.Model):
         threeday = (2, "三天")
         oneweek = (3, "一周")
 
+    class EndBeforeHours:
+        prepare_times = [1, 24, 72, 168]
+
+
     endbefore = models.SmallIntegerField(
         "报名截止于", choices=EndBefore.choices, default=EndBefore.oneday
     )
@@ -355,7 +410,6 @@ class Activity(models.Model):
     bidding = models.BooleanField("是否投点竞价", default=False)
     YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
     budget = models.FloatField("预算", default=0.0)
-
 
     # 允许是正无穷, 可以考虑用INTINF
     capacity = models.IntegerField("活动最大参与人数", default=100)
@@ -412,7 +466,7 @@ class TransferRecord(models.Model):
         WAITING = (1, "待确认")
         REFUSED = (2, "已拒绝")
         SUSPENDED = (3, "已终止")
-        REDUND = (4, "已退回")
+        REFUND = (4, "已退回")
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
 
