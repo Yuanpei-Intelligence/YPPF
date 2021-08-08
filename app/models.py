@@ -337,6 +337,10 @@ class Activity(models.Model):
         threeday = (2, "三天")
         oneweek = (3, "一周")
 
+    class EndBeforeHours:
+        prepare_times = [1, 24, 72, 168]
+
+
     endbefore = models.SmallIntegerField(
         "报名截止于", choices=EndBefore.choices, default=EndBefore.oneday
     )
