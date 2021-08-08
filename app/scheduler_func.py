@@ -102,13 +102,13 @@ def add_YQPoints_distribute(dtype):
                         weeks=distributer.type, next_run_time=distributer.start_time, args=[distributer])
 
 
-def YQPoint_Distributions(request):
+def all_YQPoint_Distributions(request):
     '''
         一个页面，展现当前所有的YQPointDistribute类
     '''
-    if not request.user.is_superuser:
-        message =  "请先以超级账户登录后台后再操作！"
-        return render(request, "debugging.html", {"message": message})
+    # if not request.user.is_superuser:
+    #     message =  "请先以超级账户登录后台后再操作！"
+    #     return render(request, "debugging.html", {"message": message})
     context = dict()
     context['YQPoint_Distributions'] = YQPointDistribute.objects.all()
     return render(request, "YQP_Distributions.html", context)
@@ -121,9 +121,9 @@ def YQPoint_Distribution(request, dis_id):
 
         如果之前有相同类型的实例存在，注册会失败！
     ''' 
-    if not request.user.is_superuser:
-        message =  "请先以超级账户登录后台后再操作！"
-        return render(request, "debugging.html", {"message": message})
+    # if not request.user.is_superuser:
+    #     message =  "请先以超级账户登录后台后再操作！"
+    #     return render(request, "debugging.html", {"message": message})
     dis = YQPointDistribute.objects.get(id=dis_id)
     dis_form = YQPointDistributionForm(instance=dis)
     if request.method == 'POST':
@@ -159,10 +159,24 @@ def new_YQP_distribute(request):
             dis_form.save()
             if dis.status == True:
                 # 在这里注册scheduler
+                print("success")
                 try:
                     add_YQPoints_distribute(dis.type)
                 except:
                     print("注册定时任务失败，可能是有多个status为Yes的实例")
-                    return redirect("new_YQP_distribution")
         return redirect("YQPoint_Distributions")
     return render(request, "new_YQP_distribution.html", {"dis_form": dis_form})
+
+
+def YQPoint_Distributions(request):
+    if not request.user.is_superuser:
+        message =  "请先以超级账户登录后台后再操作！"
+        return render(request, "debugging.html", {"message": message})
+    dis_id = request.GET.get("dis_id", "") 
+    if dis_id == "":
+        return all_YQPoint_Distributions(request)
+    elif dis_id == "new":
+        return new_YQP_distribute(request)
+    else:
+        dis_id = int(dis_id)
+        return YQPoint_Distribution(request, dis_id)
