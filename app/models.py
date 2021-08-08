@@ -43,6 +43,7 @@ class NaturalPerson(models.Model):
     telephone = models.CharField("电话", max_length=20, null=True, blank=True)
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
+    wallpaper = models.ImageField(upload_to=f"avatar/", blank=True)
     first_time_login = models.BooleanField(default=True)
     objects = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
@@ -75,7 +76,9 @@ class NaturalPerson(models.Model):
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
+    show_class = models.BooleanField(default=True)
     show_major = models.BooleanField(default=True)
+    show_grade = models.BooleanField(default=True)
     show_dorm = models.BooleanField(default=False)
 
     # 注意：这是不订阅的列表！！
