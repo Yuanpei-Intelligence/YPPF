@@ -43,6 +43,7 @@ class NaturalPerson(models.Model):
     telephone = models.CharField("电话", max_length=20, null=True, blank=True)
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
+    wallpaper = models.ImageField(upload_to=f"avatar/", blank=True)
     first_time_login = models.BooleanField(default=True)
     objects = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
@@ -75,7 +76,9 @@ class NaturalPerson(models.Model):
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
+    show_class = models.BooleanField(default=True)
     show_major = models.BooleanField(default=True)
+    show_grade = models.BooleanField(default=True)
     show_dorm = models.BooleanField(default=False)
 
     # 注意：这是不订阅的列表！！
@@ -479,15 +482,17 @@ class Participant(models.Model):
     activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
     person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
 
-    class AttendStatus(models.IntegerChoices):
-        APPLYING = 0  # 申请中
-        APLLYFAILED = 1  # 申请失败
-        APLLYSUCCESS = 2  # 已报名
-        ATTENDED = 3  # 已参与
-        UNATTENDED = 4  # 未参与
-        CANCELED = 5  # 放弃，如果学生取消活动，则设置这里
+    class AttendStatus(models.TextChoices):
+        APPLYING = '申请中'
+        APLLYFAILED = '申请失败'
+        APLLYSUCCESS = '已报名'
+        ATTENDED = '已参与'
+        UNATTENDED = '未参与'
+        CANCELED = '放弃'
 
-    status = models.IntegerField("学生参与活动状态", choices=AttendStatus.choices, default=0)
+    status = models.CharField(
+        '学生参与活动状态',
+         choices=AttendStatus.choices, default=AttendStatus.APPLYING, max_length=32)
 
 
 class Notification(models.Model):
