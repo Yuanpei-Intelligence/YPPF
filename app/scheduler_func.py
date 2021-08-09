@@ -106,9 +106,6 @@ def all_YQPoint_Distributions(request):
     '''
         一个页面，展现当前所有的YQPointDistribute类
     '''
-    # if not request.user.is_superuser:
-    #     message =  "请先以超级账户登录后台后再操作！"
-    #     return render(request, "debugging.html", {"message": message})
     context = dict()
     context['YQPoint_Distributions'] = YQPointDistribute.objects.all()
     return render(request, "YQP_Distributions.html", context)
@@ -121,9 +118,6 @@ def YQPoint_Distribution(request, dis_id):
 
         如果之前有相同类型的实例存在，注册会失败！
     ''' 
-    # if not request.user.is_superuser:
-    #     message =  "请先以超级账户登录后台后再操作！"
-    #     return render(request, "debugging.html", {"message": message})
     dis = YQPointDistribute.objects.get(id=dis_id)
     dis_form = YQPointDistributionForm(instance=dis)
     if request.method == 'POST':
