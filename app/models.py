@@ -1,9 +1,4 @@
-<<<<<<< HEAD
-from django.db import models
-from django.db.models.enums import Choices
-=======
 from django.db import models, transaction
->>>>>>> d474936360fd16e151ea7e3d592c34f540662be8
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
