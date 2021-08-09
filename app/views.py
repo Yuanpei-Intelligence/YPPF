@@ -247,15 +247,16 @@ def stuinfo(request, name=None):
     if not valid:
         return redirect("/logout/")
 
+    try:
+        oneself = NaturalPerson.objects.activated().get(person_id=user)
+    except:
+        return redirect("/welcome/")
+
     if name is None:
         if user_type == "Organization":
             return redirect("/welcome/")
         else:
             assert user_type == "Person"
-            try:
-                oneself = NaturalPerson.objects.activated().get(person_id=user)
-            except:
-                return redirect("/welcome/")
             full_path = request.get_full_path()
             append_url = "" if ("?" not in full_path) else "?" + full_path.split("?")[1]
             return redirect("/stuinfo/" + oneself.name + append_url)
@@ -270,12 +271,8 @@ def stuinfo(request, name=None):
             person = person[0]
         else:  # 有很多人，这时候假设加号后面的是user的id
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
-                if (
-                    user_type == "Person"
-                    and NaturalPerson.objects.activated().get(person_id=user).name
-                    == name
-                ):
-                    person = NaturalPerson.objects.activated().get(person_id=user)
+                if user_type == "Person"and oneself.name == name:
+                    person = oneself
                 else:  # 不是自己，信息不全跳转搜索
                     return redirect("/search?Query=" + name)
             else:
@@ -290,16 +287,68 @@ def stuinfo(request, name=None):
         is_myself = user_type == "Person" and person.person_id == user  # 用一个字段储存是否是自己
         html_display["is_myself"] = is_myself  # 存入显示
 
-        # 处理被搜索人的信息，这里应该和“用户自己”区分开
-        join_pos_id_list = Position.objects.activated().filter(
-            Q(person=person) & Q(show_post=True)
-        )
+        # 制作属于组织的卡片（头像，名称（+链接），介绍，职位）
+        person_pos_infos = Position.objects.activated().filter(
+            Q(person=person) & Q(show_post=True))
+        oneself_org_ids = Position.objects.activated().filter(
+            Q(person=oneself) & Q(show_post=True)).values('org')
+        org_is_same = [
+            id in oneself_org_ids for id in person_pos_infos.values('org')]
+        join_org_info = Organization.objects.filter(
+            id__in=person_pos_infos.values('org'))  # ta属于的组织
+        org_avas = [utils.get_user_ava(org, "organization")
+                    for org in join_org_info]
+        org_poss = person_pos_infos.values('pos')
+        org_statuss = person_pos_infos.values('status')
+        html_display['org_info'] = list(zip(
+            join_org_info, org_avas, org_poss, org_statuss, org_is_same))
+        html_display['org_len'] = len(html_display['org_info'])
 
-        # html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
+        # for activity in Activity.objects.all():
+        #     print(activity)
+        #     Participant.objects.create(activity_id=activity, person_id=person)
+
+        # 制作参与活动的卡片（时间，名称（+链接），组织，地点，介绍，状态）
+        participants = Participant.objects.filter(person_id=person.id)
+        activities_me = Participant.objects.filter(
+            person_id=person.id).values('activity_id')
+        activity_is_same = [
+            participant in activities_me for participant in participants.values('activity_id')]
+        activities = Activity.objects.filter(
+            id__in=participants.values('activity_id'))
+        participate_status_list = participants.values('status')
+        participate_status_list = [info['status']
+                                   for info in participate_status_list]
+        status_color = {
+            Activity.Status.REVIEWING: 'primary',
+            Activity.Status.CANCELED: 'secondary',
+            Activity.Status.APPLYING: 'info',
+            Activity.Status.WAITING: 'warning',
+            Activity.Status.PROGRESSING: 'success',
+            Activity.Status.END: 'danger',
+
+            Participant.AttendStatus.APPLYING: 'primary',
+            Participant.AttendStatus.APLLYFAILED: 'danger',
+            Participant.AttendStatus.APLLYSUCCESS: 'info',
+            Participant.AttendStatus.ATTENDED: 'success',
+            Participant.AttendStatus.UNATTENDED: 'warning',
+            Participant.AttendStatus.CANCELED: 'secondary'
+        }
+        activity_color_list = [status_color[activity.status]
+                               for activity in activities]
+        attend_color_list = [status_color[status]
+                             for status in participate_status_list]
+        activity_info = list(
+            zip(activities, participate_status_list, activity_is_same, activity_color_list, attend_color_list))
+        activity_info.sort(
+            key=lambda a: a[0].start, reverse=True)
+        html_display['activity_info'] = activity_info
+        html_display['activity_len'] = len(html_display['activity_info'])
 
         # 呈现信息
         # 首先是左边栏
-        html_display = utils.get_user_left_narbar(person, is_myself, html_display)
+        html_display = utils.get_user_left_narbar(
+            person, is_myself, html_display)
 
         try:
             html_display["warn_code"] = int(
@@ -307,7 +356,8 @@ def stuinfo(request, name=None):
             )  # 是否有来自外部的消息
         except:
             return redirect("/welcome/")
-        html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+        html_display["warn_message"] = request.GET.get(
+            "warn_message", "")  # 提醒的具体内容
 
         modpw_status = request.GET.get("modinfo", None)
         if modpw_status is not None and modpw_status == "success":
@@ -316,8 +366,15 @@ def stuinfo(request, name=None):
 
         # 存储被查询人的信息
         context = dict()
-        context["userinfo"] = person
+
+        context['person'] = person
+        
+        def gender2title(g): return '他' if g == 0 else '她'
+        context['title'] = '我' if is_myself else gender2title(
+            person.gender) if person.show_gender else 'ta'
+
         context["avatar_path"] = utils.get_user_ava(person, "Person")
+        context["wallpaper_path"] = utils.get_user_wallpaper(person)
 
         html_display["title_name"] = "User Profile"
         html_display["narbar_name"] = "个人主页"
