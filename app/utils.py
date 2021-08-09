@@ -45,6 +45,10 @@ def get_user_ava(obj, user_type):
             return settings.MEDIA_URL + "avatar/org_default.png"
 
 
+def get_user_wallpaper(person):
+    return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/default.jpg")
+
+
 def get_user_left_narbar(person, is_myself, html_display):  # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
     #assert (
     #        "is_myself" in html_display.keys()
@@ -83,13 +87,13 @@ def check_ac_request(request):
     act_start = request.POST.get("actstart")  # 活动报名时间
     act_end = request.POST.get("actend")  # 活动报名结束时间
     prepare_scheme = request.POST.get("prepare_scheme")
+    context['need_check'] = False
 
     # edit 不能改预算和报名方式
     if not edit:
         try:
             budget = float(request.POST["budget"])
             context['budget'] = budget
-            context['need_check'] = False
             if context['budget'] > local_dict['thresholds']['activity_budget']:
                 context['need_check'] = True
         except:
@@ -109,7 +113,7 @@ def check_ac_request(request):
     except:
         if not edit:
             context['warn_code'] = 1
-            context['warn_msg'] = "Unexpected exception. If you are not doing it deliberately, please contact the administrator to report this bug."
+            context['warn_msg'] = "非预期错误，请联系管理员"
             return context
 
     # 人数限制
@@ -123,51 +127,52 @@ def check_ac_request(request):
             capacity = int(request.POST["maxpeople"])
         if capacity <= 0:
             context['warn_code'] = 1
-            context['warn_msg'] = "The number of participants must exceed 0."
+            context['warn_msg'] = "人数限制应当大于 0。"
             return context
         context['capacity'] = capacity
     except:
         if not edit:
             context['warn_code'] = 1
-            context['warn_msg'] = "The number of participants must be an integer."
+            context['warn_msg'] = "人数限制必须是一个整数。"
             return context
 
     # 价格
     try:
         aprice = float(request.POST["aprice"])
+        assert int(aprice * 10) / 10 == aprice
         if aprice < 0:
             context['warn_code'] = 1
-            context['warn_msg'] = "The price should be no less than 0!"
+            context['warn_msg'] = "价格应该大于 0。"
             return context
         context['aprice'] = aprice
     except:
         if not edit:
             context['warn_code'] = 1
-            context['warn_msg'] = "The price must be a floating point number one decimal place"
+            context['warn_msg'] = "价格必须是一个单精度浮点数。"
             return context
 
     # 时间
     try:
         act_start = datetime.strptime(act_start, '%m/%d/%Y %H:%M %p')
         act_end = datetime.strptime(act_end, '%m/%d/%Y %H:%M %p')
-
         now_time = datetime.now()
 
         # 创建活动即开始报名
         signup_start = now_time
         signup_end = act_start - timedelta(hours=prepare_time)
 
-        print('now', now_time)
-        print('end', signup_end)
+        # print('now', now_time)
+        # print('end', signup_end)
 
         if signup_start >= signup_end:
             context['warn_code'] = 1
-            context['warn_msg'] = "No enough time to prepare."
+            context['warn_msg'] = "没有足够的时间准备活动。"
             return context
 
-        if now_time + timedelta(days=30) < act_start == False:
+
+        if now_time + timedelta(days=30) < act_start:
             context['warn_code'] = 1
-            context['warn_msg'] = "The activity has to be in a month! "
+            context['warn_msg'] = "活动应该在一个月之内。"
             return context
             
         context['signup_start'] = signup_start
@@ -178,7 +183,7 @@ def check_ac_request(request):
     except:
         if not edit:
             context['warn_code'] = 1
-            context['warn_msg'] = "you have sent a wrong time form!"
+            context['warn_msg'] = "错误的时间格式。"
             return context
 
     try:
@@ -192,10 +197,16 @@ def check_ac_request(request):
         context['aname'] = str(request.POST["aname"])  # 活动名称
         context['content'] = str(request.POST["content"])  # 活动内容
         context['location'] = str(request.POST["location"])  # 活动地点
+        if context.get('aname'):
+            assert len(context['aname']) > 0
+        if context.get('content'):
+            assert len(context['content']) > 0
+        if context.get('location'):
+            assert len(context['location']) > 0
     except:
         if not edit:
             context['warn_code'] = 1
-            context['warn_msg'] = "请检查您的输入是否正确。"
+            context['warn_msg'] = "请确认已输入活动名称/地点/简介。"
     return context
 
 

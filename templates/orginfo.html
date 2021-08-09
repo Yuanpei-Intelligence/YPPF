@@ -13,16 +13,17 @@
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
         <div class="layout-px-spacing">
+
             {% if html_display.warn_code == 2 %}
             <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
             {% elif html_display.warn_code == 1%}
             <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
             {% endif %}
 
-
             <div class="row ">
 
                 <div class="col-xl-8 col-lg-6 col-md-7 col-sm-12 layout-top-spacing">
+
                     <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
                         <li class="nav-item">
                             <a class="nav-link active" href="#organization_info" data-toggle="tab">
@@ -38,6 +39,7 @@
                 
                     </ul>
                     <div id="myTabContent" class="tab-content">
+
                         <div class="tab-pane fade in active show" id="organization_info">
                             <div class="user-profile layout-spacing">
                                 <div class="widget-content widget-content-area">
@@ -46,7 +48,6 @@
                                         <h3 class="">Organization</h3>
                                         <br /><br />
                                     </div>
-                
                 
                                     <div class="text-center user-info">
                                         <img src="{{org_avatar_path}}" height="90px" width="90px" alt="avatar">
@@ -71,7 +72,6 @@
                                         {% endif %}
                                     </div>
                                     <div class="user-info-list">
-                
                                         <div class="">
                                             <ul class="contacts-block list-unstyled">
                                                 <li class="contacts-block__item">
@@ -115,6 +115,7 @@
                                 </div>
                             </div>
                         </div>
+
                         <div class="tab-pane fade" id="member_info">
                             <div class="bio layout-spacing">
                                 <div class="widget-content widget-content-area" >
@@ -126,17 +127,13 @@
                                         <div class="row">
                                             {% for member in member_list %}
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
-                
                                                 <div class=" b-skills" style="padding: 5%;">
-                
-                
+
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <h5>
-                                                            <img src={{ member.avatar_path }} width="24"
-                                                                height="24" alt="avatar">
-                                                            <a
-                                                                    href='/stuinfo/{{member.person.name}}'><u>{{member.person.name}}</u></a>
+                                                            <img src={{ member.avatar_path }} width="24" height="24" alt="avatar">
+                                                            <a href='/stuinfo/{{member.person.name}}'><u>{{member.person.name}}</u></a>
                                                             </h5>
                                                         </div>
                                                         <div>
@@ -166,8 +163,6 @@
                                                     </div>
                 
                                                 </div>
-                
-                
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -177,7 +172,6 @@
                             </div>
                         </div>
                     </div>
-                
                 
                 </div>
                 
@@ -262,15 +256,15 @@
                 </div>
 
             </div>
+
             <div class="row ">
+
                 <div class="col-xl-12 col-lg-12 col-md-12 col-sm-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
 
                             <h3 class="">Activities</h3>
 
-                            
-                            
                             <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
                                 <li class="nav-item">
                                     <a class="nav-link active" href="#act0" data-toggle="tab">
@@ -293,85 +287,91 @@
                                         <div class="row">
                                             {% for rec in continuing_activity_list_participantrec %}
                                             <div class="col-12 col-xl-4 col-lg-6 mb-xl-5 mb-5 ">
-                                                <div class="d-flex b-skills">
-                                                    <div class="">
-                                                        <div class="d-flex justify-content-between">
-                                                            <h5>{{rec.act.title}}
-                                                                <!--一个判断：
-                                                                    进行中：
-                                                                        组织：success
-                                                                        个人：本身的状态/报名截止（primary/danger)
-                                                                    报名中：
-                                                                        组织：success
-                                                                        个人：其他状态/未报名（primary/danger/secondary）
-                                                                    等待中：
-                                                                        组织：info
-                                                                        个人：本身的状态/报名截止（primary/danger)
-                                                                    审核中：都是warning
-                                                                -->
-
-                                                                {% if rec.act.status == "审核中" %}
-                                                                    <span class="badge badge-pill badge-warning">{{rec.act.status}}</span>
-                                                                {% else %}
-                                                                    {% if user_type == "Organization" %}
-                                                                        {% if rec.act.status == "等待中" %}
-                                                                            <span class="badge badge-pill badge-info">{{rec.act.status}}</span>
-                                                                        {% else %}
-                                                                            <span class="badge badge-pill badge-success">{{rec.act.status}}</span>
-                                                                        {% endif %}
+                                                <a href="/viewActivity/{{rec.act.id}}">
+                                                    <div class="d-flex b-skills">
+                                                        <div class="text-nowrap" style='overflow: hidden;text-overflow: ellipsis;'>
+                                                            <div class="d-flex justify-content-between">
+                                                                <h5>{{rec.act.title}}
+                                                                    <!--一个判断：
+                                                                        进行中：
+                                                                            组织：success
+                                                                            个人：本身的状态/报名截止（primary/danger)
+                                                                        报名中：
+                                                                            组织：success
+                                                                            个人：其他状态/未报名（primary/danger/secondary）
+                                                                        等待中：
+                                                                            组织：info
+                                                                            个人：本身的状态/报名截止（primary/danger)
+                                                                        审核中：都是warning
+                                                                    -->
+    
+                                                                    {% if rec.act.status == "审核中" %}
+                                                                        <span class="badge badge-pill badge-warning">{{rec.act.status}}</span>
                                                                     {% else %}
-
-                                                                        {% if rec.status == "无记录" %}
-                                                                            {% if rec.act.status == "报名中" %}
-                                                                                <span class="badge badge-pill badge-secondary">未报名</span>
+                                                                        {% if user_type == "Organization" %}
+                                                                            {% if rec.act.status == "等待中" %}
+                                                                                <span class="badge badge-pill badge-info">{{rec.act.status}}</span>
                                                                             {% else %}
-                                                                                <span class="badge badge-pill badge-danger">报名截止</span>
+                                                                                <span class="badge badge-pill badge-success">{{rec.act.status}}</span>
                                                                             {% endif %}
-                                                                        {% elif rec.status == "申请失败" or rec.status == "未参与" or rec.status == "取消" %}
-                                                                            <span class="badge badge-pill badge-primary">rec.status</span>
                                                                         {% else %}
-                                                                            <span class="badge badge-pill badge-primary">rec.status</span>
+    
+                                                                            {% if rec.status == "无记录" %}
+                                                                                {% if rec.act.status == "报名中" %}
+                                                                                    <span class="badge badge-pill badge-secondary">未报名</span>
+                                                                                {% else %}
+                                                                                    <span class="badge badge-pill badge-danger">报名截止</span>
+                                                                                {% endif %}
+                                                                            {% elif rec.status == "申请失败" or rec.status == "未参与" or rec.status == "取消" %}
+                                                                                <span class="badge badge-pill badge-primary">{{rec.status}}</span>
+                                                                            {% else %}
+                                                                                <span class="badge badge-pill badge-primary">{{rec.status}}</span>
+                                                                            {% endif %}
+    
                                                                         {% endif %}
-
+                                                                    {% endif %}
+    
+                                                                </h5>
+                                                            </div>
+    
+                                                            <p>{{rec.act.introduction}}</p>
+                                                            <p>报名结束时间： {{rec.endbefore}}</p>
+                                                            <p>活动开始时间： {{rec.act.start}}</p>
+                                                            <p>已报名/最大人数：{{rec.act.current_participants}}/{{rec.act.capacity}}</p>
+                                                            <div class="row">
+                                                                <div class="col">
+                                                                    <p>价格：{{rec.act.YQPoint}}</p>
+                                                                </div>
+                                                                <div class="col">
+                                                                    <p>地点：{{rec.act.location}}</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        
+                                                        <!-- 加入/退出的按钮
+                                                        {% if html_display.is_myself == True %}
+                                                            <div class="text-right">
+                                                                <a href="/welcome/" class="btn btn-primary btn-sm" role="button">管理</a>
+                                                            </div>
+                                                        {% elif user_type == "Person" %}
+                                                            <div class="text-right">
+                                                                {% if rec.act.status == "报名中" %}
+                                                                    {% if rec.status == "申请中" or rec.status == "已报名" or rec.status == "已参加" %}
+                                                                        <a href="/welcome/" class="btn btn-primary btn-sm" role="button">退出</a>
+                                                                    {% elif rec.status == "无记录" %}
+                                                                        <a href="/welcome/" class="btn btn-primary btn-sm" role="button">加入</a>
+                                                                    {% endif %}
+                                                                {% elif rec.act.status != "审核中" %}
+                                                                    {% if rec.status == "申请中" or rec.status == "已报名" or rec.status == "已参加" %}
+                                                                        <a href="/welcome/" class="btn btn-primary btn-sm" role="button">退出</a>
                                                                     {% endif %}
                                                                 {% endif %}
-
-                                                            </h5>
-                                                        </div>
-
-                                                        <p>{{rec.act.introduction}}</p>
-                                                        <p>报名结束时间： 距活动开始{{rec.act.endbefore}}</p>
-                                                        <p>活动开始时间： {{rec.act.start}}</p>
-                                                        <p>已报名/最大人数：{{rec.act.current_participants}}/{{rec.act.capacity}}</p>
-                                                        <div class="row">
-                                                            <div class="col">
-                                                                <p>价格：{{rec.act.YQPoint}}</p>
                                                             </div>
-                                                            <div class="col">
-                                                                <p>地点：{{rec.act.location}}</p>
-                                                            </div>
-                                                        </div>
+                                                        {% endif %}
+                                                        -->
+                                                        
                                                     </div>
-                                                    {% if html_display.is_myself == True %}
-                                                        <div class="text-right">
-                                                            <a href="/welcome/" class="btn btn-primary btn-sm" role="button">管理</a>
-                                                        </div>
-                                                    {% elif user_type == "Person" %}
-                                                        <div class="text-right">
-                                                            {% if rec.act.status == "报名中" %}
-                                                                {% if rec.status == "申请中" or rec.status == "已报名" or rec.status == "已参加" %}
-                                                                    <a href="/welcome/" class="btn btn-primary btn-sm" role="button">退出</a>
-                                                                {% elif rec.status == "无记录" %}
-                                                                    <a href="/welcome/" class="btn btn-primary btn-sm" role="button">加入</a>
-                                                                {% endif %}
-                                                            {% elif rec.act.status != "审核中" %}
-                                                                {% if rec.status == "申请中" or rec.status == "已报名" or rec.status == "已参加" %}
-                                                                    <a href="/welcome/" class="btn btn-primary btn-sm" role="button">退出</a>
-                                                                {% endif %}
-                                                            {% endif %}
-                                                        </div>
-                                                    {% endif %}
-                                                </div>
+                                                </a>
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -380,18 +380,24 @@
                                 <div id="act1" class="tab-pane fade">
                                     <div class = "bio-skill-box ">
                                         <div class="row">
-                                            {% for act in ended_activity_list %}
+                                            {% for rec in ended_activity_list_participantrec %}
                                             <div class="col-12 col-xl-4 col-lg-6 mb-xl-5 mb-5 ">
                                                 <div class="d-flex b-skills">
                                                     <div class="">
                                                         <div class="d-flex justify-content-between">
-                                                            <h5>{{act.topic}}
-                                                                <span class="badge badge-pill badge-danger">{{act.status}}</span>
+                                                            <h5>{{rec.act.title}}
+                                                                {% if user_type == "Person" and rec.status == "已参与" %}
+                                                                    <span class="badge badge-pill badge-primary">已参与</span>
+                                                                {% elif user_type == "Person" and rec.status == "未参与" %}
+                                                                    <span class="badge badge-pill badge-secondary">未参与</span>
+                                                                {% else %}
+                                                                    <span class="badge badge-pill badge-danger">{{rec.act.status}}</span>
+                                                                {% endif %}
                                                             </h5>
                                                         </div>
 
                                                         <p>{{rec.act.introduction}}</p>
-                                                        <p>报名结束时间： 距活动开始{{rec.act.endbefore}}</p>
+                                                        <p>报名结束时间： {{rec.act.endbefore}}</p>
                                                         <p>活动开始时间： {{rec.act.start}}</p>
                                                         <p>已报名/最大人数：{{rec.act.current_participants}}/{{rec.act.capacity}}</p>
                                                         <div class="row">
@@ -414,9 +420,6 @@
                     </div>
                 </div>
             </div>
-
-
-
         
         </div>
     </div>
@@ -459,3 +462,4 @@
     }
 </script>
 {% endblock %}
+
