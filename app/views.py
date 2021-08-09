@@ -1298,7 +1298,6 @@ def transaction_page(request, rid=None):
                     payer.save()
                     warn_message = "成功发起向" + name + "的转账! 元气值将在对方确认后到账。"
 
-                    # TODO 发送微信消息
                     notification_create(
                         receiver=user,
                         sender=request.user,
@@ -1375,7 +1374,6 @@ def start_transaction(request):
             record.save()
             payer.save()
 
-            # TODO 发送微信消息
 
     except:
         context[
@@ -2322,6 +2320,13 @@ def subscribeActivities(request):
                 "otype__otype_name", flat=True)))
         )
     )
+    class Otype_display:
+        def __init__(self,otype,idx):
+            self.otype = otype
+            self.idx = idx
+        def __str__(self):
+            return self.otype
+    otype_list = [Otype_display(otype,otype_list.index(otype)) for otype in otype_list]
     # 给otype.otype_name排序，不然每次都不一样（后续可以写一个获取所有otype的接口，规定一个排序规则）
     unsubscribe_list = list(
         me.subscribe_list.values_list("organization_id__username", flat=True)

@@ -35,13 +35,14 @@ default_url = settings.LOGIN_URL
 wechat_url = local_dict["url"]["wechat_url"]
 wechat_coder = MySHA256Hasher(local_dict["hash"]["wechat"])
 
+
 def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=True):
     '''底层实现发送到微信，是为了方便设置定时任务'''
     post_data = {
-        "touser" : users,
-        "content" : message,
-        "toall" : True,
-        "secret" : wechat_coder.encode(message)
+        "touser": users,
+        "content": message,
+        "toall": True,
+        "secret": wechat_coder.encode(message)
     }
     if card:
         post_data["card"] = True
@@ -62,19 +63,20 @@ def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=T
         errmsg = "连接api失败"
         response = requests.post(wechat_url, post_data, timeout=TIMEOUT)
         response = response.json()
-        if response["status"] == 200:           # 全部发送成功
+        if response["status"] == 200:                       # 全部发送成功
             return
-        elif response["data"].get("detail"):    # 部分发送失败
+        elif response["data"].get("detail"):                # 部分发送失败
             errinfos = response["data"]["detail"]
             failed = [x[0] for x in errinfos]
-            errmsg = errinfos[0][1]             # 失败原因基本相同，取一个即可
-        elif response.get("errMsg"):
-            errmsg = response["errMsg"]         # 参数等其他传入格式问题
-        # users = failed    # 如果允许重发，则向失败用户重发
+            errmsg = errinfos[0][1]                         # 失败原因基本相同，取一个即可
+        elif response["data"].get("errMsg"):
+            errmsg = response["data"]["errMsg"]             # 参数等其他传入格式问题
+        # users = failed                                    # 如果允许重发，则向失败用户重发
         raise OSError
     except:
         # print(f"第{i+1}次尝试")
         print(f"向企业微信发送失败：失败用户：{failed[:3]}等{len(failed)}人，主要失败原因：{errmsg}")
+
 
 def publish_notification(notification_id):
     '''根据通知id（实际是主键）向通知的receiver发送'''
@@ -92,7 +94,7 @@ def publish_notification(notification_id):
     send_time = send_time.strftime(timeformat)
 
     if len(notification.content) < 120:         # 卡片类型消息最多显示256字（512字节）
-        kws = {"card" : True}               # 因留白等原因，内容120字左右就超出了
+        kws = {"card": True}               # 因留白等原因，内容120字左右就超出了
         message = "\n".join((
             notification.get_title_display(),
             f"发送者：{str(sender)}",
@@ -105,7 +107,7 @@ def publish_notification(notification_id):
             kws["url"] = notification.URL
             kws["btntxt"] = "阅读原文"
     else:                                   # 超出卡片字数范围的消息使用文本格式发送
-        kws = {"card" : False}
+        kws = {"card": False}
         message = "\n".join((
             notification.get_title_display(),
             "",
@@ -120,8 +122,10 @@ def publish_notification(notification_id):
             message += f"\n<a href=\"{notification.URL}\">阅读原文</a>"
         else:
             message += f"\n<a href=\"{default_url}\">点击查看详情</a>"
-    base_send_wechat([notification.receiver.username], message, **kws) # 不使用定时任务请改为这句
+    base_send_wechat([notification.receiver.username],
+                     message, **kws)  # 不使用定时任务请改为这句
     return True
+
 
 def publish_activity(aid, only_activated=False):
     '''根据活动id（实际是主键）向所有订阅该组织信息的学生发送，可以只发给在校学生'''
@@ -131,9 +135,11 @@ def publish_activity(aid, only_activated=False):
         print(f"未找到id为{aid}的活动")
         return False
     org = activity.organization_id
-    subcribers = NaturalPerson.objects.difference(org.unsubsribers)               # flat=True时必须只有一个键
+    subcribers = NaturalPerson.objects.difference(
+        org.unsubsribers)               # flat=True时必须只有一个键
     if only_activated:
-        subcribers = subcribers.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
+        subcribers = subcribers.exclude(
+            status=NaturalPerson.GraduateStatus.GRADUATED)
     subcribers = list(subcribers.values_list("person_id__username", flat=True))
     num = len(subcribers)
     start, finish = activity.start, activity.finish
@@ -144,7 +150,7 @@ def publish_activity(aid, only_activated=False):
     start = start.strftime(timeformat)
     finish = finish.strftime(timeformat)
     if len(activity.content) < 120:         # 卡片类型消息最多显示256字（512字节）
-        kws = {"card" : True}               # 因留白等原因，内容120字左右就超出了
+        kws = {"card": True}               # 因留白等原因，内容120字左右就超出了
         message = "\n".join((
             activity.title,
             f"组织者：{activity.organization_id.oname}",
@@ -157,7 +163,7 @@ def publish_activity(aid, only_activated=False):
             kws["url"] = activity.URL
             kws["btntxt"] = "阅读原文"
     else:                                   # 超出卡片字数范围的消息使用文本格式发送
-        kws = {"card" : False}
+        kws = {"card": False}
         message = "\n".join((
             activity.title,
             "",
@@ -176,11 +182,11 @@ def publish_activity(aid, only_activated=False):
         userids = subcribers[i:i+500]   # 一次最多接受1000个，方便传送只发500个
         if USE_MULTITHREAD:
             # 多线程
-            scheduler.add_job(base_send_wechat, 'date', 
-                args=(userids, message),
-                kwargs=kws,
-                next_run_time=datetime.now() + timedelta(seconds=5+i/100)
-                )
+            scheduler.add_job(base_send_wechat, 'date',
+                              args=(userids, message),
+                              kwargs=kws,
+                              next_run_time=datetime.now() + timedelta(seconds=5+i/100)
+                              )
         else:
-            base_send_wechat(userids, message, **kws) # 不使用定时任务请改为这句
+            base_send_wechat(userids, message, **kws)  # 不使用定时任务请改为这句
     return True
