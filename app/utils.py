@@ -17,7 +17,7 @@ from app.models import (
     TransferRecord,
     Participant,
     Notification,
-    Preorgnization,
+    NewOrgnization,
 )
 
 

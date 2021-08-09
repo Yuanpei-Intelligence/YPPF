@@ -178,7 +178,7 @@ class Organization(models.Model):
         verbose_name_plural = verbose_name
 
     organization_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
-    oname = models.CharField(max_length=100, unique=True)
+    oname = models.CharField(max_length=32, unique=True)
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
     status = models.BooleanField("激活状态", default=True)  # 表示一个组织是否上线(或者是已经被下线)
 
@@ -534,40 +534,37 @@ class Notification(models.Model):
     URL = models.URLField("相关网址", null=True, blank=True)
 
 
-class Preorgnization(models.Model):
+class NewOrgnization(models.Model):
     class Meta:
         verbose_name = "申请建立组织的信息"
         verbose_name_plural = verbose_name
 
-    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的组织信息
-    oname = models.CharField(max_length=100, unique=True)
+    nid = models.AutoField(primary_key=True)  # 自增ID，标识唯一的组织信息
+
+    oname = models.CharField(max_length=32, unique=True)
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
-
-    introduction = models.TextField(
-        "介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
-    avatar = models.ImageField(upload_to=f"avatar/", blank=True)
-    QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
+    introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     application = models.TextField("申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~")
-
+    avatar = models.ImageField(upload_to=f"avatar/", blank=True)
+    pos = models.ForeignKey(User, on_delete=models.CASCADE)
     class Preorgstatus(models.IntegerChoices):  # 表示申请组织的请求的状态
-        WAITING = (0, "待确认")
+        PENDING = (0, "待确认")
         CONFIRMED = (1, "主管老师已同意")  # 审过同意
-        Tobemodified = (2, "需要修改")
+        TOBEMODIFIED = (2, "需要修改")
         CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
-
-    status = models.SmallIntegerField(choices=Preorgstatus.choices, default=0)
-    pos = models.ForeignKey(User, on_delete=models.CASCADE)  # 负责人
-
-    def __str__(self):
-        return str(self.oname)
+    nstatus = models.SmallIntegerField(choices=Preorgstatus.choices, default=0)
 
 
-class Org_comment(models.Model):
+
+class Org_Comment(models.Model):
     class Meta:
         verbose_name = "审核新建组织的通知的评论"
         verbose_name_plural = verbose_name
+        ordering = ['-time']
 
-    preorg = models.ForeignKey(Preorgnization, on_delete=models.CASCADE)  # 外键
+    preorg = models.ForeignKey(NewOrgnization, related_name="neworg",on_delete=models.CASCADE)  # 外键
     commentator = models.ForeignKey(User, on_delete=models.CASCADE)  # 评论者，
     text = models.TextField("文字内容", default="", blank=True)
     time = models.DateTimeField("评论时间", auto_now_add=True)  # 每次按照评论时间排序
+
+
