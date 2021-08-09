@@ -1,3 +1,4 @@
+from django.dispatch.dispatcher import receiver
 import requests
 import json
 
@@ -6,13 +7,13 @@ from django.conf import settings
 from boottest import local_dict
 
 # 模型与加密模型
-from app.models import NaturalPerson, Activity
+from app.models import NaturalPerson, Activity, Notification
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 # 日期与定时任务
 from datetime import datetime, timedelta
 from apscheduler.schedulers.background import BackgroundScheduler
-from django_apscheduler.jobstores import DjangoJobStore
+#from django_apscheduler.jobstores import DjangoJobStore
 
 # 全局设置
 # 是否启用定时任务，请最好仅在服务器启用，如果不启用，后面的多个设置也会随之变化
@@ -74,6 +75,53 @@ def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=T
     except:
         # print(f"第{i+1}次尝试")
         print(f"向企业微信发送失败：失败用户：{failed[:3]}等{len(failed)}人，主要失败原因：{errmsg}")
+
+def publish_notification(notification_id):
+    '''根据通知id（实际是主键）向通知的receiver发送'''
+    try:
+        notification = Notification.objects.get(pk=notification_id)
+    except:
+        print(f"未找到id为{notification_id}的活动")
+        return False
+    sender = NaturalPerson.objects.get(person_id=notification.sender)
+    send_time = notification.start_time
+    if send_time.year == datetime.now().year and send_time.year == datetime.now().year:
+        timeformat = "%m月%d日 %H:%M"       # 一般不显示年和秒
+    else:
+        timeformat = "%Y年%m月%d日 %H:%M"   # 显示具体年份
+    send_time = send_time.strftime(timeformat)
+
+    if len(notification.content) < 120:         # 卡片类型消息最多显示256字（512字节）
+        kws = {"card" : True}               # 因留白等原因，内容120字左右就超出了
+        message = "\n".join((
+            notification.get_title_display(),
+            f"发送者：{str(sender)}",
+            f"通知时间：{send_time}",
+            "通知内容：",
+            notification.content,
+            "点击查看详情"
+        ))
+        if notification.URL:
+            kws["url"] = notification.URL
+            kws["btntxt"] = "阅读原文"
+    else:                                   # 超出卡片字数范围的消息使用文本格式发送
+        kws = {"card" : False}
+        message = "\n".join((
+            notification.get_title_display(),
+            "",
+            "发送者：",
+            f"{str(sender)}",
+            "通知时间：",
+            f"{send_time}",
+            "活动简介：",
+            notification.content
+        ))
+        if notification.URL:
+            message += f"\n<a href=\"{notification.URL}\">阅读原文</a>"
+        else:
+            message += f"\n<a href=\"{default_url}\">点击查看详情</a>"
+    base_send_wechat([notification.receiver.username], message, **kws) # 不使用定时任务请改为这句
+    return True
 
 def publish_activity(aid, only_activated=False):
     '''根据活动id（实际是主键）向所有订阅该组织信息的学生发送，可以只发给在校学生'''

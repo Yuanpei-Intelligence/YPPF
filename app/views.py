@@ -14,9 +14,9 @@ from app.models import (
 import app.utils as utils
 from app.forms import UserForm
 from app.utils import url_check, check_cross_site
+from app.wechat_send import publish_notification
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
-
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.contrib import auth, messages
@@ -2544,11 +2544,13 @@ def notification_create(receiver, sender, typename, title, content, URL, relate_
         URL: 需要跳转到处理事务的页面
     '''
     if relate_TransferRecord is None:
-        Notification.objects.create(
+        notification = Notification.objects.create(
             receiver=receiver, sender=sender, typename=typename, title=title, content=content, URL=URL)
     else:
-        Notification.objects.create(
+        notification = Notification.objects.create(
             receiver=receiver, sender=sender, typename=typename, title=title, content=content, URL=URL, relate_TransferRecord=relate_TransferRecord)
+    publish_notification(notification.id)
+    return notification
 
 
 @login_required(redirect_field_name="origin")
