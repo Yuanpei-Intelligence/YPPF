@@ -15,7 +15,7 @@ from app.models import (
 import app.utils as utils
 from app.forms import UserForm
 from app.utils import url_check, check_cross_site
-from boottest import local_dict
+from boottest import local_dict, help_message
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.shortcuts import render, redirect
@@ -387,6 +387,7 @@ def stuinfo(request, name=None):
 
         html_display["title_name"] = "User Profile"
         html_display["narbar_name"] = "个人主页"
+        html_display["help_message"] = help_message["个人主页"]
         origin = request.get_full_path()
 
         return render(request, "stuinfo.html", locals())
