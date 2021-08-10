@@ -10,6 +10,7 @@ from app.models import (
     TransferRecord,
     Participant,
     Notification,
+    YQPointDistribute
 )
 import app.utils as utils
 from app.forms import UserForm
@@ -39,6 +40,14 @@ import requests  # 发送验证码
 import io
 import csv
 import qrcode
+
+from app.scheduler_func import distribute_YQPoint, YQPoint_Distribution
+# 定时任务注册
+from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
+from .scheduler_func import scheduler
+# 注册启动以上schedule任务
+register_events(scheduler)
+scheduler.start()
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
