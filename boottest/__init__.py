@@ -12,3 +12,8 @@ def load_local_json(path="./local_json.json"):
 
 
 local_dict = load_local_json()
+
+
+help_message = {
+    "个人主页": "在这里你可以看到自己向别的用户展示的信息，以及别的用户公开展示的信息~"
+}
