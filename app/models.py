@@ -567,4 +567,54 @@ class Org_Comment(models.Model):
     text = models.TextField("文字内容", default="", blank=True)
     time = models.DateTimeField("评论时间", auto_now_add=True)  # 每次按照评论时间排序
 
+class Reimbursement(models.Model):
+    class Meta:
+        verbose_name = "报销信息"
+        verbose_name_plural = verbose_name
+        ordering = ["-modify_time", "-time"]
+
+    class ReimburseStatus(models.IntegerChoices):
+        WAITING = (0, "待确认")
+        CONFIRM1 = (1, "主管老师已确认")
+        CONFIRM2 = (2, "财务老师已确认")
+        CONFIRMED = (3, "已通过")
+        # 如果需要更多审核，每个审核的确认状态应该是2的幂
+        # 根据最新要求，最终不以线上为准，不再设置转账状态
+        CANCELED = (4, "已取消")
+
+    activity = models.ForeignKey(Activity,
+                                 related_name="reimbursement",
+                                 on_delete=models.CASCADE)
+    amount = models.FloatField("报销金额", default=0)
+    # 如果之后全线上流程，可能需要报账人字段
+    message = models.TextField("备注信息", default="", blank=True)
+    # 图片存储在comment中，models不支持序列图片
+    status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
+    time = models.DateTimeField("发起时间", auto_now_add=True)
+    modify_time = models.DateTimeField("上次修改时间", auto_now_add=True)
+
+class ReimburseComment(models.Model):
+    class Meta:
+        verbose_name = "报销评论"
+        verbose_name_plural = verbose_name
+        ordering = ["-time"]
+
+    def comment_path(instance, filename):
+        reimburse = instance.reimbursement
+        act = reimburse.activity
+        dir = f"reimburse/{act.organization_id.oname}/"
+        # 日期和时间都是不靠谱的，因为上传多个图片时不同图片的存储很可能是同1秒完成的
+        # 同一报销信息可能在连续的几分钟内发很多个同文件名的
+        # title是方便人识别的内容
+        return dir + f"{act.title}-{instance.id}-{filename}"
+
+    reimbursement = models.ForeignKey(Reimbursement,
+                                    related_name="comments",
+                                    on_delete=models.CASCADE)
+    username = models.CharField("评论者", max_length=10)
+    # 保留用户名的意义是方便页面统一呈现（评论者可能是组织或老师）
+    # 也许可以允许自由设置名称
+    text = models.TextField("文字内容", default="", blank=True)
+    img = models.ImageField("图片", upload_to=comment_path, blank=True)
+    time = models.DateTimeField("评论时间", auto_now_add=True)
 

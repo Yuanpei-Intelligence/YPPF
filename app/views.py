@@ -2843,7 +2843,24 @@ def addReimbursement(request):
         me, html_display["is_myself"], html_display
     )
 
-    #组织未报销的活动
+    #组织未报销的活动（本学期未报销的且已结束的活动）
     #组织剩余的元气值
-    #
+    activities=Activity.objects.activated().filter(status=Activity.Status.END)#本学期已结束的活动    TODO 且未报销？
+    YQP=me.YQPoint
+    if request.method == "POST" and request.POST:
+        """if request.POST.get('comment') != None:  # 新建评论信息，并保存
+            text = str(request.POST.get('comment'))
+            Org_Comment.objects.create(preorg=preorg, commentator=request.user, text=text)"""
+
+
+            # 参数合法性检查
+        context = request
+        
+        if context['warn_code'] != 0:
+            html_display['warn_code'] = context['warn_code']
+            html_display['warn_message'] = "新建组织申请失败。" + context['warn_msg']
+            return render(request, "orgnization_add.html", locals())
+
+        return render(request, "reimbursement_add.html", locals())
+    return render(request,"reimbursement_add.html",locals())
 
