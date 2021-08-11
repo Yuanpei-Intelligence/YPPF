@@ -3,7 +3,6 @@ from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-
 from datetime import datetime, timedelta
 from boottest import local_dict
 
@@ -502,6 +501,33 @@ class Participant(models.Model):
     status = models.CharField(
         '学生参与活动状态',
          choices=AttendStatus.choices, default=AttendStatus.APPLYING, max_length=32)
+
+
+class YQPointDistribute(models.Model):
+    class DistributionType(models.IntegerChoices):
+        # 定期发放的类型
+        # 每类型各最多有一个status为Yes的实例
+        TEMPORARY = (0, "临时发放")
+        WEEK = (1, "每周发放一次")
+        TWO_WEEK = (2, "每两周发放一次")
+        SEMESTER = (26, "每学期发放一次") # 一年有52周
+    
+    # 发放元气值的上限，多于此值则不发放
+    per_max_dis_YQP = models.FloatField("自然人发放元气值上限")
+    org_max_dis_YQP = models.FloatField("组织发放元气值上限")
+    # 个人和组织所能平分的元气值比例
+    # 发放时，从学院剩余元气值中，抽取向自然人分发的比例，平分给元气值低于上限的自然人；组织同理
+    per_YQP = models.FloatField("自然人获得的元气值", default=0)
+    org_YQP = models.FloatField("组织获得的元气值", default=0)
+
+    start_time = models.DateTimeField("开始时间")
+
+    status = models.BooleanField("是否应用", default=False)
+    type = models.IntegerField("发放类型", choices=DistributionType.choices)
+
+    class Meta:
+        verbose_name = "元气值发放"
+        verbose_name_plural = verbose_name
 
 
 class Notification(models.Model):

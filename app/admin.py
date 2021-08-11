@@ -39,4 +39,6 @@ admin.site.register(Position, PositionAdmin)
 admin.site.register(OrganizationType)
 admin.site.register(Activity)
 admin.site.register(TransferRecord)
+
+admin.site.register(YQPointDistribute)
 admin.site.register(Notification)
