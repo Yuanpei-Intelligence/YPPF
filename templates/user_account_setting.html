@@ -55,7 +55,7 @@
                                                         <div class="form-check">
                                                             <label for="fullName">我的昵称</label>
                                                             <input type="text" class="form-control" id="nickname"
-                                                            name="nickname" placeholder="{{userinfo.nickname}}">
+                                                            name="nickname" placeholder="{{userinfo.nickname}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
                                                             <div class="form-check mb-4">
                                                                 {% if show_nickname %}
                                                                 <input type="checkbox" class="form-check-input" id="check-nickname" name='show_nickname' checked>
@@ -88,7 +88,7 @@
                                                             </div>
                                                             <label for="fullName">我的电话</label>
                                                             <input type="text" class="form-control" id="tel"
-                                                            name="tel" placeholder="{{userinfo.telephone}}">
+                                                            name="tel" placeholder="{{userinfo.telephone}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
                                                             <div class="form-check mb-4">
                                                                 {% if useroj.show_tel %}
                                                                 <input type="checkbox" class="form-check-input" id="check-telephone" name="show_tel" checked>
@@ -100,7 +100,7 @@
                                                             </div>
                                                             <label for="profession">我的专业</label>
                                                             <input type="text" class="form-control" id="major"
-                                                                name="major" placeholder="{{userinfo.stu_major}}">
+                                                                name="major" placeholder="{{userinfo.stu_major}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
                                                             <div class="form-check mb-4">
                                                                 {% if useroj.show_major %}
                                                                 <input type="checkbox" class="form-check-input" id="check-major" name="show_major" checked>
@@ -111,7 +111,7 @@
                                                             </div>
                                                             <label for="profession">我的宿舍</label>
                                                             <input type="text" class="form-control" id="dorm"
-                                                                name="dorm" placeholder="{{userinfo.stu_dorm}}">
+                                                                name="dorm" placeholder="{{userinfo.stu_dorm}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
                                                             <div class="form-check mb-4">
                                                                 {% if useroj.show_dorm %}
                                                                 <input type="checkbox" class="form-check-input" id="check-dorm" name="show_dorm" checked>
@@ -122,7 +122,7 @@
                                                             </div>
                                                             <label for="profession">我的年级</label>
                                                             <input type="text" class="form-control" id="grade"
-                                                                name="grade" placeholder="{{userinfo.stu_grade}}">
+                                                                name="grade" placeholder="{{userinfo.stu_grade}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
                                                             <div class="form-check mb-4">
                                                                 {% if useroj.show_grade %}
                                                                 <input type="checkbox" class="form-check-input" id="check-grade" name="show_grade" checked>
@@ -133,7 +133,7 @@
                                                             </div>
                                                             <label for="profession">我的班级</label>
                                                             <input type="text" class="form-control" id="class"
-                                                                name="class" placeholder="{{userinfo.stu_class}}">
+                                                                name="class" placeholder="{{userinfo.stu_class}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
                                                             <div class="form-check mb-4">
                                                                 {% if useroj.show_class %}
                                                                 <input type="checkbox" class="form-check-input" id="check-class" name="show_class" checked>
@@ -144,7 +144,7 @@
                                                             </div>
                                                             <label for="profession">我的邮箱</label>
                                                             <input type="text" class="form-control" id="email"
-                                                                name="email" placeholder="{{userinfo.email}}">
+                                                                name="email" placeholder="{{userinfo.email}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
                                                                 <div class="form-check mb-4">
                                                                     {% if useroj.show_email %}
                                                                     <input type="checkbox" class="form-check-input" id="check-email" name="show_email" checked>
@@ -155,7 +155,7 @@
                                                                 </div>
                                                             <label for="aboutBio">个性签名</label>
                                                             <textarea class="form-control" id="aboutBio" name="aboutBio"
-                                                                placeholder="{{userinfo.biography}}" rows="10"></textarea>
+                                                                placeholder="{{userinfo.biography}}" rows="10" onclick="if(this.placeholder != ''){this.value=this.placeholder;}"></textarea>
                                                         </div>
                                                     </div>
                                                 </div>

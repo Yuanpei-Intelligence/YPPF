@@ -675,18 +675,20 @@ def account_setting(request):
     former_img = html_display["avatar_path"]
     #print(json.loads(request.body.decode("utf-8")))
     if request.method == "POST" and request.POST:
-        nickname = request.POST['nickname']
-        gender = request.POST['gender']
-        aboutbio = request.POST["aboutBio"]
-        tel = request.POST["tel"]
-        email = request.POST["email"]
-        Major = request.POST["major"]
-        stu_grade = request.POST['grade']
-        stu_class = request.POST['class']
-        stu_dorm = request.POST['dorm']
+
+        attr_dict = dict()
+
+        attr_dict['nickname'] = request.POST['nickname']
+        attr_dict['biography'] = request.POST["aboutBio"]
+        attr_dict['telephone'] = request.POST["tel"]
+        attr_dict['email'] = request.POST["email"]
+        attr_dict['stu_major'] = request.POST["major"]
+        attr_dict['stu_grade'] = request.POST['grade']
+        attr_dict['stu_class'] = request.POST['class']
+        attr_dict['stu_dorm'] = request.POST['dorm']
 
         ava = request.FILES.get("avatar")
-
+        gender = request.POST['gender']
 
         show_dict = dict()
 
@@ -699,28 +701,15 @@ def account_setting(request):
         show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
 
         
-        expr = bool(tel or Major or email or aboutbio or ava or nickname or stu_dorm or stu_grade or stu_class or (
-            gender != useroj.get_gender_display()))
+        expr = bool(ava  or (gender != useroj.get_gender_display()))
+        expr += sum([(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
         expr += sum([getattr(useroj, show_attr) != show_dict[show_attr] for show_attr in show_dict.keys()])
 
-        if aboutbio != "":
-            useroj.biography = aboutbio
-        if Major != "":
-            useroj.stu_major = Major
-        if email != "":
-            useroj.email = email
-        if tel != "":
-            useroj.telephone = tel
-        if nickname != "":
-            useroj.nickname = nickname
-        if stu_grade != "":
-            useroj.stu_grade = stu_grade
-        if stu_class != "":
-            useroj.stu_class = stu_class
-        if stu_dorm != "":
-            useroj.stu_dorm = stu_dorm
         if gender != useroj.gender:
             useroj.gender = NaturalPerson.Gender.MALE if gender == '男' else NaturalPerson.Gender.FEMALE
+        for attr in attr_dict.keys():
+            if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
+                setattr(useroj, attr, attr_dict[attr])
         for show_attr in show_dict.keys():
             if getattr(useroj, show_attr) != show_dict[show_attr]:
                 setattr(useroj, show_attr, show_dict[show_attr])
