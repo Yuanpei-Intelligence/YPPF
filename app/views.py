@@ -644,6 +644,17 @@ def account_setting(request):
 
     former_img = html_display["avatar_path"]
 
+    # 补充网页呈现所需信息
+    html_display["title_name"] = "Account Setting"
+    html_display["narbar_name"] = "账户设置"
+    html_display["help_message"] = help_message["账户设置"]
+    print(html_display["help_message"])
+
+    # 然后是左边栏
+    html_display = utils.get_user_left_narbar(
+        useroj, html_display["is_myself"], html_display
+    )
+
     if request.method == "POST" and request.POST:
         aboutbio = request.POST["aboutBio"]
         tel = request.POST["tel"]
@@ -671,15 +682,6 @@ def account_setting(request):
         else:
             upload_state = True
             return redirect("/stuinfo/?modinfo=success")
-
-    # 补充网页呈现所需信息
-    html_display["title_name"] = "Account Setting"
-    html_display["narbar_name"] = "账户设置"
-
-    # 然后是左边栏
-    html_display = utils.get_user_left_narbar(
-        useroj, html_display["is_myself"], html_display
-    )
 
     return render(request, "user_account_setting.html", locals())
 
@@ -1541,6 +1543,7 @@ def myYQPoint(request):
     # 补充一些呈现信息
     html_display["title_name"] = "My YQPoint"
     html_display["narbar_name"] = "我的元气值"  #
+    html_display["help_message"] = help_message["我的元气值"]
 
     to_send_set = TransferRecord.objects.filter(
         proposer=request.user, status=TransferRecord.TransferStatus.WAITING
@@ -2275,6 +2278,7 @@ def subscribeActivities(request):
     # 补充一些呈现信息
     html_display["title_name"] = "Subscribe"
     html_display["narbar_name"] = "我的订阅"  #
+    html_display["help_message"] = help_message["我的订阅"]
 
     org_list = Organization.objects.all()
     org_name = list(
@@ -2542,6 +2546,7 @@ def notifications(request):
 
     html_display["title_name"] = "Notifications"
     html_display["narbar_name"] = "通知信箱"
+    html_display["help_message"] = help_message["通知信箱"]
 
     done_set = Notification.objects.filter(
         receiver=request.user, status=Notification.NotificationStatus.DONE
