@@ -40,142 +40,123 @@
                                 <form id="general-info" class="section general-info" method="POST"
                                     enctype="multipart/form-data">
                                     <div class="info">
-                                        <h6 class="">General Information</h6>
-
+                                        <h6 class="">个人信息</h6>
                                         <div class="row">
-                                            <!-- <div class="col-lg-11 mx-auto">
-                                                    <div class="row">
-                                                        <div class="col-xl-2 col-lg-12 col-md-4" >  -->
-                                            <div class="upload mt-4 pr-md-4 ">
+                                            <div class="upload m-auto">
                                                 <input type="file" id="avatar" class="dropify" name="avatar"
                                                     data-default-file="{{former_img}}" data-max-file-size="512K" />
-                                                <p class="mt-2 text-center">不支持中文名</p>
+                                                <p class="mt-2 text-center">{{useroj.name}}</p>
                                             </div>
-                                            <!-- </div> -->
+                                        </div>
+                                        <div class="row">
                                             <div class="col-xl-10 col-lg-12 col-md-8 mt-md-0 mt-4">
-                                                <div class="form">
-                                                    <div class="row">
-
-                                                        <div class="col-sm-12">
-                                                            <div class="form-group">
-                                                                <label for="fullName">Tel</label>
-                                                                <input type="text" class="form-control mb-4" id="tel"
-                                                                    name="tel" placeholder="{{userinfo.telephone}}">
-                                                            </div>
-                                                        </div>
-                                                        <!-- <div class="col-sm-6">
-                                                                        <label class="dob-input">Date of Birth</label>
-                                                                        <div class="d-sm-flex d-block">
-                                                                            <div class="form-group mr-1">
-                                                                                <select class="form-control" id="exampleFormControlSelect1" name="day">
-                                                                                  <option>Day</option>
-                                                                                  <option>1</option>
-                                                                                  <option>2</option>
-                                                                                  <option>3</option>
-                                                                                  <option>4</option>
-                                                                                  <option>5</option>
-                                                                                  <option>6</option>
-                                                                                  <option>7</option>
-                                                                                  <option>8</option>
-                                                                                  <option>9</option>
-                                                                                  <option>10</option>
-                                                                                  <option>11</option>
-                                                                                  <option>12</option>
-                                                                                  <option>13</option>
-                                                                                  <option>14</option>
-                                                                                  <option>15</option>
-                                                                                  <option>16</option>
-                                                                                  <option>17</option>
-                                                                                  <option>18</option>
-                                                                                  <option>19</option>
-                                                                                  <option selected>20</option>
-                                                                                  <option>21</option>
-                                                                                  <option>22</option>
-                                                                                  <option>23</option>
-                                                                                  <option>24</option>
-                                                                                  <option>25</option>
-                                                                                  <option>26</option>
-                                                                                  <option>27</option>
-                                                                                  <option>28</option>
-                                                                                  <option>29</option>
-                                                                                  <option>30</option>
-                                                                                </select>
-                                                                            </div>
-                                                                            <div class="form-group mr-1">
-                                                                                <select class="form-control" id="month" name="month">
-                                                                                    <option>Month</option>
-                                                                                    <option selected>Jan</option>
-                                                                                    <option>Feb</option>
-                                                                                    <option>Mar</option>
-                                                                                    <option>Apr</option>
-                                                                                    <option>May</option>
-                                                                                    <option>Jun</option>
-                                                                                    <option>Jul</option>
-                                                                                    <option>Aug</option>
-                                                                                    <option>Sep</option>
-                                                                                    <option>Oct</option>
-                                                                                    <option>Nov</option>
-                                                                                    <option>Dec</option>
-                                                                                </select>
-                                                                            </div>
-                                                                            <div class="form-group mr-1">
-                                                                                <select class="form-control" id="year" name="year">
-                                                                                  <option>Year</option>
-                                                                                  <option>2018</option>
-                                                                                  <option>2017</option>
-                                                                                  <option>2016</option>
-                                                                                  <option>2015</option>
-                                                                                  <option>2014</option>
-                                                                                  <option>2013</option>
-                                                                                  <option>2012</option>
-                                                                                  <option>2011</option>
-                                                                                  <option>2010</option>
-                                                                                  <option>2009</option>
-                                                                                  <option>2008</option>
-                                                                                  <option>2007</option>
-                                                                                  <option>2006</option>
-                                                                                  <option>2005</option>
-                                                                                  <option>2004</option>
-                                                                                  <option>2003</option>
-                                                                                  <option>2002</option>
-                                                                                  <option>2001</option>
-                                                                                  <option>2000</option>
-                                                                                  <option>1999</option>
-                                                                                  <option>1998</option>
-                                                                                  <option>1997</option>
-                                                                                  <option>1996</option>
-                                                                                  <option>1995</option>
-                                                                                  <option>1994</option>
-                                                                                  <option>1993</option>
-                                                                                  <option>1992</option>
-                                                                                  <option>1991</option>
-                                                                                  <option>1990</option>
-                                                                                  <option selected>1989</option>
-                                                                                  <option>1988</option>
-                                                                                  <option>1987</option>
-                                                                                  <option>1986</option>
-                                                                                  <option>1985</option>
-                                                                                  <option>1984</option>
-                                                                                  <option>1983</option>
-                                                                                  <option>1982</option>
-                                                                                  <option>1981</option>
-                                                                                  <option>1980</option>
-                                                                                </select>
-                                                                            </div>
-                                                                        </div>
-                                                                    
-                                                                    </div> -->
-                                                    </div>
+                                                <div class="form mt-4">
                                                     <div class="form-group">
-                                                        <label for="profession">Major</label>
-                                                        <input type="text" class="form-control mb-4" id="major"
-                                                            name="major" placeholder="{{userinfo.stu_major}}">
-                                                        <label for="profession">Email</label>
-                                                        <input type="text" class="form-control mb-4" id="email"
-                                                            name="email" placeholder="{{userinfo.email}}">
-                                                        <label for="aboutBio">Bio</label>
-                                                        <textarea class="form-control" id="aboutBio" name="aboutBio"
-                                                            placeholder="{{userinfo.biography}}" rows="10"></textarea>
+                                                        <div class="form-check">
+                                                            <label for="fullName">我的昵称</label>
+                                                            <input type="text" class="form-control" id="nickname"
+                                                            name="nickname" placeholder="{{userinfo.nickname}}">
+                                                            <div class="form-check mb-4">
+                                                                {% if show_nickname %}
+                                                                <input type="checkbox" class="form-check-input" id="check-nickname" name='show_nickname' checked>
+                                                                {% else %}
+                                                                <input type="checkbox" class="form-check-input" id="check-nickname" name='show_nickname'>
+                                                                {% endif %}
+                                                                <label class="form-check-label" for="check-nickname">对外展示</label>
+                                                            </div>
+                                                            <label class="dob-input">我的性别</label>
+                                                            <div class="d-sm-flex d-block">
+                                                                <div class="form-group mr-1">
+                                                                    <select class="form-control" id="select-gender" name="gender">
+                                                                    {% if useroj.gender == 1 %}
+                                                                      <option>男</option>
+                                                                      <option selected>女</option>
+                                                                    {% else %}
+                                                                    <option selected>男</option>
+                                                                      <option>女</option>
+                                                                    {% endif %}
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                            <div class="form-check mb-4">
+                                                                {% if useroj.show_gender %}
+                                                                <input type="checkbox" class="form-check-input" id="check-gender" name="show_gender" checked>
+                                                                {% else %}
+                                                                <input type="checkbox" class="form-check-input" id="check-gender" name="show_gender">
+                                                                {% endif %}
+                                                                <label class="form-check-label" for="check-gender">对外展示</label>
+                                                            </div>
+                                                            <label for="fullName">我的电话</label>
+                                                            <input type="text" class="form-control" id="tel"
+                                                            name="tel" placeholder="{{userinfo.telephone}}">
+                                                            <div class="form-check mb-4">
+                                                                {% if useroj.show_tel %}
+                                                                <input type="checkbox" class="form-check-input" id="check-telephone" name="show_tel" checked>
+                                                                {% else %}
+                                                                <input type="checkbox" class="form-check-input" id="check-telephone" name="show_tel">
+                                                                {% endif %}
+                                                                <label class="form-check-label" for="check-telephone">对外展示</label>
+                                                                
+                                                            </div>
+                                                            <label for="profession">我的专业</label>
+                                                            <input type="text" class="form-control" id="major"
+                                                                name="major" placeholder="{{userinfo.stu_major}}">
+                                                            <div class="form-check mb-4">
+                                                                {% if useroj.show_major %}
+                                                                <input type="checkbox" class="form-check-input" id="check-major" name="show_major" checked>
+                                                                {% else %}
+                                                                <input type="checkbox" class="form-check-input" id="check-major" name="show_major">
+                                                                {% endif %}
+                                                                <label class="form-check-label" for="check-major">对外展示</label>
+                                                            </div>
+                                                            <label for="profession">我的宿舍</label>
+                                                            <input type="text" class="form-control" id="dorm"
+                                                                name="dorm" placeholder="{{userinfo.stu_dorm}}">
+                                                            <div class="form-check mb-4">
+                                                                {% if useroj.show_dorm %}
+                                                                <input type="checkbox" class="form-check-input" id="check-dorm" name="show_dorm" checked>
+                                                                {% else %}
+                                                                <input type="checkbox" class="form-check-input" id="check-show_dorm" name="show_dorm">
+                                                                {% endif %}
+                                                                <label class="form-check-label" for="check-dorm">对外展示</label>
+                                                            </div>
+                                                            <label for="profession">我的年级</label>
+                                                            <input type="text" class="form-control" id="grade"
+                                                                name="grade" placeholder="{{userinfo.stu_grade}}">
+                                                            <div class="form-check mb-4">
+                                                                {% if useroj.show_grade %}
+                                                                <input type="checkbox" class="form-check-input" id="check-grade" name="show_grade" checked>
+                                                                {% else %}
+                                                                <input type="checkbox" class="form-check-input" id="show_grade" name="show_grade" >
+                                                                {% endif %}
+                                                                <label class="form-check-label" for="check-grade">对外展示</label>
+                                                            </div>
+                                                            <label for="profession">我的班级</label>
+                                                            <input type="text" class="form-control" id="class"
+                                                                name="class" placeholder="{{userinfo.stu_class}}">
+                                                            <div class="form-check mb-4">
+                                                                {% if useroj.show_class %}
+                                                                <input type="checkbox" class="form-check-input" id="check-class" name="show_class" checked>
+                                                                {% else %}
+                                                                <input type="checkbox" class="form-check-input" id="show_class" name="show_class">
+                                                                {% endif %}
+                                                                <label class="form-check-label" for="check-class">对外展示</label>
+                                                            </div>
+                                                            <label for="profession">我的邮箱</label>
+                                                            <input type="text" class="form-control" id="email"
+                                                                name="email" placeholder="{{userinfo.email}}">
+                                                                <div class="form-check mb-4">
+                                                                    {% if useroj.show_email %}
+                                                                    <input type="checkbox" class="form-check-input" id="check-email" name="show_email" checked>
+                                                                    {% else %}
+                                                                    <input type="checkbox" class="form-check-input" id="show_email" name="show_email">
+                                                                    {% endif %}
+                                                                    <label class="form-check-label" for="check-email">对外展示</label>
+                                                                </div>
+                                                            <label for="aboutBio">个性签名</label>
+                                                            <textarea class="form-control" id="aboutBio" name="aboutBio"
+                                                                placeholder="{{userinfo.biography}}" rows="10"></textarea>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>

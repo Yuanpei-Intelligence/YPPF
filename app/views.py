@@ -119,7 +119,8 @@ def index(request):
         try:
             user = User.objects.filter(username=username)
             if len(user) == 0:
-                org = Organization.objects.get(oname=username)  # 如果get不到，就是账号不存在了
+                org = Organization.objects.get(
+                    oname=username)  # 如果get不到，就是账号不存在了
                 user = org.organization_id
                 username = user.username
             else:
@@ -161,7 +162,8 @@ def index(request):
                     )
             else:
                 # 先处理初次登录
-                valid, user_type, html_display = utils.check_user_type(request.user)
+                valid, user_type, html_display = utils.check_user_type(
+                    request.user)
                 if not valid:
                     return redirect("/logout/")
                 me = get_person_or_org(userinfo, user_type)
@@ -197,7 +199,8 @@ def index(request):
             username = request.session["username"]
             en_pw = hash_coder.encode(username + timeStamp)
             return redirect(
-                arg_origin + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
+                arg_origin +
+                f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
             )
 
     return render(request, "index.html", locals())
@@ -267,7 +270,8 @@ def stuinfo(request, name=None):
         else:
             assert user_type == "Person"
             full_path = request.get_full_path()
-            append_url = "" if ("?" not in full_path) else "?" + full_path.split("?")[1]
+            append_url = "" if (
+                "?" not in full_path) else "?" + full_path.split("?")[1]
             return redirect("/stuinfo/" + oneself.name + append_url)
     else:
         # 先对可能的加号做处理
@@ -305,11 +309,13 @@ def stuinfo(request, name=None):
             .filter(Q(person=oneself) & Q(show_post=True))
             .values("org")
         )
-        org_is_same = [id in oneself_org_ids for id in person_pos_infos.values("org")]
+        org_is_same = [
+            id in oneself_org_ids for id in person_pos_infos.values("org")]
         join_org_info = Organization.objects.filter(
             id__in=person_pos_infos.values("org")
         )  # ta属于的组织
-        org_avas = [utils.get_user_ava(org, "organization") for org in join_org_info]
+        org_avas = [utils.get_user_ava(org, "organization")
+                    for org in join_org_info]
         org_poss = person_pos_infos.values("pos")
         org_statuss = person_pos_infos.values("status")
         html_display["org_info"] = list(
@@ -330,9 +336,11 @@ def stuinfo(request, name=None):
             participant in activities_me
             for participant in participants.values("activity_id")
         ]
-        activities = Activity.objects.filter(id__in=participants.values("activity_id"))
+        activities = Activity.objects.filter(
+            id__in=participants.values("activity_id"))
         participate_status_list = participants.values("status")
-        participate_status_list = [info["status"] for info in participate_status_list]
+        participate_status_list = [info["status"]
+                                   for info in participate_status_list]
         status_color = {
             Activity.Status.REVIEWING: "primary",
             Activity.Status.CANCELED: "secondary",
@@ -347,8 +355,10 @@ def stuinfo(request, name=None):
             Participant.AttendStatus.UNATTENDED: "warning",
             Participant.AttendStatus.CANCELED: "secondary",
         }
-        activity_color_list = [status_color[activity.status] for activity in activities]
-        attend_color_list = [status_color[status] for status in participate_status_list]
+        activity_color_list = [status_color[activity.status]
+                               for activity in activities]
+        attend_color_list = [status_color[status]
+                             for status in participate_status_list]
         activity_info = list(
             zip(
                 activities,
@@ -364,7 +374,8 @@ def stuinfo(request, name=None):
 
         # 呈现信息
         # 首先是左边栏
-        html_display = utils.get_user_left_narbar(person, is_myself, html_display)
+        html_display = utils.get_user_left_narbar(
+            person, is_myself, html_display)
 
         try:
             html_display["warn_code"] = int(
@@ -372,7 +383,8 @@ def stuinfo(request, name=None):
             )  # 是否有来自外部的消息
         except:
             return redirect("/welcome/")
-        html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+        html_display["warn_message"] = request.GET.get(
+            "warn_message", "")  # 提醒的具体内容
 
         modpw_status = request.GET.get("modinfo", None)
         if modpw_status is not None and modpw_status == "success":
@@ -514,7 +526,8 @@ def orginfo(request, name=None):
     for act in continuing_activity_list:
         dictmp = {}
         dictmp["act"] = act
-        dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
+        dictmp["endbefore"] = act.start - \
+            timedelta(hours=prepare_times[act.endbefore])
         if user_type == "Person":
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.person_id_id
@@ -529,7 +542,8 @@ def orginfo(request, name=None):
     for act in ended_activity_list:
         dictmp = {}
         dictmp["act"] = act
-        dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
+        dictmp["endbefore"] = act.start - \
+            timedelta(hours=prepare_times[act.endbefore])
         if user_type == "Person":
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.person_id_id
@@ -554,14 +568,17 @@ def orginfo(request, name=None):
             member["person"] = p.person
             member["job"] = org.otype.get_name(p.pos)
             member["highest"] = True if p.pos == 0 else False
-            member["avatar_path"] = utils.get_user_ava(member["person"], "Person")
+            member["avatar_path"] = utils.get_user_ava(
+                member["person"], "Person")
             member_list.append(member)
 
     try:
-        html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
+        html_display["warn_code"] = int(
+            request.GET.get("warn_code", 0))  # 是否有来自外部的消息
     except:
         return redirect("/welcome/")
-    html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+    html_display["warn_message"] = request.GET.get(
+        "warn_message", "")  # 提醒的具体内容
 
     modpw_status = request.GET.get("modinfo", None)
     if modpw_status is not None and modpw_status == "success":
@@ -628,10 +645,12 @@ def homepage(request):
         )
 
     try:
-        html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
+        html_display["warn_code"] = int(
+            request.GET.get("warn_code", 0))  # 是否有来自外部的消息
     except:
         return redirect("/welcome/")
-    html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+    html_display["warn_message"] = request.GET.get(
+        "warn_message", "")  # 提醒的具体内容
 
     # 补充一些呈现信息
     html_display["title_name"] = "Welcome Page"
@@ -654,14 +673,36 @@ def account_setting(request):
     useroj = NaturalPerson.objects.get(person_id=user)
 
     former_img = html_display["avatar_path"]
-
+    #print(json.loads(request.body.decode("utf-8")))
     if request.method == "POST" and request.POST:
+        nickname = request.POST['nickname']
+        gender = request.POST['gender']
         aboutbio = request.POST["aboutBio"]
         tel = request.POST["tel"]
         email = request.POST["email"]
         Major = request.POST["major"]
+        stu_grade = request.POST['grade']
+        stu_class = request.POST['class']
+        stu_dorm = request.POST['dorm']
+
         ava = request.FILES.get("avatar")
-        expr = bool(tel or Major or email or aboutbio or ava)
+
+
+        show_dict = dict()
+
+        show_dict['show_nickname'] = request.POST.get('show_nickname') == 'on'
+        show_dict['show_gender'] = request.POST.get('show_gender') == 'on'
+        show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
+        show_dict['show_email'] = request.POST.get('show_email') == 'on'
+        show_dict['show_major'] = request.POST.get('show_major') == 'on'
+        show_dict['show_grade'] = request.POST.get('show_grade') == 'on'
+        show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
+
+        
+        expr = bool(tel or Major or email or aboutbio or ava or nickname or stu_dorm or stu_grade or stu_class or (
+            gender != useroj.get_gender_display()))
+        expr += sum([getattr(useroj, show_attr) != show_dict[show_attr] for show_attr in show_dict.keys()])
+
         if aboutbio != "":
             useroj.biography = aboutbio
         if Major != "":
@@ -670,6 +711,19 @@ def account_setting(request):
             useroj.email = email
         if tel != "":
             useroj.telephone = tel
+        if nickname != "":
+            useroj.nickname = nickname
+        if stu_grade != "":
+            useroj.stu_grade = stu_grade
+        if stu_class != "":
+            useroj.stu_class = stu_class
+        if stu_dorm != "":
+            useroj.stu_dorm = stu_dorm
+        if gender != useroj.gender:
+            useroj.gender = NaturalPerson.Gender.MALE if gender == '男' else NaturalPerson.Gender.FEMALE
+        for show_attr in show_dict.keys():
+            if getattr(useroj, show_attr) != show_dict[show_attr]:
+                setattr(useroj, show_attr, show_dict[show_attr])
         if ava is None:
             pass
         else:
@@ -981,7 +1035,8 @@ def forget_password(request):
                     if len(pre) > 5:
                         pre = pre[:2] + "*" * len(pre[2:-3]) + pre[-3:]
                     try:
-                        response = requests.post(email_url, post_data, timeout=6)
+                        response = requests.post(
+                            email_url, post_data, timeout=6)
                         response = response.json()
                         if response["status"] != 200:
                             err_code = 4
@@ -1055,7 +1110,8 @@ def modpw(request):
             err_code = 5
             err_message = "两次输入的密码不匹配"
         else:
-            userauth = auth.authenticate(username=username, password=oldpassword)
+            userauth = auth.authenticate(
+                username=username, password=oldpassword)
             if forgetpw:  # added by pht: 这是不好的写法，可改进
                 userauth = True
             if userauth:
@@ -1503,7 +1559,8 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
         lis[-1]["obj_direct"] = "To  " if record_type == "send" else "From"
         if hasattr(obj_user, "naturalperson"):  # 如果OneToOne Field在个人上
             lis[-1]["obj"] = obj_user.naturalperson.name
-            lis[-1]["obj_url"] = "/stuinfo/" + lis[-1]["obj"] + "+" + str(obj_user.id)
+            lis[-1]["obj_url"] = "/stuinfo/" + \
+                lis[-1]["obj"] + "+" + str(obj_user.id)
         else:
             lis[-1]["obj"] = obj_user.organization.oname
             lis[-1]["obj_url"] = "/orginfo/" + lis[-1]["obj"]
@@ -1548,7 +1605,8 @@ def myYQPoint(request):
     if request.method == "POST":  # 发生了交易处理的事件
         try:  # 检查参数合法性
             post_args = request.POST.get("post_button")
-            record_id, action = post_args.split("+")[0], post_args.split("+")[1]
+            record_id, action = post_args.split(
+                "+")[0], post_args.split("+")[1]
             assert action in ["accept", "reject"]
             reject = action == "reject"
         except:
@@ -1612,7 +1670,8 @@ def myYQPoint(request):
     to_set = to_send_set.union(to_recv_set).order_by("-start_time")
     # issued_set 按照完成时间及降序排列
     # 这里应当要求所有已经issued的记录是有执行时间的
-    issued_set = issued_send_set.union(issued_recv_set).order_by("-finish_time")
+    issued_set = issued_send_set.union(
+        issued_recv_set).order_by("-finish_time")
 
     to_list, amount = record2Display(to_set, request.user)
     issued_list, _ = record2Display(issued_set, request.user)
@@ -1653,7 +1712,8 @@ def showActivities(request):
 
     # TODO 改一下前端，感觉一条一条的更好看一点？ 以及链接到下面的 viewActivity
     notes = [
-        {"title": "活动名称1", "Date": "11/01/2019", "Address": ["B107A", "B107B"]},
+        {"title": "活动名称1", "Date": "11/01/2019",
+            "Address": ["B107A", "B107B"]},
         {"title": "活动名称2", "Date": "11/02/2019", "Address": ["B108A"]},
         {"title": "活动名称3", "Date": "11/02/2019", "Address": ["B108A"]},
         {"title": "活动名称4", "Date": "11/02/2019", "Address": ["B108A"]},
@@ -1723,7 +1783,8 @@ def viewActivity(request, aid=None):
     start_time = activity.start
     end_time = activity.end
     prepare_times = Activity.EndBeforeHours.prepare_times
-    apply_deadline = activity.start - timedelta(hours=prepare_times[activity.endbefore])
+    apply_deadline = activity.start - \
+        timedelta(hours=prepare_times[activity.endbefore])
     introduction = activity.introduction
     aURL = activity.URL
     aQRcode = activity.QRcode
@@ -2029,7 +2090,8 @@ def getActivityInfo(request):
 
             filename = f"{activity_id}-{info_type}-{output}"
             content = map(
-                lambda paticipant: map(lambda key: paticipant[key], fields), paticipants
+                lambda paticipant: map(
+                    lambda key: paticipant[key], fields), paticipants
             )
 
             format = request.GET.get("format", "csv")
@@ -2058,7 +2120,8 @@ def getActivityInfo(request):
         else:
             checkin_url = f"/checkinActivity?activityid={activity.id}"
             origin_url = request.scheme + "://" + request.META["HTTP_HOST"]
-            checkin_url = parse.urljoin(origin_url, checkin_url)  # require full path
+            checkin_url = parse.urljoin(
+                origin_url, checkin_url)  # require full path
 
             buffer = io.BytesIO()
             qr = qrcode.QRCode(version=1, box_size=10, border=5)
@@ -2336,17 +2399,20 @@ def save_subscribe_status(request):
         if "id" in params.keys():
             if params["status"]:
                 me.subscribe_list.remove(
-                    Organization.objects.get(organization_id__username=params["id"])
+                    Organization.objects.get(
+                        organization_id__username=params["id"])
                 )
             else:
                 me.subscribe_list.add(
-                    Organization.objects.get(organization_id__username=params["id"])
+                    Organization.objects.get(
+                        organization_id__username=params["id"])
                 )
         elif "otype" in params.keys():
             unsubscribed_list = me.subscribe_list.filter(
                 otype__otype_id=params["otype"]
             )
-            org_list = Organization.objects.filter(otype__otype_id=params['otype'])
+            org_list = Organization.objects.filter(
+                otype__otype_id=params['otype'])
             if params["status"]:  # 表示要订阅
                 for org in unsubscribed_list:
                     me.subscribe_list.remove(org)
@@ -2437,7 +2503,8 @@ def personnel_mobilization(request):
             redirect(f"/orginfo/{me.oname}")
 
         with transaction.atomic():
-            application = Position.objects.select_for_update().get(id=params["id"])
+            application = Position.objects.select_for_update().get(
+                id=params["id"])
             apply_status = params["apply_status"]
             if apply_status == "PASS":
                 if application.apply_type == Position.ApplyType.JOIN:
@@ -2474,7 +2541,8 @@ def notification2Display(notification_list):
         # 时间
         lis[-1]["start_time"] = notification.start_time.strftime("%m/%d %H:%M")
         if notification.finish_time is not None:
-            lis[-1]["finish_time"] = notification.finish_time.strftime("%m/%d %H:%M")
+            lis[-1]["finish_time"] = notification.finish_time.strftime(
+                "%m/%d %H:%M")
 
         # 留言
         lis[-1]["content"] = notification.content
