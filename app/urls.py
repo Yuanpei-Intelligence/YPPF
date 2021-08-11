@@ -55,7 +55,6 @@ urlpatterns = [
     path("personnelMobilization/", views.personnel_mobilization, name="personnel_mobilization"),
     path("addOrgnization/", views.addOrgnization, name="addOrgnization"),
     path("auditOrgnization/", views.auditOrgnization, name="auditOrgnization"),
-    path("addReimbursement/",views.addReimbursement,name="addReimbursement")
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
