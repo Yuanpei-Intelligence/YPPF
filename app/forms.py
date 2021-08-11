@@ -1,4 +1,6 @@
 from django import forms
+from django.db.models import fields
+from .models import YQPointDistribute
 
 
 class UserForm(forms.Form):
@@ -6,3 +8,9 @@ class UserForm(forms.Form):
     password = forms.CharField(
         label="password", max_length=256, widget=forms.PasswordInput
     )
+
+
+class YQPointDistributionForm(forms.ModelForm):
+    class Meta:
+        model = YQPointDistribute
+        exclude = []

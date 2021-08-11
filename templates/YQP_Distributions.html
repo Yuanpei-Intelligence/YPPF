@@ -1,0 +1,10 @@
+<p>YQPoint_Distributions</p>
+
+<ul>
+  {% for instance in YQPoint_Distributions %}
+  <li>
+    <a href= "?dis_id={{instance.id}}"> {{instance}}</a>
+  </li>
+  {% endfor %}
+</ul>
+  <a href="?dis_id=new"> Add a new instance</a>

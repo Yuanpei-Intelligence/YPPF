@@ -1,6 +1,6 @@
 from django.urls import path, re_path
 from django.conf.urls.static import static
-from . import views, data_import
+from . import views, data_import, scheduler_func
 from django.conf import settings
 
 urlpatterns = [
@@ -49,9 +49,13 @@ urlpatterns = [
     path("subscribeActivities/", views.subscribeActivities, name="subscribeActivities"),
     path("save_subscribe_status", views.save_subscribe_status, name="save_subscribe_status"),
     path("notifications/", views.notifications, name="notifications"),
+    path("YQPoint_Distributions/", scheduler_func.YQPoint_Distributions, name="YQPoint_Distributions"),
+    # path("YQPoint_Distribution/<int:dis_id>", scheduler_func.YQPoint_Distribution, name="YQPoint_Distributions"),
+    # path("new_YQP_distribution", scheduler_func.new_YQP_distribute, name="new_YQP_distribution"),
     path("personnelMobilization/", views.personnel_mobilization, name="personnel_mobilization"),
     path("addOrgnization/", views.addOrgnization, name="addOrgnization"),
     path("auditOrgnization/", views.auditOrgnization, name="auditOrgnization"),
+    path("addReimbursement/",views.addReimbursement,name="addReimbursement")
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

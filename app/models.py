@@ -3,7 +3,6 @@ from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-
 from datetime import datetime, timedelta
 from boottest import local_dict
 
@@ -43,6 +42,7 @@ class NaturalPerson(models.Model):
     telephone = models.CharField("电话", max_length=20, null=True, blank=True)
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
+    wallpaper = models.ImageField(upload_to=f"avatar/", blank=True)
     first_time_login = models.BooleanField(default=True)
     objects = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
@@ -75,7 +75,9 @@ class NaturalPerson(models.Model):
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
+    show_class = models.BooleanField(default=True)
     show_major = models.BooleanField(default=True)
+    show_grade = models.BooleanField(default=True)
     show_dorm = models.BooleanField(default=False)
 
     # 注意：这是不订阅的列表！！
@@ -483,15 +485,44 @@ class Participant(models.Model):
     activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
     person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
 
-    class AttendStatus(models.IntegerChoices):
-        APPLYING = 0  # 申请中
-        APLLYFAILED = 1  # 申请失败
-        APLLYSUCCESS = 2  # 已报名
-        ATTENDED = 3  # 已参与
-        UNATTENDED = 4  # 未参与
-        CANCELED = 5  # 放弃，如果学生取消活动，则设置这里
+    class AttendStatus(models.TextChoices):
+        APPLYING = '申请中'
+        APLLYFAILED = '申请失败'
+        APLLYSUCCESS = '已报名'
+        ATTENDED = '已参与'
+        UNATTENDED = '未参与'
+        CANCELED = '放弃'
 
-    status = models.IntegerField("学生参与活动状态", choices=AttendStatus.choices, default=0)
+    status = models.CharField(
+        '学生参与活动状态',
+         choices=AttendStatus.choices, default=AttendStatus.APPLYING, max_length=32)
+
+
+class YQPointDistribute(models.Model):
+    class DistributionType(models.IntegerChoices):
+        # 定期发放的类型
+        # 每类型各最多有一个status为Yes的实例
+        TEMPORARY = (0, "临时发放")
+        WEEK = (1, "每周发放一次")
+        TWO_WEEK = (2, "每两周发放一次")
+        SEMESTER = (26, "每学期发放一次") # 一年有52周
+    
+    # 发放元气值的上限，多于此值则不发放
+    per_max_dis_YQP = models.FloatField("自然人发放元气值上限")
+    org_max_dis_YQP = models.FloatField("组织发放元气值上限")
+    # 个人和组织所能平分的元气值比例
+    # 发放时，从学院剩余元气值中，抽取向自然人分发的比例，平分给元气值低于上限的自然人；组织同理
+    per_YQP = models.FloatField("自然人获得的元气值", default=0)
+    org_YQP = models.FloatField("组织获得的元气值", default=0)
+
+    start_time = models.DateTimeField("开始时间")
+
+    status = models.BooleanField("是否应用", default=False)
+    type = models.IntegerField("发放类型", choices=DistributionType.choices)
+
+    class Meta:
+        verbose_name = "元气值发放"
+        verbose_name_plural = verbose_name
 
 
 class Notification(models.Model):
@@ -539,30 +570,29 @@ class NewOrgnization(models.Model):
         verbose_name = "申请建立组织的信息"
         verbose_name_plural = verbose_name
 
-    nid = models.AutoField(primary_key=True)  # 自增ID，标识唯一的组织信息
-
+    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的组织信息
     oname = models.CharField(max_length=32, unique=True)
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
     introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     application = models.TextField("申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
-    class Preorgstatus(models.IntegerChoices):  # 表示申请组织的请求的状态
+    class NewOrgStatus(models.IntegerChoices):  # 表示申请组织的请求的状态
         PENDING = (0, "待确认")
         CONFIRMED = (1, "主管老师已同意")  # 审过同意
         TOBEMODIFIED = (2, "需要修改")
         CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
-    nstatus = models.SmallIntegerField(choices=Preorgstatus.choices, default=0)
+    nstatus = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
 
 
 
-class Org_Comment(models.Model):
+class OrgComment(models.Model):
     class Meta:
         verbose_name = "审核新建组织的通知的评论"
         verbose_name_plural = verbose_name
         ordering = ['-time']
 
-    preorg = models.ForeignKey(NewOrgnization, related_name="neworg",on_delete=models.CASCADE)  # 外键
+    preorg = models.ForeignKey(NewOrgnization, related_name="comment",on_delete=models.CASCADE)  # 外键
     commentator = models.ForeignKey(User, on_delete=models.CASCADE)  # 评论者，
     text = models.TextField("文字内容", default="", blank=True)
     time = models.DateTimeField("评论时间", auto_now_add=True)  # 每次按照评论时间排序
