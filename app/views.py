@@ -2311,35 +2311,13 @@ def subscribeActivities(request):
     html_display["title_name"] = "Subscribe"
     html_display["narbar_name"] = "我的订阅"  #
 
-    org_list = Organization.objects.all()
-    org_name = list(
-        set(
-            list(
-                Organization.objects.values_list("organization_id__username", flat=True)
-            )
-        )
-    )
-    otype_list = sorted(
-        list(
-            set(list(Organization.objects.values_list("otype__otype_name", flat=True)))
-        )
-    )
-
-    class Otype_display:
-        def __init__(self, otype, idx):
-            self.otype = otype
-            self.idx = idx
-
-        def __str__(self):
-            return self.otype
-
-    otype_list = [Otype_display(otype, otype_list.index(otype)) for otype in otype_list]
-    # 给otype.otype_name排序，不然每次都不一样（后续可以写一个获取所有otype的接口，规定一个排序规则）
+    org_list = list(Organization.objects.all())
+    otype_list = list(OrganizationType.objects.all())
     unsubscribe_list = list(
         me.subscribe_list.values_list("organization_id__username", flat=True)
     )  # 获取不订阅列表（数据库里的是不订阅列表）
     subscribe_list = [
-        name for name in org_name if name not in unsubscribe_list
+        org.organization_id.username for org in org_list if org.organization_id.username not in unsubscribe_list
     ]  # 获取订阅列表
 
     subscribe_url = reverse("save_subscribe_status")
@@ -2353,6 +2331,7 @@ def save_subscribe_status(request):
         return redirect("/index/")
     me = get_person_or_org(request.user, user_type)
     params = json.loads(request.body.decode("utf-8"))
+    print(params)
     with transaction.atomic():
         if "id" in params.keys():
             if params["status"]:
@@ -2365,9 +2344,9 @@ def save_subscribe_status(request):
                 )
         elif "otype" in params.keys():
             unsubscribed_list = me.subscribe_list.filter(
-                otype__otype_name=params["otype"]
+                otype__otype_id=params["otype"]
             )
-            org_list = Organization.objects.all()
+            org_list = Organization.objects.filter(otype__otype_id=params['otype'])
             if params["status"]:  # 表示要订阅
                 for org in unsubscribed_list:
                     me.subscribe_list.remove(org)

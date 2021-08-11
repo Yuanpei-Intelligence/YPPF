@@ -128,6 +128,7 @@ class OrganizationType(models.Model):
     class Meta:
         verbose_name = "组织类型"
         verbose_name_plural = verbose_name
+        ordering = ['otype_name']
 
     otype_id = models.SmallIntegerField(
         "组织类型编号", unique=True, primary_key=True)

@@ -83,18 +83,15 @@ def publish_notification(notification_id):
     try:
         notification = Notification.objects.get(pk=notification_id)
     except:
-        print(f"未找到id为{notification_id}的活动")
+        print(f"未找到id为{notification_id}的通知")
         return False
     sender = NaturalPerson.objects.get(person_id=notification.sender)
     send_time = notification.start_time
-    if send_time.year == datetime.now().year and send_time.year == datetime.now().year:
-        timeformat = "%m月%d日 %H:%M"       # 一般不显示年和秒
-    else:
-        timeformat = "%Y年%m月%d日 %H:%M"   # 显示具体年份
+    timeformat = "%Y年%m月%d日 %H:%M"   
     send_time = send_time.strftime(timeformat)
 
     if len(notification.content) < 120:         # 卡片类型消息最多显示256字（512字节）
-        kws = {"card": True}               # 因留白等原因，内容120字左右就超出了
+        kws = {"card": True}                    # 因留白等原因，内容120字左右就超出了
         message = "\n".join((
             notification.get_title_display(),
             f"发送者：{str(sender)}",
@@ -106,7 +103,7 @@ def publish_notification(notification_id):
         if notification.URL:
             kws["url"] = notification.URL
             kws["btntxt"] = "阅读原文"
-    else:                                   # 超出卡片字数范围的消息使用文本格式发送
+    else:                                       # 超出卡片字数范围的消息使用文本格式发送
         kws = {"card": False}
         message = "\n".join((
             notification.get_title_display(),
@@ -115,7 +112,7 @@ def publish_notification(notification_id):
             f"{str(sender)}",
             "通知时间：",
             f"{send_time}",
-            "活动简介：",
+            "通知内容：",
             notification.content
         ))
         if notification.URL:
@@ -136,7 +133,7 @@ def publish_activity(aid, only_activated=False):
         return False
     org = activity.organization_id
     subcribers = NaturalPerson.objects.difference(
-        org.unsubsribers)               # flat=True时必须只有一个键
+        org.unsubsribers)                   # flat=True时必须只有一个键
     if only_activated:
         subcribers = subcribers.exclude(
             status=NaturalPerson.GraduateStatus.GRADUATED)
@@ -150,7 +147,7 @@ def publish_activity(aid, only_activated=False):
     start = start.strftime(timeformat)
     finish = finish.strftime(timeformat)
     if len(activity.content) < 120:         # 卡片类型消息最多显示256字（512字节）
-        kws = {"card": True}               # 因留白等原因，内容120字左右就超出了
+        kws = {"card": True}                # 因留白等原因，内容120字左右就超出了
         message = "\n".join((
             activity.title,
             f"组织者：{activity.organization_id.oname}",
