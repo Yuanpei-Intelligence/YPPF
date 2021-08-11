@@ -1,9 +1,8 @@
-from django.db import models
+from django.db import models, transaction
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-
 from datetime import datetime, timedelta
 from boottest import local_dict
 
@@ -43,6 +42,7 @@ class NaturalPerson(models.Model):
     telephone = models.CharField("电话", max_length=20, null=True, blank=True)
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
+    wallpaper = models.ImageField(upload_to=f"avatar/", blank=True)
     first_time_login = models.BooleanField(default=True)
     objects = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
@@ -75,7 +75,9 @@ class NaturalPerson(models.Model):
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
+    show_class = models.BooleanField(default=True)
     show_major = models.BooleanField(default=True)
+    show_grade = models.BooleanField(default=True)
     show_dorm = models.BooleanField(default=False)
 
     # 注意：这是不订阅的列表！！
@@ -195,24 +197,71 @@ class Organization(models.Model):
 
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
-        super(Organization, self).save(*args, **kwargs)
+        super().save(*args, **kwargs)
 
 
 class PositionManager(models.Manager):
     def activated(self):
-        # 选择学年相同，并且学期相同或者覆盖的
-        return self.filter(in_year=int(local_dict["semester_data"]["year"])).filter(
-            in_semester__contains=local_dict["semester_data"]["semester"]
+        return self.filter(
+            in_year=int(local_dict["semester_data"]["year"]),
+            in_semester__contains=local_dict["semester_data"]["semester"],
         )
+
+    def create_application(self, person, org, apply_type, apply_pos):
+        warn_duplicate_message = "There has already been an application of this state!"
+        with transaction.atomic():
+            if apply_type == "JOIN":
+                apply_type = Position.ApplyType.JOIN
+                application, created = self.activated().get_or_create(
+                    person=person, org=org, apply_type=apply_type, apply_pos=apply_pos
+                )
+                assert created, warn_duplicate_message
+            elif apply_type == "WITHDRAW":
+                application = (
+                    self.activated()
+                    .select_for_update()
+                    .get(person=person, org=org, status=Position.Status.INSERVICE)
+                )
+                assert (
+                    application.apply_type != Position.ApplyType.WITHDRAW
+                ), warn_duplicate_message
+                application.apply_type = Position.ApplyType.WITHDRAW
+            elif apply_type == "TRANSFER":
+                application = (
+                    self.activated()
+                    .select_for_update()
+                    .get(person=person, org=org, status=Position.Status.INSERVICE)
+                )
+                assert (
+                    application.apply_type != Position.ApplyType.TRANSFER
+                ), warn_duplicate_message
+                application.apply_type = Position.ApplyType.TRANSFER
+                application.apply_pos = int(apply_pos)
+                assert (
+                    application.apply_pos < application.pos
+                ), "TRANSFER must apply for higher position!"
+            else:
+                raise ValueError(
+                    f"Not available attributes for apply_type: {apply_type}"
+                )
+            application.apply_status = Position.ApplyStatus.PENDING
+            application.save()
 
 
 class Position(models.Model):
-    """
-    主席、部长、党支书
-    副主席、副部长
-    顾问
-    部员、干事
-    老师、助教、学生（课程）
+    """ 职务
+    职务相关：
+        - person: 自然人
+        - org: 组织
+        - pos: 职务等级
+        - status: 职务状态
+        - show_post: 是否公开职务
+        - in_year: 学年
+        - in_semester: 学期
+    人事变动申请相关：
+        - apply_type: 申请类型
+        - apply_status: 申请状态
+        - apply_pos: 申请职务等级
     """
 
     class Meta:
@@ -337,6 +386,10 @@ class Activity(models.Model):
         threeday = (2, "三天")
         oneweek = (3, "一周")
 
+    class EndBeforeHours:
+        prepare_times = [1, 24, 72, 168]
+
+
     endbefore = models.SmallIntegerField(
         "报名截止于", choices=EndBefore.choices, default=EndBefore.oneday
     )
@@ -354,7 +407,6 @@ class Activity(models.Model):
     bidding = models.BooleanField("是否投点竞价", default=False)
     YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
     budget = models.FloatField("预算", default=0.0)
-
 
     # 允许是正无穷, 可以考虑用INTINF
     capacity = models.IntegerField("活动最大参与人数", default=100)
@@ -411,7 +463,7 @@ class TransferRecord(models.Model):
         WAITING = (1, "待确认")
         REFUSED = (2, "已拒绝")
         SUSPENDED = (3, "已终止")
-        REDUND = (4, "已退回")
+        REFUND = (4, "已退回")
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
 
@@ -429,15 +481,44 @@ class Participant(models.Model):
     activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
     person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
 
-    class AttendStatus(models.IntegerChoices):
-        APPLYING = 0  # 申请中
-        APLLYFAILED = 1  # 申请失败
-        APLLYSUCCESS = 2  # 已报名
-        ATTENDED = 3  # 已参与
-        UNATTENDED = 4  # 未参与
-        CANCELED = 5  # 放弃，如果学生取消活动，则设置这里
+    class AttendStatus(models.TextChoices):
+        APPLYING = '申请中'
+        APLLYFAILED = '申请失败'
+        APLLYSUCCESS = '已报名'
+        ATTENDED = '已参与'
+        UNATTENDED = '未参与'
+        CANCELED = '放弃'
 
-    status = models.IntegerField("学生参与活动状态", choices=AttendStatus.choices, default=0)
+    status = models.CharField(
+        '学生参与活动状态',
+         choices=AttendStatus.choices, default=AttendStatus.APPLYING, max_length=32)
+
+
+class YQPointDistribute(models.Model):
+    class DistributionType(models.IntegerChoices):
+        # 定期发放的类型
+        # 每类型各最多有一个status为Yes的实例
+        TEMPORARY = (0, "临时发放")
+        WEEK = (1, "每周发放一次")
+        TWO_WEEK = (2, "每两周发放一次")
+        SEMESTER = (26, "每学期发放一次") # 一年有52周
+    
+    # 发放元气值的上限，多于此值则不发放
+    per_max_dis_YQP = models.FloatField("自然人发放元气值上限")
+    org_max_dis_YQP = models.FloatField("组织发放元气值上限")
+    # 个人和组织所能平分的元气值比例
+    # 发放时，从学院剩余元气值中，抽取向自然人分发的比例，平分给元气值低于上限的自然人；组织同理
+    per_YQP = models.FloatField("自然人获得的元气值", default=0)
+    org_YQP = models.FloatField("组织获得的元气值", default=0)
+
+    start_time = models.DateTimeField("开始时间")
+
+    status = models.BooleanField("是否应用", default=False)
+    type = models.IntegerField("发放类型", choices=DistributionType.choices)
+
+    class Meta:
+        verbose_name = "元气值发放"
+        verbose_name_plural = verbose_name
 
 
 class Notification(models.Model):

@@ -10,6 +10,7 @@ from app.models import (
     TransferRecord,
     Participant,
     Notification,
+    YQPointDistribute
 )
 import app.utils as utils
 from app.forms import UserForm
@@ -39,6 +40,14 @@ import requests  # 发送验证码
 import io
 import csv
 import qrcode
+
+from app.scheduler_func import distribute_YQPoint, YQPoint_Distribution
+# 定时任务注册
+from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
+from .scheduler_func import scheduler
+# 注册启动以上schedule任务
+register_events(scheduler)
+scheduler.start()
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
@@ -247,15 +256,16 @@ def stuinfo(request, name=None):
     if not valid:
         return redirect("/logout/")
 
+    try:
+        oneself = NaturalPerson.objects.activated().get(person_id=user)
+    except:
+        return redirect("/welcome/")
+
     if name is None:
         if user_type == "Organization":
             return redirect("/welcome/")
         else:
             assert user_type == "Person"
-            try:
-                oneself = NaturalPerson.objects.activated().get(person_id=user)
-            except:
-                return redirect("/welcome/")
             full_path = request.get_full_path()
             append_url = "" if ("?" not in full_path) else "?" + full_path.split("?")[1]
             return redirect("/stuinfo/" + oneself.name + append_url)
@@ -270,12 +280,8 @@ def stuinfo(request, name=None):
             person = person[0]
         else:  # 有很多人，这时候假设加号后面的是user的id
             if len(name_list) == 1:  # 没有任何后缀信息，那么如果是自己则跳转主页，否则跳转搜索
-                if (
-                    user_type == "Person"
-                    and NaturalPerson.objects.activated().get(person_id=user).name
-                    == name
-                ):
-                    person = NaturalPerson.objects.activated().get(person_id=user)
+                if user_type == "Person"and oneself.name == name:
+                    person = oneself
                 else:  # 不是自己，信息不全跳转搜索
                     return redirect("/search?Query=" + name)
             else:
@@ -290,16 +296,68 @@ def stuinfo(request, name=None):
         is_myself = user_type == "Person" and person.person_id == user  # 用一个字段储存是否是自己
         html_display["is_myself"] = is_myself  # 存入显示
 
-        # 处理被搜索人的信息，这里应该和“用户自己”区分开
-        join_pos_id_list = Position.objects.activated().filter(
-            Q(person=person) & Q(show_post=True)
-        )
+        # 制作属于组织的卡片（头像，名称（+链接），介绍，职位）
+        person_pos_infos = Position.objects.activated().filter(
+            Q(person=person) & Q(show_post=True))
+        oneself_org_ids = Position.objects.activated().filter(
+            Q(person=oneself) & Q(show_post=True)).values('org')
+        org_is_same = [
+            id in oneself_org_ids for id in person_pos_infos.values('org')]
+        join_org_info = Organization.objects.filter(
+            id__in=person_pos_infos.values('org'))  # ta属于的组织
+        org_avas = [utils.get_user_ava(org, "organization")
+                    for org in join_org_info]
+        org_poss = person_pos_infos.values('pos')
+        org_statuss = person_pos_infos.values('status')
+        html_display['org_info'] = list(zip(
+            join_org_info, org_avas, org_poss, org_statuss, org_is_same))
+        html_display['org_len'] = len(html_display['org_info'])
 
-        # html_display['join_org_list'] = Organization.objects.filter(org__in = join_pos_id_list.values('org'))               # 我属于的组织
+        # for activity in Activity.objects.all():
+        #     print(activity)
+        #     Participant.objects.create(activity_id=activity, person_id=person)
+
+        # 制作参与活动的卡片（时间，名称（+链接），组织，地点，介绍，状态）
+        participants = Participant.objects.filter(person_id=person.id)
+        activities_me = Participant.objects.filter(
+            person_id=person.id).values('activity_id')
+        activity_is_same = [
+            participant in activities_me for participant in participants.values('activity_id')]
+        activities = Activity.objects.filter(
+            id__in=participants.values('activity_id'))
+        participate_status_list = participants.values('status')
+        participate_status_list = [info['status']
+                                   for info in participate_status_list]
+        status_color = {
+            Activity.Status.REVIEWING: 'primary',
+            Activity.Status.CANCELED: 'secondary',
+            Activity.Status.APPLYING: 'info',
+            Activity.Status.WAITING: 'warning',
+            Activity.Status.PROGRESSING: 'success',
+            Activity.Status.END: 'danger',
+
+            Participant.AttendStatus.APPLYING: 'primary',
+            Participant.AttendStatus.APLLYFAILED: 'danger',
+            Participant.AttendStatus.APLLYSUCCESS: 'info',
+            Participant.AttendStatus.ATTENDED: 'success',
+            Participant.AttendStatus.UNATTENDED: 'warning',
+            Participant.AttendStatus.CANCELED: 'secondary'
+        }
+        activity_color_list = [status_color[activity.status]
+                               for activity in activities]
+        attend_color_list = [status_color[status]
+                             for status in participate_status_list]
+        activity_info = list(
+            zip(activities, participate_status_list, activity_is_same, activity_color_list, attend_color_list))
+        activity_info.sort(
+            key=lambda a: a[0].start, reverse=True)
+        html_display['activity_info'] = activity_info
+        html_display['activity_len'] = len(html_display['activity_info'])
 
         # 呈现信息
         # 首先是左边栏
-        html_display = utils.get_user_left_narbar(person, is_myself, html_display)
+        html_display = utils.get_user_left_narbar(
+            person, is_myself, html_display)
 
         try:
             html_display["warn_code"] = int(
@@ -307,7 +365,8 @@ def stuinfo(request, name=None):
             )  # 是否有来自外部的消息
         except:
             return redirect("/welcome/")
-        html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+        html_display["warn_message"] = request.GET.get(
+            "warn_message", "")  # 提醒的具体内容
 
         modpw_status = request.GET.get("modinfo", None)
         if modpw_status is not None and modpw_status == "success":
@@ -316,8 +375,15 @@ def stuinfo(request, name=None):
 
         # 存储被查询人的信息
         context = dict()
-        context["userinfo"] = person
+
+        context['person'] = person
+        
+        def gender2title(g): return '他' if g == 0 else '她'
+        context['title'] = '我' if is_myself else gender2title(
+            person.gender) if person.show_gender else 'ta'
+
         context["avatar_path"] = utils.get_user_ava(person, "Person")
+        context["wallpaper_path"] = utils.get_user_wallpaper(person)
 
         html_display["title_name"] = "User Profile"
         html_display["narbar_name"] = "个人主页"
@@ -1028,7 +1094,7 @@ def applyActivity(request, activity_id, willingness):
 
         try:
             participant = Participant.objects.select_for_update().get(
-                activity_id=activity, person_id=payer.person_id_id
+                activity_id=activity, person_id=payer
             )
             if (
                 participant.status == Participant.AttendStatus.APPLYING
@@ -1609,9 +1675,13 @@ def viewActivity(request, aid=None):
 
     # 活动全部基本信息
     title = activity.title
+    '''
     org = Organization.objects.activated().get(
         organization_id_id=activity.organization_id_id
     )
+    '''
+    org = activity.organization_id
+
     org_name = org.oname
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
@@ -1714,7 +1784,7 @@ def viewActivity(request, aid=None):
             activity.save()
         html_display["warn_code"] = 2
         html_display["warn_message"] = "成功取消活动。"
-        aStatus = activity.status
+        status = activity.status
         # TODO 第一次点只会提醒已经成功取消活动，但是活动状态还是进行中，看看怎么修一下
         return render(request, "activity_info.html", locals())
 
@@ -1764,20 +1834,25 @@ def viewActivity(request, aid=None):
             html_display["warn_message"] = "非预期的异常，请联系管理员汇报。"
         return render(request, "activity_info.html", locals())
 
-    elif option == "withdraw":
+    elif option == "quit":
         with transaction.atomic():
             np = NaturalPerson.objects.select_for_update().get(person_id=request.user)
             org = Organization.objects.select_for_update().get(
                 organization_id=activity.organization_id.organization_id
             )
-            participant = Participant.objects.select_for_update().get(
-                activity_id=activity,
-                person_id=np,
-                status__in=[
-                    Participant.AttendStatus.APPLYING,
-                    Participant.AttendStatus.APLLYSUCCESS,
-                ],
-            )
+            try:
+                participant = Participant.objects.select_for_update().get(
+                    activity_id=activity,
+                    person_id=np,
+                    status__in=[
+                        Participant.AttendStatus.APPLYING,
+                        Participant.AttendStatus.APLLYSUCCESS,
+                    ],
+                )
+            except:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "未找到报名记录。"
+                return render(request, "activity_info.html", locals())
             record = TransferRecord.objects.select_for_update().get(
                 corres_act=activity,
                 proposer=request.user,
@@ -1786,9 +1861,9 @@ def viewActivity(request, aid=None):
             activity = Activity.objects.select_for_update().get(id=aid)
 
             # 报名截止前，全额退还
-            if aStatus == Activity.Status.APPLYING:
+            if status == Activity.Status.APPLYING:
                 amount = record.amount
-            elif aStatus == Activity.Status.WAITING:
+            elif status == Activity.Status.WAITING:
                 cur_time = datetime.now()
                 if cur_time + timedelta(hours=1) > activity.start:
                     html_display["warn_code"] = 1
@@ -1810,7 +1885,7 @@ def viewActivity(request, aid=None):
             org.YQPoint -= amount
             np.YQPoint += amount
             participant.status = Participant.AttendStatus.CANCELED
-            record.status = TransferRecord.TransferStatus.REDUND
+            record.status = TransferRecord.TransferStatus.REFUND
             activity.current_participants -= 1
             org.save()
             np.save()
@@ -1822,6 +1897,10 @@ def viewActivity(request, aid=None):
         html_display["warn_code"] = 2
         html_display["warn_message"] = "成功取消报名。"
         pStatus = Participant.AttendStatus.CANCELED
+        return render(request, "activity_info.html", locals())
+
+    elif option == "payment":
+        raise NotImplementedError
         return render(request, "activity_info.html", locals())
 
     else:
@@ -2278,49 +2357,11 @@ def apply_position(request, oid=None):
         apply_type = request.POST.get("apply_type", "JOIN")
         apply_pos = int(request.POST.get("apply_pos", 10))
 
-    warn_duplicate_message = "There has already been an application of this state!"
-
     try:
-        with transaction.atomic():
-            if apply_type == "JOIN":
-                apply_type = Position.ApplyType.JOIN
-                application, created = Position.objects.activated().get_or_create(
-                    person=me, org=org, apply_type=apply_type, apply_pos=apply_pos
-                )
-                assert created, warn_duplicate_message
-            elif apply_type == "WITHDRAW":
-                application = (
-                    Position.objects.activated()
-                    .select_for_update()
-                    .get(person=me, org=org, status=Position.Status.INSERVICE)
-                )
-                assert (
-                    application.apply_type != Position.ApplyType.WITHDRAW
-                ), warn_duplicate_message
-                application.apply_type = Position.ApplyType.WITHDRAW
-            elif apply_type == "TRANSFER":
-                application = (
-                    Position.objects.activated()
-                    .select_for_update()
-                    .get(person=me, org=org, status=Position.Status.INSERVICE)
-                )
-                assert (
-                    application.apply_type != Position.ApplyType.TRANSFER
-                ), warn_duplicate_message
-                application.apply_type = Position.ApplyType.TRANSFER
-                application.apply_pos = int(apply_pos)
-                assert (
-                    application.apply_pos < application.pos
-                ), "TRANSFER must apply for higher position!"
-            else:
-                raise ValueError(
-                    f"Not available attributes for apply_type: {apply_type}"
-                )
-            application.apply_status = Position.ApplyStatus.PENDING
-            application.save()
+        Position.objects.create_application(me, org, apply_type, apply_pos)
     except Exception as e:
         print(e)
-        return redirect(f"/orginfo/{org.oname}")
+        return redirect(f"/orginfo/{org.oname}?warn_code=1&warn_message={e}")
 
     contents = [f"{apply_type}申请已提交审核", f"{apply_type}申请审核"]
     notification_create(

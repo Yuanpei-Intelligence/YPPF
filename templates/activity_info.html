@@ -171,6 +171,7 @@
                                                 {% elif pStatus == -1 and status == "报名中" and bidding == False %}
                                                 <form method="POST">
                                                     <input type="hidden" name="option" value="apply">
+                                                    <input type="hidden" name="aid" value={{aid}}>
                                                     <button class="btn btn-primary btn-block mb-4 mr-2">立即报名</button>
                                                 </form>
                                                 {% elif pStatus == -1 and status != "审核中" %}
@@ -179,6 +180,7 @@
                                                 <a href="javascript:void(0);" class="btn btn-secondary btn-block mb-4 mr-2">申请中</a>
                                                 <form method="POST">
                                                     <input type="hidden" name="option" value="quit">
+                                                    <input type="hidden" name="aid" value={{aid}}>
                                                     <button class="btn btn-danger btn-block mb-4 mr-2">退出活动</button>
                                                 </form>
                                                 {% elif pStatus == 1 %}
@@ -187,6 +189,7 @@
                                                 <a href="javascript:void(0);" class="btn btn-primary btn-block mb-4 mr-2">已报名</a>
                                                 <form method="POST">
                                                     <input type="hidden" name="option" value="quit">
+                                                    <input type="hidden" name="aid" value={{aid}}>
                                                     <button class="btn btn-danger btn-block mb-4 mr-2">退出活动</button>
                                                 </form>
                                                 {% elif pStatus == 3 %}
@@ -199,14 +202,17 @@
                                             {% elif ownership %}
                                             <form method="POST">
                                                 <input type="hidden" name="option" value="edit">
+                                                <input type="hidden" name="aid" value={{aid}}>
                                                 <button class="btn btn-primary btn-block mb-4 mr-2">修改信息</button>
                                             </form>
                                             <form method="POST">
                                                 <input type="hidden" name="option" value="payment">
+                                                <input type="hidden" name="aid" value={{aid}}>
                                                 <button class="btn btn-primary btn-block mb-4 mr-2">申请报销</button>
                                             </form>
                                             <form method="POST">
                                                 <input type="hidden" name="option" value="cancel">
+                                                <input type="hidden" name="aid" value={{aid}}>
                                                 <button class="btn btn-danger btn-block mb-4 mr-2">取消活动</button>
                                             </form>
                                             {% endif %}
