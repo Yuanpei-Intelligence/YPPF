@@ -663,79 +663,120 @@ def account_setting(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect("/logout/")
-
     # 在这个页面 默认回归为自己的左边栏
     html_display["is_myself"] = True
     user = request.user
-    info = NaturalPerson.objects.filter(person_id=user)
-    userinfo = info.values()[0]
+    if user_type == "Person":
+        info = NaturalPerson.objects.filter(person_id=user)
+        userinfo = info.values()[0]
 
-    useroj = NaturalPerson.objects.get(person_id=user)
+        useroj = NaturalPerson.objects.get(person_id=user)
 
-    former_img = html_display["avatar_path"]
-    #print(json.loads(request.body.decode("utf-8")))
-    if request.method == "POST" and request.POST:
+        former_img = html_display["avatar_path"]
+        #print(json.loads(request.body.decode("utf-8")))
+        if request.method == "POST" and request.POST:
 
-        attr_dict = dict()
+            attr_dict = dict()
 
-        attr_dict['nickname'] = request.POST['nickname']
-        attr_dict['biography'] = request.POST["aboutBio"]
-        attr_dict['telephone'] = request.POST["tel"]
-        attr_dict['email'] = request.POST["email"]
-        attr_dict['stu_major'] = request.POST["major"]
-        attr_dict['stu_grade'] = request.POST['grade']
-        attr_dict['stu_class'] = request.POST['class']
-        attr_dict['stu_dorm'] = request.POST['dorm']
+            attr_dict['nickname'] = request.POST['nickname']
+            attr_dict['biography'] = request.POST["aboutBio"]
+            attr_dict['telephone'] = request.POST["tel"]
+            attr_dict['email'] = request.POST["email"]
+            attr_dict['stu_major'] = request.POST["major"]
+            attr_dict['stu_grade'] = request.POST['grade']
+            attr_dict['stu_class'] = request.POST['class']
+            attr_dict['stu_dorm'] = request.POST['dorm']
 
-        ava = request.FILES.get("avatar")
-        gender = request.POST['gender']
+            ava = request.FILES.get("avatar")
+            gender = request.POST['gender']
 
-        show_dict = dict()
+            show_dict = dict()
 
-        show_dict['show_nickname'] = request.POST.get('show_nickname') == 'on'
-        show_dict['show_gender'] = request.POST.get('show_gender') == 'on'
-        show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
-        show_dict['show_email'] = request.POST.get('show_email') == 'on'
-        show_dict['show_major'] = request.POST.get('show_major') == 'on'
-        show_dict['show_grade'] = request.POST.get('show_grade') == 'on'
-        show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
+            show_dict['show_nickname'] = request.POST.get('show_nickname') == 'on'
+            show_dict['show_gender'] = request.POST.get('show_gender') == 'on'
+            show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
+            show_dict['show_email'] = request.POST.get('show_email') == 'on'
+            show_dict['show_major'] = request.POST.get('show_major') == 'on'
+            show_dict['show_grade'] = request.POST.get('show_grade') == 'on'
+            show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
 
-        
-        expr = bool(ava  or (gender != useroj.get_gender_display()))
-        expr += sum([(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
-        expr += sum([getattr(useroj, show_attr) != show_dict[show_attr] for show_attr in show_dict.keys()])
+            
+            expr = bool(ava  or (gender != useroj.get_gender_display()))
+            expr += sum([(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
+            expr += sum([getattr(useroj, show_attr) != show_dict[show_attr] for show_attr in show_dict.keys()])
 
-        if gender != useroj.gender:
-            useroj.gender = NaturalPerson.Gender.MALE if gender == '男' else NaturalPerson.Gender.FEMALE
-        for attr in attr_dict.keys():
-            if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
-                setattr(useroj, attr, attr_dict[attr])
-        for show_attr in show_dict.keys():
-            if getattr(useroj, show_attr) != show_dict[show_attr]:
-                setattr(useroj, show_attr, show_dict[show_attr])
-        if ava is None:
-            pass
-        else:
-            useroj.avatar = ava
-        useroj.save()
-        avatar_path = settings.MEDIA_URL + str(ava)
-        if expr == False:
-            return render(request, "user_account_setting.html", locals())
+            if gender != useroj.gender:
+                useroj.gender = NaturalPerson.Gender.MALE if gender == '男' else NaturalPerson.Gender.FEMALE
+            for attr in attr_dict.keys():
+                if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
+                    setattr(useroj, attr, attr_dict[attr])
+            for show_attr in show_dict.keys():
+                if getattr(useroj, show_attr) != show_dict[show_attr]:
+                    setattr(useroj, show_attr, show_dict[show_attr])
+            if ava is None:
+                pass
+            else:
+                useroj.avatar = ava
+            useroj.save()
+            avatar_path = settings.MEDIA_URL + str(ava)
+            if expr == False:
+                return render(request, "person_account_setting.html", locals())
 
-        else:
-            upload_state = True
-            return redirect("/stuinfo/?modinfo=success")
+            else:
+                upload_state = True
+                return redirect("/stuinfo/?modinfo=success")
+    else:
+        info = Organization.objects.filter(organization_id=user)
+        userinfo = info.values()[0]
+
+        useroj = Organization.objects.get(organization_id=user)
+
+        former_img = html_display["avatar_path"]
+
+        if request.method == "POST" and request.POST:
+
+            attr_dict = dict()
+            attr_dict['introduction'] = request.POST['introduction']
+            
+            ava = request.FILES.get("avatar")
+            
+            expr = bool(ava)
+            expr += sum([(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
+
+            for attr in attr_dict.keys():
+                if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
+                    setattr(useroj, attr, attr_dict[attr])
+            if ava is None:
+                pass
+            else:
+                useroj.avatar = ava
+            useroj.save()
+            avatar_path = settings.MEDIA_URL + str(ava)
+            if expr == False:
+                return render(request, "org_account_setting.html", locals())
+            else:
+                upload_state = True
+                return redirect("/orginfo/?modinfo=success")
+
+
 
     # 补充网页呈现所需信息
     html_display["title_name"] = "Account Setting"
     html_display["narbar_name"] = "账户设置"
 
-    # 然后是左边栏
-    html_display = utils.get_user_left_narbar(
-        useroj, html_display["is_myself"], html_display
-    )
 
-    return render(request, "user_account_setting.html", locals())
+    if user_type == "Person":
+        # 然后是左边栏
+        html_display = utils.get_user_left_narbar(
+            useroj, html_display["is_myself"], html_display
+        )
+        return render(request, "person_account_setting.html", locals())
+    else:
+        html_display = utils.get_org_left_narbar(
+            useroj, html_display['is_myself'], html_display
+        )
+        return render(request, "org_account_setting.html", locals())
+
 
 
 def register(request):
