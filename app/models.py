@@ -641,7 +641,7 @@ class ReimburseComment(models.Model):
     reimbursement = models.ForeignKey(Reimbursement,
                                     related_name="comments",
                                     on_delete=models.CASCADE)
-    username = models.CharField("评论者", max_length=10)
+    commentator = models.CharField("评论者", max_length=10)
     # 保留用户名的意义是方便页面统一呈现（评论者可能是组织或老师）
     # 也许可以允许自由设置名称
     text = models.TextField("文字内容", default="", blank=True)

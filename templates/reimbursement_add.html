@@ -42,47 +42,49 @@
                                     <!--  BEGIN CONTENT AREA  -->
                                     <div class="widget-content widget-content-area">
 
-                                        <form role="form" method="POST">
+                                        <form role="form" method="POST" enctype="multipart/form-data">
                                             <div class="form-group">
                                                 <label>报销活动</label>
                                                 {%if edit%}
-                                                <textarea type="text" name="oname" class="form-control"
-                                                          aria-label="Default" placeholder="不超过32个字节">
-                                                    {{html_display.oname}}
-                                                </textarea>
+
+                                                <select name="activity" class="form-control">
+                                                    {% for activity in activities.all%}
+                                                    {%if audit_activity.id == activity.id%}
+                                                    <option value={{activity.id}} selected="selected">
+                                                        {{activity.title}}
+                                                    </option>
+                                                    {%endif%}
+                                                    <option value={{activity.id}}>{{activity.title}}</option>
+                                                    {%endfor%}
+                                                </select>
 
                                                 {%else%}
-                                                <input type="text" name="oname" class="form-control"
-                                                       aria-label="Default" placeholder="不超过32个字节">
-                                                {%endif%}
-                                                <select name="otype">
+                                                <select name="activity" class="form-control">
                                                     {% for activity in activities.all%}
                                                     <option value={{activity.id}}>{{activity.title}}</option>
                                                     {%endfor%}
                                                 </select>
+                                                {%endif%}
+
                                             </div>
                                             <div class="form-group">
                                                 <label>报销额度</label>
                                                 <br>
                                                 <input type="number" class="form-control"
-                                                        aria-label="Text input with dropdown button" id="aprice"
-                                                        name="aprice" placeholder="{{amount}}" step="0.1"
-                                                        οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')"
-
+                                                       aria-label="Text input with dropdown button" id="aprice"
+                                                       name="YQP" placeholder="{{amount}}" step="0.1"
+                                                       οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')"
                                                 >
                                             </div>
-
                                             <div class="form-group form-row">
                                                 <label class="col-sm-2 control-label uText">报销材料</label>
                                                 <div class="row">
                                                     <div class="col-xs-10 col-sm-8 mTop5">
-                                                        <label title="报销材料" for="ClubImagesUpload" id="btnClubImg"
-                                                               class="col-sm-2">
-                                                            <input type="file" accept="image/*" name="ClubImagesUpload"
-                                                                   id="ClubImagesUpload" class="hide"
-                                                                   multiple="multiple">
-                                                            <img src="/media/upload.png"
-                                                                 class="addImg"/>
+                                                        <label title="报销材料">
+                                                            <input type="file" accept="image/*"
+                                                                   name="images"
+                                                                   class="hide"
+                                                                   multiple>
                                                         </label>
                                                     </div>
                                                 </div>
@@ -95,32 +97,36 @@
                                                 <textarea name="message" class="form-control"
                                                           rows="3"
                                                           placeholder="空">
-                                                    {{html_display.introduction}}
-                                                </textarea>
+                                                    {{html_display.introduction}}</textarea>
                                                 {%else%}
                                                 <textarea name="message" class="form-control"
                                                           rows="3"
-                                                          placeholder="空">
-                                                </textarea>
+                                                          placeholder="空"></textarea>
                                                 {%endif%}
                                             </div>
+                                            <textarea name="message" class="form-control"
+                                                      rows="3"
+                                                      placeholder="空"></textarea>
+                                            <textarea class="form-control" id="aboutBio" name="aboutBio"
+                                                      placeholder="{{userinfo.biography}}" rows="10"></textarea>
                                             <br>
                                             <br>
                                             <hr>
 
 
                                             {%if edit%}
-                                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
+                                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
+                                                    value="">
                                                 修改并提交
                                             </button>
                                             {%else%}
-                                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
+                                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
+                                                    value="">
                                                 提交
                                             </button>
                                             {%endif%}
                                         </form>
 
-                                        {%if edit%}
 
                                         <br>
                                         <hr>
@@ -140,22 +146,41 @@
                                             <div>
                                                 <div class="form-group">
                                                     <label>评论</label>
+                                                    <div>
+                                                        <p style="color: rgb(66, 67, 68);" align="right"><i
+                                                                class="fa fa-address-book"></i> {{me.oname}}</p>
+                                                    </div>
                                                     <textarea type="text" id="comment" name="comment"
                                                               class="form-control"
                                                               aria-label="Default" rows="3"
                                                               placeholder="Leave a comment">
                                                 </textarea>
                                                     <br>
-                                                    <div style="text-align:right;">
-                                                        <button type="submit" class="btn btn-primary btn-sm mb-4 mr-2">
-                                                            回复
-                                                        </button>
+                                                    <div>
+                                                        <label title="报销材料">
+                                                            <div style="text-align:left;">
+                                                                <input type="file" accept="image/*"
+                                                                       name="comment_images"
+                                                                       class="hide"
+                                                                       multiple>
+                                                            </div>
+                                                        </label>
+                                                        <div style="text-align:right;">
+                                                            <button type="submit"
+                                                                    class="btn btn-primary btn-sm mb-4 mr-2"
+                                                                    name="comment_submit" value="1">
+                                                                回复
+                                                            </button>
+                                                        </div>
+
                                                     </div>
+
 
                                                 </div>
                                             </div>
                                         </form>
-                                        {%endif%}
+
+
                                     </div>
 
                                 </div>
@@ -173,16 +198,3 @@
 <!-- END MAIN CONTAINER -->
 
 {% endblock %}
-<script>
-
-$("#btnClubImg").click(function() {
-      var $input = $("#ClubImagesUpload");
-     console.log($input);//打印当前元素
-});
-
-</script>
-
-
-
-
-

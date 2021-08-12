@@ -2913,29 +2913,38 @@ def addReimbursement(request):
     # 组织未报销的活动（本学期未报销的且已结束的活动）
     # 组织剩余的元气值
     activities = Activity.objects.activated().filter(status=Activity.Status.END)  # 本学期已结束的活动    TODO 且未报销？
-    YQP = me.YQPoint
+    YQP = float(me.YQPoint)
     if request.method == "POST" and request.POST:
-        """if request.POST.get('comment') is not None:  # 新建评论信息，并保存
-            text = str(request.POST.get('comment'))
-            OrgComment.objects.create(preorg=preorg, commentator=request.user, text=text)"""
 
-        reimb_YQP = request.POST.get('YQP')
-        reimb_act = request.POST.get('activity')
-        message = request.POST.get('message')
-        # 参数合法性检查
-        if reimb_YQP > YQP:
-            html_display['warn_code'] = 1
-            html_display['warn_message'] = "申请失败，报销的元气值不能超过组织当前元气值！"
-            return render(request, "orgnization_add.html", locals())
-        from app.models import Reimbursement
-        try:
-            new_reimb = Reimbursement.create(activity=reimb_act, amount=reimb_YQP)
-            new_reimb.message = message
-            new_reimb.save()
-        except:
-            html_display['warn_code'] = 1
-            html_display['warn_message'] = "新建申请失败，请联系管理员！"
-            return render(request, "orgnization_add.html", locals())
+        if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
+            text = str(request.POST.get('comment'))
+            #reim_comment=ReimburseComment.objects.create(preorg=preorg, commentator=request.user, text=text)
+            if request.POST.get('comment_images') is not None:#上传多张图片
+                #reim_comment.img=""
+                pass
+        else:
+            reimb_YQP = float(request.POST.get('YQP'))
+            reimb_act = request.POST.get('activity')
+            message = request.POST.get('message')
+            images = request.FILES.getlist('imgs')
+            for item in images:
+                with open("/media/" + item.name, 'wb') as f:
+                    for c in item.chunks():
+                        f.write(c)
+            # 参数合法性检查
+            if reimb_YQP > YQP:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "申请失败，报销的元气值不能超过组织当前元气值！"
+                return render(request, "reimbursement_add.html", locals())
+            from app.models import Reimbursement
+            try:
+                new_reimb = Reimbursement.create(activity=reimb_act, amount=reimb_YQP)
+                new_reimb.message = message
+                new_reimb.save()
+            except:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "新建申请失败，请联系管理员！"
+                return render(request, "reimbursement_add.html", locals())
 
         return render(request, "reimbursement_add.html", locals())
     return render(request, "reimbursement_add.html", locals())
