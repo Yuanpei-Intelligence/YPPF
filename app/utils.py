@@ -26,11 +26,9 @@ def check_user_type(user):  # return Valid(Bool), otype
         html_display["profile_name"] = "个人主页"
         html_display["profile_url"] = "/stuinfo/"
         html_display["avatar_path"] = get_user_ava(person, user_type)
-        html_display["user_type"] = user_type
-
-    html_display["mail_num"] = Notification.objects.filter(
-        receiver=user, status=Notification.NotificationStatus.UNDONE
-    ).count()
+        html_display['user_type'] = user_type
+    
+    html_display['mail_num'] = Notification.objects.filter(receiver=user, status=Notification.Status.UNDONE).count()
 
     return True, user_type, html_display
 
