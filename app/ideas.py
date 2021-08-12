@@ -83,7 +83,7 @@ def html1():
     '''
 
 # ---------------------------------------
-# |     comment_reimbursement.html      |
+# |     reimbursement_comment.html      |
 # ---------------------------------------
 
 def html2():
@@ -165,7 +165,7 @@ def comment_reimbursement(request):
     2. GET
         1. 获取报销信息和状态
         2. 获取所有本报销关联的评论:`reim.comments`
-        3. 返回`render(request, comment_reimbursement.html, locals())`
+        3. 返回`render(request, reimbursement_comment.html, locals())`
     3. POST
         1. 查看是否通过
             - 如果是对应老师，更新状态，结束，提示成功并返回之前界面
