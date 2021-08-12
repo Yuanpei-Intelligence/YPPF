@@ -301,11 +301,8 @@ def stuinfo(request, name=None):
         person_pos_infos = Position.objects.activated().filter(
             Q(person=person) & Q(show_post=True)
         )
-        oneself_org_ids = (
-            Position.objects.activated()
-            .filter(Q(person=oneself) & Q(show_post=True))
-            .values("org")
-        )
+        oneself_org_ids = [oneself] if user_type == 'Organization' else Position.objects.activated().filter(
+            Q(person=oneself) & Q(show_post=True)).values("org")
         org_is_same = [
             id in oneself_org_ids for id in person_pos_infos.values("org")]
         join_org_info = Organization.objects.filter(
@@ -331,13 +328,18 @@ def stuinfo(request, name=None):
         if user_type == 'Person':
             activities_me = Participant.objects.filter(
                 person_id=person.id).values('activity_id')
+            activity_is_same = [
+                activity in activities_me
+                for activity in participants.values("activity_id")
+            ]
         else:
             activities_me = activities.filter(
                 organization_id=oneself.id).values('id')
-        activity_is_same = [
-            participant in activities_me
-            for participant in participants.values("activity_id")
-        ]
+            activities_me = [activity['id'] for activity in activities_me]
+            activity_is_same = [
+                activity['activity_id'] in activities_me
+                for activity in participants.values("activity_id")
+            ]
         participate_status_list = participants.values('status')
         participate_status_list = [info['status']
                                    for info in participate_status_list]
