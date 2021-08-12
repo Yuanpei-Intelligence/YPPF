@@ -583,7 +583,7 @@ def orginfo(request, name=None):
     modpw_status = request.GET.get("modinfo", None)
     if modpw_status is not None and modpw_status == "success":
         html_display["warn_code"] = 2
-        html_display["warn_message"] = "修改个人信息成功!"
+        html_display["warn_message"] = "修改组织信息成功!"
 
     # 补充左边栏信息
 
