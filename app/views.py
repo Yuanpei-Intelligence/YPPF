@@ -2447,15 +2447,15 @@ def apply_position(request, oid=None):
     notification_create(
         me.person_id,
         org.organization_id,
-        Notification.NotificationType.NEEDREAD,
-        Notification.NotificationTitle.POSITION_INFORM,
+        Notification.Type.NEEDREAD,
+        Notification.Title.POSITION_INFORM,
         contents[0],
     )
     notification_create(
         org.organization_id,
         me.person_id,
-        Notification.NotificationType.NEEDDO,
-        Notification.NotificationTitle.POSITION_INFORM,
+        Notification.Type.NEEDDO,
+        Notification.Title.POSITION_INFORM,
         contents[1],
         "/personnelMobilization/",
     )
@@ -2511,8 +2511,8 @@ def personnel_mobilization(request):
         notification_create(
             application.person.person_id,
             me.organization_id,
-            Notification.NotificationType.NEEDREAD,
-            Notification.NotificationTitle.POSITION_INFORM,
+            Notification.Type.NEEDREAD,
+            Notification.Title.POSITION_INFORM,
             f"{application.apply_type}申请{application.apply_status}",
         )
         return redirect("/personnelMobilization/")
