@@ -259,15 +259,12 @@ def stuinfo(request, name=None):
     if not valid:
         return redirect("/logout/")
 
-    try:
-        oneself = NaturalPerson.objects.activated().get(person_id=user)
-    except:
-        return redirect("/welcome/")
+    oneself = get_person_or_org(user, user_type)
 
     if name is None:
         if user_type == "Organization":
-            return redirect("/welcome/")
-        else:
+            return redirect("/welcome/")    # 组织只能指定学生姓名访问
+        else:                               # 跳轉到自己的頁面
             assert user_type == "Person"
             full_path = request.get_full_path()
             append_url = "" if (
@@ -304,11 +301,8 @@ def stuinfo(request, name=None):
         person_pos_infos = Position.objects.activated().filter(
             Q(person=person) & Q(show_post=True)
         )
-        oneself_org_ids = (
-            Position.objects.activated()
-            .filter(Q(person=oneself) & Q(show_post=True))
-            .values("org")
-        )
+        oneself_org_ids = [oneself] if user_type == 'Organization' else Position.objects.activated().filter(
+            Q(person=oneself) & Q(show_post=True)).values("org")
         org_is_same = [
             id in oneself_org_ids for id in person_pos_infos.values("org")]
         join_org_info = Organization.objects.filter(
@@ -329,17 +323,25 @@ def stuinfo(request, name=None):
 
         # 制作参与活动的卡片（时间，名称（+链接），组织，地点，介绍，状态）
         participants = Participant.objects.filter(person_id=person.id)
-        activities_me = Participant.objects.filter(person_id=person.id).values(
-            "activity_id"
-        )
-        activity_is_same = [
-            participant in activities_me
-            for participant in participants.values("activity_id")
-        ]
         activities = Activity.objects.filter(
-            id__in=participants.values("activity_id"))
-        participate_status_list = participants.values("status")
-        participate_status_list = [info["status"]
+            id__in=participants.values('activity_id'))
+        if user_type == 'Person':
+            activities_me = Participant.objects.filter(
+                person_id=person.id).values('activity_id')
+            activity_is_same = [
+                activity in activities_me
+                for activity in participants.values("activity_id")
+            ]
+        else:
+            activities_me = activities.filter(
+                organization_id=oneself.id).values('id')
+            activities_me = [activity['id'] for activity in activities_me]
+            activity_is_same = [
+                activity['activity_id'] in activities_me
+                for activity in participants.values("activity_id")
+            ]
+        participate_status_list = participants.values('status')
+        participate_status_list = [info['status']
                                    for info in participate_status_list]
         status_color = {
             Activity.Status.REVIEWING: "primary",
