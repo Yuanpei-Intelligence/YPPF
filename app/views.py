@@ -1,3 +1,4 @@
+from threading import local
 from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
 from app.models import (
@@ -15,7 +16,7 @@ from app.models import (
 import app.utils as utils
 from app.forms import UserForm
 from app.utils import url_check, check_cross_site
-from boottest import local_dict, help_message
+from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.shortcuts import render, redirect
@@ -387,7 +388,7 @@ def stuinfo(request, name=None):
 
         html_display["title_name"] = "User Profile"
         html_display["narbar_name"] = "个人主页"
-        html_display["help_message"] = help_message["个人主页"]
+        html_display["help_message"] = local_dict["help_message"]["个人主页"]
         origin = request.get_full_path()
 
         return render(request, "stuinfo.html", locals())
@@ -647,9 +648,8 @@ def account_setting(request):
     # 补充网页呈现所需信息
     html_display["title_name"] = "Account Setting"
     html_display["narbar_name"] = "账户设置"
-    html_display["help_message"] = help_message["账户设置"]
-    print(html_display["help_message"])
-
+    html_display["help_message"] = local_dict["help_message"]["账户设置"]
+    
     # 然后是左边栏
     html_display = utils.get_user_left_narbar(
         useroj, html_display["is_myself"], html_display
@@ -1543,7 +1543,7 @@ def myYQPoint(request):
     # 补充一些呈现信息
     html_display["title_name"] = "My YQPoint"
     html_display["narbar_name"] = "我的元气值"  #
-    html_display["help_message"] = help_message["我的元气值"]
+    html_display["help_message"] = local_dict["help_message"]["我的元气值"]
 
     to_send_set = TransferRecord.objects.filter(
         proposer=request.user, status=TransferRecord.TransferStatus.WAITING
@@ -2278,7 +2278,7 @@ def subscribeActivities(request):
     # 补充一些呈现信息
     html_display["title_name"] = "Subscribe"
     html_display["narbar_name"] = "我的订阅"  #
-    html_display["help_message"] = help_message["我的订阅"]
+    html_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     org_list = Organization.objects.all()
     org_name = list(
@@ -2546,7 +2546,7 @@ def notifications(request):
 
     html_display["title_name"] = "Notifications"
     html_display["narbar_name"] = "通知信箱"
-    html_display["help_message"] = help_message["通知信箱"]
+    html_display["help_message"] = local_dict["help_message"]["通知信箱"]
 
     done_set = Notification.objects.filter(
         receiver=request.user, status=Notification.NotificationStatus.DONE
