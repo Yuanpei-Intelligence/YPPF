@@ -1651,8 +1651,6 @@ def showActivities(request):
 
 
 """
------------------------------
->>>>>>> d474936360fd16e151ea7e3d592c34f540662be8
 页面逻辑：
 1. 方法为 GET 时，展示一个活动的详情。
     a. 如果当前用户是个人，有立即报名/已报名的 button
@@ -2613,7 +2611,7 @@ def addOrgnization(request):
         except:
             html_display['warn_code'] = 1
             html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
-            return redirect('/notifications/', locals())
+            return render('/notifications/', locals())
 
     if edit:  # 第一次打开页面信息的准备
         comments = preorg.comment

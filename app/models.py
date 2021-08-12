@@ -622,3 +622,29 @@ class Reimbursement(models.Model):
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
     time = models.DateTimeField("发起时间", auto_now_add=True)
     modify_time = models.DateTimeField("上次修改时间", auto_now_add=True)
+
+class Comment(models.Model):
+    class Meta:
+        verbose_name = "评论"
+        verbose_name_plural = verbose_name
+        ordering = ["-time"]
+
+    def comment_path(instance, filename):
+        reimburse = instance.reimbursement
+        act = reimburse.activity
+        dir = f"reimburse/{act.organization_id.oname}/"
+        # 日期和时间都是不靠谱的，因为上传多个图片时不同图片的存储很可能是同1秒完成的
+        # 同一报销信息可能在连续的几分钟内发很多个同文件名的
+        # title是方便人识别的内容
+        return dir + f"{act.title}-{instance.id}-{filename}"
+
+    reimbursement = models.ForeignKey(Reimbursement,
+                                    related_name="comments",
+                                    on_delete=models.CASCADE)
+    username = models.CharField("评论者", max_length=10)
+    # 保留用户名的意义是方便页面统一呈现（评论者可能是组织或老师）
+    # 也许可以允许自由设置名称
+    text = models.TextField("文字内容", default="", blank=True)
+    img = models.ImageField("图片", upload_to=comment_path, blank=True)
+    time = models.DateTimeField("评论时间", auto_now_add=True)
+
