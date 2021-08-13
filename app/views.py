@@ -473,7 +473,7 @@ def orginfo(request, name=None):
     # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
         Activity.objects.activated()
-        .filter(organization_id=org.organization_id_id)
+        .filter(organization_id=org.id)
         .filter(
             status__in=[
                 Activity.Status.REVIEWING,
@@ -487,27 +487,27 @@ def orginfo(request, name=None):
 
     ended_activity_list = (
         Activity.objects.activated()
-        .filter(organization_id=org.organization_id_id)
+        .filter(organization_id=org.id)
         .filter(status__in=[Activity.Status.CANCELED, Activity.Status.END])
         .order_by("-start")
     )
 
     # 如果是用户登陆的话，就记录一下用户有没有加入该活动，用字典存每个活动的状态，再把字典存在列表里
 
-    participant_status = ["申请中", "申请失败", "已报名", "已参与", "未参与", "放弃"]
     prepare_times = Activity.EndBeforeHours.prepare_times
 
     continuing_activity_list_participantrec = []
     for act in continuing_activity_list:
+        print("achieved")
         dictmp = {}
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
         if user_type == "Person":
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
-                person_id_id=me.person_id_id
+                person_id_id=me.id
             )
             if existlist:  # 判断是否非空
-                dictmp["status"] = participant_status[existlist[0].status]
+                dictmp["status"] = existlist[0].status
             else:
                 dictmp["status"] = "无记录"
         continuing_activity_list_participantrec.append(dictmp)
@@ -519,10 +519,10 @@ def orginfo(request, name=None):
         dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
         if user_type == "Person":
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
-                person_id_id=me.person_id_id
+                person_id_id=me.id
             )
             if existlist:  # 判断是否非空
-                dictmp["status"] = participant_status[existlist[0].status]
+                dictmp["status"] = existlist[0].status
             else:
                 dictmp["status"] = "无记录"
         ended_activity_list_participantrec.append(dictmp)
@@ -534,7 +534,7 @@ def orginfo(request, name=None):
     positions = Position.objects.activated().filter(org=org).order_by("pos")  # 升序
     member_list = []
     for p in positions:
-        if p.person.person_id == user and p.pos == 0:
+        if p.person.id == user and p.pos == 0:
             html_display["isboss"] = True
         if p.show_post == True or p.pos == 0:
             member = {}
@@ -623,7 +623,36 @@ def homepage(request):
 
     # 补充一些呈现信息
     html_display["title_name"] = "Welcome Page"
-    html_display["narbar_name"] = "近期要闻"  #
+    html_display["narbar_name"] = "近期要闻" 
+
+    # 今天开始进行的活动,且不展示结束的活动。按开始时间由近到远排序
+    nowtime = datetime.now()
+    today_activity_list = (
+        Activity.objects.activated()
+        .filter(Q( start__year=nowtime.year) & Q( start__month=nowtime.month) & Q( start__day=nowtime.day))
+        .filter(
+            status__in=[
+                Activity.Status.APPLYING,
+                Activity.Status.WAITING,
+                Activity.Status.PROGRESSING
+            ]
+        )
+        .order_by("start")
+    )
+    # 今天可以报名的活动。按截止时间由近到远排序
+    prepare_times = Activity.EndBeforeHours.prepare_times
+    signup_rec = (
+        Activity.objects.activated()
+        .filter(status = Activity.Status.APPLYING)
+    )
+    today_signup_list = []
+    for act in signup_rec:
+        dictmp = {}
+        dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
+        dictmp["act"] = act
+        today_signup_list.append(dictmp)
+    today_signup_list.sort(key=lambda x:x["endbefore"])
+
     return render(request, "welcome_page.html", locals())
 
 
@@ -1690,7 +1719,10 @@ def viewActivity(request, aid=None):
     prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.start - timedelta(hours=prepare_times[activity.endbefore])
     introduction = activity.introduction
+    show_url = True
     aURL = activity.URL
+    if aURL is None :
+        show_url = False
     aQRcode = activity.QRcode
     bidding = activity.bidding
     price = activity.YQPoint
@@ -1706,12 +1738,12 @@ def viewActivity(request, aid=None):
         person = True
         try:
             participant = Participant.objects.get(
-                activity_id=activity, person_id=me.person_id_id
+                activity_id=activity, person_id=me.id
             )
             pStatus = participant.status
         except:
             # 无记录
-            pStatus = -1
+            pStatus = "无记录"
     ownership = False
     if not person and org.organization_id == request.user:
         ownership = True
@@ -1795,7 +1827,7 @@ def viewActivity(request, aid=None):
         ):
             return redirect(f"/addActivities/?edit=True&aid={aid}")
         if activity.status == activity.Status.WAITING:
-            if start + timedelta(hours=1) > datetime.now():
+            if start_time + timedelta(hours=1) > datetime.now():
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = f"活动即将开始, 不能修改活动。"
                 return render(request, "activity_info.html", locals())
