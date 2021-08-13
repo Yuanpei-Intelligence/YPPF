@@ -263,15 +263,12 @@ def stuinfo(request, name=None):
     if not valid:
         return redirect("/logout/")
 
-    try:
-        oneself = NaturalPerson.objects.activated().get(person_id=user)
-    except:
-        return redirect("/welcome/")
+    oneself = get_person_or_org(user, user_type)
 
     if name is None:
         if user_type == "Organization":
-            return redirect("/welcome/")
-        else:
+            return redirect("/welcome/")    # 组织只能指定学生姓名访问
+        else:                               # 跳轉到自己的頁面
             assert user_type == "Person"
             full_path = request.get_full_path()
 
@@ -309,11 +306,8 @@ def stuinfo(request, name=None):
         person_pos_infos = Position.objects.activated().filter(
             Q(person=person) & Q(show_post=True)
         )
-        oneself_org_ids = (
-            Position.objects.activated()
-            .filter(Q(person=oneself) & Q(show_post=True))
-            .values("org")
-        )
+        oneself_org_ids = [oneself] if user_type == 'Organization' else Position.objects.activated().filter(
+            Q(person=oneself) & Q(show_post=True)).values("org")
         org_is_same = [
             id in oneself_org_ids for id in person_pos_infos.values("org")]
         join_org_info = Organization.objects.filter(
@@ -334,17 +328,25 @@ def stuinfo(request, name=None):
 
         # 制作参与活动的卡片（时间，名称（+链接），组织，地点，介绍，状态）
         participants = Participant.objects.filter(person_id=person.id)
-        activities_me = Participant.objects.filter(person_id=person.id).values(
-            "activity_id"
-        )
-        activity_is_same = [
-            participant in activities_me
-            for participant in participants.values("activity_id")
-        ]
         activities = Activity.objects.filter(
-            id__in=participants.values("activity_id"))
-        participate_status_list = participants.values("status")
-        participate_status_list = [info["status"]
+            id__in=participants.values('activity_id'))
+        if user_type == 'Person':
+            activities_me = Participant.objects.filter(
+                person_id=person.id).values('activity_id')
+            activity_is_same = [
+                activity in activities_me
+                for activity in participants.values("activity_id")
+            ]
+        else:
+            activities_me = activities.filter(
+                organization_id=oneself.id).values('id')
+            activities_me = [activity['id'] for activity in activities_me]
+            activity_is_same = [
+                activity['activity_id'] in activities_me
+                for activity in participants.values("activity_id")
+            ]
+        participate_status_list = participants.values('status')
+        participate_status_list = [info['status']
                                    for info in participate_status_list]
         status_color = {
             Activity.Status.REVIEWING: "primary",
@@ -1898,7 +1900,7 @@ def viewActivity(request, aid=None):
         ):
             return redirect(f"/addActivities/?edit=True&aid={aid}")
         if activity.status == activity.Status.WAITING:
-            if start + timedelta(hours=1) > datetime.now():
+            if start_time + timedelta(hours=1) > datetime.now():
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = f"活动即将开始, 不能修改活动。"
                 return render(request, "activity_info.html", locals())
@@ -2078,9 +2080,9 @@ def getActivityInfo(request):
         else:
             # get participants
             # are you sure it's 'Paticipant' not 'Participant' ??
-            paticipants = Paticipant.objects.filter(activity_id=activity_id)
-            paticipants = paticipants.filter(
-                status=Paticipant.AttendStatus.APLLYSUCCESS
+            participants = Participant.objects.filter(activity_id=activity_id)
+            participants = participants.filter(
+                status=Participant.AttendStatus.APLLYSUCCESS
             )
 
             # get required fields
@@ -2098,7 +2100,7 @@ def getActivityInfo(request):
             filename = f"{activity_id}-{info_type}-{output}"
             content = map(
                 lambda paticipant: map(
-                    lambda key: paticipant[key], fields), paticipants
+                    lambda key: paticipant[key], fields), participants
             )
 
             format = request.GET.get("format", "csv")
@@ -2470,6 +2472,9 @@ def apply_position(request, oid=None):
         Notification.Type.NEEDREAD,
         Notification.Title.POSITION_INFORM,
         contents[0],
+        "/personnelMobilization/",
+
+        publish_to_wechat=True, # 不要复制这个参数，先去看函数说明
     )
     notification_create(
         org.organization_id,
@@ -2478,6 +2483,8 @@ def apply_position(request, oid=None):
         Notification.Title.POSITION_INFORM,
         contents[1],
         "/personnelMobilization/",
+
+        publish_to_wechat=True, # 不要复制这个参数，先去看函数说明
     )
     return redirect("/notifications/")
 
@@ -2524,7 +2531,7 @@ def personnel_mobilization(request):
                 elif application.apply_type == Position.AppltType.TRANSFER:
                     application.pos = application.apply_pos
                 application.apply_status = Position.ApplyStatus.PASS
-            elif status == "REJECT":
+            elif apply_status == "REJECT":
                 application.apply_status = Position.ApplyStatus.REJECT
             application.save()
 
@@ -2534,6 +2541,8 @@ def personnel_mobilization(request):
             Notification.Type.NEEDREAD,
             Notification.Title.POSITION_INFORM,
             f"{application.apply_type}申请{application.apply_status}",
+
+            publish_to_wechat=True, # 不要复制这个参数，先去看函数说明
         )
         return redirect("/personnelMobilization/")
 
@@ -2598,7 +2607,8 @@ def notification_status_change(notification_id):
 
 
 def notification_create(
-    receiver, sender, typename, title, content, URL, relate_TransferRecord=None
+    receiver, sender, typename, title, content, URL=None, relate_TransferRecord=None
+    , *, publish_to_wechat=False
 ):
     """
     对于一个需要创建通知的事件，请调用该函数创建通知！
@@ -2608,6 +2618,13 @@ def notification_create(
         title: 请在数据表中查找相应事件类型，若找不到，直接创建一个新的choice
         content: 输入通知的内容
         URL: 需要跳转到处理事务的页面
+
+    注意事项：
+        publish_to_wechat: bool 仅位置参数 
+        - 你不应该输入这个参数，除非你清楚wechat_send.py的所有逻辑
+        - 在最坏的情况下，可能会阻塞近10s
+        - 简单来说，涉及订阅或者可能向多人连续发送类似通知时，都不要发送到微信
+        - 在线程锁内时，也不要发送
     """
     if relate_TransferRecord is None:
         notification = Notification.objects.create(
@@ -2628,7 +2645,12 @@ def notification_create(
             URL=URL,
             relate_TransferRecord=relate_TransferRecord,
         )
-    publish_notification(notification.id)
+    if publish_to_wechat == True:
+        if hasattr(publish_notification, 'ENABLE_INSTANCE') and \
+                publish_notification.ENABLE_INSTANCE:
+            publish_notification(notification)
+        else:
+            publish_notification(notification.id)
     return notification
 
 

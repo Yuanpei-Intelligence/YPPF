@@ -25,6 +25,7 @@ urlpatterns = [
     path("test/", views.test, name="test"),
     path("loaddata/", data_import.load_stu_info, name="load_data"),
     path("loadorgdata/", data_import.load_org_info, name="load_org_data"),
+    path("loadactivity/",data_import.load_activity_info,name="loadactivity"),
     path("user_account_setting/", views.account_setting, name="user_account_setting"),
     path("search/", views.search, name="search"),
     path("minilogin", views.miniLogin, name="minilogin"),
