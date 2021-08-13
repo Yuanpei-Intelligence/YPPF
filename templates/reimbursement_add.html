@@ -16,9 +16,11 @@
     <div id="content" class="main-content">
         <div class="container">
             <div class="container">
-                {% if html_display.warn_code %}
-                <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
-                {% endif %}
+                {% if html_display.warn_code == 2 %}
+            <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+            {% elif html_display.warn_code == 1%}
+            <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+            {% endif %}
                 <div class="row layout-top-spacing">
 
                     <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
@@ -47,7 +49,7 @@
                                                 <label>报销活动</label>
                                                 {%if edit%}
 
-                                                <select name="activity" class="form-control">
+                                                <select name="activity_id" class="form-control">
                                                     {% for activity in activities.all%}
                                                     {%if audit_activity.id == activity.id%}
                                                     <option value={{activity.id}} selected="selected">
@@ -59,7 +61,7 @@
                                                 </select>
 
                                                 {%else%}
-                                                <select name="activity" class="form-control">
+                                                <select name="activity_id" class="form-control">
                                                     {% for activity in activities.all%}
                                                     <option value={{activity.id}}>{{activity.title}}</option>
                                                     {%endfor%}

@@ -618,6 +618,7 @@ class Reimbursement(models.Model):
     amount = models.FloatField("报销金额", default=0)
     # 如果之后全线上流程，可能需要报账人字段
     message = models.TextField("备注信息", default="", blank=True)
+    pos = models.ForeignKey(User, on_delete=models.CASCADE)
     # 图片存储在comment中，models不支持序列图片
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
     time = models.DateTimeField("发起时间", auto_now_add=True)
@@ -639,7 +640,7 @@ class ReimburseComment(models.Model):
         return dir + f"{act.title}-{instance.id}-{filename}"
 
     reimbursement = models.ForeignKey(Reimbursement,
-                                    related_name="comments",
+                                    related_name="comment",
                                     on_delete=models.CASCADE)
     commentator = models.CharField("评论者", max_length=10)
     # 保留用户名的意义是方便页面统一呈现（评论者可能是组织或老师）
