@@ -36,28 +36,46 @@ if USE_SCHEDULER:
         scheduler.add_jobstore(DjangoJobStore(), "default")
 
 # 全局变量 用来发送和确认默认的导航网址
-default_url = settings.LOGIN_URL
-this_url = settings.LOGIN_URL                       # 增加默认url前缀
-if this_url[-1:] == '/' and this_url[-2:] != '//':
-    this_url = this_url[:-1]                        # 去除尾部的/
-wechat_url = local_dict["url"]["wechat_url"]
+DEFAULT_URL = settings.LOGIN_URL
+THIS_URL = settings.LOGIN_URL                       # 增加默认url前缀
+if THIS_URL[-1:] == '/' and THIS_URL[-2:] != '//':
+    THIS_URL = THIS_URL[:-1]                        # 去除尾部的/
+WECHAT_URL = local_dict["url"]["wechat_url"]
 wechat_coder = MySHA256Hasher(local_dict["hash"]["wechat"])
 
-# 限制接收范围
-receiver_set = None     # 可接收范围，默认全体
-blacklist_set = set()   # 黑名单，默认没有，可以用来排除元培学院等特殊用户
-try: receiver_set = set(local_dict['config']['wechat_send']['receivers'])
+# 一批发送的最大数量
+WECHAT_BUDGET = 500     # 上限1000
+ACTIVITY_BUDGET = 500                                  
+try: WECHAT_BUDGET = min(1000, int(local_dict['threholds']['wechat_budget']))
+except: pass                         
+try: ACTIVITY_BUDGET = int(local_dict['threholds']['activity_budget'])
 except: pass
-try: blacklist_set = set(local_dict['config']['wechat_send']['blacklist'])
+
+# 限制接收范围
+RECEIVER_SET = None     # 可接收范围，默认全体
+BLACKLIST_SET = set()   # 黑名单，默认没有，可以用来排除元培学院等特殊用户
+try: RECEIVER_SET = set(local_dict['config']['wechat_send']['receivers'])
+except: pass
+try: BLACKLIST_SET = set(local_dict['config']['wechat_send']['blacklist'])
 except: pass
 
 
 def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=True):
     '''底层实现发送到微信，是为了方便设置定时任务'''
-    if receiver_set is not None:
-        users = list((set(users) & receiver_set) - blacklist_set)
+    if RECEIVER_SET is not None:
+        users = list((set(users) & RECEIVER_SET) - BLACKLIST_SET)
     else:
-        users = list(set(users) - blacklist_set)
+        users = list(set(users) - BLACKLIST_SET)
+    user_num = len(users)
+    if user_num == 0:
+        print('没有合法的用户')
+        return
+    if user_num > WECHAT_BUDGET:
+        print(
+            '用户列表过长,',
+            f'{users[WECHAT_BUDGET: WECHAT_BUDGET+3]}等{user_num-WECHAT_BUDGET}人被舍去'
+        )
+        users = users[:WECHAT_BUDGET]
     post_data = {
         "touser": users,
         "content": message,
@@ -67,12 +85,12 @@ def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=T
     if card:
         post_data["card"] = True
         if default:
-            post_data["url"] = url if url is not None else default_url
+            post_data["url"] = url if url is not None else DEFAULT_URL
             post_data["btntxt"] = btntxt if btntxt is not None else "详情"
         else:
             if url is not None:
                 if url[:1] in ['', '/']:    # 空或者相对路径，变为绝对路径
-                    url = this_url + url
+                    url = THIS_URL + url
                 post_data["url"] = url
             if btntxt is not None:
                 post_data["btntxt"] = btntxt
@@ -83,7 +101,7 @@ def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=T
     try:
         failed = users
         errmsg = "连接api失败"
-        response = requests.post(wechat_url, post_data, timeout=TIMEOUT)
+        response = requests.post(WECHAT_URL, post_data, timeout=TIMEOUT)
         response = response.json()
         if response["status"] == 200:                       # 全部发送成功
             return
@@ -94,7 +112,7 @@ def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=T
         elif response["data"].get("errMsg"):
             errmsg = response["data"]["errMsg"]             # 参数等其他传入格式问题
         # users = failed                                    # 如果允许重发，则向失败用户重发
-        raise OSError
+        raise OSError('企业微信发送不完全成功')
     except:
         # print(f"第{i+1}次尝试")
         print(f"向企业微信发送失败：失败用户：{failed[:3]}等{len(failed)}人，主要失败原因：{errmsg}")
@@ -146,7 +164,7 @@ def publish_notification(notification_or_id):
         if notification.URL:
             message += f"\n\n<a href=\"{notification.URL}\">阅读原文</a>"
         else:
-            message += f"\n\n<a href=\"{default_url}\">点击查看详情</a>"
+            message += f"\n\n<a href=\"{DEFAULT_URL}\">点击查看详情</a>"
     receiver = get_person_or_org(notification.receiver)
     if isinstance(receiver, NaturalPerson):
         wechat_receivers = [notification.receiver.username] # user.username是id
@@ -224,15 +242,15 @@ def publish_activity(activity_or_id, only_activated=False):
         if activity.URL:
             message += f"\n\n<a href=\"{activity.URL}\">阅读原文</a>"
         else:
-            message += f"\n\n<a href=\"{default_url}\">点击查看详情</a>"
-    for i in range(0, num, 500):
-        userids = subcribers[i:i+500]   # 一次最多接受1000个，方便传送只发500个
+            message += f"\n\n<a href=\"{DEFAULT_URL}\">点击查看详情</a>"
+    for i in range(0, num, ACTIVITY_BUDGET):
+        userids = subcribers[i:i+ACTIVITY_BUDGET]   # 一次最多接受1000个
         if USE_MULTITHREAD:
             # 多线程
             scheduler.add_job(base_send_wechat, 'date',
                               args=(userids, message),
                               kwargs=kws,
-                              next_run_time=datetime.now() + timedelta(seconds=5+i/100)
+                              next_run_time=datetime.now() + timedelta(seconds=5+round(i/50))
                               )
         else:
             base_send_wechat(userids, message, **kws)  # 不使用定时任务请改为这句
