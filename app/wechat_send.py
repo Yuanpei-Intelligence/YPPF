@@ -54,9 +54,11 @@ except: pass
 # 限制接收范围
 RECEIVER_SET = None     # 可接收范围，默认全体
 BLACKLIST_SET = set()   # 黑名单，默认没有，可以用来排除元培学院等特殊用户
-try: RECEIVER_SET = set(local_dict['config']['wechat_send']['receivers'])
+try: 
+    r_range = local_dict['config']['wechat_send']['receivers']
+    RECEIVER_SET = set(map(str, r_range)) if r_range is not None else None
 except: pass
-try: BLACKLIST_SET = set(local_dict['config']['wechat_send']['blacklist'])
+try: BLACKLIST_SET = set(map(str, local_dict['config']['wechat_send']['blacklist']))
 except: pass
 
 
