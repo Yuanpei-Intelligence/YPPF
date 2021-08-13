@@ -54,8 +54,8 @@ urlpatterns = [
     # path("YQPoint_Distribution/<int:dis_id>", scheduler_func.YQPoint_Distribution, name="YQPoint_Distributions"),
     # path("new_YQP_distribution", scheduler_func.new_YQP_distribute, name="new_YQP_distribution"),
     path("personnelMobilization/", views.personnel_mobilization, name="personnel_mobilization"),
-    path("addOrgnization/", views.addOrgnization, name="addOrgnization"),
-    path("auditOrgnization/", views.auditOrgnization, name="auditOrgnization"),
+    path("addReimbursement/",views.addReimbursement,name="addReimbursement"),
+    path("auditReimbursement/",views.auditReimbursement,name="auditReimbursement")
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
