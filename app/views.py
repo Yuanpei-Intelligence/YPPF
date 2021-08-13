@@ -2804,7 +2804,8 @@ def addReimbursement(request):
                                                                Notification.NotificationTitle.VERIFY_INFORM, content,
                                                                URL)
                         URL = "/auditReimbursement?reimb_id={id}&notifi_id={nid}".format(id=new_reimb.id,
-                                                                                        nid=new_notification.id) #TODO 需要修正
+                                                                                        nid=new_notification.id)
+                        URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
 
@@ -2845,7 +2846,8 @@ def addReimbursement(request):
                                                                URL)
 
                         URL = "/auditReimbursement?reimb_id={id}&notifi_id={nid}".format(id=pre_reimb.id,
-                                                                                        nid=new_notification.id) #TODO URL修改
+                                                                                        nid=new_notification.id)
+                        URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
                 except:
@@ -2928,7 +2930,8 @@ def auditReimbursement(request):
                                                                Notification.NotificationTitle.VERIFY_INFORM, content,
                                                                URL)
                         URL = "/addReimbursement?reimb_id={id}&notifi_id={nid}".format(id=new_reimb.id,
-                                                                                         nid=new_notification.id)  # TODO 需要修正
+                                                                                         nid=new_notification.id)
+                        URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
                 except:
@@ -2956,7 +2959,7 @@ def auditReimbursement(request):
                         content = "报销申请已通过，将扣除元气值{amount}" .format(amount=new_reimb.amount)
                         receiver = new_reimb.pos  # 通知接收者
                         URL = "/notifications/"
-
+                        URL = request.build_absolute_uri(URL)
                         # 如果老师另留有评论的话,将评论放在content里
                         comments = new_reimb.comment
                         text = ""
@@ -2987,7 +2990,7 @@ def auditReimbursement(request):
                         content = "很遗憾，报销申请未通过！"
                         receiver = new_reimb.pos  # 通知接收者
                         URL = "/notifications/"
-
+                        URL = request.build_absolute_uri(URL)
                         # 如果老师另留有评论的话,将评论放在content里
                         comments = new_reimb.comment
                         text = ""
@@ -2999,6 +3002,7 @@ def auditReimbursement(request):
                         notification_create(request.user, receiver, Notification.NotificationType.NEEDREAD,
                                             Notification.NotificationTitle.VERIFY_INFORM, content, URL)
                         new_reimb.status = Reimbursement.ReimburseStatus.CANCELED
+                        new_reimb.save()
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
