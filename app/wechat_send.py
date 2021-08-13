@@ -16,8 +16,8 @@ from datetime import datetime, timedelta
 # 全局设置
 # 是否启用定时任务，请最好仅在服务器启用，如果不启用，后面的多个设置也会随之变化
 USE_SCHEDULER = True
-try:USE_SCHEDULER = bool(local_dict['config']['wechat_send']['use_scheduler'])
-except:pass
+try: USE_SCHEDULER = bool(local_dict['config']['wechat_send']['use_scheduler'])
+except: pass
 # 是否多线程发送，必须启用scheduler，如果启用则发送时无需等待
 USE_MULTITHREAD = True if USE_SCHEDULER else False
 # 决定单次连接的超时时间，响应时间一般为1s或12s（偶尔），建议考虑前端等待时间放弃12s
@@ -43,9 +43,21 @@ if this_url[-1:] == '/' and this_url[-2:] != '//':
 wechat_url = local_dict["url"]["wechat_url"]
 wechat_coder = MySHA256Hasher(local_dict["hash"]["wechat"])
 
+# 限制接收范围
+receiver_set = None     # 可接收范围，默认全体
+blacklist_set = set()   # 黑名单，默认没有，可以用来排除元培学院等特殊用户
+try: receiver_set = set(local_dict['config']['wechat_send']['receivers'])
+except: pass
+try: blacklist_set = set(local_dict['config']['wechat_send']['blacklist'])
+except: pass
+
 
 def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=True):
     '''底层实现发送到微信，是为了方便设置定时任务'''
+    if receiver_set is not None:
+        users = list((set(users) & receiver_set) - blacklist_set)
+    else:
+        users = list(set(users) - blacklist_set)
     post_data = {
         "touser": users,
         "content": message,
