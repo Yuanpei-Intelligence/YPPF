@@ -120,6 +120,48 @@ def load_org_info(request):
         message = "请先以超级账户登录后台后再操作！"
     return render(request, "debugging.html", locals())
 
+def load_activity_info(request):
+    if not request.user.is_superuser:
+        context = {"message": "请先以超级账户登录后台后再操作！"}
+        return render(request, "debugging.html", context)
+    act_df=load_file("activityinfo.csv")
+    act_list = []
+    for _, act_dict in act_df.iterrows():
+        organization_id = str(act_dict["organization_id"])
+
+        try:
+            user = User.objects.get(username=organization_id)
+            org=Organization.objects.get(organization_id=user)
+        except:
+            context = {"message": "请先导入组织信息！{username}".format(username=organization_id)}
+            return render(request, "debugging.html", context)
+        title=act_dict['title']
+        start=act_dict['start']
+        end=act_dict['end']
+        start=datetime.strptime(start, '%m/%d/%Y %H:%M %p')
+        end=datetime.strptime(end, '%m/%d/%Y %H:%M %p')
+        location=act_dict['location']
+        introduction=act_dict['introduction']
+        YQPoint=float(act_dict['YQPoint'])
+        capacity=int(act_dict['capacity'])
+        URL=act_dict['URL']
+
+        act_list.append(
+            Activity(
+                title=title,
+                organization_id=org,
+                start=start,
+                end=end,
+                location=location,
+                introduction=introduction,
+                YQPoint=YQPoint,
+                capacity=capacity,
+                URL=URL
+            )
+        )
+    Activity.objects.bulk_create(act_list)
+    context = {"message": "导入活动信息成功！"}
+    return render(request, "debugging.html", context)
 
 def load_stu_info(request):
     if not request.user.is_superuser:
@@ -167,3 +209,4 @@ def load_stu_info(request):
 
     context = {"message": "导入学生信息成功！"}
     return render(request, "debugging.html", context)
+

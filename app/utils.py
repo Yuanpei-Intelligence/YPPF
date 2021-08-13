@@ -14,9 +14,9 @@ def check_user_type(user):  # return Valid(Bool), otype
         return False, "", html_display
     if user.username[:2] == "zz":
         user_type = "Organization"
+        org = Organization.objects.get(organization_id=user)
         html_display["profile_name"] = "组织主页"
         html_display["profile_url"] = "/orginfo/"
-        org = Organization.objects.get(organization_id=user)
         html_display["avatar_path"] = get_user_ava(org, user_type)
         html_display["user_type"] = user_type
     else:
@@ -25,12 +25,10 @@ def check_user_type(user):  # return Valid(Bool), otype
         html_display["profile_name"] = "个人主页"
         html_display["profile_url"] = "/stuinfo/"
         html_display["avatar_path"] = get_user_ava(person, user_type)
+        html_display['user_type'] = user_type
+    
+    html_display['mail_num'] = Notification.objects.filter(receiver=user, status=Notification.Status.UNDONE).count()
 
-        html_display["user_type"] = user_type
-
-    html_display["mail_num"] = Notification.objects.filter(
-        receiver=user, status=Notification.NotificationStatus.UNDONE
-    ).count()
 
     return True, user_type, html_display
 
@@ -260,34 +258,3 @@ def get_url_params(request, html_display):
                 html_display[key] = value
 
 
-# 检查neworg request参数的合法性
-def check_neworg_request(request):
-    """
-
-    """
-    context = dict()
-    context['warn_code'] = 0
-    oname = str(request.POST['oname'])
-    if len(oname) >= 32:
-        context['warn_code'] = 1
-        context['warn_msg'] = "The length of orgnization_name can't exceed 100 bytes!"
-        return context
-    try:
-        otype = int(request.POST.get('otype'))
-        if otype not in [7, 8, 10]:  # 7 for 书院俱乐部，8 for 学生小组 ，10 for 书院课程
-            context['warn_code'] = 2
-            context['warn_msg'] = "You should select choices from [academy club,student group,academy course]!"
-            return context
-    except:
-        context['warn_code'] = 2
-        context['warn_msg'] = "You should input Interger!"  # user can't see it . we use it for debugging
-        return context
-    context['oname'] = oname  # 组织名字
-    context['otype'] = OrganizationType.objects.get(otype_id=otype)  # 组织类型，必须有
-    context['pos'] = request.user  # 负责人，必须有滴
-    context['introduction'] = str(request.POST.get('introduction', ""))  # 组织介绍，可能为空
-
-    context['avatar'] = request.POST.get('avatar')  # TODO 测试有无bug
-
-    context['application'] = str(request.POST.get('application', ""))  # 申请理由
-    return context

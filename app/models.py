@@ -14,7 +14,8 @@ class NaturalPersonManager(models.Manager):
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
         datas = NaturalPerson.objects.activated()
         year = datetime.now().strftime("%Y")
-        datas.objects.filter(stu_grade=str(int(year) - 4)).update(GraduateStatus=1)
+        datas.objects.filter(stu_grade=str(int(year) - 4)
+                             ).update(GraduateStatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
@@ -67,7 +68,8 @@ class NaturalPerson(models.Model):
         UNDERGRADUATED = 0  # 未毕业
         GRADUATED = 1  # 毕业则注销
 
-    status = models.SmallIntegerField("在校状态", choices=GraduateStatus.choices, default=0)
+    status = models.SmallIntegerField(
+        "在校状态", choices=GraduateStatus.choices, default=0)
 
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
@@ -127,8 +129,10 @@ class OrganizationType(models.Model):
     class Meta:
         verbose_name = "组织类型"
         verbose_name_plural = verbose_name
+        ordering = ['otype_name']
 
-    otype_id = models.SmallIntegerField("组织类型编号", unique=True, primary_key=True)
+    otype_id = models.SmallIntegerField(
+        "组织类型编号", unique=True, primary_key=True)
     otype_name = models.CharField("组织类型名称", max_length=25)
     otype_superior_id = models.SmallIntegerField("上级组织类型编号", default=0)
     incharge = models.ForeignKey(
@@ -187,7 +191,8 @@ class Organization(models.Model):
     objects = OrganizationManager()
 
     YQPoint = models.FloatField("元气值", default=0.0)
-    introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
+    introduction = models.TextField(
+        "介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
@@ -284,7 +289,8 @@ class Position(models.Model):
     show_post = models.BooleanField(default=True)
 
     # 表示是这个组织哪一年、哪个学期的成员
-    in_year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
+    in_year = models.IntegerField(
+        "当前学年", default=int(datetime.now().strftime("%Y")))
     in_semester = models.CharField(
         "当前学期", choices=Semester.choices, default=Semester.ANNUAL, max_length=15
     )
@@ -329,8 +335,10 @@ class Course(models.Model):
     cid = models.OneToOneField(to=Organization, on_delete=models.CASCADE)
 
     # 课程周期
-    year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
-    semester = models.CharField("当前学期", choices=Semester.choices, max_length=15)
+    year = models.IntegerField(
+        "当前学年", default=int(datetime.now().strftime("%Y")))
+    semester = models.CharField(
+        "当前学期", choices=Semester.choices, max_length=15)
 
     scheduler = models.CharField("上课时间", max_length=25)
     classroom = models.CharField("上课地点", max_length=25)
@@ -373,7 +381,9 @@ class Activity(models.Model):
         # to_field="organization_id", 删除掉to_field, 保持纯净对象操作
         on_delete=models.CASCADE,
     )
-    year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
+
+    year = models.IntegerField("活动年份", default=int(
+        local_dict["semester_data"]["year"]))
 
     semester = models.CharField(
         "活动学期",
@@ -469,7 +479,8 @@ class TransferRecord(models.Model):
         SUSPENDED = (3, "已终止")
         REFUND = (4, "已退回")
 
-    status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
+    status = models.SmallIntegerField(
+        choices=TransferStatus.choices, default=1)
 
     def save(self, *args, **kwargs):
         self.amount = round(self.amount, 1)
@@ -538,64 +549,35 @@ class Notification(models.Model):
         User, related_name="send_notice", on_delete=models.CASCADE
     )
 
-    class NotificationStatus(models.IntegerChoices):
+    class Status(models.IntegerChoices):
         DONE = (0, "已处理")
         UNDONE = (1, "待处理")
 
-    class NotificationType(models.IntegerChoices):
-        NEEDREAD = (0, "知晓类")  # 只需选择“已读”即可
-        NEEDDO = (1, "处理类")  # 需要处理的事务
+    class Type(models.IntegerChoices):
+        NEEDREAD = (0, '知晓类')    # 只需选择“已读”即可
+        NEEDDO = (1, '处理类')      # 需要处理的事务
 
-    class NotificationTitle(models.IntegerChoices):
+    class Title(models.IntegerChoices):
         # 等待逻辑补充
         TRANSFER_CONFIRM = (0, "转账确认通知")
         ACTIVITY_INFORM = (1, "活动状态通知")
         VERIFY_INFORM = (2, "审核信息通知")
         POSITION_INFORM = (3, "人事变动通知")
+        TRANSFER_FEEDBACK = (4, "转账回执")
 
-    status = models.SmallIntegerField(choices=NotificationStatus.choices, default=1)
+    status = models.SmallIntegerField(choices=Status.choices, default=1)
     title = models.SmallIntegerField(
-        choices=NotificationTitle.choices, blank=True, null=True
-    )
+        choices=Title.choices, blank=True, null=True)
     content = models.CharField("通知内容", max_length=225, blank=True)
     start_time = models.DateTimeField("通知发出时间", auto_now_add=True)
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
-    type = models.SmallIntegerField(choices=NotificationType.choices, default=0)
-
+    typename = models.SmallIntegerField(choices=Type.choices, default=0)
     URL = models.URLField("相关网址", null=True, blank=True)
-
-
-class NewOrgnization(models.Model):
-    class Meta:
-        verbose_name = "申请建立组织的信息"
-        verbose_name_plural = verbose_name
-
-    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的组织信息
-    oname = models.CharField(max_length=32, unique=True)
-    otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
-    introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
-    application = models.TextField("申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~")
-    avatar = models.ImageField(upload_to=f"avatar/", blank=True)
-    pos = models.ForeignKey(User, on_delete=models.CASCADE)
-    class NewOrgStatus(models.IntegerChoices):  # 表示申请组织的请求的状态
-        PENDING = (0, "待确认")
-        CONFIRMED = (1, "主管老师已同意")  # 审过同意
-        TOBEMODIFIED = (2, "需要修改")
-        CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
-    nstatus = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
+    relate_TransferRecord = models.ForeignKey(
+        TransferRecord, related_name="transfer_notification", on_delete=models.CASCADE, blank=True, null=True, )
 
 
 
-class OrgComment(models.Model):
-    class Meta:
-        verbose_name = "审核新建组织的通知的评论"
-        verbose_name_plural = verbose_name
-        ordering = ['-time']
-
-    preorg = models.ForeignKey(NewOrgnization, related_name="comment",on_delete=models.CASCADE)  # 外键
-    commentator = models.ForeignKey(User, on_delete=models.CASCADE)  # 评论者，
-    text = models.TextField("文字内容", default="", blank=True)
-    time = models.DateTimeField("评论时间", auto_now_add=True)  # 每次按照评论时间排序
 
 class Reimbursement(models.Model):
     class Meta:
@@ -626,7 +608,7 @@ class Reimbursement(models.Model):
 
 class ReimburseComment(models.Model):
     class Meta:
-        verbose_name = "报销评论"
+        verbose_name = "评论"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
 
@@ -648,4 +630,5 @@ class ReimburseComment(models.Model):
     text = models.TextField("文字内容", default="", blank=True)
     img = models.ImageField("图片", upload_to=comment_path, blank=True)
     time = models.DateTimeField("评论时间", auto_now_add=True)
+
 
