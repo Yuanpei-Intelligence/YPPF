@@ -1882,7 +1882,7 @@ def viewActivity(request, aid=None):
         ):
             return redirect(f"/addActivities/?edit=True&aid={aid}")
         if activity.status == activity.Status.WAITING:
-            if start + timedelta(hours=1) > datetime.now():
+            if start_time + timedelta(hours=1) > datetime.now():
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = f"活动即将开始, 不能修改活动。"
                 return render(request, "activity_info.html", locals())
@@ -2062,9 +2062,9 @@ def getActivityInfo(request):
         else:
             # get participants
             # are you sure it's 'Paticipant' not 'Participant' ??
-            paticipants = Paticipant.objects.filter(activity_id=activity_id)
-            paticipants = paticipants.filter(
-                status=Paticipant.AttendStatus.APLLYSUCCESS
+            participants = Participant.objects.filter(activity_id=activity_id)
+            participants = participants.filter(
+                status=Participant.AttendStatus.APLLYSUCCESS
             )
 
             # get required fields
@@ -2082,7 +2082,7 @@ def getActivityInfo(request):
             filename = f"{activity_id}-{info_type}-{output}"
             content = map(
                 lambda paticipant: map(
-                    lambda key: paticipant[key], fields), paticipants
+                    lambda key: paticipant[key], fields), participants
             )
 
             format = request.GET.get("format", "csv")

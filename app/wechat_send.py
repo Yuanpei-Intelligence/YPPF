@@ -37,7 +37,7 @@ if USE_SCHEDULER:
 
 # 全局变量 用来发送和确认默认的导航网址
 default_url = settings.LOGIN_URL
-this_url = local_dict["url"].get("this_url", '')    # 增加默认url前缀
+this_url = settings.LOGIN_URL                       # 增加默认url前缀
 if this_url[-1:] == '/' and this_url[-2:] != '//':
     this_url = this_url[:-1]                        # 去除尾部的/
 wechat_url = local_dict["url"]["wechat_url"]
