@@ -135,15 +135,23 @@ def publish_notification(notification_or_id):
             message += f"\n\n<a href=\"{notification.URL}\">阅读原文</a>"
         else:
             message += f"\n\n<a href=\"{default_url}\">点击查看详情</a>"
+    receiver = get_person_or_org(notification.receiver)
+    if isinstance(receiver, NaturalPerson):
+        wechat_receivers = [notification.receiver.username] # user.username是id
+    else:   # 组织
+        wechat_receivers = list(receiver.position_set.filter(pos=0).
+                                values_list("person__person_id__username", flat=True))
+        if len(wechat_receivers) == 0:
+            return True
     if USE_MULTITHREAD:
         # 多线程
         scheduler.add_job(base_send_wechat, 'date',
-                            args=([notification.receiver.username], message),
+                            args=(wechat_receivers, message),
                             kwargs=kws,
                             next_run_time=datetime.now() + timedelta(seconds=5)
                             )
     else:
-        base_send_wechat([notification.receiver.username],
+        base_send_wechat(wechat_receivers,
                             message, **kws) # 不使用定时任务请改为这句
     return True
 publish_notification.ENABLE_INSTANCE = True # 标识接收的参数类型

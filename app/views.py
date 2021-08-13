@@ -2452,7 +2452,7 @@ def apply_position(request, oid=None):
         Notification.Type.NEEDREAD,
         Notification.Title.POSITION_INFORM,
         contents[0],
-        URL=None,
+        "/personnelMobilization/",
 
         publish_to_wechat=True, # 不要复制这个参数，先去看函数说明
     )
