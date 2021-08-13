@@ -32,21 +32,24 @@
                 </div>
                 <div class="row m-0 w-100 align-self-center">
                     <div class="col-1"></div>
-                    <div class="row col-6">
+                    <div class="row col-11">
+                        <div class="col-1"></div>
                         <div class="col-0">
                             <img class="img-thumbnail" src={{ context.avatar_path }} alt="avatar" style="height: 90px;
                                 width: 90px;">
                         </div>
-                        <div class=" row col-1">
-                        </div>
-                        <div class="row col">
+                        <div style="width: 25px;"></div>
+                        <div class="row col-0" style="width: max-width;">
                             <h1 class="my-auto align-self-center font-weight-bold text-light"
                                 style="font-size: 60px; text-shadow: 2px 2px 5px #000000">
                                 {{ context.person.name }}</h1>
                         </div>
-                        <div class="row col-1"></div>
-                        <div class="row col">
-                            <p class="align-self-end">{{ context.person.biography }}</p>
+                        <div style="width: 25px;"></div>
+                        <div class="row col-lg-6 col-md-12">
+                            <div class="col-1"></div>
+                            <p class="col-10 align-self-end text-white mt-3 px-0"
+                                style="color:aliceblue; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0px 0px 2px #000000">
+                                {{ context.person.biography }}</p>
                         </div>
                     </div>
                 </div>
@@ -89,6 +92,25 @@
                             <div class="user-info-list">
                                 <div class="">
                                     <ul class="contacts-block list-unstyled">
+
+                                        <li class="contacts-block__item">
+                                            <div class="w-100 row p-0 m-0">
+                                                <div class="col-0 p-0 m-0">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                        class="feather feather-feather">
+                                                        <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z">
+                                                        </path>
+                                                        <line x1="16" y1="8" x2="2" y2="22"></line>
+                                                        <line x1="17.5" y1="15" x2="9" y2="15"></line>
+                                                    </svg>
+                                                </div>
+                                                <div class="col p-0 m-1">
+                                                    {{ context.person.biography }}
+                                                </div>
+                                            </div>
+                                        </li>
 
                                         {% if context.person.show_class %}
                                         <li class="contacts-block__item">
@@ -212,10 +234,10 @@
 
                             <div class="row">
                                 <h3 class="col mb-0">加入的组织</h3>
-                                {% if html_display.is_myself == False %}
+                                {% if html_display.is_myself == False and user_type == 'Person' %}
                                 <div class="col-0 mr-4 custom-control custom-switch">
                                     <input type="checkbox" class="custom-control-input" id="org-show-same-button"
-                                        onclick="toggle_same.call(this, `org`, `组织`, `inline-block`);this.blur();">
+                                        onclick="toggle_same.call(this, `org`, `组织`, `inline-block`, '共同');this.blur();">
                                     <label class="custom-control-label" id="org-show-same-label"
                                         for="org-show-same-button">所有组织</label>
                                 </div>
@@ -270,7 +292,12 @@
                                 {% if html_display.is_myself == False %}
                                 <div class="col-0 mr-4 custom-control custom-switch">
                                     <input type="checkbox" class="custom-control-input" id="activity-show-same-button"
-                                        onclick="toggle_same.call(this, `activity`, `活动`, `flex`);this.blur();">
+                                    {% if user_type == 'Person' %}
+                                        onclick="toggle_same.call(this, `activity`, `活动`, `flex`, `都參與的`);this.blur();">
+                                    {% endif %}
+                                    {% if user_type == 'Organization' %}
+                                        onclick="toggle_same.call(this, `activity`, `活动`, `flex`, `我组织的`);this.blur();">
+                                    {% endif %}
                                     <label class="custom-control-label" id="activity-show-same-label"
                                         for="activity-show-same-button">所有活动</label>
                                 </div>
@@ -290,20 +317,20 @@
                                     </div>
                                     <div class="t-dot" data-original-title="" title="">
                                     </div>
-                                    <div class="t-text col-8">
+                                    <div class="t-text col-lg-8 col-md-12">
                                         <div class="row b-skills">
-                                            <div class="col-3">
+                                            <div class="col-5">
                                                 <a class="row m-0" href="/viewActivity/{{ activity.id }}">
-                                                    <h5>{{ activity.title }}
+                                                    <h5><u>{{ activity.title }}</u>
                                                         <span class="text-{{ activity_c }}">
                                                             [{{ activity.status }}]</span>
                                                     </h5>
                                                 </a>
                                                 <p class="row">{{ activity.organization_id }}</p>
                                             </div>
-                                            <div class="row col-9">
-                                                <p class="col-10">{{ activity.introduction }}</p>
-                                                <p class="col-2 text-{{ attend_c }} float-right">
+                                            <div class="row col-7">
+                                                <p class="col-9">{{ activity.introduction }}</p>
+                                                <p class="col-3 text-{{ attend_c }} float-right">
                                                     {{ status }}
                                                 </p>
                                             </div>
@@ -330,7 +357,7 @@
         const cards = document.querySelectorAll(`.custom-${type}-card`);
         if (this.checked) {
             const label = document.querySelector(`#${type}-show-same-label`);
-            label.innerHTML = `共同${labelName}`;
+            label.innerHTML = `${prefix}${labelName}`;
             cards.forEach((card) => {
                 const same = card.classList.contains(`custom-${type}-issame-True`);
                 if (!same) card.style.display = 'none';

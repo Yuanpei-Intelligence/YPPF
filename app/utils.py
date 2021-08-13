@@ -14,9 +14,9 @@ def check_user_type(user):  # return Valid(Bool), otype
         return False, "", html_display
     if user.username[:2] == "zz":
         user_type = "Organization"
+        org = Organization.objects.get(organization_id=user)
         html_display["profile_name"] = "组织主页"
         html_display["profile_url"] = "/orginfo/"
-        org = Organization.objects.get(organization_id=user)
         html_display["avatar_path"] = get_user_ava(org, user_type)
         html_display["user_type"] = user_type
     else:
