@@ -498,7 +498,6 @@ def orginfo(request, name=None):
 
     continuing_activity_list_participantrec = []
     for act in continuing_activity_list:
-        print("achieved")
         dictmp = {}
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
