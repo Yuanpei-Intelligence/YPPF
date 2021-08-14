@@ -15,9 +15,9 @@ def check_user_type(user):  # return Valid(Bool), otype
         return False, "", html_display
     if user.username[:2] == "zz":
         user_type = "Organization"
+        org = Organization.objects.get(organization_id=user)
         html_display["profile_name"] = "组织主页"
         html_display["profile_url"] = "/orginfo/"
-        org = Organization.objects.get(organization_id=user)
         html_display["avatar_path"] = get_user_ava(org, user_type)
         html_display["user_type"] = user_type
     else:
@@ -26,11 +26,9 @@ def check_user_type(user):  # return Valid(Bool), otype
         html_display["profile_name"] = "个人主页"
         html_display["profile_url"] = "/stuinfo/"
         html_display["avatar_path"] = get_user_ava(person, user_type)
-        html_display["user_type"] = user_type
-
-    html_display["mail_num"] = Notification.objects.filter(
-        receiver=user, status=Notification.NotificationStatus.UNDONE
-    ).count()
+        html_display['user_type'] = user_type
+    
+    html_display['mail_num'] = Notification.objects.filter(receiver=user, status=Notification.Status.UNDONE).count()
 
     return True, user_type, html_display
 
