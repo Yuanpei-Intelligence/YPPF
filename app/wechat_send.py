@@ -33,6 +33,7 @@ if USE_SCHEDULER:
         from django_apscheduler.jobstores import DjangoJobStore
         scheduler = BackgroundScheduler()
         scheduler.add_jobstore(DjangoJobStore(), "default")
+        scheduler.start()
 
 # 全局变量 用来发送和确认默认的导航网址
 DEFAULT_URL = settings.LOGIN_URL
