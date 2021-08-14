@@ -976,6 +976,8 @@ def forget_password(request):
         - 连接设置的timeout为6s
         - 如果引入企业微信验证，建议将send_captcha分为'qywx'和'email'
     """
+    if request.session.get("received_user"):
+        username = request.session["received_user"]  # 自动填充，方便跳转后继续
     if request.method == "POST":
         username = request.POST["username"]
         send_captcha = request.POST["send_captcha"] == "yes"
@@ -985,9 +987,17 @@ def forget_password(request):
         if not user:
             err_code = 1
             err_message = "账号不存在"
+        elif len(user) != 1:
+            err_code = 1
+            err_message = "账号不唯一，请联系管理员"
         else:
             user = User.objects.get(username=username)
-            useroj = NaturalPerson.objects.get(person_id=user)  # 目前似乎保证是自然人
+            try:
+                useroj = NaturalPerson.objects.get(person_id=user)  # 目前只支持自然人
+            except:
+                err_code = 1
+                err_message = "暂不支持组织账号忘记密码！"
+                return render(request, "forget_password.html", locals())
             isFirst = useroj.first_time_login
             if isFirst:
                 err_code = 2
@@ -996,7 +1006,8 @@ def forget_password(request):
                 email = useroj.email
                 if not email or email.lower() == "none" or "@" not in email:
                     err_code = 3
-                    err_message = "您没有设置邮箱，请发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"  # 记得填
+                    err_message = "您没有设置邮箱，请联系管理员" + \
+                        "或发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"  # TODO:记得填
                 else:
                     # randint包含端点，randrange不包含
                     captcha = random.randrange(1000000)
@@ -1005,15 +1016,18 @@ def forget_password(request):
                         f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
                         "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
                         f'<p style="color:orange">{captcha}'
-                        '<span style="color:gray">(仅当前页面有效)</span></p>'
-                        '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
-                        "<br/><br/><br/>"
+                        '<span style="color:gray">(仅'
+                        f'<a href="{request.build_absolute_uri()}">当前页面</a>'
+                        '有效)</span></p>'
+                        f'点击进入<a href="{request.build_absolute_uri("/")}">元培成长档案</a><br/>'
+                        "<br/>"
                         "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
-                        "toaddrs": [email],  # 收件人列表
+                        "sender": "元培学院开发组", # 发件人标识
+                        "toaddrs": [email],         # 收件人列表
                         "subject": "YPPF登录验证",  # 邮件主题/标题
-                        "content": msg,  # 邮件内容
+                        "content": msg,             # 邮件内容
                         # 若subject为空, 第一个\n视为标题和内容的分隔符
                         "html": True,  # 可选 如果为真则content被解读为html
                         "private_level": 0,  # 可选 应在0-2之间
@@ -1032,6 +1046,7 @@ def forget_password(request):
                         if response["status"] != 200:
                             err_code = 4
                             err_message = f"未能向{pre}@{suf}发送邮件"
+                            print("向邮箱api发送失败，原因：", response["data"]["errMsg"])
                         else:
                             # 记录验证码发给谁 不使用username防止被修改
                             request.session["received_user"] = username
@@ -1050,6 +1065,7 @@ def forget_password(request):
                 elif vertify_code.upper() == captcha.upper():
                     auth.login(request, user)
                     request.session.pop("captcha")
+                    request.session.pop("received_user")    # 成功登录后不再保留
                     request.session["username"] = username
                     request.session["forgetpw"] = "yes"
                     return redirect(reverse("modpw"))
