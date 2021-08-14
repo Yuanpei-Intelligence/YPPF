@@ -7,7 +7,6 @@ from boottest import local_dict
 
 # 模型与加密模型
 from app.models import NaturalPerson, Activity, Notification
-from app.views import get_person_or_org     # 获取名称
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 # 日期与定时任务
@@ -133,6 +132,7 @@ def publish_notification(notification_or_id):
     except:
         print(f"未找到id为{notification_or_id}的通知")
         return False
+    from app.views import get_person_or_org     # 获取名称
     sender = get_person_or_org(notification.sender) # 也可能是组织
     send_time = notification.start_time
     timeformat = "%Y年%m月%d日 %H:%M"   
