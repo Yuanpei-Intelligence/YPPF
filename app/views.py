@@ -1,3 +1,4 @@
+from threading import local
 from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
 from app.models import (
@@ -41,7 +42,6 @@ import io
 import csv
 import qrcode
 
-from app.scheduler_func import distribute_YQPoint, YQPoint_Distribution
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
 from .scheduler_func import scheduler
@@ -414,6 +414,7 @@ def stuinfo(request, name=None):
 
         html_display["title_name"] = "User Profile"
         html_display["narbar_name"] = "个人主页"
+        html_display["help_message"] = local_dict["help_message"]["个人主页"]
         origin = request.get_full_path()
 
         return render(request, "stuinfo.html", locals())
@@ -760,11 +761,10 @@ def account_setting(request):
                 upload_state = True
                 return redirect("/orginfo/?modinfo=success")
 
-
-
     # 补充网页呈现所需信息
     html_display["title_name"] = "Account Setting"
     html_display["narbar_name"] = "账户设置"
+    html_display["help_message"] = local_dict["help_message"]["账户设置"]
 
 
     if user_type == "Person":
@@ -1681,6 +1681,7 @@ def myYQPoint(request):
     # 补充一些呈现信息
     html_display["title_name"] = "My YQPoint"
     html_display["narbar_name"] = "我的元气值"  #
+    html_display["help_message"] = local_dict["help_message"]["我的元气值"]
 
     to_send_set = TransferRecord.objects.filter(
         proposer=request.user, status=TransferRecord.TransferStatus.WAITING
@@ -2421,6 +2422,7 @@ def subscribeActivities(request):
     # 补充一些呈现信息
     html_display["title_name"] = "Subscribe"
     html_display["narbar_name"] = "我的订阅"  #
+    html_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     org_list = list(Organization.objects.all())
     otype_list = list(OrganizationType.objects.all())
@@ -2717,6 +2719,7 @@ def notifications(request):
 
     html_display["title_name"] = "Notifications"
     html_display["narbar_name"] = "通知信箱"
+    html_display["help_message"] = local_dict["help_message"]["通知信箱"]
 
     done_set = Notification.objects.filter(
         receiver=request.user, status=Notification.Status.DONE
