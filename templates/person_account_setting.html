@@ -1,0 +1,226 @@
+﻿{% extends "base.html" %}
+
+{% block mainpage %}
+{% load static %}
+
+    <!--  BEGIN CUSTOM STYLE FILE  -->
+    <link rel="stylesheet" type="text/css" href="{% static "plugins/dropify/dropify.min.css" %}">
+    <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
+    <!--  END CUSTOM STYLE FILE  -->
+
+<!--  BEGIN MAIN CONTAINER  -->
+<div class="main-container" id="container">
+
+    <div class="overlay"></div>
+    <div class="search-overlay"></div>
+
+    {% include 'user_left_narbar.html' %}
+
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+        <!--  BEGIN CUSTOM STYLE FILE  -->
+        <link rel="stylesheet" type="text/css" href="{% static "plugins/dropify/dropify.min.css" %}">
+        <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
+        <!--  END CUSTOM STYLE FILE  -->
+
+        <div class="layout-px-spacing">
+
+            <div class="account-settings-container layout-top-spacing">
+                {% if upload_state == True %}
+                <div class="alert alert-success  text-center">修改个人信息成功</div>
+                {% endif %}
+                {% if expr == False %}
+                <div class="alert alert-warning  text-center">没有检测到信息更新</div>
+                {% endif %}
+                <div class="account-content">
+                    <div class="scrollspy-example" data-spy="scroll" data-target="#account-settings-scroll"
+                        data-offset="-100">
+                        <div class="row">
+                            <div class="col-xl-12 col-lg-12 col-md-12 layout-spacing">
+                                <form id="general-info" class="section general-info" method="POST"
+                                    enctype="multipart/form-data">
+                                    <div class="info">
+                                        <h6 class="">个人信息</h6>
+                                        <div class="row">
+                                            <div class="upload m-auto">
+                                                <input type="file" id="avatar" class="dropify" name="avatar"
+                                                    data-default-file="{{former_img}}" data-max-file-size="512K" />
+                                                <p class="mt-2 text-center">{{useroj.name}}</p>
+                                            </div>
+                                        </div>
+                                        <div class="row">
+                                            <div class="col-xl-10 col-lg-12 col-md-8 mt-md-0 mt-4">
+                                                <div class="form mt-4">
+                                                    <div class="form-group">
+                                                        <div class="form-check">
+                                                            <label for="fullName">我的昵称</label>
+                                                            <input type="text" class="form-control" id="nickname"
+                                                            name="nickname" placeholder="{{userinfo.nickname}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
+                                                            <div class="form-check mb-4">
+                                                                {% if show_nickname %}
+                                                                <input type="checkbox" class="form-check-input" id="check-nickname" name='show_nickname' checked>
+                                                                {% else %}
+                                                                <input type="checkbox" class="form-check-input" id="check-nickname" name='show_nickname'>
+                                                                {% endif %}
+                                                                <label class="form-check-label" for="check-nickname">对外展示</label>
+                                                            </div>
+                                                            <label class="dob-input">我的性别</label>
+                                                            <div class="d-sm-flex d-block">
+                                                                <div class="form-group mr-1">
+                                                                    <select class="form-control" id="select-gender" name="gender">
+                                                                    {% if useroj.gender == 1 %}
+                                                                      <option>男</option>
+                                                                      <option selected>女</option>
+                                                                    {% else %}
+                                                                    <option selected>男</option>
+                                                                      <option>女</option>
+                                                                    {% endif %}
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                            <div class="form-check mb-4">
+                                                                {% if useroj.show_gender %}
+                                                                <input type="checkbox" class="form-check-input" id="check-gender" name="show_gender" checked>
+                                                                {% else %}
+                                                                <input type="checkbox" class="form-check-input" id="check-gender" name="show_gender">
+                                                                {% endif %}
+                                                                <label class="form-check-label" for="check-gender">对外展示</label>
+                                                            </div>
+                                                            <label for="fullName">我的电话</label>
+                                                            <input type="text" class="form-control" id="tel"
+                                                            name="tel" placeholder="{{userinfo.telephone}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
+                                                            <div class="form-check mb-4">
+                                                                {% if useroj.show_tel %}
+                                                                <input type="checkbox" class="form-check-input" id="check-telephone" name="show_tel" checked>
+                                                                {% else %}
+                                                                <input type="checkbox" class="form-check-input" id="check-telephone" name="show_tel">
+                                                                {% endif %}
+                                                                <label class="form-check-label" for="check-telephone">对外展示</label>
+                                                                
+                                                            </div>
+                                                            <label for="profession">我的专业</label>
+                                                            <input type="text" class="form-control" id="major"
+                                                                name="major" placeholder="{{userinfo.stu_major}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
+                                                            <div class="form-check mb-4">
+                                                                {% if useroj.show_major %}
+                                                                <input type="checkbox" class="form-check-input" id="check-major" name="show_major" checked>
+                                                                {% else %}
+                                                                <input type="checkbox" class="form-check-input" id="check-major" name="show_major">
+                                                                {% endif %}
+                                                                <label class="form-check-label" for="check-major">对外展示</label>
+                                                            </div>
+                                                            <label for="profession">我的宿舍</label>
+                                                            <input type="text" class="form-control" id="dorm"
+                                                                name="dorm" placeholder="{{userinfo.stu_dorm}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
+                                                            <div class="form-check mb-4">
+                                                                {% if useroj.show_dorm %}
+                                                                <input type="checkbox" class="form-check-input" id="check-dorm" name="show_dorm" checked>
+                                                                {% else %}
+                                                                <input type="checkbox" class="form-check-input" id="check-show_dorm" name="show_dorm">
+                                                                {% endif %}
+                                                                <label class="form-check-label" for="check-dorm">对外展示</label>
+                                                            </div>
+                                                            <label for="profession">我的年级</label>
+                                                            <input type="text" class="form-control" id="grade"
+                                                                name="grade" placeholder="{{userinfo.stu_grade}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
+                                                            <div class="form-check mb-4">
+                                                                {% if useroj.show_grade %}
+                                                                <input type="checkbox" class="form-check-input" id="check-grade" name="show_grade" checked>
+                                                                {% else %}
+                                                                <input type="checkbox" class="form-check-input" id="show_grade" name="show_grade" >
+                                                                {% endif %}
+                                                                <label class="form-check-label" for="check-grade">对外展示</label>
+                                                            </div>
+                                                            <label for="profession">我的班级</label>
+                                                            <input type="text" class="form-control" id="class"
+                                                                name="class" placeholder="{{userinfo.stu_class}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
+                                                            <div class="form-check mb-4">
+                                                                {% if useroj.show_class %}
+                                                                <input type="checkbox" class="form-check-input" id="check-class" name="show_class" checked>
+                                                                {% else %}
+                                                                <input type="checkbox" class="form-check-input" id="show_class" name="show_class">
+                                                                {% endif %}
+                                                                <label class="form-check-label" for="check-class">对外展示</label>
+                                                            </div>
+                                                            <label for="profession">我的邮箱</label>
+                                                            <input type="text" class="form-control" id="email"
+                                                                name="email" placeholder="{{userinfo.email}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
+                                                                <div class="form-check mb-4">
+                                                                    {% if useroj.show_email %}
+                                                                    <input type="checkbox" class="form-check-input" id="check-email" name="show_email" checked>
+                                                                    {% else %}
+                                                                    <input type="checkbox" class="form-check-input" id="show_email" name="show_email">
+                                                                    {% endif %}
+                                                                    <label class="form-check-label" for="check-email">对外展示</label>
+                                                                </div>
+                                                            <label for="aboutBio">个性签名</label>
+                                                            <textarea class="form-control" id="aboutBio" name="aboutBio"
+                                                                placeholder="{{userinfo.biography}}" rows="10" onclick="if(this.placeholder != ''){this.value=this.placeholder;}"></textarea>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                        </div>
+
+                                    </div>
+
+                            </div>
+                            <div class="col-md-12 text-right mb-5">
+                                <button id="submit" class="btn btn-primary">Submit</button>
+                            </div>
+                        </div>
+
+                        </form>
+                    </div>
+
+
+
+
+
+
+
+
+
+
+
+
+                </div>
+            </div>
+        </div>
+
+
+    </div>
+
+
+</div>
+
+{% endblock %}
+
+{% block load_js_file %}
+    <!-- BEGIN GLOBAL MANDATORY SCRIPTS -->
+    <script src={% static "assets/js/libs/jquery-3.1.1.min.js" %}></script>
+    <script src={% static "bootstrap/js/popper.min.js" %}></script>
+    <script src={% static "bootstrap/js/bootstrap.min.js" %}></script>
+    <script src={% static "plugins/perfect-scrollbar/perfect-scrollbar.min.js" %}></script>
+    <script src={% static "assets/js/app.js" %}></script>
+    
+    <script>
+        $(document).ready(function() {
+            App.init();
+        });
+    </script>
+    <script>
+        $(function () { $("[data-toggle='tooltip']").tooltip(); });
+    </script>
+    <script src={% static "assets/js/custom.js" %}></script>
+    <!-- END GLOBAL MANDATORY SCRIPTS -->
+
+    <!--  BEGIN CUSTOM SCRIPTS FILE  -->
+
+    <script src={% static "plugins/dropify/dropify.min.js" %}></script>
+    <script src={% static "plugins/blockui/jquery.blockUI.min.js" %}></script>
+    <!-- <script src="plugins/tagInput/tags-input.js"></script> -->
+    <script src={% static "assets/js/users/account-settings.js" %}></script>
+    <!--  END CUSTOM SCRIPTS FILE  -->
+{% endblock %}
