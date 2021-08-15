@@ -737,6 +737,7 @@ def account_setting(request):
             avatar_path = settings.MEDIA_URL + str(ava)
             if expr == False:
                 return render(request, "person_account_setting.html", locals())
+
             else:
                 upload_state = True
                 return redirect("/stuinfo/?modinfo=success")
