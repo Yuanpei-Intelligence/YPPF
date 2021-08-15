@@ -47,6 +47,7 @@
 
             <ul class="navbar-item flex-row ml-md-0 ml-auto">
                 <li class="nav-item align-self-center search-animated">
+<<<<<<< HEAD
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                         class="feather feather-search toggle-search"
@@ -54,9 +55,21 @@
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg> 
+=======
+>>>>>>> 7e446a3f74b9879faacc71bd19dd5fdcd7621824
                     <form class="form-inline search-full form-inline search" role="search" method="GET"
                         action="/search/" id="search-form">
                         <div class="search-bar">
+                            <a href="#" onclick="document.getElementById('search-form').submit();return false;">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                                  </svg>
+                            </a>  
+                            <!-- <button type="submit">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-search" viewBox="0 0 16 16">
+                                    <path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/>
+                                  </svg>
+                            </button>                 -->
                             <input type="text" class="form-control search-form-control  ml-lg-auto"
                                     placeholder="搜索活动/组织/个人[姓名/组织名/昵称/专业]" name="Query">
                         </div>
