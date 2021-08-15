@@ -16,7 +16,6 @@ from app.models import (
     Comment,
     CommentPhoto
 )
-from django.db.models import Max
 import app.utils as utils
 from app.forms import UserForm
 from app.utils import url_check, check_cross_site
@@ -272,7 +271,6 @@ def stuinfo(request, name=None):
         else:  # 跳轉到自己的頁面
             assert user_type == "Person"
             full_path = request.get_full_path()
-
             append_url = "" if (
                     "?" not in full_path) else "?" + full_path.split("?")[1]
             return redirect("/stuinfo/" + oneself.name + append_url)
@@ -532,18 +530,15 @@ def orginfo(request, name=None):
     prepare_times = Activity.EndBeforeHours.prepare_times
 
     continuing_activity_list_participantrec = []
-
     for act in continuing_activity_list:
         dictmp = {}
         dictmp["act"] = act
         dictmp["endbefore"] = act.start - \
                               timedelta(hours=prepare_times[act.endbefore])
         if user_type == "Person":
-
             existlist = Participant.objects.filter(activity_id_id=act.id).filter(
                 person_id_id=me.person_id_id
             )
-
             if existlist:  # 判断是否非空
                 dictmp["status"] = participant_status[existlist[0].status]
             else:
@@ -580,10 +575,8 @@ def orginfo(request, name=None):
             member["person"] = p.person
             member["job"] = org.otype.get_name(p.pos)
             member["highest"] = True if p.pos == 0 else False
-
             member["avatar_path"] = utils.get_user_ava(
                 member["person"], "Person")
-
             member_list.append(member)
 
     try:
@@ -606,7 +599,6 @@ def orginfo(request, name=None):
 
     # 再处理修改信息的回弹
     modpw_status = request.GET.get("modinfo", None)
-
     html_display["modpw_code"] = modpw_status is not None and modpw_status == "success"
 
     # 补充其余信息
@@ -628,7 +620,6 @@ def orginfo(request, name=None):
     if user_type == "Person":
         show_subscribe = True
         subscribe_flag = True  # 默认在订阅列表中
-
         if organization_name in me.subscribe_list.values_list("oname", flat=True):
             subscribe_flag = False
 
@@ -689,7 +680,7 @@ def account_setting(request):
         useroj = NaturalPerson.objects.get(person_id=user)
 
         former_img = html_display["avatar_path"]
-        #print(json.loads(request.body.decode("utf-8")))
+        # print(json.loads(request.body.decode("utf-8")))
         if request.method == "POST" and request.POST:
 
             attr_dict = dict()
@@ -716,9 +707,9 @@ def account_setting(request):
             show_dict['show_grade'] = request.POST.get('show_grade') == 'on'
             show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
 
-            
-            expr = bool(ava  or (gender != useroj.get_gender_display()))
-            expr += sum([(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
+            expr = bool(ava or (gender != useroj.get_gender_display()))
+            expr += sum(
+                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
             expr += sum([getattr(useroj, show_attr) != show_dict[show_attr] for show_attr in show_dict.keys()])
 
             if gender != useroj.gender:
@@ -753,11 +744,12 @@ def account_setting(request):
 
             attr_dict = dict()
             attr_dict['introduction'] = request.POST['introduction']
-            
+
             ava = request.FILES.get("avatar")
-            
+
             expr = bool(ava)
-            expr += sum([(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
+            expr += sum(
+                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
 
             for attr in attr_dict.keys():
                 if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
@@ -779,7 +771,6 @@ def account_setting(request):
     html_display["narbar_name"] = "账户设置"
     html_display["help_message"] = local_dict["help_message"]["账户设置"]
 
-
     if user_type == "Person":
         # 然后是左边栏
         html_display = utils.get_user_left_narbar(
@@ -791,7 +782,6 @@ def account_setting(request):
             useroj, html_display['is_myself'], html_display
         )
         return render(request, "org_account_setting.html", locals())
-
 
 
 def register(request):
@@ -913,13 +903,11 @@ def search(request):
     not_found_message = "找不到符合搜索的信息或相关内容未公开！"
     # 首先搜索个人, 允许搜索姓名或者公开的专业, 删去小名搜索
     people_list = NaturalPerson.objects.filter(
-
         Q(name__icontains=query)
         | (  # (Q(nickname__icontains=query) & Q(show_nickname=True)) |
                 Q(stu_major__icontains=query) & Q(show_major=True)
         )
     )
-
     # 接下来准备呈现的内容
     # 首先是准备搜索个人信息的部分
     people_field = [
@@ -1063,28 +1051,27 @@ def forget_password(request):
                 if not email or email.lower() == "none" or "@" not in email:
                     err_code = 3
                     err_message = "您没有设置邮箱，请联系管理员" + \
-                        "或发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"  # TODO:记得填
+                                  "或发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"  # TODO:记得填
                 else:
                     # randint包含端点，randrange不包含
                     captcha = random.randrange(1000000)
                     captcha = f"{captcha:06}"
                     msg = (
-
-                        f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
-                        "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
-                        f'<p style="color:orange">{captcha}'
-                        '<span style="color:gray">(仅'
-                        f'<a href="{request.build_absolute_uri()}">当前页面</a>'
-                        '有效)</span></p>'
-                        f'点击进入<a href="{request.build_absolute_uri("/")}">元培成长档案</a><br/>'
-                        "<br/>"
-                        "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
+                            f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
+                            "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
+                            f'<p style="color:orange">{captcha}'
+                            '<span style="color:gray">(仅'
+                            f'<a href="{request.build_absolute_uri()}">当前页面</a>'
+                            '有效)</span></p>'
+                            f'点击进入<a href="{request.build_absolute_uri("/")}">元培成长档案</a><br/>'
+                            "<br/>"
+                            "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
-                        "sender": "元培学院开发组", # 发件人标识
-                        "toaddrs": [email],         # 收件人列表
+                        "sender": "元培学院开发组",  # 发件人标识
+                        "toaddrs": [email],  # 收件人列表
                         "subject": "YPPF登录验证",  # 邮件主题/标题
-                        "content": msg,             # 邮件内容
+                        "content": msg,  # 邮件内容
                         # 若subject为空, 第一个\n视为标题和内容的分隔符
                         "html": True,  # 可选 如果为真则content被解读为html
                         "private_level": 0,  # 可选 应在0-2之间
@@ -1122,7 +1109,7 @@ def forget_password(request):
                 elif vertify_code.upper() == captcha.upper():
                     auth.login(request, user)
                     request.session.pop("captcha")
-                    request.session.pop("received_user")    # 成功登录后不再保留
+                    request.session.pop("received_user")  # 成功登录后不再保留
                     request.session["username"] = username
                     request.session["forgetpw"] = "yes"
                     return redirect(reverse("modpw"))
@@ -1213,7 +1200,6 @@ def applyActivity(request, activity_id, willingness):
             )
         except:
             context["msg"] = "未能找到活动"
-
             return context
         """
         assert len(activity) == 1
@@ -1364,7 +1350,6 @@ def transaction_page(request, rid=None):
 
     # 储存返回跳转的url
     if context["user_type"] == "Person":
-
         context["return_url"] = (
                 context["profile_url"] + context["name"] + "+" + context["rid"]
         )
@@ -1621,7 +1606,6 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
 
         # 对象
         # 如果是给出列表，那么对象就是接收者
-
         obj_user = record.recipient if record_type == "send" else record.proposer
         lis[-1]["obj_direct"] = "To  " if record_type == "send" else "From"
         if hasattr(obj_user, "naturalperson"):  # 如果OneToOne Field在个人上
@@ -1779,7 +1763,6 @@ def myYQPoint(request):
 def showActivities(request):
     # TODO 改一下前端，感觉一条一条的更好看一点？ 以及链接到下面的 viewActivity
     notes = [
-
         {"title": "活动名称1", "Date": "11/01/2019",
          "Address": ["B107A", "B107B"]},
         {"title": "活动名称2", "Date": "11/02/2019", "Address": ["B108A"]},
@@ -1794,6 +1777,7 @@ def showActivities(request):
 
 
 """
+-----------------------------
 页面逻辑：
 1. 方法为 GET 时，展示一个活动的详情。
     a. 如果当前用户是个人，有立即报名/已报名的 button
@@ -1804,7 +1788,6 @@ def showActivities(request):
     c. 如果报名活动，本函数处理 ( 还未实现 )
 # TODO
 个人操作，包括报名与取消
-
 ----------------------------
 活动逻辑
 1. 活动开始前一小时，不能修改活动
@@ -2282,7 +2265,6 @@ def checkinActivity(request):
 当请求方法为 POST 时，处理请求并修改数据库，如果没有问题，跳转到展示活动信息的界面
 存在 edit=True 参数时，为编辑操作，否则为创建操作
 编辑操作时，input 并不包含 model 所有 field 的数据，只修改其中出现的
-
 """
 
 
@@ -2317,7 +2299,6 @@ def addActivities(request):
         # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
         context = dict()
         context = utils.check_ac_request(request)  # 合法性检查
-
         if context["warn_code"] != 0:
             html_display["warn_code"] = context["warn_code"]
             html_display["warn_message"] = "创建/修改活动失败。" + context["warn_msg"]
@@ -2451,7 +2432,6 @@ def subscribeActivities(request):
     )  # 获取不订阅列表（数据库里的是不订阅列表）
     subscribe_list = [
         org.organization_id.username for org in org_list if org.organization_id.username not in unsubscribe_list
-
     ]  # 获取订阅列表
 
     subscribe_url = reverse("save_subscribe_status")
@@ -2678,9 +2658,8 @@ def notification_create(
         title: 请在数据表中查找相应事件类型，若找不到，直接创建一个新的choice
         content: 输入通知的内容
         URL: 需要跳转到处理事务的页面
-
     注意事项：
-        publish_to_wechat: bool 仅位置参数 
+        publish_to_wechat: bool 仅位置参数
         - 你不应该输入这个参数，除非你清楚wechat_send.py的所有逻辑
         - 在最坏的情况下，可能会阻塞近10s
         - 简单来说，涉及订阅或者可能向多人连续发送类似通知时，都不要发送到微信
@@ -2758,7 +2737,6 @@ def notifications(request):
     )
 
     return render(request, "notifications.html", locals())
-
 
 # 新建或修改报销信息
 @login_required(redirect_field_name='origin')
@@ -2869,7 +2847,7 @@ def addReimbursement(request):
                     new_notification.URL = URL
                     new_notification.save()
                 try:  # 创建对应通知
-                    a=1
+                    a = 1
 
 
 
@@ -2970,7 +2948,7 @@ def auditReimbursement(request):
                 with transaction.atomic():
                     reim_comment = Comment.objects.create(commentsaction=new_reimb, commentator=request.user, text=text)
                     comment_images = request.FILES.getlist('comment_images')
-                    if len(comment_images)>0:
+                    if len(comment_images) > 0:
                         for comment_image in comment_images:
                             CommentPhoto.objects.create(image=comment_image, comment=reim_comment)
             except:
@@ -2988,7 +2966,7 @@ def auditReimbursement(request):
                         content = "递交的报销需要修改！"
                         receiver = new_reimb.pos  # 通知接收者
                         URL = ""
-                        new_notification = notification_create(receiver,request.user,
+                        new_notification = notification_create(receiver, request.user,
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
@@ -3032,7 +3010,7 @@ def auditReimbursement(request):
                         content += " 老师给你留言啦："
                         content += text"""
 
-                        notification_create(receiver,request.user,  Notification.Type.NEEDREAD,
+                        notification_create(receiver, request.user, Notification.Type.NEEDREAD,
                                             Notification.Title.VERIFY_INFORM, content, URL)
                         new_reimb.status = Reimbursement.ReimburseStatus.CONFIRMED
                         new_reimb.save()
@@ -3065,7 +3043,7 @@ def auditReimbursement(request):
                         content += " 老师给你留言啦："
                         content += text"""
 
-                        notification_create(receiver,request.user, Notification.Type.NEEDREAD,
+                        notification_create(receiver, request.user, Notification.Type.NEEDREAD,
                                             Notification.Title.VERIFY_INFORM, content, URL)
                         new_reimb.status = Reimbursement.ReimburseStatus.CANCELED
                         new_reimb.save()
