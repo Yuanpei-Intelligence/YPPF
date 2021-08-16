@@ -2685,8 +2685,7 @@ def notification_create(
             relate_TransferRecord=relate_TransferRecord,
         )
     if publish_to_wechat == True:
-        if hasattr(publish_notification, 'ENABLE_INSTANCE') and \
-                publish_notification.ENABLE_INSTANCE:
+        if getattr(publish_notification, 'ENABLE_INSTANCE', False):
             publish_notification(notification)
         else:
             publish_notification(notification.id)
