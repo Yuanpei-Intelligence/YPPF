@@ -613,8 +613,10 @@ class Reimbursement(CommentSaction):
 
     class ReimburseStatus(models.IntegerChoices):
         WAITING = (0, "待确认")
+
         CONFIRM1 = (1, "主管老师已确认")
         CONFIRM2 = (2, "财务老师已确认")
+
         CONFIRMED = (3, "已通过")
         # 如果需要更多审核，每个审核的确认状态应该是2的幂
         # 根据最新要求，最终不以线上为准，不再设置转账状态
