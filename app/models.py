@@ -522,7 +522,7 @@ class YQPointDistribute(models.Model):
     per_max_dis_YQP = models.FloatField("自然人发放元气值上限")
     org_max_dis_YQP = models.FloatField("组织发放元气值上限")
     # 个人和组织所能平分的元气值比例
-    # 发放时，从学院剩余元气值中，抽取向自然人分发的比例，平分给元气值低于上限的自然人；组织同理
+    # 发放时，从学院剩余元气值中，抽取向自然人分发的数量，平分给元气值低于上限的自然人；组织同理
     per_YQP = models.FloatField("自然人获得的元气值", default=0)
     org_YQP = models.FloatField("组织获得的元气值", default=0)
 
