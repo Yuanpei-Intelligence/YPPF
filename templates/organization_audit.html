@@ -42,36 +42,29 @@
                                             <div class="form-group">
                                                 <label>组织名称</label>
                                                 <textarea id="oname" name="oname" class="form-control"
-                                                          aria-label="Default">
-                                                {{html_display.oname}}
-                                                </textarea>
+                                                          aria-label="Default">{{html_display.oname}}</textarea>
                                             </div>
 
                                             <div class="form-group">
                                                 <label>组织负责人</label>
-                                                <textarea class="form-control" aria-label="Default">
-                                                    {{html_display.pos}}
-                                                </textarea>
+                                                <textarea class="form-control"
+                                                          aria-label="Default">{{html_display.pos}}</textarea>
                                             </div>
                                             <div class="form-group">
                                                 <label>组织类型</label>
                                                 <br>
                                                 <textarea id="otype" name="otype" class="form-control"
-                                                          aria-label="Default">
-                                                {{html_display.otype_name}}
-                                                </textarea>
+                                                          aria-label="Default">{{html_display.otype_name}}</textarea>
                                             </div>
                                             <div class="form-group">
                                                 <label>组织图标</label>
                                                 <br>
-                                                <img src="{{html.avatar}}" alt="组织图标"/>
+                                                <img src="{{org_avatar_path}}" width="200px" height="200px" alt="组织图标"/>
                                             </div>
                                             <div class="form-group">
                                                 <label for="aintro">组织简介</label>
                                                 <textarea id="introduction" name="introduction" class="form-control"
-                                                          rows="3">
-                                                   {{html_display.introduction}}
-                                                </textarea>
+                                                          rows="3">{{html_display.introduction}}</textarea>
                                             </div>
                                             <br>
                                             <br>
@@ -79,9 +72,8 @@
 
                                             <div class="form-group">
                                                 <label for="aintro">申请理由</label>
-                                                <textarea id="apply" name="application" class="form-control" rows="30">
-                                                    {{html_display.application}}
-                                                </textarea>
+                                                <textarea id="apply" name="application" class="form-control"
+                                                          rows="30">{{html_display.application}}</textarea>
                                             </div>
                                             <div align="center">
                                                 <table>
@@ -113,34 +105,63 @@
                                         </form>
 
                                         <br>
-                                        <hr>
+                                    <hr>
 
-                                        <div>
-                                            {%for comment in comments%}
-                                            <div class="form-group">
-                                                <label for="aintro">{{comment.commentator}}于{{comment.time}}评论</label>
-                                                <textarea name="comment" class="form-control">
-                                                        {{comment.text}}
-                                                    </textarea>
+                                   <div>
+                                        {%for comment in comments.all%}
+                                        <div class="form-group">
+                                            <div class="d-flex justify-content-between">
+                                                   <div>
+                                                <p style="color: rgb(66, 67, 68);"><i class="fa fa-calendar-o"></i>评论时间：{{comment.time}}</p>
+                                                   </div>
+                                                <div>
+                                                    <p style="color: rgb(66, 67, 68);" align="right"><i class="fa fa-address-book"></i>
+                                                        {{comment.commentator}}</p>
+                                                </div>
                                             </div>
-                                            {% endfor %}
-                                        </div>
 
-                                        <form role="form" method="POST">
+                                            <textarea name="comment" class="form-control">{{comment.text}}</textarea>
+                                            {%for image in comment.comment_photos.all%}
+
+                                            <img width="400px" height="200px" src={{image.imagepath}}>
+                                                <!--移动端图片需要修正!-->
+                                            {%endfor%}
+                                            <hr>
+                                            <br>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+
+                                    <form role="form" method="POST" enctype="multipart/form-data">
                                             <div>
                                                 <div class="form-group">
-                                                    <label>评论</label>
+                                                    <label><h4>评论</h4></label>
+                                                    <div>
+                                                        <p style="color: rgb(66, 67, 68);" align="right"><i
+                                                                class="fa fa-address-book"></i> {{request.user}}</p>
+                                                    </div>
                                                     <textarea type="text" id="comment" name="comment"
                                                               class="form-control"
                                                               aria-label="Default" rows="3"
-                                                              placeholder="Leave a comment">
-                                                </textarea>
+                                                              placeholder="Leave a comment"></textarea>
                                                     <br>
-                                                    <div style="text-align:right;">
-                                                        <button type="submit" class="btn btn-primary btn-sm mb-4 mr-2">
-                                                            Comment
-                                                        </button>
+                                                    <div>
+                                                        <label title="评论图片">
+                                                            <div style="text-align:left;">
+                                                                <input type="file" accept="image/*" name="comment_images"
+                                                                       multiple>
+                                                            </div>
+                                                        </label>
+                                                        <div style="text-align:right;">
+                                                            <button type="submit"
+                                                                    class="btn btn-primary btn-sm mb-4 mr-2"
+                                                                    name="comment_submit" value="1">
+                                                                回复
+                                                            </button>
+                                                        </div>
+
                                                     </div>
+
 
                                                 </div>
                                             </div>

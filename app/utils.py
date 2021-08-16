@@ -258,7 +258,7 @@ def get_url_params(request, html_display):
                 html_display[key] = value
 
 
-# 检查neworg request参数的合法性 ,用在addOrgnization和auditOrgnization函数中
+# 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
 def check_neworg_request(request):
     """
 
@@ -268,7 +268,7 @@ def check_neworg_request(request):
     oname = str(request.POST['oname'])
     if len(oname) >= 32:
         context['warn_code'] = 1
-        context['warn_msg'] = "The length of orgnization_name can't exceed 100 bytes!"
+        context['warn_msg'] = "The length of organization_name can't exceed 32 bytes!"
         return context
     try:
         otype = int(request.POST.get('otype'))

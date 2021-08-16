@@ -606,7 +606,7 @@ class CommentPhoto(models.Model):
     def imagepath(self):
         return  settings.MEDIA_URL+str(self.image)
 
-class NewOrgnization(CommentSaction):
+class NewOrganization(CommentSaction):
     class Meta:
         verbose_name = "申请建立组织的信息"
         verbose_name_plural = verbose_name
@@ -615,7 +615,7 @@ class NewOrgnization(CommentSaction):
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
     introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     application = models.TextField("申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~")
-    avatar = models.ImageField(upload_to=f"avatar/", blank=True)
+    avatar = models.ImageField(upload_to=f"avatar/", verbose_name=u'组织头像', null=True, blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
     class NewOrgStatus(models.IntegerChoices):  # 表示申请组织的请求的状态
         PENDING = (0, "待确认")
@@ -623,6 +623,33 @@ class NewOrgnization(CommentSaction):
         TOBEMODIFIED = (2, "需要修改")
         CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
     status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
+
+
+class Reimbursement(CommentSaction):
+    class Meta:
+        verbose_name = "报销信息"
+        verbose_name_plural = verbose_name
+        ordering = ["-modify_time", "-time"]
+
+    class ReimburseStatus(models.IntegerChoices):
+        WAITING = (0, "待确认")
+
+        CONFIRM1 = (1, "主管老师已确认")
+        CONFIRM2 = (2, "财务老师已确认")
+
+        CONFIRMED = (3, "已通过")
+        # 如果需要更多审核，每个审核的确认状态应该是2的幂
+        # 根据最新要求，最终不以线上为准，不再设置转账状态
+        CANCELED = (4, "已取消")
+
+    activity = models.ForeignKey(Activity,related_name="reimbursement",on_delete=models.CASCADE)
+    amount = models.FloatField("报销金额", default=0)
+    message = models.TextField("备注信息", default="", blank=True)
+    pos = models.ForeignKey(User, on_delete=models.CASCADE)
+    status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
+    time = models.DateTimeField("发起时间", auto_now_add=True)
+    modify_time = models.DateTimeField("上次修改时间", auto_now_add=True)
+
 
 
 
