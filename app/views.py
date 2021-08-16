@@ -1,3 +1,4 @@
+from threading import local
 from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
 from app.models import (
@@ -41,7 +42,6 @@ import io
 import csv
 import qrcode
 
-from app.scheduler_func import distribute_YQPoint, YQPoint_Distribution
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
 from .scheduler_func import scheduler
@@ -259,15 +259,12 @@ def stuinfo(request, name=None):
     if not valid:
         return redirect("/logout/")
 
-    try:
-        oneself = NaturalPerson.objects.activated().get(person_id=user)
-    except:
-        return redirect("/welcome/")
+    oneself = get_person_or_org(user, user_type)
 
     if name is None:
         if user_type == "Organization":
-            return redirect("/welcome/")
-        else:
+            return redirect("/welcome/")    # 组织只能指定学生姓名访问
+        else:                               # 跳轉到自己的頁面
             assert user_type == "Person"
             full_path = request.get_full_path()
             append_url = "" if (
@@ -304,11 +301,8 @@ def stuinfo(request, name=None):
         person_pos_infos = Position.objects.activated().filter(
             Q(person=person) & Q(show_post=True)
         )
-        oneself_org_ids = (
-            Position.objects.activated()
-            .filter(Q(person=oneself) & Q(show_post=True))
-            .values("org")
-        )
+        oneself_org_ids = [oneself] if user_type == 'Organization' else Position.objects.activated().filter(
+            Q(person=oneself) & Q(show_post=True)).values("org")
         org_is_same = [
             id in oneself_org_ids for id in person_pos_infos.values("org")]
         join_org_info = Organization.objects.filter(
@@ -329,17 +323,25 @@ def stuinfo(request, name=None):
 
         # 制作参与活动的卡片（时间，名称（+链接），组织，地点，介绍，状态）
         participants = Participant.objects.filter(person_id=person.id)
-        activities_me = Participant.objects.filter(person_id=person.id).values(
-            "activity_id"
-        )
-        activity_is_same = [
-            participant in activities_me
-            for participant in participants.values("activity_id")
-        ]
         activities = Activity.objects.filter(
-            id__in=participants.values("activity_id"))
-        participate_status_list = participants.values("status")
-        participate_status_list = [info["status"]
+            id__in=participants.values('activity_id'))
+        if user_type == 'Person':
+            activities_me = Participant.objects.filter(
+                person_id=person.id).values('activity_id')
+            activity_is_same = [
+                activity in activities_me
+                for activity in participants.values("activity_id")
+            ]
+        else:
+            activities_me = activities.filter(
+                organization_id=oneself.id).values('id')
+            activities_me = [activity['id'] for activity in activities_me]
+            activity_is_same = [
+                activity['activity_id'] in activities_me
+                for activity in participants.values("activity_id")
+            ]
+        participate_status_list = participants.values('status')
+        participate_status_list = [info['status']
                                    for info in participate_status_list]
         status_color = {
             Activity.Status.REVIEWING: "primary",
@@ -412,6 +414,7 @@ def stuinfo(request, name=None):
 
         html_display["title_name"] = "User Profile"
         html_display["narbar_name"] = "个人主页"
+        html_display["help_message"] = local_dict["help_message"]["个人主页"]
         origin = request.get_full_path()
 
         return render(request, "stuinfo.html", locals())
@@ -758,11 +761,10 @@ def account_setting(request):
                 upload_state = True
                 return redirect("/orginfo/?modinfo=success")
 
-
-
     # 补充网页呈现所需信息
     html_display["title_name"] = "Account Setting"
     html_display["narbar_name"] = "账户设置"
+    html_display["help_message"] = local_dict["help_message"]["账户设置"]
 
 
     if user_type == "Person":
@@ -1015,6 +1017,8 @@ def forget_password(request):
         - 连接设置的timeout为6s
         - 如果引入企业微信验证，建议将send_captcha分为'qywx'和'email'
     """
+    if request.session.get("received_user"):
+        username = request.session["received_user"]  # 自动填充，方便跳转后继续
     if request.method == "POST":
         username = request.POST["username"]
         send_captcha = request.POST["send_captcha"] == "yes"
@@ -1024,9 +1028,17 @@ def forget_password(request):
         if not user:
             err_code = 1
             err_message = "账号不存在"
+        elif len(user) != 1:
+            err_code = 1
+            err_message = "账号不唯一，请联系管理员"
         else:
             user = User.objects.get(username=username)
-            useroj = NaturalPerson.objects.get(person_id=user)  # 目前似乎保证是自然人
+            try:
+                useroj = NaturalPerson.objects.get(person_id=user)  # 目前只支持自然人
+            except:
+                err_code = 1
+                err_message = "暂不支持组织账号忘记密码！"
+                return render(request, "forget_password.html", locals())
             isFirst = useroj.first_time_login
             if isFirst:
                 err_code = 2
@@ -1035,7 +1047,8 @@ def forget_password(request):
                 email = useroj.email
                 if not email or email.lower() == "none" or "@" not in email:
                     err_code = 3
-                    err_message = "您没有设置邮箱，请发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"  # 记得填
+                    err_message = "您没有设置邮箱，请联系管理员" + \
+                        "或发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"  # TODO:记得填
                 else:
                     # randint包含端点，randrange不包含
                     captcha = random.randrange(1000000)
@@ -1044,15 +1057,18 @@ def forget_password(request):
                         f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
                         "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
                         f'<p style="color:orange">{captcha}'
-                        '<span style="color:gray">(仅当前页面有效)</span></p>'
-                        '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
-                        "<br/><br/><br/>"
+                        '<span style="color:gray">(仅'
+                        f'<a href="{request.build_absolute_uri()}">当前页面</a>'
+                        '有效)</span></p>'
+                        f'点击进入<a href="{request.build_absolute_uri("/")}">元培成长档案</a><br/>'
+                        "<br/>"
                         "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
-                        "toaddrs": [email],  # 收件人列表
+                        "sender": "元培学院开发组", # 发件人标识
+                        "toaddrs": [email],         # 收件人列表
                         "subject": "YPPF登录验证",  # 邮件主题/标题
-                        "content": msg,  # 邮件内容
+                        "content": msg,             # 邮件内容
                         # 若subject为空, 第一个\n视为标题和内容的分隔符
                         "html": True,  # 可选 如果为真则content被解读为html
                         "private_level": 0,  # 可选 应在0-2之间
@@ -1071,6 +1087,7 @@ def forget_password(request):
                         if response["status"] != 200:
                             err_code = 4
                             err_message = f"未能向{pre}@{suf}发送邮件"
+                            print("向邮箱api发送失败，原因：", response["data"]["errMsg"])
                         else:
                             # 记录验证码发给谁 不使用username防止被修改
                             request.session["received_user"] = username
@@ -1089,6 +1106,7 @@ def forget_password(request):
                 elif vertify_code.upper() == captcha.upper():
                     auth.login(request, user)
                     request.session.pop("captcha")
+                    request.session.pop("received_user")    # 成功登录后不再保留
                     request.session["username"] = username
                     request.session["forgetpw"] = "yes"
                     return redirect(reverse("modpw"))
@@ -1663,6 +1681,7 @@ def myYQPoint(request):
     # 补充一些呈现信息
     html_display["title_name"] = "My YQPoint"
     html_display["narbar_name"] = "我的元气值"  #
+    html_display["help_message"] = local_dict["help_message"]["我的元气值"]
 
     to_send_set = TransferRecord.objects.filter(
         proposer=request.user, status=TransferRecord.TransferStatus.WAITING
@@ -1921,7 +1940,7 @@ def viewActivity(request, aid=None):
         ):
             return redirect(f"/addActivities/?edit=True&aid={aid}")
         if activity.status == activity.Status.WAITING:
-            if start + timedelta(hours=1) > datetime.now():
+            if start_time + timedelta(hours=1) > datetime.now():
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = f"活动即将开始, 不能修改活动。"
                 return render(request, "activity_info.html", locals())
@@ -2101,9 +2120,9 @@ def getActivityInfo(request):
         else:
             # get participants
             # are you sure it's 'Paticipant' not 'Participant' ??
-            paticipants = Paticipant.objects.filter(activity_id=activity_id)
-            paticipants = paticipants.filter(
-                status=Paticipant.AttendStatus.APLLYSUCCESS
+            participants = Participant.objects.filter(activity_id=activity_id)
+            participants = participants.filter(
+                status=Participant.AttendStatus.APLLYSUCCESS
             )
 
             # get required fields
@@ -2121,7 +2140,7 @@ def getActivityInfo(request):
             filename = f"{activity_id}-{info_type}-{output}"
             content = map(
                 lambda paticipant: map(
-                    lambda key: paticipant[key], fields), paticipants
+                    lambda key: paticipant[key], fields), participants
             )
 
             format = request.GET.get("format", "csv")
@@ -2403,6 +2422,7 @@ def subscribeActivities(request):
     # 补充一些呈现信息
     html_display["title_name"] = "Subscribe"
     html_display["narbar_name"] = "我的订阅"  #
+    html_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     org_list = list(Organization.objects.all())
     otype_list = list(OrganizationType.objects.all())
@@ -2491,6 +2511,9 @@ def apply_position(request, oid=None):
         Notification.Type.NEEDREAD,
         Notification.Title.POSITION_INFORM,
         contents[0],
+        "/personnelMobilization/",
+
+        publish_to_wechat=True, # 不要复制这个参数，先去看函数说明
     )
     notification_create(
         org.organization_id,
@@ -2499,6 +2522,8 @@ def apply_position(request, oid=None):
         Notification.Title.POSITION_INFORM,
         contents[1],
         "/personnelMobilization/",
+
+        publish_to_wechat=True, # 不要复制这个参数，先去看函数说明
     )
     return redirect("/notifications/")
 
@@ -2545,7 +2570,7 @@ def personnel_mobilization(request):
                 elif application.apply_type == Position.AppltType.TRANSFER:
                     application.pos = application.apply_pos
                 application.apply_status = Position.ApplyStatus.PASS
-            elif status == "REJECT":
+            elif apply_status == "REJECT":
                 application.apply_status = Position.ApplyStatus.REJECT
             application.save()
 
@@ -2555,6 +2580,8 @@ def personnel_mobilization(request):
             Notification.Type.NEEDREAD,
             Notification.Title.POSITION_INFORM,
             f"{application.apply_type}申请{application.apply_status}",
+
+            publish_to_wechat=True, # 不要复制这个参数，先去看函数说明
         )
         return redirect("/personnelMobilization/")
 
@@ -2619,7 +2646,8 @@ def notification_status_change(notification_id):
 
 
 def notification_create(
-    receiver, sender, typename, title, content, URL, relate_TransferRecord=None
+    receiver, sender, typename, title, content, URL=None, relate_TransferRecord=None
+    , *, publish_to_wechat=False
 ):
     """
     对于一个需要创建通知的事件，请调用该函数创建通知！
@@ -2629,6 +2657,13 @@ def notification_create(
         title: 请在数据表中查找相应事件类型，若找不到，直接创建一个新的choice
         content: 输入通知的内容
         URL: 需要跳转到处理事务的页面
+
+    注意事项：
+        publish_to_wechat: bool 仅位置参数 
+        - 你不应该输入这个参数，除非你清楚wechat_send.py的所有逻辑
+        - 在最坏的情况下，可能会阻塞近10s
+        - 简单来说，涉及订阅或者可能向多人连续发送类似通知时，都不要发送到微信
+        - 在线程锁内时，也不要发送
     """
     if relate_TransferRecord is None:
         notification = Notification.objects.create(
@@ -2649,7 +2684,12 @@ def notification_create(
             URL=URL,
             relate_TransferRecord=relate_TransferRecord,
         )
-    publish_notification(notification.id)
+    if publish_to_wechat == True:
+        if hasattr(publish_notification, 'ENABLE_INSTANCE') and \
+                publish_notification.ENABLE_INSTANCE:
+            publish_notification(notification)
+        else:
+            publish_notification(notification.id)
     return notification
 
 
@@ -2679,6 +2719,7 @@ def notifications(request):
 
     html_display["title_name"] = "Notifications"
     html_display["narbar_name"] = "通知信箱"
+    html_display["help_message"] = local_dict["help_message"]["通知信箱"]
 
     done_set = Notification.objects.filter(
         receiver=request.user, status=Notification.Status.DONE
