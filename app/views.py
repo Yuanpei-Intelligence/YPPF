@@ -533,7 +533,9 @@ def orginfo(request, name=None):
     positions = Position.objects.activated().filter(org=org).order_by("pos")  # 升序
     member_list = []
     for p in positions:
-        if p.person.id == user and p.pos == 0:
+        print(p.person.person_id)
+        print(user)
+        if p.person.person_id == user and p.pos == 0:
             html_display["isboss"] = True
         if p.show_post == True or p.pos == 0:
             member = {}
@@ -1718,7 +1720,7 @@ def viewActivity(request, aid=None):
     prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.start - timedelta(hours=prepare_times[activity.endbefore])
     introduction = activity.introduction
-    show_url = True
+    show_url = True # 前端使用量
     aURL = activity.URL
     if aURL is None :
         show_url = False
