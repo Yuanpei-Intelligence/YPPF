@@ -36,12 +36,12 @@ urlpatterns = [
     path("transPage/<str:rid>", views.transaction_page, name="transPage"),
     path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"),
     path("startTrans/", views.start_transaction, name="startTrans"),
-    #path("confirmTrans/", views.confirm_transaction, name="confirmTrans"),
-    #path(
+    # path("confirmTrans/", views.confirm_transaction, name="confirmTrans"),
+    # path(
     #    "confirmTrans/<int:tid>/<int:reject>",
     #    views.confirm_transaction,
     #    name="confirmTrans",
-    #),
+    # ),
     path("applyActivity/<str:aid>", views.applyActivity, name="applyActivity"),
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
     path("showActivities/", views.showActivities, name="showActivities"),
@@ -56,7 +56,8 @@ urlpatterns = [
     # path("YQPoint_Distribution/<int:dis_id>", scheduler_func.YQPoint_Distribution, name="YQPoint_Distributions"),
     # path("new_YQP_distribution", scheduler_func.new_YQP_distribute, name="new_YQP_distribution"),
     path("personnelMobilization/", views.personnel_mobilization, name="personnel_mobilization"),
+    path("addOrganization/", views.addOrganization, name="addOrganization"),
+    path("auditOrganization/", views.auditOrganization, name="auditOrganization"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-
