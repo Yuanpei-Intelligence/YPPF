@@ -258,7 +258,7 @@ def get_url_params(request, html_display):
                 html_display[key] = value
 
 
-# 检查neworg request参数的合法性
+# 检查neworg request参数的合法性 ,用在addOrgnization和auditOrgnization函数中
 def check_neworg_request(request):
     """
 
@@ -284,8 +284,6 @@ def check_neworg_request(request):
     context['otype'] = OrganizationType.objects.get(otype_id=otype)  # 组织类型，必须有
     context['pos'] = request.user  # 负责人，必须有滴
     context['introduction'] = str(request.POST.get('introduction', ""))  # 组织介绍，可能为空
-
     context['avatar'] = request.FILES.get('avatar')
-
     context['application'] = str(request.POST.get('application', ""))  # 申请理由
     return context

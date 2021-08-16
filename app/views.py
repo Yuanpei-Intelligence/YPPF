@@ -1,3 +1,4 @@
+from threading import local
 from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
 from app.models import (
@@ -45,7 +46,6 @@ import io
 import csv
 import qrcode
 
-from app.scheduler_func import distribute_YQPoint, YQPoint_Distribution
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
 from .scheduler_func import scheduler
@@ -421,6 +421,7 @@ def stuinfo(request, name=None):
 
         html_display["title_name"] = "User Profile"
         html_display["narbar_name"] = "个人主页"
+        html_display["help_message"] = local_dict["help_message"]["个人主页"]
         origin = request.get_full_path()
 
         return render(request, "stuinfo.html", locals())
@@ -597,7 +598,7 @@ def orginfo(request, name=None):
     modpw_status = request.GET.get("modinfo", None)
     if modpw_status is not None and modpw_status == "success":
         html_display["warn_code"] = 2
-        html_display["warn_message"] = "修改个人信息成功!"
+        html_display["warn_message"] = "修改组织信息成功!"
 
     # 补充左边栏信息
 
@@ -679,79 +680,119 @@ def account_setting(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect("/logout/")
-
     # 在这个页面 默认回归为自己的左边栏
     html_display["is_myself"] = True
     user = request.user
-    info = NaturalPerson.objects.filter(person_id=user)
-    userinfo = info.values()[0]
+    if user_type == "Person":
+        info = NaturalPerson.objects.filter(person_id=user)
+        userinfo = info.values()[0]
 
-    useroj = NaturalPerson.objects.get(person_id=user)
+        useroj = NaturalPerson.objects.get(person_id=user)
 
-    former_img = html_display["avatar_path"]
-    #print(json.loads(request.body.decode("utf-8")))
-    if request.method == "POST" and request.POST:
+        former_img = html_display["avatar_path"]
+        #print(json.loads(request.body.decode("utf-8")))
+        if request.method == "POST" and request.POST:
 
-        attr_dict = dict()
+            attr_dict = dict()
 
-        attr_dict['nickname'] = request.POST['nickname']
-        attr_dict['biography'] = request.POST["aboutBio"]
-        attr_dict['telephone'] = request.POST["tel"]
-        attr_dict['email'] = request.POST["email"]
-        attr_dict['stu_major'] = request.POST["major"]
-        attr_dict['stu_grade'] = request.POST['grade']
-        attr_dict['stu_class'] = request.POST['class']
-        attr_dict['stu_dorm'] = request.POST['dorm']
+            attr_dict['nickname'] = request.POST['nickname']
+            attr_dict['biography'] = request.POST["aboutBio"]
+            attr_dict['telephone'] = request.POST["tel"]
+            attr_dict['email'] = request.POST["email"]
+            attr_dict['stu_major'] = request.POST["major"]
+            attr_dict['stu_grade'] = request.POST['grade']
+            attr_dict['stu_class'] = request.POST['class']
+            attr_dict['stu_dorm'] = request.POST['dorm']
 
-        ava = request.FILES.get("avatar")
-        gender = request.POST['gender']
+            ava = request.FILES.get("avatar")
+            gender = request.POST['gender']
 
-        show_dict = dict()
+            show_dict = dict()
 
-        show_dict['show_nickname'] = request.POST.get('show_nickname') == 'on'
-        show_dict['show_gender'] = request.POST.get('show_gender') == 'on'
-        show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
-        show_dict['show_email'] = request.POST.get('show_email') == 'on'
-        show_dict['show_major'] = request.POST.get('show_major') == 'on'
-        show_dict['show_grade'] = request.POST.get('show_grade') == 'on'
-        show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
+            show_dict['show_nickname'] = request.POST.get('show_nickname') == 'on'
+            show_dict['show_gender'] = request.POST.get('show_gender') == 'on'
+            show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
+            show_dict['show_email'] = request.POST.get('show_email') == 'on'
+            show_dict['show_major'] = request.POST.get('show_major') == 'on'
+            show_dict['show_grade'] = request.POST.get('show_grade') == 'on'
+            show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
 
+            
+            expr = bool(ava  or (gender != useroj.get_gender_display()))
+            expr += sum([(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
+            expr += sum([getattr(useroj, show_attr) != show_dict[show_attr] for show_attr in show_dict.keys()])
 
-        expr = bool(ava  or (gender != useroj.get_gender_display()))
-        expr += sum([(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
-        expr += sum([getattr(useroj, show_attr) != show_dict[show_attr] for show_attr in show_dict.keys()])
+            if gender != useroj.gender:
+                useroj.gender = NaturalPerson.Gender.MALE if gender == '男' else NaturalPerson.Gender.FEMALE
+            for attr in attr_dict.keys():
+                if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
+                    setattr(useroj, attr, attr_dict[attr])
+            for show_attr in show_dict.keys():
+                if getattr(useroj, show_attr) != show_dict[show_attr]:
+                    setattr(useroj, show_attr, show_dict[show_attr])
+            if ava is None:
+                pass
+            else:
+                useroj.avatar = ava
+            useroj.save()
+            avatar_path = settings.MEDIA_URL + str(ava)
+            if expr == False:
+                return render(request, "person_account_setting.html", locals())
 
-        if gender != useroj.gender:
-            useroj.gender = NaturalPerson.Gender.MALE if gender == '男' else NaturalPerson.Gender.FEMALE
-        for attr in attr_dict.keys():
-            if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
-                setattr(useroj, attr, attr_dict[attr])
-        for show_attr in show_dict.keys():
-            if getattr(useroj, show_attr) != show_dict[show_attr]:
-                setattr(useroj, show_attr, show_dict[show_attr])
-        if ava is None:
-            pass
-        else:
-            useroj.avatar = ava
-        useroj.save()
-        avatar_path = settings.MEDIA_URL + str(ava)
-        if expr == False:
-            return render(request, "user_account_setting.html", locals())
+            else:
+                upload_state = True
+                return redirect("/stuinfo/?modinfo=success")
+    else:
+        info = Organization.objects.filter(organization_id=user)
+        userinfo = info.values()[0]
 
-        else:
-            upload_state = True
-            return redirect("/stuinfo/?modinfo=success")
+        useroj = Organization.objects.get(organization_id=user)
+
+        former_img = html_display["avatar_path"]
+
+        if request.method == "POST" and request.POST:
+
+            attr_dict = dict()
+            attr_dict['introduction'] = request.POST['introduction']
+            
+            ava = request.FILES.get("avatar")
+            
+            expr = bool(ava)
+            expr += sum([(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
+
+            for attr in attr_dict.keys():
+                if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
+                    setattr(useroj, attr, attr_dict[attr])
+            if ava is None:
+                pass
+            else:
+                useroj.avatar = ava
+            useroj.save()
+            avatar_path = settings.MEDIA_URL + str(ava)
+            if expr == False:
+                return render(request, "org_account_setting.html", locals())
+            else:
+                upload_state = True
+                return redirect("/orginfo/?modinfo=success")
 
     # 补充网页呈现所需信息
     html_display["title_name"] = "Account Setting"
     html_display["narbar_name"] = "账户设置"
+    html_display["help_message"] = local_dict["help_message"]["账户设置"]
 
-    # 然后是左边栏
-    html_display = utils.get_user_left_narbar(
-        useroj, html_display["is_myself"], html_display
-    )
 
-    return render(request, "user_account_setting.html", locals())
+    if user_type == "Person":
+        # 然后是左边栏
+        html_display = utils.get_user_left_narbar(
+            useroj, html_display["is_myself"], html_display
+        )
+        return render(request, "person_account_setting.html", locals())
+    else:
+        html_display = utils.get_org_left_narbar(
+            useroj, html_display['is_myself'], html_display
+        )
+        return render(request, "org_account_setting.html", locals())
+
 
 
 def register(request):
@@ -992,6 +1033,8 @@ def forget_password(request):
         - 连接设置的timeout为6s
         - 如果引入企业微信验证，建议将send_captcha分为'qywx'和'email'
     """
+    if request.session.get("received_user"):
+        username = request.session["received_user"]  # 自动填充，方便跳转后继续
     if request.method == "POST":
         username = request.POST["username"]
         send_captcha = request.POST["send_captcha"] == "yes"
@@ -1001,9 +1044,17 @@ def forget_password(request):
         if not user:
             err_code = 1
             err_message = "账号不存在"
+        elif len(user) != 1:
+            err_code = 1
+            err_message = "账号不唯一，请联系管理员"
         else:
             user = User.objects.get(username=username)
-            useroj = NaturalPerson.objects.get(person_id=user)  # 目前似乎保证是自然人
+            try:
+                useroj = NaturalPerson.objects.get(person_id=user)  # 目前只支持自然人
+            except:
+                err_code = 1
+                err_message = "暂不支持组织账号忘记密码！"
+                return render(request, "forget_password.html", locals())
             isFirst = useroj.first_time_login
             if isFirst:
                 err_code = 2
@@ -1012,24 +1063,28 @@ def forget_password(request):
                 email = useroj.email
                 if not email or email.lower() == "none" or "@" not in email:
                     err_code = 3
-                    err_message = "您没有设置邮箱，请发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"  # 记得填
+                    err_message = "您没有设置邮箱，请联系管理员" + \
+                        "或发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"  # TODO:记得填
                 else:
                     # randint包含端点，randrange不包含
                     captcha = random.randrange(1000000)
                     captcha = f"{captcha:06}"
                     msg = (
-                            f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
-                            "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
-                            f'<p style="color:orange">{captcha}'
-                            '<span style="color:gray">(仅当前页面有效)</span></p>'
-                            '点击进入<a href="https://yppf.yuanpei.life">元培成长档案</a><br/>'
-                            "<br/><br/><br/>"
-                            "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
+                        f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
+                        "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
+                        f'<p style="color:orange">{captcha}'
+                        '<span style="color:gray">(仅'
+                        f'<a href="{request.build_absolute_uri()}">当前页面</a>'
+                        '有效)</span></p>'
+                        f'点击进入<a href="{request.build_absolute_uri("/")}">元培成长档案</a><br/>'
+                        "<br/>"
+                        "元培学院开发组<br/>" + datetime.now().strftime("%Y年%m月%d日")
                     )
                     post_data = {
-                        "toaddrs": [email],  # 收件人列表
+                        "sender": "元培学院开发组", # 发件人标识
+                        "toaddrs": [email],         # 收件人列表
                         "subject": "YPPF登录验证",  # 邮件主题/标题
-                        "content": msg,  # 邮件内容
+                        "content": msg,             # 邮件内容
                         # 若subject为空, 第一个\n视为标题和内容的分隔符
                         "html": True,  # 可选 如果为真则content被解读为html
                         "private_level": 0,  # 可选 应在0-2之间
@@ -1048,6 +1103,7 @@ def forget_password(request):
                         if response["status"] != 200:
                             err_code = 4
                             err_message = f"未能向{pre}@{suf}发送邮件"
+                            print("向邮箱api发送失败，原因：", response["data"]["errMsg"])
                         else:
                             # 记录验证码发给谁 不使用username防止被修改
                             request.session["received_user"] = username
@@ -1066,6 +1122,7 @@ def forget_password(request):
                 elif vertify_code.upper() == captcha.upper():
                     auth.login(request, user)
                     request.session.pop("captcha")
+                    request.session.pop("received_user")    # 成功登录后不再保留
                     request.session["username"] = username
                     request.session["forgetpw"] = "yes"
                     return redirect(reverse("modpw"))
@@ -1643,6 +1700,7 @@ def myYQPoint(request):
     # 补充一些呈现信息
     html_display["title_name"] = "My YQPoint"
     html_display["narbar_name"] = "我的元气值"  #
+    html_display["help_message"] = local_dict["help_message"]["我的元气值"]
 
     to_send_set = TransferRecord.objects.filter(
         proposer=request.user, status=TransferRecord.TransferStatus.WAITING
@@ -2384,6 +2442,7 @@ def subscribeActivities(request):
     # 补充一些呈现信息
     html_display["title_name"] = "Subscribe"
     html_display["narbar_name"] = "我的订阅"  #
+    html_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     org_list = list(Organization.objects.all())
     otype_list = list(OrganizationType.objects.all())
@@ -2647,8 +2706,7 @@ def notification_create(
             relate_TransferRecord=relate_TransferRecord,
         )
     if publish_to_wechat == True:
-        if hasattr(publish_notification, 'ENABLE_INSTANCE') and \
-                publish_notification.ENABLE_INSTANCE:
+        if getattr(publish_notification, 'ENABLE_INSTANCE', False):
             publish_notification(notification)
         else:
             publish_notification(notification.id)
@@ -2682,6 +2740,7 @@ def notifications(request):
 
     html_display["title_name"] = "Notifications"
     html_display["narbar_name"] = "通知信箱"
+    html_display["help_message"] = local_dict["help_message"]["通知信箱"]
 
     done_set = Notification.objects.filter(
         receiver=request.user, status=Notification.Status.DONE
