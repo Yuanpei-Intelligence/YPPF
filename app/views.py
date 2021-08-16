@@ -2880,9 +2880,20 @@ def auditOrgnization(request):
         return redirect('/notifications/', locals())
 
     if request.method == "POST" and request.POST:
-        if request.POST.get('comment') is not None:  # 新建评论信息，并保存
+        if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
             text = str(request.POST.get('comment'))
-            Comment.objects.create(preorg=preorg, commentator=request.user, text=text)
+            try:
+                with transaction.atomic():
+                    org_comment = Comment.objects.create(commentsaction=preorg, commentator=request.user, text=text)
+                    comment_images = request.FILES.getlist('comment_images')
+                    if len(comment_images) > 0:
+                        for comment_image in comment_images:
+                            CommentPhoto.objects.create(image=comment_image, comment=org_comment)
+            except:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "评论失败，请联系管理员。"
+                return render(request, "orgnization_audit.html", locals())
+
         # 对于审核老师来说，有三种操作，通过，申请需要修改和拒绝
         else:
             submit = int(request.POST.get('submit', -1))
