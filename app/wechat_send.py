@@ -7,7 +7,6 @@ from boottest import local_dict
 
 # 模型与加密模型
 from app.models import NaturalPerson, Activity, Notification
-# from app.views import get_person_or_org     # 获取名称
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 # 日期与定时任务
@@ -34,6 +33,7 @@ if USE_SCHEDULER:
         from django_apscheduler.jobstores import DjangoJobStore
         scheduler = BackgroundScheduler()
         scheduler.add_jobstore(DjangoJobStore(), "default")
+        scheduler.start()
 
 # 全局变量 用来发送和确认默认的导航网址
 DEFAULT_URL = settings.LOGIN_URL
@@ -44,11 +44,11 @@ WECHAT_URL = local_dict["url"]["wechat_url"]
 wechat_coder = MySHA256Hasher(local_dict["hash"]["wechat"])
 
 # 一批发送的最大数量
-WECHAT_BUDGET = 500     # 上限1000
-ACTIVITY_BUDGET = 500                                  
-try: WECHAT_BUDGET = min(1000, int(local_dict['threholds']['wechat_budget']))
+SEND_LIMIT = 500     # 上限1000
+ACTIVITY_BATCH = 500                                  
+try: SEND_LIMIT = min(1000, int(local_dict['threholds']['wechat_send_number']))
 except: pass                         
-try: ACTIVITY_BUDGET = int(local_dict['threholds']['activity_budget'])
+try: ACTIVITY_BATCH = int(local_dict['threholds']['activity_send_batch'])
 except: pass
 
 # 限制接收范围
@@ -72,12 +72,12 @@ def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=T
     if user_num == 0:
         print('没有合法的用户')
         return
-    if user_num > WECHAT_BUDGET:
+    if user_num > SEND_LIMIT:
         print(
             '用户列表过长,',
-            f'{users[WECHAT_BUDGET: WECHAT_BUDGET+3]}等{user_num-WECHAT_BUDGET}人被舍去'
+            f'{users[SEND_LIMIT: SEND_LIMIT+3]}等{user_num-SEND_LIMIT}人被舍去'
         )
-        users = users[:WECHAT_BUDGET]
+        users = users[:SEND_LIMIT]
     post_data = {
         "touser": users,
         "content": message,
@@ -133,6 +133,7 @@ def publish_notification(notification_or_id):
     except:
         print(f"未找到id为{notification_or_id}的通知")
         return False
+    from app.views import get_person_or_org     # 获取名称
     sender = get_person_or_org(notification.sender) # 也可能是组织
     send_time = notification.start_time
     timeformat = "%Y年%m月%d日 %H:%M"   
@@ -245,8 +246,8 @@ def publish_activity(activity_or_id, only_activated=False):
             message += f"\n\n<a href=\"{activity.URL}\">阅读原文</a>"
         else:
             message += f"\n\n<a href=\"{DEFAULT_URL}\">点击查看详情</a>"
-    for i in range(0, num, ACTIVITY_BUDGET):
-        userids = subcribers[i:i+ACTIVITY_BUDGET]   # 一次最多接受1000个
+    for i in range(0, num, ACTIVITY_BATCH):
+        userids = subcribers[i:i+ACTIVITY_BATCH]   # 一次最多接受1000个
         if USE_MULTITHREAD:
             # 多线程
             scheduler.add_job(base_send_wechat, 'date',
