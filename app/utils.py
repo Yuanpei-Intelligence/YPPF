@@ -1,4 +1,4 @@
-from app.models import NaturalPerson, Organization, Position, Notification
+from app.models import NaturalPerson, Organization, OrganizationType, Position, Notification
 from django.dispatch.dispatcher import receiver
 from django.contrib import auth
 from django.contrib.auth.models import User
@@ -6,8 +6,6 @@ from django.conf import settings
 from boottest import local_dict
 from datetime import datetime, timedelta
 import re
-from app.models import NaturalPerson,Organization,OrganizationType,Position,Notification
-from django.db.models import Max
 def check_user_type(user):  # return Valid(Bool), otype
     html_display = {}
     if user.is_superuser:
