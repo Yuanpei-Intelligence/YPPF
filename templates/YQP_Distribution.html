@@ -9,7 +9,17 @@
 <body>
     <form action="?dis_id={{dis.id}}" method="POST">
         {% csrf_token %}
-        {{ dis_form.as_p }}
+        <!-- {{ dis_form.as_p }} -->
+        {% for field in dis_form %}
+            <p>
+                {% if field == dis_form.start_time %}
+                    {{field.label_tag}}
+                    <input type="datetime-local" name="start_time" value="{{start_time}}" />
+                {% else %}
+                    {{field.label_tag}} {{field}}
+                {% endif %}
+            </p>
+        {% endfor %}
         <div>
             <input type="submit">
         </div>
