@@ -43,6 +43,7 @@ Thumbs.db
 local_json.json
 migrations/
 test_data/
+comment/
 # Python #
 __pycache__/
 *.py[cod]
