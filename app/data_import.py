@@ -143,9 +143,9 @@ def load_transfer_info(request):
         message=act_dict['message']
         amount=float(act_dict['amount'])
         if str(act_dict['proposer_id']) == str(1266):
-            act_dict['proposer_id'] = local_dict['test_info']['user_id']
+            act_dict['proposer_id'] = NaturalPerson.objects.get(name=local_dict['test_info']['stu_name']).person_id.id
         if str(act_dict['recipient_id']) == str(1266):
-            act_dict['recipient_id'] = local_dict['test_info']['user_id']
+            act_dict['recipient_id'] = NaturalPerson.objects.get(name=local_dict['test_info']['stu_name']).person_id.id
         proposer=User.objects.get(id=act_dict['proposer_id'])
         recipient=User.objects.get(id=act_dict['recipient_id'])
         try:
@@ -178,9 +178,9 @@ def load_notification_info(request):
     for _, not_dict in not_df.iterrows():
         id = not_dict["id"]
         if str(not_dict['receiver_id']) == str(1266):
-            not_dict['receiver_id'] = local_dict['test_info']['user_id']
+            not_dict['receiver_id'] = NaturalPerson.objects.get(name=local_dict['test_info']['stu_name']).person_id.id
         if str(not_dict['receiver_id']) == str(1266):
-            not_dict['receiver_id'] = local_dict['test_info']['user_id']
+            not_dict['receiver_id'] = NaturalPerson.objects.get(name=local_dict['test_info']['stu_name']).person_id.id
         try:
             receiver = User.objects.get(id=not_dict["receiver_id"])
             sender = User.objects.get(id=not_dict["sender_id"])
