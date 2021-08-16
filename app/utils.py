@@ -226,6 +226,8 @@ def check_ac_time(start_time, end_time):
 def url_check(arg_url):
     if arg_url is None:
         return True
+    if re.match('^/[^/?]*/', arg_url):  # 相对地址
+        return True
     for url in local_dict["url"].values():
         base = re.findall("^https?://[^/]*/?", url)[0]
         # print('base:', base)
