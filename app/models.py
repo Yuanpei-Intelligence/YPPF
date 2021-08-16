@@ -580,6 +580,7 @@ class CommentSaction(models.Model):
     class Meta:
         verbose_name = "带有评论"
         verbose_name_plural = verbose_name
+    id = models.AutoField(primary_key=True)  # 自增ID
 
 class Comment(models.Model):
     class Meta:
