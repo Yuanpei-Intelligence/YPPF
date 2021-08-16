@@ -2771,15 +2771,14 @@ def addOrganization(request):
     if not valid:
         return redirect('/index/')
     me = get_person_or_org(request.user)
+    if user_type == "Organization":
+        return redirect("/welcome/")  # test
     html_display['is_myself'] = True
     html_display = utils.get_user_left_narbar(
         me, html_display["is_myself"], html_display
     )
 
     edit = 0
-    """test=utils.find_max_oname()
-    html_display['warn_code'] = 1
-    html_display['warn_message']="{test}".format(test=test)"""
     if request.GET.get('neworg_id') is not None and request.GET.get('notifi_id') is not None:
         edit = 1
         try:
@@ -2789,7 +2788,8 @@ def addOrganization(request):
             notification=Notification.objects.get(id=notification_id)
             if preorg.status==NewOrganization.NewOrgStatus.CANCELED or preorg.status==NewOrganization.NewOrgStatus.CONFIRMED \
                     or notification.status==Notification.Status.DONE:
-                notification_status_change(notification_id)
+                if notification.status == Notification.Status.UNDONE:
+                    notification_status_change(notification_id)
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "通知已被处理，请不要重复处理。"
                 return render('/notifications/', locals())
@@ -2806,13 +2806,14 @@ def addOrganization(request):
         html_display['introduction'] = preorg.introduction
         html_display['application'] = preorg.application
         org_avatar_path=utils.get_user_ava(preorg, "Organization")
+
     if request.method == "POST" and request.POST:
 
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
             text = str(request.POST.get('comment'))
             try:
                 with transaction.atomic():
-                    org_comment = Comment.objects.create(commentsaction=preorg, commentator=request.user, text=text)
+                    org_comment = Comment.objects.create(CommentBase=preorg, commentator=request.user, text=text)
                     comment_images = request.FILES.getlist('comment_images')
                     if len(comment_images) > 0:
                         for comment_image in comment_images:
@@ -2860,12 +2861,18 @@ def addOrganization(request):
 
                         URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}".format(id=new_org.id,
                                                                                         nid=new_notification.id)
+                        URL=request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建通知失败。请检查输入or联系管理员"
                     return render(request, "organization_add.html", locals())
+
+                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
+                    publish_notification(new_notification)
+                else:
+                    publish_notification(new_notification.id)
 
                 # 成功新建组织申请
                 html_display['warn_code'] = 2
@@ -2905,18 +2912,26 @@ def addOrganization(request):
 
                         URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}".format(id=preorg.id,
                                                                                         nid=new_notification.id)
+                        URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建通知失败。请检查输入or联系管理员"
                     return render(request, "organization_add.html", locals())
+
                 context = notification_status_change(notification_id)
                 # 成功新建组织申请
                 html_display['warn_code'] = 2
                 html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
                 if context['warn_code'] != 0:
                     html_display['warn_message'] = context['warn_message']
+
+                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
+                    publish_notification(new_notification)
+                else:
+                    publish_notification(new_notification.id)
+
                 return redirect('/notifications/', locals())
 
     return render(request, "organization_add.html", locals())
@@ -2927,7 +2942,6 @@ def addOrganization(request):
 def auditOrganization(request):
     """
     对于审核老师老师：第一次进入的审核，如果申请需要修改，则有之后的下一次审核等
-    对于申请的学生来说，通知
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
@@ -2938,6 +2952,8 @@ def auditOrganization(request):
     html_display = utils.get_user_left_narbar(
         me, html_display["is_myself"], html_display
     )
+    if request.user.username!=local_dict["audit_teacher"]["Neworg"]:
+        return redirect('/notifications/', locals())
 
     try:  # 获取申请信息
         id = int(request.GET.get('neworg_id', -1))  # 新建组织ID
@@ -2950,7 +2966,8 @@ def auditOrganization(request):
         notification = Notification.objects.get(id=notification_id)
         if preorg.status == NewOrganization.NewOrgStatus.CANCELED or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED \
                 or notification.status == Notification.Status.DONE:
-            notification_status_change(notification_id)
+            if notification.status == Notification.Status.UNDONE:
+                notification_status_change(notification_id)
             html_display['warn_code'] = 1
             html_display['warn_message'] = "通知已被处理，请不要重复处理。"
             return render('/notifications/', locals())
@@ -2964,7 +2981,7 @@ def auditOrganization(request):
             text = str(request.POST.get('comment'))
             try:
                 with transaction.atomic():
-                    org_comment = Comment.objects.create(commentsaction=preorg, commentator=request.user, text=text)
+                    org_comment = Comment.objects.create(CommentBase=preorg, commentator=request.user, text=text)
                     comment_images = request.FILES.getlist('comment_images')
                     if len(comment_images) > 0:
                         for comment_image in comment_images:
@@ -2991,6 +3008,7 @@ def auditOrganization(request):
                                                                URL)
                         URL = "/addOrganization/?neworg_id={id}&notifi_id={nid}".format(id=preorg.id,
                                                                                        nid=new_notification.id)
+                        URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
                 except:
@@ -3000,13 +3018,17 @@ def auditOrganization(request):
                 context = notification_status_change(notification_id)
                 html_display['warn_code'] = 2
                 html_display['warn_message'] = context['warn_message']
+                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
+                    publish_notification(new_notification)
+                else:
+                    publish_notification(new_notification.id)
                 return redirect('/notifications/', locals())
             if submit == 2:  # 通过
 
                 try:
                     with transaction.atomic():  # 新建组织
 
-                        username = preorg.oname  # 组织的代号，应为 zz000 ，后期需要修改
+                        username = utils.find_max_oname()  # 组织的代号最大值
 
                         user = User.objects.create(username=username)
                         password = local_dict["testword"]["test"]
@@ -3029,7 +3051,7 @@ def auditOrganization(request):
                         preorg.status = preorg.NewOrgStatus.CONFIRMED
                         preorg.save()
                 except:
-                    html_display['warn_code'] = 4
+                    html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建组织失败。请联系管理员！"
                     return render(request, "organization_audit.html", locals())
 

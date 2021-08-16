@@ -288,15 +288,12 @@ def check_neworg_request(request):
     context['application'] = str(request.POST.get('application', ""))  # 申请理由
     return context
 
+# 查询组织代号的最大值+1 用于addOrganization()函数，新建组织
 def find_max_oname():
-    organizations=Organization.objects.all()
-    users=[]
-    for organization in organizations:
-        users.append(organization.organization_id)
-    max_oname=str(users.aggregate(Max('username')))
-
-
-    """max_oname=int(max_oname[2:])+1
+    organizations=Organization.objects.filter(organization_id__username__startswith='zz').order_by("-organization_id__username")
+    max_org=organizations[0]
+    max_oname=str(max_org.organization_id.username)
+    max_oname=int(max_oname[2:])+1
     prefix="zz"
-    max_oname=prefix+str(max_oname).zfill(5)"""
+    max_oname=prefix+str(max_oname).zfill(5)
     return max_oname

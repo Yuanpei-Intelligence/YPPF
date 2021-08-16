@@ -577,7 +577,7 @@ class Notification(models.Model):
         TransferRecord, related_name="transfer_notification", on_delete=models.CASCADE, blank=True, null=True, )
 
 
-class CommentSaction(models.Model):
+class CommentBase(models.Model):
     class Meta:
         verbose_name = "带有评论"
         verbose_name_plural = verbose_name
@@ -590,7 +590,7 @@ class Comment(models.Model):
         ordering = ["-time"]
 
     commentator = models.ForeignKey(User, on_delete=models.CASCADE)
-    commentsaction=models.ForeignKey(CommentSaction,related_name="comments",on_delete=models.CASCADE)
+    CommentBase=models.ForeignKey(CommentBase,related_name="comments",on_delete=models.CASCADE)
     text = models.TextField("文字内容", default="", blank=True)
     time = models.DateTimeField("评论时间", auto_now_add=True)
 
@@ -606,7 +606,7 @@ class CommentPhoto(models.Model):
     def imagepath(self):
         return  settings.MEDIA_URL+str(self.image)
 
-class NewOrganization(CommentSaction):
+class NewOrganization(CommentBase):
     class Meta:
         verbose_name = "申请建立组织的信息"
         verbose_name_plural = verbose_name
@@ -625,7 +625,7 @@ class NewOrganization(CommentSaction):
     status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
 
 
-class Reimbursement(CommentSaction):
+class Reimbursement(CommentBase):
     class Meta:
         verbose_name = "报销信息"
         verbose_name_plural = verbose_name
