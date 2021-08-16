@@ -2665,25 +2665,15 @@ def notification_create(
         - 简单来说，涉及订阅或者可能向多人连续发送类似通知时，都不要发送到微信
         - 在线程锁内时，也不要发送
     """
-    if relate_TransferRecord is None:
-        notification = Notification.objects.create(
-            receiver=receiver,
-            sender=sender,
-            typename=typename,
-            title=title,
-            content=content,
-            URL=URL,
-        )
-    else:
-        notification = Notification.objects.create(
-            receiver=receiver,
-            sender=sender,
-            typename=typename,
-            title=title,
-            content=content,
-            URL=URL,
-            relate_TransferRecord=relate_TransferRecord,
-        )
+    notification = Notification.objects.create(
+        receiver=receiver,
+        sender=sender,
+        typename=typename,
+        title=title,
+        content=content,
+        URL=URL,
+        relate_TransferRecord=relate_TransferRecord,
+    )
     if publish_to_wechat == True:
         if getattr(publish_notification, 'ENABLE_INSTANCE', False):
             publish_notification(notification)
