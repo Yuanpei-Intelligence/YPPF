@@ -270,6 +270,7 @@ def check_neworg_request(request):
         return context
     try:
         otype = int(request.POST.get('otype'))
+        context['otype'] = OrganizationType.objects.get(otype_id=otype)
         if otype not in [7, 8, 10]:  # 7 for 书院俱乐部，8 for 学生小组 ，10 for 书院课程
             context['warn_code'] = 2
             context['warn_msg'] = "You should select choices from [academy club,student group,academy course]!"
@@ -279,7 +280,7 @@ def check_neworg_request(request):
         context['warn_msg'] = "You should input Interger!"  # user can't see it . we use it for debugging
         return context
     context['oname'] = oname  # 组织名字
-    context['otype'] = OrganizationType.objects.get(otype_id=otype)  # 组织类型，必须有
+     # 组织类型，必须有
     context['pos'] = request.user  # 负责人，必须有滴
     context['introduction'] = str(request.POST.get('introduction', ""))  # 组织介绍，可能为空
     context['avatar'] = request.FILES.get('avatar')
