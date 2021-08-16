@@ -7,7 +7,7 @@ from boottest import local_dict
 from datetime import datetime, timedelta
 import re
 from app.models import NaturalPerson,Organization,OrganizationType,Position,Notification
-
+from django.db.models import Max
 def check_user_type(user):  # return Valid(Bool), otype
     html_display = {}
     if user.is_superuser:
@@ -287,3 +287,16 @@ def check_neworg_request(request):
     context['avatar'] = request.FILES.get('avatar')
     context['application'] = str(request.POST.get('application', ""))  # 申请理由
     return context
+
+def find_max_oname():
+    organizations=Organization.objects.all()
+    users=[]
+    for organization in organizations:
+        users.append(organization.organization_id)
+    max_oname=str(users.aggregate(Max('username')))
+
+
+    """max_oname=int(max_oname[2:])+1
+    prefix="zz"
+    max_oname=prefix+str(max_oname).zfill(5)"""
+    return max_oname

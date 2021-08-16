@@ -2777,6 +2777,9 @@ def addOrganization(request):
     )
 
     edit = 0
+    """test=utils.find_max_oname()
+    html_display['warn_code'] = 1
+    html_display['warn_message']="{test}".format(test=test)"""
     if request.GET.get('neworg_id') is not None and request.GET.get('notifi_id') is not None:
         edit = 1
         try:
