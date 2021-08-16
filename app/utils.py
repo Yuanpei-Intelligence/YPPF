@@ -266,17 +266,17 @@ def check_neworg_request(request):
     oname = str(request.POST['oname'])
     if len(oname) >= 32:
         context['warn_code'] = 1
-        context['warn_msg'] = "The length of organization_name can't exceed 32 bytes!"
+        context['warn_msg'] = "组织的名字不能超过32字节"
         return context
     try:
         otype = int(request.POST.get('otype'))
         if otype not in [7, 8, 10]:  # 7 for 书院俱乐部，8 for 学生小组 ，10 for 书院课程
             context['warn_code'] = 1
-            context['warn_msg'] = "You should select choices from [academy club,student group,academy course]!"
+            context['warn_msg'] = "你应该从书院俱乐部、学生小组和书院课程中选择!"
             return context
     except:
         context['warn_code'] = 1
-        context['warn_msg'] = "You should input Interger!"  # user can't see it . we use it for debugging
+        context['warn_msg'] = "小组的数据类型应该为整数"  # user can't see it . we use it for debugging
         return context
     try:
         context['otype'] = OrganizationType.objects.get(otype_id=otype)
