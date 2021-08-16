@@ -1555,10 +1555,10 @@ def confirm_transaction(request, tid=None, reject=None):
                 sender=record.recipient,
                 typename=Notification.Type.NEEDREAD,
                 title=Notification.Title.TRANSFER_FEEDBACK,
-                content=f"{str(record.recipient)}拒绝了您的转账。",
+                content=f"{str(recipient)}拒绝了您的转账。",
                 URL="/myYQpoint/",
             )
-            notification_status_change(record.transfer_notification.id)
+            notification_status_change(record.transfer_notification.get().id)
         else:
             record.status = TransferRecord.TransferStatus.ACCEPTED
             recipient.YQPoint += record.amount
@@ -1569,7 +1569,7 @@ def confirm_transaction(request, tid=None, reject=None):
                 sender=record.recipient,
                 typename=Notification.Type.NEEDREAD,
                 title=Notification.Title.TRANSFER_FEEDBACK,
-                content=f"{str(record.recipient)}接受了您的转账。",
+                content=f"{str(recipient)}接受了您的转账。",
                 URL="/myYQpoint/",
             )
             notification_status_change(record.transfer_notification.get().id)
@@ -2685,8 +2685,7 @@ def notification_create(
             relate_TransferRecord=relate_TransferRecord,
         )
     if publish_to_wechat == True:
-        if hasattr(publish_notification, 'ENABLE_INSTANCE') and \
-                publish_notification.ENABLE_INSTANCE:
+        if getattr(publish_notification, 'ENABLE_INSTANCE', False):
             publish_notification(notification)
         else:
             publish_notification(notification.id)

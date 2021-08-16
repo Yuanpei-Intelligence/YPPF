@@ -1,9 +1,12 @@
+from app.models import TransferRecord
+from app.models import Notification
 import pandas as pd
 import os
 from app.models import NaturalPerson, Position, Organization, OrganizationType,Activity
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
 from tqdm import tqdm
+import math
 from datetime import datetime
 def load_file(file):
     return pd.read_csv(f"test_data/{file}", dtype=object, encoding="utf-8")
@@ -118,6 +121,96 @@ def load_activity_info(request):
         )
     Activity.objects.bulk_create(act_list)
     context = {"message": "导入活动信息成功！"}
+    return render(request, "debugging.html", context)
+
+def load_transfer_info(request):
+    if not request.user.is_superuser:
+        context = {"message": "请先以超级账户登录后台后再操作！"}
+        return render(request, "debugging.html", context)
+    act_df=load_file("transferinfo.csv")
+    act_list = []
+    for _, act_dict in act_df.iterrows():
+        id = act_dict['id']
+        status=act_dict['status']
+        start_time=str(act_dict['start_time'])
+        finish_time=str(act_dict['finish_time'])
+        start_time=datetime.strptime(start_time, "%d/%m/%Y %H:%M:%S.%f")
+        try:
+            finish_time=datetime.strptime(finish_time, "%d/%m/%Y %H:%M:%S.%f")
+        except:
+            finish_time=None
+        message=act_dict['message']
+        amount=float(act_dict['amount'])
+        proposer=User.objects.get(id=act_dict['proposer_id'])
+        recipient=User.objects.get(id=act_dict['recipient_id'])
+        try:
+            corres_act=Activity.objects.get(id=act_dict['corres_act_id'])
+        except:
+            corres_act=None
+        act_list.append(
+            TransferRecord(
+                id=id,
+                status=status,
+                start_time=start_time,
+                finish_time=finish_time,
+                message=message,
+                amount=amount,
+                proposer=proposer,
+                recipient=recipient,
+                corres_act=corres_act
+            )
+        )
+    TransferRecord.objects.bulk_create(act_list)
+    context = {"message": "导入转账信息成功！"}
+    return render(request, "debugging.html", context)
+
+def load_notification_info(request):
+    if not request.user.is_superuser:
+        context = {"message": "请先以超级账户登录后台后再操作！"}
+        return render(request, "debugging.html", context)
+    not_df=load_file("notificationinfo.csv")
+    not_list = []
+    for _, not_dict in not_df.iterrows():
+        id = not_dict["id"]
+        try:
+            receiver = User.objects.get(id=not_dict["receiver_id"])
+            sender = User.objects.get(id=not_dict["sender_id"])
+        except:
+            context = {"message": "请先导入用户信息！{username1} & {username2}".format(username1=receiver,username2=sender)}
+            return render(request, "debugging.html", context)
+        status=not_dict['status']
+        title=not_dict['title']
+        start_time=str(not_dict['start_time'])
+        finish_time=str(not_dict['finish_time'])
+        start_time=datetime.strptime(start_time, "%d/%m/%Y %H:%M:%S.%f")
+        try:
+            finish_time=datetime.strptime(finish_time, "%d/%m/%Y %H:%M:%S.%f")
+        except:
+            finish_time=None
+        content=not_dict['content']
+        typename=not_dict['typename']
+        URL=not_dict['URL']
+        try:
+            relate_TransferRecord = TransferRecord.objects.get(id=not_dict['relate_TransferRecord_id'])
+        except:
+            relate_TransferRecord = None
+        not_list.append(
+            Notification(
+                id=id,
+                receiver=receiver,
+                sender=sender,
+                status=status,
+                title=title,
+                start_time=start_time,
+                finish_time=finish_time,
+                content=content,
+                URL=URL,
+                typename=typename,
+                relate_TransferRecord=relate_TransferRecord
+            )
+        )
+    Notification.objects.bulk_create(not_list)
+    context = {"message": "导入通知信息成功！"}
     return render(request, "debugging.html", context)
 
 def load_stu_info(request):

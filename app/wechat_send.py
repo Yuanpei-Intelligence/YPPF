@@ -85,14 +85,14 @@ def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=T
         "secret": wechat_coder.encode(message)
     }
     if card:
+        if url is not None and url[:1] in ['', '/']:    # 空或者相对路径，变为绝对路径
+            url = THIS_URL + url
         post_data["card"] = True
         if default:
             post_data["url"] = url if url is not None else DEFAULT_URL
             post_data["btntxt"] = btntxt if btntxt is not None else "详情"
         else:
             if url is not None:
-                if url[:1] in ['', '/']:    # 空或者相对路径，变为绝对路径
-                    url = THIS_URL + url
                 post_data["url"] = url
             if btntxt is not None:
                 post_data["btntxt"] = btntxt
