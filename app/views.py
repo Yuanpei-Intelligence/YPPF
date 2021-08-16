@@ -2737,7 +2737,7 @@ def addOrgnization(request):
             return render('/notifications/', locals())
 
     if edit:  # 打开页面信息的准备
-        comments = preorg.comments
+        comments = preorg.comments.order_by("time")
         html_display['oname'] = preorg.oname
         html_display['otype_id'] = preorg.otype.otype_id
         html_display['pos'] = preorg.pos
@@ -2746,9 +2746,19 @@ def addOrgnization(request):
 
     if request.method == "POST" and request.POST:
 
-        if request.POST.get('comment') is not None:  # 新建评论信息，并保存
+        if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
             text = str(request.POST.get('comment'))
-            Comment.objects.create( commentsaction=preorg, commentator=request.user, text=text)
+            try:
+                with transaction.atomic():
+                    org_comment = Comment.objects.create(commentsaction=preorg, commentator=request.user, text=text)
+                    comment_images = request.FILES.getlist('comment_images')
+                    if len(comment_images) > 0:
+                        for comment_image in comment_images:
+                            CommentPhoto.objects.create(image=comment_image, comment=org_comment)
+            except:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "评论失败，请联系管理员。"
+                return render(request, "orgnization_audit.html", locals())
 
         else:
             # 参数合法性检查
@@ -2769,7 +2779,7 @@ def addOrgnization(request):
                         new_org.application = context['application']
                         new_org.save()
                 except:
-                    html_display['warn_code'] = 3
+                    html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建预备组织信息失败。请检查输入or联系管理员"
                     return render(request, "orgnization_add.html", locals())
 
@@ -2781,22 +2791,21 @@ def addOrgnization(request):
 
                         URL = ""
                         new_notification = notification_create(Auditor, request.user,
-                                                               Notification.NotificationType.NEEDDO,
-                                                               Notification.NotificationTitle.VERIFY_INFORM, content,
+                                                               Notification.Type.NEEDDO,
+                                                               Notification.Title.VERIFY_INFORM, content,
                                                                URL)
 
                         URL = "/auditOrgnization?neworg_id={id}&notifi_id={nid}".format(id=new_org.id,
                                                                                         nid=new_notification.id)
                         new_notification.URL = URL
                         new_notification.save()
-
                 except:
-                    html_display['warn_code'] = 4
+                    html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建通知失败。请检查输入or联系管理员"
                     return render(request, "orgnization_add.html", locals())
 
                 # 成功新建组织申请
-                html_display['warn_code'] = 1989
+                html_display['warn_code'] = 2
                 html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
                 return render(request, "orgnization_add.html", locals())
 
@@ -2813,7 +2822,7 @@ def addOrgnization(request):
                         preorg.application = context['application']
                         preorg.save()
                 except:
-                    html_display['warn_code'] = 5
+                    html_display['warn_code'] = 1
                     html_display['warn_message'] = "修改申请失败。请检查输入or联系管理员"
                     return render(request, "orgnization_add.html", locals())
 
@@ -2826,8 +2835,8 @@ def addOrgnization(request):
 
                         URL = ""
                         new_notification = notification_create(Auditor, request.user,
-                                                               Notification.NotificationType.NEEDDO,
-                                                               Notification.NotificationTitle.VERIFY_INFORM, content,
+                                                               Notification.Type.NEEDDO,
+                                                               Notification.Title.VERIFY_INFORM, content,
                                                                URL)
 
                         URL = "/auditOrgnization?neworg_id={id}&notifi_id={nid}".format(id=preorg.id,
@@ -2835,12 +2844,12 @@ def addOrgnization(request):
                         new_notification.URL = URL
                         new_notification.save()
                 except:
-                    html_display['warn_code'] = 4
+                    html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建通知失败。请检查输入or联系管理员"
                     return render(request, "orgnization_add.html", locals())
                 context = notification_status_change(notification_id)
                 # 成功新建组织申请
-                html_display['warn_code'] = 1989
+                html_display['warn_code'] = 2
                 html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
                 if context['warn_code'] != 0:
                     html_display['warn_message'] = context['warn_message']
@@ -2874,6 +2883,13 @@ def auditOrgnization(request):
             html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
             return redirect('/notifications/', locals())
         preorg = NewOrgnization.objects.get(id=id)
+        notification = Notification.objects.get(id=notification_id)
+        if preorg.status == NewOrgnization.NewOrgStatus.CANCELED or preorg.status == NewOrgnization.NewOrgStatus.CONFIRMED \
+                or notification.status == Notification.Status.DONE:
+            notification_status_change(notification_id)
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "通知已被处理，请不要重复处理。"
+            return render('/notifications/', locals())
     except:
         html_display['warn_code'] = 1
         html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
@@ -2906,19 +2922,19 @@ def auditOrgnization(request):
                         receiver = preorg.pos  # 通知接收者
                         URL = ""
                         new_notification = notification_create(request.user, receiver,
-                                                               Notification.NotificationType.NEEDDO,
-                                                               Notification.NotificationTitle.VERIFY_INFORM, content,
+                                                               Notification.Type.NEEDDO,
+                                                               Notification.Title.VERIFY_INFORM, content,
                                                                URL)
                         URL = "/addOrgnization/?neworg_id={id}&notifi_id={nid}".format(id=preorg.id,
                                                                                        nid=new_notification.id)
                         new_notification.URL = URL
                         new_notification.save()
                 except:
-                    html_display['warn_code'] = 6
+                    html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
                     return render(request, "orgnization_audit.html", locals())
                 context = notification_status_change(notification_id)
-                html_display['warn_code'] = 1989
+                html_display['warn_code'] = 2
                 html_display['warn_message'] = context['warn_message']
                 return redirect('/notifications/', locals())
             if submit == 2:  # 通过
@@ -2945,6 +2961,9 @@ def auditOrgnization(request):
                         charger = get_person_or_org(preorg.pos)  # 负责人
                         pos = Position.objects.create(person=charger, org=org)
                         pos.save()
+
+                        preorg.status = preorg.NewOrgStatus.CONFIRMED
+                        preorg.save()
                 except:
                     html_display['warn_code'] = 4
                     html_display['warn_message'] = "创建组织失败。请联系管理员！"
@@ -2965,17 +2984,17 @@ def auditOrgnization(request):
                         content += " 老师给你留言啦："
                         content += text
 
-                        notification_create(request.user, receiver, Notification.NotificationType.NEEDREAD,
-                                            Notification.NotificationTitle.VERIFY_INFORM, content, URL)
-                        preorg.status = preorg.NewOrgStatus.CANCELED
+                        notification_create(request.user, receiver, Notification.Type.NEEDREAD,
+                                            Notification.Title.VERIFY_INFORM, content, URL)
+
                 except:
-                    html_display['warn_code'] = 5
+                    html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
                     return render(request, "orgnization_audit.html", locals())
 
                 context = notification_status_change(notification_id)
                 # 成功新建组织申请
-                html_display['warn_code'] = 1989
+                html_display['warn_code'] = 2
                 html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
                 if context['warn_code'] != 0:
                     html_display['warn_message'] = context['warn_message']
@@ -2983,39 +3002,41 @@ def auditOrgnization(request):
             elif submit == 3:  # 拒绝
                 try:  # 发送给申请者的拒绝通知
                     with transaction.atomic():
+                        preorg.status = preorg.NewOrgStatus.CANCELED
+                        preorg.save()
                         content = "很遗憾，新建组织申请未通过！"
                         receiver = preorg.pos  # 通知接收者
                         URL = "/notifications/"
 
-                        # 如果老师另留有评论的话,将评论放在content里
+                        """# 如果老师另留有评论的话,将评论放在content里
                         comments = preorg.comment
                         text = ""
                         for comment in comments.all():
                             text += comment.text
                         content += " 老师给你留言啦："
-                        content += text
+                        content += text"""
 
-                        notification_create(request.user, receiver, Notification.NotificationType.NEEDREAD,
-                                            Notification.NotificationTitle.VERIFY_INFORM, content, URL)
-                        preorg.status = preorg.NewOrgStatus.CANCELED
+                        notification_create(request.user, receiver, Notification.Type.NEEDREAD,
+                                            Notification.Title.VERIFY_INFORM, content, URL)
+
                 except:
-                    html_display['warn_code'] = 5
+                    html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
                     return render(request, "orgnization_audit.html", locals())
 
                 context = notification_status_change(notification_id)
                 # 成功新建组织申请
-                html_display['warn_code'] = 1989
+                html_display['warn_code'] = 2
                 html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
                 if context['warn_code'] != 0:
                     html_display['warn_message'] = context['warn_message']
                 return redirect('/notifications/', locals())
             else:
-                html_display['warn_code'] = 3
+                html_display['warn_code'] = 1
                 html_display['warn_message'] = "系统出现问题，请联系管理员"
                 return redirect('/notifications/', locals())
 
-    comments = preorg.comment.order_by('-time')  # 加载评论
+    comments = preorg.comment.order_by('time')  # 加载评论
     html_display['oname'] = preorg.oname
     html_display['otype_name'] = preorg.otype.otype_name
     html_display['pos'] = preorg.pos

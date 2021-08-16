@@ -285,7 +285,7 @@ def check_neworg_request(request):
     context['pos'] = request.user  # 负责人，必须有滴
     context['introduction'] = str(request.POST.get('introduction', ""))  # 组织介绍，可能为空
 
-    context['avatar'] = request.POST.get('avatar')  # TODO 测试有无bug
+    context['avatar'] = request.FILES.get('avatar')
 
     context['application'] = str(request.POST.get('application', ""))  # 申请理由
     return context
