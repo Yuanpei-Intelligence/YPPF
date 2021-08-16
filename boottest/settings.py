@@ -19,8 +19,8 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 from boottest import local_dict
 
 # LOGIN_URL，未登录时重定向到的 URL
-LOGIN_URL = local_dict["url"]["login_url"]
-# LOGIN_URL = 'http:localhost:8000/'
+# LOGIN_URL = local_dict["url"]["login_url"]
+LOGIN_URL = 'http:localhost:8000/'
 
 
 # Quick-start development settings - unsuitable for production
@@ -98,11 +98,11 @@ DATABASES = {
     # create database underground charset='utf8mb4';
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": local_dict["database"]["NAME"],
+        "NAME": 'YPPF',
         "HOST": "127.0.0.1",
         "PORT": 3306,
-        "USER": local_dict["database"]["USER"],
-        "PASSWORD": local_dict["database"]["PASSWORD"],
+        "USER": 'root',
+        "PASSWORD": 'harrystark%0424',
         # 'OPTIONS': {
         #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         # }

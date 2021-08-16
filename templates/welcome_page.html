@@ -2,6 +2,7 @@
 
 {% block mainpage %}
 
+{% include 'weather.html' %}
 <!-- BEGIN MAIN CONTAINER  -->
 <div class="main-container sidebar-closed " id="container">
 
@@ -14,7 +15,6 @@
     {% include 'org_left_narbar.html' %}
     {% endif %}
 
-    
     <!--  BEGIN CONTENT PART  -->
     <div id="content" class="main-content">
         <div class="layout-px-spacing">
@@ -45,6 +45,11 @@
                         <p>绍兴论坛举办在即，点击查看详情。 </p>
                         <p><a class="btn btn-secondary" href="#" role="button">View details »</a></p>
                     </div>
+                </div>
+		<div class="container">
+
+                <!-- Example row of columns -->
+                <div class="row">
                     <div class="col-md-4">
                         <h2>元培学学学</h2>
                         <p>通识课改革问卷已发布，请同学们点此处填写！</p>
@@ -57,6 +62,7 @@
             <div class="container">
                 <!-- Example row of columns -->
                 <div class="row">
+
                     <div class="col-md-4">
                     <h2>元培书房</h2>
                     <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
@@ -67,11 +73,7 @@
                     <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
                     <p><a class="btn btn-secondary" href="#" role="button">View details »</a></p>
                     </div>
-                    <div class="col-md-4">
-                    <h2>元培地下电影院</h2>
-                    <p>Donec sed odio dui. Cras justo odio, dapibus ac facilisis in, egestas eget quam. Vestibulum id ligula porta felis euismod semper. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus.</p>
-                    <p><a class="btn btn-secondary" href="#" role="button">View details »</a></p>
-                    </div>
+                    
                 </div>
                 <hr>
             </div>
@@ -83,6 +85,12 @@
                     <h2>元培辩论队</h2>
                     <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
                     <p><a class="btn btn-secondary" href="#" role="button">View details »</a></p>
+		    </div>
+		    <div class="col-md-4">
+                    <h2>元培地下电影院</h2>
+                    <p>Donec sed odio dui. Cras justo odio, dapibus ac facilisis in, egestas eget quam. Vestibulum id ligula porta felis euismod semper. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus.</p>
+                    <p><a class="btn btn-secondary" href="#" role="button">View details »</a></p>
+                    </div>
                 </div>
             </div>
             <hr>

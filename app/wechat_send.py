@@ -7,7 +7,7 @@ from boottest import local_dict
 
 # 模型与加密模型
 from app.models import NaturalPerson, Activity, Notification
-from app.views import get_person_or_org     # 获取名称
+# from app.views import get_person_or_org     # 获取名称
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 # 日期与定时任务
