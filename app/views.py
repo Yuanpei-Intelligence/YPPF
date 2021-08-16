@@ -2829,14 +2829,15 @@ def addOrgnization(request):
 
             # 新建组织申请
             if edit == 0:
+                with transaction.atomic():
+                    new_org = NewOrgnization.objects.create(oname=context['oname'], otype=context['otype'],
+                                                            pos=context['pos'])
+                    new_org.introduction = context['introduction']
+                    new_org.avatar = context['avatar']
+                    new_org.application = context['application']
+                    new_org.save()
                 try:
-                    with transaction.atomic():
-                        new_org = NewOrgnization.objects.create(oname=context['oname'], otype=context['otype'],
-                                                                pos=context['pos'])
-                        new_org.introduction = context['introduction']
-                        new_org.avatar = context['avatar']
-                        new_org.application = context['application']
-                        new_org.save()
+                    a=1
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建预备组织信息失败。请检查输入or联系管理员"

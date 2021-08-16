@@ -581,6 +581,7 @@ class CommentSaction(models.Model):
     class Meta:
         verbose_name = "带有评论"
         verbose_name_plural = verbose_name
+    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的组织信息
 
 class Comment(models.Model):
     class Meta:
@@ -610,7 +611,6 @@ class NewOrgnization(CommentSaction):
         verbose_name = "申请建立组织的信息"
         verbose_name_plural = verbose_name
 
-    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的组织信息
     oname = models.CharField(max_length=32, unique=True)
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
     introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
