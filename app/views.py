@@ -533,8 +533,6 @@ def orginfo(request, name=None):
     positions = Position.objects.activated().filter(org=org).order_by("pos")  # 升序
     member_list = []
     for p in positions:
-        print(p.person.person_id)
-        print(user)
         if p.person.person_id == user and p.pos == 0:
             html_display["isboss"] = True
         if p.show_post == True or p.pos == 0:
