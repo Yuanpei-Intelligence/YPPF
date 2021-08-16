@@ -2766,6 +2766,14 @@ def addReimbursement(request):
             id = int(request.GET.get('reimb_id'))  # 报销信息的ID
             pre_reimb = Reimbursement.objects.get(id=id)
             notification_id = int(request.GET.get('notifi_id'))  # 通知ID
+            notification=Notification.objects.get(id=notification_id)
+            if pre_reimb.status==Reimbursement.ReimburseStatus.CONFIRMED \
+                    or pre_reimb.status==Reimbursement.ReimburseStatus.CANCELED \
+                    or notification.status==Notification.Status.DONE:
+                notification_status_change(notification_id)
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "该条通知已处理，请勿重复处理。"
+                return redirect('/notifications/', locals())
         except:
             html_display['warn_code'] = 1
             html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
@@ -2832,25 +2840,22 @@ def addReimbursement(request):
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "新建报销失败，请联系管理员！"
                     return render(request, "reimbursement_add.html", locals())
-                with transaction.atomic():
-                    content = "有{org_name}新的报销申请！".format(org_name=me.oname)
-                    username = local_dict["audit_teacher"]["Funds"]  # 在local_json.json新增审批人员信息,暂定为YPadmin
-                    Auditor = User.objects.get(username=username)
-                    URL = ""
-                    new_notification = notification_create(Auditor, request.user,
-                                                           Notification.Type.NEEDDO,
-                                                           Notification.Title.VERIFY_INFORM, content,
-                                                           URL)
-                    URL = "/auditReimbursement?reimb_id={id}&notifi_id={nid}".format(id=new_reimb.id,
-                                                                                     nid=new_notification.id)
-                    URL = request.build_absolute_uri(URL)
-                    new_notification.URL = URL
-                    new_notification.save()
+
                 try:  # 创建对应通知
-                    a = 1
-
-
-
+                    with transaction.atomic():
+                        content = "有{org_name}新的报销申请！".format(org_name=me.oname)
+                        username = local_dict["audit_teacher"]["Funds"]  # 在local_json.json新增审批人员信息,暂定为YPadmin
+                        Auditor = User.objects.get(username=username)
+                        URL = ""
+                        new_notification = notification_create(Auditor, request.user,
+                                                               Notification.Type.NEEDDO,
+                                                               Notification.Title.VERIFY_INFORM, content,
+                                                               URL)
+                        URL = "/auditReimbursement?reimb_id={id}&notifi_id={nid}".format(id=new_reimb.id,
+                                                                                         nid=new_notification.id)
+                        URL = request.build_absolute_uri(URL)
+                        new_notification.URL = URL
+                        new_notification.save()
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建通知失败。请检查输入or联系管理员"
@@ -2934,6 +2939,14 @@ def auditReimbursement(request):
             html_display['warn_code'] = 1
             html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
             return redirect('/notifications/', locals())
+        notification = Notification.objects.get(id=notification_id)
+        if new_reimb.status == Reimbursement.ReimburseStatus.CONFIRMED \
+                or new_reimb.status == Reimbursement.ReimburseStatus.CANCELED \
+                or notification.status == Notification.Status.DONE:
+            notification_status_change(notification_id)
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "该条通知已处理，请勿重复处理。"
+            return redirect('/notifications/', locals())
 
     except:
         html_display['warn_code'] = 1
@@ -2990,6 +3003,8 @@ def auditReimbursement(request):
                         org = new_reimb.pos.organization
                         org.YQPoint -= new_reimb.amount
                         org.save()
+                        new_reimb.status = Reimbursement.ReimburseStatus.CONFIRMED
+                        new_reimb.save()
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "修改元气值失败。请联系管理员！"
@@ -3012,8 +3027,6 @@ def auditReimbursement(request):
 
                         notification_create(receiver, request.user, Notification.Type.NEEDREAD,
                                             Notification.Title.VERIFY_INFORM, content, URL)
-                        new_reimb.status = Reimbursement.ReimburseStatus.CONFIRMED
-                        new_reimb.save()
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
@@ -3030,6 +3043,8 @@ def auditReimbursement(request):
             elif submit == 3:  # 拒绝
                 try:  # 发送给申请者的拒绝通知
                     with transaction.atomic():
+                        new_reimb.status = Reimbursement.ReimburseStatus.CANCELED
+                        new_reimb.save()
                         content = "很遗憾，报销申请未通过！"
                         receiver = new_reimb.pos  # 通知接收者
                         URL = "/notifications/"
@@ -3045,8 +3060,6 @@ def auditReimbursement(request):
 
                         notification_create(receiver, request.user, Notification.Type.NEEDREAD,
                                             Notification.Title.VERIFY_INFORM, content, URL)
-                        new_reimb.status = Reimbursement.ReimburseStatus.CANCELED
-                        new_reimb.save()
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
