@@ -11,7 +11,8 @@ from app.models import (
     Participant,
     Notification,
     NewOrgnization,
-    OrgComment,
+    Comment,
+    CommentPhoto,
     YQPointDistribute
 )
 from django.db.models import Max
@@ -2720,17 +2721,23 @@ def addOrgnization(request):
     if request.GET.get('neworg_id') is not None and request.GET.get('notifi_id') is not None:
         edit = 1
         try:
-
             id = int(request.GET.get('neworg_id'))  # 新建组织ID
             notification_id = int(request.GET.get('notifi_id'))  # 通知ID
             preorg = NewOrgnization.objects.get(id=id)
+            notification=Notification.objects.get(id=notification_id)
+            if preorg.status==NewOrgnization.NewOrgStatus.CANCELED or preorg.status==NewOrgnization.NewOrgStatus.CONFIRMED \
+                    or notification.status==Notification.Status.DONE:
+                notification_status_change(notification_id)
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "通知已被处理，请不要重复处理。"
+                return render('/notifications/', locals())
         except:
             html_display['warn_code'] = 1
             html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
             return render('/notifications/', locals())
 
-    if edit:  # 第一次打开页面信息的准备
-        comments = preorg.comment
+    if edit:  # 打开页面信息的准备
+        comments = preorg.comments
         html_display['oname'] = preorg.oname
         html_display['otype_id'] = preorg.otype.otype_id
         html_display['pos'] = preorg.pos
@@ -2741,7 +2748,7 @@ def addOrgnization(request):
 
         if request.POST.get('comment') is not None:  # 新建评论信息，并保存
             text = str(request.POST.get('comment'))
-            OrgComment.objects.create(preorg=preorg, commentator=request.user, text=text)
+            Comment.objects.create( commentsaction=preorg, commentator=request.user, text=text)
 
         else:
             # 参数合法性检查
@@ -2875,7 +2882,7 @@ def auditOrgnization(request):
     if request.method == "POST" and request.POST:
         if request.POST.get('comment') is not None:  # 新建评论信息，并保存
             text = str(request.POST.get('comment'))
-            OrgComment.objects.create(preorg=preorg, commentator=request.user, text=text)
+            Comment.objects.create(preorg=preorg, commentator=request.user, text=text)
         # 对于审核老师来说，有三种操作，通过，申请需要修改和拒绝
         else:
             submit = int(request.POST.get('submit', -1))
@@ -2949,7 +2956,7 @@ def auditOrgnization(request):
 
                         notification_create(request.user, receiver, Notification.NotificationType.NEEDREAD,
                                             Notification.NotificationTitle.VERIFY_INFORM, content, URL)
-                        preorg.nstatus = preorg.NewOrgStatus.CANCELED
+                        preorg.status = preorg.NewOrgStatus.CANCELED
                 except:
                     html_display['warn_code'] = 5
                     html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
@@ -2979,7 +2986,7 @@ def auditOrgnization(request):
 
                         notification_create(request.user, receiver, Notification.NotificationType.NEEDREAD,
                                             Notification.NotificationTitle.VERIFY_INFORM, content, URL)
-                        preorg.nstatus = preorg.NewOrgStatus.CANCELED
+                        preorg.status = preorg.NewOrgStatus.CANCELED
                 except:
                     html_display['warn_code'] = 5
                     html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"

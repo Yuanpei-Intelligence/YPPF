@@ -47,9 +47,7 @@
                                                 <label>组织名称</label>
                                                 {%if edit%}
                                                 <textarea type="text" name="oname" class="form-control"
-                                                          aria-label="Default" placeholder="不超过32个字节">
-                                                    {{html_display.oname}}
-                                                </textarea>
+                                                          aria-label="Default" placeholder="不超过32个字节">{{html_display.oname}}</textarea>
 
                                                 {%else%}
                                                 <input type="text" name="oname" class="form-control"
@@ -96,9 +94,7 @@
                                                 <label for="aintro">组织简介</label>
                                                 <textarea name="introduction" class="form-control"
                                                           rows="3"
-                                                          placeholder="空">
-                                                    {%if edit%}{{html_display.introduction}}{%endif%}
-                                                </textarea>
+                                                          placeholder="空">{%if edit%}{{html_display.introduction}}{%endif%}</textarea>
                                             </div>
                                             <br>
                                             <br>
@@ -108,9 +104,7 @@
                                                 <label for="aintro">申请理由</label>
                                                 <textarea name="application" class="form-control"
                                                           rows="30"
-                                                          placeholder="申请理由不能为空">
-                                                {% if edit %}{{html_display.application}}{% endif %}
-                                                </textarea>
+                                                          placeholder="申请理由不能为空">{% if edit %}{{html_display.application}}{% endif %}</textarea>
                                             </div>
                                             {%if edit%}
                                             <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
@@ -132,9 +126,7 @@
                                             {%for comment in comments.all%}
                                             <div class="form-group">
                                                 <label for="aintro">{{comment.commentator}}于{{comment.time}}评论</label>
-                                                <textarea name="comment" class="form-control">
-                                                        {{comment.text}}
-                                                    </textarea>
+                                                <textarea name="comment" class="form-control">{{comment.text}}</textarea>
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -146,8 +138,7 @@
                                                     <textarea type="text" id="comment" name="comment"
                                                               class="form-control"
                                                               aria-label="Default" rows="3"
-                                                              placeholder="Leave a comment">
-                                                </textarea>
+                                                              placeholder="Leave a comment"></textarea>
                                                     <br>
                                                     <div style="text-align:right;">
                                                         <button type="submit"
