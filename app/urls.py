@@ -25,7 +25,9 @@ urlpatterns = [
     path("test/", views.test, name="test"),
     path("loaddata/", data_import.load_stu_info, name="load_data"),
     path("loadorgdata/", data_import.load_org_info, name="load_org_data"),
+    path("loadtransferinfo/",data_import.load_transfer_info,name="loadtransferinfo"),
     path("loadactivity/",data_import.load_activity_info,name="loadactivity"),
+    path("loadnotification/",data_import.load_notification_info,name="loadnotification"),
     path("user_account_setting/", views.account_setting, name="user_account_setting"),
     path("search/", views.search, name="search"),
     path("minilogin", views.miniLogin, name="minilogin"),
@@ -34,15 +36,8 @@ urlpatterns = [
     path("transPage/<str:rid>", views.transaction_page, name="transPage"),
     path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"),
     path("startTrans/", views.start_transaction, name="startTrans"),
-    # path("confirmTrans/", views.confirm_transaction, name="confirmTrans"),
-    # path(
-    #    "confirmTrans/<int:tid>/<int:reject>",
-    #    views.confirm_transaction,
-    #    name="confirmTrans",
-    # ),
     path("applyActivity/<str:aid>", views.applyActivity, name="applyActivity"),
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
-    path("showActivities/", views.showActivities, name="showActivities"),
     path("viewActivity/<str:aid>", views.viewActivity, name="viewActivity"),
     path("getActivityInfo/", views.getActivityInfo, name="getActivityInfo"),
     path("checkinActivity/", views.checkinActivity, name="checkinActivity"),
@@ -55,7 +50,9 @@ urlpatterns = [
     # path("new_YQP_distribution", scheduler_func.new_YQP_distribute, name="new_YQP_distribution"),
     path("personnelMobilization/", views.personnel_mobilization, name="personnel_mobilization"),
     path("addReimbursement/",views.addReimbursement,name="addReimbursement"),
-    path("auditReimbursement/",views.auditReimbursement,name="auditReimbursement")
+    path("auditReimbursement/",views.auditReimbursement,name="auditReimbursement"),
+    path("addOrganization/", views.addOrganization, name="addOrganization"),
+    path("auditOrganization/", views.auditOrganization, name="auditOrganization"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

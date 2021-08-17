@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from boottest import local_dict
 from django.conf import settings
 
+
 class NaturalPersonManager(models.Manager):
     def activated(self):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
@@ -522,7 +523,7 @@ class YQPointDistribute(models.Model):
     per_max_dis_YQP = models.FloatField("自然人发放元气值上限")
     org_max_dis_YQP = models.FloatField("组织发放元气值上限")
     # 个人和组织所能平分的元气值比例
-    # 发放时，从学院剩余元气值中，抽取向自然人分发的比例，平分给元气值低于上限的自然人；组织同理
+    # 发放时，从学院剩余元气值中，抽取向自然人分发的数量，平分给元气值低于上限的自然人；组织同理
     per_YQP = models.FloatField("自然人获得的元气值", default=0)
     org_YQP = models.FloatField("组织获得的元气值", default=0)
 
@@ -576,11 +577,14 @@ class Notification(models.Model):
     relate_TransferRecord = models.ForeignKey(
         TransferRecord, related_name="transfer_notification", on_delete=models.CASCADE, blank=True, null=True, )
 
+
 class CommentBase(models.Model):
     class Meta:
         verbose_name = "带有评论"
         verbose_name_plural = verbose_name
-    id = models.AutoField(primary_key=True)  # 自增ID
+
+    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的组织信息
+
 
 class Comment(models.Model):
     class Meta:
@@ -589,7 +593,7 @@ class Comment(models.Model):
         ordering = ["-time"]
 
     commentator = models.ForeignKey(User, on_delete=models.CASCADE)
-    commentsaction=models.ForeignKey(CommentBase,related_name="comments",on_delete=models.CASCADE)
+    CommentBase = models.ForeignKey(CommentBase, related_name="comments", on_delete=models.CASCADE)
     text = models.TextField("文字内容", default="", blank=True)
     time = models.DateTimeField("评论时间", auto_now_add=True)
 
@@ -600,10 +604,11 @@ class CommentPhoto(models.Model):
         verbose_name_plural = verbose_name
 
     image = models.ImageField(upload_to=f"comment/%Y/%m/", verbose_name=u'评论图片', null=True, blank=True)
-    comment = models.ForeignKey(Comment, related_name="comment_photos",on_delete=models.CASCADE)
+    comment = models.ForeignKey(Comment, related_name="comment_photos", on_delete=models.CASCADE)
+
     # 路径无法加上相应图片
     def imagepath(self):
-        return  settings.MEDIA_URL+str(self.image)
+        return settings.MEDIA_URL + str(self.image)
 
 
 class NewOrganization(CommentBase):
@@ -617,11 +622,13 @@ class NewOrganization(CommentBase):
     application = models.TextField("申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~")
     avatar = models.ImageField(upload_to=f"avatar/", verbose_name=u'组织头像', null=True, blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
+
     class NewOrgStatus(models.IntegerChoices):  # 表示申请组织的请求的状态
         PENDING = (0, "待确认")
         CONFIRMED = (1, "主管老师已同意")  # 审过同意
         TOBEMODIFIED = (2, "需要修改")
         CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
+
     status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
 
 
@@ -642,11 +649,10 @@ class Reimbursement(CommentBase):
         # 根据最新要求，最终不以线上为准，不再设置转账状态
         CANCELED = (4, "已取消")
 
-    activity = models.ForeignKey(Activity,related_name="reimbursement",on_delete=models.CASCADE)
+    activity = models.ForeignKey(Activity, related_name="reimbursement", on_delete=models.CASCADE)
     amount = models.FloatField("报销金额", default=0)
     message = models.TextField("备注信息", default="", blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
     time = models.DateTimeField("发起时间", auto_now_add=True)
     modify_time = models.DateTimeField("上次修改时间", auto_now_add=True)
-

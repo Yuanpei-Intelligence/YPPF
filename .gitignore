@@ -44,6 +44,7 @@ local_json.json
 migrations/
 test_data/
 comment/
+avatar/
 # Python #
 __pycache__/
 *.py[cod]
