@@ -2272,6 +2272,7 @@ def addActivities(request):
     if user_type == "Person":
         return redirect("/welcome/")  # test
     me = utils.get_person_or_org(request.user)
+
     html_display["is_myself"] = True
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
@@ -2324,7 +2325,7 @@ def addActivities(request):
                 if context.get('location'):
                     if activity.location != context["location"]:
                         msg = f"您参与的活动 <{activity.title}> 活动地点发生变更: \n"
-                        msg += f"{activity.location} --> {context["location"]}"
+                        msg += f"{activity.location} --> {context['location']}"
                         activity.location = context["location"]
                         notifyActivity(activity.id, 'participants')
 
