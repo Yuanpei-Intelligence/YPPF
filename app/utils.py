@@ -331,11 +331,20 @@ def check_neworg_request(request):
         context['warn_code'] = 1
         context['warn_msg'] = "数据库没有小组的所在类型，请联系管理员！"  # user can't see it . we use it for debugging
         return context
+
+    context['avatar'] = request.FILES.get('avatar')
+    import imghdr
+    imgType_list = {'jpg', 'bmp', 'png', 'jpeg', 'rgb', 'tif'}
+    if imghdr.what(context['avatar']) not in imgType_list:
+        context['warn_code'] = 1
+        context['warn_msg'] = "组织的头像应当为图片格式！"  # user can't see it . we use it for debugging
+        return context
+
     context['oname'] = oname  # 组织名字
      # 组织类型，必须有
     context['pos'] = request.user  # 负责人，必须有滴
     context['introduction'] = str(request.POST.get('introduction', ""))  # 组织介绍，可能为空
-    context['avatar'] = request.FILES.get('avatar')
+
     context['application'] = str(request.POST.get('application', ""))  # 申请理由
     return context
 

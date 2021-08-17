@@ -2774,7 +2774,7 @@ def addOrganization(request):
 
                 try:
                     with transaction.atomic():
-                        content = "新建组织申请！"
+                        content = "{oname}{otype_name}新建组织申请！".format(oname=new_org.oname,otype_name=new_org.otype.otype_name)
                         username = local_dict["audit_teacher"]["Neworg"]  # 在local_json.json新增审批人员信息,暂定为YPadmin
                         Auditor = User.objects.get(username=username)
 
@@ -2825,7 +2825,7 @@ def addOrganization(request):
                 # 发送通知
                 try:
                     with transaction.atomic():
-                        content = "新建组织申请！"
+                        content = "{oname}{otype_name}修改了申请材料，请您继续审核！".format(oname=preorg.oname,otype_name=preorg.otype.otype_name)
                         username = local_dict["audit_teacher"]["Neworg"]  # 在local_json.json新增审批人员信息,暂定为YPadmin
                         Auditor = User.objects.get(username=username)
 
