@@ -44,8 +44,10 @@
                                 <div id="myTabContent" class="tab-content">
                                     <div class="tab-pane fade in active show" id="home">
                                         {% if undone_list|length == 0 %}
+                                        <br />
                                         <p></p>
                                         <p style="text-align: center;">您的信箱很干净！没有要处理的信息.</p>
+                                        <br />
                                         {% else %}
                                         <div class="bio-skill-box">
                                             <div class="row">
@@ -104,8 +106,10 @@
                                     </div>
                                     <div class="tab-pane fade" id="done">
                                         {% if done_list|length == 0 %}
+                                        <br />
                                         <p></p>
                                         <p style="text-align: center;">没有已处理的消息记录.</p>
+                                        <br />
                                         {% else %}
                                         <div class="bio-skill-box">
                                             <div class="row">
