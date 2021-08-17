@@ -134,11 +134,12 @@ def index(request):
                     html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                     return render(request, "welcome_page.html", locals())
 
+                if not arg_origin.startswith('http'): # 非外部链接，合法性已经检查过
+                    return redirect(arg_origin)       # 不需要加密验证
+
                 d = datetime.utcnow()
                 t = mktime(datetime.timetuple(d))
                 timeStamp = str(int(t))
-                print("utc time: ", d)
-                print(timeStamp)
                 en_pw = hash_coder.encode(username + timeStamp)
                 try:
                     userinfo = NaturalPerson.objects.get(person_id=username)
