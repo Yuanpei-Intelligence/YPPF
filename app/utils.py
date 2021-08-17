@@ -82,7 +82,9 @@ def get_org_left_narbar(org, is_myself, html_display):
 # user对象是request.user对象直接转移
 # 内容存储在bar_display中
 # Attention: 本函数请在render前的最后时刻调用
-def get_sidebar_and_navbar(user, bar_display = {}):
+def get_sidebar_and_navbar(user, bar_display = None):
+    if bar_display is None:
+        bar_display = {}            # 默认参数只会初始化一次，所以不应该设置为{}
     me = get_person_or_org(user)    # 获得对应的对象
     _, user_type, _ = check_user_type(user)
     bar_display["user_type"] = user_type
