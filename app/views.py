@@ -132,7 +132,8 @@ def index(request):
                 if not check_cross_site(request, arg_origin):
                     html_display["warn_code"] = 1
                     html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
-                    return render(request, "welcome_page.html", locals())
+                    return redirect("/welcome/?warn_code={}&warn_message={}".format(
+                        html_display["warn_code"], html_display["warn_message"]))
 
                 if not arg_origin.startswith('http'): # 非外部链接，合法性已经检查过
                     return redirect(arg_origin)       # 不需要加密验证
