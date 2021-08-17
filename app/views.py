@@ -1722,7 +1722,6 @@ def myYQPoint(request):
         "message": "留言",
         "status": "状态",
     }
-
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
@@ -1731,6 +1730,7 @@ def myYQPoint(request):
     bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
 
     return render(request, "myYQPoint.html", locals())
+
 
 
 
@@ -2703,6 +2703,7 @@ def addOrganization(request):
         return redirect("/welcome/")  # test
     html_display['is_myself'] = True
 
+
     edit = 0
     if request.GET.get('neworg_id') is not None and request.GET.get('notifi_id') is not None:
         edit = 1
@@ -2736,10 +2737,18 @@ def addOrganization(request):
 
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
             text = str(request.POST.get('comment'))
+            #检查图片合法性
+            comment_images = request.FILES.getlist('comment_images')
+            if len(comment_images) > 0:
+                for comment_image in comment_images:
+                    if utils.if_image(comment_image) == False:
+                        html_display['warn_code'] = 1
+                        html_display['warn_message'] = "上传的附件只支持图片格式。"
+                        return render(request, "organization_audit.html", locals())
             try:
+
                 with transaction.atomic():
                     org_comment = Comment.objects.create(CommentBase=preorg, commentator=request.user, text=text)
-                    comment_images = request.FILES.getlist('comment_images')
                     if len(comment_images) > 0:
                         for comment_image in comment_images:
                             CommentPhoto.objects.create(image=comment_image, comment=org_comment)
@@ -2774,7 +2783,7 @@ def addOrganization(request):
 
                 try:
                     with transaction.atomic():
-                        content = "新建组织申请！"
+                        content = "{oname}{otype_name}新建组织申请！".format(oname=new_org.oname,otype_name=new_org.otype.otype_name)
                         username = local_dict["audit_teacher"]["Neworg"]  # 在local_json.json新增审批人员信息,暂定为YPadmin
                         Auditor = User.objects.get(username=username)
 
@@ -2825,7 +2834,7 @@ def addOrganization(request):
                 # 发送通知
                 try:
                     with transaction.atomic():
-                        content = "新建组织申请！"
+                        content = "{oname}{otype_name}修改了申请材料，请您继续审核！".format(oname=preorg.oname,otype_name=preorg.otype.otype_name)
                         username = local_dict["audit_teacher"]["Neworg"]  # 在local_json.json新增审批人员信息,暂定为YPadmin
                         Auditor = User.objects.get(username=username)
 
@@ -2859,7 +2868,6 @@ def addOrganization(request):
 
                 return redirect('/notifications/', locals())
 
-
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织"
@@ -2879,7 +2887,6 @@ def auditOrganization(request):
     me = utils.get_person_or_org(request.user)
     html_display['is_myself'] = True
     html_display['warn_code'] = 0
-    
     if request.user.username!=local_dict["audit_teacher"]["Neworg"]:
         return redirect('/notifications/', locals())
 
@@ -2907,6 +2914,14 @@ def auditOrganization(request):
     if request.method == "POST" and request.POST:
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
             text = str(request.POST.get('comment'))
+            # 检查图片合法性
+            comment_images = request.FILES.getlist('comment_images')
+            if len(comment_images) > 0:
+                for comment_image in comment_images:
+                    if utils.if_image(comment_image) == False:
+                        html_display['warn_code'] = 1
+                        html_display['warn_message'] = "上传的附件只支持图片格式。"
+                        return render(request, "organization_audit.html", locals())
             try:
                 with transaction.atomic():
                     org_comment = Comment.objects.create(CommentBase=preorg, commentator=request.user, text=text)
@@ -2930,7 +2945,7 @@ def auditOrganization(request):
                         content = "新建组织申请信息需要修改！"
                         receiver = preorg.pos  # 通知接收者
                         URL = ""
-                        new_notification = notification_create(request.user, receiver,
+                        new_notification = notification_create(receiver,request.user,
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
@@ -2971,7 +2986,6 @@ def auditOrganization(request):
                         org.introduction = preorg.introduction
                         org.avatar = preorg.avatar
                         org.save()
-
                         charger = utils.get_person_or_org(preorg.pos)  # 负责人
                         pos = Position.objects.create(person=charger, org=org)
                         pos.save()
@@ -2998,7 +3012,7 @@ def auditOrganization(request):
                         content += " 老师给你留言啦："
                         content += text"""
 
-                        notification_create(request.user, receiver, Notification.Type.NEEDREAD,
+                        notification_create(receiver,request.user, Notification.Type.NEEDREAD,
                                             Notification.Title.VERIFY_INFORM, content, URL)
 
                 except:
@@ -3057,11 +3071,9 @@ def auditOrganization(request):
     html_display['introduction'] = preorg.introduction
     html_display['application'] = preorg.application
     org_avatar_path = utils.get_user_ava(preorg, "Organization")
-
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织审核"
     bar_display["narbar_name"] = "新建组织审核"
-
     return render(request, "organization_audit.html", locals())
 
