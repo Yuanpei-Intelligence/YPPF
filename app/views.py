@@ -2775,7 +2775,7 @@ def addOrganization(request):
             try:
 
                 with transaction.atomic():
-                    org_comment = Comment.objects.create(CommentBase=preorg, commentator=request.user, text=text)
+                    org_comment = Comment.objects.create(commentbase=preorg, commentator=request.user, text=text)
                     if len(comment_images) > 0:
                         for comment_image in comment_images:
                             CommentPhoto.objects.create(image=comment_image, comment=org_comment)
@@ -2971,7 +2971,7 @@ def auditOrganization(request):
                         return render(request, "organization_audit.html", locals())
             try:
                 with transaction.atomic():
-                    org_comment = Comment.objects.create(CommentBase=preorg, commentator=request.user, text=text)
+                    org_comment = Comment.objects.create(commentbase=preorg, commentator=request.user, text=text)
                     if len(comment_images) > 0:
                         for comment_image in comment_images:
                             CommentPhoto.objects.create(image=comment_image, comment=org_comment)
@@ -3166,8 +3166,8 @@ def addReimbursement(request):
     #bar_display, 必须放在render前最后一步
     # TODO: 整理页面返回逻辑，统一返回render的地方
     bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "新建组织"
-    bar_display["narbar_name"] = "新建组织"
+    bar_display["title_name"] = "新建报销申请"
+    bar_display["narbar_name"] = "新建报销申请"
 
     # 如果是修改，则加载报销信息
     if request.GET.get('reimb_id') is not None and request.GET.get('notifi_id') is not None:
@@ -3212,7 +3212,7 @@ def addReimbursement(request):
                         return render(request, "organization_audit.html", locals())
             try:
                 with transaction.atomic():
-                    reim_comment = Comment.objects.create(CommentBase=pre_reimb, commentator=request.user, text=text)
+                    reim_comment = Comment.objects.create(commentbase=pre_reimb, commentator=request.user, text=text)
                     if len(comment_images) > 0:
                         for comment_image in comment_images:
                             CommentPhoto.objects.create(image=comment_image, comment=reim_comment)
@@ -3261,7 +3261,7 @@ def addReimbursement(request):
                         new_reimb.save()
                         # 创建评论保存图片
                         text = "以下默认为初始的报销材料"
-                        reim_comment = Comment.objects.create(CommentBase=new_reimb, commentator=request.user)
+                        reim_comment = Comment.objects.create(commentbase=new_reimb, commentator=request.user)
                         reim_comment.text = text
                         for payload in images:
                             CommentPhoto.objects.create(image=payload, comment=reim_comment)
@@ -3403,8 +3403,8 @@ def auditReimbursement(request):
     # bar_display, 必须放在render前最后一步
     # TODO: 整理页面返回逻辑，统一返回render的地方
     bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "新建组织"
-    bar_display["narbar_name"] = "新建组织"
+    bar_display["title_name"] = "报销审核"
+    bar_display["narbar_name"] = "报销审核"
 
     if request.method == "POST" and request.POST:
 
@@ -3420,7 +3420,7 @@ def auditReimbursement(request):
                         return render(request, "organization_audit.html", locals())
             try:
                 with transaction.atomic():
-                    reim_comment = Comment.objects.create(CommentBase=new_reimb, commentator=request.user, text=text)
+                    reim_comment = Comment.objects.create(commentbase=new_reimb, commentator=request.user, text=text)
                     if len(comment_images) > 0:
                         for comment_image in comment_images:
                             CommentPhoto.objects.create(image=comment_image, comment=reim_comment)
