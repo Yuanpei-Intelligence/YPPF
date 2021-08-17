@@ -3246,24 +3246,25 @@ def addReimbursement(request):
             message = request.POST.get('message')  # 备注信息
 
             if edit == 0:
-                images = request.FILES.getlist('images')
-                for image in images:
-                    if utils.if_image(image) == False:
-                        html_display['warn_code'] = 1
-                        html_display['warn_message'] = "上传的附件只支持图片格式。"
-                        return render(request, "reimbursement_add.html", locals())
-                with transaction.atomic():
-                    new_reimb = Reimbursement.objects.create(activity=reimb_act, amount=reimb_YQP, pos=request.user)
-                    new_reimb.message = message
-                    new_reimb.save()
-                    # 创建评论保存图片
-                    text="以下默认为初始的报销材料"
-                    reim_comment = Comment.objects.create(CommentBase=new_reimb, commentator=request.user)
-                    reim_comment.text=text
-                    for payload in images:
-                        CommentPhoto.objects.create(image=payload, comment=reim_comment)
+
+
                 try:  # 创建报销信息
-                    a=1
+                    images = request.FILES.getlist('images')
+                    for image in images:
+                        if utils.if_image(image) == False:
+                            html_display['warn_code'] = 1
+                            html_display['warn_message'] = "上传的附件只支持图片格式。"
+                            return render(request, "reimbursement_add.html", locals())
+                    with transaction.atomic():
+                        new_reimb = Reimbursement.objects.create(activity=reimb_act, amount=reimb_YQP, pos=request.user)
+                        new_reimb.message = message
+                        new_reimb.save()
+                        # 创建评论保存图片
+                        text = "以下默认为初始的报销材料"
+                        reim_comment = Comment.objects.create(CommentBase=new_reimb, commentator=request.user)
+                        reim_comment.text = text
+                        for payload in images:
+                            CommentPhoto.objects.create(image=payload, comment=reim_comment)
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "新建报销失败，请联系管理员！"
