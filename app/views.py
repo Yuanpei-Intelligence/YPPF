@@ -19,7 +19,7 @@ from app.models import (
 from django.db.models import Max
 import app.utils as utils
 from app.forms import UserForm
-from app.utils import url_check, check_cross_site
+from app.utils import url_check, check_cross_site, get_person_or_org
 from app.wechat_send import publish_notification
 from app.scheduler_func import changeActivityStatus, notifyActivity
 from boottest import local_dict
@@ -2274,6 +2274,7 @@ def addActivities(request):
     me = utils.get_person_or_org(request.user)
 
     html_display["is_myself"] = True
+    org = get_person_or_org(request.user, 'Organization')
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # TODO: 整理结构，统一在结束时返回render
@@ -2293,7 +2294,7 @@ def addActivities(request):
                 aid = int(aid)
                 assert edit == "True"
                 # 只能修改自己的活动
-                activity = Activity.objects.get(aid=aid)
+                activity = Activity.objects.get(id=aid)
                 assert activity.organization_id == org
             except:
                 return redirect("/welcome/")
@@ -2313,33 +2314,32 @@ def addActivities(request):
             if edit is not None:
                 activity = Activity.objects.select_for_update().get(id=aid)
                 # 以下修改不通知
-                if context.get("aname"):
-                    activity.title = context["aname"]
-                if context.get('content'):
-                    activity.introduction = context["content"]
-                if context.get('URL'):
-                    activity.URL = context["URL"]
-                if context.get("capacity"):
-                    activity.capacity = context["capacity"]
+                if context["aname"] != '':
+                    activity.title = context["aname"] 
+                if context['content'] != '':
+                    activity.introduction = context["content"] 
+                if context['URL'] != '':
+                    activity.URL = context["URL"]  
+                if context.get("capacity") != '':
+                    activity.capacity = context["capacity"] 
                 # 以下修改通知已报名同学
-                if context.get('location'):
-                    if activity.location != context["location"]:
-                        msg = f"您参与的活动 <{activity.title}> 活动地点发生变更: \n"
-                        msg += f"{activity.location} --> {context['location']}"
-                        activity.location = context["location"]
-                        notifyActivity(activity.id, 'participants')
+                if context["location"] != '' and activity.location != context["location"]:
+                    msg = f"您参与的活动 <{activity.title}> 活动地点发生变更: \n"
+                    msg += f"{activity.location} --> {context['location']}"
+                    activity.location = context["location"]
+                    notifyActivity(activity.id, 'participants')
 
 
                 # 以下通知已报名同学和关注该组织的同学
                 # TODO 通知 + 修改
-                if context.get("prepare_scheme"):
+                if context["prepare_scheme"] != activity.endbefore:
                     activity.endbefore = context["prepare_scheme"]
-                if context.get("act_start"):
+                if context["act_start"] != activity.start:
                     activity.start = context["act_start"]
-                if context.get("act_end"):
+                if context["act_end"] != activity.end:
                     activity.end = context["act_end"]
                 # new_act.QRcode = QRcode
-                if context.get("aprice"):
+                if context["aprice"] != '' and activity.YQPoint !=  context["aprice"]:
                     activity.YQPoint = context["aprice"]
 
                 activity.save()
@@ -2357,18 +2357,22 @@ def addActivities(request):
                     activity.status = Activity.Status.APPLYING
 
                 activity.location = context['location']
-                activity.act_start = context["act_start"]
-                activity.act_end = context["act_end"]
-                activity.aprice = context["aprice"]
+                activity.start = context["act_start"]
+                activity.end = context["act_end"]
+                activity.YQPoint = context["aprice"]
                 activity.capacity = context["capacity"]
                 activity.introduction = context["content"]
                 activity.URL = context["URL"]
+                activity.endbefore = context["prepare_scheme"]
                 activity.save()
 
                 # 如果活动不需要审核，通知关注者该活动
                 # TODO 确认需要审核的活动，在审核通过时进行通知
+
+
                 if activity.status == Activity.Status.APPLYING:
                     notifyActivity(activity.id, "newActivity")
+
 
                 # 创建定时任务
                 '''

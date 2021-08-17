@@ -171,13 +171,15 @@ def check_ac_request(request):
     no_limit = request.POST.get("unlimited_capacity")
     if no_limit is not None:
         capacity = 10000
-    if capacity is not None:
+    if capacity is not None and capacity != '':
         context['capacity'] = int(capacity)
         assert context['capacity'] >= 0
 
     # 价格
-    aprice = request.POST.get("aprice")
-    if aprice is not None:
+    aprice = request.POST["aprice"]
+    if aprice == '':
+        context['aprice'] = ''
+    else:
         aprice = float(aprice)
         assert int(aprice * 10) / 10 == aprice
         assert aprice >= 0
