@@ -2699,10 +2699,16 @@ def notifications(request):
 
     if request.method == "POST":  # 发生了通知处理的事件
         post_args = request.POST.get("post_button")
-        notification_id = post_args
-        context = notification_status_change(notification_id)
-        html_display["warn_code"] = context["warn_code"]
-        html_display["warn_message"] = context["warn_message"]
+        if 'cancel' in post_args:
+            notification_id = int(post_args.split("+")[0])
+            Notification.objects.get(id=notification_id).delete()
+            html_display["warn_code"] = 2 # success
+            html_display['warn_message'] = '成功删除一条通知！'
+        else:
+            notification_id = post_args
+            context = notification_status_change(notification_id)
+            html_display["warn_code"] = context["warn_code"]
+            html_display["warn_message"] = context["warn_message"]
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
