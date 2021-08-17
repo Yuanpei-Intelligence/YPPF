@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block mainpage %}
+
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+        <div class="container">
+            <div class="container">
+                {% if html_display.warn_code == 2 %}
+                <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+                {% elif html_display.warn_code == 1%}
+                <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+                {% endif %}
+                <div class="row layout-top-spacing">
+
+                    <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+                        <div class="row">
+                            <div class="col-md-12 mb-4">
+                                <div class="statbox widget box box-shadow">
+
+                                    <!--  BEGIN HEADER AREA  -->
+                                    <div class="widget-header">
+                                        <div class="row">
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                {% if edit %}
+                                                <h4>重新修改报销的相关信息</h4>
+                                                {% else %}
+                                                <h4>请填写报销的相关信息</h4>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!--  BEGIN CONTENT AREA  -->
+                                    <div class="widget-content widget-content-area">
+
+                                        <form role="form" method="POST" enctype="multipart/form-data">
+
+                                            <div class="form-group">
+                                                <label>报销活动</label>
+                                                {%if edit%}
+                                                <select name="activity_id" class="form-control">
+                                                    {% for activity in activities.all%}
+                                                    {%if audit_activity.id == activity.id%}
+                                                    <option value={{activity.id}} selected="selected">
+                                                        {{activity.title}}
+                                                    </option>
+                                                    {%endif%}
+                                                    <option value={{activity.id}}>{{activity.title}}</option>
+                                                    {%endfor%}
+                                                </select>
+
+                                                {%else%}
+                                                <select name="activity_id" class="form-control">
+                                                    {% for activity in activities.all%}
+                                                    <option value={{activity.id}}>{{activity.title}}</option>
+                                                    {%endfor%}
+                                                </select>
+                                                {%endif%}
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>报销额度</label>
+                                                <br>
+                                                <input type="number" class="form-control"
+                                                       aria-label="Text input with dropdown button"
+                                                       placeholder="上次你输入的是{{html_display.amount}}"
+                                                       id="aprice"
+                                                       name="YQP" placeholder="{{amount}}" step="0.1"
+                                                       οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')" >
+                                            </div>
+
+                                            {%if edit == 0%}
+                                            <div class="form-group form-row">
+                                                <label class="col-sm-2 control-label uText">报销材料</label>
+                                                <div class="row">
+                                                    <div class="col-xs-10 col-sm-8 mTop5">
+                                                        <label title="初始报销材料">
+                                                            <input type="file" accept="image/*" name="images" multiple>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {%endif%}
+
+                                            <div class="form-group">
+                                                <label for="aintro">备注信息</label>
+                                                {%if edit%}
+                                                <textarea name="message" class="form-control"
+                                                          rows="3"
+                                                          placeholder="空">{{html_display.message}}</textarea>
+                                                {%else%}
+                                                <textarea name="message" class="form-control"
+                                                          rows="3"
+                                                          placeholder="空"></textarea>
+                                                {%endif%}
+                                            </div>
+                                            <br>
+                                            <br>
+                                            <hr>
+
+
+                                            {%if edit%}
+                                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
+                                                    value="">
+                                                修改并提交
+                                            </button>
+                                            {%else%}
+                                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
+                                                    value="">
+                                                提交
+                                            </button>
+                                            {%endif%}
+
+                                    {%if edit %}
+                                    <br>
+                                    <hr>
+
+                                   <div>
+                                        {%for comment in comments.all%}
+                                        <div class="form-group">
+                                            <div class="d-flex justify-content-between">
+                                                   <div>
+                                                <p style="color: rgb(66, 67, 68);"><i class="fa fa-calendar-o"></i>评论时间：{{comment.time}}</p>
+                                                   </div>
+                                                <div>
+                                                    <p style="color: rgb(66, 67, 68);" align="right"><i class="fa fa-address-book"></i>
+                                                        {{comment.commentator}}</p>
+                                                </div>
+                                            </div>
+
+                                            <textarea name="comment" class="form-control">{{comment.text}}</textarea>
+                                            {%for image in comment.comment_photos.all%}
+
+                                            <img width="400px" height="200px" src={{image.imagepath}}>
+                                                <!--移动端图片需要修正!-->
+                                            {%endfor%}
+                                            <hr>
+                                            <br>
+                                        </div>
+                                        {% endfor %}
+                                    </div>
+
+                                    <form role="form" method="POST" enctype="multipart/form-data">
+                                            <div>
+                                                <div class="form-group">
+                                                    <label><h4>评论</h4></label>
+                                                    <div>
+                                                        <p style="color: rgb(66, 67, 68);" align="right"><i
+                                                                class="fa fa-address-book"></i> {{request.user}}</p>
+                                                    </div>
+                                                    <textarea type="text" id="comment" name="comment"
+                                                              class="form-control"
+                                                              aria-label="Default" rows="3"
+                                                              placeholder="Leave a comment"></textarea>
+                                                    <br>
+                                                    <div>
+                                                        <label title="评论图片">
+                                                            <div style="text-align:left;">
+                                                                <input type="file" accept="image/*" name="comment_images"
+                                                                       multiple>
+                                                            </div>
+                                                        </label>
+                                                        <div style="text-align:right;">
+                                                            <button type="submit"
+                                                                    class="btn btn-primary btn-sm mb-4 mr-2"
+                                                                    name="comment_submit" value="1">
+                                                                回复
+                                                            </button>
+                                                        </div>
+
+                                                    </div>
+
+
+                                                </div>
+                                            </div>
+                                        </form>
+                                        {%endif%}
+
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+<!--  END CONTENT AREA  -->
+
+{% endblock %}
+
+
