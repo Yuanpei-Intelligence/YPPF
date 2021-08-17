@@ -36,7 +36,10 @@
 							<div id="myTabContent" class="tab-content">
 								<div class="tab-pane fade in active show" id="home">
 									{% if pending_list|length == 0 %}
+                                    <br />
+									<p></p>
 									<p style="text-align: center">没有待处理的人事变动.</p>
+                                    <br />
 									{% else %}
 									<div class="bio-skill-box">
 										<div class="row">
@@ -108,8 +111,10 @@
 								</div>
 								<div class="tab-pane fade" id="issued">
 									{% if issued_list|length == 0 %}
+                                    <br />
 									<p></p>
 									<p style="text-align: center">没有已处理的人事变动.</p>
+                                    <br />
 									{% else %}
 
 									<div class="bio-skill-box">
