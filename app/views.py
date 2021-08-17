@@ -2928,7 +2928,7 @@ def auditOrganization(request):
                         content = "新建组织申请信息需要修改！"
                         receiver = preorg.pos  # 通知接收者
                         URL = ""
-                        new_notification = notification_create(request.user, receiver,
+                        new_notification = notification_create(receiver,request.user,
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
@@ -2995,7 +2995,7 @@ def auditOrganization(request):
                         content += " 老师给你留言啦："
                         content += text"""
 
-                        notification_create(request.user, receiver, Notification.Type.NEEDREAD,
+                        notification_create(receiver,request.user, Notification.Type.NEEDREAD,
                                             Notification.Title.VERIFY_INFORM, content, URL)
 
                 except:
