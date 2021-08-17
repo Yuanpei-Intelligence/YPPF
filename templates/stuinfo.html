@@ -1,13 +1,6 @@
 {% extends "base.html" %}
 
 {% block mainpage %}
-<!--  BEGIN MAIN CONTAINER  -->
-<div class="main-container" id="container">
-
-    <div class="overlay"></div>
-    <div class="search-overlay"></div>
-
-    {% include 'user_left_narbar.html' %}
 
     <!--  BEGIN CONTENT AREA  -->
     <div class="container-fluid p-0" id="content">
@@ -296,7 +289,7 @@
                                         onclick="toggle_same.call(this, `activity`, `活动`, `flex`, `都參與的`);this.blur();">
                                     {% endif %}
                                     {% if user_type == 'Organization' %}
-                                        onclick="toggle_same.call(this, `activity`, `活动`, `flex`, `我組織的`);this.blur();">
+                                        onclick="toggle_same.call(this, `activity`, `活动`, `flex`, `我组织的`);this.blur();">
                                     {% endif %}
                                     <label class="custom-control-label" id="activity-show-same-label"
                                         for="activity-show-same-button">所有活动</label>
@@ -321,7 +314,7 @@
                                         <div class="row b-skills">
                                             <div class="col-5">
                                                 <a class="row m-0" href="/viewActivity/{{ activity.id }}">
-                                                    <h5>{{ activity.title }}
+                                                    <h5><u>{{ activity.title }}</u>
                                                         <span class="text-{{ activity_c }}">
                                                             [{{ activity.status }}]</span>
                                                     </h5>
@@ -349,9 +342,11 @@
 
     </div>
     <!--  END CONTENT AREA  -->
-</div>
-<!-- END MAIN CONTAINER -->
 
+
+{% endblock %}
+
+{% block add_js_file %}
 <script type="text/javascript">
     function toggle_same(type, labelName, display) {
         const cards = document.querySelectorAll(`.custom-${type}-card`);
@@ -371,5 +366,4 @@
         }
     }
 </script>
-
 {% endblock %}

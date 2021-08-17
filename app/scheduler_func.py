@@ -3,7 +3,7 @@ from django.dispatch.dispatcher import receiver
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
 
 from django.db.models import F
-from django.http import JsonResponse, HttpResponse  # Json响应
+from django.http import JsonResponse, HttpResponse, QueryDict  # Json响应
 from django.shortcuts import render, redirect  # 网页render & redirect
 from django.urls import reverse
 from datetime import datetime, timedelta, timezone, time, date
@@ -121,9 +121,10 @@ def YQPoint_Distribution(request, dis_id):
     dis = YQPointDistribute.objects.get(id=dis_id)
     dis_form = YQPointDistributionForm(instance=dis)
     if request.method == 'POST':
-        dis_form = YQPointDistributionForm(request.POST)
+        post_dict = QueryDict(request.POST.urlencode(), mutable=True)
+        post_dict["start_time"] = post_dict["start_time"].replace("T", " ")
+        dis_form = YQPointDistributionForm(post_dict, instance=dis)
         if dis_form.is_valid():
-            dis_form = YQPointDistributionForm(request.POST, instance=dis)
             dis_form.save()
             if dis.status == True:
                 # 在这里注册scheduler
@@ -134,6 +135,7 @@ def YQPoint_Distribution(request, dis_id):
     context = dict()
     context["dis"] = dis
     context["dis_form"] = dis_form
+    context["start_time"] = str(dis.start_time).replace(" ", "T")
     return render(request, "YQP_Distribution.html", context)
 
 
@@ -147,13 +149,16 @@ def new_YQP_distribute(request):
     dis = YQPointDistribute()
     dis_form = YQPointDistributionForm()
     if request.method == 'POST':
-        dis_form = YQPointDistributionForm(request.POST)
+        post_dict = QueryDict(request.POST.urlencode(), mutable=True)
+        post_dict["start_time"] = post_dict["start_time"].replace("T", " ")
+        dis_form = YQPointDistributionForm(post_dict, instance=dis)
+        print(dis_form)
+        print(dis_form.is_valid())
         if dis_form.is_valid():
-            dis_form = YQPointDistributionForm(request.POST, instance=dis)
+            print("valid")
             dis_form.save()
             if dis.status == True:
                 # 在这里注册scheduler
-                print("success")
                 try:
                     add_YQPoints_distribute(dis.type)
                 except:

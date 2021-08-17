@@ -7,7 +7,6 @@
 
                 <ul class="list-unstyled menu-categories ps ps--active-y" id="accordionExample">
 
-                    {% if html_display.is_myself %}
                     <li class="menu">
                         <a href="#app" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
                             <div class="">
@@ -23,27 +22,27 @@
                                 <a href="/addActivities/"> 活动发起 </a>
                             </li>
                             <li>
-                                <a href="/welcome/"> 经费申请  </a>
+                                <a href="/welcome/"> 经费申请(开发中)  </a>
                             </li>
                             
-                            <li>
-                                <a href="{{html_display.underground_url}}"> 地下室预约 </a>
-                            </li>
                             <li>
                                 <a href="/myYQPoint/"> 我的元气值 </a>
                             </li>
                             <li>
-                                <a href="/user_account_setting/"> 信息与隐私 </a>
+                                <a href="/addReimbursement/"> 报销申请 </a>
+                            </li>
+                            
+                            <li>
+                                <a href="/personnelMobilization/"> 人事管理  </a>
                             </li>
                         </ul>
                     </li>
-                    {% endif %}
 
                     <li class="menu nav-item">
                         <a href="#info" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle nav-link active">
                             <div class="">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" /> </svg>
-                                <span>组织成员</span>
+                                <span>账户设置</span>
                             </div>
                             <div>
                                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-chevron-right"><polyline points="9 18 15 12 9 6"></polyline></svg>
@@ -51,14 +50,15 @@
                         </a>
                         <ul class="collapse submenu list-unstyled" id="info" data-parent="#accordionExample">
                             <li>
-                                <a href=""> 在职成员 </a>
+                                <a href="/user_account_setting/"> 信息与隐私 </a>
                             </li>
                             <li>
-                                <a href="/personnelMobilization/"> 人事变动  </a>
+                                <a href="/modpw/">修改密码</a>
                             </li>
                         </ul>
                     </li>
 
+                    <!--
                     <li class="menu nav-item">
                         <a href="#d1" data-toggle="tab" aria-expanded="false" class="dropdown-toggle nav-link">
                             <div class="">
@@ -67,7 +67,7 @@
                             </div>
                         </a>
                     </li>
-                    <!--
+                    
                     <li class="menu nav-item">
                         <a href="#d3" data-toggle="tab" aria-expanded="false" class="dropdown-toggle nav-link">
                             <div class="">
@@ -78,35 +78,14 @@
                     </li>
                     -->
 
-                    {% if html_display.isboss %}
                     <li class="menu">
-                        <a href="/request_login_org/{{html_display.switch_org_name}}"  aria-expanded="false" class="dropdown-toggle">
+                        <a href="/logout/" aria-expanded="false" class="dropdown-toggle">
                             <div class="">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /> <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /> <polyline points="3.27 6.96 12 12.01 20.73 6.96" /> <line x1="12" y1="22.08" x2="12" y2="12" /> </svg>
-                                <span>切换账号</span>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                                <span>注销</span>
                             </div>
                         </a>
                     </li>
-                    {% endif %}
-
-                    {% if not html_display.is_myself %}
-                    <li class="menu">
-                        <a href="/transPage/{{html_display.org.organization_id_id}}"  aria-expanded="false" class="dropdown-toggle">
-                            <div class="">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /> <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /> <polyline points="3.27 6.96 12 12.01 20.73 6.96" /> <line x1="12" y1="22.08" x2="12" y2="12" /> </svg>
-                                <span>向ta转账</span>
-                            </div>
-                        </a>
-                    </li>
-                    <li class="menu">
-                        <a href="/applyPosition/{{html_display.org.organization_id_id}}?apply_type=JOIN"  aria-expanded="false" class="dropdown-toggle">
-                            <div class="">
-                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"> <line x1="16.5" y1="9.4" x2="7.5" y2="4.21" /> <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z" /> <polyline points="3.27 6.96 12 12.01 20.73 6.96" /> <line x1="12" y1="22.08" x2="12" y2="12" /> </svg>
-                                <span>我要加入</span>
-                            </div>
-                        </a>
-                    </li>
-                    {% endif %}
 
                     <div class="ps__rail-x" style="left: 0px; bottom: 0px;"><div class="ps__thumb-x" tabindex="0" style="left: 0px; width: 0px;"></div></div><div class="ps__rail-y" style="top: 0px; height: 690px; right: -4px;"><div class="ps__thumb-y" tabindex="0" style="top: 0px; height: 300px;"></div></div>
                 </ul>
