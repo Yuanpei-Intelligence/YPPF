@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from boottest import local_dict
 from django.conf import settings
 
+
 class NaturalPersonManager(models.Manager):
     def activated(self):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
@@ -506,7 +507,7 @@ class Participant(models.Model):
 
     status = models.CharField(
         '学生参与活动状态',
-         choices=AttendStatus.choices, default=AttendStatus.APPLYING, max_length=32)
+        choices=AttendStatus.choices, default=AttendStatus.APPLYING, max_length=32)
 
 
 class YQPointDistribute(models.Model):
@@ -516,8 +517,8 @@ class YQPointDistribute(models.Model):
         TEMPORARY = (0, "临时发放")
         WEEK = (1, "每周发放一次")
         TWO_WEEK = (2, "每两周发放一次")
-        SEMESTER = (26, "每学期发放一次") # 一年有52周
-    
+        SEMESTER = (26, "每学期发放一次")  # 一年有52周
+
     # 发放元气值的上限，多于此值则不发放
     per_max_dis_YQP = models.FloatField("自然人发放元气值上限")
     org_max_dis_YQP = models.FloatField("组织发放元气值上限")
@@ -554,8 +555,8 @@ class Notification(models.Model):
         UNDONE = (1, "待处理")
 
     class Type(models.IntegerChoices):
-        NEEDREAD = (0, '知晓类')    # 只需选择“已读”即可
-        NEEDDO = (1, '处理类')      # 需要处理的事务
+        NEEDREAD = (0, '知晓类')  # 只需选择“已读”即可
+        NEEDDO = (1, '处理类')  # 需要处理的事务
 
     class Title(models.IntegerChoices):
         # 等待逻辑补充
@@ -581,7 +582,9 @@ class CommentBase(models.Model):
     class Meta:
         verbose_name = "带有评论"
         verbose_name_plural = verbose_name
+
     id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的组织信息
+
 
 class Comment(models.Model):
     class Meta:
@@ -590,7 +593,7 @@ class Comment(models.Model):
         ordering = ["-time"]
 
     commentator = models.ForeignKey(User, on_delete=models.CASCADE)
-    CommentBase=models.ForeignKey(CommentBase,related_name="comments",on_delete=models.CASCADE)
+    commentbase = models.ForeignKey(CommentBase, related_name="comments", on_delete=models.CASCADE)
     text = models.TextField("文字内容", default="", blank=True)
     time = models.DateTimeField("评论时间", auto_now_add=True)
 
@@ -601,10 +604,12 @@ class CommentPhoto(models.Model):
         verbose_name_plural = verbose_name
 
     image = models.ImageField(upload_to=f"comment/%Y/%m/", verbose_name=u'评论图片', null=True, blank=True)
-    comment = models.ForeignKey(Comment, related_name="comment_photos",on_delete=models.CASCADE)
+    comment = models.ForeignKey(Comment, related_name="comment_photos", on_delete=models.CASCADE)
+
     # 路径无法加上相应图片
     def imagepath(self):
-        return  settings.MEDIA_URL+str(self.image)
+        return settings.MEDIA_URL + str(self.image)
+
 
 class NewOrganization(CommentBase):
     class Meta:
@@ -617,11 +622,13 @@ class NewOrganization(CommentBase):
     application = models.TextField("申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~")
     avatar = models.ImageField(upload_to=f"avatar/", verbose_name=u'组织头像', null=True, blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
+
     class NewOrgStatus(models.IntegerChoices):  # 表示申请组织的请求的状态
         PENDING = (0, "待确认")
         CONFIRMED = (1, "主管老师已同意")  # 审过同意
         TOBEMODIFIED = (2, "需要修改")
         CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
+
     status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
 
 
@@ -642,15 +649,10 @@ class Reimbursement(CommentBase):
         # 根据最新要求，最终不以线上为准，不再设置转账状态
         CANCELED = (4, "已取消")
 
-    activity = models.ForeignKey(Activity,related_name="reimbursement",on_delete=models.CASCADE)
+    activity = models.ForeignKey(Activity, related_name="reimbursement", on_delete=models.CASCADE)
     amount = models.FloatField("报销金额", default=0)
     message = models.TextField("备注信息", default="", blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
     time = models.DateTimeField("发起时间", auto_now_add=True)
     modify_time = models.DateTimeField("上次修改时间", auto_now_add=True)
-
-
-
-
-
