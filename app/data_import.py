@@ -179,8 +179,8 @@ def load_notification_info(request):
         id = not_dict["id"]
         if str(not_dict['receiver_id']) == str(1266):
             not_dict['receiver_id'] = NaturalPerson.objects.get(name=local_dict['test_info']['stu_name']).person_id.id
-        if str(not_dict['receiver_id']) == str(1266):
-            not_dict['receiver_id'] = NaturalPerson.objects.get(name=local_dict['test_info']['stu_name']).person_id.id
+        if str(not_dict['sender_id']) == str(1266):
+            not_dict['sender_id'] = NaturalPerson.objects.get(name=local_dict['test_info']['stu_name']).person_id.id
         try:
             receiver = User.objects.get(id=not_dict["receiver_id"])
             sender = User.objects.get(id=not_dict["sender_id"])
