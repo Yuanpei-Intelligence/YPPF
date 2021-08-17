@@ -6,7 +6,7 @@ from django.conf import settings
 from boottest import local_dict
 from datetime import datetime, timedelta
 import re
-
+import imghdr
 def get_person_or_org(user, user_type=None):
     if user_type is None:
         if hasattr(user, "naturalperson"):
@@ -333,9 +333,7 @@ def check_neworg_request(request):
         return context
 
     context['avatar'] = request.FILES.get('avatar')
-    import imghdr
-    imgType_list = {'jpg', 'bmp', 'png', 'jpeg', 'rgb', 'tif'}
-    if imghdr.what(context['avatar']) not in imgType_list:
+    if if_image(context['avatar'])==False:
         context['warn_code'] = 1
         context['warn_msg'] = "组织的头像应当为图片格式！"  # user can't see it . we use it for debugging
         return context
@@ -357,3 +355,9 @@ def find_max_oname():
     prefix="zz"
     max_oname=prefix+str(max_oname).zfill(5)
     return max_oname
+
+def if_image(image):
+    imgType_list = {'jpg', 'bmp', 'png', 'jpeg', 'rgb', 'tif'}
+    if imghdr.what(image)  in imgType_list:
+        return True
+    return False

@@ -2736,10 +2736,18 @@ def addOrganization(request):
 
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
             text = str(request.POST.get('comment'))
+            #检查图片合法性
+            comment_images = request.FILES.getlist('comment_images')
+            if len(comment_images) > 0:
+                for comment_image in comment_images:
+                    if utils.if_image(comment_image) == False:
+                        html_display['warn_code'] = 1
+                        html_display['warn_message'] = "上传的附件只支持图片格式。"
+                        return render(request, "organization_audit.html", locals())
             try:
+
                 with transaction.atomic():
                     org_comment = Comment.objects.create(CommentBase=preorg, commentator=request.user, text=text)
-                    comment_images = request.FILES.getlist('comment_images')
                     if len(comment_images) > 0:
                         for comment_image in comment_images:
                             CommentPhoto.objects.create(image=comment_image, comment=org_comment)
@@ -2905,6 +2913,14 @@ def auditOrganization(request):
     if request.method == "POST" and request.POST:
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
             text = str(request.POST.get('comment'))
+            # 检查图片合法性
+            comment_images = request.FILES.getlist('comment_images')
+            if len(comment_images) > 0:
+                for comment_image in comment_images:
+                    if utils.if_image(comment_image) == False:
+                        html_display['warn_code'] = 1
+                        html_display['warn_message'] = "上传的附件只支持图片格式。"
+                        return render(request, "organization_audit.html", locals())
             try:
                 with transaction.atomic():
                     org_comment = Comment.objects.create(CommentBase=preorg, commentator=request.user, text=text)
