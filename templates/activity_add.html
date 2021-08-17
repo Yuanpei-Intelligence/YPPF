@@ -87,7 +87,7 @@
                                                     <div class="col">
                                                         {% if edit %}
                                                         <input type='text' class="form-control" id='datetimepicker4'
-                                                            name="actstart" placeholder="{{end}}" />
+                                                            name="actend" placeholder="{{end}}" />
                                                         {% else %}
                                                         <input type='text' class="form-control" id='datetimepicker4'
                                                             name="actend" placeholder="结束时间" required="required" />
@@ -445,8 +445,6 @@
         // 只有修改时才可能相等，不相等说明是创建，或者 edit 成了不同的值
         if (!(document.getElementById('datetimepicker3').placeholder == document.getElementById('datetimepicker3').value)) {
             if (applyEnd < now) {
-                alert(applyEnd);
-                alert(now);
                 document.getElementById('warn_msg').style.display = "";
                 document.getElementById('warn_msg').innerHTML = "没有足够的准备时间（报名截止时间早于当前时间）。";
                 document.body.scrollTop = document.documentElement.scrollTop = 0;
