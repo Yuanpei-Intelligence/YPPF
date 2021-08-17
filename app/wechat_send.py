@@ -136,8 +136,7 @@ def publish_notification(notification_or_id):
     except:
         print(f"未找到id为{notification_or_id}的通知")
         return False
-    #from app.views import get_person_or_org     # 获取名称
-    sender = utils.get_person_or_org(notification.sender) # 也可能是组织
+    sender = get_person_or_org(notification.sender) # 也可能是组织
     send_time = notification.start_time
     timeformat = "%Y年%m月%d日 %H:%M"   
     send_time = send_time.strftime(timeformat)
@@ -171,7 +170,7 @@ def publish_notification(notification_or_id):
             message += f"\n\n<a href=\"{notification.URL}\">阅读原文</a>"
         else:
             message += f"\n\n<a href=\"{DEFAULT_URL}\">点击查看详情</a>"
-    receiver = utils.get_person_or_org(notification.receiver)
+    receiver = get_person_or_org(notification.receiver)
     if isinstance(receiver, NaturalPerson):
         wechat_receivers = [notification.receiver.username] # user.username是id
     else:   # 组织
