@@ -15,18 +15,7 @@
 {% endblock %}
 
 {% block mainpage %}
-<!--  BEGIN MAIN CONTAINER  -->
 
-<div class="main-container" id="container">
-
-    <div class="overlay"></div>
-    <div class="search-overlay"></div>
-
-    {% if html_display.user_type == "Person" %}
-    {% include 'user_left_narbar.html' %}
-    {% else %}
-    {% include 'org_left_narbar.html' %}
-    {% endif %}
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
@@ -269,9 +258,7 @@
         </div>
     </div>
     <!--  END CONTENT AREA  -->
-</div>
 
-<!-- END MAIN CONTAINER -->
 {% endblock %}
 
 
