@@ -6,7 +6,7 @@ from django.conf import settings
 from boottest import local_dict
 from datetime import datetime, timedelta
 import re
-
+import imghdr
 def get_person_or_org(user, user_type=None):
     if user_type is None:
         if hasattr(user, "naturalperson"):
@@ -32,6 +32,7 @@ def check_user_type(user):  # return Valid(Bool), otype
     else:
         user_type = "Person"
         html_display['user_type'] = user_type
+
 
     return True, user_type, html_display
 
@@ -332,11 +333,18 @@ def check_neworg_request(request):
         context['warn_code'] = 1
         context['warn_msg'] = "数据库没有小组的所在类型，请联系管理员！"  # user can't see it . we use it for debugging
         return context
+
+    context['avatar'] = request.FILES.get('avatar')
+    if if_image(context['avatar'])==False:
+        context['warn_code'] = 1
+        context['warn_msg'] = "组织的头像应当为图片格式！"  # user can't see it . we use it for debugging
+        return context
+
     context['oname'] = oname  # 组织名字
      # 组织类型，必须有
     context['pos'] = request.user  # 负责人，必须有滴
     context['introduction'] = str(request.POST.get('introduction', ""))  # 组织介绍，可能为空
-    context['avatar'] = request.FILES.get('avatar')
+
     context['application'] = str(request.POST.get('application', ""))  # 申请理由
     return context
 
@@ -349,3 +357,9 @@ def find_max_oname():
     prefix="zz"
     max_oname=prefix+str(max_oname).zfill(5)
     return max_oname
+
+def if_image(image):
+    imgType_list = {'jpg', 'bmp', 'png', 'jpeg', 'rgb', 'tif'}
+    if imghdr.what(image)  in imgType_list:
+        return True
+    return False

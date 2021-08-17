@@ -36,12 +36,7 @@ urlpatterns = [
     path("transPage/<str:rid>", views.transaction_page, name="transPage"),
     path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"),
     path("startTrans/", views.start_transaction, name="startTrans"),
-    # path("confirmTrans/", views.confirm_transaction, name="confirmTrans"),
-    # path(
-    #    "confirmTrans/<int:tid>/<int:reject>",
-    #    views.confirm_transaction,
-    #    name="confirmTrans",
-    # ),
+
     path("applyActivity/<str:aid>", views.applyActivity, name="applyActivity"),
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
     path("viewActivity/<str:aid>", views.viewActivity, name="viewActivity"),
