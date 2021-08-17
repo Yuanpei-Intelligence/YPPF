@@ -64,19 +64,6 @@ def get_item(dictionary, key):
     return dictionary.get(key)
 
 
-def get_person_or_org(user, user_type=None):
-    if user_type is None:
-        if hasattr(user, "naturalperson"):
-            return user.naturalperson
-        else:
-            return user.organization
-    return (
-        NaturalPerson.objects.get(person_id=user)
-        if user_type == "Person"
-        else Organization.objects.get(organization_id=user)
-    )  #
-
-
 def index(request):
     arg_origin = request.GET.get("origin")
     modpw_status = request.GET.get("modinfo")
@@ -171,7 +158,7 @@ def index(request):
                     request.user)
                 if not valid:
                     return redirect("/logout/")
-                me = get_person_or_org(userinfo, user_type)
+                me = utils.get_person_or_org(userinfo, user_type)
                 if me.first_time_login:
                     return redirect("/modpw/")
 
@@ -264,7 +251,7 @@ def stuinfo(request, name=None):
     if not valid:
         return redirect("/logout/")
 
-    oneself = get_person_or_org(user, user_type)
+    oneself = utils.get_person_or_org(user, user_type)
 
     if name is None:
         if user_type == "Organization":
@@ -380,10 +367,7 @@ def stuinfo(request, name=None):
         html_display["activity_info"] = activity_info
         html_display["activity_len"] = len(html_display["activity_info"])
 
-        # 呈现信息
-        # 首先是左边栏
-        html_display = utils.get_user_left_narbar(
-            person, is_myself, html_display)
+        # 警告呈现信息
 
         try:
             html_display["warn_code"] = int(
@@ -419,9 +403,11 @@ def stuinfo(request, name=None):
         context["avatar_path"] = utils.get_user_ava(person, "Person")
         context["wallpaper_path"] = utils.get_user_wallpaper(person)
 
-        html_display["title_name"] = "User Profile"
-        html_display["narbar_name"] = "个人主页"
-        html_display["help_message"] = local_dict["help_message"]["个人主页"]
+        # 新版侧边栏, 顶栏等的呈现，采用 bar_display
+        bar_display = utils.get_sidebar_and_navbar(request.user)
+        bar_display["title_name"] = "个人主页"
+        bar_display["narbar_name"] = "个人主页"
+        bar_display["help_message"] = local_dict["help_message"]["个人主页"]
         origin = request.get_full_path()
 
         return render(request, "stuinfo.html", locals())
@@ -480,7 +466,7 @@ def orginfo(request, name=None):
     if not valid:
         return redirect("/logout/")
 
-    me = get_person_or_org(user, user_type)
+    me = utils.get_person_or_org(user, user_type)
 
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if user_type == "Person":
@@ -609,16 +595,15 @@ def orginfo(request, name=None):
 
     html_display["modpw_code"] = modpw_status is not None and modpw_status == "success"
 
-    # 补充其余信息
-    html_display = utils.get_org_left_narbar(
-        org, html_display["is_myself"], html_display
-    )
+
 
     # 组织活动的信息
 
     # 补充一些呈现信息
-    html_display["title_name"] = "Org. Profile"
-    html_display["narbar_name"] = "组织主页"
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "组织主页"
+    bar_display["narbar_name"] = "组织主页"
 
     # 转账后跳转
     origin = request.get_full_path()
@@ -641,7 +626,7 @@ def homepage(request):
     is_person = True if user_type == "Person" else False
     if not valid:
         return redirect("/logout/")
-    me = get_person_or_org(request.user, user_type)
+    me = utils.get_person_or_org(request.user, user_type)
     if me.first_time_login:
         return redirect("/modpw/")
     myname = me.name if is_person else me.oname
@@ -651,14 +636,6 @@ def homepage(request):
     # profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
 
     html_display["is_myself"] = True
-    if user_type == "Person":
-        html_display = utils.get_user_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
-    else:
-        html_display = utils.get_org_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
 
     try:
         html_display["warn_code"] = int(
@@ -668,9 +645,6 @@ def homepage(request):
     html_display["warn_message"] = request.GET.get(
         "warn_message", "")  # 提醒的具体内容
 
-    # 补充一些呈现信息
-    html_display["title_name"] = "Welcome Page"
-    html_display["narbar_name"] = "近期要闻" 
 
     # 今天开始进行的活动,且不展示结束的活动。按开始时间由近到远排序
     nowtime = datetime.now()
@@ -699,6 +673,12 @@ def homepage(request):
         dictmp["act"] = act
         today_signup_list.append(dictmp)
     today_signup_list.sort(key=lambda x:x["endbefore"])
+
+
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "Welcome Page"
+    bar_display["narbar_name"] = "近期要闻" 
 
     return render(request, "welcome_page.html", locals())
 
@@ -804,21 +784,16 @@ def account_setting(request):
                 return redirect("/orginfo/?modinfo=success")
 
     # 补充网页呈现所需信息
-    html_display["title_name"] = "Account Setting"
-    html_display["narbar_name"] = "账户设置"
-    html_display["help_message"] = local_dict["help_message"]["账户设置"]
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "Account Setting"
+    bar_display["narbar_name"] = "账户设置"
+    bar_display["help_message"] = local_dict["help_message"]["账户设置"]
 
 
     if user_type == "Person":
-        # 然后是左边栏
-        html_display = utils.get_user_left_narbar(
-            useroj, html_display["is_myself"], html_display
-        )
         return render(request, "person_account_setting.html", locals())
     else:
-        html_display = utils.get_org_left_narbar(
-            useroj, html_display['is_myself'], html_display
-        )
         return render(request, "org_account_setting.html", locals())
 
 
@@ -921,19 +896,6 @@ def search(request):
     if not valid:
         return redirect("/logout/")
 
-    """
-    is_person = True if user_type == "Person" else False
-    me = get_person_or_org(request.user, user_type)
-    html_display["is_myself"] = True
-    if is_person:
-        html_display = utils.get_user_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
-    else:
-        html_display = utils.get_org_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
-    """
 
     query = request.GET.get("Query", "")
     if query == "":
@@ -1004,19 +966,14 @@ def search(request):
     # 活动要呈现的内容
     activity_field = ["活动名称", "承办组织", "状态"]
 
-    me = get_person_or_org(request.user, user_type)
+    me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    if user_type == "Person":
-        html_display = utils.get_user_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
-    else:
-        html_display = utils.get_org_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
-    # 补充一些呈现信息
-    html_display["title_name"] = "Search"
-    html_display["narbar_name"] = "信息搜索"  #
+    
+
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "Search"
+    bar_display["narbar_name"] = "信息搜索"  #
 
     return render(request, "search.html", locals())
 
@@ -1165,20 +1122,11 @@ def modpw(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect("/index/")
-    me = get_person_or_org(request.user, user_type)
+    me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    if user_type == "Person":
-        html_display = utils.get_user_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
-    else:
-        html_display = utils.get_org_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
+    
 
-    # 补充一些呈现信息
-    html_display["title_name"] = "Modify Password"
-    html_display["narbar_name"] = "修改密码"
+    
 
     err_code = 0
     err_message = None
@@ -1224,6 +1172,12 @@ def modpw(request):
             else:
                 err_code = 4
                 err_message = "原始密码不正确"
+    
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    # 补充一些呈现信息
+    bar_display["title_name"] = "Modify Password"
+    bar_display["narbar_name"] = "修改密码"
     return render(request, "modpw.html", locals())
 
 
@@ -1350,20 +1304,10 @@ def transaction_page(request, rid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect("/index/")
-    me = get_person_or_org(request.user, user_type)
+    me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    if user_type == "Person":
-        html_display = utils.get_user_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
-    else:
-        html_display = utils.get_org_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
-
-    # 补充一些呈现信息
-    html_display["title_name"] = "Transaction"
-    html_display["narbar_name"] = "发起转账"
+    
+    
 
     context = dict()
     if request.method == "POST":
@@ -1373,7 +1317,7 @@ def transaction_page(request, rid=None):
     # 同样首先进行合法性检查
     try:
         user = User.objects.get(id=rid)
-        recipient = get_person_or_org(user)
+        recipient = utils.get_person_or_org(user)
     except:
         urls = "/welcome/" + "?warn_code=1&warn_message=遭遇非法收款人!如有问题, 请联系管理员!"
         return redirect(urls)
@@ -1479,6 +1423,12 @@ def transaction_page(request, rid=None):
             html_display["warn_code"] = 1
             html_display["warn_message"] = "出现无法预料的问题, 请联系管理员!"
 
+
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    # 补充一些呈现信息
+    bar_display["title_name"] = "Transaction"
+    bar_display["narbar_name"] = "发起转账"
     return render(request, "transaction_page.html", locals())
 
 
@@ -1518,7 +1468,7 @@ def start_transaction(request):
         return render(request, "msg.html", context)
 
     try:
-        payer = get_person_or_org(request.user)
+        payer = utils.get_person_or_org(request.user)
         with transaction.atomic():
             if payer.YQPoint >= float(amount):
                 payer.YQPoint -= float(amount)
@@ -1715,20 +1665,11 @@ def myYQPoint(request):
             html_display["warn_code"] = context["warn_code"]
             html_display["warn_message"] = context["warn_message"]
 
-    me = get_person_or_org(request.user, user_type)
+    me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    if user_type == "Person":
-        html_display = utils.get_user_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
-    else:
-        html_display = utils.get_org_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
-    # 补充一些呈现信息
-    html_display["title_name"] = "My YQPoint"
-    html_display["narbar_name"] = "我的元气值"  #
-    html_display["help_message"] = local_dict["help_message"]["我的元气值"]
+    
+
+
 
     to_send_set = TransferRecord.objects.filter(
         proposer=request.user, status=TransferRecord.TransferStatus.WAITING
@@ -1772,26 +1713,6 @@ def myYQPoint(request):
     to_list, amount = record2Display(to_set, request.user)
     issued_list, _ = record2Display(issued_set, request.user)
 
-    """
-    to_send_list, to_send_amount = record2Display(record_list=TransferRecord.objects.filter(
-        proposer=request.user, status=TransferRecord.TransferStatus.WAITING),
-        record_type='send')
-    to_recv_list, to_recv_amount = record2Display(record_list=TransferRecord.objects.filter(
-        recipient=request.user, status=TransferRecord.TransferStatus.WAITING),
-        record_type='recv')
-    issued_send_list, _ = record2Display(record_list=TransferRecord.objects.filter(proposer=request.user, status__in=[
-        TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED]),
-        record_type='send')
-    issued_recv_list, _ = record2Display(record_list=TransferRecord.objects.filter(recipient=request.user, status__in=[
-        TransferRecord.TransferStatus.ACCEPTED, TransferRecord.TransferStatus.REFUSED]),
-        record_type='recv')
-    to_list = to_recv_list + to_send_list
-    issued_list = issued_recv_list + issued_send_list
-    # to_list 按照发起时间倒序排列
-    to_list = sorted(to_list, key=lambda x: x['finish_time'], reverse=...)
-    # issued_list 按照处理时间倒序排列
-    """
-
     show_table = {
         "obj": "对象",
         "time": "时间",
@@ -1800,25 +1721,16 @@ def myYQPoint(request):
         "status": "状态",
     }
 
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    # 补充一些呈现信息
+    bar_display["title_name"] = "My YQPoint"
+    bar_display["narbar_name"] = "我的元气值"  #
+    bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
+
     return render(request, "myYQPoint.html", locals())
 
 
-@login_required(redirect_field_name="origin")
-def showActivities(request):
-    # TODO 改一下前端，感觉一条一条的更好看一点？ 以及链接到下面的 viewActivity
-    notes = [
-
-        {"title": "活动名称1", "Date": "11/01/2019",
-            "Address": ["B107A", "B107B"]},
-        {"title": "活动名称2", "Date": "11/02/2019", "Address": ["B108A"]},
-        {"title": "活动名称3", "Date": "11/02/2019", "Address": ["B108A"]},
-        {"title": "活动名称4", "Date": "11/02/2019", "Address": ["B108A"]},
-        {"title": "活动名称5", "Date": "11/02/2019", "Address": ["B108A"]},
-    ]
-
-    person = True  # 人/法人
-
-    return render(request, "notes.html", locals())
 
 
 """
@@ -1857,12 +1769,12 @@ def viewActivity(request, aid=None):
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
     except:
-        return redirect("/showActivities/")
+        return redirect("/welcome/")
 
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
-        return redirect("/showActivities/")
-    me = get_person_or_org(request.user, user_type)
+        return redirect("/welcome/")
+    me = utils.get_person_or_org(request.user, user_type)
 
     # 活动全部基本信息
     title = activity.title
@@ -2143,7 +2055,7 @@ def getActivityInfo(request):
         return render(request, "某个页面.html", locals())
 
     # check organization existance and ownership to activity
-    organization = get_person_or_org(request.user, "organization")
+    organization = utils.get_person_or_org(request.user, "organization")
     if activity.organization_id != organization:
         html_display["warn_code"] = 1
         html_display["warn_message"] = f"{organization}不是活动的组织者"
@@ -2264,7 +2176,7 @@ def checkinActivity(request):
         return render(request, "msg.html", locals())
 
     # check person existance and registration to activity
-    person = get_person_or_org(request.user, "naturalperson")
+    person = utils.get_person_or_org(request.user, "naturalperson")
     try:
         participant = Participant.objects.get(
             activity_id=activity_id, person_id=person.id
@@ -2324,11 +2236,8 @@ def addActivities(request):
         return redirect("/index/")
     if user_type == "Person":
         return redirect("/welcome/")  # test
-    me = get_person_or_org(request.user)
+    me = utils.get_person_or_org(request.user)
     html_display["is_myself"] = True
-    html_display = utils.get_org_left_narbar(
-        me, html_display["is_myself"], html_display
-    )
 
     if request.method == "POST" and request.POST:
 
@@ -2344,7 +2253,7 @@ def addActivities(request):
                 edit = False
                 return render(request, "activity_add.html", locals())
 
-        org = get_person_or_org(request.user, user_type)
+        org = utils.get_person_or_org(request.user, user_type)
         # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
         context = dict()
         context = utils.check_ac_request(request)  # 合法性检查
@@ -2451,6 +2360,11 @@ def addActivities(request):
     # 补充一些实用的信息
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
 
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "新建活动"
+    bar_display["narbar_name"] = "新建活动"
+
     return render(request, "activity_add.html", locals())
 
 
@@ -2459,21 +2373,10 @@ def subscribeActivities(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect("/index/")
-    me = get_person_or_org(request.user, user_type)
+    me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    if user_type == "Person":
-        html_display = utils.get_user_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
-    else:
-        html_display = utils.get_org_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
+    
 
-    # 补充一些呈现信息
-    html_display["title_name"] = "Subscribe"
-    html_display["narbar_name"] = "我的订阅"  #
-    html_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     org_list = list(Organization.objects.all())
     otype_list = list(OrganizationType.objects.all())
@@ -2485,6 +2388,14 @@ def subscribeActivities(request):
 
     ]  # 获取订阅列表
 
+
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    # 补充一些呈现信息
+    bar_display["title_name"] = "Subscribe"
+    bar_display["narbar_name"] = "我的订阅"  #
+    bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
+
     subscribe_url = reverse("save_subscribe_status")
     return render(request, "activity_subscribe.html", locals())
 
@@ -2494,7 +2405,7 @@ def save_subscribe_status(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect("/index/")
-    me = get_person_or_org(request.user, user_type)
+    me = utils.get_person_or_org(request.user, user_type)
     params = json.loads(request.body.decode("utf-8"))
     print(params)
     with transaction.atomic():
@@ -2539,7 +2450,7 @@ def apply_position(request, oid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid or user_type != "Person":
         return redirect("/index/")
-    me = get_person_or_org(request.user, user_type)
+    me = utils.get_person_or_org(request.user, user_type)
     user = User.objects.get(id=int(oid))
     org = Organization.objects.get(organization_id=user)
 
@@ -2585,7 +2496,7 @@ def personnel_mobilization(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid or user_type != "Organization":
         return redirect("/index/")
-    me = get_person_or_org(request.user, user_type)
+    me = utils.get_person_or_org(request.user, user_type)
     html_display = {"is_myself": True}
 
     if request.method == "GET":  # 展示页面
@@ -2748,20 +2659,8 @@ def notifications(request):
         context = notification_status_change(notification_id)
         html_display["warn_code"] = context["warn_code"]
         html_display["warn_message"] = context["warn_message"]
-    me = get_person_or_org(request.user, user_type)
+    me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    if user_type == "Person":
-        html_display = utils.get_user_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
-    else:
-        html_display = utils.get_org_left_narbar(
-            me, html_display["is_myself"], html_display
-        )
-
-    html_display["title_name"] = "Notifications"
-    html_display["narbar_name"] = "通知信箱"
-    html_display["help_message"] = local_dict["help_message"]["通知信箱"]
 
     done_set = Notification.objects.filter(
         receiver=request.user, status=Notification.Status.DONE
@@ -2778,6 +2677,12 @@ def notifications(request):
         list(undone_set.union(undone_set).order_by("-start_time"))
     )
 
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "Notifications"
+    bar_display["narbar_name"] = "通知信箱"
+    bar_display["help_message"] = local_dict["help_message"]["通知信箱"]
+
     return render(request, "notifications.html", locals())
 
 
@@ -2791,13 +2696,10 @@ def addOrganization(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect('/index/')
-    me = get_person_or_org(request.user)
+    me = utils.get_person_or_org(request.user)
     if user_type == "Organization":
         return redirect("/welcome/")  # test
     html_display['is_myself'] = True
-    html_display = utils.get_user_left_narbar(
-        me, html_display["is_myself"], html_display
-    )
 
     edit = 0
     if request.GET.get('neworg_id') is not None and request.GET.get('notifi_id') is not None:
@@ -2955,6 +2857,11 @@ def addOrganization(request):
 
                 return redirect('/notifications/', locals())
 
+
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "新建组织"
+    bar_display["narbar_name"] = "新建组织"
     return render(request, "organization_add.html", locals())
 
 
@@ -2967,12 +2874,10 @@ def auditOrganization(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect('/index/')
-    me = get_person_or_org(request.user)
+    me = utils.get_person_or_org(request.user)
     html_display['is_myself'] = True
     html_display['warn_code'] = 0
-    html_display = utils.get_user_left_narbar(
-        me, html_display["is_myself"], html_display
-    )
+    
     if request.user.username!=local_dict["audit_teacher"]["Neworg"]:
         return redirect('/notifications/', locals())
 
@@ -3065,7 +2970,7 @@ def auditOrganization(request):
                         org.avatar = preorg.avatar
                         org.save()
 
-                        charger = get_person_or_org(preorg.pos)  # 负责人
+                        charger = utils.get_person_or_org(preorg.pos)  # 负责人
                         pos = Position.objects.create(person=charger, org=org)
                         pos.save()
 
@@ -3150,5 +3055,11 @@ def auditOrganization(request):
     html_display['introduction'] = preorg.introduction
     html_display['application'] = preorg.application
     org_avatar_path = utils.get_user_ava(preorg, "Organization")
+
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "新建组织审核"
+    bar_display["narbar_name"] = "新建组织审核"
+
     return render(request, "organization_audit.html", locals())
 
