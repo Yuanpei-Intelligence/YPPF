@@ -3488,23 +3488,20 @@ def auditReimbursement(request):
             if submit == 2:  # 通过
                 org = new_reimb.pos.organization
 
-                #检查是否有足够的元气值
-                with transaction.atomic():
-                    if org.YQPoint<new_reimb.amount:
-                        html_display['warn_code'] = 1
-                        html_display['warn_message'] = "当前组织没有足够的元气值。报销申请无法通过，请联系管理员！"
-                    else:
-                        try:
-                            with transaction.atomic():  # 修改对应组织的元气值
-                                org.YQPoint -= new_reimb.amount
-                                org.save()
-                                new_reimb.status = Reimbursement.ReimburseStatus.CONFIRMED
-                                new_reimb.save()
-                        except:
+                try:
+                    with transaction.atomic():
+                        if org.YQPoint < new_reimb.amount:
                             html_display['warn_code'] = 1
-                            html_display['warn_message'] = "修改元气值失败。报销申请无法通过，请联系管理员！"
-                            return render(request, "reimbursement_comment.html", locals())
-
+                            html_display['warn_message'] = "当前组织没有足够的元气值。报销申请无法通过，请联系管理员！"
+                        else:  # 修改对应组织的元气值
+                            org.YQPoint -= new_reimb.amount
+                            org.save()
+                            new_reimb.status = Reimbursement.ReimburseStatus.CONFIRMED
+                            new_reimb.save()
+                except:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "修改元气值失败。报销申请无法通过，请联系管理员！"
+                    return render(request, "reimbursement_comment.html", locals())
 
                 try:  # 发送给申请者的通过通知或者是没有足够元气值的通知
                     with transaction.atomic():
