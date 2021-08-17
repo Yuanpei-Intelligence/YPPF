@@ -9,8 +9,8 @@ from django.urls import reverse
 from datetime import datetime, timedelta, timezone, time, date
 from django.db import transaction  # 原子化更改数据库
 
-from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User
-from app.wechat_send import base_send_wechat
+from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity
+from app.wechat_send import base_send_wechat, wechatNotifyActivity, publish_activity
 from app.forms import YQPointDistributionForm
 
 # 定时任务生成器
@@ -174,3 +174,97 @@ def YQPoint_Distributions(request):
     else:
         dis_id = int(dis_id)
         return YQPoint_Distribution(request, dis_id)
+
+
+"""
+使用方式：
+
+scheduler.add_job(changeActivityStatus, "date", 
+    id=f"activity_{aid}_{to_status}", run_date, args)
+
+注意：
+    1、当 cur_status 不为 None 时，检查活动是否为给定状态
+    2、一个活动每一个目标状态最多保留一个定时任务
+
+允许的状态变换：
+    2、报名中 -> 等待中
+    3、等待中 -> 进行中
+    4、进行中 -> 已结束
+
+活动变更为进行中时，更新报名成功人员状态
+"""
+def changeActivityStatus(aid, cur_status, to_status):
+    try:
+        with transaction.atomic():
+            activity = Activity.objects.select_for_update().get(id=aid)
+            if cur_status is not None:
+                assert cur_status == activity.status
+
+            if cur_status == Activity.Status.APPLYING:
+                assert to_status == Activity.Status.WAITING
+            elif cur_status == Activity.Status.WAITING:
+                assert to_status == Activity.Status.PROGRESSING
+            elif cur_status == Activity.Status.PROGRESSING:
+                assert to_status == Activity.Status.END
+            else:
+                raise ValueError
+
+            activity.status = to_status
+            activity.save()
+
+    
+            if activity.status == Activity.Status.WAITING:
+                # TODO 元气值抽签
+
+                # 提醒参与者
+                scheduler.add_job(notifyActivity, 'date', id=f"activity_{activity.id}_remind",
+                    run_date=activity.act_start - timedelta(minutes=15), args=[activity.id, 'remind'])
+
+
+            # 活动变更为进行中时，修改参与人参与状态
+            if activity.status == Activity.Status.PROGRESSING:
+                participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
+                for participant in participants:
+                    # TODO: 暂时还没做签到
+                    participant.status = Participant.AttendStatus.ATTENDED
+                    participant.save()
+
+
+    except:
+        # TODO send message to admin to debug
+        pass
+
+"""
+使用方式：
+
+scheduler.add_job(notifyActivityStart, "date", 
+    id=f"activity_{aid}_{start_notification}", run_date, args)
+
+"""
+def notifyActivity(aid, msg_type, msg=None):
+    try:
+        activity = Activity.objects.get(id=activity_id)
+        if msg_type == "newActivity":
+            publish_activity(aid)
+            return
+        elif msg_type == "remind":
+            msg = f"您参与的活动 <{activity.title}> 即将开始。\n"
+            msg += f"开始时间: {activity.act_start}\n"
+            msg += f"活动地点: {activity.location}\n"
+            send_to = 'participants'
+        elif msg_type == 'modification_sub':
+            send_to = 'subscribers'
+        elif msg_type == 'modification_par':
+            send_to = 'participants'
+        elif msg_type == 'modification_all':
+            send_to = 'all'
+        else:
+            raise ValueError
+        wechatNotifyActivity(aid, msg, send_to)
+    except:
+        # TODO send message to admin to debug
+        pass
+
+
+
+

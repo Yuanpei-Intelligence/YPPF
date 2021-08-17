@@ -1,4 +1,4 @@
-from app.models import NaturalPerson, Organization, Position, Notification
+from app.models import NaturalPerson, Organization, Position, Notification, Activity
 from django.dispatch.dispatcher import receiver
 from django.contrib import auth
 from django.conf import settings
@@ -73,149 +73,80 @@ def get_org_left_narbar(org, is_myself, html_display):
 
 # 检查发起活动的request的合法性
 def check_ac_request(request):
-    # oid的获取
+
     context = dict()
-    context['warn_code'] = 0
 
-    try:
-        assert request.POST['edit'] == "True"
+    edit = False
+    if request.POST.get('edit') == "True":
         edit = True
-    except:
-        edit = False
 
-    # signup_start = request.POST["actstar"]
-    act_start = request.POST.get("actstart")  # 活动报名时间
-    act_end = request.POST.get("actend")  # 活动报名结束时间
-    prepare_scheme = request.POST.get("prepare_scheme")
-    context['need_check'] = False
-
-    # edit 不能改预算和报名方式
+    # edit 时，不能修改预算和元气值支付模式，只在创建时考虑
     if not edit:
-        try:
-            budget = float(request.POST["budget"])
-            context['budget'] = budget
-            if context['budget'] > local_dict['thresholds']['activity_budget']:
-                context['need_check'] = True
-        except:
-            budget = local_dict['thresholds']['activity_budget']
-        try:
-            schema = int(request.POST["signschema"])
-        except:
-            schema = 0
-        context['signschema'] = schema
+        context['budget'] = float(request.POST["budget"])
+        context['signschema'] = int(request.POST["signschema"])
+        if context['budget'] > float(local_dict['thresholds']['activity_budget']):
+            context['need_check'] = True
 
-    # 准备时间
-    try:
-        prepare_scheme = int(prepare_scheme)
-        prepare_times = [1, 24, 72, 168]
-        prepare_time = prepare_times[prepare_scheme]
-        context['prepare_scheme'] = prepare_scheme
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "非预期错误，请联系管理员"
-            return context
 
-    # 人数限制
-    try:
-        t = int(request.POST["unlimited_capacity"])
-        capacity = 10000
-    except:
-        capacity = 0
-    try:
-        if capacity == 0:
-            capacity = int(request.POST["maxpeople"])
-        if capacity <= 0:
-            context['warn_code'] = 1
-            context['warn_msg'] = "人数限制应当大于 0。"
-            return context
-        context['capacity'] = capacity
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "人数限制必须是一个整数。"
-            return context
+    # title, introduction, location 创建时不能为空
+    context['aname'] = request.POST.get("aname")
+    context['content'] = request.POST.get("content")
+    context['location'] = request.POST.get("location")
+    if not edit:
+        assert len(context['aname']) > 0
+        assert len(context['content']) > 0
+        assert len(context['location']) > 0
 
-    # 价格
-    try:
-        aprice = float(request.POST["aprice"])
-        assert int(aprice * 10) / 10 == aprice
-        if aprice < 0:
-            context['warn_code'] = 1
-            context['warn_msg'] = "价格应该大于 0。"
-            return context
-        context['aprice'] = aprice
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "价格必须是一个单精度浮点数。"
-            return context
+    # url
+    context['URL'] = request.POST.get("URL")
+
 
     # 时间
-    try:
-        act_start = datetime.strptime(act_start, '%m/%d/%Y %H:%M %p')
-        act_end = datetime.strptime(act_end, '%m/%d/%Y %H:%M %p')
-        now_time = datetime.now()
+    # datetime 这里有 bug，PM 不会把时间加上去，到时候考虑 patch ......
+    act_start = datetime.strptime(request.POST["actstart"], '%m/%d/%Y %H:%M %p')  # 活动报名时间
+    act_end = datetime.strptime(request.POST["actend"], '%m/%d/%Y %H:%M %p')  # 活动报名结束时间
+    now_time = datetime.now()
+    prepare_scheme = int(request.POST["prepare_scheme"])
+    prepare_times = Activity.EndBeforeHours.prepare_times
+    prepare_time = prepare_times[prepare_scheme]
+    signup_start = now_time
+    signup_end = act_start - timedelta(hours=prepare_time)
 
-        # 创建活动即开始报名
-        signup_start = now_time
-        signup_end = act_start - timedelta(hours=prepare_time)
+    context['prepare_scheme'] = int(prepare_scheme)
+    context['signup_start'] = signup_start
+    context['signup_end'] = signup_end
+    context['act_start'] = act_start
+    context['act_end'] = act_end
 
-        # print('now', now_time)
-        # print('end', signup_end)
+    assert check_ac_time(act_start, act_end)
+    assert signup_start <= signup_end
 
-        if signup_start >= signup_end:
-            context['warn_code'] = 1
-            context['warn_msg'] = "没有足够的时间准备活动。"
-            return context
+    # 人数限制
+    capacity = request.POST.get("maxpeople")
+    no_limit = request.POST.get("unlimited_capacity")
+    if no_limit is not None:
+        capacity = 10000
+    if capacity is not None:
+        context['capacity'] = int(capacity)
+        assert context['capacity'] >= 0
 
+    # 价格
+    aprice = request.POST.get("aprice")
+    if aprice is not None:
+        aprice = float(aprice)
+        assert int(aprice * 10) / 10 == aprice
+        assert aprice >= 0
+        context['aprice'] = aprice
 
-        if now_time + timedelta(days=30) < act_start:
-            context['warn_code'] = 1
-            context['warn_msg'] = "活动应该在一个月之内。"
-            return context
-            
-        context['signup_start'] = signup_start
-        context['signup_end'] = signup_end
-        context['act_start'] = act_start
-        context['act_end'] = act_end
-
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "错误的时间格式。"
-            return context
-
-    try:
-        context['URL'] = request.POST["URL"]
-    except:
-        pass
-    if context['warn_code'] != 0:
-        return context
-
-    try: 
-        context['aname'] = str(request.POST["aname"])  # 活动名称
-        context['content'] = str(request.POST["content"])  # 活动内容
-        context['location'] = str(request.POST["location"])  # 活动地点
-        if context.get('aname'):
-            assert len(context['aname']) > 0
-        if context.get('content'):
-            assert len(context['content']) > 0
-        if context.get('location'):
-            assert len(context['location']) > 0
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "请确认已输入活动名称/地点/简介。"
     return context
 
 
 # 时间合法性的检查，检查时间是否在当前时间的一个月以内，并且检查开始的时间是否早于结束的时间，
 def check_ac_time(start_time, end_time):
     try:
-        now_time = datetime.now().strptime("%Y-%m-%d %H:%M:%S")
-        month_late = now_time + datetime.timedelta(days=30)
-        if now_time < start_time < end_time < month_late:
+        now_time = datetime.now()
+        month_late = now_time + timedelta(days=30)
+        if now_time < start_time < month_late:
             return True  # 时间所处范围正确
     except:
         return False

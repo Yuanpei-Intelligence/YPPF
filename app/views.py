@@ -16,6 +16,7 @@ import app.utils as utils
 from app.forms import UserForm
 from app.utils import url_check, check_cross_site
 from app.wechat_send import publish_notification
+from app.scheduler_func import changeActivityStatus, notifyActivity
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from django.shortcuts import render, redirect
@@ -2199,14 +2200,27 @@ def checkinActivity(request):
 发起活动与修改活动页
 ---------------
 页面逻辑：
-使用 GET 方法时，如果存在 edit=True 参数，展示修改活动的界面，否则展示创建活动的界面。
-创建活动的界面，placeholder 为 prompt
-编辑活动的界面，表单的 placeholder 会被修改为活动的旧值。并且添加两个 hidden input，分别提交 edit=True 和活动的 id
-当请求方法为 POST 时，处理请求并修改数据库，如果没有问题，跳转到展示活动信息的界面
-存在 edit=True 参数时，为编辑操作，否则为创建操作
-编辑操作时，input 并不包含 model 所有 field 的数据，只修改其中出现的
-"""
 
+该函数处理 GET, POST 两种请求
+
+1. 使用 GET 方法时，如果存在 edit=True 参数，展示修改活动的界面，否则展示创建活动的界面。
+    a. 创建活动的界面，placeholder 为 prompt
+    b. 编辑活动的界面，表单的 placeholder 会被修改为活动的旧值。并且添加两个 hidden input，分别提交 edit=True 和活动的 id
+
+2. 当请求方法为 POST 时，处理请求并修改数据库，如果没有问题，跳转到展示活动信息的界面
+    a. 页面检查逻辑主要放到前端，出现不合法输入跳转到 welcome 界面
+    b. 存在 edit 和 aid 参数时，为编辑操作。input 并不包含 model 所有 field 的数据，只对其中出现的进行修改
+
+P.S. 
+    编辑活动的页面，直接把 value 设成旧值而不是 placeholder 代码会简单很多。
+    只是觉得 placeholder 好看很多所以没用 value。
+    用 placeholder 在提交表单时会出现很多空值，check 函数需要特判，导致代码很臃肿......
+
+    一种可行的修改方式是表单提交的时候用 JS 把 value 的值全换成 placeholder 内的值。
+    好像也不是很优雅。
+    时间那里的检查比较复杂，表单提交前使用 JS 进行了修改
+
+"""
 
 @login_required(redirect_field_name="origin")
 def addActivities(request):
@@ -2221,128 +2235,156 @@ def addActivities(request):
     html_display = utils.get_org_left_narbar(
         me, html_display["is_myself"], html_display
     )
+    org = get_person_or_org(request.user, user_type)
 
+    # 处理 POST 请求
     if request.method == "POST" and request.POST:
 
+        # 看是否是 edit，如果是做一些检查
         edit = request.POST.get("edit")
         if edit is not None:
             aid = request.POST.get("aid")
             try:
                 aid = int(aid)
                 assert edit == "True"
+                # 只能修改自己的活动
+                activity = Activity.objects.get(aid=aid)
+                assert activity.organization_id == org
             except:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "非预期的 POST 参数，如果非故意操作，请联系管理员。"
-                edit = False
-                return render(request, "activity_add.html", locals())
+                return redirect("/welcome/")
 
-        org = get_person_or_org(request.user, user_type)
-        # 和 app.Activity 数据库交互，需要从前端获取以下表单数据
-        context = dict()
-        context = utils.check_ac_request(request)  # 合法性检查
-        if context["warn_code"] != 0:
-            html_display["warn_code"] = context["warn_code"]
-            html_display["warn_message"] = "创建/修改活动失败。" + context["warn_msg"]
-            # return render(request, "activity_add.html", locals())
-            # 这里不返回，走到下面 GET 的逻辑，如果是修改，还能展示修改页面
+        '''
+        # 合法性检查，如果有问题，重定向到 welcome
+        try:
+            context = utils.check_ac_request(request)  # 合法性检查
+        except:
+            return redirect("/welcome/")
+        '''
+        context = utils.check_ac_request(request)
 
-        else:
-            with transaction.atomic():
-                if edit is not None:
-                    # 编辑的情况下，查表取出 activity
-                    try:
-                        new_act = Activity.objects.select_for_update().get(id=aid)
-                    except:
-                        html_display["warn_code"] = context["warn_code"]
-                        html_display["warn_message"] = "不存在的活动。"
-                        edit = False
-                        return render(request, "activity_add.html", locals())
+        with transaction.atomic():
+            # 编辑的情况下，查表取出 activity，修改并通知
+            if edit is not None:
+                activity = Activity.objects.select_for_update().get(id=aid)
+                # 以下修改不通知
+                if context.get("aname"):
+                    activity.title = context["aname"]
+                if context.get('content'):
+                    activity.introduction = context["content"]
+                if context.get('URL'):
+                    activity.URL = context["URL"]
+                if context.get("capacity"):
+                    activity.capacity = context["capacity"]
+                # 以下修改通知已报名同学
+                if context.get('location'):
+                    if activity.location != context["location"]:
+                        msg = f"您参与的活动 <{activity.title}> 活动地点发生变更: \n"
+                        msg += f"{activity.location} --> {context["location"]}"
+                        activity.location = context["location"]
+                        notifyActivity(activity.id, 'participants')
 
-                else:
-                    # 非编辑，创建一个 activity
-                    new_act = Activity.objects.create(
-                        title=context["aname"], organization_id=org
-                    )
-                    if context["signschema"] == 1:
-                        new_act.bidding = True
-                        new_act.budget = context["budget"]
-                    # 默认状态是报名中，可能需要审核
-                    if not context["need_check"]:
-                        new_act.status = Activity.Status.APPLYING
 
-                # 不一定需要改这些内容，edit 情况下不一定会提交这些内容
-                # 如果没有，就不修改
-                if context.get("content"):
-                    new_act.content = context["content"]
+                # 以下通知已报名同学和关注该组织的同学
+                # TODO 通知 + 修改
                 if context.get("prepare_scheme"):
-                    new_act.endbefore = context["prepare_scheme"]
+                    activity.endbefore = context["prepare_scheme"]
                 if context.get("act_start"):
-                    new_act.start = context["act_start"]
+                    activity.start = context["act_start"]
                 if context.get("act_end"):
-                    new_act.end = context["act_end"]
-                if context.get("URL"):
-                    new_act.URL = context["URL"]
-                if context.get("location"):
-                    new_act.location = context["location"]
+                    activity.end = context["act_end"]
                 # new_act.QRcode = QRcode
                 if context.get("aprice"):
-                    new_act.YQPoint = context["aprice"]
-                if context.get("capacity"):
-                    new_act.capacity = context["capacity"]
-                new_act.save()
-            if context["warn_code"] == 0:
-                return redirect(f"/viewActivity/{new_act.id}")
-            # warn_code==0
-            return render(request, "activity_add.html", locals())
+                    activity.YQPoint = context["aprice"]
 
-    # get 请求
-    edit = request.GET.get("edit")
-    if edit is None or edit != "True":
-        # 非编辑，place holder prompt
-        edit = False
-        title = "活动名称"
-        location = "活动地点"
-        start = "开始时间"
-        end = "结束时间"
-        capacity = "人数限制"
+                activity.save()
 
-        introduction = "(必填)简介会随活动基本信息一同推送至订阅者的微信"
-        url = "(可选)填写活动推送的链接"
-    else:
-        # 编辑状态下，placeholder 为原值
-        edit = True
-        try:
-            aid = request.GET["aid"]
-            aid = int(aid)
-        except:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "非预期的 GET 参数，如果非故意操作，请联系管理员。"
+            # 非编辑，创建一个 activity
+            else:
+                activity = Activity.objects.create(
+                    title=context["aname"], organization_id=org
+                )
+                if context["signschema"] == 1:
+                    activity.bidding = True
+                activity.budget = context["budget"]
+                # 默认状态是报名中，可能需要审核
+                if not context.get("need_check"):
+                    activity.status = Activity.Status.APPLYING
+
+                activity.location = context['location']
+                activity.act_start = context["act_start"]
+                activity.act_end = context["act_end"]
+                activity.aprice = context["aprice"]
+                activity.capacity = context["capacity"]
+                activity.introduction = context["content"]
+                activity.URL = context["URL"]
+                activity.save()
+
+                # 如果活动不需要审核，通知关注者该活动
+                # TODO 确认需要审核的活动，在审核通过时进行通知
+                if activity.status == Activity.Status.APPLYING:
+                    notifyActivity(activity.id, "newActivity")
+
+                # 创建定时任务
+                '''
+                TEST:
+                right_run = datetime.now() + timedelta(seconds=5)
+                scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
+                    run_date=right_run, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
+                '''
+                scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
+                    run_date=context['signup_end'], args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
+                scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
+                    run_date=context['act_start'], args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
+                scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
+                    run_date=context['act_end'], args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
+
+
+        
+        return redirect(f"/viewActivity/{activity.id}")
+
+    # 处理 GET 请求
+    elif request.method == "GET":
+        edit = request.GET.get("edit")
+        if edit is None or edit != "True":
             edit = False
-            return render(request, "activity_add.html", locals())
-        activity = Activity.objects.get(id=aid)
-        title = activity.title
-        budget = activity.budget
-        location = activity.location
-        start = activity.start.strftime("%m/%d/%Y %H:%M %p")
-        end = activity.end.strftime("%m/%d/%Y %H:%M %p")
+            # 非编辑，部分的 placeholder prompt
+            capacity = "人数限制"
+            url = "(可选)填写活动推送的链接"
+        else:
+            # 编辑状态下，填写 placeholder 为旧值
+            edit = True
+            try:
+                aid = request.GET["aid"]
+                aid = int(aid)
+                activity = Activity.objects.get(id=aid)
+                assert activity.organization_id == org
+            except:
+                return redirect("/welcome/")
 
-        introduction = activity.introduction
-        url = activity.URL
-        endbefore = activity.endbefore
-        bidding = activity.bidding
-        amount = activity.YQPoint
-        signscheme = "先到先得"
-        if bidding:
-            signscheme = "投点参与"
-        capacity = activity.capacity
-        no_limit = False
-        if capacity == 10000:
-            no_limit = True
+            title = activity.title
+            budget = activity.budget
+            location = activity.location
+            start = activity.start.strftime("%m/%d/%Y %H:%M %p")
+            end = activity.end.strftime("%m/%d/%Y %H:%M %p")
+            introduction = activity.introduction
+            url = activity.URL
+            endbefore = activity.endbefore
+            bidding = activity.bidding
+            amount = activity.YQPoint
+            signscheme = "先到先得"
+            if bidding:
+                signscheme = "投点参与"
+            capacity = activity.capacity
+            no_limit = False
+            if capacity == 10000:
+                no_limit = True
 
-    # 补充一些实用的信息
-    html_display["today"] = datetime.now().strftime("%Y-%m-%d")
+        html_display["today"] = datetime.now().strftime("%Y-%m-%d")
 
-    return render(request, "activity_add.html", locals())
+        return render(request, "activity_add.html", locals())
+
+    else:
+        return redirect("/welcome/")
 
 
 @login_required(redirect_field_name="origin")

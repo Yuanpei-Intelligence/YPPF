@@ -21,6 +21,7 @@
     <div id="content" class="main-content">
         <div class="container">
             <div class="container">
+                <div class="alert alert-warning  text-center" id="warn_msg" style="display: none;">test</div>
                 {% if html_display.warn_code %}
                 <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
                 {% endif %}
@@ -47,39 +48,58 @@
                                     <!--  BEGIN CONTENT AREA  -->
                                     <div class="widget-content widget-content-area">
 
-                                        <form role="form" method="POST">
+                                        <form role="form" method="POST" onsubmit="return check_inputs()">
                                             <p>活动信息</p>
                                             <div class="form-group">
+                                                {% if edit %}
                                                 <input type="text" id="aname" name="aname" class="form-control"
                                                     aria-label="Default" placeholder="{{title}}">
-                                            </div>
-                                            <div class="form-group">
-                                                <input type="text" id="location" name="location" class="form-control"
-                                                    aria-label="Default" placeholder="{{location}}">
+                                                {% else %}
+                                                <input type="text" id="aname" name="aname" class="form-control"
+                                                    aria-label="Default" placeholder="活动名称" required="required">
+                                                {% endif %}
                                             </div>
                                             <div class="form-group">
                                                 {% if edit %}
-                                                <p class="form-control">
-                                                    {{budget}}
-                                                </p>
+                                                <input type="text" id="location" name="location" class="form-control"
+                                                    aria-label="Default" placeholder="{{location}}">
                                                 {% else %}
-                                                <input type="text" id="budget" name="budget" class="form-control"
-                                                    aria-label="Default" placeholder="活动预算">
+                                                <input type="text" id="location" name="location" class="form-control"
+                                                    aria-label="Default" placeholder="活动地点" required="required">
+                                                {% endif %}
+                                            </div>
+                                            <div class="form-group">
+                                                {% if edit %}
+                                                <input type="number" id="budget" name="budget" class="form-control"
+                                                    aria-label="Default" placeholder="{{budget}}" disabled="True" min="0">
+                                                {% else %}
+                                                <input type="number" id="budget" name="budget" class="form-control"
+                                                    aria-label="Default" placeholder="活动预算" required="required" min="0">
                                                 {% endif %}
                                             </div>
 
 
 
                                             <div class="form-group">
-
+                                                <!-- 时间检查放到后端 -->
                                                 <div class="row">
                                                     <div class="col">
-                                                        <input type='text' class="form-control" id='datetimepicker3'
+                                                        {% if edit %}
+                                                        <input type='datetime' class="form-control" id='datetimepicker3'
                                                             name="actstart" placeholder="{{start}}" />
+                                                        {% else %}
+                                                        <input type='datetime' class="form-control" id='datetimepicker3'
+                                                            name="actstart" placeholder="开始时间" required="required"/>
+                                                        {% endif %}
                                                     </div>
                                                     <div class="col">
+                                                        {% if edit %}
                                                         <input type='text' class="form-control" id='datetimepicker4'
-                                                            name="actend" placeholder="{{end}}" />
+                                                            name="actstart" placeholder="{{end}}" />
+                                                        {% else %}
+                                                        <input type='text' class="form-control" id='datetimepicker4'
+                                                            name="actend" placeholder="结束时间" required="required" />
+                                                        {% endif %}
                                                     </div>
                                                 </div>
                                             </div>
@@ -118,7 +138,7 @@
                                                     </div>
                                                     <input type="number" class="form-control"
                                                         aria-label="Text input with dropdown button" id="aprice"
-                                                        name="aprice" placeholder="{{amount}}" step="0.1"
+                                                        name="aprice" placeholder="{{amount}}" step="0.1" min="0"
                                                         οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')">
                                                     {% else %}
                                                     <div class="input-group-prepend">
@@ -137,7 +157,7 @@
                                                     </div>
                                                     <input type="number" class="form-control"
                                                         aria-label="Text input with dropdown button" id="aprice"
-                                                        name="aprice" placeholder="最小精度为0.1" step="0.1"
+                                                        name="aprice" placeholder="最小精度为0.1" step="0.1" min="0" required="required" 
                                                         οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')">
                                                     {% endif %}
                                                 </div>
@@ -146,8 +166,8 @@
                                             <div class="form-group">
                                                 <div class="row">
                                                     <div class="col">
-                                                        <input type="text" id="maxpeople" name="maxpeople"
-                                                            class="form-control" aria-label="Default"
+                                                        <input type="number" id="maxpeople" name="maxpeople"
+                                                            class="form-control" aria-label="Default" step="1" min="0" 
                                                             placeholder="{{capacity}}">
                                                     </div>
                                                     <div class="col"
@@ -264,8 +284,13 @@
                                             <p>宣传信息</p>
                                             <div class="form-group">
                                                 <label for="aintro">活动简介</label>
+                                                {% if edit %}
                                                 <textarea id="aintro" name="content" class="form-control" rows="3"
-                                                    placeholder="{{introduction}}"></textarea>
+                                                    placeholder="{{introduction}}" onclick="fill_value()"></textarea>
+                                                {% else %}
+                                                <textarea id="aintro" name="content" class="form-control" rows="3"
+                                                    placeholder="(必填)简介会随活动基本信息一同推送至订阅者的微信"></textarea>
+                                                {% endif %}
                                             </div>
                                             <div class="form-group">
                                                 <label for="aintro">活动推送链接(url)</label>
@@ -321,7 +346,7 @@
             document.getElementById('maxpeople').disabled = false;
         } else {
             document.getElementById('maxpeople').disabled = true;
-            document.getElementById('maxpeople').placeholder = "";
+            // document.getElementById('maxpeople').placeholder = "";
         }
     });
     function shows(a) {
@@ -359,13 +384,137 @@
     });
 
 </script>
-{% if edit %}
 
+<!-- 请求为 edit 时执行的脚本 -->
+{% if edit %}
 <script type="text/javascript">
+    /* 检查是否应该显示这个界面 */
+    // 期望的是从 viewApplication 中的 “修改活动” 跳转过来
+    // 不允许直接访问这个 url
+    // 后端也会进行检查，这里其实不是太必要
+    var ref = document.referrer;
+    if (!ref.substr("/viewActivity/{{aid}}"))
+        window.location.href = "/welcome/"
+    /* 基于原有内容，调整页面信息 */
+    // 活动准备时间
     var obj=document.getElementById("inputState");
     obj.value={{endbefore}}
+    // 活动简介，点击自动填充可修改
+    function fill_value() {
+        var intro=document.getElementById("aintro");
+        intro.value = intro.placeholder;
+    }
 </script>
 {% endif %}
+
+<!-- 检查部分 input 参数 -->
+<script type="text/javascript">
+    function check_inputs() {
+        /*   检查开始与结束时间   */
+        var start = document.getElementById('datetimepicker3').value;
+        var end = document.getElementById('datetimepicker4').value;
+        var now = new Date();
+        var prepare_option = document.getElementById('inputState').value;
+        if (start == "")
+            start = document.getElementById('datetimepicker3').placeholder;
+        if (end == "")
+            end = document.getElementById('datetimepicker4').placeholder;
+        start = new Date(start);
+        end = new Date(end);
+        // 结束要比开始晚
+        if (start > end) {
+            document.getElementById('warn_msg').style.display = "";
+            document.getElementById('warn_msg').innerHTML = "结束时间不能早于开始时间。";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        // 一个月之内
+        var in_month = new Date();
+        in_month = new Date(in_month.setDate(in_month.getDate() + 30));
+        if (in_month < start) {
+            document.getElementById('warn_msg').style.display = "";
+            document.getElementById('warn_msg').innerHTML = "活动应在一个月之内申请，晚些再创建吧。";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        // 修改活动，要求在活动前一小时进行。这个限制在后端就做 
+        // 若活动已结束报名，允许缩短准备时间重新开放报名。若活动仍在报名中，准备时间不能长于 ( 开始时间 - 当前时间 )
+        // 所以只需要确保如果修改了开始时间，开始时间 - 准备时间应该晚于当下
+        var applyEnd;
+        if (prepare_option == "0")
+            applyEnd = new Date(start.setHours(start.getHours()-1));
+        else if (prepare_option == "1")
+            applyEnd = new Date(start.setHours(start.getHours()-24));
+        else if (prepare_option == "2")
+            applyEnd = new Date(start.setHours(start.getHours()-72));
+        else if (prepare_option == "3")
+            applyEnd = new Date(start.setHours(start.getHours()-168));
+        else
+            window.location.href = "/welcome/"
+        // 只有修改时才可能相等，不相等说明是创建，或者 edit 成了不同的值
+        if (!(document.getElementById('datetimepicker3').placeholder == document.getElementById('datetimepicker3').value)) {
+            if (applyEnd < now) {
+                alert(applyEnd);
+                alert(now);
+                document.getElementById('warn_msg').style.display = "";
+                document.getElementById('warn_msg').innerHTML = "没有足够的准备时间（报名截止时间早于当前时间）。";
+                document.body.scrollTop = document.documentElement.scrollTop = 0;
+                return false;
+            }
+        }
+
+        /* 非 edit 情况下，检查选择了报名方式 */
+        {% if not edit %}
+        var option = document.getElementById('signschema').value;
+        if (option == "") {
+            document.getElementById('warn_msg').style.display = "";
+            document.getElementById('warn_msg').innerHTML = "尚未选择报名方式。";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        {% endif %}
+
+        /* 检查人数限制 */
+        // 如果编辑状态都可以不选
+        // 如果非编辑状态，没有人数限制，数量至少填一个
+        {% if not edit %}
+        var no_limit = document.getElementById('unlimited_capacity');
+        var max_people = document.getElementById('maxpeople');
+        console.log(max_people.value);
+        if (no_limit.checked == false && max_people.value == "") {
+            document.getElementById('warn_msg').style.display = "";
+            document.getElementById('warn_msg').innerHTML = "请设置报名人数限制。";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        {% endif %}
+
+
+        /* 检查活动简介。非 edit 情况不为空 */
+        var intro = document.getElementById('aintro');
+        {% if not edit %}
+        if (intro.value == "") {
+            document.getElementById('warn_msg').style.display = "";
+            document.getElementById('warn_msg').innerHTML = "活动简介不能为空。";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        {% else %}
+        if (intro.value == intro.placeholder)
+            intro.value = "";
+        {% endif %}
+
+        {% if edit %}
+        /* 方便后端验证的操作，时间不提交空值 */
+        if (document.getElementById('datetimepicker3').value == "")
+            document.getElementById('datetimepicker3').value = document.getElementById('datetimepicker3').placeholder;
+        if (document.getElementById('datetimepicker4').value == "")
+            document.getElementById('datetimepicker4').value = document.getElementById('datetimepicker4').placeholder;
+        {% endif %}
+        return true
+    }
+</script>
+
 {% if no_limit  %}
 <script type="text/javascript">
     document.getElementById('maxpeople').disabled = true;
