@@ -3472,21 +3472,23 @@ def auditReimbursement(request):
                                     html_display['warn_code'], html_display['warn_message']))
             if submit == 2:  # 通过
                 org = new_reimb.pos.organization
+
                 #检查是否有足够的元气值
-                if org.YQPoint<new_reimb.amount:
-                    html_display['warn_code'] = 1
-                    html_display['warn_message'] = "当前组织没有足够的元气值。报销申请无法通过，请联系管理员！"
-                else:
-                    try:
-                        with transaction.atomic():  # 修改对应组织的元气值
-                            org.YQPoint -= new_reimb.amount
-                            org.save()
-                            new_reimb.status = Reimbursement.ReimburseStatus.CONFIRMED
-                            new_reimb.save()
-                    except:
+                with transaction.atomic():
+                    if org.YQPoint<new_reimb.amount:
                         html_display['warn_code'] = 1
-                        html_display['warn_message'] = "修改元气值失败。报销申请无法通过，请联系管理员！"
-                        return render(request, "reimbursement_comment.html", locals())
+                        html_display['warn_message'] = "当前组织没有足够的元气值。报销申请无法通过，请联系管理员！"
+                    else:
+                        try:
+                            with transaction.atomic():  # 修改对应组织的元气值
+                                org.YQPoint -= new_reimb.amount
+                                org.save()
+                                new_reimb.status = Reimbursement.ReimburseStatus.CONFIRMED
+                                new_reimb.save()
+                        except:
+                            html_display['warn_code'] = 1
+                            html_display['warn_message'] = "修改元气值失败。报销申请无法通过，请联系管理员！"
+                            return render(request, "reimbursement_comment.html", locals())
 
 
                 try:  # 发送给申请者的通过通知或者是没有足够元气值的通知
@@ -3517,9 +3519,9 @@ def auditReimbursement(request):
                     return render(request, "reimbursement_comment.html", locals())
 
                 context = notification_status_change(notification_id)  # 修改通知状态
-                # 成功新建组织申请
+                # 成功发送通知
                 html_display['warn_code'] = 2
-                html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
+                html_display['warn_message'] = "通知已成功发送！"
                 if context['warn_code'] != 0:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] += context['warn_message']
@@ -3560,7 +3562,7 @@ def auditReimbursement(request):
                 context = notification_status_change(notification_id)
                 # 成功新建组织申请
                 html_display['warn_code'] = 2
-                html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
+                html_display['warn_message'] = "通知已成功发送！"
                 if context['warn_code'] != 0:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = context['warn_message']
