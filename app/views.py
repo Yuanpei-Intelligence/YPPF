@@ -134,10 +134,8 @@ def index(request):
                     html_display["warn_code"] = 1
                     html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                     return render(request, "welcome_page.html", locals())
-
-                if not arg_origin.startswith('http'):  # 非外部链接，合法性已经检查过
-                    return redirect(arg_origin)  # 不需要加密验证
-
+                if not arg_origin.startswith('http'): # 非外部链接，合法性已经检查过
+                    return redirect(arg_origin)       # 不需要加密验证
                 d = datetime.utcnow()
                 t = mktime(datetime.timetuple(d))
                 timeStamp = str(int(t))
@@ -401,6 +399,7 @@ def stuinfo(request, name=None):
             else "ta"
         )
 
+
         context["avatar_path"] = utils.get_user_ava(person, "Person")
         context["wallpaper_path"] = utils.get_user_wallpaper(person)
 
@@ -495,8 +494,8 @@ def orginfo(request, name=None):
     # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
         Activity.objects.activated()
-            .filter(organization_id=org)
-            .filter(
+        .filter(organization_id=org)
+        .filter(
             status__in=[
                 Activity.Status.REVIEWING,
                 Activity.Status.APPLYING,
@@ -593,8 +592,8 @@ def orginfo(request, name=None):
 
     # 再处理修改信息的回弹
     modpw_status = request.GET.get("modinfo", None)
-
     html_display["modpw_code"] = modpw_status is not None and modpw_status == "success"
+
 
     # 组织活动的信息
 
@@ -644,25 +643,26 @@ def homepage(request):
     html_display["warn_message"] = request.GET.get(
         "warn_message", "")  # 提醒的具体内容
 
+
     # 今天开始进行的活动,且不展示结束的活动。按开始时间由近到远排序
     nowtime = datetime.now()
     today_activity_list = (
         Activity.objects.activated()
-            .filter(Q(start__year=nowtime.year) & Q(start__month=nowtime.month) & Q(start__day=nowtime.day))
-            .filter(
+        .filter(Q( start__year=nowtime.year) & Q( start__month=nowtime.month) & Q( start__day=nowtime.day))
+        .filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
                 Activity.Status.PROGRESSING
             ]
         )
-            .order_by("start")
+        .order_by("start")
     )
     # 今天可以报名的活动。按截止时间由近到远排序
     prepare_times = Activity.EndBeforeHours.prepare_times
     signup_rec = (
         Activity.objects.activated()
-            .filter(status=Activity.Status.APPLYING)
+        .filter(status = Activity.Status.APPLYING)
     )
     today_signup_list = []
     for act in signup_rec:
@@ -670,7 +670,8 @@ def homepage(request):
         dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
         dictmp["act"] = act
         today_signup_list.append(dictmp)
-    today_signup_list.sort(key=lambda x: x["endbefore"])
+    today_signup_list.sort(key=lambda x:x["endbefore"])
+
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
@@ -868,6 +869,7 @@ def get_stu_img(request):
     return JsonResponse({"message": "User not found!"}, status=404)
 
 
+@login_required(redirect_field_name="origin")
 def search(request):
     """
         搜索界面的呈现逻辑
@@ -891,7 +893,6 @@ def search(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect("/logout/")
-
     query = request.GET.get("Query", "")
     if query == "":
         return redirect("/welcome/")
@@ -1163,7 +1164,6 @@ def modpw(request):
             else:
                 err_code = 4
                 err_message = "原始密码不正确"
-
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
@@ -1297,7 +1297,6 @@ def transaction_page(request, rid=None):
         return redirect("/index/")
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-
     context = dict()
     if request.method == "POST":
         # 如果是post方法，从数据中读取rid
@@ -1411,7 +1410,6 @@ def transaction_page(request, rid=None):
         except:
             html_display["warn_code"] = 1
             html_display["warn_message"] = "出现无法预料的问题, 请联系管理员!"
-
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
@@ -1776,9 +1774,9 @@ def viewActivity(request, aid=None):
     apply_deadline = activity.start - \
                      timedelta(hours=prepare_times[activity.endbefore])
     introduction = activity.introduction
-    show_url = True  # 前端使用量
+    show_url = True # 前端使用量
     aURL = activity.URL
-    if aURL is None:
+    if aURL is None :
         show_url = False
     aQRcode = activity.QRcode
     bidding = activity.bidding
@@ -2357,7 +2355,6 @@ def subscribeActivities(request):
         return redirect("/index/")
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-
     org_list = list(Organization.objects.all())
     otype_list = list(OrganizationType.objects.all())
     unsubscribe_list = list(
@@ -2367,7 +2364,6 @@ def subscribeActivities(request):
         org.organization_id.username for org in org_list if org.organization_id.username not in unsubscribe_list
 
     ]  # 获取订阅列表
-
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
@@ -2624,6 +2620,7 @@ def notification_create(
     return notification
 
 
+
 @login_required(redirect_field_name="origin")
 def notifications(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -2686,9 +2683,10 @@ def addOrganization(request):
             id = int(request.GET.get('neworg_id'))  # 新建组织ID
             notification_id = int(request.GET.get('notifi_id'))  # 通知ID
             preorg = NewOrganization.objects.get(id=id)
-            notification = Notification.objects.get(id=notification_id)
-            if preorg.status == NewOrganization.NewOrgStatus.CANCELED or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED \
-                    or notification.status == Notification.Status.DONE:
+
+            notification=Notification.objects.get(id=notification_id)
+            if preorg.status==NewOrganization.NewOrgStatus.CANCELED or preorg.status==NewOrganization.NewOrgStatus.CONFIRMED \
+                    or notification.status==Notification.Status.DONE:
                 if notification.status == Notification.Status.UNDONE:
                     notification_status_change(notification_id)
                 html_display['warn_code'] = 1
@@ -2706,13 +2704,13 @@ def addOrganization(request):
         html_display['pos'] = preorg.pos
         html_display['introduction'] = preorg.introduction
         html_display['application'] = preorg.application
-        org_avatar_path = utils.get_user_ava(preorg, "Organization")
+        org_avatar_path=utils.get_user_ava(preorg, "Organization")
 
     if request.method == "POST" and request.POST:
 
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
             text = str(request.POST.get('comment'))
-            # 检查图片合法性
+            #检查图片合法性
             comment_images = request.FILES.getlist('comment_images')
             if len(comment_images) > 0:
                 for comment_image in comment_images:
@@ -2758,8 +2756,7 @@ def addOrganization(request):
 
                 try:
                     with transaction.atomic():
-                        content = "{oname}{otype_name}新建组织申请！".format(oname=new_org.oname,
-                                                                      otype_name=new_org.otype.otype_name)
+                        content = "{oname}{otype_name}新建组织申请！".format(oname=new_org.oname,otype_name=new_org.otype.otype_name)
                         username = local_dict["audit_teacher"]["Neworg"]  # 在local_json.json新增审批人员信息,暂定为YPadmin
                         Auditor = User.objects.get(username=username)
 
@@ -2770,8 +2767,8 @@ def addOrganization(request):
                                                                URL)
 
                         URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}".format(id=new_org.id,
-                                                                                         nid=new_notification.id)
-                        URL = request.build_absolute_uri(URL)
+                                                                                        nid=new_notification.id)
+                        URL=request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
                 except:
@@ -2798,7 +2795,8 @@ def addOrganization(request):
                         preorg.oname = context['oname']
                         preorg.otype = context['otype']
                         preorg.introduction = context['introduction']
-                        if context['avatar'] is not None:
+
+                        if context['avatar']is not None:
                             preorg.avatar = context['avatar']
                         preorg.application = context['application']
                         preorg.save()
@@ -2810,8 +2808,8 @@ def addOrganization(request):
                 # 发送通知
                 try:
                     with transaction.atomic():
-                        content = "{oname}{otype_name}修改了申请材料，请您继续审核！".format(oname=preorg.oname,
-                                                                              otype_name=preorg.otype.otype_name)
+
+                        content = "{oname}{otype_name}修改了申请材料，请您继续审核！".format(oname=preorg.oname,otype_name=preorg.otype.otype_name)
                         username = local_dict["audit_teacher"]["Neworg"]  # 在local_json.json新增审批人员信息,暂定为YPadmin
                         Auditor = User.objects.get(username=username)
 
@@ -2822,7 +2820,7 @@ def addOrganization(request):
                                                                URL)
 
                         URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}".format(id=preorg.id,
-                                                                                         nid=new_notification.id)
+                                                                                        nid=new_notification.id)
                         URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
@@ -2864,7 +2862,7 @@ def auditOrganization(request):
     me = utils.get_person_or_org(request.user)
     html_display['is_myself'] = True
     html_display['warn_code'] = 0
-    if request.user.username != local_dict["audit_teacher"]["Neworg"]:
+    if request.user.username!=local_dict["audit_teacher"]["Neworg"]:
         return redirect('/notifications/', locals())
 
     try:  # 获取申请信息
@@ -2922,12 +2920,12 @@ def auditOrganization(request):
                         content = "新建组织申请信息需要修改！"
                         receiver = preorg.pos  # 通知接收者
                         URL = ""
-                        new_notification = notification_create(receiver, request.user,
+                        new_notification = notification_create(receiver,request.user,
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
                         URL = "/addOrganization/?neworg_id={id}&notifi_id={nid}".format(id=preorg.id,
-                                                                                        nid=new_notification.id)
+                                                                                       nid=new_notification.id)
                         URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
@@ -2989,7 +2987,7 @@ def auditOrganization(request):
                         content += " 老师给你留言啦："
                         content += text"""
 
-                        notification_create(receiver, request.user, Notification.Type.NEEDREAD,
+                        notification_create(receiver,request.user, Notification.Type.NEEDREAD,
                                             Notification.Title.VERIFY_INFORM, content, URL)
 
                 except:
@@ -3040,7 +3038,7 @@ def auditOrganization(request):
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "系统出现问题，请联系管理员"
                 return redirect('/notifications/', locals())
-    # 以下需要在前端呈现
+    #以下需要在前端呈现
     comments = preorg.comments.order_by('time')  # 加载评论
     html_display['oname'] = preorg.oname
     html_display['otype_name'] = preorg.otype.otype_name
@@ -3064,7 +3062,7 @@ def addReimbursement(request):
         return redirect("/index/")
     if user_type == "Person":
         return redirect("/welcome/")  # test
-    me = get_person_or_org(request.user)
+    me = utils.get_person_or_org(request.user)
     html_display["is_myself"] = True
     html_display = utils.get_org_left_narbar(
         me, html_display["is_myself"], html_display
@@ -3239,7 +3237,7 @@ def auditReimbursement(request):
         return redirect("/index/")
     if user_type == "Organization":
         return redirect("/welcome/")  # test
-    me = get_person_or_org(request.user)
+    me = utils.get_person_or_org(request.user)
     html_display["is_myself"] = True
     html_display = utils.get_user_left_narbar(
         me, html_display["is_myself"], html_display
