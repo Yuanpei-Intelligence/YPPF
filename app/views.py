@@ -3052,7 +3052,7 @@ def auditOrganization(request):
                             .format(username=username, password=password)
                         receiver = preorg.pos  # 通知接收者
                         URL = "/notifications/"
-
+                        URL = request.build_absolute_uri(URL)
                         """# 如果老师另留有评论的话,将评论放在content里
                         comments = preorg.comment
                         text = ""
@@ -3091,7 +3091,7 @@ def auditOrganization(request):
                         content = "很遗憾，新建组织申请未通过！"
                         receiver = preorg.pos  # 通知接收者
                         URL = "/notifications/"
-
+                        URL = request.build_absolute_uri(URL)
                         """# 如果老师另留有评论的话,将评论放在content里
                         comments = preorg.comment
                         text = ""
