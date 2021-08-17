@@ -132,13 +132,15 @@ def index(request):
                 if not check_cross_site(request, arg_origin):
                     html_display["warn_code"] = 1
                     html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
-                    return render(request, "welcome_page.html", locals())
+                    return redirect("/welcome/?warn_code={}&warn_message={}".format(
+                        html_display["warn_code"], html_display["warn_message"]))
+
+                if not arg_origin.startswith('http'): # 非外部链接，合法性已经检查过
+                    return redirect(arg_origin)       # 不需要加密验证
 
                 d = datetime.utcnow()
                 t = mktime(datetime.timetuple(d))
                 timeStamp = str(int(t))
-                print("utc time: ", d)
-                print(timeStamp)
                 en_pw = hash_coder.encode(username + timeStamp)
                 try:
                     userinfo = NaturalPerson.objects.get(person_id=username)
@@ -181,7 +183,8 @@ def index(request):
                 html_display = dict()
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
-                return render(request, "welcome_page.html", locals())
+                return redirect("/welcome/?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]))
 
             d = datetime.utcnow()
             t = mktime(datetime.timetuple(d))
@@ -876,6 +879,7 @@ def get_stu_img(request):
     return JsonResponse({"message": "User not found!"}, status=404)
 
 
+@login_required(redirect_field_name="origin")
 def search(request):
     """
         搜索界面的呈现逻辑
@@ -1361,11 +1365,25 @@ def transaction_page(request, rid=None):
         except:
             html_display["warn_code"] = 1
             html_display["warn_message"] = "转账金额为空或为负数, 请填写合法的金额!"
+
+            # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+            bar_display = utils.get_sidebar_and_navbar(request.user)
+            # 补充一些呈现信息
+            bar_display["title_name"] = "Transaction"
+            bar_display["narbar_name"] = "发起转账"
+
             return render(request, "transaction_page.html", locals())
 
         if int(amount * 10) / 10 != amount:
             html_display["warn_code"] = 1
             html_display["warn_message"] = "转账金额的最大精度为0.1, 请填写合法的金额!"
+
+            # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+            bar_display = utils.get_sidebar_and_navbar(request.user)
+            # 补充一些呈现信息
+            bar_display["title_name"] = "Transaction"
+            bar_display["narbar_name"] = "发起转账"
+
             return render(request, "transaction_page.html", locals())
 
         # 到这里, 参数的合法性检查完成了, 接下来应该是检查发起人的账户, 够钱就转
@@ -1737,6 +1755,7 @@ def myYQPoint(request):
 
 
 
+
 """
 页面逻辑：
 1. 方法为 GET 时，展示一个活动的详情。
@@ -1826,6 +1845,13 @@ def viewActivity(request, aid=None):
     ownership = False
     if not person and org.organization_id == request.user:
         ownership = True
+
+    # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
+    # TODO: 整理好代码结构，在最后统一返回
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    # 补充一些呈现信息
+    bar_display["title_name"] = "活动信息"
+    bar_display["narbar_name"] = "活动信息"
 
     # 处理 get 请求
     if request.method == "GET":
@@ -2243,6 +2269,12 @@ def addActivities(request):
     me = utils.get_person_or_org(request.user)
     html_display["is_myself"] = True
 
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    # TODO: 整理结构，统一在结束时返回render
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "新建活动"
+    bar_display["narbar_name"] = "新建活动"
+
     if request.method == "POST" and request.POST:
 
         edit = request.POST.get("edit")
@@ -2517,6 +2549,12 @@ def personnel_mobilization(request):
         issued_list = me.position_set.activated().filter(issued_status)
         for record in issued_list:
             record.job_name = me.otype.get_name(record.pos)
+
+        # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+        bar_display = utils.get_sidebar_and_navbar(request.user)
+        bar_display["title_name"] = "人事变动"
+        bar_display["narbar_name"] = "人事变动"
+
         return render(request, "personnel_mobilization.html", locals())
 
     elif request.method == "POST":  # 审核申请
@@ -2657,12 +2695,29 @@ def notifications(request):
         return redirect("/index/")
     # 接下来处理POST相关的内容
 
+    if request.method == "GET" and request.GET:  # 外部错误信息
+        try: 
+            warn_code = int(request.GET["warn_code"])
+            assert warn_code in [1, 2]
+            warn_message = str(request.GET.get("warn_message"))
+            html_display["warn_code"] = warn_code
+            html_display["warn_message"] = warn_message
+        except: 
+            html_display["warn_code"] = 1
+            html_display["warn_message"] = "非预期的GET参数"
+
     if request.method == "POST":  # 发生了通知处理的事件
         post_args = request.POST.get("post_button")
-        notification_id = post_args
-        context = notification_status_change(notification_id)
-        html_display["warn_code"] = context["warn_code"]
-        html_display["warn_message"] = context["warn_message"]
+        if 'cancel' in post_args:
+            notification_id = int(post_args.split("+")[0])
+            Notification.objects.get(id=notification_id).delete()
+            html_display["warn_code"] = 2 # success
+            html_display['warn_message'] = '成功删除一条通知！'
+        else:
+            notification_id = post_args
+            context = notification_status_change(notification_id)
+            html_display["warn_code"] = context["warn_code"]
+            html_display["warn_message"] = context["warn_message"]
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
@@ -2694,7 +2749,7 @@ def notifications(request):
 @login_required(redirect_field_name='origin')
 def addOrganization(request):
     """
-    新建组织，首先是由check_neworg_request（）检查输入的合法性，再存储申请信息到NewOrganization的一个实例中
+    新建组织，首先是由check_neworg_request()检查输入的合法性，再存储申请信息到NewOrganization的一个实例中
     之后便是创建给对应审核老师的通知
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -2704,6 +2759,7 @@ def addOrganization(request):
     if user_type == "Organization":
         return redirect("/welcome/")  # test
     html_display['is_myself'] = True
+
 
     edit = 0
     if request.GET.get('neworg_id') is not None and request.GET.get('notifi_id') is not None:
@@ -2719,11 +2775,22 @@ def addOrganization(request):
                     notification_status_change(notification_id)
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "通知已被处理，请不要重复处理。"
-                return render('/notifications/', locals())
+                return redirect('/notifications/' + 
+                    '?warn_code={}&warn_message={}'.format(
+                        html_display['warn_code'], html_display['warn_message']))
         except:
             html_display['warn_code'] = 1
             html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
-            return render('/notifications/', locals())
+            return redirect('/notifications/' + 
+                '?warn_code={}&warn_message={}'.format(
+                    html_display['warn_code'], html_display['warn_message']))
+
+    
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    # TODO: 整理页面返回逻辑，统一返回render的地方
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "新建组织"
+    bar_display["narbar_name"] = "新建组织"
 
     if edit:  # 打开页面信息的准备
         comments = preorg.comments.order_by("time")
@@ -2738,10 +2805,18 @@ def addOrganization(request):
 
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
             text = str(request.POST.get('comment'))
+            #检查图片合法性
+            comment_images = request.FILES.getlist('comment_images')
+            if len(comment_images) > 0:
+                for comment_image in comment_images:
+                    if utils.if_image(comment_image) == False:
+                        html_display['warn_code'] = 1
+                        html_display['warn_message'] = "上传的附件只支持图片格式。"
+                        return render(request, "organization_audit.html", locals())
             try:
+
                 with transaction.atomic():
                     org_comment = Comment.objects.create(CommentBase=preorg, commentator=request.user, text=text)
-                    comment_images = request.FILES.getlist('comment_images')
                     if len(comment_images) > 0:
                         for comment_image in comment_images:
                             CommentPhoto.objects.create(image=comment_image, comment=org_comment)
@@ -2776,7 +2851,8 @@ def addOrganization(request):
 
                 try:
                     with transaction.atomic():
-                        content = "新建组织申请！"
+                        content = "新建组织申请：“{oname}”{otype_name}".format(
+                            oname=new_org.oname, otype_name=new_org.otype.otype_name)
                         username = local_dict["audit_teacher"]["Neworg"]  # 在local_json.json新增审批人员信息,暂定为YPadmin
                         Auditor = User.objects.get(username=username)
 
@@ -2788,7 +2864,7 @@ def addOrganization(request):
 
                         URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}".format(id=new_org.id,
                                                                                         nid=new_notification.id)
-                        URL=request.build_absolute_uri(URL)
+                        URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
                 except:
@@ -2827,7 +2903,8 @@ def addOrganization(request):
                 # 发送通知
                 try:
                     with transaction.atomic():
-                        content = "新建组织申请！"
+                        content = "“{oname}”{otype_name}修改了申请材料，请您继续审核！".format(
+                            oname=preorg.oname, otype_name=preorg.otype.otype_name)
                         username = local_dict["audit_teacher"]["Neworg"]  # 在local_json.json新增审批人员信息,暂定为YPadmin
                         Auditor = User.objects.get(username=username)
 
@@ -2859,7 +2936,9 @@ def addOrganization(request):
                 else:
                     publish_notification(new_notification.id)
 
-                return redirect('/notifications/', locals())
+                return redirect('/notifications/' + 
+                    '?warn_code={}&warn_message={}'.format(
+                        html_display['warn_code'], html_display['warn_message']))
 
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
@@ -2882,8 +2961,8 @@ def auditOrganization(request):
     html_display['is_myself'] = True
     html_display['warn_code'] = 0
     
-    if request.user.username!=local_dict["audit_teacher"]["Neworg"]:
-        return redirect('/notifications/', locals())
+    if request.user.username != local_dict["audit_teacher"]["Neworg"]:
+        return redirect('/notifications/')
 
     try:  # 获取申请信息
         id = int(request.GET.get('neworg_id', -1))  # 新建组织ID
@@ -2891,7 +2970,9 @@ def auditOrganization(request):
         if id == -1 or notification_id == -1:
             html_display['warn_code'] = 1
             html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
-            return redirect('/notifications/', locals())
+            return redirect('/notifications/' +
+                '?warn_code={}&warn_message={}'.format(
+                    html_display['warn_code'], html_display['warn_message']))
         preorg = NewOrganization.objects.get(id=id)
         notification = Notification.objects.get(id=notification_id)
         if preorg.status == NewOrganization.NewOrgStatus.CANCELED or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED \
@@ -2900,15 +2981,34 @@ def auditOrganization(request):
                 notification_status_change(notification_id)
             html_display['warn_code'] = 1
             html_display['warn_message'] = "通知已被处理，请不要重复处理。"
-            return render('/notifications/', locals())
+            return redirect('/notifications/' + 
+                '?warn_code={}&warn_message={}'.format(
+                    html_display['warn_code'], html_display['warn_message']))
     except:
         html_display['warn_code'] = 1
         html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
-        return redirect('/notifications/', locals())
+        return redirect('/notifications/' + 
+            '?warn_code={}&warn_message={}'.format(
+                html_display['warn_code'], html_display['warn_message']))
+
+
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    # TODO: 整理页面返回逻辑，统一返回render的地方
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "新建组织审核"
+    bar_display["narbar_name"] = "新建组织审核"
 
     if request.method == "POST" and request.POST:
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
             text = str(request.POST.get('comment'))
+            # 检查图片合法性
+            comment_images = request.FILES.getlist('comment_images')
+            if len(comment_images) > 0:
+                for comment_image in comment_images:
+                    if utils.if_image(comment_image) == False:
+                        html_display['warn_code'] = 1
+                        html_display['warn_message'] = "上传的附件只支持图片格式。"
+                        return render(request, "organization_audit.html", locals())
             try:
                 with transaction.atomic():
                     org_comment = Comment.objects.create(CommentBase=preorg, commentator=request.user, text=text)
@@ -2932,7 +3032,7 @@ def auditOrganization(request):
                         content = "新建组织申请信息需要修改！"
                         receiver = preorg.pos  # 通知接收者
                         URL = ""
-                        new_notification = notification_create(request.user, receiver,
+                        new_notification = notification_create(receiver, request.user,
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
@@ -2952,7 +3052,9 @@ def auditOrganization(request):
                     publish_notification(new_notification)
                 else:
                     publish_notification(new_notification.id)
-                return redirect('/notifications/', locals())
+                return redirect('/notifications/' +
+                    '?warn_code={}&warn_message={}'.format(
+                        html_display['warn_code'], html_display['warn_message']))
             if submit == 2:  # 通过
 
                 try:
@@ -3000,7 +3102,7 @@ def auditOrganization(request):
                         content += " 老师给你留言啦："
                         content += text"""
 
-                        notification_create(request.user, receiver, Notification.Type.NEEDREAD,
+                        notification_create(receiver, request.user, Notification.Type.NEEDREAD,
                                             Notification.Title.VERIFY_INFORM, content, URL)
 
                 except:
@@ -3014,7 +3116,9 @@ def auditOrganization(request):
                 html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
                 if context['warn_code'] != 0:
                     html_display['warn_message'] = context['warn_message']
-                return redirect('/notifications/', locals())
+                return redirect('/notifications/' +
+                    '?warn_code={}&warn_message={}'.format(
+                        html_display['warn_code'], html_display['warn_message']))
             elif submit == 3:  # 拒绝
                 try:  # 发送给申请者的拒绝通知
                     with transaction.atomic():
@@ -3032,7 +3136,7 @@ def auditOrganization(request):
                         content += " 老师给你留言啦："
                         content += text"""
 
-                        notification_create(request.user, receiver, Notification.Type.NEEDREAD,
+                        notification_create(receiver, request.user, Notification.Type.NEEDREAD,
                                             Notification.Title.VERIFY_INFORM, content, URL)
 
                 except:
@@ -3046,11 +3150,15 @@ def auditOrganization(request):
                 html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
                 if context['warn_code'] != 0:
                     html_display['warn_message'] = context['warn_message']
-                return redirect('/notifications/', locals())
+                return redirect('/notifications/' +
+                    '?warn_code={}&warn_message={}'.format(
+                        html_display['warn_code'], html_display['warn_message']))
             else:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "系统出现问题，请联系管理员"
-                return redirect('/notifications/', locals())
+                return redirect('/notifications/' +
+                    '?warn_code={}&warn_message={}'.format(
+                        html_display['warn_code'], html_display['warn_message']))
     #以下需要在前端呈现
     comments = preorg.comments.order_by('time')  # 加载评论
     html_display['oname'] = preorg.oname
