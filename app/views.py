@@ -873,6 +873,7 @@ def get_stu_img(request):
     return JsonResponse({"message": "User not found!"}, status=404)
 
 
+@login_required(redirect_field_name="origin")
 def search(request):
     """
         搜索界面的呈现逻辑
