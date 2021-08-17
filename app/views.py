@@ -475,7 +475,12 @@ def orginfo(request, name=None):
             org = Organization.objects.activated().get(organization_id=user)
         except:
             return redirect("/welcome/")
-        return redirect("/orginfo/" + org.oname)
+
+        full_path = request.get_full_path()
+        append_url = "" if (
+            "?" not in full_path) else "?" + full_path.split("?")[1]
+            
+        return redirect("/orginfo/" + org.oname + append_url)
 
     try:  # 指定名字访问组织账号的，可以是自然人也可以是法人。在html里要注意区分！
 
@@ -691,13 +696,16 @@ def account_setting(request):
     # 在这个页面 默认回归为自己的左边栏
     html_display["is_myself"] = True
     user = request.user
+    me = utils.get_person_or_org(user)
+    former_img = utils.get_user_ava(me, user_type)
+
+
     if user_type == "Person":
         info = NaturalPerson.objects.filter(person_id=user)
         userinfo = info.values()[0]
 
         useroj = NaturalPerson.objects.get(person_id=user)
 
-        former_img = html_display["avatar_path"]
         #print(json.loads(request.body.decode("utf-8")))
         if request.method == "POST" and request.POST:
 
@@ -744,19 +752,16 @@ def account_setting(request):
                 useroj.avatar = ava
             useroj.save()
             avatar_path = settings.MEDIA_URL + str(ava)
-            if expr == False:
-                return render(request, "person_account_setting.html", locals())
-
-            else:
+            if expr == True:
                 upload_state = True
                 return redirect("/stuinfo/?modinfo=success")
+            # else: 没有更新 从下面统一返回
     else:
         info = Organization.objects.filter(organization_id=user)
         userinfo = info.values()[0]
 
         useroj = Organization.objects.get(organization_id=user)
 
-        former_img = html_display["avatar_path"]
 
         if request.method == "POST" and request.POST:
 
@@ -777,11 +782,10 @@ def account_setting(request):
                 useroj.avatar = ava
             useroj.save()
             avatar_path = settings.MEDIA_URL + str(ava)
-            if expr == False:
-                return render(request, "org_account_setting.html", locals())
-            else:
+            if expr == True:
                 upload_state = True
                 return redirect("/orginfo/?modinfo=success")
+            # else: 没有修改信息 统一从下面返回
 
     # 补充网页呈现所需信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
