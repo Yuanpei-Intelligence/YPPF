@@ -9,15 +9,6 @@
 {% endblock %}
 
 {% block mainpage %}
-<div class="main-container" id="container">
-
-    <div class="overlay"></div>
-    <div class="search-overlay"></div>
-{% if html_display.user_type == "Person" %}
-    {% include 'user_left_narbar.html' %}
-    {% else %}
-    {% include 'org_left_narbar.html' %}
-    {% endif %}
 <div id="content" class="main-content" >
 {% if isFirst %}
 {% if err_code == 0 %}
@@ -114,7 +105,7 @@
         </center>
     </div>
 </div>
-</div>
+
 {% endblock %}
 
 {% block add_js_file %}
