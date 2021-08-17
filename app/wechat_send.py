@@ -12,6 +12,9 @@ from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 # 日期与定时任务
 from datetime import datetime, timedelta
 
+# 获取对象等操作
+from app.utils import get_person_or_org
+
 # 全局设置
 # 是否启用定时任务，请最好仅在服务器启用，如果不启用，后面的多个设置也会随之变化
 USE_SCHEDULER = True
@@ -85,14 +88,14 @@ def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=T
         "secret": wechat_coder.encode(message)
     }
     if card:
+        if url is not None and url[:1] in ['', '/']:    # 空或者相对路径，变为绝对路径
+            url = THIS_URL + url
         post_data["card"] = True
         if default:
             post_data["url"] = url if url is not None else DEFAULT_URL
             post_data["btntxt"] = btntxt if btntxt is not None else "详情"
         else:
             if url is not None:
-                if url[:1] in ['', '/']:    # 空或者相对路径，变为绝对路径
-                    url = THIS_URL + url
                 post_data["url"] = url
             if btntxt is not None:
                 post_data["btntxt"] = btntxt
@@ -133,7 +136,6 @@ def publish_notification(notification_or_id):
     except:
         print(f"未找到id为{notification_or_id}的通知")
         return False
-    from app.views import get_person_or_org     # 获取名称
     sender = get_person_or_org(notification.sender) # 也可能是组织
     send_time = notification.start_time
     timeformat = "%Y年%m月%d日 %H:%M"   
