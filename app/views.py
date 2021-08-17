@@ -2691,11 +2691,11 @@ def addOrganization(request):
                     notification_status_change(notification_id)
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "通知已被处理，请不要重复处理。"
-                return render('/notifications/', locals())
+                return redirect('/notifications/', locals())
         except:
             html_display['warn_code'] = 1
             html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
-            return render('/notifications/', locals())
+            return redirect('/notifications/')
 
     if edit:  # 打开页面信息的准备
         comments = preorg.comments.order_by("time")
@@ -2863,7 +2863,7 @@ def auditOrganization(request):
     html_display['is_myself'] = True
     html_display['warn_code'] = 0
     if request.user.username!=local_dict["audit_teacher"]["Neworg"]:
-        return redirect('/notifications/', locals())
+        return redirect('/notifications/')
 
     try:  # 获取申请信息
         id = int(request.GET.get('neworg_id', -1))  # 新建组织ID
@@ -2871,7 +2871,7 @@ def auditOrganization(request):
         if id == -1 or notification_id == -1:
             html_display['warn_code'] = 1
             html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
-            return redirect('/notifications/', locals())
+            return redirect('/notifications/')
         preorg = NewOrganization.objects.get(id=id)
         notification = Notification.objects.get(id=notification_id)
         if preorg.status == NewOrganization.NewOrgStatus.CANCELED or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED \
@@ -2880,11 +2880,11 @@ def auditOrganization(request):
                 notification_status_change(notification_id)
             html_display['warn_code'] = 1
             html_display['warn_message'] = "通知已被处理，请不要重复处理。"
-            return render('/notifications/', locals())
+            return redirect('/notifications/')
     except:
         html_display['warn_code'] = 1
         html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
-        return redirect('/notifications/', locals())
+        return redirect('/notifications/')
 
     if request.method == "POST" and request.POST:
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
@@ -2900,7 +2900,6 @@ def auditOrganization(request):
             try:
                 with transaction.atomic():
                     org_comment = Comment.objects.create(CommentBase=preorg, commentator=request.user, text=text)
-                    comment_images = request.FILES.getlist('comment_images')
                     if len(comment_images) > 0:
                         for comment_image in comment_images:
                             CommentPhoto.objects.create(image=comment_image, comment=org_comment)
@@ -3086,11 +3085,11 @@ def addReimbursement(request):
                 notification_status_change(notification_id)
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "该条通知已处理，请勿重复处理。"
-                return redirect('/notifications/', locals())
+                return redirect('/notifications/')
         except:
             html_display['warn_code'] = 1
             html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
-            return redirect('/notifications/', locals())
+            return redirect('/notifications/')
     if edit:  # 第一次打开页面信息的准备工作,以下均为前端展示需要
         comments = pre_reimb.comments.order_by("time")
         html_display['activity'] = pre_reimb.activity
@@ -3101,10 +3100,17 @@ def addReimbursement(request):
 
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
             text = str(request.POST.get('comment'))
+            # 检查图片合法性
+            comment_images = request.FILES.getlist('comment_images')
+            if len(comment_images) > 0:
+                for comment_image in comment_images:
+                    if utils.if_image(comment_image) == False:
+                        html_display['warn_code'] = 1
+                        html_display['warn_message'] = "上传的附件只支持图片格式。"
+                        return render(request, "organization_audit.html", locals())
             try:
                 with transaction.atomic():
                     reim_comment = Comment.objects.create(commentsaction=pre_reimb, commentator=request.user, text=text)
-                    comment_images = request.FILES.getlist('comment_images')
                     if len(comment_images) > 0:
                         for comment_image in comment_images:
                             CommentPhoto.objects.create(image=comment_image, comment=reim_comment)
@@ -3141,6 +3147,11 @@ def addReimbursement(request):
 
                 try:  # 创建报销信息
                     images = request.FILES.getlist('images')
+                    for image in images:
+                        if utils.if_image(image) == False:
+                            html_display['warn_code'] = 1
+                            html_display['warn_message'] = "上传的附件只支持图片格式。"
+                            return render(request, "reimbursement_add.html", locals())
                     with transaction.atomic():
                         new_reimb = Reimbursement.objects.create(activity=reimb_act, amount=reimb_YQP, pos=request.user)
                         new_reimb.message = message
@@ -3174,6 +3185,10 @@ def addReimbursement(request):
                     html_display['warn_message'] = "创建通知失败。请检查输入or联系管理员"
                     return render(request, "reimbursement_add.html", locals())
 
+                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
+                    publish_notification(new_notification)
+                else:
+                    publish_notification(new_notification.id)
                 # 成功发送报销申请
                 html_display['warn_code'] = 2
                 html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
@@ -3220,9 +3235,18 @@ def addReimbursement(request):
                 # 成功修改报销申请
                 if context['warn_code'] == 2:
                     html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
+                #发送微信消息
+                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
+                    publish_notification(new_notification)
+                else:
+                    publish_notification(new_notification.id)
                 return redirect('/notifications/', locals())
 
         return render(request, "reimbursement_add.html", locals())
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "新建报销审核"
+    bar_display["narbar_name"] = "新建报销审核"
     return render(request, "reimbursement_add.html", locals())
 
 
@@ -3243,7 +3267,8 @@ def auditReimbursement(request):
         me, html_display["is_myself"], html_display
     )
     # TODO 检查是否为正确的审核老师
-
+    if request.user.username!=local_dict["audit_teacher"]["Funds"]:
+        return redirect('/notifications/')
     try:  # 获取申请信息
         id = int(request.GET.get('reimb_id', -1))  # 报销信息的ID
         new_reimb = Reimbursement.objects.get(id=id)
@@ -3270,10 +3295,17 @@ def auditReimbursement(request):
 
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
             text = str(request.POST.get('comment'))
+            # 检查图片合法性
+            comment_images = request.FILES.getlist('comment_images')
+            if len(comment_images) > 0:
+                for comment_image in comment_images:
+                    if utils.if_image(comment_image) == False:
+                        html_display['warn_code'] = 1
+                        html_display['warn_message'] = "上传的附件只支持图片格式。"
+                        return render(request, "organization_audit.html", locals())
             try:
                 with transaction.atomic():
                     reim_comment = Comment.objects.create(commentsaction=new_reimb, commentator=request.user, text=text)
-                    comment_images = request.FILES.getlist('comment_images')
                     if len(comment_images) > 0:
                         for comment_image in comment_images:
                             CommentPhoto.objects.create(image=comment_image, comment=reim_comment)
@@ -3306,6 +3338,11 @@ def auditReimbursement(request):
                     html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
                     return render(request, "reimbursement_comment.html", locals())
                 context = notification_status_change(notification_id)
+                #发送微信消息
+                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
+                    publish_notification(new_notification)
+                else:
+                    publish_notification(new_notification.id)
                 html_display['warn_code'] = context['warn_code']
                 html_display['warn_message'] = context['warn_message']
                 return redirect('/notifications/', locals())
@@ -3397,5 +3434,8 @@ def auditReimbursement(request):
     html_display['amount'] = new_reimb.amount  # 报销金额
     html_display['message'] = new_reimb.message  # 备注信息
     html_display['oname'] = new_reimb.pos.organization.oname  # 组织姓名
-
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "报销审核"
+    bar_display["narbar_name"] = "报销审核"
     return render(request, "reimbursement_comment.html", locals())
