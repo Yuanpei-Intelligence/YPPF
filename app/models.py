@@ -576,7 +576,7 @@ class Notification(models.Model):
     relate_TransferRecord = models.ForeignKey(
         TransferRecord, related_name="transfer_notification", on_delete=models.CASCADE, blank=True, null=True, )
 
-class CommentSaction(models.Model):
+class CommentBase(models.Model):
     class Meta:
         verbose_name = "带有评论"
         verbose_name_plural = verbose_name
@@ -589,7 +589,7 @@ class Comment(models.Model):
         ordering = ["-time"]
 
     commentator = models.ForeignKey(User, on_delete=models.CASCADE)
-    commentsaction=models.ForeignKey(CommentSaction,related_name="comments",on_delete=models.CASCADE)
+    commentsaction=models.ForeignKey(CommentBase,related_name="comments",on_delete=models.CASCADE)
     text = models.TextField("文字内容", default="", blank=True)
     time = models.DateTimeField("评论时间", auto_now_add=True)
 
@@ -606,7 +606,26 @@ class CommentPhoto(models.Model):
         return  settings.MEDIA_URL+str(self.image)
 
 
-class Reimbursement(CommentSaction):
+class NewOrganization(CommentBase):
+    class Meta:
+        verbose_name = "申请建立组织的信息"
+        verbose_name_plural = verbose_name
+
+    oname = models.CharField(max_length=32, unique=True)
+    otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
+    introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
+    application = models.TextField("申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~")
+    avatar = models.ImageField(upload_to=f"avatar/", verbose_name=u'组织头像', null=True, blank=True)
+    pos = models.ForeignKey(User, on_delete=models.CASCADE)
+    class NewOrgStatus(models.IntegerChoices):  # 表示申请组织的请求的状态
+        PENDING = (0, "待确认")
+        CONFIRMED = (1, "主管老师已同意")  # 审过同意
+        TOBEMODIFIED = (2, "需要修改")
+        CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
+    status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
+
+
+class Reimbursement(CommentBase):
     class Meta:
         verbose_name = "报销信息"
         verbose_name_plural = verbose_name
@@ -630,5 +649,4 @@ class Reimbursement(CommentSaction):
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
     time = models.DateTimeField("发起时间", auto_now_add=True)
     modify_time = models.DateTimeField("上次修改时间", auto_now_add=True)
-
 
