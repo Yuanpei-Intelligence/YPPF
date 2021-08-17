@@ -3266,7 +3266,7 @@ def auditReimbursement(request):
     html_display = utils.get_user_left_narbar(
         me, html_display["is_myself"], html_display
     )
-    # TODO 检查是否为正确的审核老师
+    #检查是否为正确的审核老师
     if request.user.username!=local_dict["audit_teacher"]["Funds"]:
         return redirect('/notifications/')
     try:  # 获取申请信息
