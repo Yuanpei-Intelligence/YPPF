@@ -44,7 +44,6 @@ urlpatterns = [
     # ),
     path("applyActivity/<str:aid>", views.applyActivity, name="applyActivity"),
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
-    path("showActivities/", views.showActivities, name="showActivities"),
     path("viewActivity/<str:aid>", views.viewActivity, name="viewActivity"),
     path("getActivityInfo/", views.getActivityInfo, name="getActivityInfo"),
     path("checkinActivity/", views.checkinActivity, name="checkinActivity"),

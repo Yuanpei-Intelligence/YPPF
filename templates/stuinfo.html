@@ -1,13 +1,6 @@
 {% extends "base.html" %}
 
 {% block mainpage %}
-<!--  BEGIN MAIN CONTAINER  -->
-<div class="main-container" id="container">
-
-    <div class="overlay"></div>
-    <div class="search-overlay"></div>
-
-    {% include 'user_left_narbar.html' %}
 
     <!--  BEGIN CONTENT AREA  -->
     <div class="container-fluid p-0" id="content">
@@ -349,9 +342,11 @@
 
     </div>
     <!--  END CONTENT AREA  -->
-</div>
-<!-- END MAIN CONTAINER -->
 
+
+{% endblock %}
+
+{% block add_js_file %}
 <script type="text/javascript">
     function toggle_same(type, labelName, display) {
         const cards = document.querySelectorAll(`.custom-${type}-card`);
@@ -371,5 +366,4 @@
         }
     }
 </script>
-
 {% endblock %}
