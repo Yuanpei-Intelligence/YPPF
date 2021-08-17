@@ -2700,7 +2700,7 @@ def notifications(request):
     if request.method == "POST":  # 发生了通知处理的事件
         post_args = request.POST.get("post_button")
         if 'cancel' in post_args:
-            notification_id = post_args.split("+")[0]
+            notification_id = int(post_args.split("+")[0])
             Notification.objects.get(id=notification_id).delete()
             html_display["warn_code"] = 2 # success
             html_display['warn_message'] = '成功删除一条通知！'
