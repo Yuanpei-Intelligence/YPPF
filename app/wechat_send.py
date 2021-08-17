@@ -167,7 +167,10 @@ def publish_notification(notification_or_id):
             notification.content
         ))
         if notification.URL:
-            message += f"\n\n<a href=\"{notification.URL}\">阅读原文</a>"
+            url = notification.URL
+            if url[0] == '/':                   # 相对路径变为绝对路径
+                url = THIS_URL + url
+            message += f"\n\n<a href=\"{url}\">阅读原文</a>"
         else:
             message += f"\n\n<a href=\"{DEFAULT_URL}\">点击查看详情</a>"
     receiver = get_person_or_org(notification.receiver)
@@ -245,7 +248,10 @@ def publish_activity(activity_or_id, only_activated=False):
             content
         ))
         if activity.URL:
-            message += f"\n\n<a href=\"{activity.URL}\">阅读原文</a>"
+            url = activity.URL
+            if url[0] == '/':               # 相对路径变为绝对路径
+                url = THIS_URL + url
+            message += f"\n\n<a href=\"{url}\">阅读原文</a>"
         else:
             message += f"\n\n<a href=\"{DEFAULT_URL}\">点击查看详情</a>"
     for i in range(0, num, ACTIVITY_BATCH):
