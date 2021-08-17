@@ -3,198 +3,224 @@
 
 {% block mainpage %}
 
-<div class="main-container" id="container">
 
-    <div class="overlay"></div>
-    <div class="search-overlay"></div>
-
-    {% if html_display.user_type == "Person" %}
-    {% include 'user_left_narbar.html' %}
-    {% else %}
-    {% include 'org_left_narbar.html' %}
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    {% if html_display.warn_code == 1 %}
+    <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+    {% elif html_display.warn_code == 2 %}
+    <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
     {% endif %}
-
-    <!--  BEGIN CONTENT AREA  -->
-    <div id="content" class="main-content">
-        {% if html_display.warn_code == 1 %}
-        <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
-        {% elif html_display.warn_code == 2 %}
-        <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
-        {% endif %}
+    <div class="container">
         <div class="container">
-            <div class="container">
 
 
 
-                <div class="row layout-top-spacing">
+            <div class="row layout-top-spacing">
 
-                    <div class="col-lg-12 col-12 layout-top-spacing">
-                        <div class="bio layout-spacing ">
-                            <div class="widget-content widget-content-area">
-                                <h3>通知信箱</h3>
-                                <p>欢迎来到你的通知信箱！这里汇集了您在<strong>Yuanpei Profile</strong>中「已处理」和「未处理」的事务通知~</p>
-                                <p>对于「知晓类」通知，点击「知道了」按钮，就可以将通知放入「已处理」信箱中啦！当然，你也可以将已读消息设置为未读。</p>
-                                <p>对于需要您手动处理的事务，您可以通过点击<u>标题链接</u>到达相应页面进行事务的处理，处理完毕后，该通知会自动进入「已处理」信箱！</p>
-                                </br>
-                                <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
-                                    <li class="nav-item">
-                                        <a class="nav-link active" href="#home" data-toggle="tab">
-                                            <h5><i class="fa fa-envelope-o"></i> 待处理</h5>
-                                        </a>
-                                    </li>
+                <div class="col-lg-12 col-12 layout-top-spacing">
+                    <div class="bio layout-spacing ">
+                        <div class="widget-content widget-content-area">
+                            <h3>通知信箱</h3>
+                            <p>欢迎来到你的通知信箱！这里汇集了您在<strong>Yuanpei Profile</strong>中「已处理」和「未处理」的事务通知~</p>
+                            <p>对于「知晓类」通知，点击「知道了」按钮，就可以将通知放入「已处理」信箱中啦！当然，你也可以将已读消息设置为未读。</p>
+                            <p>对于需要您手动处理的事务，您可以通过点击<u>标题链接</u>到达相应页面进行事务的处理，处理完毕后，该通知会自动进入「已处理」信箱！</p>
+                            </br>
+                            <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                <li class="nav-item">
+                                    <a class="nav-link active" href="#home" data-toggle="tab">
+                                        <h5><i class="fa fa-envelope-o"></i> 待处理</h5>
+                                    </a>
+                                </li>
 
-                                    <li class="nav-item">
-                                        <a class="nav-link" href="#done" data-toggle="tab">
-                                            <h5><i class="fa fa-envelope-o"></i> 已处理</h5>
-                                        </a>
-                                    </li>
+                                <li class="nav-item">
+                                    <a class="nav-link" href="#done" data-toggle="tab">
+                                        <h5><i class="fa fa-envelope-o"></i> 已处理</h5>
+                                    </a>
+                                </li>
 
-                                </ul>
+                            </ul>
 
-                                <div id="myTabContent" class="tab-content">
-                                    <div class="tab-pane fade in active show" id="home">
-                                        {% if undone_list|length == 0 %}
-                                        <p></p>
-                                        <p style="text-align: center;">您的信箱很干净！没有要处理的信息.</p>
-                                        {% else %}
-                                        <div class="bio-skill-box">
-                                            <div class="row">
-                                                {% for note in undone_list %}
-                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                            <div id="myTabContent" class="tab-content">
+                                <div class="tab-pane fade in active show" id="home">
+                                    {% if undone_list|length == 0 %}
+                                    <br />
+                                    <p></p>
+                                    <p style="text-align: center;">您的信箱很干净！没有要处理的信息.</p>
+                                    <br />
+                                    {% else %}
+                                    <div class="bio-skill-box">
+                                        <div class="row">
+                                            {% for note in undone_list %}
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
 
-                                                    <div class=" b-skills">
+                                                <div class=" b-skills">
 
 
-                                                        <div class="d-flex justify-content-between">
-                                                            <div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h5>
+                                                                <a href={{note.URL}}><u>{{note.title}}</u></a><br />
+                                                            </h5>
+                                                        </div>
+                                                        <div>
+                                                            {% if note.type == "知晓类" %}
+                                                            <form method="POST">
                                                                 <h5>
-                                                                    <a href={{note.URL}}><u>{{note.title}}</u></a><br />
+                                                                    <button class="btn btn-primary" type="submit"
+                                                                        name='post_button' value="{{note.id}}"
+                                                                        onclick="window.location='/notifications/'">知道啦</button>
                                                                 </h5>
-                                                            </div>
-                                                            <div>
-                                                                {% if note.type == "知晓类" %}
+                                                            </form>
+                                                            {% else %}
+                                                            <h5>
+                                                                <a href="#" class="btn btn-primary" tabindex="-1"
+                                                                    role="button"
+                                                                    onclick="window.location='{{note.URL}}'">去处理</a>
+                                                            </h5>
+                                                            {% endif %}
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                                    class="fa fa-calendar-o"></i>
+                                                                收信时间：{{note.start_time}}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                                    class="fa fa-address-book"></i> {{note.sender}}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    <p style="color: rgb(66, 67, 68);"><i class="fa fa-envelope-o"></i>
+                                                        {{note.content}}</p>
+                                                </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+
+                                    </div>
+
+                                    {% endif %}
+                                </div>
+                                <div class="tab-pane fade" id="done">
+                                    {% if done_list|length == 0 %}
+                                    <br />
+                                    <p></p>
+                                    <p style="text-align: center;">没有已处理的消息记录.</p>
+                                    <br />
+                                    {% else %}
+                                    <div class="bio-skill-box">
+                                        <div class="row">
+                                            {% for note in done_list %}
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+
+                                                <div class=" b-skills">
+
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h5>
+                                                                <a href='{{note.URL}}'><u>{{note.title}}</u></a>
+                                                            </h5>
+                                                        </div>
+                                                        <div>
+                                                            {% if note.type == "知晓类" %}
+                                                            <div class="btn-group">
                                                                 <form method="POST">
-                                                                    <h5>
-                                                                        <button class="btn btn-primary" type="submit"
-                                                                            name='post_button' value="{{note.id}}"
-                                                                            onclick="window.location='/notifications/'">知道啦</button>
-                                                                    </h5>
+                                                                    <div style="margin-left: 8px; ">
+                                                                        <div class="btn-group">
+                                                                            <button type="button"
+                                                                                class="btn btn-light dropdown-toggle dropdown-toggle-split"
+                                                                                data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                                                                操作
+                                                                            </button>
+                                                                            <div class="dropdown-menu">
+                                                                                <button class="dropdown-item"
+                                                                                    type="submit" name='post_button'
+                                                                                    value="{{note.id}}"
+                                                                                    onclick="return confirm('你确定将这条消息移入「未读信箱」?')">标记为未读</button>
+                                                                                <button class="dropdown-item"
+                                                                                    type="submit" name='post_button'
+                                                                                    value="{{note.id}}+cancel"
+                                                                                    onclick="return confirm('你确定要删除这条消息?')">删除</button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
                                                                 </form>
-                                                                {% else %}
-                                                                <h5>
-                                                                    <a href="#" class="btn btn-primary disabled"
-                                                                        tabindex="-1" role="button"
-                                                                        aria-disabled="true">未处理</a>
-                                                                </h5>
-                                                                {% endif %}
                                                             </div>
-                                                        </div>
-                                                        <div class="d-flex justify-content-between">
-                                                            <div>
-                                                                <p style="color: rgb(66, 67, 68);"><i
-                                                                        class="fa fa-calendar-o"></i>
-                                                                    收信时间：{{note.start_time}}</p>
+                                                            {% else %}
+                                                            <div class="btn-group">
+                                                                <form method="POST">
+                                                                    <div style="margin-left: 8px; ">
+                                                                        <div class="btn-group btn-group-sm">
+                                                                            <button type="button"
+                                                                                class="btn btn-light dropdown-toggle dropdown-toggle-split"
+                                                                                data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                                                                操作
+                                                                            </button>
+                                                                            <div class="dropdown-menu">
+                                                                                <button class="dropdown-item"
+                                                                                    type="submit" name='post_button'
+                                                                                    value="{{note.id}}+cancel"
+                                                                                    onclick="return confirm('你确定要删除这条消息?')">删除</button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </form>
                                                             </div>
-                                                            <div>
-                                                                <p style="color: rgb(66, 67, 68);"><i class="fa fa-address-book"></i> {{note.sender}}</p>
-                                                            </div>
-                                                        </div>
-
-                                                        <p style="color: rgb(66, 67, 68);"><i
-                                                                class="fa fa-envelope-o"></i>
-                                                            {{note.content}}</p>
-                                                    </div>
-                                                </div>
-                                                {% endfor %}
-                                            </div>
-
-                                        </div>
-
-                                        {% endif %}
-                                    </div>
-                                    <div class="tab-pane fade" id="done">
-                                        {% if done_list|length == 0 %}
-                                        <p></p>
-                                        <p style="text-align: center;">没有已处理的消息记录.</p>
-                                        {% else %}
-                                        <div class="bio-skill-box">
-                                            <div class="row">
-                                                {% for note in done_list %}
-                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
-
-                                                    <div class=" b-skills">
-
-                                                        <div class="d-flex justify-content-between">
-                                                            <div>
-                                                                <h5>
-                                                                    <a href='{{note.URL}}'><u>{{note.title}}</u></a>
-                                                                </h5>
-                                                            </div>
-                                                            <div>
-                                                                <h5>{{note.status}}</h5>
-                                                            </div>
-                                                        </div>
-                                                        <div class="d-flex justify-content-between">
-                                                            <div>
-                                                                <p style="color: rgb(66, 67, 68);"><i
-                                                                        class="fa fa-calendar-o"></i>
-                                                                    收信时间：{{note.start_time}}</p>
-                                                            </div>
-                                                            <div>
-                                                                <p style="color: rgb(66, 67, 68);"><i class="fa fa-address-book"></i> {{note.sender}}</p>
-                                                            </div>
-
-                                                        </div>
-                                                        <div class="d-flex justify-content-between">
-                                                            <div>
-                                                                <p style="color: rgb(66, 67, 68);"><i
-                                                                        class="fa fa-envelope-o"></i>
-                                                                    {{note.content}}</p>
-                                                            </div>
-                                                        </div>
-                                                        <div class="d-flex justify-content-between">
-                                                            <div>
-                                                                <p style="color: rgb(66, 67, 68);"><i class='fa fa-check'></i>
-                                                                    处理时间：{{note.finish_time}}</p>
-                                                            </div>
-                                                            <div>
-                                                                {% if note.type == "知晓类" %}
-                                                                <div class="btn-group">
-                                                                    <form method="POST">
-                                                                        <button class="btn btn-light" type='submit'
-                                                                            name='post_button' value="{{note.id}}">
-                                                                            我忘了
-                                                                        </button>
-                                                                    </form>
-                                                                </div>
-                                                                {% endif %}
-                                                            </div>
+                                                            {% endif %}
                                                         </div>
                                                     </div>
-
-
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                                    class="fa fa-calendar-o"></i>
+                                                                收信时间：{{note.start_time}}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                                    class="fa fa-envelope-o"></i>
+                                                                {{note.content}}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                                    class='fa fa-check'></i>
+                                                                处理时间：{{note.finish_time}}</p>
+                                                        </div>
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                                    class="fa fa-address-book"></i> {{note.sender}}</p>
+                                                        </div>
+                                                    </div>
                                                 </div>
-                                                {% endfor %}
-                                            </div>
 
+
+                                            </div>
+                                            {% endfor %}
                                         </div>
-                                        {% endif %}
+
                                     </div>
+                                    {% endif %}
                                 </div>
                             </div>
                         </div>
-
-
                     </div>
+
 
                 </div>
 
             </div>
+
         </div>
     </div>
-    <!--  END CONTENT AREA  -->
 </div>
-<!-- END MAIN CONTAINER -->
+<!--  END CONTENT AREA  -->
+
 
 <script>
     $('.nav-tabs').on('shown.bs.tab', 'a', function (e) {

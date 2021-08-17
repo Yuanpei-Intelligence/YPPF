@@ -8,13 +8,7 @@
     <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
     <!--  END CUSTOM STYLE FILE  -->
 
-<!--  BEGIN MAIN CONTAINER  -->
-<div class="main-container" id="container">
 
-    <div class="overlay"></div>
-    <div class="search-overlay"></div>
-
-    {% include 'user_left_narbar.html' %}
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
@@ -193,8 +187,6 @@
     </div>
 
 
-</div>
-
 {% endblock %}
 
 {% block load_js_file %}
@@ -209,6 +201,9 @@
         $(document).ready(function() {
             App.init();
         });
+    </script>
+    <script>
+        $(function () { $("[data-toggle='tooltip']").tooltip(); });
     </script>
     <script src={% static "assets/js/custom.js" %}></script>
     <!-- END GLOBAL MANDATORY SCRIPTS -->

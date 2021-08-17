@@ -7,8 +7,7 @@
     <nav id="sidebar">
         <div class="shadow-bottom"></div>
         <ul class="list-unstyled menu-categories ps ps--active-y"  id="accordionExample">
-            {% if html_display.is_myself %} 
-
+            
             <li class="menu">
                 <a href="#dashboard1" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
@@ -21,21 +20,21 @@
                 </a>
                 <ul class="collapse submenu list-unstyled" id="dashboard1" data-parent="#accordionExample">
                     <li>
-                        <a href="{{html_display.underground_url}}"> 地下室预约 </a>
+                        <a href="{{bar_display.underground_url}}"> 地下室预约 </a>
                     </li>
                     <li>
                         <a href="/myYQPoint/"> 我的元气值 </a>
                     </li>
                     <li>
-                        <a href="#"> 我的活动 </a>
+                        <a href="/subscribeActivities/"> 我的订阅 </a>
                     </li>
                     <li>
-                        <a href="/subscribeActivities/"> 我的订阅 </a>
+                        <a href="/addOrganization/"> 建立新组织 </a>
                     </li>
                 </ul>
             </li>
 
-            {% if html_display.my_org_len %}
+            {% if bar_display.my_org_len %}
             <li class="menu">
                 <a href="#dashboard2" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
@@ -47,7 +46,7 @@
                     </div>
                 </a>
                 <ul class="collapse submenu list-unstyled" id="dashboard2" data-parent="#accordionExample">
-                    {% for control_org in html_display.my_org_list %}
+                    {% for control_org in bar_display.my_org_list %}
                         <li>
                             <a href="/request_login_org/{{control_org.oname}}"> {{control_org.oname}}</a>
                         </li>
@@ -90,9 +89,6 @@
                         <a href="apps_todoList.html"> Todo List </a>
                     </li>                            
                     <li>
-                        <a href="apps_notes.html"> Notes </a>
-                    </li>
-                    <li>
                         <a href="apps_scrumboard.html">Scrumboard</a>
                     </li>
                     <li>
@@ -110,10 +106,10 @@
 
             <!--
             <li class="menu">
-                <a href="{{html_display.profile_url}}" aria-expanded="false" class="dropdown-toggle">
+                <a href="{{bar_display.profile_url}}" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-                        <span>{{html_display.profile_name}}</span>
+                        <span>{{bar_display.profile_name}}</span>
                     </div>
                 </a>
             </li>
@@ -123,7 +119,7 @@
                 <a href="/logout/" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-                        <span>登出账户</span>
+                        <span>注销</span>
                     </div>
                 </a>
             </li>
@@ -137,26 +133,7 @@
                 </a>
             </li>
             -->
-            {% else %}
-            <li class="menu">
-                <a href="/transPage/{{html_display.userinfo.person_id_id}}" aria-expanded="false" class="dropdown-toggle">
-                    <div class="">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-                        <span>发起转账</span>
-                    </div>
-                </a>
-            </li>
-
-            <li class="menu">
-                <a href="/welcome/" aria-expanded="false" class="dropdown-toggle">
-                    <div class="">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-book"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
-                        <span>Ta的活动</span>
-                    </div>
-                </a>
-            </li>
-
-            {% endif %}
+            
 
         </ul>
         

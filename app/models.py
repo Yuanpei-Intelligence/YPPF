@@ -5,7 +5,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from datetime import datetime, timedelta
 from boottest import local_dict
-
+from django.conf import settings
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
@@ -108,6 +108,7 @@ class NaturalPerson(models.Model):
         # info.append(self.email if (self.show_email) else unpublished)
         # info.append(self.telephone if (self.show_tel) else unpublished)
         # info.append(self.stu_dorm if (self.show_dorm) else unpublished)
+
         info.append(
             "在校"
             if self.status == NaturalPerson.GraduateStatus.UNDERGRADUATED
@@ -160,7 +161,7 @@ class Semester(models.TextChoices):
     ANNUAL = "Fall+Spring"
 
     def get(
-        semester,
+            semester,
     ):  # read a string indicating the semester, return the correspoding status
         if semester == "Fall":
             return Semester.FALL
@@ -224,26 +225,26 @@ class PositionManager(models.Manager):
             elif apply_type == "WITHDRAW":
                 application = (
                     self.activated()
-                    .select_for_update()
-                    .get(person=person, org=org, status=Position.Status.INSERVICE)
+                        .select_for_update()
+                        .get(person=person, org=org, status=Position.Status.INSERVICE)
                 )
                 assert (
-                    application.apply_type != Position.ApplyType.WITHDRAW
+                        application.apply_type != Position.ApplyType.WITHDRAW
                 ), warn_duplicate_message
                 application.apply_type = Position.ApplyType.WITHDRAW
             elif apply_type == "TRANSFER":
                 application = (
                     self.activated()
-                    .select_for_update()
-                    .get(person=person, org=org, status=Position.Status.INSERVICE)
+                        .select_for_update()
+                        .get(person=person, org=org, status=Position.Status.INSERVICE)
                 )
                 assert (
-                    application.apply_type != Position.ApplyType.TRANSFER
+                        application.apply_type != Position.ApplyType.TRANSFER
                 ), warn_duplicate_message
                 application.apply_type = Position.ApplyType.TRANSFER
                 application.apply_pos = int(apply_pos)
                 assert (
-                    application.apply_pos < application.pos
+                        application.apply_pos < application.pos
                 ), "TRANSFER must apply for higher position!"
             else:
                 raise ValueError(
@@ -332,6 +333,7 @@ class Course(models.Model):
         verbose_name_plural = verbose_name
 
     cid = models.OneToOneField(to=Organization, on_delete=models.CASCADE)
+
     # 课程周期
     year = models.IntegerField(
         "当前学年", default=int(datetime.now().strftime("%Y")))
@@ -361,6 +363,7 @@ class Activity(models.Model):
         verbose_name_plural = verbose_name
 
     """
+
     Jul 30晚, Activity类经历了较大的更新, 请阅读群里[活动发起逻辑]文档，看一下活动发起需要用到的变量
     (1) 删除是否允许改变价格, 直接允许价格变动, 取消政策见文档【不允许投点的价格变动】
     (2) 取消活动报名时间的填写, 改为选择在活动结束前多久结束报名，选项见EndBefore
@@ -378,14 +381,17 @@ class Activity(models.Model):
         # to_field="organization_id", 删除掉to_field, 保持纯净对象操作
         on_delete=models.CASCADE,
     )
+
     year = models.IntegerField("活动年份", default=int(
         local_dict["semester_data"]["year"]))
+
     semester = models.CharField(
         "活动学期",
         choices=Semester.choices,
         max_length=15,
         default=Semester.get(local_dict["semester_data"]["semester"]),
     )
+
     publish_time = models.DateTimeField("信息发布时间", auto_now_add=True)  # 可以为空
 
     # 删除显示报名时间, 保留一个字段表示报名截止于活动开始前多久：1h / 1d / 3d / 7d
@@ -397,7 +403,6 @@ class Activity(models.Model):
 
     class EndBeforeHours:
         prepare_times = [1, 24, 72, 168]
-
 
     endbefore = models.SmallIntegerField(
         "报名截止于", choices=EndBefore.choices, default=EndBefore.oneday
@@ -517,7 +522,7 @@ class YQPointDistribute(models.Model):
     per_max_dis_YQP = models.FloatField("自然人发放元气值上限")
     org_max_dis_YQP = models.FloatField("组织发放元气值上限")
     # 个人和组织所能平分的元气值比例
-    # 发放时，从学院剩余元气值中，抽取向自然人分发的比例，平分给元气值低于上限的自然人；组织同理
+    # 发放时，从学院剩余元气值中，抽取向自然人分发的数量，平分给元气值低于上限的自然人；组织同理
     per_YQP = models.FloatField("自然人获得的元气值", default=0)
     org_YQP = models.FloatField("组织获得的元气值", default=0)
 
@@ -569,4 +574,83 @@ class Notification(models.Model):
     typename = models.SmallIntegerField(choices=Type.choices, default=0)
     URL = models.URLField("相关网址", null=True, blank=True)
     relate_TransferRecord = models.ForeignKey(
-        TransferRecord, related_name="transfer_notification", on_delete=models.CASCADE, blank=True, null=True,)
+        TransferRecord, related_name="transfer_notification", on_delete=models.CASCADE, blank=True, null=True, )
+
+
+class CommentBase(models.Model):
+    class Meta:
+        verbose_name = "带有评论"
+        verbose_name_plural = verbose_name
+    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的组织信息
+
+class Comment(models.Model):
+    class Meta:
+        verbose_name = "评论"
+        verbose_name_plural = verbose_name
+        ordering = ["-time"]
+
+    commentator = models.ForeignKey(User, on_delete=models.CASCADE)
+    CommentBase=models.ForeignKey(CommentBase,related_name="comments",on_delete=models.CASCADE)
+    text = models.TextField("文字内容", default="", blank=True)
+    time = models.DateTimeField("评论时间", auto_now_add=True)
+
+
+class CommentPhoto(models.Model):
+    class Meta:
+        verbose_name = "评论图片"
+        verbose_name_plural = verbose_name
+
+    image = models.ImageField(upload_to=f"comment/%Y/%m/", verbose_name=u'评论图片', null=True, blank=True)
+    comment = models.ForeignKey(Comment, related_name="comment_photos",on_delete=models.CASCADE)
+    # 路径无法加上相应图片
+    def imagepath(self):
+        return  settings.MEDIA_URL+str(self.image)
+
+class NewOrganization(CommentBase):
+    class Meta:
+        verbose_name = "申请建立组织的信息"
+        verbose_name_plural = verbose_name
+
+    oname = models.CharField(max_length=32, unique=True)
+    otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
+    introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
+    application = models.TextField("申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~")
+    avatar = models.ImageField(upload_to=f"avatar/", verbose_name=u'组织头像', null=True, blank=True)
+    pos = models.ForeignKey(User, on_delete=models.CASCADE)
+    class NewOrgStatus(models.IntegerChoices):  # 表示申请组织的请求的状态
+        PENDING = (0, "待确认")
+        CONFIRMED = (1, "主管老师已同意")  # 审过同意
+        TOBEMODIFIED = (2, "需要修改")
+        CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
+    status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
+
+
+class Reimbursement(CommentBase):
+    class Meta:
+        verbose_name = "报销信息"
+        verbose_name_plural = verbose_name
+        ordering = ["-modify_time", "-time"]
+
+    class ReimburseStatus(models.IntegerChoices):
+        WAITING = (0, "待确认")
+
+        CONFIRM1 = (1, "主管老师已确认")
+        CONFIRM2 = (2, "财务老师已确认")
+
+        CONFIRMED = (3, "已通过")
+        # 如果需要更多审核，每个审核的确认状态应该是2的幂
+        # 根据最新要求，最终不以线上为准，不再设置转账状态
+        CANCELED = (4, "已取消")
+
+    activity = models.ForeignKey(Activity,related_name="reimbursement",on_delete=models.CASCADE)
+    amount = models.FloatField("报销金额", default=0)
+    message = models.TextField("备注信息", default="", blank=True)
+    pos = models.ForeignKey(User, on_delete=models.CASCADE)
+    status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
+    time = models.DateTimeField("发起时间", auto_now_add=True)
+    modify_time = models.DateTimeField("上次修改时间", auto_now_add=True)
+
+
+
+
+

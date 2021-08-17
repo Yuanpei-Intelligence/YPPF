@@ -15,18 +15,7 @@
 {% endblock %}
 
 {% block mainpage %}
-<!--  BEGIN MAIN CONTAINER  -->
 
-<div class="main-container" id="container">
-
-    <div class="overlay"></div>
-    <div class="search-overlay"></div>
-
-    {% if html_display.user_type == "Person" %}
-    {% include 'user_left_narbar.html' %}
-    {% else %}
-    {% include 'org_left_narbar.html' %}
-    {% endif %}
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
@@ -235,7 +224,7 @@
                                             {% for act in activity_list %}
                                             <tr>
                                                 <td>
-                                                    <u><a href="viewActivity">{{act}}</a></u>
+                                                    <u><a href="/viewActivity/{{act.id}}">{{act}}</a></u>
                                                     {% comment %} 这个页面还没做好，可能要留下来修改 {% endcomment %}
                                                 </td>
                                                 <td>
@@ -269,9 +258,7 @@
         </div>
     </div>
     <!--  END CONTENT AREA  -->
-</div>
 
-<!-- END MAIN CONTAINER -->
 {% endblock %}
 
 
