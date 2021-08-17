@@ -593,7 +593,7 @@ class Comment(models.Model):
         ordering = ["-time"]
 
     commentator = models.ForeignKey(User, on_delete=models.CASCADE)
-    CommentBase = models.ForeignKey(CommentBase, related_name="comments", on_delete=models.CASCADE)
+    commentbase = models.ForeignKey(CommentBase, related_name="comments", on_delete=models.CASCADE)
     text = models.TextField("文字内容", default="", blank=True)
     time = models.DateTimeField("评论时间", auto_now_add=True)
 

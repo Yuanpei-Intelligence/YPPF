@@ -45,7 +45,6 @@ migrations/
 test_data/
 comment/
 avatar/
-comment/
 # Python #
 __pycache__/
 *.py[cod]
