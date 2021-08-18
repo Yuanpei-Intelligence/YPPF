@@ -619,7 +619,7 @@ def orginfo(request, name=None):
         show_subscribe = True
         subscribe_flag = True  # 默认在订阅列表中
 
-        if organization_name in me.subscribe_list.values_list("oname", flat=True):
+        if organization_name in me.unsubscribe_list.values_list("oname", flat=True):
             subscribe_flag = False
 
     return render(request, "orginfo.html", locals())
@@ -2389,7 +2389,7 @@ def subscribeActivities(request):
     org_list = list(Organization.objects.all())
     otype_list = list(OrganizationType.objects.all())
     unsubscribe_list = list(
-        me.subscribe_list.values_list("organization_id__username", flat=True)
+        me.unsubscribe_list.values_list("organization_id__username", flat=True)
     )  # 获取不订阅列表（数据库里的是不订阅列表）
     subscribe_list = [
         org.organization_id.username for org in org_list if org.organization_id.username not in unsubscribe_list
@@ -2417,27 +2417,27 @@ def save_subscribe_status(request):
     with transaction.atomic():
         if "id" in params.keys():
             if params["status"]:
-                me.subscribe_list.remove(
+                me.unsubscribe_list.remove(
                     Organization.objects.get(
                         organization_id__username=params["id"])
                 )
             else:
-                me.subscribe_list.add(
+                me.unsubscribe_list.add(
                     Organization.objects.get(
                         organization_id__username=params["id"])
                 )
         elif "otype" in params.keys():
-            unsubscribed_list = me.subscribe_list.filter(
+            unsubscribed_list = me.unsubscribe_list.filter(
                 otype__otype_id=params["otype"]
             )
             org_list = Organization.objects.filter(
                 otype__otype_id=params['otype'])
             if params["status"]:  # 表示要订阅
                 for org in unsubscribed_list:
-                    me.subscribe_list.remove(org)
+                    me.unsubscribe_list.remove(org)
             else:  # 不订阅
                 for org in org_list:
-                    me.subscribe_list.add(org)
+                    me.unsubscribe_list.add(org)
         me.save()
 
     return JsonResponse({"success": True})
@@ -2737,7 +2737,8 @@ def addOrganization(request):
             id = int(request.GET.get('neworg_id'))  # 新建组织ID
             notification_id = int(request.GET.get('notifi_id'))  # 通知ID
             en_pw = str(request.GET.get('enpw'))
-            if hash_coder.verify(str(id) + str(notification_id), en_pw) == False:
+            if hash_coder.verify(str(id) + '新建组织' + str(notification_id),
+                                en_pw) == False:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "该URL被篡改，请输入正确的URL地址"
                 return redirect('/notifications/' +
@@ -2833,15 +2834,16 @@ def addOrganization(request):
                             oname=new_org.oname, otype_name=new_org.otype.otype_name)
                         username = local_dict["audit_teacher"]["Neworg"]  # 在local_json.json新增审批人员信息,暂定为YPadmin
                         Auditor = User.objects.get(username=username)
-
                         URL = ""
+
                         new_notification = notification_create(Auditor, request.user,
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
-                        en_pw = hash_coder.encode(str(new_org.id) + str(new_notification.id))
-                        URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(id=new_org.id,
-                                                                                        nid=new_notification.id,en_pw=en_pw)
+                        en_pw = hash_coder.encode(str(new_org.id) + '新建组织' + 
+                                                    str(new_notification.id))
+                        URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(
+                            id=new_org.id, nid=new_notification.id,en_pw=en_pw)
                         URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
@@ -2886,15 +2888,16 @@ def addOrganization(request):
                             oname=preorg.oname, otype_name=preorg.otype.otype_name)
                         username = local_dict["audit_teacher"]["Neworg"]  # 在local_json.json新增审批人员信息,暂定为YPadmin
                         Auditor = User.objects.get(username=username)
-
                         URL = ""
+
                         new_notification = notification_create(Auditor, request.user,
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
-                        en_pw = hash_coder.encode(str(preorg.id) + str(new_notification.id))
-                        URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(id=preorg.id,
-                                                                                        nid=new_notification.id,en_pw=en_pw)
+                        en_pw = hash_coder.encode(str(preorg.id) + '新建组织' + 
+                                                    str(new_notification.id))
+                        URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(
+                            id=preorg.id, nid=new_notification.id, en_pw=en_pw)
                         URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
@@ -2953,7 +2956,8 @@ def auditOrganization(request):
                 '?warn_code={}&warn_message={}'.format(
                     html_display['warn_code'], html_display['warn_message']))
         en_pw = str(request.GET.get('enpw'))
-        if hash_coder.verify(str(id) + str(notification_id), en_pw) == False:
+        if hash_coder.verify(str(id) + '新建组织' + str(notification_id),
+                            en_pw) == False:
             html_display['warn_code'] = 1
             html_display['warn_message'] = "该URL被篡改，请输入正确的URL地址"
             return redirect('/notifications/' +
@@ -3021,9 +3025,10 @@ def auditOrganization(request):
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
-                        en_pw = hash_coder.encode(str(preorg.id) + str(new_notification.id))
-                        URL = "/addOrganization/?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(id=preorg.id,
-                                                                                       nid=new_notification.id,en_pw=en_pw)
+                        en_pw = hash_coder.encode(str(preorg.id) + '新建组织' +
+                                                    str(new_notification.id))
+                        URL = "/addOrganization/?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(
+                            id=preorg.id, nid=new_notification.id, en_pw=en_pw)
                         URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
@@ -3170,6 +3175,8 @@ def auditOrganization(request):
     bar_display["navbar_name"] = "新建组织审核"
 
     return render(request, "organization_audit.html", locals())
+
+
 # 新建或修改报销信息
 @login_required(redirect_field_name='origin')
 def addReimbursement(request):
@@ -3186,7 +3193,16 @@ def addReimbursement(request):
     html_display['warn_code'] = 0
 
     edit = 0
-    activities = Activity.objects.activated().filter(status=Activity.Status.END)  # 本学期已结束的活动    TODO 且未报销？
+    reimbursed_act_ids = Reimbursement.objects.all(
+        ).exclude(status=Reimbursement.ReimburseStatus.CANCELED     # 未取消报销的
+        # ).filter(status=Reimbursement.ReimburseStatus.CONFIRMED     # 已报销完的
+        ).values_list('activity_id', flat=True)
+    activities = Activity.objects.activated(    # 本学期的
+        ).filter(organization_id=me             # 本部门组织的
+        ).filter(status=Activity.Status.END     # 已结束的
+        ).exclude(id__in=reimbursed_act_ids     # 还没有报销的
+        )                                       # 这种写法是为了方便随时取消某个条件
+
     """unreim_acts=Activity.objects.activated().exclude(reimbursement__status=Reimbursement.ReimburseStatus.CANCELED)
     #unreim_acts=Reimbursement.objects.exclude(status=Reimbursement.ReimburseStatus.CANCELED).activity
     activities=activities.difference(unreim_acts)"""
@@ -3205,7 +3221,8 @@ def addReimbursement(request):
             id = int(request.GET.get('reimb_id'))  # 报销信息的ID
             notification_id = int(request.GET.get('notifi_id'))  # 通知ID
             en_pw = str(request.GET.get('enpw'))
-            if hash_coder.verify(str(id)+str(notification_id),en_pw)==False:
+            if hash_coder.verify(str(id) + '新建报销' + str(notification_id),
+                                en_pw) == False:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "该URL被篡改，请输入正确的URL地址"
                 return redirect('/notifications/' +
@@ -3318,9 +3335,10 @@ def addReimbursement(request):
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
-                        en_pw=hash_coder.encode(str(new_reimb.id)+str(new_notification.id))
-                        URL = "/auditReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(id=new_reimb.id,
-                                                                                         nid=new_notification.id,en_pw=en_pw)
+                        en_pw = hash_coder.encode(str(new_reimb.id) + '新建报销' + 
+                                                    str(new_notification.id))
+                        URL = "/auditReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(
+                            id=new_reimb.id, nid=new_notification.id, en_pw=en_pw)
                         URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
@@ -3363,10 +3381,10 @@ def addReimbursement(request):
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
 
-                        en_pw = hash_coder.encode(str(pre_reimb.id) + str(new_notification.id))
-                        URL = "/auditReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(id=pre_reimb.id,
-                                                                                                      nid=new_notification.id,
-                                                                                                      en_pw=en_pw)
+                        en_pw = hash_coder.encode(str(pre_reimb.id) + '新建报销' + 
+                                                    str(new_notification.id))
+                        URL = "/auditReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(
+                            id=pre_reimb.id, nid=new_notification.id, en_pw=en_pw)
                         URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
@@ -3410,13 +3428,14 @@ def auditReimbursement(request):
     me = utils.get_person_or_org(request.user)
     html_display["is_myself"] = True
     html_display['warn_code'] = 0
-    html_display['warn_message']=""
+    html_display['warn_message'] = ""
+
     #检查是否为正确的审核老师
-    if request.user.username!=local_dict["audit_teacher"]["Funds"]:
+    if request.user.username != local_dict["audit_teacher"]["Funds"]:
         return redirect('/notifications/')
+
     try:  # 获取申请信息
         id = int(request.GET.get('reimb_id', -1))  # 报销信息的ID
-
         notification_id = int(request.GET.get('notifi_id', -1))  # 通知ID
 
         if id == -1 or notification_id == -1:
@@ -3426,7 +3445,8 @@ def auditReimbursement(request):
                             '?warn_code={}&warn_message={}'.format(
                                 html_display['warn_code'], html_display['warn_message']))
         en_pw = str(request.GET.get('enpw'))
-        if hash_coder.verify(str(id)+str(notification_id),en_pw)==False:
+        if hash_coder.verify(str(id) + '新建报销' + str(notification_id),
+                            en_pw) == False:
             html_display['warn_code'] = 1
             html_display['warn_message'] = "该URL被篡改，请输入正确的URL地址"
             return redirect('/notifications/' +
@@ -3496,9 +3516,10 @@ def auditReimbursement(request):
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
-                        en_pw = hash_coder.encode(str(new_reimb.id) + str(new_notification.id))
-                        URL = "/addReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(id=new_reimb.id,
-                                                                                       nid=new_notification.id,en_pw=en_pw)
+                        en_pw = hash_coder.encode(str(new_reimb.id) + '新建报销' + 
+                                                    str(new_notification.id))
+                        URL = "/addReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(
+                            id=new_reimb.id, nid=new_notification.id, en_pw=en_pw)
                         URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
@@ -3538,9 +3559,16 @@ def auditReimbursement(request):
 
                 try:  # 发送给申请者的通过通知或者是没有足够元气值的通知
                     with transaction.atomic():
-                        content = "报销申请已通过，扣除元气值{amount}".format(amount=new_reimb.amount)
-                        URL = "/notifications/"
-                        URL = request.build_absolute_uri(URL)
+                        if html_display['warn_code'] == 1:
+                            content = "报销申请已通过，但是组织元气值不足以扣除，请补充元气值至{amount}以上再点击通知继续申请！".format(
+                                amount=new_reimb.amount)
+                            typename = Notification.Type.NEEDDO
+                            URL = ""
+                        else:
+                            content = "报销申请已通过，扣除元气值{amount}".format()
+                            typename = Notification.Type.NEEDREAD
+                            URL = "/notifications/"
+                            URL = request.build_absolute_uri(URL)
                         receiver = new_reimb.pos  # 通知接收者
                         # TODO 如果老师另留有评论的话,将评论放在content里
                         """comments = new_reimb.comments
@@ -3550,17 +3578,18 @@ def auditReimbursement(request):
                         content += " 老师给你留言啦："
                         content += text"""
 
-                        new_notification=notification_create(receiver, request.user, Notification.Type.NEEDREAD,
-                                            Notification.Title.VERIFY_INFORM, content, URL)
+                        new_notification = notification_create(receiver, request.user, 
+                                                               typename,
+                                                               Notification.Title.VERIFY_INFORM, content, 
+                                                               URL)
                         if html_display['warn_code'] == 1:
-                            content="报销申请已通过，但是组织没有足够的元气值用来扣除，请补充元气值后再点击通知重新申请！"
-                            en_pw = hash_coder.encode(str(new_reimb.id) + str(new_notification.id))
-                            URL = "/addReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(id=new_reimb.id,
-                                                                                                        nid=new_notification.id,
-                                                                                                        en_pw=en_pw)
-                        URL = request.build_absolute_uri(URL)
-                        new_notification.URL=URL
-                        new_notification.save()
+                            en_pw = hash_coder.encode(str(new_reimb.id) + '新建报销' + 
+                                                        str(new_notification.id))
+                            URL = "/addReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(
+                                id=new_reimb.id, nid=new_notification.id, en_pw=en_pw)
+                            URL = request.build_absolute_uri(URL)
+                            new_notification.URL = URL
+                            new_notification.save()
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
