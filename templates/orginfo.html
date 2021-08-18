@@ -2,6 +2,13 @@
 
 {% block mainpage %}
 
+<!--  BEGIN MAIN CONTAINER  -->
+<div class="main-container" id="container">
+
+    <div class="overlay"></div>
+    <div class="search-overlay"></div>
+
+    {% include 'org_left_narbar.html' %}
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
@@ -93,7 +100,7 @@
                                                         <line x1="12" y1="22" x2="12" y2="7" />
                                                         <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
                                                         <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-                                                    </svg> <a href="/transPage/{{org.organization_id_id}}">向ta转账</a>
+                                                    </svg> <a href="/transPage/{{html_display.org.organization_id_id}}">向ta转账</a>
                                                 </li>
                                                 {% endif %}
                                             </ul>
@@ -278,6 +285,11 @@
 
                                 <div id="act0" class="tab-pane active">
                                     <div class="bio-skill-box">
+                                        {% if continuing_activity_list_participantrec|length == 0 %}
+                                            <br/>
+                                            <p style="text-align: center;">没有该类别的活动</p>
+                                            <br/>
+                                        {% endif %}
                                         <div class="row">
                                             {% for rec in continuing_activity_list_participantrec %}
                                             <div class="col-12 col-xl-4 col-lg-6 mb-xl-5 mb-5 ">
@@ -373,6 +385,11 @@
                                 </div>
                                 <div id="act1" class="tab-pane fade">
                                     <div class = "bio-skill-box ">
+                                        {% if ended_activity_list_participantrec|length == 0 %}
+                                            <br/>
+                                            <p style="text-align: center;">没有该类别的活动</p>
+                                            <br/>
+                                        {% endif %}
                                         <div class="row">
                                             {% for rec in ended_activity_list_participantrec %}
                                             <div class="col-12 col-xl-4 col-lg-6 mb-xl-5 mb-5 ">
@@ -406,6 +423,7 @@
                                                 </div>
                                             </div>
                                             {% endfor %}
+
                                         </div>
                                     </div>
                                 </div>
@@ -419,6 +437,8 @@
     </div>
 <!--  END CONTENT AREA  -->
 
+</div>
+<!-- END MAIN CONTAINER -->
 
 {% endblock %}
 
