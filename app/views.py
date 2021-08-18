@@ -706,7 +706,7 @@ def account_setting(request):
 
         useroj = NaturalPerson.objects.get(person_id=user)
 
-        #print(json.loads(request.body.decode("utf-8")))
+        # print(json.loads(request.body.decode("utf-8")))
         if request.method == "POST" and request.POST:
 
             attr_dict = dict()
@@ -1303,6 +1303,14 @@ def transaction_page(request, rid=None):
         return redirect("/index/")
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
+
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    # 如果希望前移，请联系YHT
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    # 补充一些呈现信息
+    bar_display["title_name"] = "Transaction"
+    bar_display["narbar_name"] = "发起转账"
+
     context = dict()
     if request.method == "POST":
         # 如果是post方法，从数据中读取rid
@@ -1323,6 +1331,7 @@ def transaction_page(request, rid=None):
 
     # 获取名字
     _, _, context = utils.check_user_type(user)
+    context = utils.get_sidebar_and_navbar(user,context)
     name = recipient.name if context["user_type"] == "Person" else recipient.oname
     context["name"] = name
     context["rid"] = rid
@@ -1352,11 +1361,7 @@ def transaction_page(request, rid=None):
             html_display["warn_code"] = 1
             html_display["warn_message"] = "转账金额为空或为负数, 请填写合法的金额!"
 
-            # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-            bar_display = utils.get_sidebar_and_navbar(request.user)
-            # 补充一些呈现信息
-            bar_display["title_name"] = "Transaction"
-            bar_display["narbar_name"] = "发起转账"
+            
 
             return render(request, "transaction_page.html", locals())
 
@@ -1364,11 +1369,7 @@ def transaction_page(request, rid=None):
             html_display["warn_code"] = 1
             html_display["warn_message"] = "转账金额的最大精度为0.1, 请填写合法的金额!"
 
-            # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-            bar_display = utils.get_sidebar_and_navbar(request.user)
-            # 补充一些呈现信息
-            bar_display["title_name"] = "Transaction"
-            bar_display["narbar_name"] = "发起转账"
+            
 
             return render(request, "transaction_page.html", locals())
 
@@ -1430,11 +1431,7 @@ def transaction_page(request, rid=None):
         except:
             html_display["warn_code"] = 1
             html_display["warn_message"] = "出现无法预料的问题, 请联系管理员!"
-    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    # 补充一些呈现信息
-    bar_display["title_name"] = "Transaction"
-    bar_display["narbar_name"] = "发起转账"
+
     return render(request, "transaction_page.html", locals())
 
 
@@ -2747,6 +2744,7 @@ def addOrganization(request):
                                 '?warn_code={}&warn_message={}'.format(
                                     html_display['warn_code'], html_display['warn_message']))
             preorg = NewOrganization.objects.get(id=id)
+
             notification=Notification.objects.get(id=notification_id)
             if preorg.status==NewOrganization.NewOrgStatus.CANCELED or preorg.status==NewOrganization.NewOrgStatus.CONFIRMED \
                     or notification.status==Notification.Status.DONE:
@@ -3099,9 +3097,9 @@ def auditOrganization(request):
                     return render(request, "organization_audit.html", locals())
 
                 context = notification_status_change(notification_id)
-                # 成功新建组织申请
+                # 成功新建组织
                 html_display['warn_code'] = 2
-                html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
+                html_display['warn_message'] = "已通过新建组织申请，组织已创建！"
                 if context['warn_code'] != 0:
                     html_display['warn_message'] = context['warn_message']
                 #微信通知
@@ -3129,7 +3127,7 @@ def auditOrganization(request):
                         content += " 老师给你留言啦："
                         content += text"""
 
-                        new_notification=notification_create(receiver, request.user, Notification.Type.NEEDREAD,
+                        new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
                                             Notification.Title.VERIFY_INFORM, content, URL)
 
                 except:
@@ -3138,9 +3136,9 @@ def auditOrganization(request):
                     return render(request, "organization_audit.html", locals())
 
                 context = notification_status_change(notification_id)
-                # 成功新建组织申请
+                # 成功拒绝新建组织申请
                 html_display['warn_code'] = 2
-                html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
+                html_display['warn_message'] = "已拒绝新建组织的请求！"
                 if context['warn_code'] != 0:
                     html_display['warn_message'] = context['warn_message']
                 # 微信通知
@@ -3537,10 +3535,12 @@ def auditReimbursement(request):
                     html_display['warn_message'] = "修改元气值失败。报销申请无法通过，请联系管理员！"
                     return render(request, "reimbursement_comment.html", locals())
 
+
                 try:  # 发送给申请者的通过通知或者是没有足够元气值的通知
                     with transaction.atomic():
-                        content = "报销申请已通过，将扣除元气值{amount}".format(amount=new_reimb.amount)
+                        content = "报销申请已通过，扣除元气值{amount}".format(amount=new_reimb.amount)
                         URL = "/notifications/"
+                        URL = request.build_absolute_uri(URL)
                         receiver = new_reimb.pos  # 通知接收者
                         # TODO 如果老师另留有评论的话,将评论放在content里
                         """comments = new_reimb.comments
@@ -3600,7 +3600,7 @@ def auditReimbursement(request):
                         content += " 老师给你留言啦："
                         content += text"""
 
-                        new_notification=notification_create(receiver, request.user, Notification.Type.NEEDREAD,
+                        new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
                                             Notification.Title.VERIFY_INFORM, content, URL)
                 except:
                     html_display['warn_code'] = 1

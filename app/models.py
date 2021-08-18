@@ -212,6 +212,7 @@ class PositionManager(models.Manager):
         return self.filter(
             in_year=int(local_dict["semester_data"]["year"]),
             in_semester__contains=local_dict["semester_data"]["semester"],
+            status = Position.Status.INSERVICE
         )
 
     def create_application(self, person, org, apply_type, apply_pos):
