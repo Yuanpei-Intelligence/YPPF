@@ -408,7 +408,7 @@ def stuinfo(request, name=None):
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
         bar_display = utils.get_sidebar_and_navbar(request.user)
         bar_display["title_name"] = "个人主页"
-        bar_display["narbar_name"] = "个人主页"
+        bar_display["navbar_name"] = "个人主页"
         bar_display["help_message"] = local_dict["help_message"]["个人主页"]
         origin = request.get_full_path()
 
@@ -608,7 +608,7 @@ def orginfo(request, name=None):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "组织主页"
-    bar_display["narbar_name"] = "组织主页"
+    bar_display["navbar_name"] = "组织主页"
 
     # 转账后跳转
     origin = request.get_full_path()
@@ -682,7 +682,7 @@ def homepage(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "Welcome Page"
-    bar_display["narbar_name"] = "近期要闻"
+    bar_display["navbar_name"] = "近期要闻"
 
 
     return render(request, "welcome_page.html", locals())
@@ -792,7 +792,7 @@ def account_setting(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "Account Setting"
-    bar_display["narbar_name"] = "账户设置"
+    bar_display["navbar_name"] = "账户设置"
     bar_display["help_message"] = local_dict["help_message"]["账户设置"]
 
     if user_type == "Person":
@@ -974,7 +974,7 @@ def search(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "Search"
-    bar_display["narbar_name"] = "信息搜索"  #
+    bar_display["navbar_name"] = "信息搜索"  #
 
     return render(request, "search.html", locals())
 
@@ -1174,7 +1174,7 @@ def modpw(request):
     bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
     bar_display["title_name"] = "Modify Password"
-    bar_display["narbar_name"] = "修改密码"
+    bar_display["navbar_name"] = "修改密码"
     return render(request, "modpw.html", locals())
 
 
@@ -1309,7 +1309,7 @@ def transaction_page(request, rid=None):
     bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
     bar_display["title_name"] = "Transaction"
-    bar_display["narbar_name"] = "发起转账"
+    bar_display["navbar_name"] = "发起转账"
 
     context = dict()
     if request.method == "POST":
@@ -1725,7 +1725,7 @@ def myYQPoint(request):
     bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
     bar_display["title_name"] = "My YQPoint"
-    bar_display["narbar_name"] = "我的元气值"  #
+    bar_display["navbar_name"] = "我的元气值"  #
     bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
 
     return render(request, "myYQPoint.html", locals())
@@ -1826,7 +1826,7 @@ def viewActivity(request, aid=None):
     bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
     bar_display["title_name"] = "活动信息"
-    bar_display["narbar_name"] = "活动信息"
+    bar_display["navbar_name"] = "活动信息"
 
     # 处理 get 请求
     if request.method == "GET":
@@ -2248,7 +2248,7 @@ def addActivities(request):
     # TODO: 整理结构，统一在结束时返回render
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建活动"
-    bar_display["narbar_name"] = "新建活动"
+    bar_display["navbar_name"] = "新建活动"
 
     if request.method == "POST" and request.POST:
 
@@ -2374,7 +2374,7 @@ def addActivities(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建活动"
-    bar_display["narbar_name"] = "新建活动"
+    bar_display["navbar_name"] = "新建活动"
 
     return render(request, "activity_add.html", locals())
 
@@ -2399,7 +2399,7 @@ def subscribeActivities(request):
     bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
     bar_display["title_name"] = "Subscribe"
-    bar_display["narbar_name"] = "我的订阅"  #
+    bar_display["navbar_name"] = "我的订阅"  #
     bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     subscribe_url = reverse("save_subscribe_status")
@@ -2523,7 +2523,7 @@ def personnel_mobilization(request):
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
         bar_display = utils.get_sidebar_and_navbar(request.user)
         bar_display["title_name"] = "人事变动"
-        bar_display["narbar_name"] = "人事变动"
+        bar_display["navbar_name"] = "人事变动"
 
         return render(request, "personnel_mobilization.html", locals())
 
@@ -2709,7 +2709,7 @@ def notifications(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "Notifications"
-    bar_display["narbar_name"] = "通知信箱"
+    bar_display["navbar_name"] = "通知信箱"
     bar_display["help_message"] = local_dict["help_message"]["通知信箱"]
 
     return render(request, "notifications.html", locals())
@@ -2760,7 +2760,7 @@ def addOrganization(request):
     # TODO: 整理页面返回逻辑，统一返回render的地方
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织"
-    bar_display["narbar_name"] = "新建组织"
+    bar_display["navbar_name"] = "新建组织"
 
 
     if edit:  # 打开页面信息的准备
@@ -2916,7 +2916,7 @@ def addOrganization(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织"
-    bar_display["narbar_name"] = "新建组织"
+    bar_display["navbar_name"] = "新建组织"
     return render(request, "organization_add.html", locals())
 
 
@@ -2968,7 +2968,7 @@ def auditOrganization(request):
     # TODO: 整理页面返回逻辑，统一返回render的地方
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织审核"
-    bar_display["narbar_name"] = "新建组织审核"
+    bar_display["navbar_name"] = "新建组织审核"
 
     if request.method == "POST" and request.POST:
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
@@ -3152,7 +3152,7 @@ def auditOrganization(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织审核"
-    bar_display["narbar_name"] = "新建组织审核"
+    bar_display["navbar_name"] = "新建组织审核"
 
     return render(request, "organization_audit.html", locals())
 # 新建或修改报销信息
@@ -3181,7 +3181,7 @@ def addReimbursement(request):
     # TODO: 整理页面返回逻辑，统一返回render的地方
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建报销申请"
-    bar_display["narbar_name"] = "新建报销申请"
+    bar_display["navbar_name"] = "新建报销申请"
 
     # 如果是修改，则加载报销信息
     if request.GET.get('reimb_id') is not None and request.GET.get('notifi_id') is not None:
@@ -3368,7 +3368,7 @@ def addReimbursement(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建报销审核"
-    bar_display["narbar_name"] = "新建报销审核"
+    bar_display["navbar_name"] = "新建报销审核"
     return render(request, "reimbursement_add.html", locals())
 
 
@@ -3424,7 +3424,7 @@ def auditReimbursement(request):
     # TODO: 整理页面返回逻辑，统一返回render的地方
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "报销审核"
-    bar_display["narbar_name"] = "报销审核"
+    bar_display["navbar_name"] = "报销审核"
 
     if request.method == "POST" and request.POST:
 
@@ -3601,5 +3601,5 @@ def auditReimbursement(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "报销审核"
-    bar_display["narbar_name"] = "报销审核"
+    bar_display["navbar_name"] = "报销审核"
     return render(request, "reimbursement_comment.html", locals())
