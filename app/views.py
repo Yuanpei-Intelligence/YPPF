@@ -2468,7 +2468,7 @@ def apply_position(request, oid=None):
         apply_pos = int(request.POST.get("apply_pos", 10))
 
     try:
-        Position.objects.create_application(me, org, apply_type, apply_pos)
+        apply_type = Position.objects.create_application(me, org, apply_type, apply_pos)
     except Exception as e:
         print(e)
         return redirect(f"/orginfo/{org.oname}?warn_code=1&warn_message={e}")
@@ -2506,17 +2506,17 @@ def personnel_mobilization(request):
     html_display = {"is_myself": True}
 
     if request.method == "GET":  # 展示页面
+        pending_status = Q(apply_status=Position.ApplyStatus.PENDING)
         issued_status = (
                 Q(apply_status=Position.ApplyStatus.PASS)
                 | Q(apply_status=Position.ApplyStatus.REJECT)
-                | Q(apply_status=Position.ApplyStatus.NONE)
         )
 
-        pending_list = me.position_set.activated().exclude(issued_status)
+        pending_list = me.position_set.filter(pending_status)
         for record in pending_list:
             record.job_name = me.otype.get_name(record.apply_pos)
 
-        issued_list = me.position_set.activated().filter(issued_status)
+        issued_list = me.position_set.filter(issued_status)
         for record in issued_list:
             record.job_name = me.otype.get_name(record.pos)
 
