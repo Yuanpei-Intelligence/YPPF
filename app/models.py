@@ -82,8 +82,8 @@ class NaturalPerson(models.Model):
     show_dorm = models.BooleanField(default=False)
 
     # 注意：这是不订阅的列表！！
-    subscribe_list = models.ManyToManyField(
-        "Organization", related_name="unsubsribers", db_index=True
+    unsubscribe_list = models.ManyToManyField(
+        "Organization", related_name="unsubscribers", db_index=True
     )
 
     def __str__(self):

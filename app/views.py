@@ -619,7 +619,7 @@ def orginfo(request, name=None):
         show_subscribe = True
         subscribe_flag = True  # 默认在订阅列表中
 
-        if organization_name in me.subscribe_list.values_list("oname", flat=True):
+        if organization_name in me.unsubscribe_list.values_list("oname", flat=True):
             subscribe_flag = False
 
     return render(request, "orginfo.html", locals())
@@ -2389,7 +2389,7 @@ def subscribeActivities(request):
     org_list = list(Organization.objects.all())
     otype_list = list(OrganizationType.objects.all())
     unsubscribe_list = list(
-        me.subscribe_list.values_list("organization_id__username", flat=True)
+        me.unsubscribe_list.values_list("organization_id__username", flat=True)
     )  # 获取不订阅列表（数据库里的是不订阅列表）
     subscribe_list = [
         org.organization_id.username for org in org_list if org.organization_id.username not in unsubscribe_list
@@ -2417,27 +2417,27 @@ def save_subscribe_status(request):
     with transaction.atomic():
         if "id" in params.keys():
             if params["status"]:
-                me.subscribe_list.remove(
+                me.unsubscribe_list.remove(
                     Organization.objects.get(
                         organization_id__username=params["id"])
                 )
             else:
-                me.subscribe_list.add(
+                me.unsubscribe_list.add(
                     Organization.objects.get(
                         organization_id__username=params["id"])
                 )
         elif "otype" in params.keys():
-            unsubscribed_list = me.subscribe_list.filter(
+            unsubscribed_list = me.unsubscribe_list.filter(
                 otype__otype_id=params["otype"]
             )
             org_list = Organization.objects.filter(
                 otype__otype_id=params['otype'])
             if params["status"]:  # 表示要订阅
                 for org in unsubscribed_list:
-                    me.subscribe_list.remove(org)
+                    me.unsubscribe_list.remove(org)
             else:  # 不订阅
                 for org in org_list:
-                    me.subscribe_list.add(org)
+                    me.unsubscribe_list.add(org)
         me.save()
 
     return JsonResponse({"success": True})
