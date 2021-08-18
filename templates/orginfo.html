@@ -2,13 +2,6 @@
 
 {% block mainpage %}
 
-<!--  BEGIN MAIN CONTAINER  -->
-<div class="main-container" id="container">
-
-    <div class="overlay"></div>
-    <div class="search-overlay"></div>
-
-    {% include 'org_left_narbar.html' %}
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
@@ -100,7 +93,7 @@
                                                         <line x1="12" y1="22" x2="12" y2="7" />
                                                         <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
                                                         <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-                                                    </svg> <a href="/transPage/{{html_display.org.organization_id_id}}">向ta转账</a>
+                                                    </svg> <a href="/transPage/{{org.organization_id_id}}">向ta转账</a>
                                                 </li>
                                                 {% endif %}
                                             </ul>
@@ -426,8 +419,6 @@
     </div>
 <!--  END CONTENT AREA  -->
 
-</div>
-<!-- END MAIN CONTAINER -->
 
 {% endblock %}
 

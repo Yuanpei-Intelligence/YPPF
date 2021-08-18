@@ -4,17 +4,6 @@
 
 {% block mainpage %}
 
-<!-- BEGIN MAIN CONTAINER  -->
-<div class="main-container sidebar-closed " id="container">
-
-    <div class="overlay show"></div>
-    <div class="search-overlay"></div>
-
-    {% if html_display.user_type == "Person" %}
-        {% include 'user_left_narbar.html' %}
-    {% else %}
-        {% include 'org_left_narbar.html' %}
-    {% endif %}
 
     <!--  BEGIN CONTENT PART  -->
     <div id="content" class="main-content">
@@ -63,7 +52,8 @@
                         <h3>今日消息</h3>
                         <div class="pre-scrollable bio-skill-box layout-top-spacing" style="padding: 2%;">
                             {% for rec in today_signup_list %}
-                            <a href="/viewActivity/{{act.id}}">
+
+                            <a href="/viewActivity/{{rec.act.id}}">
                                 <div class=" b-skills" style="padding: 5%;">
                                     <div class="text-nowrap" style='overflow: hidden;text-overflow: ellipsis;'>
                                     
@@ -212,5 +202,4 @@
     </div>
 <!-- END MAIN CONTAINER -->
 
-</div>
 {% endblock %}

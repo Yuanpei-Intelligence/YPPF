@@ -9,15 +9,6 @@
 {% endblock %}
 
 {% block mainpage %}
-<div class="main-container" id="container">
-
-    <div class="overlay"></div>
-    <div class="search-overlay"></div>
-{% if html_display.user_type == "Person" %}
-    {% include 'user_left_narbar.html' %}
-    {% else %}
-    {% include 'org_left_narbar.html' %}
-    {% endif %}
 <div id="content" class="main-content" >
 {% if isFirst %}
 {% if err_code == 0 %}
@@ -35,7 +26,7 @@
                 <div class="form-container">
                     <div class="form-content">
                         <div class="d-flex user-meta">
-                            <img src={{html_display.avatar_path}} class="usr-profile" alt="avatar">
+                            <img src={{bar_display.avatar_path}} class="usr-profile" alt="avatar">
                             <div class="">
                                 <p class="">修改密码</p>
                             </div>
@@ -114,7 +105,7 @@
         </center>
     </div>
 </div>
-</div>
+
 {% endblock %}
 
 {% block add_js_file %}

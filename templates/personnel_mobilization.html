@@ -1,212 +1,202 @@
 {% extends "base.html" %} {% block mainpage %}
 
-<div class="main-container" id="container">
-  <div class="overlay"></div>
-  <div class="search-overlay"></div>
 
-  {% include 'org_left_narbar.html' %}
 
-  <!--  BEGIN CONTENT AREA  -->
-  <div id="content" class="main-content">
-    {% if html_display.warn_code == 1 %}
-    <div class="alert alert-warning text-center">
-      {{ html_display.warn_message }}
-    </div>
-    {% elif html_display.warn_code == 2 %}
-    <div class="alert alert-success text-center">
-      {{ html_display.warn_message }}
-    </div>
-    {% endif %}
-    <div class="container">
-      <div class="row layout-top-spacing">
-        <div class="col-lg-12 col-12 layout-top-spacing">
-          <div class="bio layout-spacing">
-            <div class="widget-content widget-content-area">
-              <h3>人事变动</h3>
-              <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
-                <li class="nav-item">
-                  <a class="nav-link active" href="#home" data-toggle="tab">
-                    <h5>待处理</h5>
-                  </a>
-                </li>
+	<!--  BEGIN CONTENT AREA  -->
+	<div id="content" class="main-content">
+		{% if html_display.warn_code == 1 %}
+		<div class="alert alert-warning text-center">
+			{{ html_display.warn_message }}
+		</div>
+		{% elif html_display.warn_code == 2 %}
+		<div class="alert alert-success text-center">
+			{{ html_display.warn_message }}
+		</div>
+		{% endif %}
+		<div class="container">
+			<div class="row layout-top-spacing">
+				<div class="col-lg-12 col-12 layout-top-spacing">
+					<div class="bio layout-spacing">
+						<div class="widget-content widget-content-area">
+							<h3>人事变动</h3>
+							<ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+								<li class="nav-item">
+									<a class="nav-link active" href="#home" data-toggle="tab">
+										<h5>待处理</h5>
+									</a>
+								</li>
 
-                <li class="nav-item">
-                  <a class="nav-link" href="#issued" data-toggle="tab">
-                    <h5>已处理</h5>
-                  </a>
-                </li>
-              </ul>
+								<li class="nav-item">
+									<a class="nav-link" href="#issued" data-toggle="tab">
+										<h5>已处理</h5>
+									</a>
+								</li>
+							</ul>
 
-              <div id="myTabContent" class="tab-content">
-                <div class="tab-pane fade in active show" id="home">
-                  {% if pending_list|length == 0 %}
-                  <p style="text-align: center">没有待处理的人事变动.</p>
-                  {% else %}
-                  <div class="bio-skill-box">
-                    <div class="row">
-                      {% for record in pending_list %}
-                      <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4">
-                        <div class="b-skills">
-                          <div class="d-flex justify-content-between">
-                            <div>
-                              <h5>
-                                <a href="/stuinfo/{{record.person}}"
-                                  ><u>{{record.person}}</u></a
-                                >
-                              </h5>
-                            </div>
-                            <div>
-                              <h5>{{record.apply_type}}</h5>
-                            </div>
-                          </div>
-                          <div class="d-flex justify-content-between">
-                            <div>
-                              <p style="color: rgb(66, 67, 68)">
-                                <i class="fa fa-calendar-o"></i>
-                                {{record.in_year}} {{record.in_semester}}
-                              </p>
-                            </div>
-                            <div>
-                              <p style="color: rgb(66, 67, 68)">
-                                {{record.job_name}}
-                              </p>
-                            </div>
-                          </div>
-                          {% if True %}
-                          <div class="d-flex justify-content-between">
-                            <div>
-                              <p style="color: rgb(66, 67, 68)">
-                                <i class="fa fa-envelope-o"></i>
-                                {{record.apply_status}}
-                              </p>
-                            </div>
-                            <form
-                              action="/personnelMobilization/"
-                              method="POST"
-                            >
-                              <div class="btn-group btn-group-sm">
-                                <button
-                                  class="btn btn-primary"
-                                  type="submit"
-                                  name="confirm"
-                                  value='{"id":"{{record.id}}", "apply_status":"PASS"}'
-                                  onclick="return confirm('确定通过来自【{{record.person}}】的申请？')"
-                                >
-                                  <span class="">通过</span>
-                                </button>
-                                <button
-                                  class="btn btn-danger"
-                                  type="submit"
-                                  name="confirm"
-                                  value='{"id":"{{record.id}}", "apply_status":"REJECT"}'
-                                  onclick="return confirm('确定拒绝来自【{{record.person}}】的申请？')"
-                                >
-                                  <span class="">拒绝</span>
-                                </button>
-                              </div>
-                            </form>
-                          </div>
-                          {% else %}
-                          <p style="color: rgb(66, 67, 68)">
-                            <i class="fa fa-envelope-o"></i>
-                            {{record.message}}
-                          </p>
-                          {% endif %}
-                        </div>
-                      </div>
-                      {% endfor %}
-                    </div>
-                  </div>
+							<div id="myTabContent" class="tab-content">
+								<div class="tab-pane fade in active show" id="home">
+									{% if pending_list|length == 0 %}
+                                    <br />
+									<p></p>
+									<p style="text-align: center">没有待处理的人事变动.</p>
+                                    <br />
+									{% else %}
+									<div class="bio-skill-box">
+										<div class="row">
+											{% for record in pending_list %}
+											<div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4">
+												<div class="b-skills">
+													<div class="d-flex justify-content-between">
+														<div>
+															<h5>
+																<a
+																	href="/stuinfo/{{record.person}}"><u>{{record.person}}</u></a>
+															</h5>
+														</div>
+														<div>
+															<h5>{{record.apply_type}}</h5>
+														</div>
+													</div>
+													<div class="d-flex justify-content-between">
+														<div>
+															<p style="color: rgb(66, 67, 68)">
+																<i class="fa fa-calendar-o"></i>
+																{{record.in_year}} {{record.in_semester}}
+															</p>
+														</div>
+														<div>
+															<p style="color: rgb(66, 67, 68)">
+																{{record.job_name}}
+															</p>
+														</div>
+													</div>
+													{% if True %}
+													<div class="d-flex justify-content-between">
+														<div>
+															<p style="color: rgb(66, 67, 68)">
+																<i class="fa fa-envelope-o"></i>
+																{{record.apply_status}}
+															</p>
+														</div>
+														<form action="/personnelMobilization/" method="POST">
+															<div class="btn-group btn-group-sm">
+																<button class="btn btn-primary" type="submit"
+																	name="confirm"
+																	value='{"id":"{{record.id}}", "apply_status":"PASS"}'
+																	onclick="return confirm('确定通过来自【{{record.person}}】的申请？')">
+																	<span class="">通过</span>
+																</button>
+																<button class="btn btn-danger" type="submit"
+																	name="confirm"
+																	value='{"id":"{{record.id}}", "apply_status":"REJECT"}'
+																	onclick="return confirm('确定拒绝来自【{{record.person}}】的申请？')">
+																	<span class="">拒绝</span>
+																</button>
+															</div>
+														</form>
+													</div>
+													{% else %}
+													<p style="color: rgb(66, 67, 68)">
+														<i class="fa fa-envelope-o"></i>
+														{{record.message}}
+													</p>
+													{% endif %}
+												</div>
+											</div>
+											{% endfor %}
+										</div>
+									</div>
 
-                  {% endif %}
-                </div>
-                <div class="tab-pane fade" id="issued">
-                  {% if issued_list|length == 0 %}
-                  <p></p>
-                  <p style="text-align: center">没有已处理的人事变动.</p>
-                  {% else %}
+									{% endif %}
+								</div>
+								<div class="tab-pane fade" id="issued">
+									{% if issued_list|length == 0 %}
+                                    <br />
+									<p></p>
+									<p style="text-align: center">没有已处理的人事变动.</p>
+                                    <br />
+									{% else %}
 
-                  <div class="bio-skill-box">
-                    <div class="row">
-                      {% for record in issued_list %}
-                      <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4">
-                        <div class="b-skills">
-                          <div class="d-flex justify-content-between">
-                            <div>
-                              <h5>{{record.person}}</h5>
-                            </div>
-                            <div>
-                              <h5>{{record.apply_type}}</h5>
-                            </div>
-                          </div>
-                          <div class="d-flex justify-content-between">
-                            <div>
-                              <p style="color: rgb(66, 67, 68)">
-                                <i class="fa fa-calendar-o"></i>
-                                {{record.in_year}} {{record.in_semester}}
-                              </p>
-                            </div>
-                            <div>
-                              <p style="color: rgb(66, 67, 68)">
-                                {{record.job_name}}
-                              </p>
-                            </div>
-                          </div>
-                          <div class="d-flex justify-content-between">
-                            <div>
-                              <p style="color: rgb(66, 67, 68)">
-                                <i class="fa fa-envelope-o"></i>
-                                {{record.apply_status}}
-                              </p>
-                            </div>
-                            <div>
-                              <p
-                                style="
+									<div class="bio-skill-box">
+										<div class="row">
+											{% for record in issued_list %}
+											<div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4">
+												<div class="b-skills">
+													<div class="d-flex justify-content-between">
+														<div>
+															<h5>{{record.person}}</h5>
+														</div>
+														<div>
+															<h5>{{record.apply_type}}</h5>
+														</div>
+													</div>
+													<div class="d-flex justify-content-between">
+														<div>
+															<p style="color: rgb(66, 67, 68)">
+																<i class="fa fa-calendar-o"></i>
+																{{record.in_year}} {{record.in_semester}}
+															</p>
+														</div>
+														<div>
+															<p style="color: rgb(66, 67, 68)">
+																{{record.job_name}}
+															</p>
+														</div>
+													</div>
+													<div class="d-flex justify-content-between">
+														<div>
+															<p style="color: rgb(66, 67, 68)">
+																<i class="fa fa-envelope-o"></i>
+																{{record.apply_status}}
+															</p>
+														</div>
+														<div>
+															<p style="
                                   color: rgb(66, 67, 68);
                                   margin-left: 8px;
                                   display: block;
                                   white-space: nowrap;
                                   overflow: hidden;
-                                "
-                              >
-                                {{record.status}}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      {% endfor %}
-                    </div>
-                  </div>
-                  {% endif %}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  <!--  END CONTENT AREA  -->
-</div>
-<!-- END MAIN CONTAINER -->
+                                ">
+																{{record.status}}
+															</p>
+														</div>
+													</div>
+												</div>
+											</div>
+											{% endfor %}
+										</div>
+									</div>
+									{% endif %}
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<!--  END CONTENT AREA  -->
 
+{% endblock %}
+
+{% block add_js_file %}
 <script>
-  $(".nav-tabs").on("shown.bs.tab", "a", function (e) {
-    if (e.relatedTarget) {
-      $(e.relatedTarget).removeClass("active");
-    }
-  });
+	$(".nav-tabs").on("shown.bs.tab", "a", function (e) {
+		if (e.relatedTarget) {
+			$(e.relatedTarget).removeClass("active");
+		}
+	});
 </script>
 
 <script>
-  $(".table").bootstrapTable({
-    onLoadSuccess: function () {
-      $(".table tr td").each(function () {
-        $(this).attr("title", $(this).text());
-        $(this).css("cursor", "pointer");
-      });
-    },
-  });
+	$(".table").bootstrapTable({
+		onLoadSuccess: function () {
+			$(".table tr td").each(function () {
+				$(this).attr("title", $(this).text());
+				$(this).css("cursor", "pointer");
+			});
+		},
+	});
 </script>
 {% endblock %}

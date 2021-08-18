@@ -12,6 +12,9 @@ from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 # 日期与定时任务
 from datetime import datetime, timedelta
 
+# 获取对象等操作
+from app.utils import get_person_or_org
+
 # 全局设置
 # 是否启用定时任务，请最好仅在服务器启用，如果不启用，后面的多个设置也会随之变化
 USE_SCHEDULER = True
@@ -133,7 +136,6 @@ def publish_notification(notification_or_id):
     except:
         print(f"未找到id为{notification_or_id}的通知")
         return False
-    from app.views import get_person_or_org     # 获取名称
     sender = get_person_or_org(notification.sender) # 也可能是组织
     send_time = notification.start_time
     timeformat = "%Y年%m月%d日 %H:%M"   
@@ -165,7 +167,10 @@ def publish_notification(notification_or_id):
             notification.content
         ))
         if notification.URL:
-            message += f"\n\n<a href=\"{notification.URL}\">阅读原文</a>"
+            url = notification.URL
+            if url[0] == '/':                   # 相对路径变为绝对路径
+                url = THIS_URL + url
+            message += f"\n\n<a href=\"{url}\">阅读原文</a>"
         else:
             message += f"\n\n<a href=\"{DEFAULT_URL}\">点击查看详情</a>"
     receiver = get_person_or_org(notification.receiver)
@@ -243,7 +248,10 @@ def publish_activity(activity_or_id, only_activated=False):
             content
         ))
         if activity.URL:
-            message += f"\n\n<a href=\"{activity.URL}\">阅读原文</a>"
+            url = activity.URL
+            if url[0] == '/':               # 相对路径变为绝对路径
+                url = THIS_URL + url
+            message += f"\n\n<a href=\"{url}\">阅读原文</a>"
         else:
             message += f"\n\n<a href=\"{DEFAULT_URL}\">点击查看详情</a>"
     for i in range(0, num, ACTIVITY_BATCH):

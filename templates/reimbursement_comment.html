@@ -4,16 +4,15 @@
 
 
 {% block mainpage %}
-
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
         <div class="container">
             <div class="container">
                 {% if html_display.warn_code == 2 %}
-                <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
-                {% elif html_display.warn_code == 1%}
-                <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
-                {% endif %}
+            <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+            {% elif html_display.warn_code == 1%}
+            <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+            {% endif %}
                 <div class="row layout-top-spacing">
 
                     <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
@@ -25,7 +24,7 @@
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                <h4>申请新建组织信息</h4>
+                                                <h4>审核报销</h4>
                                             </div>
                                         </div>
                                     </div>
@@ -33,7 +32,8 @@
                                     <!--  BEGIN CONTENT AREA  -->
                                     <div class="widget-content widget-content-area">
 
-                                        <form role="form" method="POST">
+                                        <form role="form" method="POST" enctype="multipart/form-data">
+
                                             <div class="form-group">
                                                 <label>组织名称</label>
                                                 <textarea id="oname" name="oname" class="form-control"
@@ -41,35 +41,25 @@
                                             </div>
 
                                             <div class="form-group">
-                                                <label>组织负责人</label>
-                                                <textarea class="form-control"
-                                                          aria-label="Default">{{html_display.pos}}</textarea>
+                                                <label>报销活动</label>
+                                                <textarea id="activity_title" name="activity_title" class="form-control"
+                                                          aria-label="Default">{{html_display.activity_title}}</textarea>
                                             </div>
                                             <div class="form-group">
-                                                <label>组织类型</label>
+                                                <label>报销额度</label>
                                                 <br>
-                                                <textarea id="otype" name="otype" class="form-control"
-                                                          aria-label="Default">{{html_display.otype_name}}</textarea>
+                                                <textarea id="amount" name="amount" class="form-control"
+                                                          aria-label="Default">{{html_display.amount}}</textarea>
                                             </div>
-                                            <div class="form-group">
-                                                <label>组织图标</label>
-                                                <br>
-                                                <img src="{{org_avatar_path}}" width="200px" height="200px" alt="组织图标"/>
-                                            </div>
-                                            <div class="form-group">
-                                                <label for="aintro">组织简介</label>
-                                                <textarea id="introduction" name="introduction" class="form-control"
-                                                          rows="3">{{html_display.introduction}}</textarea>
-                                            </div>
-                                            <br>
-                                            <br>
-                                            <hr>
 
                                             <div class="form-group">
-                                                <label for="aintro">申请理由</label>
-                                                <textarea id="apply" name="application" class="form-control"
-                                                          rows="30">{{html_display.application}}</textarea>
+                                                <label for="aintro">备注信息</label>
+
+                                                <textarea name="message" class="form-control"
+                                                          rows="3"
+                                                          placeholder="空">{{html_display.message}}</textarea>
                                             </div>
+
                                             <div align="center">
                                                 <table>
                                                     <tr>
@@ -97,12 +87,14 @@
                                                     </tr>
                                                 </table>
                                             </div>
+
                                         </form>
 
-                                        <br>
-                                    <hr>
 
-                                   <div>
+                                        <br>
+                                        <hr>
+
+                                        <div>
                                         {%for comment in comments.all%}
                                         <div class="form-group">
                                             <div class="d-flex justify-content-between">
@@ -121,13 +113,12 @@
                                             <img width="400px" height="200px" src={{image.imagepath}}>
                                                 <!--移动端图片需要修正!-->
                                             {%endfor%}
-                                            <hr>
-                                            <br>
                                         </div>
                                         {% endfor %}
                                     </div>
-
-                                    <form role="form" method="POST" enctype="multipart/form-data">
+                                    <br>
+                                        <br>
+                                        <form role="form" method="POST" enctype="multipart/form-data">
                                             <div>
                                                 <div class="form-group">
                                                     <label><h4>评论</h4></label>
@@ -162,6 +153,7 @@
                                             </div>
                                         </form>
 
+
                                     </div>
 
                                 </div>
@@ -176,9 +168,3 @@
     <!--  END CONTENT AREA  -->
 
 {% endblock %}
-
-
-
-
-
-

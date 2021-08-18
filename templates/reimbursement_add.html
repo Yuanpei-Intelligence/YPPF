@@ -2,7 +2,6 @@
 
 {% load static %}
 
-
 {% block mainpage %}
 
     <!--  BEGIN CONTENT AREA  -->
@@ -26,9 +25,9 @@
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
                                                 {% if edit %}
-                                                <h4>重新修改申请的组织信息</h4>
+                                                <h4>重新修改报销的相关信息</h4>
                                                 {% else %}
-                                                <h4>请填写新建组织的相关信息</h4>
+                                                <h4>请填写报销的相关信息</h4>
                                                 {% endif %}
                                             </div>
                                         </div>
@@ -38,82 +37,71 @@
                                     <div class="widget-content widget-content-area">
 
                                         <form role="form" method="POST" enctype="multipart/form-data">
-                                            <div class="form-group">
-                                                <label>组织名称</label>
-                                                {%if edit%}
-                                                <textarea type="text" name="oname" class="form-control"
-                                                          aria-label="Default" placeholder="不超过32个字节">{{html_display.oname}}</textarea>
 
-                                                {%else%}
-                                                <input type="text" name="oname" class="form-control"
-                                                       aria-label="Default" placeholder="不超过32个字节">
-                                                {%endif%}
-                                            </div>
                                             <div class="form-group">
-                                                <label>组织类型</label>
-                                                <br>
+                                                <label>报销活动</label>
                                                 {%if edit%}
-                                                <select name="otype">
-                                                    <option value=7{% if html_display.otype_id == 7 %}
-                                                            selected="selected"
-                                                            {% endif %}>书院俱乐部
+                                                <select name="activity_id" class="form-control">
+                                                    {% for activity in activities.all%}
+                                                    {%if audit_activity.id == activity.id%}
+                                                    <option value={{activity.id}} selected="selected">
+                                                        {{activity.title}}
                                                     </option>
-                                                    <option value=8{% if html_display.otype_id == 8 %}
-                                                            selected="selected"
-                                                            {% endif %}>学生小组
-                                                    </option>
-                                                    <option value=10{% if html_display.otype_id == 10 %}
-                                                            selected="selected"
-                                                            {% endif %}>书院课程
-                                                    </option>
-
+                                                    {%endif%}
+                                                    <option value={{activity.id}}>{{activity.title}}</option>
+                                                    {%endfor%}
                                                 </select>
 
                                                 {%else%}
-
-                                                <select name="otype">
-                                                    <option value=7>书院俱乐部</option>
-                                                    <option value=8 selected="selected">学生小组</option>
-                                                    <option value=10>书院课程</option>
+                                                <select name="activity_id" class="form-control">
+                                                    {% for activity in activities.all%}
+                                                    <option value={{activity.id}}>{{activity.title}}</option>
+                                                    {%endfor%}
                                                 </select>
                                                 {%endif%}
                                             </div>
-                                            {%if edit%}
 
                                             <div class="form-group">
-                                                <label>组织图标</label>
+                                                <label>报销额度</label>
                                                 <br>
-                                                <img src="{{org_avatar_path}}" width="200px" height="200px" alt="组织图标"/>
-                                                <label>修改组织图标</label>
-                                                <input type="file" id="preavatar" class="dropify" name="avatar"
-                                                       data-default-file="{{former_img}}"
-                                                       data-max-file-size="512K"/>
+                                                <input type="number" class="form-control"
+                                                       aria-label="Text input with dropdown button"
+                                                       placeholder="上次你输入的是{{html_display.amount}}"
+                                                       id="aprice"
+                                                       name="YQP" placeholder="{{amount}}" step="0.1"
+                                                       οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')" >
                                             </div>
-                                            {%else%}
-                                            <div class="form-group">
-                                                <label>组织图标</label>
-                                                <br>
-                                                <input type="file" id="avatar" class="dropify" name="avatar"
-                                                       data-default-file="{{former_img}}"
-                                                       data-max-file-size="512K"/>
+
+                                            {%if edit == 0%}
+                                            <div class="form-group form-row">
+                                                <label class="col-sm-2 control-label uText">报销材料</label>
+                                                <div class="row">
+                                                    <div class="col-xs-10 col-sm-8 mTop5">
+                                                        <label title="初始报销材料">
+                                                            <input type="file" accept="image/*" name="images" multiple>
+                                                        </label>
+                                                    </div>
+                                                </div>
                                             </div>
                                             {%endif%}
+
                                             <div class="form-group">
-                                                <label for="aintro">组织简介</label>
-                                                <textarea name="introduction" class="form-control"
+                                                <label for="aintro">备注信息</label>
+                                                {%if edit%}
+                                                <textarea name="message" class="form-control"
                                                           rows="3"
-                                                          placeholder="空">{%if edit%}{{html_display.introduction}}{%endif%}</textarea>
+                                                          placeholder="空">{{html_display.message}}</textarea>
+                                                {%else%}
+                                                <textarea name="message" class="form-control"
+                                                          rows="3"
+                                                          placeholder="空"></textarea>
+                                                {%endif%}
                                             </div>
                                             <br>
                                             <br>
                                             <hr>
 
-                                            <div class="form-group">
-                                                <label for="aintro">申请理由</label>
-                                                <textarea name="application" class="form-control"
-                                                          rows="30"
-                                                          placeholder="申请理由不能为空">{% if edit %}{{html_display.application}}{% endif %}</textarea>
-                                            </div>
+
                                             {%if edit%}
                                             <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
                                                     value="">
@@ -125,7 +113,7 @@
                                                 提交
                                             </button>
                                             {%endif%}
-                                        </form>
+
                                     {%if edit %}
                                     <br>
                                     <hr>
@@ -191,25 +179,19 @@
                                         </form>
                                         {%endif%}
 
-
-                                    </div>
-
                                 </div>
+
                             </div>
                         </div>
                     </div>
                 </div>
-
             </div>
+
         </div>
     </div>
-    <!--  END CONTENT AREA  -->
-
+</div>
+<!--  END CONTENT AREA  -->
 
 {% endblock %}
-
-
-
-
 
 
