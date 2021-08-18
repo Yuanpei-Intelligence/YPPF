@@ -1121,13 +1121,18 @@ def forget_password(request):
 
 @login_required(redirect_field_name="origin")
 def modpw(request):
+    '''
+        可能在三种情况进入这个页面：首次登陆；忘记密码；或者常规的修改密码。
+        在忘记密码时，可以允许不输入旧的密码
+        在首次登陆时，现在写的也可以不输入旧的密码（我还没想好这样合不合适）
+            以上两种情况都可以直接进行密码修改
+        常规修改要审核旧的密码
+    '''
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect("/index/")
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    
-
     
 
     err_code = 0
@@ -1148,13 +1153,14 @@ def modpw(request):
         elif newpw == username and strict_check:
             err_code = 2
             err_message = "新密码不能与学号相同"
-        elif newpw != oldpassword and forgetpw:  # added by pht
+        elif newpw != oldpassword and (forgetpw or isFirst):  # added by pht
             err_code = 5
             err_message = "两次输入的密码不匹配"
         else:
             userauth = auth.authenticate(
-                username=username, password=oldpassword)
-            if forgetpw:  # added by pht: 这是不好的写法，可改进
+                username=username, password=oldpassword) # 验证旧密码是否正确
+            # 在1、忘记密码 2、首次登录 3、验证旧密码正确 的前提下，可以修改
+            if forgetpw or isFirst or userauth:  # added by pht: 这是不好的写法，可改进
                 userauth = True
             if userauth:
                 try:  # modified by pht: if检查是错误的，不存在时get会报错
