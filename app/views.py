@@ -408,7 +408,7 @@ def stuinfo(request, name=None):
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
         bar_display = utils.get_sidebar_and_navbar(request.user)
         bar_display["title_name"] = "个人主页"
-        bar_display["narbar_name"] = "个人主页"
+        bar_display["navbar_name"] = "个人主页"
         bar_display["help_message"] = local_dict["help_message"]["个人主页"]
         origin = request.get_full_path()
 
@@ -608,7 +608,7 @@ def orginfo(request, name=None):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "组织主页"
-    bar_display["narbar_name"] = "组织主页"
+    bar_display["navbar_name"] = "组织主页"
 
     # 转账后跳转
     origin = request.get_full_path()
@@ -682,7 +682,8 @@ def homepage(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "Welcome Page"
-    bar_display["narbar_name"] = "近期要闻"
+    bar_display["navbar_name"] = "近期要闻"
+
 
 
     return render(request, "welcome_page.html", locals())
@@ -792,7 +793,7 @@ def account_setting(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "Account Setting"
-    bar_display["narbar_name"] = "账户设置"
+    bar_display["navbar_name"] = "账户设置"
     bar_display["help_message"] = local_dict["help_message"]["账户设置"]
 
     if user_type == "Person":
@@ -974,7 +975,7 @@ def search(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "Search"
-    bar_display["narbar_name"] = "信息搜索"  #
+    bar_display["navbar_name"] = "信息搜索"  #
 
     return render(request, "search.html", locals())
 
@@ -1174,7 +1175,7 @@ def modpw(request):
     bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
     bar_display["title_name"] = "Modify Password"
-    bar_display["narbar_name"] = "修改密码"
+    bar_display["navbar_name"] = "修改密码"
     return render(request, "modpw.html", locals())
 
 
@@ -1309,7 +1310,7 @@ def transaction_page(request, rid=None):
     bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
     bar_display["title_name"] = "Transaction"
-    bar_display["narbar_name"] = "发起转账"
+    bar_display["navbar_name"] = "发起转账"
 
     context = dict()
     if request.method == "POST":
@@ -1431,7 +1432,7 @@ def transaction_page(request, rid=None):
         except:
             html_display["warn_code"] = 1
             html_display["warn_message"] = "出现无法预料的问题, 请联系管理员!"
-    
+
     return render(request, "transaction_page.html", locals())
 
 
@@ -1725,7 +1726,7 @@ def myYQPoint(request):
     bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
     bar_display["title_name"] = "My YQPoint"
-    bar_display["narbar_name"] = "我的元气值"  #
+    bar_display["navbar_name"] = "我的元气值"  #
     bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
 
     return render(request, "myYQPoint.html", locals())
@@ -1826,7 +1827,7 @@ def viewActivity(request, aid=None):
     bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
     bar_display["title_name"] = "活动信息"
-    bar_display["narbar_name"] = "活动信息"
+    bar_display["navbar_name"] = "活动信息"
 
     # 处理 get 请求
     if request.method == "GET":
@@ -2248,7 +2249,7 @@ def addActivities(request):
     # TODO: 整理结构，统一在结束时返回render
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建活动"
-    bar_display["narbar_name"] = "新建活动"
+    bar_display["navbar_name"] = "新建活动"
 
     if request.method == "POST" and request.POST:
 
@@ -2374,7 +2375,7 @@ def addActivities(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建活动"
-    bar_display["narbar_name"] = "新建活动"
+    bar_display["navbar_name"] = "新建活动"
 
     return render(request, "activity_add.html", locals())
 
@@ -2399,7 +2400,7 @@ def subscribeActivities(request):
     bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
     bar_display["title_name"] = "Subscribe"
-    bar_display["narbar_name"] = "我的订阅"  #
+    bar_display["navbar_name"] = "我的订阅"  #
     bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     subscribe_url = reverse("save_subscribe_status")
@@ -2468,7 +2469,7 @@ def apply_position(request, oid=None):
         apply_pos = int(request.POST.get("apply_pos", 10))
 
     try:
-        Position.objects.create_application(me, org, apply_type, apply_pos)
+        apply_type = Position.objects.create_application(me, org, apply_type, apply_pos)
     except Exception as e:
         print(e)
         return redirect(f"/orginfo/{org.oname}?warn_code=1&warn_message={e}")
@@ -2506,24 +2507,24 @@ def personnel_mobilization(request):
     html_display = {"is_myself": True}
 
     if request.method == "GET":  # 展示页面
+        pending_status = Q(apply_status=Position.ApplyStatus.PENDING)
         issued_status = (
                 Q(apply_status=Position.ApplyStatus.PASS)
                 | Q(apply_status=Position.ApplyStatus.REJECT)
-                | Q(apply_status=Position.ApplyStatus.NONE)
         )
 
-        pending_list = me.position_set.activated().exclude(issued_status)
+        pending_list = me.position_set.filter(pending_status)
         for record in pending_list:
             record.job_name = me.otype.get_name(record.apply_pos)
 
-        issued_list = me.position_set.activated().filter(issued_status)
+        issued_list = me.position_set.filter(issued_status)
         for record in issued_list:
             record.job_name = me.otype.get_name(record.pos)
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
         bar_display = utils.get_sidebar_and_navbar(request.user)
         bar_display["title_name"] = "人事变动"
-        bar_display["narbar_name"] = "人事变动"
+        bar_display["navbar_name"] = "人事变动"
 
         return render(request, "personnel_mobilization.html", locals())
 
@@ -2709,7 +2710,7 @@ def notifications(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "Notifications"
-    bar_display["narbar_name"] = "通知信箱"
+    bar_display["navbar_name"] = "通知信箱"
     bar_display["help_message"] = local_dict["help_message"]["通知信箱"]
 
     return render(request, "notifications.html", locals())
@@ -2736,6 +2737,13 @@ def addOrganization(request):
         try:
             id = int(request.GET.get('neworg_id'))  # 新建组织ID
             notification_id = int(request.GET.get('notifi_id'))  # 通知ID
+            en_pw = str(request.GET.get('enpw'))
+            if hash_coder.verify(str(id) + str(notification_id), en_pw) == False:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "该URL被篡改，请输入正确的URL地址"
+                return redirect('/notifications/' +
+                                '?warn_code={}&warn_message={}'.format(
+                                    html_display['warn_code'], html_display['warn_message']))
             preorg = NewOrganization.objects.get(id=id)
 
             notification=Notification.objects.get(id=notification_id)
@@ -2760,7 +2768,7 @@ def addOrganization(request):
     # TODO: 整理页面返回逻辑，统一返回render的地方
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织"
-    bar_display["narbar_name"] = "新建组织"
+    bar_display["navbar_name"] = "新建组织"
 
 
     if edit:  # 打开页面信息的准备
@@ -2832,9 +2840,9 @@ def addOrganization(request):
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
-
-                        URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}".format(id=new_org.id,
-                                                                                        nid=new_notification.id)
+                        en_pw = hash_coder.encode(str(new_org.id) + str(new_notification.id))
+                        URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(id=new_org.id,
+                                                                                        nid=new_notification.id,en_pw=en_pw)
                         URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
@@ -2885,9 +2893,9 @@ def addOrganization(request):
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
-
-                        URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}".format(id=preorg.id,
-                                                                                        nid=new_notification.id)
+                        en_pw = hash_coder.encode(str(preorg.id) + str(new_notification.id))
+                        URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(id=preorg.id,
+                                                                                        nid=new_notification.id,en_pw=en_pw)
                         URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
@@ -2916,7 +2924,7 @@ def addOrganization(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织"
-    bar_display["narbar_name"] = "新建组织"
+    bar_display["navbar_name"] = "新建组织"
     return render(request, "organization_add.html", locals())
 
 
@@ -2945,6 +2953,13 @@ def auditOrganization(request):
             return redirect('/notifications/' +
                 '?warn_code={}&warn_message={}'.format(
                     html_display['warn_code'], html_display['warn_message']))
+        en_pw = str(request.GET.get('enpw'))
+        if hash_coder.verify(str(id) + str(notification_id), en_pw) == False:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "该URL被篡改，请输入正确的URL地址"
+            return redirect('/notifications/' +
+                            '?warn_code={}&warn_message={}'.format(
+                                html_display['warn_code'], html_display['warn_message']))
         preorg = NewOrganization.objects.get(id=id)
         notification = Notification.objects.get(id=notification_id)
         if preorg.status == NewOrganization.NewOrgStatus.CANCELED or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED \
@@ -2968,7 +2983,7 @@ def auditOrganization(request):
     # TODO: 整理页面返回逻辑，统一返回render的地方
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织审核"
-    bar_display["narbar_name"] = "新建组织审核"
+    bar_display["navbar_name"] = "新建组织审核"
 
     if request.method == "POST" and request.POST:
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
@@ -3007,8 +3022,9 @@ def auditOrganization(request):
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
-                        URL = "/addOrganization/?neworg_id={id}&notifi_id={nid}".format(id=preorg.id,
-                                                                                       nid=new_notification.id)
+                        en_pw = hash_coder.encode(str(preorg.id) + str(new_notification.id))
+                        URL = "/addOrganization/?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(id=preorg.id,
+                                                                                       nid=new_notification.id,en_pw=en_pw)
                         URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
@@ -3152,7 +3168,7 @@ def auditOrganization(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织审核"
-    bar_display["narbar_name"] = "新建组织审核"
+    bar_display["navbar_name"] = "新建组织审核"
 
     return render(request, "organization_audit.html", locals())
 # 新建或修改报销信息
@@ -3181,15 +3197,22 @@ def addReimbursement(request):
     # TODO: 整理页面返回逻辑，统一返回render的地方
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建报销申请"
-    bar_display["narbar_name"] = "新建报销申请"
+    bar_display["navbar_name"] = "新建报销申请"
 
     # 如果是修改，则加载报销信息
     if request.GET.get('reimb_id') is not None and request.GET.get('notifi_id') is not None:
         edit = 1  # 表示需要修改报销信息
         try:
             id = int(request.GET.get('reimb_id'))  # 报销信息的ID
-            pre_reimb = Reimbursement.objects.get(id=id)
             notification_id = int(request.GET.get('notifi_id'))  # 通知ID
+            en_pw = str(request.GET.get('enpw'))
+            if hash_coder.verify(str(id)+str(notification_id),en_pw)==False:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "该URL被篡改，请输入正确的URL地址"
+                return redirect('/notifications/' +
+                                '?warn_code={}&warn_message={}'.format(
+                                    html_display['warn_code'], html_display['warn_message']))
+            pre_reimb = Reimbursement.objects.get(id=id)
             notification=Notification.objects.get(id=notification_id)
             if pre_reimb.status==Reimbursement.ReimburseStatus.CONFIRMED \
                     or pre_reimb.status==Reimbursement.ReimburseStatus.CANCELED \
@@ -3278,6 +3301,7 @@ def addReimbursement(request):
                         text = "以下默认为初始的报销材料"
                         reim_comment = Comment.objects.create(commentbase=new_reimb, commentator=request.user)
                         reim_comment.text = text
+                        reim_comment.save()
                         for payload in images:
                             CommentPhoto.objects.create(image=payload, comment=reim_comment)
                 except:
@@ -3295,8 +3319,9 @@ def addReimbursement(request):
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
-                        URL = "/auditReimbursement?reimb_id={id}&notifi_id={nid}".format(id=new_reimb.id,
-                                                                                         nid=new_notification.id)
+                        en_pw=hash_coder.encode(str(new_reimb.id)+str(new_notification.id))
+                        URL = "/auditReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(id=new_reimb.id,
+                                                                                         nid=new_notification.id,en_pw=en_pw)
                         URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
@@ -3339,8 +3364,10 @@ def addReimbursement(request):
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
 
-                        URL = "/auditReimbursement?reimb_id={id}&notifi_id={nid}".format(id=pre_reimb.id,
-                                                                                         nid=new_notification.id)
+                        en_pw = hash_coder.encode(str(pre_reimb.id) + str(new_notification.id))
+                        URL = "/auditReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(id=pre_reimb.id,
+                                                                                                      nid=new_notification.id,
+                                                                                                      en_pw=en_pw)
                         URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
@@ -3360,15 +3387,13 @@ def addReimbursement(request):
                     publish_notification(new_notification)
                 else:
                     publish_notification(new_notification.id)
-                return redirect('/notifications/' +
-                                '?warn_code={}&warn_message={}'.format(
-                                    html_display['warn_code'], html_display['warn_message']))
+                return redirect('/notifications/', locals())
 
         return render(request, "reimbursement_add.html", locals())
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建报销审核"
-    bar_display["narbar_name"] = "新建报销审核"
+    bar_display["navbar_name"] = "新建报销审核"
     return render(request, "reimbursement_add.html", locals())
 
 
@@ -3392,10 +3417,19 @@ def auditReimbursement(request):
         return redirect('/notifications/')
     try:  # 获取申请信息
         id = int(request.GET.get('reimb_id', -1))  # 报销信息的ID
+
         notification_id = int(request.GET.get('notifi_id', -1))  # 通知ID
+
         if id == -1 or notification_id == -1:
             html_display['warn_code'] = 1
             html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
+            return redirect('/notifications/' +
+                            '?warn_code={}&warn_message={}'.format(
+                                html_display['warn_code'], html_display['warn_message']))
+        en_pw = str(request.GET.get('enpw'))
+        if hash_coder.verify(str(id)+str(notification_id),en_pw)==False:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "该URL被篡改，请输入正确的URL地址"
             return redirect('/notifications/' +
                             '?warn_code={}&warn_message={}'.format(
                                 html_display['warn_code'], html_display['warn_message']))
@@ -3424,7 +3458,7 @@ def auditReimbursement(request):
     # TODO: 整理页面返回逻辑，统一返回render的地方
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "报销审核"
-    bar_display["narbar_name"] = "报销审核"
+    bar_display["navbar_name"] = "报销审核"
 
     if request.method == "POST" and request.POST:
 
@@ -3463,8 +3497,9 @@ def auditReimbursement(request):
                                                                Notification.Type.NEEDDO,
                                                                Notification.Title.VERIFY_INFORM, content,
                                                                URL)
-                        URL = "/addReimbursement?reimb_id={id}&notifi_id={nid}".format(id=new_reimb.id,
-                                                                                       nid=new_notification.id)
+                        en_pw = hash_coder.encode(str(new_reimb.id) + str(new_notification.id))
+                        URL = "/addReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(id=new_reimb.id,
+                                                                                       nid=new_notification.id,en_pw=en_pw)
                         URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
@@ -3486,13 +3521,12 @@ def auditReimbursement(request):
             if submit == 2:  # 通过
                 org = new_reimb.pos.organization
 
-                #检查是否有足够的元气值
                 try:
-                    with transaction.atomic():  
+                    with transaction.atomic():
                         if org.YQPoint < new_reimb.amount:
                             html_display['warn_code'] = 1
                             html_display['warn_message'] = "当前组织没有足够的元气值。报销申请无法通过，请联系管理员！"
-                        else:       # 修改对应组织的元气值
+                        else:  # 修改对应组织的元气值
                             org.YQPoint -= new_reimb.amount
                             org.save()
                             new_reimb.status = Reimbursement.ReimburseStatus.CONFIRMED
@@ -3517,12 +3551,17 @@ def auditReimbursement(request):
                         content += " 老师给你留言啦："
                         content += text"""
 
-                        new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
+                        new_notification=notification_create(receiver, request.user, Notification.Type.NEEDREAD,
                                             Notification.Title.VERIFY_INFORM, content, URL)
                         if html_display['warn_code'] == 1:
                             content="报销申请已通过，但是组织没有足够的元气值用来扣除，请补充元气值后再点击通知重新申请！"
-                            URL = "/addReimbursement?reimb_id={id}&notifi_id={nid}".format(id=new_reimb.id,
-                                                                                       nid=new_notification.id)
+                            en_pw = hash_coder.encode(str(new_reimb.id) + str(new_notification.id))
+                            URL = "/addReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(id=new_reimb.id,
+                                                                                                        nid=new_notification.id,
+                                                                                                        en_pw=en_pw)
+                        URL = request.build_absolute_uri(URL)
+                        new_notification.URL=URL
+                        new_notification.save()
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
@@ -3531,8 +3570,8 @@ def auditReimbursement(request):
                 context = notification_status_change(notification_id)  # 修改通知状态
                 # 成功发送通知
                 html_display['warn_code'] = 2
-                html_display['warn_message'] = "通知已成功发送！"
-                if context['warn_code'] != 0:
+                html_display['warn_message'] = "报销通知已成功发送！"
+                if context['warn_code'] != 2:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] += context['warn_message']
                 # 微信通知
@@ -3601,5 +3640,5 @@ def auditReimbursement(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "报销审核"
-    bar_display["narbar_name"] = "报销审核"
+    bar_display["navbar_name"] = "报销审核"
     return render(request, "reimbursement_comment.html", locals())

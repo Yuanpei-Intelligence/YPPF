@@ -256,7 +256,7 @@
                 <li>
                     <div class="page-header">
                         <div class="page-title">
-                            <h3>{{bar_display.narbar_name}}&nbsp</h3>
+                            <h3>{{bar_display.navbar_name}}&nbsp</h3>
                         </div>
                     </div>
                 </li>
@@ -287,9 +287,9 @@
         <div class="search-overlay"></div>
 
         {% if bar_display.user_type == "Person" %}
-            {% include 'user_left_narbar.html' %}
+            {% include 'user_left_navbar.html' %}
         {% elif bar_display.user_type == "Organization" %}
-            {% include 'org_left_narbar.html' %}
+            {% include 'org_left_navbar.html' %}
         {% endif %}
 
     {% block mainpage %}

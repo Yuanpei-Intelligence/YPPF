@@ -53,11 +53,11 @@ def get_user_wallpaper(person):
     return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/default.jpg")
 
 
-def get_user_left_narbar(person, is_myself, html_display):  # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
+def get_user_left_navbar(person, is_myself, html_display):  # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
     # assert (
     #        "is_myself" in html_display.keys()
     # ), "Forget to tell the website whether this is the user itself!"
-    raise NotImplementedError("old left_narbar function has been abandoned, please use `get_sidebar_and_navbar` instead!")
+    raise NotImplementedError("old left_navbar function has been abandoned, please use `get_sidebar_and_navbar` instead!")
     html_display["underground_url"] = local_dict["url"]["base_url"]
 
     my_org_id_list = Position.objects.activated().filter(person=person).filter(pos=0)
@@ -66,11 +66,11 @@ def get_user_left_narbar(person, is_myself, html_display):  # 获取左边栏的
     return html_display
 
 
-def get_org_left_narbar(org, is_myself, html_display):
+def get_org_left_navbar(org, is_myself, html_display):
     # assert (
     #        "is_myself" in html_display.keys()
     # ), "Forget to tell the website whether this is the user itself!"
-    raise NotImplementedError("old left_narbar function has been abandoned, please use `get_sidebar_and_navbar` instead!")
+    raise NotImplementedError("old left_navbar function has been abandoned, please use `get_sidebar_and_navbar` instead!")
     html_display["switch_org_name"] = org.oname
     html_display["underground_url"] = local_dict["url"]["base_url"]
     html_display["org"] = org
