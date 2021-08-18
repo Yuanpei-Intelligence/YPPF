@@ -1303,6 +1303,14 @@ def transaction_page(request, rid=None):
         return redirect("/index/")
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
+
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    # 如果希望前移，请联系YHT
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    # 补充一些呈现信息
+    bar_display["title_name"] = "Transaction"
+    bar_display["narbar_name"] = "发起转账"
+
     context = dict()
     if request.method == "POST":
         # 如果是post方法，从数据中读取rid
@@ -1323,6 +1331,7 @@ def transaction_page(request, rid=None):
 
     # 获取名字
     _, _, context = utils.check_user_type(user)
+    context = utils.get_sidebar_and_navbar(user,context)
     name = recipient.name if context["user_type"] == "Person" else recipient.oname
     context["name"] = name
     context["rid"] = rid
@@ -1352,11 +1361,7 @@ def transaction_page(request, rid=None):
             html_display["warn_code"] = 1
             html_display["warn_message"] = "转账金额为空或为负数, 请填写合法的金额!"
 
-            # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-            bar_display = utils.get_sidebar_and_navbar(request.user)
-            # 补充一些呈现信息
-            bar_display["title_name"] = "Transaction"
-            bar_display["narbar_name"] = "发起转账"
+            
 
             return render(request, "transaction_page.html", locals())
 
@@ -1364,11 +1369,7 @@ def transaction_page(request, rid=None):
             html_display["warn_code"] = 1
             html_display["warn_message"] = "转账金额的最大精度为0.1, 请填写合法的金额!"
 
-            # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-            bar_display = utils.get_sidebar_and_navbar(request.user)
-            # 补充一些呈现信息
-            bar_display["title_name"] = "Transaction"
-            bar_display["narbar_name"] = "发起转账"
+            
 
             return render(request, "transaction_page.html", locals())
 
@@ -1430,11 +1431,7 @@ def transaction_page(request, rid=None):
         except:
             html_display["warn_code"] = 1
             html_display["warn_message"] = "出现无法预料的问题, 请联系管理员!"
-    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    # 补充一些呈现信息
-    bar_display["title_name"] = "Transaction"
-    bar_display["narbar_name"] = "发起转账"
+    
     return render(request, "transaction_page.html", locals())
 
 
