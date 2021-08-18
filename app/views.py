@@ -650,7 +650,6 @@ def homepage(request):
     html_display["warn_message"] = request.GET.get(
         "warn_message", "")  # 提醒的具体内容
 
-
     # 今天开始进行的活动,且不展示结束的活动。按开始时间由近到远排序
     nowtime = datetime.now()
     today_activity_list = (
@@ -684,6 +683,7 @@ def homepage(request):
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "Welcome Page"
     bar_display["narbar_name"] = "近期要闻"
+
 
     return render(request, "welcome_page.html", locals())
 
