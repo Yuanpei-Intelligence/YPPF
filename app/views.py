@@ -3193,7 +3193,16 @@ def addReimbursement(request):
     html_display['warn_code'] = 0
 
     edit = 0
-    activities = Activity.objects.activated().filter(status=Activity.Status.END)  # 本学期已结束的活动    TODO 且未报销？
+    reimbursed_act_ids = Reimbursement.objects.all(
+        ).exclude(status=Reimbursement.ReimburseStatus.CANCELED     # 未取消报销的
+        # ).filter(status=Reimbursement.ReimburseStatus.CONFIRMED     # 已报销完的
+        ).values_list('activity_id', flat=True)
+    activities = Activity.objects.activated(    # 本学期的
+        ).filter(organization_id=me             # 本部门组织的
+        ).filter(status=Activity.Status.END     # 已结束的
+        ).exclude(id__in=reimbursed_act_ids     # 还没有报销的
+        )                                       # 这种写法是为了方便随时取消某个条件
+
     """unreim_acts=Activity.objects.activated().exclude(reimbursement__status=Reimbursement.ReimburseStatus.CANCELED)
     #unreim_acts=Reimbursement.objects.exclude(status=Reimbursement.ReimburseStatus.CANCELED).activity
     activities=activities.difference(unreim_acts)"""
