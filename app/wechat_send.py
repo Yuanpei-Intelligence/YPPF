@@ -206,13 +206,13 @@ def publish_activity(activity_or_id, only_activated=False):
         print(f"未找到id为{activity_or_id}的活动")
         return False
     org = activity.organization_id
-    subcribers = NaturalPerson.objects.difference(
-        org.unsubsribers)                   # flat=True时必须只有一个键
+    subscribers = NaturalPerson.objects.exclude(
+        id__in=org.unsubscribers.all())      # flat=True时必须只有一个键
     if only_activated:
-        subcribers = subcribers.exclude(
+        subscribers = subscribers.exclude(
             status=NaturalPerson.GraduateStatus.GRADUATED)
-    subcribers = list(subcribers.values_list("person_id__username", flat=True))
-    num = len(subcribers)
+    subscribers = list(subscribers.values_list("person_id__username", flat=True))
+    num = len(subscribers)
     start, finish = activity.start, activity.finish
     if start.year == datetime.now().year and finish.year == datetime.now().year:
         timeformat = "%m月%d日 %H:%M"       # 一般不显示年和秒
@@ -255,7 +255,7 @@ def publish_activity(activity_or_id, only_activated=False):
         else:
             message += f"\n\n<a href=\"{DEFAULT_URL}\">点击查看详情</a>"
     for i in range(0, num, ACTIVITY_BATCH):
-        userids = subcribers[i:i+ACTIVITY_BATCH]   # 一次最多接受1000个
+        userids = subscribers[i:i+ACTIVITY_BATCH]   # 一次最多接受1000个
         if USE_MULTITHREAD:
             # 多线程
             scheduler.add_job(base_send_wechat, 'date',
