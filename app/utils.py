@@ -101,6 +101,7 @@ def get_sidebar_and_navbar(user, bar_display = None):
     if user_type == "Person":   
         bar_display["profile_name"] = "个人主页"
         bar_display["profile_url"] = "/stuinfo/"
+        bar_display["name"] = me.name
 
         # 个人需要地下室跳转
         bar_display["underground_url"] = local_dict["url"]["base_url"]
