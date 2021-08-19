@@ -42,14 +42,17 @@
                                                 <label>报销活动</label>
                                                 {%if edit%}
                                                 <select name="activity_id" class="form-control">
-                                                    {% for activity in activities.all%}
-                                                    {%if audit_activity.id == activity.id%}
-                                                    <option value={{activity.id}} selected="selected">
-                                                        {{activity.title}}
+                                                    {% if html_display.audit_activity %}
+                                                    <option value={{html_display.audit_activity.id}} selected="selected">
+                                                        {{html_display.audit_activity.title}}
                                                     </option>
-                                                    {%endif%}
+                                                    {% endif %}
+                                                    
+                                                    {% for activity in activities.all %}
+                                                    {% if html_display.audit_activity.id != activity.id %}
                                                     <option value={{activity.id}}>{{activity.title}}</option>
-                                                    {%endfor%}
+                                                    {% endif %}
+                                                    {% endfor %}
                                                 </select>
 
                                                 {%else%}
