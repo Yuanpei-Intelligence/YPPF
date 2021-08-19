@@ -14,6 +14,11 @@ class YQPointDistributionForm(forms.ModelForm):
     class Meta:
         model = YQPointDistribute
         exclude = []
-#设置字段的 widget 的 multiple HTML 属性
+
+
+# 设置字段的 widget 的 multiple HTML 属性
 class FileFieldForm(forms.Form):
-    file_field = forms.FileField(widget=forms.ClearableFileInput(attrs={'multiple': True}))
+    file_field = forms.FileField(
+        widget=forms.ClearableFileInput(attrs={"multiple": True})
+    )
+

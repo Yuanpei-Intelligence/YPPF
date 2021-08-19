@@ -1,12 +1,39 @@
 from app.models import NaturalPerson, Organization, OrganizationType, Position, Notification
+from django.contrib.auth.models import User
 from django.dispatch.dispatcher import receiver
 from django.contrib import auth
-from django.contrib.auth.models import User
+from django.shortcuts import redirect
 from django.conf import settings
 from boottest import local_dict
 from datetime import datetime, timedelta
+from functools import wraps
 import re
 import imghdr
+
+
+def check_user_access(redirect_url="/logout/"):
+    """
+    Decorator for views that checks that the user is valid, redirecting
+    to specific url if necessary. Then it checks that the user is not
+    first time login, redirecting to the modify password page otherwise.
+    """
+    def actual_decorator(view_function):
+        @wraps(view_function)
+        def _wrapped_view(request, *args, **kwargs):
+            valid, user_type, html_display = check_user_type(request.user)
+            if not valid:
+                return redirect(redirect_url)
+            
+            isFirst = get_person_or_org(request.user, user_type).first_time_login
+            # 如果是首次登陆，会跳转到密码修改的页面
+            if isFirst:
+                return redirect("/modpw/")
+            
+            return view_function(request, *args, **kwargs)
+        return _wrapped_view
+    return actual_decorator
+
+
 def get_person_or_org(user, user_type=None):
     if user_type is None:
         if hasattr(user, "naturalperson"):
@@ -53,11 +80,11 @@ def get_user_wallpaper(person):
     return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/default.jpg")
 
 
-def get_user_left_narbar(person, is_myself, html_display):  # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
+def get_user_left_navbar(person, is_myself, html_display):  # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
     # assert (
     #        "is_myself" in html_display.keys()
     # ), "Forget to tell the website whether this is the user itself!"
-    raise NotImplementedError("old left_narbar function has been abandoned, please use `get_sidebar_and_navbar` instead!")
+    raise NotImplementedError("old left_navbar function has been abandoned, please use `get_sidebar_and_navbar` instead!")
     html_display["underground_url"] = local_dict["url"]["base_url"]
 
     my_org_id_list = Position.objects.activated().filter(person=person).filter(pos=0)
@@ -66,11 +93,11 @@ def get_user_left_narbar(person, is_myself, html_display):  # 获取左边栏的
     return html_display
 
 
-def get_org_left_narbar(org, is_myself, html_display):
+def get_org_left_navbar(org, is_myself, html_display):
     # assert (
     #        "is_myself" in html_display.keys()
     # ), "Forget to tell the website whether this is the user itself!"
-    raise NotImplementedError("old left_narbar function has been abandoned, please use `get_sidebar_and_navbar` instead!")
+    raise NotImplementedError("old left_navbar function has been abandoned, please use `get_sidebar_and_navbar` instead!")
     html_display["switch_org_name"] = org.oname
     html_display["underground_url"] = local_dict["url"]["base_url"]
     html_display["org"] = org
@@ -101,6 +128,7 @@ def get_sidebar_and_navbar(user, bar_display = None):
     if user_type == "Person":   
         bar_display["profile_name"] = "个人主页"
         bar_display["profile_url"] = "/stuinfo/"
+        bar_display["name"] = me.name
 
         # 个人需要地下室跳转
         bar_display["underground_url"] = local_dict["url"]["base_url"]
