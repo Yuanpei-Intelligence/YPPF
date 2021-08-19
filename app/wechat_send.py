@@ -219,9 +219,9 @@ def publish_notifications(notifications_or_ids=None, filter_kws=None, exclude_kw
     -------
     - success: bool, 是否尝试了发送，出错时返回False
     '''
-    if not (notifications_or_ids is None and 
-            filter_kws is None and
-            exclude_kws is None):
+    if (notifications_or_ids is None and 
+        filter_kws is None and
+        exclude_kws is None):
         print('必须至少传入一个有效参数才能发布通知到微信！')
         return False
     try:
