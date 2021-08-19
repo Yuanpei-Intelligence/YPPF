@@ -1566,7 +1566,7 @@ def confirm_transaction(request, tid=None, reject=None):
                 typename=Notification.Type.NEEDREAD,
                 title=Notification.Title.TRANSFER_FEEDBACK,
                 content=f"{str(recipient)}拒绝了您的转账。",
-                URL="/myYQpoint/",
+                URL="/myYQPoint/",
             )
             notification_status_change(record.transfer_notification.get().id)
         else:
@@ -1580,7 +1580,7 @@ def confirm_transaction(request, tid=None, reject=None):
                 typename=Notification.Type.NEEDREAD,
                 title=Notification.Title.TRANSFER_FEEDBACK,
                 content=f"{str(recipient)}接受了您的转账。",
-                URL="/myYQpoint/",
+                URL="/myYQPoint/",
             )
             notification_status_change(record.transfer_notification.get().id)
         record.finish_time = datetime.now()  # 交易完成时间
