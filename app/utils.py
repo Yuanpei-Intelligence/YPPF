@@ -18,7 +18,7 @@ def check_user_access(redirect_url="/logout/"):
     first time login, redirecting to the modify password page otherwise.
     """
     def actual_decorator(view_function):
-        @wraps
+        @wraps(view_function)
         def _wrapped_view(request, *args, **kwargs):
             valid, user_type, html_display = check_user_type(request.user)
             if not valid:
