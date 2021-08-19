@@ -301,10 +301,10 @@ def publish_notifications(notifications_or_ids=None, filter_kws=None, exclude_kw
             message += f"\n\n<a href=\"{DEFAULT_URL}\">点击查看详情</a>"
     
     # 获取接收者列表，组织的接收者为其负责人，去重
-    receiver_ids = latest_notification.values_list("receiver_id", flat=True)
+    receiver_ids = notifications.values_list("receiver_id", flat=True)
     person_receivers = NaturalPerson.objects.filter(person_id__in=receiver_ids)
     wechat_receivers = list(person_receivers.
-                            values_list("person__person_id__username", flat=True))
+                            values_list("person_id__username", flat=True))
     receiver_set = set(wechat_receivers)
     org_receivers = Organization.objects.filter(organization_id__in=receiver_ids)
     for org in org_receivers:
