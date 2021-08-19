@@ -129,7 +129,6 @@ def index(request):
             auth.login(request, userinfo)
             request.session["username"] = username
             if arg_origin is not None:
-
                 if not check_cross_site(request, arg_origin):
                     html_display["warn_code"] = 1
                     html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
@@ -142,7 +141,7 @@ def index(request):
                 timeStamp = str(int(t))
                 en_pw = hash_coder.encode(username + timeStamp)
                 try:
-                    userinfo = NaturalPerson.objects.get(person_id=username)
+                    userinfo = NaturalPerson.objects.get(person_id__username=username)
                     name = userinfo.name
                     return redirect(
                         arg_origin
@@ -2611,26 +2610,44 @@ def notification2Display(notification_list):
     return lis
 
 
-def notification_status_change(notification_id):
+def notification_status_change(notification_id, to_status=None):
     """
     调用该函数以完成一项通知。对于知晓类通知，在接收到用户点击按钮后的post表单，该函数会被调用。
     对于需要完成的待处理通知，需要在对应的事务结束判断处，调用该函数。
+    notification_id是notification的主键:id
+    to_status是希望这条notification转变为的状态，包括
+        DONE = (0, "已处理")
+        UNDONE = (1, "待处理")
+        DELETE = (2, "已删除")
+    若不给to_status传参，默认为状态翻转：已处理<->未处理
     """
     context = dict()
     context["warn_code"] = 1
+
+    if to_status is None:   # 表示默认的状态翻转操作
+        if Notification.objects.activated().get(id=notification_id).status == Notification.Status.DONE:
+            to_status = Notification.Status.UNDONE
+        else:
+            to_status = Notification.Status.DONE
+
     with transaction.atomic():
         notification = Notification.objects.select_for_update().get(id=notification_id)
-        if notification.status == Notification.Status.UNDONE:
+        if to_status == Notification.Status.DONE:
             notification.status = Notification.Status.DONE
             notification.finish_time = datetime.now()  # 通知完成时间
             notification.save()
             context["warn_code"] = 2
             context["warn_message"] = "您已成功阅读一条通知！"
-        elif notification.status == Notification.Status.DONE:
+        elif to_status == Notification.Status.UNDONE:
             notification.status = Notification.Status.UNDONE
             notification.save()
             context["warn_code"] = 2
             context["warn_message"] = "成功设置一条通知为未读！"
+        elif to_status == Notification.Status.DELETE:
+            notification.status = Notification.Status.DELETE
+            notification.save()
+            context["warn_code"] = 2
+            context["warn_message"] = "成功删除一条通知！"
         return context
     context["warn_message"] = "在阅读通知的过程中发生错误，请联系管理员！"
     return context
@@ -2699,9 +2716,9 @@ def notifications(request):
         post_args = request.POST.get("post_button")
         if 'cancel' in post_args:
             notification_id = int(post_args.split("+")[0])
-            Notification.objects.get(id=notification_id).delete()
+            notification_status_change(notification_id, Notification.Status.DELETE)
             html_display["warn_code"] = 2 # success
-            html_display['warn_message'] = '成功删除一条通知！'
+            html_display['warn_message'] = '您已成功删除一条通知！'
         else:
             notification_id = post_args
             context = notification_status_change(notification_id)
@@ -2710,11 +2727,11 @@ def notifications(request):
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
-    done_set = Notification.objects.filter(
+    done_set = Notification.objects.activated().filter(
         receiver=request.user, status=Notification.Status.DONE
     )
 
-    undone_set = Notification.objects.filter(
+    undone_set = Notification.objects.activated().filter(
         receiver=request.user, status=Notification.Status.UNDONE
     )
 
@@ -2766,7 +2783,7 @@ def addOrganization(request):
                                     html_display['warn_code'], html_display['warn_message']))
             preorg = NewOrganization.objects.get(id=id)
 
-            notification=Notification.objects.get(id=notification_id)
+            notification=Notification.objects.activated().get(id=notification_id)
             if preorg.status==NewOrganization.NewOrgStatus.CANCELED or preorg.status==NewOrganization.NewOrgStatus.CONFIRMED \
                     or notification.status==Notification.Status.DONE:
                 if notification.status == Notification.Status.UNDONE:
@@ -2984,7 +3001,7 @@ def auditOrganization(request):
                             '?warn_code={}&warn_message={}'.format(
                                 html_display['warn_code'], html_display['warn_message']))
         preorg = NewOrganization.objects.get(id=id)
-        notification = Notification.objects.get(id=notification_id)
+        notification = Notification.objects.activated().get(id=notification_id)
         if preorg.status == NewOrganization.NewOrgStatus.CANCELED or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED \
                 or notification.status == Notification.Status.DONE:
             if notification.status == Notification.Status.UNDONE:
@@ -3249,7 +3266,7 @@ def addReimbursement(request):
                                 '?warn_code={}&warn_message={}'.format(
                                     html_display['warn_code'], html_display['warn_message']))
             pre_reimb = Reimbursement.objects.get(id=id)
-            notification=Notification.objects.get(id=notification_id)
+            notification=Notification.objects.activated().get(id=notification_id)
             if pre_reimb.status==Reimbursement.ReimburseStatus.CONFIRMED \
                     or pre_reimb.status==Reimbursement.ReimburseStatus.CANCELED \
                     or notification.status==Notification.Status.DONE:
@@ -3472,7 +3489,7 @@ def auditReimbursement(request):
                             '?warn_code={}&warn_message={}'.format(
                                 html_display['warn_code'], html_display['warn_message']))
         new_reimb = Reimbursement.objects.get(id=id)
-        notification = Notification.objects.get(id=notification_id)
+        notification = Notification.objects.activated().get(id=notification_id)
         if new_reimb.status == Reimbursement.ReimburseStatus.CONFIRMED \
                 or new_reimb.status == Reimbursement.ReimburseStatus.CANCELED \
                 or notification.status == Notification.Status.DONE:
