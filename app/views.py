@@ -231,6 +231,7 @@ def miniLogin(request):
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def stuinfo(request, name=None):
     """
         进入到这里的逻辑:
@@ -245,17 +246,11 @@ def stuinfo(request, name=None):
                 如果是自己，那么呈现并且有左边栏
                 如果不是自己或者自己是组织，那么呈现并且没有侧边栏
             如果重名
-                那么期望有一个"+"在name中，如果搜不到就跳转到Search/？Query=name让他跳转去
+                那么期望有一个"+"在name中，如果搜不到就跳转到Search/?Query=name让他跳转去
     """
 
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/logout/")
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
     
 
     oneself = utils.get_person_or_org(user, user_type)
@@ -421,6 +416,7 @@ def stuinfo(request, name=None):
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def request_login_org(request, name=None):  # 特指个人希望通过个人账户登入组织账户的逻辑
     """
         这个函数的逻辑是，个人账户点击左侧的管理组织直接跳转登录到组织账户
@@ -429,12 +425,6 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
     """
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/logout/")
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
     
     if user_type == "Organization":
         return redirect("/orginfo/")
@@ -467,6 +457,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def orginfo(request, name=None):
     """
         orginfo负责呈现组织主页，逻辑和stuinfo是一样的，可以参考
@@ -474,13 +465,6 @@ def orginfo(request, name=None):
     """
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
-
-    if not valid:
-        return redirect("/logout/")
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
     
     me = utils.get_person_or_org(user, user_type)
 
@@ -640,14 +624,11 @@ def orginfo(request, name=None):
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def homepage(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = True if user_type == "Person" else False
-    if not valid:
-        return redirect("/logout/")
     me = utils.get_person_or_org(request.user, user_type)
-    if me.first_time_login:
-        return redirect("/modpw/")
     myname = me.name if is_person else me.oname
 
     # 直接储存在html_display中
@@ -703,20 +684,15 @@ def homepage(request):
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def account_setting(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/logout/")
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
 
     
     # 在这个页面 默认回归为自己的左边栏
     html_display["is_myself"] = True
     user = request.user
-    me = utils.get_person_or_org(user)
+    me = utils.get_person_or_org(user, user_type)
     former_img = utils.get_user_ava(me, user_type)
 
 
@@ -896,6 +872,7 @@ def get_stu_img(request):
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def search(request):
     """
         搜索界面的呈现逻辑
@@ -917,13 +894,6 @@ def search(request):
     """
 
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/logout/")
-    
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
 
 
     query = request.GET.get("Query", "")
@@ -1160,8 +1130,7 @@ def modpw(request):
     me = utils.get_person_or_org(request.user, user_type)
     isFirst = me.first_time_login
     # 在其他界面，如果isFirst为真，会跳转到这个页面
-    # if isFirst:
-    #     return redirect(reverse("modpw"))
+    # 现在，请使用@utils.check_user_access(redirect_url)包装器完成用户检查
 
     html_display["is_myself"] = True
     
@@ -1178,7 +1147,7 @@ def modpw(request):
         newpw = request.POST["new"]
         strict_check = False
 
-        if oldpassword == newpw and strict_check and not forgetpw:  # modified by pht
+        if oldpassword == newpw and strict_check and not (forgetpw or isFirst):
             err_code = 1
             err_message = "新密码不能与原密码相同"
         elif newpw == username and strict_check:
@@ -1188,11 +1157,12 @@ def modpw(request):
             err_code = 5
             err_message = "两次输入的密码不匹配"
         else:
-            userauth = auth.authenticate(
-                username=username, password=oldpassword) # 验证旧密码是否正确
             # 在1、忘记密码 2、首次登录 3、验证旧密码正确 的前提下，可以修改
-            if forgetpw or isFirst or userauth:  # added by pht: 这是不好的写法，可改进
+            if forgetpw or isFirst:
                 userauth = True
+            else:
+                userauth = auth.authenticate(
+                    username=username, password=oldpassword) # 验证旧密码是否正确
             if userauth: # 可以修改
                 try:  # modified by pht: if检查是错误的，不存在时get会报错
                     user.set_password(newpw)
@@ -1338,14 +1308,9 @@ def applyActivity(request, activity_id, willingness):
 # 调用的时候传一下 url 到 origin
 # 搜索不希望出现学号，rid 为 User 的 index
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def transaction_page(request, rid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/index/")
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
     
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
@@ -1689,14 +1654,9 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def myYQPoint(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/logout/")
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
     
     # 接下来处理POST相关的内容
     html_display["warn_code"] = 0
@@ -1801,6 +1761,7 @@ def myYQPoint(request):
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def viewActivity(request, aid=None):
     """
     aname = str(request.POST["aname"])  # 活动名称
@@ -1820,12 +1781,6 @@ def viewActivity(request, aid=None):
         return redirect("/welcome/")
 
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/welcome/")
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
     
     me = utils.get_person_or_org(request.user, user_type)
 
@@ -2100,14 +2055,9 @@ def viewActivity(request, aid=None):
 # example: http://127.0.0.1:8000/getActivityInfo?activityid=1&infotype=qrcode
 # TODO: 前端页面待对接
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def getActivityInfo(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/index/")
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
     
 
     # check activity existence
@@ -2219,14 +2169,9 @@ def getActivityInfo(request):
 # example: http://127.0.0.1:8000/checkinActivity?activityid=1
 # TODO: 前端页面待对接
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def checkinActivity(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/index/")
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
     
 
     # check activity existence
@@ -2300,18 +2245,13 @@ def checkinActivity(request):
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def addActivities(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/index/")
     if user_type == "Person":
         return redirect("/welcome/")  # test
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
     
-    me = utils.get_person_or_org(request.user)
+    me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
@@ -2450,14 +2390,9 @@ def addActivities(request):
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def subscribeActivities(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/index/")
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
         
     
     me = utils.get_person_or_org(request.user, user_type)
@@ -2483,14 +2418,9 @@ def subscribeActivities(request):
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def save_subscribe_status(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/index/")
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
     
     me = utils.get_person_or_org(request.user, user_type)
     params = json.loads(request.body.decode("utf-8"))
@@ -2525,6 +2455,7 @@ def save_subscribe_status(request):
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def apply_position(request, oid=None):
     """ apply for position in organization, including join, withdraw, transfer
     Args:
@@ -2535,12 +2466,8 @@ def apply_position(request, oid=None):
         - Personal `/notification/` web page
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid or user_type != "Person":
+    if user_type != "Person":
         return redirect("/index/")
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
     
     
     me = utils.get_person_or_org(request.user, user_type)
@@ -2585,14 +2512,11 @@ def apply_position(request, oid=None):
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def personnel_mobilization(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid or user_type != "Organization":
+    if user_type != "Organization":
         return redirect("/index/")
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
     
     me = utils.get_person_or_org(request.user, user_type)
     html_display = {"is_myself": True}
@@ -2751,14 +2675,9 @@ def notification_create(
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def notifications(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/index/")
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
     
     # 接下来处理POST相关的内容
 
@@ -2814,23 +2733,18 @@ def notifications(request):
 
 # 新建组织 or 修改新建组织信息
 @login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
 def addOrganization(request):
     """
     新建组织，首先是由check_neworg_request()检查输入的合法性，再存储申请信息到NewOrganization的一个实例中
     之后便是创建给对应审核老师的通知
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect('/index/')
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
-    
-    
-    me = utils.get_person_or_org(request.user)
     if user_type == "Organization":
         return redirect("/welcome/")  # test
+    
+    me = utils.get_person_or_org(request.user, user_type)
+    
     html_display['is_myself'] = True
 
     edit = 0
@@ -3035,19 +2949,14 @@ def addOrganization(request):
 
 # 修改和审批申请新建组织的信息，只用该函数即可
 @login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
 def auditOrganization(request):
     """
     对于审核老师老师：第一次进入的审核，如果申请需要修改，则有之后的下一次审核等
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect('/index/')
-    isFirst = utils.get_person_or_org(request.user, user_type).first_time_login
-    # 如果是首次登陆，会跳转到密码修改的页面
-    if isFirst:
-        return redirect(reverse("modpw"))
     
-    me = utils.get_person_or_org(request.user)
+    me = utils.get_person_or_org(request.user, user_type)
     html_display['is_myself'] = True
     html_display['warn_code'] = 0
 
@@ -3287,16 +3196,16 @@ def auditOrganization(request):
 
 # 新建或修改报销信息
 @login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
 def addReimbursement(request):
     """
     新建报销信息
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/index/")
     if user_type == "Person":
         return redirect("/welcome/")  # test
-    me = utils.get_person_or_org(request.user)
+    
+    me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
     html_display['warn_code'] = 0
 
@@ -3524,16 +3433,15 @@ def addReimbursement(request):
 
 # 审核报销信息
 @login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
 def auditReimbursement(request):
     """
     审核报销信息
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/index/")
     if user_type == "Organization":
         return redirect("/welcome/")  # test
-    me = utils.get_person_or_org(request.user)
+    me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
     html_display['warn_code'] = 0
     html_display['warn_message'] = ""
