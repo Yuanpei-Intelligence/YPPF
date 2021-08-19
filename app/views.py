@@ -2650,11 +2650,14 @@ def notification_create(
         URL: 需要跳转到处理事务的页面
 
     注意事项：
-        publish_to_wechat: bool 仅位置参数
+        publish_to_wechat: bool 仅关键字参数
         - 你不应该输入这个参数，除非你清楚wechat_send.py的所有逻辑
         - 在最坏的情况下，可能会阻塞近10s
         - 简单来说，涉及订阅或者可能向多人连续发送类似通知时，都不要发送到微信
-        - 在线程锁内时，也不要发送
+        - 在线程锁或原子锁内时，也不要发送
+        
+    现在，你应该在不急于等待的时候显式调用publish_notification(s)这两个函数，
+        具体选择哪个取决于你创建的通知是一批类似通知还是单个通知
     """
     notification = Notification.objects.create(
         receiver=receiver,
