@@ -354,6 +354,7 @@ def check_neworg_request(request):
         context['warn_code'] = 1
         context['warn_msg'] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
         return context
+
     try:
         otype = int(request.POST.get('otype'))
         if otype not in [7, 8, 10]:  # 7 for 书院俱乐部，8 for 学生小组 ，10 for 书院课程
