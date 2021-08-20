@@ -2775,7 +2775,35 @@ def notifications(request):
 
     return render(request, "notifications.html", locals())
 
-
+#新建评论，
+def addComment(request,comment_base):
+    """
+    传入POST得到的request和与评论相关联的实例即可
+    返回值为1代表失败，返回2代表新建评论成功
+    """
+    context=dict()
+    context['warn_code'] = 2
+    if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
+        text = str(request.POST.get('comment'))
+        # 检查图片合法性
+        comment_images = request.FILES.getlist('comment_images')
+        if len(comment_images) > 0:
+            for comment_image in comment_images:
+                if utils.if_image(comment_image) == False:
+                    context['warn_code'] = 1
+                    context['warn_message'] = "上传的附件只支持图片格式。"
+                    return context
+        try:
+            with transaction.atomic():
+                new_comment = Comment.objects.create(commentbase=comment_base, commentator=request.user, text=text)
+                if len(comment_images) > 0:
+                    for comment_image in comment_images:
+                        CommentPhoto.objects.create(image=comment_image, comment=new_comment)
+        except:
+            context['warn_code'] = 1
+            context['warn_message'] = "评论失败，请联系管理员。"
+        context['new_comment']=new_comment
+    return context
 # 新建组织 or 修改新建组织信息
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
@@ -2791,7 +2819,7 @@ def addOrganization(request):
     me = utils.get_person_or_org(request.user, user_type)
     
     html_display['is_myself'] = True
-
+    former_img=settings.MEDIA_URL + "avatar/org_default.png"
     edit = 0
     if request.GET.get('neworg_id') is not None and request.GET.get('notifi_id') is not None:
         edit = 1
@@ -2846,29 +2874,11 @@ def addOrganization(request):
         org_avatar_path=utils.get_user_ava(preorg, "Organization")
 
     if request.method == "POST" and request.POST:
-
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
-            text = str(request.POST.get('comment'))
-            #检查图片合法性
-            comment_images = request.FILES.getlist('comment_images')
-            if len(comment_images) > 0:
-                for comment_image in comment_images:
-                    if utils.if_image(comment_image) == False:
-                        html_display['warn_code'] = 1
-                        html_display['warn_message'] = "上传的附件只支持图片格式。"
-                        return render(request, "organization_audit.html", locals())
-            try:
-
-                with transaction.atomic():
-                    org_comment = Comment.objects.create(commentbase=preorg, commentator=request.user, text=text)
-                    if len(comment_images) > 0:
-                        for comment_image in comment_images:
-                            CommentPhoto.objects.create(image=comment_image, comment=org_comment)
-            except:
+            context=addComment(request,preorg)
+            if context['warn_code']==1:
                 html_display['warn_code'] = 1
-                html_display['warn_message'] = "评论失败，请联系管理员。"
-                return render(request, "organization_audit.html", locals())
-
+                html_display['warn_message'] = context['warn_code']
         else:
             # 参数合法性检查
             context = utils.check_neworg_request(request)  # check
@@ -2885,7 +2895,10 @@ def addOrganization(request):
                         new_org = NewOrganization.objects.create(oname=context['oname'], otype=context['otype'],
                                                                  pos=context['pos'])
                         new_org.introduction = context['introduction']
-                        new_org.avatar = context['avatar']
+                        if context['avatar'] is None:
+                            new_org.avatar=former_img
+                        else:
+                            new_org.avatar = context['avatar']
                         new_org.application = context['application']
                         new_org.save()
                 except:
@@ -3058,26 +3071,10 @@ def auditOrganization(request):
 
     if request.method == "POST" and request.POST:
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
-            text = str(request.POST.get('comment'))
-            # 检查图片合法性
-            comment_images = request.FILES.getlist('comment_images')
-            if len(comment_images) > 0:
-                for comment_image in comment_images:
-                    if utils.if_image(comment_image) == False:
-                        html_display['warn_code'] = 1
-                        html_display['warn_message'] = "上传的附件只支持图片格式。"
-                        return render(request, "organization_audit.html", locals())
-            try:
-                with transaction.atomic():
-                    org_comment = Comment.objects.create(commentbase=preorg, commentator=request.user, text=text)
-                    if len(comment_images) > 0:
-                        for comment_image in comment_images:
-                            CommentPhoto.objects.create(image=comment_image, comment=org_comment)
-            except:
+            context = addComment(request, preorg)
+            if context['warn_code'] == 1:
                 html_display['warn_code'] = 1
-                html_display['warn_message'] = "评论失败，请联系管理员。"
-                return render(request, "organization_audit.html", locals())
-
+                html_display['warn_message'] = context['warn_code']
         # 对于审核老师来说，有三种操作，通过，申请需要修改和拒绝
         else:
             submit = int(request.POST.get('submit', -1))
@@ -3271,9 +3268,6 @@ def addReimbursement(request):
         ).exclude(id__in=reimbursed_act_ids     # 还没有报销的
         )                                       # 这种写法是为了方便随时取消某个条件
 
-    """unreim_acts=Activity.objects.activated().exclude(reimbursement__status=Reimbursement.ReimburseStatus.CANCELED)
-    #unreim_acts=Reimbursement.objects.exclude(status=Reimbursement.ReimburseStatus.CANCELED).activity
-    activities=activities.difference(unreim_acts)"""
     YQP = float(me.YQPoint)  # 组织剩余的元气值
     #新版侧边栏, 顶栏等的呈现，采用
     #bar_display, 必须放在render前最后一步
@@ -3325,25 +3319,10 @@ def addReimbursement(request):
     if request.method == "POST" and request.POST:
 
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
-            text = str(request.POST.get('comment'))
-            # 检查图片合法性
-            comment_images = request.FILES.getlist('comment_images')
-            if len(comment_images) > 0:
-                for comment_image in comment_images:
-                    if utils.if_image(comment_image) == False:
-                        html_display['warn_code'] = 1
-                        html_display['warn_message'] = "上传的附件只支持图片格式。"
-                        return render(request, "organization_audit.html", locals())
-            try:
-                with transaction.atomic():
-                    reim_comment = Comment.objects.create(commentbase=pre_reimb, commentator=request.user, text=text)
-                    if len(comment_images) > 0:
-                        for comment_image in comment_images:
-                            CommentPhoto.objects.create(image=comment_image, comment=reim_comment)
-            except:
+            context = addComment(request, pre_reimb)
+            if context['warn_code'] == 1:
                 html_display['warn_code'] = 1
-                html_display['warn_message'] = "评论失败，请联系管理员。"
-                return render(request, "reimbursement_add.html", locals())
+                html_display['warn_message'] = context['warn_code']
         else:  # POST信息获取
 
             # 活动实例
@@ -3553,25 +3532,10 @@ def auditReimbursement(request):
     if request.method == "POST" and request.POST:
 
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
-            text = str(request.POST.get('comment'))
-            # 检查图片合法性
-            comment_images = request.FILES.getlist('comment_images')
-            if len(comment_images) > 0:
-                for comment_image in comment_images:
-                    if utils.if_image(comment_image) == False:
-                        html_display['warn_code'] = 1
-                        html_display['warn_message'] = "上传的附件只支持图片格式。"
-                        return render(request, "organization_audit.html", locals())
-            try:
-                with transaction.atomic():
-                    reim_comment = Comment.objects.create(commentbase=new_reimb, commentator=request.user, text=text)
-                    if len(comment_images) > 0:
-                        for comment_image in comment_images:
-                            CommentPhoto.objects.create(image=comment_image, comment=reim_comment)
-            except:
+            context = addComment(request, new_reimb)
+            if context['warn_code'] == 1:
                 html_display['warn_code'] = 1
-                html_display['warn_message'] = "评论失败，请联系管理员。"
-                return render(request, "reimbursement_comment.html", locals())
+                html_display['warn_message'] = context['warn_code']
         # 对于审核老师来说，有三种操作，通过，申请需要修改和拒绝
         else:
 
