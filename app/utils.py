@@ -345,6 +345,10 @@ def check_neworg_request(request):
         context['warn_code'] = 1
         context['warn_msg'] = "组织的名字不能超过32字节"
         return context
+    if oname=="":
+        context['warn_code'] = 1
+        context['warn_msg'] = "组织的名字不能为空"
+        return context
     try:
         otype = int(request.POST.get('otype'))
         if otype not in [7, 8, 10]:  # 7 for 书院俱乐部，8 for 学生小组 ，10 for 书院课程
@@ -363,10 +367,11 @@ def check_neworg_request(request):
         return context
 
     context['avatar'] = request.FILES.get('avatar')
-    if if_image(context['avatar'])==False:
-        context['warn_code'] = 1
-        context['warn_msg'] = "组织的头像应当为图片格式！"  # user can't see it . we use it for debugging
-        return context
+    if context['avatar'] is not None:
+        if if_image(context['avatar'])==False:
+            context['warn_code'] = 1
+            context['warn_msg'] = "组织的头像应当为图片格式！"
+            return context
 
     context['oname'] = oname  # 组织名字
      # 组织类型，必须有
@@ -374,6 +379,10 @@ def check_neworg_request(request):
     context['introduction'] = str(request.POST.get('introduction', ""))  # 组织介绍，可能为空
 
     context['application'] = str(request.POST.get('application', ""))  # 申请理由
+
+    if context['application']=="" :
+        context['warn_code'] = 1
+        context['warn_msg'] = "申请理由不能为空"
     return context
 
 # 查询组织代号的最大值+1 用于addOrganization()函数，新建组织
