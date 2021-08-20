@@ -2610,7 +2610,7 @@ def notification2Display(notification_list):
     return lis
 
 
-def notification_status_change(notification_id, to_status=None):
+def notification_status_change(notification_or_id, to_status=None):
     """
     调用该函数以完成一项通知。对于知晓类通知，在接收到用户点击按钮后的post表单，该函数会被调用。
     对于需要完成的待处理通知，需要在对应的事务结束判断处，调用该函数。
@@ -2623,15 +2623,42 @@ def notification_status_change(notification_id, to_status=None):
     """
     context = dict()
     context["warn_code"] = 1
+    context["warn_message"] = "在修改通知状态的过程中发生错误，请联系管理员！"
+
+    if isinstance(notification_or_id, Notification):
+        notification_id = notification_or_id.id
+    else:
+        notification_id = notification_or_id
 
     if to_status is None:   # 表示默认的状态翻转操作
-        if Notification.objects.activated().get(id=notification_id).status == Notification.Status.DONE:
-            to_status = Notification.Status.UNDONE
+        if isinstance(notification_or_id, Notification):
+            now_status = notification_or_id.status
         else:
+            try:
+                notification = Notification.objects.get(id=notification_id)
+                now_status = notification.status
+            except:
+                context["warn_message"] = "该通知不存在！"
+            return context
+        if now_status == Notification.Status.DONE:
+            to_status = Notification.Status.UNDONE
+        elif now_status == Notification.Status.UNDONE:
             to_status = Notification.Status.DONE
+        else:
+            to_status = Notification.Status.DELETE
+            context["warn_message"] = "已删除的通知无法翻转状态！"
+            return context
 
     with transaction.atomic():
-        notification = Notification.objects.select_for_update().get(id=notification_id)
+        try:
+            notification = Notification.objects.select_for_update().get(id=notification_id)
+        except:
+            context["warn_message"] = "该通知不存在！"
+            return context
+        if notification.status == to_status:
+            context["warn_code"] = 2
+            context["warn_message"] = "通知状态无需改变！"
+            return context
         if to_status == Notification.Status.DONE:
             notification.status = Notification.Status.DONE
             notification.finish_time = datetime.now()  # 通知完成时间
@@ -2649,8 +2676,6 @@ def notification_status_change(notification_id, to_status=None):
             context["warn_code"] = 2
             context["warn_message"] = "成功删除一条通知！"
         return context
-    context["warn_message"] = "在阅读通知的过程中发生错误，请联系管理员！"
-    return context
 
 
 def notification_create(
@@ -2783,11 +2808,14 @@ def addOrganization(request):
                                     html_display['warn_code'], html_display['warn_message']))
             preorg = NewOrganization.objects.get(id=id)
 
-            notification=Notification.objects.activated().get(id=notification_id)
-            if preorg.status==NewOrganization.NewOrgStatus.CANCELED or preorg.status==NewOrganization.NewOrgStatus.CONFIRMED \
-                    or notification.status==Notification.Status.DONE:
+            notification = Notification.objects.get(id=notification_id)
+            if (
+                preorg.status == NewOrganization.NewOrgStatus.CANCELED
+                or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED
+                or notification.status != Notification.Status.UNDONE
+                ):
                 if notification.status == Notification.Status.UNDONE:
-                    notification_status_change(notification_id)
+                    notification_status_change(notification_id, Notification.Status.DONE)
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "通知已被处理，请不要重复处理。"
                 return redirect('/notifications/' + 
@@ -3001,11 +3029,14 @@ def auditOrganization(request):
                             '?warn_code={}&warn_message={}'.format(
                                 html_display['warn_code'], html_display['warn_message']))
         preorg = NewOrganization.objects.get(id=id)
-        notification = Notification.objects.activated().get(id=notification_id)
-        if preorg.status == NewOrganization.NewOrgStatus.CANCELED or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED \
-                or notification.status == Notification.Status.DONE:
+        notification = Notification.objects.get(id=notification_id)
+        if (
+            preorg.status == NewOrganization.NewOrgStatus.CANCELED
+            or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED
+            or notification.status != Notification.Status.UNDONE
+            ):
             if notification.status == Notification.Status.UNDONE:
-                notification_status_change(notification_id)
+                notification_status_change(notification_id, Notification.Status.DONE)
             html_display['warn_code'] = 1
             html_display['warn_message'] = "通知已被处理，请不要重复处理。"
             return redirect('/notifications/' + 
@@ -3266,12 +3297,14 @@ def addReimbursement(request):
                                 '?warn_code={}&warn_message={}'.format(
                                     html_display['warn_code'], html_display['warn_message']))
             pre_reimb = Reimbursement.objects.get(id=id)
-            notification=Notification.objects.activated().get(id=notification_id)
-            if pre_reimb.status==Reimbursement.ReimburseStatus.CONFIRMED \
-                    or pre_reimb.status==Reimbursement.ReimburseStatus.CANCELED \
-                    or notification.status==Notification.Status.DONE:
-                if notification.status==Notification.Status.UNDONE:
-                    notification_status_change(notification_id)
+            notification = Notification.objects.get(id=notification_id)
+            if (
+                    pre_reimb.status==Reimbursement.ReimburseStatus.CONFIRMED
+                    or pre_reimb.status==Reimbursement.ReimburseStatus.CANCELED
+                    or notification.status != Notification.Status.UNDONE
+                ):
+                if notification.status == Notification.Status.UNDONE:
+                    notification_status_change(notification_id, Notification.Status.DONE)
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "该条通知已处理，请勿重复处理。"
                 return redirect('/notifications/' +
@@ -3489,12 +3522,14 @@ def auditReimbursement(request):
                             '?warn_code={}&warn_message={}'.format(
                                 html_display['warn_code'], html_display['warn_message']))
         new_reimb = Reimbursement.objects.get(id=id)
-        notification = Notification.objects.activated().get(id=notification_id)
-        if new_reimb.status == Reimbursement.ReimburseStatus.CONFIRMED \
-                or new_reimb.status == Reimbursement.ReimburseStatus.CANCELED \
-                or notification.status == Notification.Status.DONE:
+        notification = Notification.objects.get(id=notification_id)
+        if (
+            new_reimb.status == Reimbursement.ReimburseStatus.CONFIRMED
+            or new_reimb.status == Reimbursement.ReimburseStatus.CANCELED
+            or notification.status != Notification.Status.UNDONE    # 未处理通知才有修改许可
+            ):
             if notification.status == Notification.Status.UNDONE:
-                notification_status_change(notification_id)
+                notification_status_change(notification_id, Notification.Status.DONE)
             html_display['warn_code'] = 1
             html_display['warn_message'] = "该条通知已处理，请勿重复处理。"
             return redirect('/notifications/' +
