@@ -88,20 +88,16 @@
                                                 <br>
                                                 <img src="{{org_avatar_path}}" width="200px" height="200px" alt="组织图标"/>
                                                 <label>修改组织图标</label>
-                                                <input type="file" id="preavatar" class="dropify" name="avatar"
-                                                       data-default-file="{{former_img}}"
-                                                       data-max-file-size="512K"/>
-                                                 <div class="row">
-                                        </div>
+                                                <input type="file" id="preavatar" class="dropify" name="avatar"/>
+
                                             </div>
                                             {%else%}
 
-                                            <label>组织图标</label>
-                                            <br>
+                                                <label>组织图标</label>
+                                                <br>
                                             <input type="file" id="avatar" class="dropify" name="avatar"
                                                    data-default-file="{{former_img}}"
                                                    data-max-file-size="512K"/>
-
                                             {%endif%}
                                             <div class="form-group">
                                                 <label for="aintro">组织简介</label>
