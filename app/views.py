@@ -2610,7 +2610,7 @@ def notification2Display(notification_list):
     return lis
 
 
-def notification_status_change(notification_id, to_status=None):
+def notification_status_change(notification_or_id, to_status=None):
     """
     调用该函数以完成一项通知。对于知晓类通知，在接收到用户点击按钮后的post表单，该函数会被调用。
     对于需要完成的待处理通知，需要在对应的事务结束判断处，调用该函数。
@@ -2623,15 +2623,42 @@ def notification_status_change(notification_id, to_status=None):
     """
     context = dict()
     context["warn_code"] = 1
+    context["warn_message"] = "在修改通知状态的过程中发生错误，请联系管理员！"
+
+    if isinstance(notification_or_id, Notification):
+        notification_id = notification_or_id.id
+    else:
+        notification_id = notification_or_id
 
     if to_status is None:   # 表示默认的状态翻转操作
-        if Notification.objects.activated().get(id=notification_id).status == Notification.Status.DONE:
-            to_status = Notification.Status.UNDONE
+        if isinstance(notification_or_id, Notification):
+            now_status = notification_or_id.status
         else:
+            try:
+                notification = Notification.objects.get(id=notification_id)
+                now_status = notification.status
+            except:
+                context["warn_message"] = "该通知不存在！"
+                return context
+        if now_status == Notification.Status.DONE:
+            to_status = Notification.Status.UNDONE
+        elif now_status == Notification.Status.UNDONE:
             to_status = Notification.Status.DONE
+        else:
+            to_status = Notification.Status.DELETE
+            context["warn_message"] = "已删除的通知无法翻转状态！"
+            return context
 
     with transaction.atomic():
-        notification = Notification.objects.select_for_update().get(id=notification_id)
+        try:
+            notification = Notification.objects.select_for_update().get(id=notification_id)
+        except:
+            context["warn_message"] = "该通知不存在！"
+            return context
+        if notification.status == to_status:
+            context["warn_code"] = 2
+            context["warn_message"] = "通知状态无需改变！"
+            return context
         if to_status == Notification.Status.DONE:
             notification.status = Notification.Status.DONE
             notification.finish_time = datetime.now()  # 通知完成时间
@@ -2649,8 +2676,6 @@ def notification_status_change(notification_id, to_status=None):
             context["warn_code"] = 2
             context["warn_message"] = "成功删除一条通知！"
         return context
-    context["warn_message"] = "在阅读通知的过程中发生错误，请联系管理员！"
-    return context
 
 
 def notification_create(
@@ -2750,7 +2775,35 @@ def notifications(request):
 
     return render(request, "notifications.html", locals())
 
-
+#新建评论，
+def addComment(request,comment_base):
+    """
+    传入POST得到的request和与评论相关联的实例即可
+    返回值为1代表失败，返回2代表新建评论成功
+    """
+    context=dict()
+    context['warn_code'] = 2
+    if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
+        text = str(request.POST.get('comment'))
+        # 检查图片合法性
+        comment_images = request.FILES.getlist('comment_images')
+        if len(comment_images) > 0:
+            for comment_image in comment_images:
+                if utils.if_image(comment_image) == False:
+                    context['warn_code'] = 1
+                    context['warn_message'] = "上传的附件只支持图片格式。"
+                    return context
+        try:
+            with transaction.atomic():
+                new_comment = Comment.objects.create(commentbase=comment_base, commentator=request.user, text=text)
+                if len(comment_images) > 0:
+                    for comment_image in comment_images:
+                        CommentPhoto.objects.create(image=comment_image, comment=new_comment)
+        except:
+            context['warn_code'] = 1
+            context['warn_message'] = "评论失败，请联系管理员。"
+        context['new_comment']=new_comment
+    return context
 # 新建组织 or 修改新建组织信息
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
@@ -2766,7 +2819,7 @@ def addOrganization(request):
     me = utils.get_person_or_org(request.user, user_type)
     
     html_display['is_myself'] = True
-
+    former_img=settings.MEDIA_URL + "avatar/org_default.png"
     edit = 0
     if request.GET.get('neworg_id') is not None and request.GET.get('notifi_id') is not None:
         edit = 1
@@ -2783,11 +2836,14 @@ def addOrganization(request):
                                     html_display['warn_code'], html_display['warn_message']))
             preorg = NewOrganization.objects.get(id=id)
 
-            notification=Notification.objects.activated().get(id=notification_id)
-            if preorg.status==NewOrganization.NewOrgStatus.CANCELED or preorg.status==NewOrganization.NewOrgStatus.CONFIRMED \
-                    or notification.status==Notification.Status.DONE:
+            notification = Notification.objects.get(id=notification_id)
+            if (
+                preorg.status == NewOrganization.NewOrgStatus.CANCELED
+                or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED
+                or notification.status != Notification.Status.UNDONE
+                ):
                 if notification.status == Notification.Status.UNDONE:
-                    notification_status_change(notification_id)
+                    notification_status_change(notification_id, Notification.Status.DONE)
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "通知已被处理，请不要重复处理。"
                 return redirect('/notifications/' + 
@@ -2818,29 +2874,11 @@ def addOrganization(request):
         org_avatar_path=utils.get_user_ava(preorg, "Organization")
 
     if request.method == "POST" and request.POST:
-
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
-            text = str(request.POST.get('comment'))
-            #检查图片合法性
-            comment_images = request.FILES.getlist('comment_images')
-            if len(comment_images) > 0:
-                for comment_image in comment_images:
-                    if utils.if_image(comment_image) == False:
-                        html_display['warn_code'] = 1
-                        html_display['warn_message'] = "上传的附件只支持图片格式。"
-                        return render(request, "organization_audit.html", locals())
-            try:
-
-                with transaction.atomic():
-                    org_comment = Comment.objects.create(commentbase=preorg, commentator=request.user, text=text)
-                    if len(comment_images) > 0:
-                        for comment_image in comment_images:
-                            CommentPhoto.objects.create(image=comment_image, comment=org_comment)
-            except:
+            context=addComment(request,preorg)
+            if context['warn_code']==1:
                 html_display['warn_code'] = 1
-                html_display['warn_message'] = "评论失败，请联系管理员。"
-                return render(request, "organization_audit.html", locals())
-
+                html_display['warn_message'] = context['warn_code']
         else:
             # 参数合法性检查
             context = utils.check_neworg_request(request)  # check
@@ -2857,7 +2895,10 @@ def addOrganization(request):
                         new_org = NewOrganization.objects.create(oname=context['oname'], otype=context['otype'],
                                                                  pos=context['pos'])
                         new_org.introduction = context['introduction']
-                        new_org.avatar = context['avatar']
+                        if context['avatar'] is None:
+                            new_org.avatar=former_img
+                        else:
+                            new_org.avatar = context['avatar']
                         new_org.application = context['application']
                         new_org.save()
                 except:
@@ -3001,11 +3042,14 @@ def auditOrganization(request):
                             '?warn_code={}&warn_message={}'.format(
                                 html_display['warn_code'], html_display['warn_message']))
         preorg = NewOrganization.objects.get(id=id)
-        notification = Notification.objects.activated().get(id=notification_id)
-        if preorg.status == NewOrganization.NewOrgStatus.CANCELED or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED \
-                or notification.status == Notification.Status.DONE:
+        notification = Notification.objects.get(id=notification_id)
+        if (
+            preorg.status == NewOrganization.NewOrgStatus.CANCELED
+            or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED
+            or notification.status != Notification.Status.UNDONE
+            ):
             if notification.status == Notification.Status.UNDONE:
-                notification_status_change(notification_id)
+                notification_status_change(notification_id, Notification.Status.DONE)
             html_display['warn_code'] = 1
             html_display['warn_message'] = "通知已被处理，请不要重复处理。"
             return redirect('/notifications/' + 
@@ -3027,26 +3071,10 @@ def auditOrganization(request):
 
     if request.method == "POST" and request.POST:
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
-            text = str(request.POST.get('comment'))
-            # 检查图片合法性
-            comment_images = request.FILES.getlist('comment_images')
-            if len(comment_images) > 0:
-                for comment_image in comment_images:
-                    if utils.if_image(comment_image) == False:
-                        html_display['warn_code'] = 1
-                        html_display['warn_message'] = "上传的附件只支持图片格式。"
-                        return render(request, "organization_audit.html", locals())
-            try:
-                with transaction.atomic():
-                    org_comment = Comment.objects.create(commentbase=preorg, commentator=request.user, text=text)
-                    if len(comment_images) > 0:
-                        for comment_image in comment_images:
-                            CommentPhoto.objects.create(image=comment_image, comment=org_comment)
-            except:
+            context = addComment(request, preorg)
+            if context['warn_code'] == 1:
                 html_display['warn_code'] = 1
-                html_display['warn_message'] = "评论失败，请联系管理员。"
-                return render(request, "organization_audit.html", locals())
-
+                html_display['warn_message'] = context['warn_code']
         # 对于审核老师来说，有三种操作，通过，申请需要修改和拒绝
         else:
             submit = int(request.POST.get('submit', -1))
@@ -3240,9 +3268,6 @@ def addReimbursement(request):
         ).exclude(id__in=reimbursed_act_ids     # 还没有报销的
         )                                       # 这种写法是为了方便随时取消某个条件
 
-    """unreim_acts=Activity.objects.activated().exclude(reimbursement__status=Reimbursement.ReimburseStatus.CANCELED)
-    #unreim_acts=Reimbursement.objects.exclude(status=Reimbursement.ReimburseStatus.CANCELED).activity
-    activities=activities.difference(unreim_acts)"""
     YQP = float(me.YQPoint)  # 组织剩余的元气值
     #新版侧边栏, 顶栏等的呈现，采用
     #bar_display, 必须放在render前最后一步
@@ -3266,12 +3291,14 @@ def addReimbursement(request):
                                 '?warn_code={}&warn_message={}'.format(
                                     html_display['warn_code'], html_display['warn_message']))
             pre_reimb = Reimbursement.objects.get(id=id)
-            notification=Notification.objects.activated().get(id=notification_id)
-            if pre_reimb.status==Reimbursement.ReimburseStatus.CONFIRMED \
-                    or pre_reimb.status==Reimbursement.ReimburseStatus.CANCELED \
-                    or notification.status==Notification.Status.DONE:
-                if notification.status==Notification.Status.UNDONE:
-                    notification_status_change(notification_id)
+            notification = Notification.objects.get(id=notification_id)
+            if (
+                    pre_reimb.status==Reimbursement.ReimburseStatus.CONFIRMED
+                    or pre_reimb.status==Reimbursement.ReimburseStatus.CANCELED
+                    or notification.status != Notification.Status.UNDONE
+                ):
+                if notification.status == Notification.Status.UNDONE:
+                    notification_status_change(notification_id, Notification.Status.DONE)
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "该条通知已处理，请勿重复处理。"
                 return redirect('/notifications/' +
@@ -3292,25 +3319,10 @@ def addReimbursement(request):
     if request.method == "POST" and request.POST:
 
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
-            text = str(request.POST.get('comment'))
-            # 检查图片合法性
-            comment_images = request.FILES.getlist('comment_images')
-            if len(comment_images) > 0:
-                for comment_image in comment_images:
-                    if utils.if_image(comment_image) == False:
-                        html_display['warn_code'] = 1
-                        html_display['warn_message'] = "上传的附件只支持图片格式。"
-                        return render(request, "organization_audit.html", locals())
-            try:
-                with transaction.atomic():
-                    reim_comment = Comment.objects.create(commentbase=pre_reimb, commentator=request.user, text=text)
-                    if len(comment_images) > 0:
-                        for comment_image in comment_images:
-                            CommentPhoto.objects.create(image=comment_image, comment=reim_comment)
-            except:
+            context = addComment(request, pre_reimb)
+            if context['warn_code'] == 1:
                 html_display['warn_code'] = 1
-                html_display['warn_message'] = "评论失败，请联系管理员。"
-                return render(request, "reimbursement_add.html", locals())
+                html_display['warn_message'] = context['warn_code']
         else:  # POST信息获取
 
             # 活动实例
@@ -3489,12 +3501,14 @@ def auditReimbursement(request):
                             '?warn_code={}&warn_message={}'.format(
                                 html_display['warn_code'], html_display['warn_message']))
         new_reimb = Reimbursement.objects.get(id=id)
-        notification = Notification.objects.activated().get(id=notification_id)
-        if new_reimb.status == Reimbursement.ReimburseStatus.CONFIRMED \
-                or new_reimb.status == Reimbursement.ReimburseStatus.CANCELED \
-                or notification.status == Notification.Status.DONE:
+        notification = Notification.objects.get(id=notification_id)
+        if (
+            new_reimb.status == Reimbursement.ReimburseStatus.CONFIRMED
+            or new_reimb.status == Reimbursement.ReimburseStatus.CANCELED
+            or notification.status != Notification.Status.UNDONE    # 未处理通知才有修改许可
+            ):
             if notification.status == Notification.Status.UNDONE:
-                notification_status_change(notification_id)
+                notification_status_change(notification_id, Notification.Status.DONE)
             html_display['warn_code'] = 1
             html_display['warn_message'] = "该条通知已处理，请勿重复处理。"
             return redirect('/notifications/' +
@@ -3518,25 +3532,10 @@ def auditReimbursement(request):
     if request.method == "POST" and request.POST:
 
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
-            text = str(request.POST.get('comment'))
-            # 检查图片合法性
-            comment_images = request.FILES.getlist('comment_images')
-            if len(comment_images) > 0:
-                for comment_image in comment_images:
-                    if utils.if_image(comment_image) == False:
-                        html_display['warn_code'] = 1
-                        html_display['warn_message'] = "上传的附件只支持图片格式。"
-                        return render(request, "organization_audit.html", locals())
-            try:
-                with transaction.atomic():
-                    reim_comment = Comment.objects.create(commentbase=new_reimb, commentator=request.user, text=text)
-                    if len(comment_images) > 0:
-                        for comment_image in comment_images:
-                            CommentPhoto.objects.create(image=comment_image, comment=reim_comment)
-            except:
+            context = addComment(request, new_reimb)
+            if context['warn_code'] == 1:
                 html_display['warn_code'] = 1
-                html_display['warn_message'] = "评论失败，请联系管理员。"
-                return render(request, "reimbursement_comment.html", locals())
+                html_display['warn_message'] = context['warn_code']
         # 对于审核老师来说，有三种操作，通过，申请需要修改和拒绝
         else:
 
