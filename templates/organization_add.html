@@ -2,11 +2,14 @@
 
 {% load static %}
 
-
 {% block mainpage %}
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
+        <!--  BEGIN CUSTOM STYLE FILE  -->
+        <link rel="stylesheet" type="text/css" href="{% static "plugins/dropify/dropify.min.css" %}">
+        <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
+        <!--  END CUSTOM STYLE FILE  -->
         <div class="container">
             <div class="container">
                 {% if html_display.warn_code == 2 %}
@@ -88,15 +91,17 @@
                                                 <input type="file" id="preavatar" class="dropify" name="avatar"
                                                        data-default-file="{{former_img}}"
                                                        data-max-file-size="512K"/>
+                                                 <div class="row">
+                                        </div>
                                             </div>
                                             {%else%}
-                                            <div class="form-group">
-                                                <label>组织图标</label>
-                                                <br>
-                                                <input type="file" id="avatar" class="dropify" name="avatar"
-                                                       data-default-file="{{former_img}}"
-                                                       data-max-file-size="512K"/>
-                                            </div>
+
+                                            <label>组织图标</label>
+                                            <br>
+                                            <input type="file" id="avatar" class="dropify" name="avatar"
+                                                   data-default-file="{{former_img}}"
+                                                   data-max-file-size="512K"/>
+
                                             {%endif%}
                                             <div class="form-group">
                                                 <label for="aintro">组织简介</label>
@@ -126,71 +131,9 @@
                                             </button>
                                             {%endif%}
                                         </form>
-                                    {%if edit %}
-                                    <br>
-                                    <hr>
-
-                                   <div>
-                                        {%for comment in comments.all%}
-                                        <div class="form-group">
-                                            <div class="d-flex justify-content-between">
-                                                   <div>
-                                                <p style="color: rgb(66, 67, 68);"><i class="fa fa-calendar-o"></i>评论时间：{{comment.time}}</p>
-                                                   </div>
-                                                <div>
-                                                    <p style="color: rgb(66, 67, 68);" align="right"><i class="fa fa-address-book"></i>
-                                                        {{comment.commentator}}</p>
-                                                </div>
-                                            </div>
-
-                                            <textarea name="comment" class="form-control">{{comment.text}}</textarea>
-                                            {%for image in comment.comment_photos.all%}
-
-                                            <img width="400px" height="200px" src={{image.imagepath}}>
-                                                <!--移动端图片需要修正!-->
-                                            {%endfor%}
-                                            <hr>
-                                            <br>
-                                        </div>
-                                        {% endfor %}
-                                    </div>
-
-                                    <form role="form" method="POST" enctype="multipart/form-data">
-                                            <div>
-                                                <div class="form-group">
-                                                    <label><h4>评论</h4></label>
-                                                    <div>
-                                                        <p style="color: rgb(66, 67, 68);" align="right"><i
-                                                                class="fa fa-address-book"></i> {{request.user}}</p>
-                                                    </div>
-                                                    <textarea type="text" id="comment" name="comment"
-                                                              class="form-control"
-                                                              aria-label="Default" rows="3"
-                                                              placeholder="Leave a comment"></textarea>
-                                                    <br>
-                                                    <div>
-                                                        <label title="评论图片">
-                                                            <div style="text-align:left;">
-                                                                <input type="file" accept="image/*" name="comment_images"
-                                                                       multiple>
-                                                            </div>
-                                                        </label>
-                                                        <div style="text-align:right;">
-                                                            <button type="submit"
-                                                                    class="btn btn-primary btn-sm mb-4 mr-2"
-                                                                    name="comment_submit" value="1">
-                                                                回复
-                                                            </button>
-                                                        </div>
-
-                                                    </div>
-
-
-                                                </div>
-                                            </div>
-                                        </form>
-                                        {%endif%}
-
+                                    {%if edit%}
+                                    {% include 'comment.html' %}
+                                            {%endif%}
 
                                     </div>
 
@@ -208,7 +151,30 @@
 
 {% endblock %}
 
+{% block load_js_file %}
+    <!-- BEGIN GLOBAL MANDATORY SCRIPTS -->
+    <script src={% static "assets/js/libs/jquery-3.1.1.min.js" %}></script>
+    <script src={% static "bootstrap/js/popper.min.js" %}></script>
+    <script src={% static "bootstrap/js/bootstrap.min.js" %}></script>
+    <script src={% static "plugins/perfect-scrollbar/perfect-scrollbar.min.js" %}></script>
+    <script src={% static "assets/js/app.js" %}></script>
 
+    <script>
+        $(document).ready(function() {
+            App.init();
+        });
+    </script>
+    <script src={% static "assets/js/custom.js" %}></script>
+    <!-- END GLOBAL MANDATORY SCRIPTS -->
+
+    <!--  BEGIN CUSTOM SCRIPTS FILE  -->
+
+    <script src={% static "plugins/dropify/dropify.min.js" %}></script>
+    <script src={% static "plugins/blockui/jquery.blockUI.min.js" %}></script>
+    <!-- <script src="plugins/tagInput/tags-input.js"></script> -->
+    <script src={% static "assets/js/users/account-settings.js" %}></script>
+    <!--  END CUSTOM SCRIPTS FILE  -->
+{% endblock %}
 
 
 
