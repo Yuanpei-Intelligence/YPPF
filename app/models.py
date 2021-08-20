@@ -534,6 +534,9 @@ class YQPointDistribute(models.Model):
         verbose_name = "元气值发放"
         verbose_name_plural = verbose_name
 
+class NotificationManager(models.Manager):
+    def activated(self):
+        return self.exclude(status=Notification.Status.DELETE)
 
 class Notification(models.Model):
     class Meta:
@@ -551,6 +554,7 @@ class Notification(models.Model):
     class Status(models.IntegerChoices):
         DONE = (0, "已处理")
         UNDONE = (1, "待处理")
+        DELETE = (2, "已删除")
 
     class Type(models.IntegerChoices):
         NEEDREAD = (0, "知晓类")  # 只需选择“已读”即可
@@ -578,6 +582,7 @@ class Notification(models.Model):
         blank=True,
         null=True,
     )
+    objects = NotificationManager()
 
 
 class CommentBase(models.Model):
