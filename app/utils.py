@@ -1,4 +1,4 @@
-from app.models import NaturalPerson, Organization, OrganizationType, Position, Notification
+from app.models import NaturalPerson, Organization, OrganizationType, Position, Notification,NewOrganization
 from django.contrib.auth.models import User
 from django.dispatch.dispatcher import receiver
 from django.contrib import auth
@@ -349,17 +349,13 @@ def check_neworg_request(request):
         context['warn_code'] = 1
         context['warn_msg'] = "组织的名字不能为空"
         return context
-    try:
-        otype = int(request.POST.get('otype'))
-        if otype not in [7, 8, 10]:  # 7 for 书院俱乐部，8 for 学生小组 ，10 for 书院课程
-            context['warn_code'] = 1
-            context['warn_msg'] = "你应该从书院俱乐部、学生小组和书院课程中选择!"
-            return context
-    except:
+    if len(NewOrganization.objects.exclude(status=NewOrganization.NewOrgStatus.CANCELED).filter(oname=oname))!=0 \
+            or len(Organization.objects.filter(oname=oname))!=0:
         context['warn_code'] = 1
-        context['warn_msg'] = "小组的数据类型应该为整数"  # user can't see it . we use it for debugging
+        context['warn_msg'] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
         return context
     try:
+        otype = int(request.POST.get('otype'))
         context['otype'] = OrganizationType.objects.get(otype_id=otype)
     except:
         context['warn_code'] = 1
