@@ -3285,9 +3285,9 @@ def addReimbursement(request):
                                 html_display['warn_code'], html_display['warn_message']))
     if edit:  # 第一次打开页面信息的准备工作,以下均为前端展示需要
         comments = pre_reimb.comments.order_by("time")
-        html_display['activity'] = pre_reimb.activity
-        html_display['amount'] = pre_reimb.amount  # 报销金额
-        html_display['message'] = pre_reimb.message  # 备注信息
+        html_display['audit_activity'] = pre_reimb.activity # 正在报销的活动，避免被过滤掉
+        html_display['amount'] = pre_reimb.amount           # 报销金额
+        html_display['message'] = pre_reimb.message         # 备注信息
 
     if request.method == "POST" and request.POST:
 
@@ -3654,7 +3654,7 @@ def auditReimbursement(request):
                         new_reimb.save()
                         content = "很遗憾，报销申请未通过！"
                         receiver = new_reimb.pos  # 通知接收者
-                        URL = "/notifications/"
+                        URL = "/addReimbursement/"  # 报销失败可能应该鼓励继续报销
                         URL = request.build_absolute_uri(URL)
 
                         # TODO 如果老师另留有评论的话,将评论放在content里
