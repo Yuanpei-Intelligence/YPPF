@@ -57,27 +57,22 @@
                                                 <br>
                                                 {%if edit%}
                                                 <select name="otype">
-                                                    <option value=7{% if html_display.otype_id == 7 %}
-                                                            selected="selected"
-                                                            {% endif %}>书院俱乐部
-                                                    </option>
-                                                    <option value=8{% if html_display.otype_id == 8 %}
-                                                            selected="selected"
-                                                            {% endif %}>学生小组
-                                                    </option>
-                                                    <option value=10{% if html_display.otype_id == 10 %}
-                                                            selected="selected"
-                                                            {% endif %}>书院课程
-                                                    </option>
+                                                    {%for org_type in org_types%}
 
+                                                    <option value={{org_type.otype_id}} {% if html_display.otype_id == org_type %}
+                                                            selected="selected"
+                                                            {% endif %}>{{org_type.otype_name}}
+                                                    </option>
+                                                    {%endfor%}
                                                 </select>
 
                                                 {%else%}
 
                                                 <select name="otype">
-                                                    <option value=7>书院俱乐部</option>
-                                                    <option value=8 selected="selected">学生小组</option>
-                                                    <option value=10>书院课程</option>
+                                                    {%for org_type in org_types%}
+
+                                                    <option value={{org_type.otype_id}}>{{org_type.otype_name}}</option>
+                                                    {%endfor%}
                                                 </select>
                                                 {%endif%}
                                             </div>
