@@ -2867,7 +2867,10 @@ def addOrganization(request):
                         new_org = NewOrganization.objects.create(oname=context['oname'], otype=context['otype'],
                                                                  pos=context['pos'])
                         new_org.introduction = context['introduction']
-                        new_org.avatar = context['avatar']
+                        if context['avatar'] is None:
+                            new_org.avatar=former_img
+                        else:
+                            new_org.avatar = context['avatar']
                         new_org.application = context['application']
                         new_org.save()
                 except:
