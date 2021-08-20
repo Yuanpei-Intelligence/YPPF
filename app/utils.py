@@ -1,4 +1,4 @@
-from app.models import NaturalPerson, Organization, OrganizationType, Position, Notification
+from app.models import NaturalPerson, Organization, OrganizationType, Position, Notification,NewOrganization
 from django.contrib.auth.models import User
 from django.dispatch.dispatcher import receiver
 from django.contrib import auth
@@ -348,6 +348,11 @@ def check_neworg_request(request):
     if oname=="":
         context['warn_code'] = 1
         context['warn_msg'] = "组织的名字不能为空"
+        return context
+    if len(NewOrganization.objects.exclude(status=NewOrganization.NewOrgStatus.CANCELED).filter(oname=oname))!=0 \
+            or len(Organization.objects.filter(oname=oname))!=0:
+        context['warn_code'] = 1
+        context['warn_msg'] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
         return context
     try:
         otype = int(request.POST.get('otype'))
