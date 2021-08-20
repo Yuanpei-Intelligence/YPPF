@@ -2851,14 +2851,16 @@ def addOrganization(request):
     bar_display["title_name"] = "新建组织"
     bar_display["navbar_name"] = "新建组织"
 
-    if edit:  # 打开页面信息的准备
+    if edit:  # 编辑打开页面信息的准备
         comments = preorg.comments.order_by("time")
         html_display['oname'] = preorg.oname
         html_display['otype_id'] = preorg.otype.otype_id
         html_display['pos'] = preorg.pos
         html_display['introduction'] = preorg.introduction
         html_display['application'] = preorg.application
-        org_avatar_path = utils.get_user_ava(preorg, "Organization")
+        org_avatar_path=utils.get_user_ava(preorg, "Organization")
+        
+    org_types=OrganizationType.objects.order_by("-otype_id").all()#当前组织类型，前端展示需要
 
     if request.method == "POST" and request.POST:
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
