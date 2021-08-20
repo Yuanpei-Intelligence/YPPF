@@ -2639,7 +2639,7 @@ def notification_status_change(notification_or_id, to_status=None):
                 now_status = notification.status
             except:
                 context["warn_message"] = "该通知不存在！"
-            return context
+                return context
         if now_status == Notification.Status.DONE:
             to_status = Notification.Status.UNDONE
         elif now_status == Notification.Status.UNDONE:
