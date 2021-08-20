@@ -293,7 +293,7 @@ def stuinfo(request, name=None):
 
         # 制作属于组织的卡片（头像，名称（+链接），介绍，职位）
         person_poss = Position.objects.activated().filter(
-            Q(person=person) & Q(show_post=True))
+            Q(person=person) & (Q(show_post=True) | Q(pos=0)))
         person_orgs = Organization.objects.filter(
             id__in=person_poss.values("org"))       # ta属于的组织
         person_org_poss = person_poss.values("pos")  # ta在组织中的职位
