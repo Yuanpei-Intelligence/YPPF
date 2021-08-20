@@ -224,6 +224,48 @@
             <div class="layout-px-spacing layout-top-spacing">
                 <div class="bio layout-spacing">
 
+                    <!--  BEGIN OWNED ORGANIZATIONS  -->
+                    <div class="widget-content widget-content-area my-3">
+
+                        <div class="row">
+                            <h3 class="col mb-0">管理的组织</h3>
+                        </div>
+
+                        <div class="bio-skill-box" >
+
+                            {% if html_display.org_len == 0 %}
+                            <p style="text-align: center;">没有负责管理的组织.</p>
+                            {% else %}
+                            <div class="row">
+                            {% for org, ava, pos, status, same in html_display.org_info %}
+                            {% if pos == 0 %}
+                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                <div style="padding-left: 2%;padding-right: 2%; background-image: url({{ ava }}); background-size: 55%; background-repeat: no-repeat; background-position: right;">
+                                    <div class=" b-skills row" style="background-color: #ffffffcc;">
+                                        <div class="col-9 container-fluid">
+                                            <a href="/orginfo/{{ org.oname }}">
+                                                <h5>{{ org.oname }}</h5>
+                                            </a>
+                                            <p style="line-height: 20px; height: 40px; white-space: pre;
+                                                overflow: scroll; word-wrap: break-word;">{{ org.introduction }}</p>
+                                        </div>
+                                        <div class="col-3">
+                                            <p>职务 <b class="text-muted">{{ pos.1 }}</b></p>
+                                            <p>状态 <b class="text-muted">{{ status.status }}</b></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+                            {% endfor %}
+                            </div> 
+                            {% endif %}
+                        </div>
+
+                    </div>
+                    <!--  END OWNED ORGANIZATIONS  -->
+
+
                     <!--  BEGIN JOINED ORGANIZATIONS  -->
                     <div class="widget-content widget-content-area my-3">
 
@@ -239,18 +281,16 @@
                             {% endif %}
                         </div>
 
-                        <div class="bio-skill-box overflow-auto" style="white-space: nowrap;">
-
+                        <div class="bio-skill-box" >
+                            
                             {% if html_display.org_len == 0 %}
-                            <p>没有加入的组织</p>
-                            {% endif %}
-
+                            <p style="text-align: center;">没有加入任何组织或未公开.</p>
+                            {% else %}
+                            <div class="row">
                             {% for org, ava, pos, status, same in html_display.org_info %}
-                            <div class="col-12 col-xl-5 col-lg-12 custom-org-card custom-org-issame-{{ same }}"
-                                style="display: inline-block">
-                                <div
-                                    style="background-image: url({{ ava }}); background-size: 55%; background-repeat: no-repeat; background-position: right;">
-                                    <div class="b-skills row" style="background-color: #ffffffcc;">
+                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                <div style="padding-left: 2%;padding-right: 2%; background-image: url({{ ava }}); background-size: 55%; background-repeat: no-repeat; background-position: right;">
+                                    <div class=" b-skills row" style="background-color: #ffffffcc;">
                                         <div class="col-9 container-fluid">
                                             <a href="/orginfo/{{ org.oname }}">
                                                 <h5>{{ org.oname }}</h5>
@@ -267,53 +307,12 @@
                             </div>
 
                             {% endfor %}
+                            </div> 
+                            {% endif %}
                         </div>
 
                     </div>
                     <!--  END JOINED ORGANIZATIONS  -->
-
-                    <!--  BEGIN OWNED ORGANIZATIONS  -->
-                    <div class="widget-content widget-content-area my-3">
-
-                        <div class="row">
-                            <h3 class="col mb-0">管理的组织</h3>
-                        </div>
-
-                        <div class="bio-skill-box overflow-auto" style="white-space: nowrap;">
-
-                            {% if html_display.org_len == 0 %}
-                            <p>没有管理的组织</p>
-                            {% endif %}
-
-                            {% for org, ava, pos, status, same in html_display.org_info %}
-                            {% if pos.0 == 0 %}
-                            <div class="col-12 col-xl-5 col-lg-12 custom-org-card custom-org-issame-{{ same }}"
-                                style="display: inline-block">
-                                <div
-                                    style="background-image: url({{ ava }}); background-size: 55%; background-repeat: no-repeat; background-position: right;">
-                                    <div class="b-skills row" style="background-color: #ffffffcc;">
-                                        <div class="col-9 container-fluid">
-                                            <a href="/orginfo/{{ org.oname }}">
-                                                <h5>{{ org.oname }}</h5>
-                                            </a>
-                                            <p style="line-height: 20px; height: 40px; white-space: pre;
-                                                overflow: scroll; word-wrap: break-word;">{{ org.introduction }}</p>
-                                        </div>
-                                        <div class="col-3">
-                                            <p>职务 <b class="text-muted">{{ pos.1 }}</b></p>
-                                            <p>状态 <b class="text-muted">{{ status.status }}</b></p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
-
-                            {% endfor %}
-                        </div>
-
-                    </div>
-                    <!--  END OWNED ORGANIZATIONS  -->
-
                 </div>
             </div>
 
