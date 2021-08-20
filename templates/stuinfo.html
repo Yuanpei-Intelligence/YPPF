@@ -2,353 +2,411 @@
 
 {% block mainpage %}
 
+<div class="main-content" id="content">
+
     <!--  BEGIN CONTENT AREA  -->
-    <div class="container-fluid p-0" id="content">
 
-        {% if html_display.warn_code == 2 %}
-        <div class="alert alert-success text-center mb-0">{{html_display.warn_message}}</div>
-        {% elif html_display.warn_code == 1%}
-        <div class="alert alert-warning text-center mb-0">{{html_display.warn_message}}</div>
-        {% endif %}
+    {% if html_display.warn_code == 2 %}
+    <div class="alert alert-success text-center mb-0">{{html_display.warn_message}}</div>
+    {% elif html_display.warn_code == 1%}
+    <div class="alert alert-warning text-center mb-0">{{html_display.warn_message}}</div>
+    {% endif %}
 
-        <!--  BEGIN WALLPAPER SECTION  -->
-        <div class="d-flex m-0 p-0 overflow-hidden" style="height: 35vh">
-            <div class="d-flex w-100 align-self-center">
-                <img class="w-100" src={{ context.wallpaper_path }} alt="wallpaper">
-            </div>
-            <div class="row m-0 w-100 position-absolute" style="height: 35vh;">
-                <div class="w-100 h-100 m-0 p-0 position-absolute">
-                    <div class="row w-100 m-0" style="height: 60%"></div>
-                    <div class="row w-100 m-0"
-                        style="height: 40%; background: -webkit-linear-gradient(top, #00000000 0%, #000000dd 100%);">
-                    </div>
+    <!--  BEGIN WALLPAPER SECTION  -->
+    <div class="d-flex m-0 p-0 overflow-hidden" style="height: 35vh">
+        <div class="d-flex w-100 align-self-center">
+            <img class="w-100" src={{ context.wallpaper_path }} alt="wallpaper">
+        </div>
+        <div class="row m-0 w-100 position-absolute" style="height: 35vh;">
+            <div class="w-100 h-100 m-0 p-0 position-absolute">
+                <div class="row w-100 m-0" style="height: 60%"></div>
+                <div class="row w-100 m-0"
+                    style="height: 40%; background: -webkit-linear-gradient(top, #00000000 0%, #000000dd 100%);">
                 </div>
-                <div class="row m-0 w-100 align-self-center">
+            </div>
+            <div class="row m-0 w-100 align-self-center">
+                <div class="col-1"></div>
+                <div class="row col-11">
                     <div class="col-1"></div>
-                    <div class="row col-11">
+                    <div class="col-0">
+                        <img class="img-thumbnail" src={{ context.avatar_path }} alt="avatar" style="height: 90px;
+                            width: 90px;">
+                    </div>
+                    <div style="width: 25px;"></div>
+                    <div class="row col-0" style="width: max-width;">
+                        <h1 class="my-auto align-self-center font-weight-bold text-light"
+                            style="font-size: 60px; text-shadow: 2px 2px 5px #000000">
+                            {{ context.person.name }}</h1>
+                    </div>
+                    <div style="width: 25px;"></div>
+                    <div class="row col-lg-6 col-md-12">
                         <div class="col-1"></div>
-                        <div class="col-0">
-                            <img class="img-thumbnail" src={{ context.avatar_path }} alt="avatar" style="height: 90px;
-                                width: 90px;">
+                        <p class="col-10 align-self-end text-white mt-3 px-0"
+                            style="color:aliceblue; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0px 0px 2px #000000">
+                            {{ context.person.biography }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--  END WALLPAPER SECTION  -->
+
+    <!--  BEGIN SWITCH TAB  -->
+    <ul class="nav nav-tabs nav-tabs-solid nav-justified" role="tablist">
+        <li class="nav-item">
+            <b class="nav-link active" data-toggle="tab" role="tab" href="#information">个人信息</b>
+        </li>
+        <li class="nav-item">
+            <b class="nav-link" data-toggle="tab" role="tab" href="#organization">{{ context.title }}的组织</b>
+        </li>
+        <li class="nav-item">
+            <b class="nav-link" data-toggle="tab" role="tab" href="#activity">{{ context.title }}的活动</b>
+        </li>
+    </ul>
+    <!--  END SWITCH TAB  -->
+
+    <div class="container-fluid tab-content" id="myTabContent">
+        <!--  BEGIN INFORMATION TAB  -->
+        <div class="tab-pane fade show active" id="information" role="tabpanel">
+            <div class="col layout-top-spacing">
+
+                <div class="user-profile layout-spacing">
+                    <div class="widget-content widget-content-area">
+
+                        <div class="d-flex justify-content-between">
+                            <h3 class="">个人档案</h3>
+                            <br /><br />
                         </div>
-                        <div style="width: 25px;"></div>
-                        <div class="row col-0" style="width: max-width;">
-                            <h1 class="my-auto align-self-center font-weight-bold text-light"
-                                style="font-size: 60px; text-shadow: 2px 2px 5px #000000">
-                                {{ context.person.name }}</h1>
+
+                        <div class="text-center user-info">
+                            <img src={{ context.avatar_path }} height="90px" width="90px" alt="avatar">
+                            <p class="">{{ context.person.name }}</p>
                         </div>
-                        <div style="width: 25px;"></div>
-                        <div class="row col-lg-6 col-md-12">
-                            <div class="col-1"></div>
-                            <p class="col-10 align-self-end text-white mt-3 px-0"
-                                style="color:aliceblue; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0px 0px 2px #000000">
-                                {{ context.person.biography }}</p>
+
+                        <div class="user-info-list">
+                            <div class="">
+                                <ul class="contacts-block list-unstyled">
+
+                                    <li class="contacts-block__item">
+                                        <div class="w-100 row p-0 m-0">
+                                            <div class="col-0 p-0 m-0">
+                                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                                    viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                                    stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                                    class="feather feather-feather">
+                                                    <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z">
+                                                    </path>
+                                                    <line x1="16" y1="8" x2="2" y2="22"></line>
+                                                    <line x1="17.5" y1="15" x2="9" y2="15"></line>
+                                                </svg>
+                                            </div>
+                                            <div class="col p-0 m-1">
+                                                {{ context.person.biography }}
+                                            </div>
+                                        </div>
+                                    </li>
+
+                                    {% if context.person.show_class %}
+                                    <li class="contacts-block__item">
+                                        <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor"
+                                            stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+                                            class="css-i6dzq1">
+                                            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                                            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z">
+                                            </path>
+                                        </svg>
+                                        {{ context.person.stu_class }}
+                                    </li>
+                                    {% endif %}
+
+                                    {% if context.person.show_major %}
+                                    <li class="contacts-block__item">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round"
+                                            class="feather feather-coffee">
+                                            <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+                                            <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+                                            <line x1="6" y1="1" x2="6" y2="4"></line>
+                                            <line x1="10" y1="1" x2="10" y2="4"></line>
+                                            <line x1="14" y1="1" x2="14" y2="4"></line>
+                                        </svg>
+                                        {{ context.person.stu_major }}
+                                    </li>
+                                    {% endif %}
+
+                                    {% if context.person.show_grade %}
+                                    <li class="contacts-block__item">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round"
+                                            class="feather feather-calendar">
+                                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                                            <line x1="16" y1="2" x2="16" y2="6"></line>
+                                            <line x1="8" y1="2" x2="8" y2="6"></line>
+                                            <line x1="3" y1="10" x2="21" y2="10"></line>
+                                        </svg>
+                                        {{ context.person.stu_grade }}
+                                    </li>
+                                    {% endif %}
+
+                                    {% if context.person.show_dorm %}
+                                    <li class="contacts-block__item">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round"
+                                            class="feather feather-map-pin">
+                                            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                                            <circle cx="12" cy="10" r="3"></circle>
+                                        </svg>
+                                        {{ context.person.stu_dorm }}
+                                    </li>
+                                    {% endif %}
+
+                                    {% if context.person.show_email %}
+                                    <li class="contacts-block__item">
+                                        <a href="mailto: {{ context.email }}"></a>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round" class="feather feather-mail">
+                                            <path
+                                                d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z">
+                                            </path>
+                                            <polyline points="22,6 12,13 2,6"></polyline>
+                                        </svg>
+                                        {{context.person.email}}</a>
+                                    </li>
+                                    {% endif %}
+
+                                    {% if context.person.show_tel %}
+                                    <li class="contacts-block__item">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round"
+                                            class="feather feather-phone">
+                                            <path
+                                                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
+                                            </path>
+                                        </svg>
+                                        {{context.person.telephone}}
+                                    </li>
+                                    {% endif %}
+
+                                    {% if html_display.is_myself == False %}
+                                    <li class="contacts-block__item">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
+                                            viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                            stroke-linecap="round" stroke-linejoin="round">
+                                            <polyline points="20 12 20 22 4 22 4 12" />
+                                            <rect x="2" y="7" width="20" height="5" />
+                                            <line x1="12" y1="22" x2="12" y2="7" />
+                                            <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
+                                            <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
+                                        </svg>
+                                        <a href="/transPage/{{context.person.person_id_id}}">
+                                            向{{ context.title }}转账</a>
+                                    </li>
+                                    {% endif %}
+
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+        <!--  END INFORMATION TAB  -->
+
+        <!--  BEGIN ORGANIZATION TAB  -->
+        <div class="tab-pane fade" id="organization" role="tabpanel">
+
+            <div class="layout-px-spacing layout-top-spacing">
+                <div class="bio layout-spacing">
+
+                    <!--  BEGIN JOINED ORGANIZATIONS  -->
+                    <div class="widget-content widget-content-area my-3">
+
+                        <div class="row">
+                            <h3 class="col mb-0">加入的组织</h3>
+                            {% if html_display.is_myself == False and user_type == 'Person' %}
+                            <div class="col-0 mr-4 custom-control custom-switch">
+                                <input type="checkbox" class="custom-control-input" id="org-show-same-button"
+                                    onclick="toggle_same.call(this, `org`, `组织`, `inline-block`, '共同');this.blur();">
+                                <label class="custom-control-label" id="org-show-same-label"
+                                    for="org-show-same-button">所有组织</label>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="bio-skill-box overflow-auto" style="white-space: nowrap;">
+
+                            {% if html_display.org_len == 0 %}
+                            <p>没有加入的组织</p>
+                            {% endif %}
+
+                            {% for org, ava, pos, status, same in html_display.org_info %}
+                            <div class="col-12 col-xl-5 col-lg-12 custom-org-card custom-org-issame-{{ same }}"
+                                style="display: inline-block">
+                                <div
+                                    style="background-image: url({{ ava }}); background-size: 55%; background-repeat: no-repeat; background-position: right;">
+                                    <div class="b-skills row" style="background-color: #ffffffcc;">
+                                        <div class="col-9 container-fluid">
+                                            <a href="/orginfo/{{ org.oname }}">
+                                                <h5>{{ org.oname }}</h5>
+                                            </a>
+                                            <p style="line-height: 20px; height: 40px; white-space: pre;
+                                                overflow: scroll; word-wrap: break-word;">{{ org.introduction }}</p>
+                                        </div>
+                                        <div class="col-3">
+                                            <p>职务 <b class="text-muted">{{ pos.1 }}</b></p>
+                                            <p>状态 <b class="text-muted">{{ status.status }}</b></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {% endfor %}
+                        </div>
+
+                    </div>
+                    <!--  END JOINED ORGANIZATIONS  -->
+
+                    <!--  BEGIN OWNED ORGANIZATIONS  -->
+                    <div class="widget-content widget-content-area my-3">
+
+                        <div class="row">
+                            <h3 class="col mb-0">管理的组织</h3>
+                        </div>
+
+                        <div class="bio-skill-box overflow-auto" style="white-space: nowrap;">
+
+                            {% if html_display.org_len == 0 %}
+                            <p>没有管理的组织</p>
+                            {% endif %}
+
+                            {% for org, ava, pos, status, same in html_display.org_info %}
+                            {% if pos.0 == 0 %}
+                            <div class="col-12 col-xl-5 col-lg-12 custom-org-card custom-org-issame-{{ same }}"
+                                style="display: inline-block">
+                                <div
+                                    style="background-image: url({{ ava }}); background-size: 55%; background-repeat: no-repeat; background-position: right;">
+                                    <div class="b-skills row" style="background-color: #ffffffcc;">
+                                        <div class="col-9 container-fluid">
+                                            <a href="/orginfo/{{ org.oname }}">
+                                                <h5>{{ org.oname }}</h5>
+                                            </a>
+                                            <p style="line-height: 20px; height: 40px; white-space: pre;
+                                                overflow: scroll; word-wrap: break-word;">{{ org.introduction }}</p>
+                                        </div>
+                                        <div class="col-3">
+                                            <p>职务 <b class="text-muted">{{ pos.1 }}</b></p>
+                                            <p>状态 <b class="text-muted">{{ status.status }}</b></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            {% endfor %}
+                        </div>
+
+                    </div>
+                    <!--  END OWNED ORGANIZATIONS  -->
+
+                </div>
+            </div>
+
+        </div>
+        <!--  END ORGANIZATION TAB  -->
+
+        <!--  BEGIN ACTIVITY TAB  -->
+        <div class="tab-pane fade" id="activity" role="tabpanel">
+            <div class="container-fluid layout-px-spacing layout-top-spacing">
+                <div class="bio education layout-spacing ">
+                    <div class="widget-content widget-content-area">
+
+                        <div class="row">
+                            <h3 class="col mb-0">参与的活动</h3>
+                            {% if html_display.is_myself == False %}
+                            <div class="col-0 mr-4 custom-control custom-switch">
+                                {% if user_type == 'Person' %}
+                                <input type="checkbox" class="custom-control-input" id="activity-show-same-button"
+                                    onclick="toggle_same.call(this, `activity`, `活动`, `flex`, `共同`);this.blur();">
+                                {% endif %}
+                                {% if user_type == 'Organization' %}
+                                <input type="checkbox" class="custom-control-input" id="activity-show-same-button"
+                                    onclick="toggle_same.call(this, `activity`, `活动`, `flex`, `我的`);this.blur();">
+                                {% endif %}
+                                <label class="custom-control-label" id="activity-show-same-label"
+                                    for="activity-show-same-button">所有活动</label>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="timeline-alter bio bio-skill-box">
+
+                            {% if html_display.activity_len == 0 %}
+                            <p>没有参与的活动</p>
+                            {% endif %}
+
+                            {% for activity, status, same, activity_c, attend_c in html_display.activity_info %}
+                            <div
+                                class="item-timeline custom-activity-card custom-activity-issame-{{ same }} overflow-auto">
+                                <div class="t-meta-date">
+                                    <p class="">{{ activity.start }}</p>
+                                </div>
+                                <div class="t-dot" data-original-title="" title="">
+                                </div>
+                                <div class="t-text col-lg-8 col-md-12">
+                                    <div class="row b-skills pr-0">
+                                        <div class="col-4">
+                                            <a class="row m-0" href="/viewActivity/{{ activity.id }}">
+                                                <h5
+                                                    style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                    <u>{{ activity.title }}</u>
+                                                </h5>
+                                            </a>
+                                            <p class="row">
+                                                <span class="mr-1">{{ activity.organization_id }}</span>
+                                                |
+                                                <span class="ml-1 text-{{ activity_c }}">{{ activity.status }}</span>
+                                            </p>
+                                        </div>
+                                        <div class="row col-8 pr-0">
+                                            <p class="col-9"
+                                                style="line-height: 20px; height: 50px; overflow: scroll; word-wrap: break-word;">
+                                                {% if activity.introduction == '' %}
+                                                没有介绍～
+                                                {% else %}
+                                                {{ activity.introduction }}
+                                                {% endif %}
+                                            </p>
+                                            <p class="col-3 text-{{ attend_c }} float-right pr-0">
+                                                {{ status }}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            {% endfor %}
+
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-        <!--  END WALLPAPER SECTION  -->
-
-        <!--  BEGIN SWITCH TAB  -->
-        <ul class="nav nav-tabs nav-tabs-solid nav-justified" role="tablist">
-            <li class="nav-item">
-                <b class="nav-link active" data-toggle="tab" role="tab" href="#information">个人信息</b>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" role="tab" href="#organization">{{ context.title }}的组织</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" role="tab" href="#activity">{{ context.title }}的活动</a>
-            </li>
-        </ul>
-        <!--  END SWITCH TAB  -->
-
-        <div class="container-fluid tab-content" id="myTabContent">
-            <!--  BEGIN INFORMATION TAB  -->
-            <div class="tab-pane fade show active" id="information" role="tabpanel">
-                <div class="col layout-top-spacing">
-
-                    <div class="user-profile layout-spacing">
-                        <div class="widget-content widget-content-area">
-
-                            <div class="d-flex justify-content-between">
-                                <h3 class="">个人档案</h3>
-                                <br /><br />
-                            </div>
-
-                            <div class="text-center user-info">
-                                <img src={{ context.avatar_path }} height="90px" width="90px" alt="avatar">
-                                <p class="">{{ context.person.name }}</p>
-                            </div>
-
-                            <div class="user-info-list">
-                                <div class="">
-                                    <ul class="contacts-block list-unstyled">
-
-                                        <li class="contacts-block__item">
-                                            <div class="w-100 row p-0 m-0">
-                                                <div class="col-0 p-0 m-0">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                        viewBox="0 0 24 24" fill="none" stroke="currentColor"
-                                                        stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                                                        class="feather feather-feather">
-                                                        <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z">
-                                                        </path>
-                                                        <line x1="16" y1="8" x2="2" y2="22"></line>
-                                                        <line x1="17.5" y1="15" x2="9" y2="15"></line>
-                                                    </svg>
-                                                </div>
-                                                <div class="col p-0 m-1">
-                                                    {{ context.person.biography }}
-                                                </div>
-                                            </div>
-                                        </li>
-
-                                        {% if context.person.show_class %}
-                                        <li class="contacts-block__item">
-                                            <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor"
-                                                stroke-width="2" fill="none" stroke-linecap="round"
-                                                stroke-linejoin="round" class="css-i6dzq1">
-                                                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
-                                                <path
-                                                    d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z">
-                                                </path>
-                                            </svg>
-                                            {{ context.person.stu_class }}
-                                        </li>
-                                        {% endif %}
-
-                                        {% if context.person.show_major %}
-                                        <li class="contacts-block__item">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round"
-                                                class="feather feather-coffee">
-                                                <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-                                                <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-                                                <line x1="6" y1="1" x2="6" y2="4"></line>
-                                                <line x1="10" y1="1" x2="10" y2="4"></line>
-                                                <line x1="14" y1="1" x2="14" y2="4"></line>
-                                            </svg>
-                                            {{ context.person.stu_major }}
-                                        </li>
-                                        {% endif %}
-
-                                        {% if context.person.show_grade %}
-                                        <li class="contacts-block__item">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round"
-                                                class="feather feather-calendar">
-                                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                                <line x1="16" y1="2" x2="16" y2="6"></line>
-                                                <line x1="8" y1="2" x2="8" y2="6"></line>
-                                                <line x1="3" y1="10" x2="21" y2="10"></line>
-                                            </svg>
-                                            {{ context.person.stu_grade }}
-                                        </li>
-                                        {% endif %}
-
-                                        {% if context.person.show_dorm %}
-                                        <li class="contacts-block__item">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round"
-                                                class="feather feather-map-pin">
-                                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                                                <circle cx="12" cy="10" r="3"></circle>
-                                            </svg>
-                                            {{ context.person.stu_dorm }}
-                                        </li>
-                                        {% endif %}
-
-                                        {% if context.person.show_email %}
-                                        <li class="contacts-block__item">
-                                            <a href="mailto: {{ context.email }}"></a><svg
-                                                xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round"
-                                                class="feather feather-mail">
-                                                <path
-                                                    d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z">
-                                                </path>
-                                                <polyline points="22,6 12,13 2,6"></polyline>
-                                            </svg>
-                                            {{context.person.email}}</a>
-                                        </li>
-                                        {% endif %}
-
-                                        {% if context.person.show_tel %}
-                                        <li class="contacts-block__item">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round"
-                                                class="feather feather-phone">
-                                                <path
-                                                    d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z">
-                                                </path>
-                                            </svg>
-                                            {{context.person.telephone}}
-                                        </li>
-                                        {% endif %}
-
-                                        {% if html_display.is_myself == False %}
-                                        <li class="contacts-block__item">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
-                                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-                                                stroke-linecap="round" stroke-linejoin="round">
-                                                <polyline points="20 12 20 22 4 22 4 12" />
-                                                <rect x="2" y="7" width="20" height="5" />
-                                                <line x1="12" y1="22" x2="12" y2="7" />
-                                                <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z" />
-                                                <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z" />
-                                            </svg>
-                                            <a href="/transPage/{{context.person.person_id_id}}">向ta转账</a>
-                                        </li>
-                                        {% endif %}
-
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-            <!--  END INFORMATION TAB  -->
-
-            <!--  BEGIN ORGANIZATION TAB  -->
-            <div class="tab-pane fade" id="organization" role="tabpanel">
-
-                <div class="layout-px-spacing layout-top-spacing">
-                    <div class="bio layout-spacing">
-                        <div class="widget-content widget-content-area">
-
-                            <div class="row">
-                                <h3 class="col mb-0">加入的组织</h3>
-                                {% if html_display.is_myself == False and user_type == 'Person' %}
-                                <div class="col-0 mr-4 custom-control custom-switch">
-                                    <input type="checkbox" class="custom-control-input" id="org-show-same-button"
-                                        onclick="toggle_same.call(this, `org`, `组织`, `inline-block`, '共同');this.blur();">
-                                    <label class="custom-control-label" id="org-show-same-label"
-                                        for="org-show-same-button">所有组织</label>
-                                </div>
-                                {% endif %}
-                            </div>
-
-                            <div class="bio-skill-box overflow-auto" style="white-space: nowrap;">
-
-                                {% if html_display.org_len == 0 %}
-                                <p>没有加入的组织</p>
-                                {% endif %}
-
-                                {% for org, ava, pos, status, same in html_display.org_info %}
-                                <div class="col-12 col-xl-5 col-lg-12 custom-org-card custom-org-issame-{{ same }}"
-                                    style="display: inline-block">
-                                    <div
-                                        style="background-image: url({{ ava }}); background-size: 55%; background-repeat: no-repeat; background-position: right;">
-                                        <div class="b-skills row" style="background-color: #ffffffcc;">
-                                            <div class="col container-fluid">
-                                                <a href="/orginfo/{{ org.oname }}">
-                                                    <h5>{{ org.oname }}</h5>
-                                                </a>
-                                                <p>{{ org.introduction }}</p>
-                                            </div>
-                                            <div class="col-2">
-                                                <!-- TODO: add pos description -->
-                                                <p>职务等级：{{ pos.pos }}</p>
-                                                <p>{{ status.status }}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                {% endfor %}
-                            </div>
-
-                        </div>
-                    </div>
-                </div>
-
-            </div>
-            <!--  END ORGANIZATION TAB  -->
-
-            <!--  BEGIN ACTIVITY TAB  -->
-            <div class="tab-pane fade" id="activity" role="tabpanel">
-                <div class="container-fluid layout-px-spacing layout-top-spacing">
-                    <div class="bio education layout-spacing ">
-                        <div class="widget-content widget-content-area">
-
-                            <div class="row">
-                                <h3 class="col mb-0">参与的活动</h3>
-                                {% if html_display.is_myself == False %}
-                                <div class="col-0 mr-4 custom-control custom-switch">
-                                    <input type="checkbox" class="custom-control-input" id="activity-show-same-button"
-                                    {% if user_type == 'Person' %}
-                                        onclick="toggle_same.call(this, `activity`, `活动`, `flex`, `都參與的`);this.blur();">
-                                    {% endif %}
-                                    {% if user_type == 'Organization' %}
-                                        onclick="toggle_same.call(this, `activity`, `活动`, `flex`, `我组织的`);this.blur();">
-                                    {% endif %}
-                                    <label class="custom-control-label" id="activity-show-same-label"
-                                        for="activity-show-same-button">所有活动</label>
-                                </div>
-                                {% endif %}
-                            </div>
-
-                            <div class="timeline-alter bio bio-skill-box">
-
-                                {% if html_display.activity_len == 0 %}
-                                <p>没有参与的活动</p>
-                                {% endif %}
-
-                                {% for activity, status, same, activity_c, attend_c in html_display.activity_info %}
-                                <div class="item-timeline custom-activity-card custom-activity-issame-{{ same }}">
-                                    <div class="t-meta-date">
-                                        <p class="">{{ activity.start }}</p>
-                                    </div>
-                                    <div class="t-dot" data-original-title="" title="">
-                                    </div>
-                                    <div class="t-text col-lg-8 col-md-12">
-                                        <div class="row b-skills">
-                                            <div class="col-5">
-                                                <a class="row m-0" href="/viewActivity/{{ activity.id }}">
-                                                    <h5><u>{{ activity.title }}</u>
-                                                        <span class="text-{{ activity_c }}">
-                                                            [{{ activity.status }}]</span>
-                                                    </h5>
-                                                </a>
-                                                <p class="row">{{ activity.organization_id }}</p>
-                                            </div>
-                                            <div class="row col-7">
-                                                <p class="col-9">{{ activity.introduction }}</p>
-                                                <p class="col-3 text-{{ attend_c }} float-right">
-                                                    {{ status }}
-                                                </p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <!--  END ACTIVITY TAB  -->
-        </div>
+        <!--  END ACTIVITY TAB  -->
 
     </div>
     <!--  END CONTENT AREA  -->
 
-
+</div>
 {% endblock %}
 
 {% block add_js_file %}
 <script type="text/javascript">
-    function toggle_same(type, labelName, display) {
+    function toggle_same(type, labelName, display, prefix) {
         const cards = document.querySelectorAll(`.custom-${type}-card`);
         if (this.checked) {
             const label = document.querySelector(`#${type}-show-same-label`);
