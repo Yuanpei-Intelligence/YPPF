@@ -3086,7 +3086,7 @@ def auditOrganization(request):
                     return render(request, "organization_audit.html", locals())
                 context = notification_status_change(notification_id)
                 html_display['warn_code'] = 2
-                html_display['warn_message'] = context['warn_message']
+                html_display['warn_message'] = "您已成功处理一条通知。"
                 if getattr(publish_notification, 'ENABLE_INSTANCE', False):
                     publish_notification(new_notification)
                 else:
