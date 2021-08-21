@@ -582,6 +582,7 @@ class Notification(models.Model):
         blank=True,
         null=True,
     )
+
     objects = NotificationManager()
 
 

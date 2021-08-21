@@ -2549,9 +2549,15 @@ def personnel_mobilization(request):
             Notification.Type.NEEDREAD,
             Notification.Title.POSITION_INFORM,
             f"{application.apply_type}申请{application.apply_status}",
-
             publish_to_wechat=True,  # 不要复制这个参数，先去看函数说明
         )
+
+        # 查找已处理的该条人事对应的通知信息
+        done_notification = Notification.objects.activated().get(typename=Notification.Type.NEEDDO,
+                                                                 sender=application.person.person_id, receiver=me.organization_id)
+
+        notification_status_change(done_notification.id)
+
         return redirect("/personnelMobilization/")
 
 
