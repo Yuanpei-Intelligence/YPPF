@@ -3275,8 +3275,8 @@ def showReimbursement(request):
     对审核老师进行了特判
     '''
     valid, user_type, html_display = utils.check_user_type(request.user)
+    is_auditor = False
     if user_type == "Person":
-        is_auditor = False
         try:
             person = utils.get_person_or_org(request.user, user_type)
             if person.name == local_dict["audit_teacher"]["Funds"]:

@@ -656,7 +656,6 @@ class NewOrganization(CommentBase):
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
-    typename = models.CharField("模型类型", max_length=32, default="neworganization")   # 子类信息
     oname = models.CharField(max_length=32, unique=True)
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
     introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
@@ -679,6 +678,10 @@ class NewOrganization(CommentBase):
     
     def __str__(self):
         return f'{self.oname}{self.otype.otype_name}'
+
+    def save(self, *args, **kwargs):
+        self.typename = "neworganization"
+        super().save(*args, **kwargs)
 
     def get_poster_name(self):
         try:
@@ -712,7 +715,6 @@ class Reimbursement(CommentBase):
         CANCELED = (4, "已取消")
         REFUSED = (5, "已拒绝")
 
-    typename = models.CharField("模型类型", max_length=32, default="reimbursement")   # 子类信息
     activity = models.ForeignKey(
         Activity, related_name="reimbursement", on_delete=models.CASCADE
     )
@@ -723,6 +725,10 @@ class Reimbursement(CommentBase):
 
     def __str__(self):
         return f'{self.activity.title}活动报销'
+        
+    def save(self, *args, **kwargs):
+        self.typename = "reimbursement"
+        super().save(*args, **kwargs)
 
     def get_poster_name(self):
         try:
