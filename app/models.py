@@ -76,9 +76,7 @@ class NaturalPerson(models.Model):
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
-    show_class = models.BooleanField(default=True)
     show_major = models.BooleanField(default=True)
-    show_grade = models.BooleanField(default=True)
     show_dorm = models.BooleanField(default=False)
 
     # 注意：这是不订阅的列表！！
@@ -582,6 +580,7 @@ class Notification(models.Model):
         blank=True,
         null=True,
     )
+
     objects = NotificationManager()
 
 
