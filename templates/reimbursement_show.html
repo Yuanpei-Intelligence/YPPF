@@ -80,16 +80,16 @@
             {% endif %}
         </div>
         <div class="d-flex justify-content-between">
-            {% for display in instance.extra_display %}
-            {% if display|length == 2 or display|length == 3 %}
             <div>
+                {% for display in instance.extra_display %}
+                {% if display|length == 2 or display|length == 3 %}
                 <p style="color: rgb(66, 67, 68);">
                     <i class="fa fa-{{display.2|default:'envelope-o'}}"></i>
                     {{display.0}}：{{display.1}}
                 </p>
+                {% endif %}
+                {% endfor %}
             </div>
-            {% endif %}
-            {% endfor %}
             {% if instance.get_poster_name %}
             <div>
                 <p style="color: rgb(66, 67, 68);">

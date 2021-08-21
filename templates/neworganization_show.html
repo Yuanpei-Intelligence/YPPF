@@ -69,7 +69,7 @@
             </div>
             {% if status is not None %}
             <div>
-                {% if status == '已通过' %}
+                {% if status == '已通过' or status == '主管老师已同意' %}
                 <h4 class="text-success">{{status}}</h4>
                 {% elif '取消' in status or '拒绝' in status or status == '未通过' %}
                 <h4 class="text-muted">{{status}}</h4>
@@ -80,16 +80,16 @@
             {% endif %}
         </div>
         <div class="d-flex justify-content-between">
-            {% for display in instance.extra_display %}
-            {% if display|length == 2 or display|length == 3 %}
             <div>
+                {% for display in instance.extra_display %}
+                {% if display|length == 2 or display|length == 3 %}
                 <p style="color: rgb(66, 67, 68);">
                     <i class="fa fa-{{display.2|default:'envelope-o'}}"></i>
                     {{display.0}}：{{display.1}}
                 </p>
+                {% endif %}
+                {% endfor %}
             </div>
-            {% endif %}
-            {% endfor %}
             {% if instance.get_poster_name %}
             <div>
                 <p style="color: rgb(66, 67, 68);">
