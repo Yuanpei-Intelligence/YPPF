@@ -76,9 +76,7 @@ class NaturalPerson(models.Model):
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
-    show_class = models.BooleanField(default=True)
     show_major = models.BooleanField(default=True)
-    show_grade = models.BooleanField(default=True)
     show_dorm = models.BooleanField(default=False)
 
     # 注意：这是不订阅的列表！！
@@ -582,12 +580,15 @@ class Notification(models.Model):
         blank=True,
         null=True,
     )
+
     objects = NotificationManager()
 
 
 class CommentBase(models.Model):
     '''
     带有评论的模型基类
+    子类必须定义typename，值应为为类名的小写版本或类名
+
     子类如果希望直接使用聚合页面呈现模板，应该定义__str__方法
     默认的呈现内容为：实例名称、创建时间、上次修改时间
     如果希望呈现审核页面，如审核中、创建者信息，则应该分别定义get_status_display和get_poster_name
@@ -601,11 +602,17 @@ class CommentBase(models.Model):
         verbose_name_plural = verbose_name
 
     id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的基类信息
+    typename = models.CharField("模型类型", max_length=32, default="commentbase")   # 子类信息
     time = models.DateTimeField("发起时间", auto_now_add=True)
     modify_time = models.DateTimeField("上次修改时间", auto_now_add=True) # 每次评论自动更新
 
-    def extra_display(self):
-        return []
+    def get_instance(self):
+        if self.typename.lower() == 'commentbase':
+            return self
+        try:
+            return getattr(self, self.typename.lower())
+        except:
+            return self
 
     def save(self, *args, **kwargs):
         self.modify_time = datetime.now()   # 自动更新修改时间
@@ -672,6 +679,10 @@ class NewOrganization(CommentBase):
     def __str__(self):
         return f'{self.oname}{self.otype.otype_name}'
 
+    def save(self, *args, **kwargs):
+        self.typename = "neworganization"
+        super().save(*args, **kwargs)
+
     def get_poster_name(self):
         try:
             person = NaturalPerson.objects.get(person_id=self.pos)
@@ -714,6 +725,10 @@ class Reimbursement(CommentBase):
 
     def __str__(self):
         return f'{self.activity.title}活动报销'
+        
+    def save(self, *args, **kwargs):
+        self.typename = "reimbursement"
+        super().save(*args, **kwargs)
 
     def get_poster_name(self):
         try:
