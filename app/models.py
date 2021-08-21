@@ -683,7 +683,7 @@ class NewOrganization(CommentBase):
         display = []
         if self.introduction and self.introduction != '这里暂时没有介绍哦~':
             display.append(('组织介绍', self.introduction))
-        return 
+        return display
 
 
 class Reimbursement(CommentBase):
@@ -727,4 +727,4 @@ class Reimbursement(CommentBase):
         display.append(('报销金额', self.amount, 'jpy'))
         if self.message:
             display.append(('备注', self.message))
-        return 
+        return display
