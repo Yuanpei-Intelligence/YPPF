@@ -9,7 +9,8 @@ from datetime import datetime, timedelta
 from functools import wraps
 import re
 import imghdr
-
+import string
+import random
 
 def check_user_access(redirect_url="/logout/"):
     """
@@ -336,10 +337,11 @@ def get_url_params(request, html_display):
 
 
 # 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
-def check_neworg_request(request):
+def check_neworg_request(request,org=None):
     """
 
     """
+
     context = dict()
     context['warn_code'] = 0
     oname = str(request.POST['oname'])
@@ -351,11 +353,21 @@ def check_neworg_request(request):
         context['warn_code'] = 1
         context['warn_msg'] = "组织的名字不能为空"
         return context
-    if len(NewOrganization.objects.exclude(status=NewOrganization.NewOrgStatus.CANCELED).filter(oname=oname))!=0 \
-            or len(Organization.objects.filter(oname=oname))!=0:
-        context['warn_code'] = 1
-        context['warn_msg'] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
-        return context
+    if org is not None and oname==org.oname:
+        if len(NewOrganization.objects.exclude(status=NewOrganization.NewOrgStatus.CANCELED)
+                       .exclude(status=NewOrganization.NewOrgStatus.REFUSED).filter(oname=oname)) > 1 \
+                or len(Organization.objects.filter(oname=oname)) != 0:
+            context['warn_code'] = 1
+            context['warn_msg'] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
+            return context
+    else:
+        if len(NewOrganization.objects.exclude(status=NewOrganization.NewOrgStatus.CANCELED)
+                       .exclude(status=NewOrganization.NewOrgStatus.REFUSED).filter(oname=oname))!=0 \
+                        or len(Organization.objects.filter(oname=oname))!=0:
+            context['warn_code'] = 1
+            context['warn_msg'] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
+            return context
+
     try:
         otype = int(request.POST.get('otype'))
         context['otype'] = OrganizationType.objects.get(otype_id=otype)
@@ -366,7 +378,7 @@ def check_neworg_request(request):
 
     context['avatar'] = request.FILES.get('avatar')
     if context['avatar'] is not None:
-        if if_image(context['avatar'])==False:
+        if if_image(context['avatar'])==1:
             context['warn_code'] = 1
             context['warn_msg'] = "组织的头像应当为图片格式！"
             return context
@@ -393,8 +405,18 @@ def find_max_oname():
     max_oname=prefix+str(max_oname).zfill(5)
     return max_oname
 
+#判断是否为图片
 def if_image(image):
+    if image==None:
+        return 0
     imgType_list = {'jpg', 'bmp', 'png', 'jpeg', 'rgb', 'tif'}
     if imghdr.what(image)  in imgType_list:
-        return True
-    return False
+        return 2 #为图片
+    return 1    #不是图片
+#用于新建组织时，生成6位随机密码
+def random_code_init():
+    b = string.digits + string.ascii_letters   # 构建密码池
+    password = ""
+    for i in range(0, 6):
+        password = password + random.choice(b)
+    return password
