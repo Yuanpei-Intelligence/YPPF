@@ -698,8 +698,8 @@ def account_setting(request):
             attr_dict['telephone'] = request.POST["tel"]
             attr_dict['email'] = request.POST["email"]
             attr_dict['stu_major'] = request.POST["major"]
-            attr_dict['stu_grade'] = request.POST['grade']
-            attr_dict['stu_class'] = request.POST['class']
+            #attr_dict['stu_grade'] = request.POST['grade'] 用户无法填写
+            #attr_dict['stu_class'] = request.POST['class'] 用户无法填写
             attr_dict['stu_dorm'] = request.POST['dorm']
 
             ava = request.FILES.get("avatar")
@@ -713,14 +713,13 @@ def account_setting(request):
             show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
             show_dict['show_email'] = request.POST.get('show_email') == 'on'
             show_dict['show_major'] = request.POST.get('show_major') == 'on'
-            show_dict['show_grade'] = request.POST.get('show_grade') == 'on'
             show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
 
             expr = bool(ava or (gender != useroj.get_gender_display()))
-            expr += sum(
-                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
-            expr += sum([getattr(useroj, show_attr) != show_dict[show_attr]
-                        for show_attr in show_dict.keys()])
+            expr += bool(sum(
+                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()]))
+            expr += bool(sum([getattr(useroj, show_attr) != show_dict[show_attr]
+                         for show_attr in show_dict.keys()]))
 
             if gender != useroj.gender:
                 useroj.gender = NaturalPerson.Gender.MALE if gender == '男' else NaturalPerson.Gender.FEMALE
@@ -736,7 +735,7 @@ def account_setting(request):
                 useroj.avatar = ava
             useroj.save()
             avatar_path = settings.MEDIA_URL + str(ava)
-            if expr == True:
+            if expr >= 1:
                 upload_state = True
                 return redirect("/stuinfo/?modinfo=success")
             # else: 没有更新 从下面统一返回
@@ -754,8 +753,8 @@ def account_setting(request):
             ava = request.FILES.get("avatar")
 
             expr = bool(ava)
-            expr += sum(
-                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
+            expr += bool(sum(
+                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()]))
 
             for attr in attr_dict.keys():
                 if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
@@ -766,7 +765,7 @@ def account_setting(request):
                 useroj.avatar = ava
             useroj.save()
             avatar_path = settings.MEDIA_URL + str(ava)
-            if expr == True:
+            if expr >= 1:
                 upload_state = True
                 return redirect("/orginfo/?modinfo=success")
             # else: 没有修改信息 统一从下面返回
@@ -2548,9 +2547,15 @@ def personnel_mobilization(request):
             Notification.Type.NEEDREAD,
             Notification.Title.POSITION_INFORM,
             f"{application.apply_type}申请{application.apply_status}",
-
             publish_to_wechat=True,  # 不要复制这个参数，先去看函数说明
         )
+
+        # 查找已处理的该条人事对应的通知信息
+        done_notification = Notification.objects.activated().get(typename=Notification.Type.NEEDDO,
+                                                                 sender=application.person.person_id, receiver=me.organization_id)
+
+        notification_status_change(done_notification.id)
+
         return redirect("/personnelMobilization/")
 
 
@@ -2802,7 +2807,18 @@ def showNewOrganization(request):
                         '?warn_code={}&warn_message={}'.format(
                             html_display['warn_code'], html_display['warn_message']))
 
-    shown_instances = NewOrganization.objects.filter(pos=request.user).order_by('-modify_time', '-time')
+    is_auditor = False
+    try:
+        person = utils.get_person_or_org(request.user, user_type)
+        if person.name == local_dict["audit_teacher"]["Funds"]:
+            is_auditor = True
+    except:
+        pass
+    if is_auditor:
+        shown_instances = NewOrganization.objects.all()
+    else:
+        shown_instances = NewOrganization.objects.filter(pos=request.user)
+    shown_instances = shown_instances.order_by('-modify_time', '-time')
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织"
     bar_display["navbar_name"] = "组织申请进度"
@@ -3272,16 +3288,29 @@ def auditOrganization(request):
 def showReimbursement(request):
     '''
     报销信息的聚合界面
+    对审核老师进行了特判
     '''
     valid, user_type, html_display = utils.check_user_type(request.user)
+    is_auditor = False
     if user_type == "Person":
-        html_display["warn_code"] = 1
-        html_display["warn_code"] = "请不要使用个人账号申请报销！"
-        return redirect("/welcome/" + 
-                        '?warn_code={}&warn_message={}'.format(
-                            html_display['warn_code'], html_display['warn_message']))
+        try:
+            person = utils.get_person_or_org(request.user, user_type)
+            if person.name == local_dict["audit_teacher"]["Funds"]:
+                is_auditor = True
+        except:
+            pass
+        if not is_auditor:
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "请不要使用个人账号申请报销！"
+            return redirect("/welcome/" + 
+                            '?warn_code={}&warn_message={}'.format(
+                                html_display['warn_code'], html_display['warn_message']))
 
-    shown_instances = Reimbursement.objects.filter(pos=request.user).order_by('-modify_time', '-time')
+    if is_auditor:
+        shown_instances = Reimbursement.objects
+    else:
+        shown_instances = Reimbursement.objects.filter(pos=request.user)
+    shown_instances = shown_instances.order_by('-modify_time', '-time')
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "报销信息"
     bar_display["navbar_name"] = "报销信息"
@@ -3662,7 +3691,8 @@ def auditReimbursement(request):
                             typename = Notification.Type.NEEDDO
                             URL = ""
                         else:
-                            content = "报销申请已通过，扣除元气值{amount}".format()
+                            content = "报销申请已通过，扣除元气值{amount}".format(
+                                amount=new_reimb.amount)
                             typename = Notification.Type.NEEDREAD
                             URL = "/notifications/"
                             # URL = request.build_absolute_uri(URL)
@@ -3715,7 +3745,7 @@ def auditReimbursement(request):
                         new_reimb.save()
                         content = "很遗憾，报销申请未通过！"
                         receiver = new_reimb.pos  # 通知接收者
-                        URL = "/addReimbursement/"  # 报销失败可能应该鼓励继续报销
+                        URL = "/showReimbursement/"  # 报销失败可能应该鼓励继续报销
                         # URL = request.build_absolute_uri(URL)
 
                         # TODO 如果老师另留有评论的话,将评论放在content里
