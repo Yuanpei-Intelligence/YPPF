@@ -52,7 +52,7 @@
 
 
 {% for instance in shown_instances %}
-    {% with instance.get_status_display as status %}
+    {% with instance.get_instance.get_status_display as status %}
 <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
 
     <div class=" b-skills">
