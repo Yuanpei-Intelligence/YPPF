@@ -62,7 +62,7 @@
             <div>
                 <h5>
                     <a href="{{link}}{% if query_field %}?{{query_field}}={{instance.id}}{% endif %}">
-                        <u>{{instance}}</u>
+                        <u>{{instance.get_instance}}</u>
                     </a>
                     <br />
                 </h5>
@@ -70,7 +70,7 @@
             {% if status is not None %}
             <div>
                 {% if status == '已通过' or status == '主管老师已同意' %}
-                <h4 class="text-success">{{status}}</h4>
+                <h4 class="text-success">已通过</h4>
                 {% elif '取消' in status or '拒绝' in status or status == '未通过' %}
                 <h4 class="text-muted">{{status}}</h4>
                 {% else %}
