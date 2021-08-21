@@ -2866,9 +2866,9 @@ def addOrganization(request):
         else:
             # 参数合法性检查
             if edit :
-                context = utils.check_neworg_request(request,edit,preorg)  # check
+                context = utils.check_neworg_request(request,preorg)  # check
             else:
-                context = utils.check_neworg_request(request, edit)  # check
+                context = utils.check_neworg_request(request)  # check
             if context['warn_code'] != 0:
                 html_display['warn_code'] = context['warn_code']
                 html_display['warn_message'] = "新建组织申请失败。" + \

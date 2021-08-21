@@ -337,7 +337,7 @@ def get_url_params(request, html_display):
 
 
 # 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
-def check_neworg_request(request,edit,org=None):
+def check_neworg_request(request,org=None):
     """
 
     """
