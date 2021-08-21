@@ -694,7 +694,6 @@ def account_setting(request):
     me = utils.get_person_or_org(user, user_type)
     former_img = utils.get_user_ava(me, user_type)
 
-
     if user_type == "Person":
         info = NaturalPerson.objects.filter(person_id=user)
         userinfo = info.values()[0]
@@ -2819,7 +2818,7 @@ def addOrganization(request):
     me = utils.get_person_or_org(request.user, user_type)
     
     html_display['is_myself'] = True
-    former_img=settings.MEDIA_URL + "avatar/org_default.png"
+    former_img=utils.get_user_ava(None,"Organization")
     edit = 0
     if request.GET.get('neworg_id') is not None and request.GET.get('notifi_id') is not None:
         edit = 1
@@ -2883,7 +2882,7 @@ def addOrganization(request):
                 html_display['warn_message'] = context['warn_code']
         else:
             # 参数合法性检查
-            context = utils.check_neworg_request(request)  # check
+            context = utils.check_neworg_request(request,edit)  # check
             if context['warn_code'] != 0:
                 html_display['warn_code'] = context['warn_code']
                 html_display['warn_message'] = "新建组织申请失败。" + context['warn_msg']
@@ -2897,9 +2896,7 @@ def addOrganization(request):
                         new_org = NewOrganization.objects.create(oname=context['oname'], otype=context['otype'],
                                                                  pos=context['pos'])
                         new_org.introduction = context['introduction']
-                        if context['avatar'] is None:
-                            new_org.avatar=former_img
-                        else:
+                        if context['avatar'] is not None:
                             new_org.avatar = context['avatar']
                         new_org.application = context['application']
                         new_org.save()
@@ -3121,7 +3118,7 @@ def auditOrganization(request):
                         username = utils.find_max_oname()  # 组织的代号最大值
 
                         user = User.objects.create(username=username)
-                        password = local_dict["testword"]["test"]
+                        password = utils.random_code_init()
                         user.set_password(password)  # 统一密码
                         user.save()
 
@@ -3135,7 +3132,7 @@ def auditOrganization(request):
                         org.save()
 
                         charger = utils.get_person_or_org(preorg.pos)  # 负责人
-                        pos = Position.objects.create(person=charger, org=org)
+                        pos = Position.objects.create(person=charger, org=org,pos=0,status=Position.Status.INSERVICE)
                         pos.save()
 
                         preorg.status = preorg.NewOrgStatus.CONFIRMED
@@ -3148,6 +3145,7 @@ def auditOrganization(request):
                 try:  # 发送给申请者的通过通知
                     with transaction.atomic():
                         content = "新建组织申请已通过，组织代号为 “{username}” ，初始密码为 “{password}” ，请尽快修改密码。" \
+                                  "点击左侧“切换账号”，可切换到组织账号。tips:登陆时，使用组织名也可以登陆哦。" \
                             .format(username=username, password=password)
                         receiver = preorg.pos  # 通知接收者
                         URL = "/notifications/"
@@ -3235,7 +3233,6 @@ def auditOrganization(request):
     html_display['introduction'] = preorg.introduction
     html_display['application'] = preorg.application
     org_avatar_path = utils.get_user_ava(preorg, "Organization")
-
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织审核"
