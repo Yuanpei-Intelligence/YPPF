@@ -636,7 +636,7 @@ class NewOrganization(CommentBase):
         "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
     )
     avatar = models.ImageField(
-        upload_to=f"avatar/", verbose_name="组织头像", null=True, blank=True
+        upload_to=f"avatar/", verbose_name="组织头像",default="avatar/org_default.png",null=True, blank=True
     )
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
 
