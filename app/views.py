@@ -2780,14 +2780,36 @@ def addComment(request, comment_base):
                     for comment_image in comment_images:
                         CommentPhoto.objects.create(
                             image=comment_image, comment=new_comment)
+                comment_base.save() # 每次save都会更新修改时间
         except:
             context['warn_code'] = 1
             context['warn_message'] = "评论失败，请联系管理员。"
         context['new_comment'] = new_comment
     return context
+
+
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+def showNewOrganization(request):
+    '''
+    新建组织的聚合界面
+    '''
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if user_type == "Organization":
+        html_display["warn_code"] = 1
+        html_display["warn_code"] = "请不要使用组织账号申请新组织！"
+        return redirect("/welcome/" + 
+                        '?warn_code={}&warn_message={}'.format(
+                            html_display['warn_code'], html_display['warn_message']))
+
+    shown_instances = NewOrganization.objects.filter(pos=request.user).order_by('-modify_time', '-time')
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "新建组织"
+    bar_display["navbar_name"] = "组织申请进度"
+    return render(request, 'neworganization_show.html', locals())
+
+
 # 新建组织 or 修改新建组织信息
-
-
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 def addOrganization(request):
@@ -2821,10 +2843,10 @@ def addOrganization(request):
 
             notification = Notification.objects.get(id=notification_id)
             if (
-                preorg.status == NewOrganization.NewOrgStatus.CANCELED
-                or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED
-                or notification.status != Notification.Status.UNDONE
+                preorg.status == NewOrganization.NewOrgStatus.CONFIRMED
                 or preorg.status==NewOrganization.NewOrgStatus.REFUSED
+                or preorg.status == NewOrganization.NewOrgStatus.CANCELED
+                or notification.status != Notification.Status.UNDONE
             ):
                 if notification.status == Notification.Status.UNDONE:
                     notification_status_change(
@@ -3030,10 +3052,10 @@ def auditOrganization(request):
         preorg = NewOrganization.objects.get(id=id)
         notification = Notification.objects.get(id=notification_id)
         if (
-            preorg.status == NewOrganization.NewOrgStatus.CANCELED
-            or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED
-            or notification.status != Notification.Status.UNDONE
+            preorg.status == NewOrganization.NewOrgStatus.CONFIRMED
             or preorg.status == NewOrganization.NewOrgStatus.REFUSED
+            or preorg.status == NewOrganization.NewOrgStatus.CANCELED
+            or notification.status != Notification.Status.UNDONE
         ):
             if notification.status == Notification.Status.UNDONE:
                 notification_status_change(
@@ -3229,6 +3251,27 @@ def auditOrganization(request):
     return render(request, "organization_audit.html", locals())
 
 
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+def showReimbursement(request):
+    '''
+    报销信息的聚合界面
+    '''
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if user_type == "Person":
+        html_display["warn_code"] = 1
+        html_display["warn_code"] = "请不要使用个人账号申请报销！"
+        return redirect("/welcome/" + 
+                        '?warn_code={}&warn_message={}'.format(
+                            html_display['warn_code'], html_display['warn_message']))
+
+    shown_instances = Reimbursement.objects.filter(pos=request.user).order_by('-modify_time', '-time')
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "报销信息"
+    bar_display["navbar_name"] = "报销信息"
+    return render(request, 'reimbursement_show.html', locals())
+
+
 # 新建或修改报销信息
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
@@ -3246,14 +3289,15 @@ def addReimbursement(request):
 
     edit = 0
     reimbursed_act_ids = Reimbursement.objects.all(
-    ).exclude(status=Reimbursement.ReimburseStatus.CANCELED     # 未取消报销的,被拒绝的
-              # ).filter(status=Reimbursement.ReimburseStatus.CONFIRMED     # 已报销完的
-              ).exclude(status=Reimbursement.ReimburseStatus.REFUSED).values_list('activity_id', flat=True)
+        ).exclude(status=Reimbursement.ReimburseStatus.CANCELED     # 未取消报销的
+        ).exclude(status=Reimbursement.ReimburseStatus.REFUSED      # 未被拒绝的
+        # ).filter(status=Reimbursement.ReimburseStatus.CONFIRMED     # 已报销完的
+        ).values_list('activity_id', flat=True)
     activities = Activity.objects.activated(    # 本学期的
-    ).filter(organization_id=me             # 本部门组织的
-             ).filter(status=Activity.Status.END     # 已结束的
-                      ).exclude(id__in=reimbursed_act_ids     # 还没有报销的
-                                )                                       # 这种写法是为了方便随时取消某个条件
+        ).filter(organization_id=me             # 本部门组织的
+        ).filter(status=Activity.Status.END     # 已结束的
+        ).exclude(id__in=reimbursed_act_ids     # 还没有报销的
+        )                                       # 这种写法是为了方便随时取消某个条件
 
     YQP = float(me.YQPoint)  # 组织剩余的元气值
     # 新版侧边栏, 顶栏等的呈现，采用
@@ -3281,9 +3325,9 @@ def addReimbursement(request):
             notification = Notification.objects.get(id=notification_id)
             if (
                 pre_reimb.status == Reimbursement.ReimburseStatus.CONFIRMED
+                or pre_reimb.status == Reimbursement.ReimburseStatus.REFUSED
                 or pre_reimb.status == Reimbursement.ReimburseStatus.CANCELED
                 or notification.status != Notification.Status.UNDONE
-                or pre_reimb.status == Reimbursement.ReimburseStatus.REFUSED
             ):
                 if notification.status == Notification.Status.UNDONE:
                     notification_status_change(
@@ -3499,9 +3543,9 @@ def auditReimbursement(request):
         notification = Notification.objects.get(id=notification_id)
         if (
             new_reimb.status == Reimbursement.ReimburseStatus.CONFIRMED
+            or new_reimb.status == Reimbursement.ReimburseStatus.REFUSED
             or new_reimb.status == Reimbursement.ReimburseStatus.CANCELED
             or notification.status != Notification.Status.UNDONE # 未处理通知才有修改许可
-            or pre_reimb.status == Reimbursement.ReimburseStatus.REFUSED
         ):
             if notification.status == Notification.Status.UNDONE:
                 notification_status_change(
