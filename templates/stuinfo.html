@@ -86,7 +86,7 @@
                         <div class="user-info-list">
                             <div class="">
                                 <ul class="contacts-block list-unstyled">
-
+                                    <!--
                                     <li class="contacts-block__item">
                                         <div class="w-100 row p-0 m-0">
                                             <div class="col-0 p-0 m-0">
@@ -105,6 +105,7 @@
                                             </div>
                                         </div>
                                     </li>
+                                    -->
 
                                     <li class="contacts-block__item">
                                         <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor"
@@ -114,11 +115,16 @@
                                             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z">
                                             </path>
                                         </svg>
-                                        {{ context.person.stu_class }}
+                                        {% if context.person.stu_grade != "None" %}
+                                        {{ context.person.stu_grade }}级
+                                        {% endif %}
+                                        {% if context.person.stu_class != "None" %}
+                                        {{ context.person.stu_class }}班
+                                        {% endif %}
                                     </li>
 
                                     {% if context.person.show_major %}
-                                    <li class="contacts-block__item">
+                                    <li class="contacts-block__item ">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
                                             stroke-linecap="round" stroke-linejoin="round"
@@ -133,6 +139,7 @@
                                     </li>
                                     {% endif %}
 
+                                    <!--
                                     <li class="contacts-block__item">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -145,6 +152,7 @@
                                         </svg>
                                         {{ context.person.stu_grade }}
                                     </li>
+                                    -->
 
                                     {% if context.person.show_dorm %}
                                     <li class="contacts-block__item">
