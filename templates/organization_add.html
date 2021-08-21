@@ -50,7 +50,7 @@
                                                 {%if present%}
                                                 <textarea type="text" name="oname" class="form-control"
                                                           aria-label="Default" placeholder="不超过32个字节"
-                                                          {%if edit == 0  %} disabled="disabled" {%endif%}>{{html_display.oname}}</textarea>
+                                                          {%if edit == 0 and present !=0 %} disabled="disabled" {%endif%}>{{html_display.oname}}</textarea>
 
                                                 {%else%}
                                                 <input type="text" name="oname" class="form-control"
@@ -104,14 +104,14 @@
                                             <div class="form-group">
                                                 <label for="aintro">组织简介</label>
                                                 <textarea name="introduction" class="form-control" rows="3"
-                                                          placeholder="空" {%if edit == 0  %} disabled="disabled" {%endif%}
+                                                          placeholder="空" {%if edit == 0 and present !=0 %} disabled="disabled" {%endif%}
                                                     >{%if display%}{{html_display.introduction}}{%endif%}</textarea>
                                             </div>
                                             <br>
                                             <div class="form-group">
                                                 <label for="aintro">申请理由</label>
                                                 <textarea name="application" class="form-control" rows="3" placeholder=
-                                                        "申请理由不能为空"{%if edit == 0  %} disabled="disabled" {%endif%}
+                                                        "申请理由不能为空"{%if edit == 0 and present !=0 %} disabled="disabled" {%endif%}
                                                 >{% if edit %}{{html_display.application}}{% endif %}</textarea>
                                             </div>
                                             {%if edit%}
