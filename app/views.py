@@ -2855,7 +2855,8 @@ def addOrganization(request):
         html_display['application'] = preorg.application
         org_avatar_path=utils.get_user_ava(preorg, "Organization")
     org_types=OrganizationType.objects.order_by("-otype_id").all()#当前组织类型，前端展示需要
-
+    html_display['warn_code'] = 1
+    html_display['warn_message'] = "test{otype_id}".format(otype_id=preorg.otype.otype_id)
     if request.method == "POST" and request.POST:
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
             context = addComment(request, preorg)

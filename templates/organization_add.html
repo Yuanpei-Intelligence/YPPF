@@ -58,8 +58,7 @@
                                                 {%if edit%}
                                                 <select name="otype">
                                                     {%for org_type in org_types%}
-
-                                                    <option value={{org_type.otype_id}} {% if html_display.otype_id == org_type %}
+                                                    <option value={{org_type.otype_id}} {% if html_display.otype_id == org_type.otype_id %}
                                                             selected="selected"
                                                             {% endif %}>{{org_type.otype_name}}
                                                     </option>
@@ -67,10 +66,8 @@
                                                 </select>
 
                                                 {%else%}
-
                                                 <select name="otype">
                                                     {%for org_type in org_types%}
-
                                                     <option value={{org_type.otype_id}}>{{org_type.otype_name}}</option>
                                                     {%endfor%}
                                                 </select>
