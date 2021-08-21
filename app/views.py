@@ -386,15 +386,10 @@ def stuinfo(request, name=None):
 
         context["person"] = person
 
-        def gender2title(g):
-            return "他" if g == 0 else "她"
-
         context["title"] = (
             "我"
             if is_myself
-            else gender2title(person.gender)
-            if person.show_gender
-            else "ta"
+            else "Ta"
         )
 
         context["avatar_path"] = utils.get_user_ava(person, "Person")
@@ -671,7 +666,7 @@ def homepage(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "Welcome Page"
-    bar_display["navbar_name"] = "近期要闻"
+    bar_display["navbar_name"] = "元培生活"
 
     return render(request, "welcome_page.html", locals())
 
@@ -2913,7 +2908,11 @@ def addOrganization(request):
                                                   str(new_notification.id))
                         URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(
                             id=new_org.id, nid=new_notification.id, en_pw=en_pw)
+<<<<<<< .merge_file_ibW3IB
                         URL = request.build_absolute_uri(URL)
+=======
+                        # URL = request.build_absolute_uri(URL)
+>>>>>>> .merge_file_ePOnNB
                         new_notification.URL = URL
                         new_notification.save()
                 except:
@@ -2967,7 +2966,7 @@ def addOrganization(request):
                                                   str(new_notification.id))
                         URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(
                             id=preorg.id, nid=new_notification.id, en_pw=en_pw)
-                        URL = request.build_absolute_uri(URL)
+                        # URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
                 except:
@@ -3084,7 +3083,7 @@ def auditOrganization(request):
                                                   str(new_notification.id))
                         URL = "/addOrganization/?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(
                             id=preorg.id, nid=new_notification.id, en_pw=en_pw)
-                        URL = request.build_absolute_uri(URL)
+                        # URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
                 except:
@@ -3139,7 +3138,7 @@ def auditOrganization(request):
                             .format(username=username, password=password)
                         receiver = preorg.pos  # 通知接收者
                         URL = "/notifications/"
-                        URL = request.build_absolute_uri(URL)
+                        # URL = request.build_absolute_uri(URL)
                         """# 如果老师另留有评论的话,将评论放在content里
                         comments = preorg.comment
                         text = ""
@@ -3178,7 +3177,7 @@ def auditOrganization(request):
                         content = "很遗憾，新建组织申请未通过！"
                         receiver = preorg.pos  # 通知接收者
                         URL = "/notifications/"
-                        URL = request.build_absolute_uri(URL)
+                        # URL = request.build_absolute_uri(URL)
                         """# 如果老师另留有评论的话,将评论放在content里
                         comments = preorg.comment
                         text = ""
@@ -3383,7 +3382,7 @@ def addReimbursement(request):
                                                   str(new_notification.id))
                         URL = "/auditReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(
                             id=new_reimb.id, nid=new_notification.id, en_pw=en_pw)
-                        URL = request.build_absolute_uri(URL)
+                        # URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
                 except:
@@ -3431,7 +3430,7 @@ def addReimbursement(request):
                                                   str(new_notification.id))
                         URL = "/auditReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(
                             id=pre_reimb.id, nid=new_notification.id, en_pw=en_pw)
-                        URL = request.build_absolute_uri(URL)
+                        # URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
                 except:
@@ -3553,7 +3552,7 @@ def auditReimbursement(request):
                                                   str(new_notification.id))
                         URL = "/addReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(
                             id=new_reimb.id, nid=new_notification.id, en_pw=en_pw)
-                        URL = request.build_absolute_uri(URL)
+                        # URL = request.build_absolute_uri(URL)
                         new_notification.URL = URL
                         new_notification.save()
                 except:
@@ -3600,7 +3599,7 @@ def auditReimbursement(request):
                             content = "报销申请已通过，扣除元气值{amount}".format()
                             typename = Notification.Type.NEEDREAD
                             URL = "/notifications/"
-                            URL = request.build_absolute_uri(URL)
+                            # URL = request.build_absolute_uri(URL)
                         receiver = new_reimb.pos  # 通知接收者
                         # TODO 如果老师另留有评论的话,将评论放在content里
                         """comments = new_reimb.comments
@@ -3619,7 +3618,7 @@ def auditReimbursement(request):
                                                       str(new_notification.id))
                             URL = "/addReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(
                                 id=new_reimb.id, nid=new_notification.id, en_pw=en_pw)
-                            URL = request.build_absolute_uri(URL)
+                            # URL = request.build_absolute_uri(URL)
                             new_notification.URL = URL
                             new_notification.save()
                 except:
@@ -3651,7 +3650,7 @@ def auditReimbursement(request):
                         content = "很遗憾，报销申请未通过！"
                         receiver = new_reimb.pos  # 通知接收者
                         URL = "/addReimbursement/"  # 报销失败可能应该鼓励继续报销
-                        URL = request.build_absolute_uri(URL)
+                        # URL = request.build_absolute_uri(URL)
 
                         # TODO 如果老师另留有评论的话,将评论放在content里
                         """comments = new_reimb.comments
