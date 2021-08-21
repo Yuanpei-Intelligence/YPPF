@@ -25,7 +25,27 @@
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                <h4>申请新建组织信息</h4>
+
+                                                    <div align="center">
+                                                    <h3>申请的新建组织信息 </h3>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div align="right">
+                                                        {% with preorg.get_status_display as status %}
+                                                        <h4 >当前状态：{{status}}</h4>
+                                                        {%endwith%}
+                                                        </div>
+                                                    <div align="right">
+                                                            <h4>
+                                                                申请人：
+                                                            <img src={{ html_display.app_avatar_path }} width="24" height="24" alt="avatar">
+                                                            <a href='/stuinfo/{{html_display.applicant.name}}'>
+                                                                <u>{{html_display.applicant.name}}</u></a>
+                                                            </h4>
+                                                    </div>
+                                                    </div>
+
+
                                             </div>
                                         </div>
                                     </div>
@@ -37,19 +57,14 @@
                                             <div class="form-group">
                                                 <label>组织名称</label>
                                                 <textarea id="oname" name="oname" class="form-control"
-                                                          aria-label="Default">{{html_display.oname}}</textarea>
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label>组织负责人</label>
-                                                <textarea class="form-control"
-                                                          aria-label="Default">{{html_display.pos}}</textarea>
+                                                          aria-label="Default" disabled="disabled"
+                                                >{{html_display.oname}}</textarea>
                                             </div>
                                             <div class="form-group">
                                                 <label>组织类型</label>
                                                 <br>
-                                                <textarea id="otype" name="otype" class="form-control"
-                                                          aria-label="Default">{{html_display.otype_name}}</textarea>
+                                                <textarea id="otype" name="otype" class="form-control" aria-label="Default"
+                                                disabled="disabled">{{html_display.otype_name}}</textarea>
                                             </div>
                                             <div class="form-group">
                                                 <label>组织图标</label>
@@ -59,27 +74,17 @@
                                             <div class="form-group">
                                                 <label for="aintro">组织简介</label>
                                                 <textarea id="introduction" name="introduction" class="form-control"
-                                                          rows="3">{{html_display.introduction}}</textarea>
+                                                          rows="3" disabled="disabled">{{html_display.introduction}}</textarea>
                                             </div>
                                             <br>
-                                            <br>
-                                            <hr>
-
                                             <div class="form-group">
                                                 <label for="aintro">申请理由</label>
                                                 <textarea id="apply" name="application" class="form-control"
-                                                          rows="3">{{html_display.application}}</textarea>
+                                                          rows="3" disabled="disabled">{{html_display.application}}</textarea>
                                             </div>
+                                            {%if commentable%}
                                             <div align="center">
                                                 <table>
-                                                    <tr>
-                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
-                                                                name="submit"
-                                                                value="1">
-                                                            需要修改
-                                                        </button>
-
-                                                    </tr>
                                                     <tr>
                                                         <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
                                                                 name="submit"
@@ -89,14 +94,15 @@
                                                     </tr>
 
                                                     <tr>
-                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
-                                                                name="submit"
+                                                        <button type="submit" class="btn btn-warning btn-lg mb-4 mr-2"
+                                                                 name="submit"
                                                                 value="3">
                                                             拒绝
                                                         </button>
                                                     </tr>
                                                 </table>
                                             </div>
+                                            {%endif%}
                                         </form>
 
                                     {% include 'comment.html' %}
