@@ -586,11 +586,30 @@ class Notification(models.Model):
 
 
 class CommentBase(models.Model):
+    '''
+    带有评论的模型基类
+    子类如果希望直接使用聚合页面呈现模板，应该定义__str__方法
+    默认的呈现内容为：实例名称、创建时间、上次修改时间
+    如果希望呈现审核页面，如审核中、创建者信息，则应该分别定义get_status_display和get_poster_name
+    其中，如果你的status是一个枚举字段，则无需定义get_status_display
+    如果你希望呈现更多信息，应该定义extra_display，返回一个二或三元组构成的列表
+        (键, 值, 图标名="envelope-o")将被渲染为一行[图标]键：值
+        图标名请参考fontawesome的图标类名
+    '''
     class Meta:
         verbose_name = "带有评论"
         verbose_name_plural = verbose_name
 
-    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的组织信息
+    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的基类信息
+    time = models.DateTimeField("发起时间", auto_now_add=True)
+    modify_time = models.DateTimeField("上次修改时间", auto_now_add=True) # 每次评论自动更新
+
+    def extra_display(self):
+        return []
+
+    def save(self, *args, **kwargs):
+        self.modify_time = datetime.now()   # 自动更新修改时间
+        super().save(*args, **kwargs)
 
 
 class Comment(models.Model):
@@ -628,6 +647,7 @@ class NewOrganization(CommentBase):
     class Meta:
         verbose_name = "申请建立组织的信息"
         verbose_name_plural = verbose_name
+        ordering = ["-modify_time", "-time"]
 
     oname = models.CharField(max_length=32, unique=True)
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
@@ -645,9 +665,29 @@ class NewOrganization(CommentBase):
         CONFIRMED = (1, "主管老师已同意")  # 审过同意
         TOBEMODIFIED = (2, "需要修改")
         CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
+<<<<<<< HEAD
         REFUSED=(4,"已拒绝")
+=======
+        REFUSED = (4, "已拒绝")
+>>>>>>> 218cc088c1d107d09f15411502c261aeee53819c
 
     status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
+    
+    def __str__(self):
+        return f'{self.oname}{self.otype.otype_name}'
+
+    def get_poster_name(self):
+        try:
+            person = NaturalPerson.objects.get(person_id=self.pos)
+            return person.name
+        except:
+            return '未知'
+    
+    def extra_display(self):
+        display = []
+        if self.introduction and self.introduction != '这里暂时没有介绍哦~':
+            display.append(('组织介绍', self.introduction))
+        return 
 
 
 class Reimbursement(CommentBase):
@@ -666,7 +706,11 @@ class Reimbursement(CommentBase):
         # 如果需要更多审核，每个审核的确认状态应该是2的幂
         # 根据最新要求，最终不以线上为准，不再设置转账状态
         CANCELED = (4, "已取消")
+<<<<<<< HEAD
         REFUSED = (5,"已拒绝")
+=======
+        REFUSED = (5, "已拒绝")
+>>>>>>> 218cc088c1d107d09f15411502c261aeee53819c
 
     activity = models.ForeignKey(
         Activity, related_name="reimbursement", on_delete=models.CASCADE
@@ -675,5 +719,20 @@ class Reimbursement(CommentBase):
     message = models.TextField("备注信息", default="", blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
-    time = models.DateTimeField("发起时间", auto_now_add=True)
-    modify_time = models.DateTimeField("上次修改时间", auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.activity.title}活动报销'
+
+    def get_poster_name(self):
+        try:
+            org = Organization.objects.get(organization_id=self.pos)
+            return org.oname
+        except:
+            return '未知'
+
+    def extra_display(self):
+        display = []
+        display.append(('报销金额', self.amount, 'jpy'))
+        if self.message:
+            display.append(('备注', self.message))
+        return 
