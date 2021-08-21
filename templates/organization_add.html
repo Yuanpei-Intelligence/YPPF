@@ -29,11 +29,13 @@
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
                                                 {% if present %}
+                                                    {% with preorg.get_status_display as status %}
                                                     {%if edit%}
-                                                    <h4>重新修改申请的组织信息</h4>
+                                                    <h4>重新修改申请的组织信息  {{status}}</h4>
                                                     {% else %}
-                                                    <h4>新建组织申请{{html_display.status}}</h4>
+                                                    <h4>新建组织申请  {{status}}</h4>
                                                     {% endif %}
+                                                    {%endwith%}
                                                 {% else %}
                                                 <h4>请填写新建组织的相关信息</h4>
                                                 {% endif %}
@@ -50,7 +52,7 @@
                                                 {%if present%}
                                                 <textarea type="text" name="oname" class="form-control"
                                                           aria-label="Default" placeholder="不超过32个字节"
-                                                          {%if edit == 0 and present !=0 %} disabled="disabled" {%endif%}>{{html_display.oname}}</textarea>
+                                                          {%if edit == 0 %} disabled="disabled" {%endif%}>{{html_display.oname}}</textarea>
 
                                                 {%else%}
                                                 <input type="text" name="oname" class="form-control"
@@ -72,7 +74,8 @@
                                                 </select>
                                                     {%else%}
                                                  <textarea id="otype" name="otype" class="form-control"
-                                                          aria-label="Default">{{html_display.otype_name}}</textarea>
+                                                          aria-label="Default" {%if edit == 0 %} disabled="disabled" {%endif%}
+                                                 >{{html_display.otype_name}}</textarea>
                                                     {%endif%}
                                                 {%else%}
                                                 <select name="otype">
@@ -104,32 +107,40 @@
                                             <div class="form-group">
                                                 <label for="aintro">组织简介</label>
                                                 <textarea name="introduction" class="form-control" rows="3"
-                                                          placeholder="空" {%if edit == 0 and present !=0 %} disabled="disabled" {%endif%}
-                                                    >{%if display%}{{html_display.introduction}}{%endif%}</textarea>
+                                                          placeholder="空" {%if edit == 0 and present == 1 %} disabled="disabled" {%endif%}
+                                                    >{%if edit%}{{html_display.introduction}}{%endif%}</textarea>
                                             </div>
                                             <br>
                                             <div class="form-group">
                                                 <label for="aintro">申请理由</label>
                                                 <textarea name="application" class="form-control" rows="3" placeholder=
-                                                        "申请理由不能为空"{%if edit == 0 and present !=0 %} disabled="disabled" {%endif%}
+                                                        "申请理由不能为空"{%if edit == 0 and present == 1 %} disabled="disabled" {%endif%}
                                                 >{% if edit %}{{html_display.application}}{% endif %}</textarea>
                                             </div>
                                             {%if edit%}
-                                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
-                                                    value="">
-                                                修改并提交
-                                            </button>
-                                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
-                                                    value="1" name="comment_submit">
-                                                取消
-                                            </button>
-                                            {%else%}
+                                            <div align="center">
+                                                <table>
+                                                    <tr>
+                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                    value="">修改并提交</button>
+                                                    </tr>
+                                                    <tr>
+                                                        <button type="submit" class="btn btn-warning btn-lg mb-4 mr-2"
+                                                    value="1" name="cancel_submit">取消申请</button>
+                                                    </tr>
+                                                </table>
+                                            </div>
+
+
+                                            {%elif present == 0%}
                                             <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
                                                     value="">
                                                 提交
                                             </button>
                                             {%endif%}
                                         </form>
+                                        <br>
+                                        <hr>
                                     {% include 'comment.html' %}
                                     </div>
 
