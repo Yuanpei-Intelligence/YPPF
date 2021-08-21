@@ -2824,6 +2824,7 @@ def addOrganization(request):
                 preorg.status == NewOrganization.NewOrgStatus.CANCELED
                 or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED
                 or notification.status != Notification.Status.UNDONE
+                or preorg.status==NewOrganization.NewOrgStatus.REFUSED
             ):
                 if notification.status == Notification.Status.UNDONE:
                     notification_status_change(
@@ -2855,8 +2856,7 @@ def addOrganization(request):
         html_display['application'] = preorg.application
         org_avatar_path=utils.get_user_ava(preorg, "Organization")
     org_types=OrganizationType.objects.order_by("-otype_id").all()#当前组织类型，前端展示需要
-    html_display['warn_code'] = 1
-    html_display['warn_message'] = "test{otype_id}".format(otype_id=preorg.otype.otype_id)
+
     if request.method == "POST" and request.POST:
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
             context = addComment(request, preorg)
@@ -2865,7 +2865,10 @@ def addOrganization(request):
                 html_display['warn_message'] = context['warn_code']
         else:
             # 参数合法性检查
-            context = utils.check_neworg_request(request,edit)  # check
+            if edit :
+                context = utils.check_neworg_request(request,edit,preorg)  # check
+            else:
+                context = utils.check_neworg_request(request, edit)  # check
             if context['warn_code'] != 0:
                 html_display['warn_code'] = context['warn_code']
                 html_display['warn_message'] = "新建组织申请失败。" + \
@@ -3030,6 +3033,7 @@ def auditOrganization(request):
             preorg.status == NewOrganization.NewOrgStatus.CANCELED
             or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED
             or notification.status != Notification.Status.UNDONE
+            or preorg.status == NewOrganization.NewOrgStatus.REFUSED
         ):
             if notification.status == Notification.Status.UNDONE:
                 notification_status_change(
@@ -3167,7 +3171,7 @@ def auditOrganization(request):
             elif submit == 3:  # 拒绝
                 try:  # 发送给申请者的拒绝通知
                     with transaction.atomic():
-                        preorg.status = preorg.NewOrgStatus.CANCELED
+                        preorg.status = NewOrganization.NewOrgStatus.REFUSED
                         preorg.save()
                         content = "很遗憾，新建组织申请未通过！"
                         receiver = preorg.pos  # 通知接收者
@@ -3242,9 +3246,9 @@ def addReimbursement(request):
 
     edit = 0
     reimbursed_act_ids = Reimbursement.objects.all(
-    ).exclude(status=Reimbursement.ReimburseStatus.CANCELED     # 未取消报销的
+    ).exclude(status=Reimbursement.ReimburseStatus.CANCELED     # 未取消报销的,被拒绝的
               # ).filter(status=Reimbursement.ReimburseStatus.CONFIRMED     # 已报销完的
-              ).values_list('activity_id', flat=True)
+              ).exclude(status=Reimbursement.ReimburseStatus.REFUSED).values_list('activity_id', flat=True)
     activities = Activity.objects.activated(    # 本学期的
     ).filter(organization_id=me             # 本部门组织的
              ).filter(status=Activity.Status.END     # 已结束的
@@ -3279,6 +3283,7 @@ def addReimbursement(request):
                 pre_reimb.status == Reimbursement.ReimburseStatus.CONFIRMED
                 or pre_reimb.status == Reimbursement.ReimburseStatus.CANCELED
                 or notification.status != Notification.Status.UNDONE
+                or pre_reimb.status == Reimbursement.ReimburseStatus.REFUSED
             ):
                 if notification.status == Notification.Status.UNDONE:
                     notification_status_change(
@@ -3495,7 +3500,8 @@ def auditReimbursement(request):
         if (
             new_reimb.status == Reimbursement.ReimburseStatus.CONFIRMED
             or new_reimb.status == Reimbursement.ReimburseStatus.CANCELED
-            or notification.status != Notification.Status.UNDONE    # 未处理通知才有修改许可
+            or notification.status != Notification.Status.UNDONE # 未处理通知才有修改许可
+            or pre_reimb.status == Reimbursement.ReimburseStatus.REFUSED
         ):
             if notification.status == Notification.Status.UNDONE:
                 notification_status_change(
@@ -3639,7 +3645,7 @@ def auditReimbursement(request):
             elif submit == 3:  # 拒绝
                 try:  # 发送给申请者的拒绝通知
                     with transaction.atomic():
-                        new_reimb.status = Reimbursement.ReimburseStatus.CANCELED
+                        new_reimb.status = Reimbursement.ReimburseStatus.REFUSED
                         new_reimb.save()
                         content = "很遗憾，报销申请未通过！"
                         receiver = new_reimb.pos  # 通知接收者
