@@ -106,7 +106,6 @@
                                         </div>
                                     </li>
 
-                                    {% if context.person.show_class %}
                                     <li class="contacts-block__item">
                                         <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor"
                                             stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
@@ -117,7 +116,6 @@
                                         </svg>
                                         {{ context.person.stu_class }}
                                     </li>
-                                    {% endif %}
 
                                     {% if context.person.show_major %}
                                     <li class="contacts-block__item">
@@ -135,7 +133,6 @@
                                     </li>
                                     {% endif %}
 
-                                    {% if context.person.show_grade %}
                                     <li class="contacts-block__item">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -148,7 +145,6 @@
                                         </svg>
                                         {{ context.person.stu_grade }}
                                     </li>
-                                    {% endif %}
 
                                     {% if context.person.show_dorm %}
                                     <li class="contacts-block__item">
