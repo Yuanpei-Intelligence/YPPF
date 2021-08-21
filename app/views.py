@@ -2807,7 +2807,18 @@ def showNewOrganization(request):
                         '?warn_code={}&warn_message={}'.format(
                             html_display['warn_code'], html_display['warn_message']))
 
-    shown_instances = NewOrganization.objects.filter(pos=request.user).order_by('-modify_time', '-time')
+    is_auditor = False
+    try:
+        person = utils.get_person_or_org(request.user, user_type)
+        if person.name == local_dict["audit_teacher"]["Funds"]:
+            is_auditor = True
+    except:
+        pass
+    if is_auditor:
+        shown_instances = NewOrganization.objects.all()
+    else:
+        shown_instances = NewOrganization.objects.filter(pos=request.user)
+    shown_instances = shown_instances.order_by('-modify_time', '-time')
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织"
     bar_display["navbar_name"] = "组织申请进度"
@@ -3202,7 +3213,7 @@ def auditOrganization(request):
                         preorg.save()
                         content = "很遗憾，新建组织申请未通过！"
                         receiver = preorg.pos  # 通知接收者
-                        URL = "/notifications/"
+                        URL = "/showNewOrganization/"
                         # URL = request.build_absolute_uri(URL)
                         """# 如果老师另留有评论的话,将评论放在content里
                         comments = preorg.comment
@@ -3261,16 +3272,29 @@ def auditOrganization(request):
 def showReimbursement(request):
     '''
     报销信息的聚合界面
+    对审核老师进行了特判
     '''
     valid, user_type, html_display = utils.check_user_type(request.user)
+    is_auditor = False
     if user_type == "Person":
-        html_display["warn_code"] = 1
-        html_display["warn_code"] = "请不要使用个人账号申请报销！"
-        return redirect("/welcome/" + 
-                        '?warn_code={}&warn_message={}'.format(
-                            html_display['warn_code'], html_display['warn_message']))
+        try:
+            person = utils.get_person_or_org(request.user, user_type)
+            if person.name == local_dict["audit_teacher"]["Funds"]:
+                is_auditor = True
+        except:
+            pass
+        if not is_auditor:
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "请不要使用个人账号申请报销！"
+            return redirect("/welcome/" + 
+                            '?warn_code={}&warn_message={}'.format(
+                                html_display['warn_code'], html_display['warn_message']))
 
-    shown_instances = Reimbursement.objects.filter(pos=request.user).order_by('-modify_time', '-time')
+    if is_auditor:
+        shown_instances = Reimbursement.objects
+    else:
+        shown_instances = Reimbursement.objects.filter(pos=request.user)
+    shown_instances = shown_instances.order_by('-modify_time', '-time')
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "报销信息"
     bar_display["navbar_name"] = "报销信息"
@@ -3645,7 +3669,8 @@ def auditReimbursement(request):
                             typename = Notification.Type.NEEDDO
                             URL = ""
                         else:
-                            content = "报销申请已通过，扣除元气值{amount}".format()
+                            content = "报销申请已通过，扣除元气值{amount}".format(
+                                amount=new_reimb.amount)
                             typename = Notification.Type.NEEDREAD
                             URL = "/notifications/"
                             # URL = request.build_absolute_uri(URL)
@@ -3698,7 +3723,7 @@ def auditReimbursement(request):
                         new_reimb.save()
                         content = "很遗憾，报销申请未通过！"
                         receiver = new_reimb.pos  # 通知接收者
-                        URL = "/addReimbursement/"  # 报销失败可能应该鼓励继续报销
+                        URL = "/showReimbursement/"  # 报销失败可能应该鼓励继续报销
                         # URL = request.build_absolute_uri(URL)
 
                         # TODO 如果老师另留有评论的话,将评论放在content里
