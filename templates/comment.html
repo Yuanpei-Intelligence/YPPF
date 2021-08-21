@@ -12,7 +12,7 @@
             </div>
         </div>
 
-        <textarea name="comment" class="form-control">{{comment.text}}</textarea>
+        <textarea name="comment" class="form-control" disabled="disabled">{{comment.text}}</textarea>
         {%for image in comment.comment_photos.all%}
 
         <img width="400px" height="200px" src={{image.imagepath}}>

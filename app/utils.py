@@ -420,3 +420,6 @@ def random_code_init():
     for i in range(0, 6):
         password = password + random.choice(b)
     return password
+#查找审核新建组织的老师，用于addOrganization
+def find_auditorg_teacher():
+    pass
