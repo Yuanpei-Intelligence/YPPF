@@ -726,12 +726,13 @@ def account_setting(request):
             show_dict['show_email'] = request.POST.get('show_email') == 'on'
             show_dict['show_major'] = request.POST.get('show_major') == 'on'
             show_dict['show_grade'] = request.POST.get('show_grade') == 'on'
+            show_dict['show_class'] = request.POST.get('show_class') == 'on'
             show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
 
             expr = bool(ava or (gender != useroj.get_gender_display()))
-            expr += sum(
-                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
-            expr += sum([getattr(useroj, show_attr) != show_dict[show_attr] for show_attr in show_dict.keys()])
+            expr += bool(sum(
+                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()]))
+            expr += bool(sum([getattr(useroj, show_attr) != show_dict[show_attr] for show_attr in show_dict.keys()]))
 
             if gender != useroj.gender:
                 useroj.gender = NaturalPerson.Gender.MALE if gender == '男' else NaturalPerson.Gender.FEMALE
@@ -766,8 +767,8 @@ def account_setting(request):
             ava = request.FILES.get("avatar")
 
             expr = bool(ava)
-            expr += sum(
-                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()])
+            expr += bool(sum(
+                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()]))
 
             for attr in attr_dict.keys():
                 if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
