@@ -713,8 +713,6 @@ def account_setting(request):
             show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
             show_dict['show_email'] = request.POST.get('show_email') == 'on'
             show_dict['show_major'] = request.POST.get('show_major') == 'on'
-            show_dict['show_grade'] = request.POST.get('show_grade') == 'on'
-            show_dict['show_class'] = request.POST.get('show_class') == 'on'
             show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
 
             expr = bool(ava or (gender != useroj.get_gender_display()))

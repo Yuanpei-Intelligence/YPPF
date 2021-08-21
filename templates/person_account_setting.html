@@ -114,28 +114,6 @@
                                                                 {% endif %}
                                                                 <label class="form-check-label" for="show_dorm">对外展示</label>
                                                             </div>
-                                                            <label for="profession">我的年级</label>
-                                                            <input type="text" class="form-control" id="grade"
-                                                                name="grade" placeholder="{{userinfo.stu_grade}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
-                                                            <div class="form-check mb-4">
-                                                                {% if useroj.show_grade %}
-                                                                <input type="checkbox" class="form-check-input" id="show_grade" name="show_grade" disabled checked>
-                                                                {% else %}
-                                                                <input type="checkbox" class="form-check-input" id="show_grade" name="show_grade" >
-                                                                {% endif %}
-                                                                <label class="form-check-label" for="show_grade">对外展示</label>
-                                                            </div>
-                                                            <label for="profession">我的班级</label>
-                                                            <input type="text" class="form-control" id="class"
-                                                                name="class" placeholder="{{userinfo.stu_class}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
-                                                            <div class="form-check mb-4">
-                                                                {% if useroj.show_class %}
-                                                                <input type="checkbox" class="form-check-input" id="show_class" name="show_class" disabled checked>
-                                                                {% else %}
-                                                                <input type="checkbox" class="form-check-input" id="show_class" name="show_class">
-                                                                {% endif %}
-                                                                <label class="form-check-label" for="show_class">对外展示</label>
-                                                            </div>
                                                             <label for="profession">我的邮箱</label>
                                                             <input type="text" class="form-control" id="email"
                                                                 name="email" placeholder="{{userinfo.email}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
