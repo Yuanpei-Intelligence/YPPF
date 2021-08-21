@@ -3132,8 +3132,8 @@ def auditOrganization(request):
 
                 try:  # 发送给申请者的通过通知
                     with transaction.atomic():
-                        content = "新建组织申请已通过，组织代号为 “{username}” ，初始密码为 “{password}” ，请尽快修改密码。" \
-                                  "点击左侧“切换账号”，可切换到组织账号。tips:登陆时，使用组织名也可以登陆哦。" \
+                        content = "新建组织申请已通过，组织编号为 “{username}” ，初始密码为 “{password}” ，请尽快登录修改密码。" \
+                                  "登录方式：(1)在负责人账户点击左侧“切换账号”；(2)从登录页面用组织编号或组织名称以及密码登录。" \
                             .format(username=username, password=password)
                         receiver = preorg.pos  # 通知接收者
                         URL = "/notifications/"
