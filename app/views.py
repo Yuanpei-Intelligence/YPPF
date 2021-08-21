@@ -698,8 +698,8 @@ def account_setting(request):
             attr_dict['telephone'] = request.POST["tel"]
             attr_dict['email'] = request.POST["email"]
             attr_dict['stu_major'] = request.POST["major"]
-            attr_dict['stu_grade'] = request.POST['grade']
-            attr_dict['stu_class'] = request.POST['class']
+            #attr_dict['stu_grade'] = request.POST['grade'] 用户无法填写
+            #attr_dict['stu_class'] = request.POST['class'] 用户无法填写
             attr_dict['stu_dorm'] = request.POST['dorm']
 
             ava = request.FILES.get("avatar")
@@ -735,7 +735,7 @@ def account_setting(request):
                 useroj.avatar = ava
             useroj.save()
             avatar_path = settings.MEDIA_URL + str(ava)
-            if expr == True:
+            if expr >= 1:
                 upload_state = True
                 return redirect("/stuinfo/?modinfo=success")
             # else: 没有更新 从下面统一返回
@@ -765,7 +765,7 @@ def account_setting(request):
                 useroj.avatar = ava
             useroj.save()
             avatar_path = settings.MEDIA_URL + str(ava)
-            if expr == True:
+            if expr >= 1:
                 upload_state = True
                 return redirect("/orginfo/?modinfo=success")
             # else: 没有修改信息 统一从下面返回
