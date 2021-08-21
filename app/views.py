@@ -2802,7 +2802,7 @@ def addOrganization(request):
     me = utils.get_person_or_org(request.user, user_type)
 
     html_display['is_myself'] = True
-    former_img = settings.MEDIA_URL + "avatar/org_default.png"
+    former_img=utils.get_user_ava(None,"Organization")
     edit = 0
     if request.GET.get('neworg_id') is not None and request.GET.get('notifi_id') is not None:
         edit = 1
@@ -2824,6 +2824,7 @@ def addOrganization(request):
                 preorg.status == NewOrganization.NewOrgStatus.CANCELED
                 or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED
                 or notification.status != Notification.Status.UNDONE
+                or preorg.status==NewOrganization.NewOrgStatus.REFUSED
             ):
                 if notification.status == Notification.Status.UNDONE:
                     notification_status_change(
@@ -2854,7 +2855,6 @@ def addOrganization(request):
         html_display['introduction'] = preorg.introduction
         html_display['application'] = preorg.application
         org_avatar_path=utils.get_user_ava(preorg, "Organization")
-        
     org_types=OrganizationType.objects.order_by("-otype_id").all()#当前组织类型，前端展示需要
 
     if request.method == "POST" and request.POST:
@@ -2865,7 +2865,10 @@ def addOrganization(request):
                 html_display['warn_message'] = context['warn_code']
         else:
             # 参数合法性检查
-            context = utils.check_neworg_request(request)  # check
+            if edit :
+                context = utils.check_neworg_request(request,preorg)  # check
+            else:
+                context = utils.check_neworg_request(request)  # check
             if context['warn_code'] != 0:
                 html_display['warn_code'] = context['warn_code']
                 html_display['warn_message'] = "新建组织申请失败。" + \
@@ -2880,9 +2883,7 @@ def addOrganization(request):
                         new_org = NewOrganization.objects.create(oname=context['oname'], otype=context['otype'],
                                                                  pos=context['pos'])
                         new_org.introduction = context['introduction']
-                        if context['avatar'] is None:
-                            new_org.avatar = former_img
-                        else:
+                        if context['avatar'] is not None:
                             new_org.avatar = context['avatar']
                         new_org.application = context['application']
                         new_org.save()
@@ -3032,6 +3033,7 @@ def auditOrganization(request):
             preorg.status == NewOrganization.NewOrgStatus.CANCELED
             or preorg.status == NewOrganization.NewOrgStatus.CONFIRMED
             or notification.status != Notification.Status.UNDONE
+            or preorg.status == NewOrganization.NewOrgStatus.REFUSED
         ):
             if notification.status == Notification.Status.UNDONE:
                 notification_status_change(
@@ -3088,7 +3090,7 @@ def auditOrganization(request):
                     return render(request, "organization_audit.html", locals())
                 context = notification_status_change(notification_id)
                 html_display['warn_code'] = 2
-                html_display['warn_message'] = context['warn_message']
+                html_display['warn_message'] = "您已成功处理一条通知。"
                 if getattr(publish_notification, 'ENABLE_INSTANCE', False):
                     publish_notification(new_notification)
                 else:
@@ -3104,7 +3106,7 @@ def auditOrganization(request):
                         username = utils.find_max_oname()  # 组织的代号最大值
 
                         user = User.objects.create(username=username)
-                        password = local_dict["testword"]["test"]
+                        password = utils.random_code_init()
                         user.set_password(password)  # 统一密码
                         user.save()
 
@@ -3118,7 +3120,7 @@ def auditOrganization(request):
                         org.save()
 
                         charger = utils.get_person_or_org(preorg.pos)  # 负责人
-                        pos = Position.objects.create(person=charger, org=org)
+                        pos = Position.objects.create(person=charger, org=org,pos=0,status=Position.Status.INSERVICE)
                         pos.save()
 
                         preorg.status = preorg.NewOrgStatus.CONFIRMED
@@ -3131,6 +3133,7 @@ def auditOrganization(request):
                 try:  # 发送给申请者的通过通知
                     with transaction.atomic():
                         content = "新建组织申请已通过，组织代号为 “{username}” ，初始密码为 “{password}” ，请尽快修改密码。" \
+                                  "点击左侧“切换账号”，可切换到组织账号。tips:登陆时，使用组织名也可以登陆哦。" \
                             .format(username=username, password=password)
                         receiver = preorg.pos  # 通知接收者
                         URL = "/notifications/"
@@ -3168,7 +3171,7 @@ def auditOrganization(request):
             elif submit == 3:  # 拒绝
                 try:  # 发送给申请者的拒绝通知
                     with transaction.atomic():
-                        preorg.status = preorg.NewOrgStatus.CANCELED
+                        preorg.status = NewOrganization.NewOrgStatus.REFUSED
                         preorg.save()
                         content = "很遗憾，新建组织申请未通过！"
                         receiver = preorg.pos  # 通知接收者
@@ -3218,7 +3221,6 @@ def auditOrganization(request):
     html_display['introduction'] = preorg.introduction
     html_display['application'] = preorg.application
     org_avatar_path = utils.get_user_ava(preorg, "Organization")
-
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织审核"
@@ -3244,9 +3246,9 @@ def addReimbursement(request):
 
     edit = 0
     reimbursed_act_ids = Reimbursement.objects.all(
-    ).exclude(status=Reimbursement.ReimburseStatus.CANCELED     # 未取消报销的
+    ).exclude(status=Reimbursement.ReimburseStatus.CANCELED     # 未取消报销的,被拒绝的
               # ).filter(status=Reimbursement.ReimburseStatus.CONFIRMED     # 已报销完的
-              ).values_list('activity_id', flat=True)
+              ).exclude(status=Reimbursement.ReimburseStatus.REFUSED).values_list('activity_id', flat=True)
     activities = Activity.objects.activated(    # 本学期的
     ).filter(organization_id=me             # 本部门组织的
              ).filter(status=Activity.Status.END     # 已结束的
@@ -3281,6 +3283,7 @@ def addReimbursement(request):
                 pre_reimb.status == Reimbursement.ReimburseStatus.CONFIRMED
                 or pre_reimb.status == Reimbursement.ReimburseStatus.CANCELED
                 or notification.status != Notification.Status.UNDONE
+                or pre_reimb.status == Reimbursement.ReimburseStatus.REFUSED
             ):
                 if notification.status == Notification.Status.UNDONE:
                     notification_status_change(
@@ -3497,7 +3500,8 @@ def auditReimbursement(request):
         if (
             new_reimb.status == Reimbursement.ReimburseStatus.CONFIRMED
             or new_reimb.status == Reimbursement.ReimburseStatus.CANCELED
-            or notification.status != Notification.Status.UNDONE    # 未处理通知才有修改许可
+            or notification.status != Notification.Status.UNDONE # 未处理通知才有修改许可
+            or pre_reimb.status == Reimbursement.ReimburseStatus.REFUSED
         ):
             if notification.status == Notification.Status.UNDONE:
                 notification_status_change(
@@ -3641,7 +3645,7 @@ def auditReimbursement(request):
             elif submit == 3:  # 拒绝
                 try:  # 发送给申请者的拒绝通知
                     with transaction.atomic():
-                        new_reimb.status = Reimbursement.ReimburseStatus.CANCELED
+                        new_reimb.status = Reimbursement.ReimburseStatus.REFUSED
                         new_reimb.save()
                         content = "很遗憾，报销申请未通过！"
                         receiver = new_reimb.pos  # 通知接收者

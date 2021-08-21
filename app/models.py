@@ -636,7 +636,7 @@ class NewOrganization(CommentBase):
         "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
     )
     avatar = models.ImageField(
-        upload_to=f"avatar/", verbose_name="组织头像", null=True, blank=True
+        upload_to=f"avatar/", verbose_name="组织头像",default="avatar/org_default.png",null=True, blank=True
     )
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
 
@@ -645,6 +645,7 @@ class NewOrganization(CommentBase):
         CONFIRMED = (1, "主管老师已同意")  # 审过同意
         TOBEMODIFIED = (2, "需要修改")
         CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
+        REFUSED=(4,"已拒绝")
 
     status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
 
@@ -665,6 +666,7 @@ class Reimbursement(CommentBase):
         # 如果需要更多审核，每个审核的确认状态应该是2的幂
         # 根据最新要求，最终不以线上为准，不再设置转账状态
         CANCELED = (4, "已取消")
+        REFUSED = (5,"已拒绝")
 
     activity = models.ForeignKey(
         Activity, related_name="reimbursement", on_delete=models.CASCADE
