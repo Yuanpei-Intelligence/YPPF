@@ -30,7 +30,6 @@ from django.contrib import auth, messages
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password, check_password
-from django.contrib.auth.password_validation import validate_password
 from django.db import transaction
 from django.db.models import Q
 from django.conf import settings
