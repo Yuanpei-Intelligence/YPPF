@@ -50,6 +50,7 @@ class NaturalPerson(models.Model):
 
     YQPoint = models.FloatField("元气值", default=0)
     quota = models.FloatField("配额", default=0)
+    bonusPoint = models.FloatField("积分", default=0)
 
     class Identity(models.IntegerChoices):
         TEACHER = (0, "教职工")
@@ -418,6 +419,8 @@ class Activity(models.Model):
     bidding = models.BooleanField("是否投点竞价", default=False)
     YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
     budget = models.FloatField("预算", default=0.0)
+
+    need_checkin = models.BooleanField("是否需要签到", default=False)
 
     examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
 

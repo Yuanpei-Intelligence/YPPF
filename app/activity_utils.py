@@ -37,13 +37,12 @@ class  ActivityException(Exception):
 
 # 时间合法性的检查，检查时间是否在当前时间的一个月以内，并且检查开始的时间是否早于结束的时间，
 def check_ac_time(start_time, end_time):
-    try:
-        now_time = datetime.now()
-        month_late = now_time + timedelta(days=30)
-        if now_time < start_time < month_late:
-            return True  # 时间所处范围正确
-    except:
+    now_time = datetime.now()
+    month_late = now_time + timedelta(days=30)
+    if not start_time < end_time:
         return False
+    if now_time < start_time < month_late:
+        return True  # 时间所处范围正确
 
     return False
 
@@ -63,7 +62,7 @@ def activity_base_check(request):
     # url
     context['url'] = request.POST["URL"]
 
-    # 预算，元气值支付模式，是否直接向学院所要元气值
+    # 预算，元气值支付模式，是否直接向学院索要元气值
     # 在审核通过后，这些不可修改
     context['budget'] = float(request.POST["budget"])
     signscheme = int(request.POST["signscheme"])
@@ -515,6 +514,7 @@ def cancel_activity(request, activity):
     for participant in participants:
         participant.status = Participant.AttendStatus.APLLYFAILED
         participant.save()
+
     # TODO 取消审核评论
     scheduler.remove_job(f"activity_{activity.id}_remind")
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
