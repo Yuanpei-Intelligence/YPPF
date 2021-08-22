@@ -236,7 +236,8 @@ def changeActivityStatus(aid, cur_status, to_status):
             activity.save()
 
 
-    except:
+    except Exception as e:
+        print(e)
         # TODO send message to admin to debug
         pass
 
