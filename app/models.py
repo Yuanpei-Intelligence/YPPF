@@ -593,6 +593,12 @@ class CommentBase(models.Model):
     默认的呈现内容为：实例名称、创建时间、上次修改时间
     如果希望呈现审核页面，如审核中、创建者信息，则应该分别定义get_status_display和get_poster_name
     其中，如果你的status是一个枚举字段，则无需定义get_status_display
+        status的display建议为：
+            包含“未/不/拒绝”的表示失败
+            此外包含“通过/接受”的表示审核通过
+            包含“修改”的为需要修改（可能用不到）
+            包含“取消”的为自己取消
+            其他都默认呈现“审核中”，可以自行修改html模板增加状态
     如果你希望呈现更多信息，应该定义extra_display，返回一个二或三元组构成的列表
         (键, 值, 图标名="envelope-o")将被渲染为一行[图标]键：值
         图标名请参考fontawesome的图标类名
@@ -669,10 +675,10 @@ class NewOrganization(CommentBase):
 
     class NewOrgStatus(models.IntegerChoices):  # 表示申请组织的请求的状态
         PENDING = (0, "处理中")
-        CONFIRMED = (1, "主管老师已同意")  # 审过同意
+        CONFIRMED = (1, "已通过")  # 主管老师已同意，如果新增审核老师就增加主管老师已同意的状态
         TOBEMODIFIED = (2, "需要修改")
         CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
-        REFUSED=(4,"已拒绝")
+        REFUSED = (4, "已拒绝")
 
     status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
     
@@ -713,7 +719,7 @@ class Reimbursement(CommentBase):
         # 如果需要更多审核，每个审核的确认状态应该是2的幂
         # 根据最新要求，最终不以线上为准，不再设置转账状态
         CANCELED = (4, "已取消")
-        REFUSED = (5,"已拒绝")
+        REFUSED = (5, "已拒绝")
 
     activity = models.ForeignKey(
         Activity, related_name="reimbursement", on_delete=models.CASCADE
