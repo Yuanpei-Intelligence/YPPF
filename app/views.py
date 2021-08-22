@@ -2917,8 +2917,9 @@ def addOrganization(request):
             else:
                 try:  # 发送给评论通知
                     with transaction.atomic():
-                        content = "“{oname}”{otype_name}的新建组织申请有了新的评论。".format(
-                                oname=preorg.oname, otype_name=preorg.otype.otype_name)
+                        text=context['new_comment'].text
+                        content = "“{oname}”{otype_name}的新建组织申请有了新的评论。评论内容为“{text}” ".format(
+                                oname=preorg.oname, otype_name=preorg.otype.otype_name,text=text)
                         Auditor = preorg.otype.incharge.person_id    #审核老师
                         URL = ""
                         new_notification = notification_create(Auditor, request.user, Notification.Type.NEEDREAD,
@@ -3180,7 +3181,9 @@ def auditOrganization(request):
 
             try:  # 发送给评论通知
                 with transaction.atomic():
-                    content = "您的申请有了新的评论，请点击查看。"
+                    text = context['new_comment'].text
+                    content = "{teacher_name}老师给您的组织申请留言了。留言文字内容为“{text}“   点击链接查看详情。” ".format(
+                         teacher_name=me.name,text=text)
                     receiver = preorg.pos  # 通知接收者
                     URL = ""
                     new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
@@ -3302,11 +3305,11 @@ def auditOrganization(request):
                     html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
                     return render(request, "organization_audit.html", locals())
 
-                    # 拒绝成功
-                    html_display['warn_code'] = 2
-                    html_display['warn_message'] = "已拒绝组织申请！"
-                    if notification_id != -1:
-                        context = notification_status_change(notification_id)
+                # 拒绝成功
+                html_display['warn_code'] = 2
+                html_display['warn_message'] = "已拒绝组织申请！"
+                if notification_id != -1:
+                    context = notification_status_change(notification_id)
                 # 微信通知
                 if getattr(publish_notification, 'ENABLE_INSTANCE', False):
                     publish_notification(new_notification)
