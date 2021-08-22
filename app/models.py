@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from boottest import local_dict
 from django.conf import settings
 
+
 class NaturalPersonManager(models.Manager):
     def activated(self):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
@@ -14,8 +15,7 @@ class NaturalPersonManager(models.Manager):
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
         datas = NaturalPerson.objects.activated()
         year = datetime.now().strftime("%Y")
-        datas.objects.filter(stu_grade=str(int(year) - 4)
-                             ).update(GraduateStatus=1)
+        datas.objects.filter(stu_grade=str(int(year) - 4)).update(GraduateStatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
@@ -69,8 +69,7 @@ class NaturalPerson(models.Model):
         UNDERGRADUATED = 0  # 未毕业
         GRADUATED = 1  # 毕业则注销
 
-    status = models.SmallIntegerField(
-        "在校状态", choices=GraduateStatus.choices, default=0)
+    status = models.SmallIntegerField("在校状态", choices=GraduateStatus.choices, default=0)
 
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
@@ -78,14 +77,12 @@ class NaturalPerson(models.Model):
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
-    show_class = models.BooleanField(default=True)
     show_major = models.BooleanField(default=True)
-    show_grade = models.BooleanField(default=True)
     show_dorm = models.BooleanField(default=False)
 
     # 注意：这是不订阅的列表！！
-    subscribe_list = models.ManyToManyField(
-        "Organization", related_name="unsubsribers", db_index=True
+    unsubscribe_list = models.ManyToManyField(
+        "Organization", related_name="unsubscribers", db_index=True
     )
 
     def __str__(self):
@@ -130,10 +127,9 @@ class OrganizationType(models.Model):
     class Meta:
         verbose_name = "组织类型"
         verbose_name_plural = verbose_name
-        ordering = ['otype_name']
+        ordering = ["otype_name"]
 
-    otype_id = models.SmallIntegerField(
-        "组织类型编号", unique=True, primary_key=True)
+    otype_id = models.SmallIntegerField("组织类型编号", unique=True, primary_key=True)
     otype_name = models.CharField("组织类型名称", max_length=25)
     otype_superior_id = models.SmallIntegerField("上级组织类型编号", default=0)
     incharge = models.ForeignKey(
@@ -162,7 +158,7 @@ class Semester(models.TextChoices):
     ANNUAL = "Fall+Spring"
 
     def get(
-            semester,
+        semester,
     ):  # read a string indicating the semester, return the correspoding status
         if semester == "Fall":
             return Semester.FALL
@@ -192,8 +188,7 @@ class Organization(models.Model):
     objects = OrganizationManager()
 
     YQPoint = models.FloatField("元气值", default=0.0)
-    introduction = models.TextField(
-        "介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
+    introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
@@ -208,44 +203,47 @@ class Organization(models.Model):
 
 
 class PositionManager(models.Manager):
-    def activated(self):
+    def current(self):
         return self.filter(
             in_year=int(local_dict["semester_data"]["year"]),
             in_semester__contains=local_dict["semester_data"]["semester"],
         )
+
+    def activated(self):
+        return self.current().filter(status=Position.Status.INSERVICE)
 
     def create_application(self, person, org, apply_type, apply_pos):
         warn_duplicate_message = "There has already been an application of this state!"
         with transaction.atomic():
             if apply_type == "JOIN":
                 apply_type = Position.ApplyType.JOIN
-                application, created = self.activated().get_or_create(
+                application, created = self.current().get_or_create(
                     person=person, org=org, apply_type=apply_type, apply_pos=apply_pos
                 )
                 assert created, warn_duplicate_message
             elif apply_type == "WITHDRAW":
                 application = (
-                    self.activated()
-                        .select_for_update()
-                        .get(person=person, org=org, status=Position.Status.INSERVICE)
+                    self.current()
+                    .select_for_update()
+                    .get(person=person, org=org, status=Position.Status.INSERVICE)
                 )
                 assert (
-                        application.apply_type != Position.ApplyType.WITHDRAW
+                    application.apply_type != Position.ApplyType.WITHDRAW
                 ), warn_duplicate_message
                 application.apply_type = Position.ApplyType.WITHDRAW
             elif apply_type == "TRANSFER":
                 application = (
-                    self.activated()
-                        .select_for_update()
-                        .get(person=person, org=org, status=Position.Status.INSERVICE)
+                    self.current()
+                    .select_for_update()
+                    .get(person=person, org=org, status=Position.Status.INSERVICE)
                 )
                 assert (
-                        application.apply_type != Position.ApplyType.TRANSFER
+                    application.apply_type != Position.ApplyType.TRANSFER
                 ), warn_duplicate_message
                 application.apply_type = Position.ApplyType.TRANSFER
                 application.apply_pos = int(apply_pos)
                 assert (
-                        application.apply_pos < application.pos
+                    application.apply_pos < application.pos
                 ), "TRANSFER must apply for higher position!"
             else:
                 raise ValueError(
@@ -253,6 +251,7 @@ class PositionManager(models.Manager):
                 )
             application.apply_status = Position.ApplyStatus.PENDING
             application.save()
+            return apply_type
 
 
 class Position(models.Model):
@@ -290,8 +289,7 @@ class Position(models.Model):
     show_post = models.BooleanField(default=True)
 
     # 表示是这个组织哪一年、哪个学期的成员
-    in_year = models.IntegerField(
-        "当前学年", default=int(datetime.now().strftime("%Y")))
+    in_year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
     in_semester = models.CharField(
         "当前学期", choices=Semester.choices, default=Semester.ANNUAL, max_length=15
     )
@@ -336,10 +334,8 @@ class Course(models.Model):
     cid = models.OneToOneField(to=Organization, on_delete=models.CASCADE)
 
     # 课程周期
-    year = models.IntegerField(
-        "当前学年", default=int(datetime.now().strftime("%Y")))
-    semester = models.CharField(
-        "当前学期", choices=Semester.choices, max_length=15)
+    year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
+    semester = models.CharField("当前学期", choices=Semester.choices, max_length=15)
 
     scheduler = models.CharField("上课时间", max_length=25)
     classroom = models.CharField("上课地点", max_length=25)
@@ -383,8 +379,7 @@ class Activity(models.Model):
         on_delete=models.CASCADE,
     )
 
-    year = models.IntegerField("活动年份", default=int(
-        local_dict["semester_data"]["year"]))
+    year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
 
     semester = models.CharField(
         "活动学期",
@@ -492,8 +487,7 @@ class TransferRecord(models.Model):
         SUSPENDED = (3, "已终止")
         REFUND = (4, "已退回")
 
-    status = models.SmallIntegerField(
-        choices=TransferStatus.choices, default=1)
+    status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
 
     def save(self, *args, **kwargs):
         self.amount = round(self.amount, 1)
@@ -510,16 +504,19 @@ class Participant(models.Model):
     person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
 
     class AttendStatus(models.TextChoices):
-        APPLYING = '申请中'
-        APLLYFAILED = '申请失败'
-        APLLYSUCCESS = '已报名'
-        ATTENDED = '已参与'
-        UNATTENDED = '未参与'
-        CANCELED = '放弃'
+        APPLYING = "申请中"
+        APLLYFAILED = "申请失败"
+        APLLYSUCCESS = "已报名"
+        ATTENDED = "已参与"
+        UNATTENDED = "未参与"
+        CANCELED = "放弃"
 
     status = models.CharField(
-        '学生参与活动状态',
-         choices=AttendStatus.choices, default=AttendStatus.APPLYING, max_length=32)
+        "学生参与活动状态",
+        choices=AttendStatus.choices,
+        default=AttendStatus.APPLYING,
+        max_length=32,
+    )
 
 
 class YQPointDistribute(models.Model):
@@ -529,8 +526,8 @@ class YQPointDistribute(models.Model):
         TEMPORARY = (0, "临时发放")
         WEEK = (1, "每周发放一次")
         TWO_WEEK = (2, "每两周发放一次")
-        SEMESTER = (26, "每学期发放一次") # 一年有52周
-    
+        SEMESTER = (26, "每学期发放一次")  # 一年有52周
+
     # 发放元气值的上限，多于此值则不发放
     per_max_dis_YQP = models.FloatField("自然人发放元气值上限")
     org_max_dis_YQP = models.FloatField("组织发放元气值上限")
@@ -548,6 +545,9 @@ class YQPointDistribute(models.Model):
         verbose_name = "元气值发放"
         verbose_name_plural = verbose_name
 
+class NotificationManager(models.Manager):
+    def activated(self):
+        return self.exclude(status=Notification.Status.DELETE)
 
 class Notification(models.Model):
     class Meta:
@@ -565,10 +565,11 @@ class Notification(models.Model):
     class Status(models.IntegerChoices):
         DONE = (0, "已处理")
         UNDONE = (1, "待处理")
+        DELETE = (2, "已删除")
 
     class Type(models.IntegerChoices):
-        NEEDREAD = (0, '知晓类')    # 只需选择“已读”即可
-        NEEDDO = (1, '处理类')      # 需要处理的事务
+        NEEDREAD = (0, "知晓类")  # 只需选择“已读”即可
+        NEEDDO = (1, "处理类")  # 需要处理的事务
 
     class Title(models.IntegerChoices):
         # 等待逻辑补充
@@ -579,22 +580,63 @@ class Notification(models.Model):
         TRANSFER_FEEDBACK = (4, "转账回执")
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
-    title = models.SmallIntegerField(
-        choices=Title.choices, blank=True, null=True)
+    title = models.SmallIntegerField(choices=Title.choices, blank=True, null=True)
     content = models.CharField("通知内容", max_length=225, blank=True)
     start_time = models.DateTimeField("通知发出时间", auto_now_add=True)
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
     typename = models.SmallIntegerField(choices=Type.choices, default=0)
     URL = models.URLField("相关网址", null=True, blank=True)
     relate_TransferRecord = models.ForeignKey(
-        TransferRecord, related_name="transfer_notification", on_delete=models.CASCADE, blank=True, null=True, )
+        TransferRecord,
+        related_name="transfer_notification",
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+    )
+
+    objects = NotificationManager()
 
 
 class CommentBase(models.Model):
+    '''
+    带有评论的模型基类
+    子类必须定义typename，值应为为类名的小写版本或类名
+
+    子类如果希望直接使用聚合页面呈现模板，应该定义__str__方法
+    默认的呈现内容为：实例名称、创建时间、上次修改时间
+    如果希望呈现审核页面，如审核中、创建者信息，则应该分别定义get_status_display和get_poster_name
+    其中，如果你的status是一个枚举字段，则无需定义get_status_display
+        status的display建议为：
+            包含“未/不/拒绝”的表示失败
+            此外包含“通过/接受”的表示审核通过
+            包含“修改”的为需要修改（可能用不到）
+            包含“取消”的为自己取消
+            其他都默认呈现“审核中”，可以自行修改html模板增加状态
+    如果你希望呈现更多信息，应该定义extra_display，返回一个二或三元组构成的列表
+        (键, 值, 图标名="envelope-o")将被渲染为一行[图标]键：值
+        图标名请参考fontawesome的图标类名
+    '''
     class Meta:
         verbose_name = "带有评论"
         verbose_name_plural = verbose_name
-    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的组织信息
+
+    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的基类信息
+    typename = models.CharField("模型类型", max_length=32, default="commentbase")   # 子类信息
+    time = models.DateTimeField("发起时间", auto_now_add=True)
+    modify_time = models.DateTimeField("上次修改时间", auto_now_add=True) # 每次评论自动更新
+
+    def get_instance(self):
+        if self.typename.lower() == 'commentbase':
+            return self
+        try:
+            return getattr(self, self.typename.lower())
+        except:
+            return self
+
+    def save(self, *args, **kwargs):
+        self.modify_time = datetime.now()   # 自动更新修改时间
+        super().save(*args, **kwargs)
+
 
 class Comment(models.Model):
     class Meta:
@@ -603,7 +645,9 @@ class Comment(models.Model):
         ordering = ["-time"]
 
     commentator = models.ForeignKey(User, on_delete=models.CASCADE)
-    CommentBase=models.ForeignKey(CommentBase,related_name="comments",on_delete=models.CASCADE)
+    commentbase = models.ForeignKey(
+        CommentBase, related_name="comments", on_delete=models.CASCADE
+    )
     text = models.TextField("文字内容", default="", blank=True)
     time = models.DateTimeField("评论时间", auto_now_add=True)
 
@@ -613,29 +657,63 @@ class CommentPhoto(models.Model):
         verbose_name = "评论图片"
         verbose_name_plural = verbose_name
 
-    image = models.ImageField(upload_to=f"comment/%Y/%m/", verbose_name=u'评论图片', null=True, blank=True)
-    comment = models.ForeignKey(Comment, related_name="comment_photos",on_delete=models.CASCADE)
+    image = models.ImageField(
+        upload_to=f"comment/%Y/%m/", verbose_name="评论图片", null=True, blank=True
+    )
+    comment = models.ForeignKey(
+        Comment, related_name="comment_photos", on_delete=models.CASCADE
+    )
+
     # 路径无法加上相应图片
     def imagepath(self):
-        return  settings.MEDIA_URL+str(self.image)
+        return settings.MEDIA_URL + str(self.image)
+
 
 class NewOrganization(CommentBase):
     class Meta:
         verbose_name = "申请建立组织的信息"
         verbose_name_plural = verbose_name
+        ordering = ["-modify_time", "-time"]
 
     oname = models.CharField(max_length=32, unique=True)
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
     introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
-    application = models.TextField("申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~")
-    avatar = models.ImageField(upload_to=f"avatar/", verbose_name=u'组织头像', null=True, blank=True)
+    application = models.TextField(
+        "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
+    )
+    avatar = models.ImageField(
+        upload_to=f"avatar/", verbose_name="组织头像",default="avatar/org_default.png",null=True, blank=True
+    )
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
+
     class NewOrgStatus(models.IntegerChoices):  # 表示申请组织的请求的状态
-        PENDING = (0, "待确认")
-        CONFIRMED = (1, "主管老师已同意")  # 审过同意
+        PENDING = (0, "处理中")
+        CONFIRMED = (1, "已通过")  # 主管老师已同意，如果新增审核老师就增加主管老师已同意的状态
         TOBEMODIFIED = (2, "需要修改")
         CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
+        REFUSED = (4, "已拒绝")
+
     status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
+    
+    def __str__(self):
+        return f'{self.oname}{self.otype.otype_name}'
+
+    def save(self, *args, **kwargs):
+        self.typename = "neworganization"
+        super().save(*args, **kwargs)
+
+    def get_poster_name(self):
+        try:
+            person = NaturalPerson.objects.get(person_id=self.pos)
+            return person.name
+        except:
+            return '未知'
+    
+    def extra_display(self):
+        display = []
+        if self.introduction and self.introduction != '这里暂时没有介绍哦~':
+            display.append(('组织介绍', self.introduction))
+        return display
 
 
 class Reimbursement(CommentBase):
@@ -654,16 +732,33 @@ class Reimbursement(CommentBase):
         # 如果需要更多审核，每个审核的确认状态应该是2的幂
         # 根据最新要求，最终不以线上为准，不再设置转账状态
         CANCELED = (4, "已取消")
+        REFUSED = (5, "已拒绝")
 
-    activity = models.ForeignKey(Activity,related_name="reimbursement",on_delete=models.CASCADE)
+    activity = models.ForeignKey(
+        Activity, related_name="reimbursement", on_delete=models.CASCADE
+    )
     amount = models.FloatField("报销金额", default=0)
     message = models.TextField("备注信息", default="", blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
-    time = models.DateTimeField("发起时间", auto_now_add=True)
-    modify_time = models.DateTimeField("上次修改时间", auto_now_add=True)
 
+    def __str__(self):
+        return f'{self.activity.title}活动报销'
+        
+    def save(self, *args, **kwargs):
+        self.typename = "reimbursement"
+        super().save(*args, **kwargs)
 
+    def get_poster_name(self):
+        try:
+            org = Organization.objects.get(organization_id=self.pos)
+            return org.oname
+        except:
+            return '未知'
 
-
-
+    def extra_display(self):
+        display = []
+        display.append(('报销金额', self.amount, 'jpy'))
+        if self.message:
+            display.append(('备注', self.message))
+        return display
