@@ -405,7 +405,7 @@ def publish_activity(activity_or_id, only_activated=False):
 
 
 def wechatNotifyActivity(aid, msg, send_to):
-    activity = Activity.objects.get(id=activity_id)
+    activity = Activity.objects.get(id=aid)
     targets = set()
     if send_to == 'participants' or send_to == 'all':
         participants = Participant.objects.filter(activity_id=aid, 

@@ -198,21 +198,25 @@
                                                 <a href="javascript:void(0);" class="btn btn-danger btn-block mb-4 mr-2">已退出</a>
                                                 {% endif %}
                                             {% elif ownership %}
-                                            <form method="POST">
-                                                <input type="hidden" name="option" value="edit">
-                                                <input type="hidden" name="aid" value={{aid}}>
-                                                <button class="btn btn-primary btn-block mb-4 mr-2">修改信息</button>
-                                            </form>
-                                            <form method="POST">
-                                                <input type="hidden" name="option" value="payment">
-                                                <input type="hidden" name="aid" value={{aid}}>
-                                                <button class="btn btn-primary btn-block mb-4 mr-2">申请报销</button>
-                                            </form>
-                                            <form method="POST">
-                                                <input type="hidden" name="option" value="cancel">
-                                                <input type="hidden" name="aid" value={{aid}}>
-                                                <button class="btn btn-danger btn-block mb-4 mr-2">取消活动</button>
-                                            </form>
+                                                {% if status == "审核中" or status == "报名中" or status == "等待中" %}
+                                                <form method="POST">
+                                                    <input type="hidden" name="option" value="edit">
+                                                    <input type="hidden" name="aid" value={{aid}}>
+                                                    <button class="btn btn-primary btn-block mb-4 mr-2">修改信息</button>
+                                                </form>
+                                                <form method="POST">
+                                                    <input type="hidden" name="option" value="cancel">
+                                                    <input type="hidden" name="aid" value={{aid}}>
+                                                    <button class="btn btn-danger btn-block mb-4 mr-2">取消活动</button>
+                                                </form>
+                                                {% endif %}
+                                                {% if status == "已结束" %}
+                                                <form method="POST">
+                                                    <input type="hidden" name="option" value="payment">
+                                                    <input type="hidden" name="aid" value={{aid}}>
+                                                    <button class="btn btn-primary btn-block mb-4 mr-2">申请报销</button>
+                                                </form>
+                                                {% endif %}
                                             {% endif %}
                                             </div>
     
