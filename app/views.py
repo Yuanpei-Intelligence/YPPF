@@ -2755,9 +2755,8 @@ def notifications(request):
     bar_display["title_name"] = "Notifications"
     bar_display["navbar_name"] = "通知信箱"
     bar_display["help_message"] = local_dict["help_message"]["通知信箱"]
-
-    utils.add_help_paragraphs(bar_display)
-
+    bar_display["help_paragraphs"] = local_dict["help_paras"][bar_display["navbar_name"]]
+    
     return render(request, "notifications.html", locals())
 
 # 新建评论，
