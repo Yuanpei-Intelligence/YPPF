@@ -5,7 +5,6 @@
 {% block mainpage %}
 
 
-
     <!--  BEGIN CONTENT PART  -->
     <div id="content" class="main-content">
 
@@ -53,6 +52,7 @@
                         <h3>今日消息</h3>
                         <div class="pre-scrollable bio-skill-box layout-top-spacing" style="padding: 2%;">
                             {% for rec in today_signup_list %}
+
                             <a href="/viewActivity/{{rec.act.id}}">
                                 <div class=" b-skills" style="padding: 5%;">
                                     <div class="text-nowrap" style='overflow: hidden;text-overflow: ellipsis;'>

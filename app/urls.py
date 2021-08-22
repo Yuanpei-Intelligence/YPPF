@@ -36,7 +36,6 @@ urlpatterns = [
     path("transPage/<str:rid>", views.transaction_page, name="transPage"),
     path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"),
     path("startTrans/", views.start_transaction, name="startTrans"),
-
     path("applyActivity/<str:aid>", views.applyActivity, name="applyActivity"),
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
     path("viewActivity/<str:aid>", views.viewActivity, name="viewActivity"),
@@ -51,6 +50,10 @@ urlpatterns = [
     # path("YQPoint_Distribution/<int:dis_id>", scheduler_func.YQPoint_Distribution, name="YQPoint_Distributions"),
     # path("new_YQP_distribution", scheduler_func.new_YQP_distribute, name="new_YQP_distribution"),
     path("personnelMobilization/", views.personnel_mobilization, name="personnel_mobilization"),
+    path("showReimbursement/",views.showReimbursement,name="addReimbursement"),
+    path("addReimbursement/",views.addReimbursement,name="addReimbursement"),
+    path("auditReimbursement/",views.auditReimbursement,name="auditReimbursement"),
+    path("showNewOrganization/", views.showNewOrganization, name="showNewOrganization"),
     path("addOrganization/", views.addOrganization, name="addOrganization"),
     path("auditOrganization/", views.auditOrganization, name="auditOrganization"),
 ]

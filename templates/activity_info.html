@@ -3,6 +3,7 @@
 {% load static %}
 
 {% block mainpage %}
+
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
 
@@ -161,11 +162,11 @@
                                             </button>
                                             {% endif %}
                                             {% if person %}
-                                                {% if pStatus == "无记录" or pStatus == "放弃" and status == "报名中" and bidding == True %}
+                                                {% if pStatus == "无记录" and status == "报名中" and bidding == True %}
                                                 <button class="btn btn-primary btn-block mb-4 mr-2" data-toggle="collapse" data-target="#extend-area">
                                                     立即报名
                                                 </button>
-                                                {% elif pStatus == "无记录" or pStatus == "放弃" and status == "报名中" and bidding == False %}
+                                                {% elif pStatus == "无记录" and status == "报名中" and bidding == False %}
                                                 <form method="POST">
                                                     <input type="hidden" name="option" value="apply">
                                                     <input type="hidden" name="aid" value={{aid}}>
