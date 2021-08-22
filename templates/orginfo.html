@@ -395,34 +395,36 @@
                                         <div class="row">
                                             {% for rec in ended_activity_list_participantrec %}
                                             <div class="col-12 col-xl-4 col-lg-6 mb-xl-5 mb-5 ">
-                                                <div class="d-flex b-skills">
-                                                    <div class="">
-                                                        <div class="d-flex justify-content-between">
-                                                            <h5>{{rec.act.title}}
-                                                                {% if user_type == "Person" and rec.status == "已参与" %}
-                                                                    <span class="badge badge-pill badge-primary">已参与</span>
-                                                                {% elif user_type == "Person" and rec.status == "未参与" %}
-                                                                    <span class="badge badge-pill badge-secondary">未参与</span>
-                                                                {% else %}
-                                                                    <span class="badge badge-pill badge-danger">{{rec.act.status}}</span>
-                                                                {% endif %}
-                                                            </h5>
-                                                        </div>
-
-                                                        <p>{{rec.act.introduction}}</p>
-                                                        <p>报名结束时间： {{rec.act.endbefore}}</p>
-                                                        <p>活动开始时间： {{rec.act.start}}</p>
-                                                        <p>已报名/最大人数：{{rec.act.current_participants}}/{{rec.act.capacity}}</p>
-                                                        <div class="row">
-                                                            <div class="col">
-                                                                <p>价格：{{rec.act.YQPoint}}</p>
+                                                <a href="/viewActivity/{{rec.act.id}}">
+                                                    <div class="d-flex b-skills">
+                                                        <div class="text-nowrap" style='overflow: hidden;text-overflow: ellipsis;'>
+                                                            <div class="d-flex justify-content-between">
+                                                                <h5>{{rec.act.title}}
+                                                                    {% if user_type == "Person" and rec.status == "已参与" %}
+                                                                        <span class="badge badge-pill badge-primary">已参与</span>
+                                                                    {% elif user_type == "Person" and rec.status == "未参与" %}
+                                                                        <span class="badge badge-pill badge-secondary">未参与</span>
+                                                                    {% else %}
+                                                                        <span class="badge badge-pill badge-danger">{{rec.act.status}}</span>
+                                                                    {% endif %}
+                                                                </h5>
                                                             </div>
-                                                            <div class="col">
-                                                                <p>地点：{{rec.act.location}}</p>
+    
+                                                            <p>{{rec.act.introduction}}</p>
+                                                            <p>报名结束时间： {{rec.act.endbefore}}</p>
+                                                            <p>活动开始时间： {{rec.act.start}}</p>
+                                                            <p>已报名/最大人数：{{rec.act.current_participants}}/{{rec.act.capacity}}</p>
+                                                            <div class="row">
+                                                                <div class="col">
+                                                                    <p>价格：{{rec.act.YQPoint}}</p>
+                                                                </div>
+                                                                <div class="col">
+                                                                    <p>地点：{{rec.act.location}}</p>
+                                                                </div>
                                                             </div>
                                                         </div>
                                                     </div>
-                                                </div>
+                                                </a>
                                             </div>
                                             {% endfor %}
 

@@ -668,6 +668,7 @@ def homepage(request):
     bar_display["title_name"] = "Welcome Page"
     bar_display["navbar_name"] = "元培生活"
 
+
     return render(request, "welcome_page.html", locals())
 
 
