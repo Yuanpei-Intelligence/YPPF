@@ -49,6 +49,7 @@ class NaturalPerson(models.Model):
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
 
     YQPoint = models.FloatField("元气值", default=0)
+    quota = models.FloatField("配额", default=0)
 
     class Identity(models.IntegerChoices):
         TEACHER = (0, "教职工")
@@ -407,6 +408,8 @@ class Activity(models.Model):
     endbefore = models.SmallIntegerField(
         "报名截止于", choices=EndBefore.choices, default=EndBefore.oneday
     )
+
+    apply_end = models.DateTimeField("报名截止时间", blank=True, default=datetime.now)
     start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now)
     end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now)
     # prepare_time = models.FloatField("活动准备小时数", default=24.0)
@@ -417,10 +420,20 @@ class Activity(models.Model):
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
     # url,活动二维码
-
     bidding = models.BooleanField("是否投点竞价", default=False)
     YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
     budget = models.FloatField("预算", default=0.0)
+
+    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, default=1800017717)
+
+
+    class YQPointSource(models.IntegerChoices):
+        COLLEGE = (0, "学院")
+        STUDENT = (1, "学生")
+
+    source = models.SmallIntegerField(
+        "元气值来源", choices=YQPointSource.choices, default=1
+    )
 
     # 允许是正无穷, 可以考虑用INTINF
     capacity = models.IntegerField("活动最大参与人数", default=100)
@@ -441,7 +454,7 @@ class Activity(models.Model):
 
     # 恢复活动状态的类别
     status = models.CharField(
-        "活动状态", choices=Status.choices, default=Status.APPLYING, max_length=32
+        "活动状态", choices=Status.choices, default=Status.REVIEWING, max_length=32
     )
 
     objects = ActivityManager()

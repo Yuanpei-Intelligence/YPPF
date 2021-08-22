@@ -116,89 +116,8 @@ def get_sidebar_and_navbar(user, bar_display = None):
     
     return bar_display
 
-# 检查发起活动的request的合法性
-def check_ac_request(request):
-
-    context = dict()
-
-    edit = False
-    if request.POST.get('edit') == "True":
-        edit = True
-
-    # edit 时，不能修改预算和元气值支付模式，只在创建时考虑
-    if not edit:
-        context['budget'] = float(request.POST["budget"])
-        context['signschema'] = int(request.POST["signschema"])
-        if context['budget'] > float(local_dict['thresholds']['activity_budget']):
-            context['need_check'] = True
 
 
-    # title, introduction, location 创建时不能为空
-    context['aname'] = request.POST.get("aname")
-    context['content'] = request.POST.get("content")
-    context['location'] = request.POST.get("location")
-    if not edit:
-        assert len(context['aname']) > 0
-        assert len(context['content']) > 0
-        assert len(context['location']) > 0
-
-    # url
-    context['URL'] = request.POST.get("URL")
-
-
-    # 时间
-    # datetime 这里有 bug，PM 不会把时间加上去，到时候考虑 patch ......
-    act_start = datetime.strptime(request.POST["actstart"], '%m/%d/%Y %H:%M %p')  # 活动报名时间
-    act_end = datetime.strptime(request.POST["actend"], '%m/%d/%Y %H:%M %p')  # 活动报名结束时间
-    now_time = datetime.now()
-    prepare_scheme = int(request.POST["prepare_scheme"])
-    prepare_times = Activity.EndBeforeHours.prepare_times
-    prepare_time = prepare_times[prepare_scheme]
-    signup_start = now_time
-    signup_end = act_start - timedelta(hours=prepare_time)
-
-    context['prepare_scheme'] = int(prepare_scheme)
-    context['signup_start'] = signup_start
-    context['signup_end'] = signup_end
-    context['act_start'] = act_start
-    context['act_end'] = act_end
-
-    assert check_ac_time(act_start, act_end)
-    assert signup_start <= signup_end
-
-    # 人数限制
-    capacity = request.POST.get("maxpeople")
-    no_limit = request.POST.get("unlimited_capacity")
-    if no_limit is not None:
-        capacity = 10000
-    if capacity is not None and capacity != '':
-        context['capacity'] = int(capacity)
-        assert context['capacity'] >= 0
-
-    # 价格
-    aprice = request.POST["aprice"]
-    if aprice == '':
-        context['aprice'] = ''
-    else:
-        aprice = float(aprice)
-        assert int(aprice * 10) / 10 == aprice
-        assert aprice >= 0
-        context['aprice'] = aprice
-
-    return context
-
-
-# 时间合法性的检查，检查时间是否在当前时间的一个月以内，并且检查开始的时间是否早于结束的时间，
-def check_ac_time(start_time, end_time):
-    try:
-        now_time = datetime.now()
-        month_late = now_time + timedelta(days=30)
-        if now_time < start_time < month_late:
-            return True  # 时间所处范围正确
-    except:
-        return False
-
-    return False
 
 
 def url_check(arg_url):

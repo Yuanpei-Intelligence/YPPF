@@ -204,7 +204,6 @@ def changeActivityStatus(aid, cur_status, to_status):
             activity = Activity.objects.select_for_update().get(id=aid)
             if cur_status is not None:
                 assert cur_status == activity.status
-
             if cur_status == Activity.Status.APPLYING:
                 assert to_status == Activity.Status.WAITING
             elif cur_status == Activity.Status.WAITING:
@@ -215,24 +214,26 @@ def changeActivityStatus(aid, cur_status, to_status):
                 raise ValueError
 
             activity.status = to_status
-            activity.save()
-
     
             if activity.status == Activity.Status.WAITING:
-                # TODO 元气值抽签
+                if activity.bidding:
+                    # TODO 元气值抽签
+                    pass
 
                 # 提醒参与者
                 scheduler.add_job(notifyActivity, 'date', id=f"activity_{activity.id}_remind",
-                    run_date=activity.act_start - timedelta(minutes=15), args=[activity.id, 'remind'])
+                    run_date=activity.act_start - timedelta(minutes=15), args=[activity.id, 'remind'], replace_existing=True)
 
 
             # 活动变更为进行中时，修改参与人参与状态
             if activity.status == Activity.Status.PROGRESSING:
                 participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
                 for participant in participants:
-                    # TODO: 暂时还没做签到
+                    # TODO: 现在是都变成参加成功，暂时还没做签到
                     participant.status = Participant.AttendStatus.ATTENDED
                     participant.save()
+
+            activity.save()
 
 
     except:
