@@ -2732,6 +2732,9 @@ def notifications(request):
     bar_display["navbar_name"] = "通知信箱"
     bar_display["help_message"] = local_dict["help_message"]["通知信箱"]
 
+    need_help_paragraphs = True
+    help_paras = local_dict["help_paras"]["通知信箱"]
+
     return render(request, "notifications.html", locals())
 
 

@@ -12,6 +12,9 @@
     <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
     {% endif %}
     <div class="container">
+        {% if need_help_paragraphs %}
+            {% include 'help.html' %}
+        {% endif %}
         <div class="container">
             <div class="row layout-top-spacing">
 
@@ -214,7 +217,7 @@
             </div>
             
         </div>
-        {% include 'help.html' %}
+        
     </div>
 </div>
 <!--  END CONTENT AREA  -->
