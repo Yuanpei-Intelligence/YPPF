@@ -1,4 +1,4 @@
-from app.models import NaturalPerson, Organization, OrganizationType, Position, Notification
+from app.models import NaturalPerson, Organization, OrganizationType, Position, Notification,NewOrganization
 from django.contrib.auth.models import User
 from django.dispatch.dispatcher import receiver
 from django.contrib import auth
@@ -9,7 +9,8 @@ from datetime import datetime, timedelta
 from functools import wraps
 import re
 import imghdr
-
+import string
+import random
 
 def check_user_access(redirect_url="/logout/"):
     """
@@ -296,6 +297,8 @@ def check_ac_time(start_time, end_time):
 
 
 def url_check(arg_url):
+    #DEBUG 默认通过
+    return True
     if arg_url is None:
         return True
     if re.match('^/[^/?]*/', arg_url):  # 相对地址
@@ -334,10 +337,11 @@ def get_url_params(request, html_display):
 
 
 # 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
-def check_neworg_request(request):
+def check_neworg_request(request,org=None):
     """
 
     """
+
     context = dict()
     context['warn_code'] = 0
     oname = str(request.POST['oname'])
@@ -345,17 +349,27 @@ def check_neworg_request(request):
         context['warn_code'] = 1
         context['warn_msg'] = "组织的名字不能超过32字节"
         return context
+    if oname=="":
+        context['warn_code'] = 1
+        context['warn_msg'] = "组织的名字不能为空"
+        return context
+    if org is not None and oname==org.oname:
+        if len(NewOrganization.objects.exclude(status=NewOrganization.NewOrgStatus.CANCELED)
+                       .exclude(status=NewOrganization.NewOrgStatus.REFUSED).filter(oname=oname)) > 1 \
+                or len(Organization.objects.filter(oname=oname)) != 0:
+            context['warn_code'] = 1
+            context['warn_msg'] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
+            return context
+    else:
+        if len(NewOrganization.objects.exclude(status=NewOrganization.NewOrgStatus.CANCELED)
+                       .exclude(status=NewOrganization.NewOrgStatus.REFUSED).filter(oname=oname))!=0 \
+                        or len(Organization.objects.filter(oname=oname))!=0:
+            context['warn_code'] = 1
+            context['warn_msg'] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
+            return context
+
     try:
         otype = int(request.POST.get('otype'))
-        if otype not in [7, 8, 10]:  # 7 for 书院俱乐部，8 for 学生小组 ，10 for 书院课程
-            context['warn_code'] = 1
-            context['warn_msg'] = "你应该从书院俱乐部、学生小组和书院课程中选择!"
-            return context
-    except:
-        context['warn_code'] = 1
-        context['warn_msg'] = "小组的数据类型应该为整数"  # user can't see it . we use it for debugging
-        return context
-    try:
         context['otype'] = OrganizationType.objects.get(otype_id=otype)
     except:
         context['warn_code'] = 1
@@ -363,10 +377,11 @@ def check_neworg_request(request):
         return context
 
     context['avatar'] = request.FILES.get('avatar')
-    if if_image(context['avatar'])==False:
-        context['warn_code'] = 1
-        context['warn_msg'] = "组织的头像应当为图片格式！"  # user can't see it . we use it for debugging
-        return context
+    if context['avatar'] is not None:
+        if if_image(context['avatar'])==1:
+            context['warn_code'] = 1
+            context['warn_msg'] = "组织的头像应当为图片格式！"
+            return context
 
     context['oname'] = oname  # 组织名字
      # 组织类型，必须有
@@ -374,6 +389,10 @@ def check_neworg_request(request):
     context['introduction'] = str(request.POST.get('introduction', ""))  # 组织介绍，可能为空
 
     context['application'] = str(request.POST.get('application', ""))  # 申请理由
+
+    if context['application']=="" :
+        context['warn_code'] = 1
+        context['warn_msg'] = "申请理由不能为空"
     return context
 
 # 查询组织代号的最大值+1 用于addOrganization()函数，新建组织
@@ -386,8 +405,18 @@ def find_max_oname():
     max_oname=prefix+str(max_oname).zfill(5)
     return max_oname
 
+#判断是否为图片
 def if_image(image):
+    if image==None:
+        return 0
     imgType_list = {'jpg', 'bmp', 'png', 'jpeg', 'rgb', 'tif'}
     if imghdr.what(image)  in imgType_list:
-        return True
-    return False
+        return 2 #为图片
+    return 1    #不是图片
+#用于新建组织时，生成6位随机密码
+def random_code_init():
+    b = string.digits + string.ascii_letters   # 构建密码池
+    password = ""
+    for i in range(0, 6):
+        password = password + random.choice(b)
+    return password

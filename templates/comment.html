@@ -1,0 +1,62 @@
+<!--begin comment-->
+<div id="comments_display">
+    {%for comment in comments.all%}
+    <div class="form-group">
+        <div class="d-flex justify-content-between">
+            <div>
+                <p style="color: rgb(66, 67, 68);"><i class="fa fa-calendar-o"></i>评论时间：{{comment.time}}</p>
+            </div>
+            <div>
+                <p style="color: rgb(66, 67, 68);" align="right"><i class="fa fa-address-book"></i>
+                    评论人：{{comment.commentator}}</p>
+            </div>
+        </div>
+
+        <textarea name="comment" class="form-control" disabled="disabled">{{comment.text}}</textarea>
+        {%for image in comment.comment_photos.all%}
+
+        <img width="400px" height="200px" src={{image.imagepath}}>
+        <!--移动端图片大小需要修正!-->
+        {%endfor%}
+        <hr>
+        <br>
+    </div>
+    {% endfor %}
+</div>
+{%if commentable%}
+<form role="form" method="POST" enctype="multipart/form-data">
+    <div>
+        <div class="form-group">
+            <label><h4>评论</h4></label>
+            <div>
+                <p style="color: rgb(66, 67, 68);" align="right"><i
+                        class="fa fa-address-book"></i> {{request.user}}</p>
+            </div>
+            <textarea type="text" id="comment" name="comment"
+                      class="form-control"
+                      aria-label="Default" rows="3"
+                      placeholder="Leave a comment"></textarea>
+            <br>
+            <div>
+                <label title="评论图片">
+                    <div style="text-align:left;">
+                        <input type="file" accept="image/*" name="comment_images"
+                               multiple>
+                    </div>
+                </label>
+                <div style="text-align:right;">
+                    <button type="submit"
+                            class="btn btn-primary btn-sm mb-4 mr-2"
+                            name="comment_submit" value="1">
+                        回复
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+<!--end comment-->
+{%endif%}
+<script>
+<!--后续补充js实现无渲染添加评论-->
+</script>
