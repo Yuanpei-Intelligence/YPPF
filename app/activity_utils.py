@@ -323,11 +323,11 @@ def accept_activity(request, activity):
         organization_id = activity.organization_id_id
         organization = Organization.objects.select_for_update().get(id=organization_id)
         YP = Organization.objects.select_for_update().get(oname="元培学院")
-        organization.YQPoint += activity.amount
-        YP.YQPoint -= activity.amount
-
+        organization.YQPoint += activity.YQPoint
+        YP.YQPoint -= activity.YQPoint
+        amount = activity.YQPoint
         record = TransferRecord.objects.create(
-            proposer=YP, recipient=organization.organization_id
+            proposer=YP.organization_id, recipient=organization.organization_id
         )
         record.amount = amount
         record.message = f"From College"
@@ -453,10 +453,10 @@ def applyActivity(request, activity):
         participant.status = Participant.AttendStatus.APPLYING
 
     YP.save()
+    organization.save()
     participant.save()
     payer.save()
     activity.save()
-    organization.save()
 
 
 def cancel_activity(request, activity):
@@ -523,20 +523,15 @@ def cancel_activity(request, activity):
 
     notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
 
-
-    activity.save()
     YP.save()
     org.save()
+    activity.save()
 
 
 
 def withdraw_activity(request, activity):
 
     np = NaturalPerson.objects.select_for_update().get(person_id=request.user)
-    org = Organization.objects.select_for_update().get(
-        organization_id=activity.organization_id.organization_id
-    )
-    YP = Organization.objects.select_for_update().get(oname="元培学院")
     participant = Participant.objects.select_for_update().get(
         activity_id=activity,
         person_id=np,
@@ -545,6 +540,10 @@ def withdraw_activity(request, activity):
             Participant.AttendStatus.APLLYSUCCESS,
         ],
     )
+    org = Organization.objects.select_for_update().get(
+        organization_id=activity.organization_id.organization_id
+    )
+    YP = Organization.objects.select_for_update().get(oname="元培学院")
     participant.status = Participant.AttendStatus.CANCELED
     activity.current_participants -= 1
 
@@ -603,8 +602,8 @@ def withdraw_activity(request, activity):
 
     YP.save()
     org.save()
-    np.save()
     participant.save()
+    np.save()
     activity.save()
 
 
