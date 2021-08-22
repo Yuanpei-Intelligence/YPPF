@@ -13,6 +13,9 @@ from app.models import Organization, NaturalPerson, YQPointDistribute, TransferR
 from app.wechat_send import base_send_wechat, wechatNotifyActivity, publish_activity
 from app.forms import YQPointDistributionForm
 
+from random import sample
+from numpy.random import choice
+
 # 定时任务生成器
 scheduler = BackgroundScheduler()
 scheduler.add_jobstore(DjangoJobStore(), "default")
@@ -217,8 +220,10 @@ def changeActivityStatus(aid, cur_status, to_status):
     
             if activity.status == Activity.Status.WAITING:
                 if activity.bidding:
-                    # TODO 元气值抽签
-                    pass
+                    if activity.source == Activity.YQPointSource.COLLEGE:
+                        draw_lots(activity)
+                    else:
+                        weighted_draw_lots(activity)
 
                 # 提醒参与者
                 scheduler.add_job(notifyActivity, 'date', id=c,
@@ -226,12 +231,25 @@ def changeActivityStatus(aid, cur_status, to_status):
 
 
             # 活动变更为进行中时，修改参与人参与状态
-            if activity.status == Activity.Status.PROGRESSING:
+            elif activity.status == Activity.Status.PROGRESSING:
                 participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
                 for participant in participants:
-                    # TODO: 现在是都变成参加成功，暂时还没做签到
-                    participant.status = Participant.AttendStatus.ATTENDED
+                    # TODO: 还没确认签到的接口
+                    if not activity.need_checkin:
+                        participant.status = Participant.AttendStatus.ATTENDED
+                    else:
+                        participant.status = Participant.AttendStatus.UNATTENDED
                     participant.save()
+
+            # 结束，计算积分    
+            else:
+                hours = (activity.end - activity.start).seconds / 3600
+                participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.ATTENDED)
+                for participant in participants:
+                    np = NaturalPerson.objects.select_for_update().get(person_id=participant.person_id.person_id)
+                    np.bonusPoint += hours
+                    np.save()
+
 
             activity.save()
 
@@ -240,6 +258,57 @@ def changeActivityStatus(aid, cur_status, to_status):
         print(e)
         # TODO send message to admin to debug
         pass
+
+
+"""
+需要在 transaction 中使用
+所有涉及到 activity 的函数，都应该先锁 activity
+"""
+def draw_lots(activity):
+    participants = Participant.objects().select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)
+    l = len(participants)
+
+    if l <= activity.capacity:
+        for participant in participants:
+            participant.status = Participant.AttendStatus.APLLYSUCCESS
+            participant.save()
+    else:
+        lucky_ones = sample(range(l), activity.capacity)
+        for i, participant in enumerate(participants):
+            if i in lucky_ones:
+                participant.status = Participant.AttendStatus.APLLYSUCCESS
+            else:
+                participant.status = Participant.AttendStatus.APLLYFAILED
+            participant.save()
+
+"""
+需要在 transaction 中使用
+"""
+def weighted_draw_lots(activity):
+    participants = Participant.objects().select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)
+    l = len(participants)
+
+    if l <= activity.capacity:
+        for participant in participants:
+            participant.status = Participant.AttendStatus.APLLYSUCCESS
+            participant.save()
+    else:
+        weights = []
+        for participant in participants:
+            records = TransferRecord.objects(),filter(corres_act=activity, status=TransferRecord.TransferStatus.ACCEPTED, person_id=participant.proposer)
+            weight = 0
+            for record in records:
+                weight += record.amount
+            weights.append(weight)
+        total_weight = sum(weights)
+        d = [weight/total_weight for weight in weights]
+        lucky_ones = choice(l, activity.capacity, replacement=False, p=weights)
+        for i, participant in enumerate(participants):
+            if i in lucky_ones:
+                participant.status = Participant.AttendStatus.APLLYSUCCESS
+            else:
+                participant.status = Participant.AttendStatus.APLLYFAILED
+            participant.save()
 
 """
 使用方式：

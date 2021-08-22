@@ -20,7 +20,7 @@ from app.models import (
 from django.db.models import Max
 import app.utils as utils
 from app.forms import UserForm
-from app.utils import url_check, check_cross_site, get_person_or_org 
+from app.utils import url_check, check_cross_site, get_person_or_org
 from app.activity_utils import (
     create_activity, modify_activity, accept_activity, 
     applyActivity, cancel_activity, withdraw_activity,
@@ -639,8 +639,20 @@ def homepage(request):
     html_display["warn_message"] = request.GET.get(
         "warn_message", "")  # 提醒的具体内容
 
-    # 今天开始进行的活动,且不展示结束的活动。按开始时间由近到远排序
+    
     nowtime = datetime.now()
+    # 今天第一次访问 welcome 界面，积分加 0.5
+    if is_person:
+        with transaction.atomic():
+            np = NaturalPerson.objects.select_for_update().get(person_id=request.user)
+            if np.last_time_login is None or np.last_time_login.date != nowtime.date:
+                np.last_time_login = nowtime
+                np.bonusPoint += 0.5
+                np.save()
+
+
+
+    # 今天开始进行的活动,且不展示结束的活动。按开始时间由近到远排序
     today_activity_list = (
         Activity.objects.activated()
         .filter(Q(start__year=nowtime.year) & Q(start__month=nowtime.month) & Q(start__day=nowtime.day))
@@ -2078,6 +2090,7 @@ def addActivities(request):
         else:
             # 编辑状态下，填写 placeholder 为旧值
             edit = True
+            commentable = True
             try:
                 aid = int(request.GET["aid"])
                 activity = Activity.objects.get(id=aid)
