@@ -2,8 +2,11 @@
     <div class="bio layout-spacing ">
         <div class="widget-content widget-content-area">
             <div data-toggle="collapse" href="#help-content" role="button"
-                        aria-expanded="true" aria-controls="collapseExample">       
-                <h3>使用帮助</h3>
+                aria-expanded="true" aria-controls="collapseExample" 
+                onclick="let hc = $('#help-content')[0], ht = $('#help-title')[0];
+                if(hc.getAttribute('class') != 'collapse') {ht.style.margin = '6px 0 0 0'}
+                else {ht.style.margin = '6px 0 40px 0'}">       
+                <h3 id="help-title">使用帮助</h3>
             </div>
             <div class="collapse" id="help-content">
                 {% for para in bar_display.help_paragraphs %}
