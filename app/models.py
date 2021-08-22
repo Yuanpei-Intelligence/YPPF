@@ -76,9 +76,7 @@ class NaturalPerson(models.Model):
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
-    show_class = models.BooleanField(default=True)
     show_major = models.BooleanField(default=True)
-    show_grade = models.BooleanField(default=True)
     show_dorm = models.BooleanField(default=False)
 
     # 注意：这是不订阅的列表！！
@@ -534,6 +532,9 @@ class YQPointDistribute(models.Model):
         verbose_name = "元气值发放"
         verbose_name_plural = verbose_name
 
+class NotificationManager(models.Manager):
+    def activated(self):
+        return self.exclude(status=Notification.Status.DELETE)
 
 class Notification(models.Model):
     class Meta:
@@ -551,6 +552,7 @@ class Notification(models.Model):
     class Status(models.IntegerChoices):
         DONE = (0, "已处理")
         UNDONE = (1, "待处理")
+        DELETE = (2, "已删除")
 
     class Type(models.IntegerChoices):
         NEEDREAD = (0, "知晓类")  # 只需选择“已读”即可
@@ -579,13 +581,48 @@ class Notification(models.Model):
         null=True,
     )
 
+    objects = NotificationManager()
+
 
 class CommentBase(models.Model):
+    '''
+    带有评论的模型基类
+    子类必须定义typename，值应为为类名的小写版本或类名
+
+    子类如果希望直接使用聚合页面呈现模板，应该定义__str__方法
+    默认的呈现内容为：实例名称、创建时间、上次修改时间
+    如果希望呈现审核页面，如审核中、创建者信息，则应该分别定义get_status_display和get_poster_name
+    其中，如果你的status是一个枚举字段，则无需定义get_status_display
+        status的display建议为：
+            包含“未/不/拒绝”的表示失败
+            此外包含“通过/接受”的表示审核通过
+            包含“修改”的为需要修改（可能用不到）
+            包含“取消”的为自己取消
+            其他都默认呈现“审核中”，可以自行修改html模板增加状态
+    如果你希望呈现更多信息，应该定义extra_display，返回一个二或三元组构成的列表
+        (键, 值, 图标名="envelope-o")将被渲染为一行[图标]键：值
+        图标名请参考fontawesome的图标类名
+    '''
     class Meta:
         verbose_name = "带有评论"
         verbose_name_plural = verbose_name
 
-    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的组织信息
+    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的基类信息
+    typename = models.CharField("模型类型", max_length=32, default="commentbase")   # 子类信息
+    time = models.DateTimeField("发起时间", auto_now_add=True)
+    modify_time = models.DateTimeField("上次修改时间", auto_now_add=True) # 每次评论自动更新
+
+    def get_instance(self):
+        if self.typename.lower() == 'commentbase':
+            return self
+        try:
+            return getattr(self, self.typename.lower())
+        except:
+            return self
+
+    def save(self, *args, **kwargs):
+        self.modify_time = datetime.now()   # 自动更新修改时间
+        super().save(*args, **kwargs)
 
 
 class Comment(models.Model):
@@ -623,6 +660,7 @@ class NewOrganization(CommentBase):
     class Meta:
         verbose_name = "申请建立组织的信息"
         verbose_name_plural = verbose_name
+        ordering = ["-modify_time", "-time"]
 
     oname = models.CharField(max_length=32, unique=True)
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
@@ -631,17 +669,38 @@ class NewOrganization(CommentBase):
         "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
     )
     avatar = models.ImageField(
-        upload_to=f"avatar/", verbose_name="组织头像", null=True, blank=True
+        upload_to=f"avatar/", verbose_name="组织头像",default="avatar/org_default.png",null=True, blank=True
     )
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
 
     class NewOrgStatus(models.IntegerChoices):  # 表示申请组织的请求的状态
-        PENDING = (0, "待确认")
-        CONFIRMED = (1, "主管老师已同意")  # 审过同意
+        PENDING = (0, "处理中")
+        CONFIRMED = (1, "已通过")  # 主管老师已同意，如果新增审核老师就增加主管老师已同意的状态
         TOBEMODIFIED = (2, "需要修改")
         CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
+        REFUSED = (4, "已拒绝")
 
     status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
+    
+    def __str__(self):
+        return f'{self.oname}{self.otype.otype_name}'
+
+    def save(self, *args, **kwargs):
+        self.typename = "neworganization"
+        super().save(*args, **kwargs)
+
+    def get_poster_name(self):
+        try:
+            person = NaturalPerson.objects.get(person_id=self.pos)
+            return person.name
+        except:
+            return '未知'
+    
+    def extra_display(self):
+        display = []
+        if self.introduction and self.introduction != '这里暂时没有介绍哦~':
+            display.append(('组织介绍', self.introduction))
+        return display
 
 
 class Reimbursement(CommentBase):
@@ -660,6 +719,7 @@ class Reimbursement(CommentBase):
         # 如果需要更多审核，每个审核的确认状态应该是2的幂
         # 根据最新要求，最终不以线上为准，不再设置转账状态
         CANCELED = (4, "已取消")
+        REFUSED = (5, "已拒绝")
 
     activity = models.ForeignKey(
         Activity, related_name="reimbursement", on_delete=models.CASCADE
@@ -668,5 +728,24 @@ class Reimbursement(CommentBase):
     message = models.TextField("备注信息", default="", blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
-    time = models.DateTimeField("发起时间", auto_now_add=True)
-    modify_time = models.DateTimeField("上次修改时间", auto_now_add=True)
+
+    def __str__(self):
+        return f'{self.activity.title}活动报销'
+        
+    def save(self, *args, **kwargs):
+        self.typename = "reimbursement"
+        super().save(*args, **kwargs)
+
+    def get_poster_name(self):
+        try:
+            org = Organization.objects.get(organization_id=self.pos)
+            return org.oname
+        except:
+            return '未知'
+
+    def extra_display(self):
+        display = []
+        display.append(('报销金额', self.amount, 'jpy'))
+        if self.message:
+            display.append(('备注', self.message))
+        return display
