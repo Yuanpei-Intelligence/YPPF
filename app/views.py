@@ -3574,16 +3574,14 @@ def addReimbursement(request):
                     html_display['warn_message'] = "创建通知失败。请检查输入or联系管理员"
                     return render(request, "reimbursement_add.html", locals())
 
-                    # 成功报销申请
-                    html_display['warn_code'] = 2
-                    html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
-                    if notification_id != -1:
-                        context = notification_status_change(notification_id)
-                        if context['warn_code'] != 0:
-                            html_display['warn_message'] = context['warn_message']
-                # 成功修改报销申请
-                if context['warn_code'] == 2:
-                    html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
+                # 成功报销申请
+                html_display['warn_code'] = 2
+                html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
+                if notification_id != -1:
+                    context = notification_status_change(notification_id)
+                    if context['warn_code'] != 0:
+                        html_display['warn_message'] = context['warn_message']
+
                 # 发送微信消息
                 if getattr(publish_notification, 'ENABLE_INSTANCE', False):
                     publish_notification(new_notification)
