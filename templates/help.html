@@ -5,11 +5,11 @@
             <div class="widget-content widget-content-area">
                 <div data-toggle="collapse" href="#help-content" role="button"
                             aria-expanded="true" aria-controls="collapseExample">       
-                    <h3>页面帮助</h3>
-                <!-- <p></br></p> -->
+                    <h3>使用帮助</h3>
+                    
                 </div>
                 <div class="collapse" id="help-content">
-                    {% for para in help_paras %}
+                    {% for para in bar_display.help_paragraphs %}
                         <p>{{para | safe}}</p>
                     {% endfor %}
                 </div>
