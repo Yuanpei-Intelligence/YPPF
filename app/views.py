@@ -23,7 +23,8 @@ from app.forms import UserForm
 from app.utils import url_check, check_cross_site, get_person_or_org 
 from app.activity_utils import (
     create_activity, modify_activity, accept_activity, 
-    applyActivity, cancel_activity, withdraw_activity
+    applyActivity, cancel_activity, withdraw_activity,
+    ActivityException
 )
 from app.wechat_send import publish_notification
 from boottest import local_dict
@@ -1719,64 +1720,20 @@ def viewActivity(request, aid=None):
     option = request.POST.get("option")
     if option == "cancel":
         # try:
-        if (
-                activity.status == activity.Status.CANCELED
-                or activity.status == activity.Status.END
-        ):
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "当前活动已取消或结束。"
-            return render(request, "activity_info.html", locals())
-
-        if activity.status == activity.Status.PROGRESSING:
-            if activity.start.day != datetime.now().day or activity.start + timedelta(days=1) < datetime.now():
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "活动已开始，不能取消。"
-                return render(request, "activity_info.html", locals())
-
+        assert activity.status != Activity.Status.END
+        assert activity.status != Activity.Status.CANCELED
         with transaction.atomic():
-            org = Organization.objects.select_for_update().get(
-                organization_id=request.user
-            )
-            if bidding:
-                participants = Participant.objects.select_for_update().filter(
-                    status=Participant.AttendStatus.APLLYING
-                )
-            else:
-                participants = Participant.objects.select_for_update().filter(
-                    status=Participant.AttendStatus.APLLYSUCCESS
-                )
-            records = TransferRecord.objects.select_for_update().filter(
-                status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity
-            )
-            sumYQPoint = 0.0
-            for record in records:
-                sumYQPoint += record.amount
-            if org.YQPoint < sumYQPoint:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "没有足够的元气值退回给已参与的同学，无法取消活动。"
-                return render(request, "activity_info.html", locals())
-            else:
-                org.YQPoint -= sumYQPoint
-                org.save()
-                for record in records:
-                    proposer = record.proposer
-                    proposer = NaturalPerson.objects.select_for_update().get(
-                        person_id=proposer
-                    )
-                    proposer.YQPoint += record.amount
-                    record.status = TransferRecord.TransferStatus.REFUND
-                    proposer.save()
-                    record.save()
-                for participant in participants:
-                    participant.status = Participant.AttendStatus.APLLYFAILED
-                    participant.save()
-            activity.status = activity.Status.CANCELED
-            activity.save()
-        html_display["warn_code"] = 2
-        html_display["warn_message"] = "成功取消活动。"
-        status = activity.status
-        # TODO 第一次点只会提醒已经成功取消活动，但是活动状态还是进行中，看看怎么修一下
-        return render(request, "activity_info.html", locals())
+            activity = Activity.objects.select_for_update().get(id=aid)
+            cancel_activity(request, activity)
+            return redirect(f'/viewActivity/{aid}')
+        '''
+        except ActivityError as e:
+            html_display["warn_code"] = 1
+            html_display["warn_message"] = str(e)
+            return render(request, "activity_info.html", locals())
+        except:
+            redirect("/welcome/")
+        '''
 
     elif option == "edit":
         if (
@@ -1829,7 +1786,6 @@ def viewActivity(request, aid=None):
 
     elif option == "payment":
         raise NotImplementedError
-        return render(request, "activity_info.html", locals())
 
     else:
         html_display["warn_code"] = 1

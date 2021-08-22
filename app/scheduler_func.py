@@ -221,7 +221,7 @@ def changeActivityStatus(aid, cur_status, to_status):
                     pass
 
                 # 提醒参与者
-                scheduler.add_job(notifyActivity, 'date', id=f"activity_{activity.id}_remind",
+                scheduler.add_job(notifyActivity, 'date', id=c,
                     run_date=activity.act_start - timedelta(minutes=15), args=[activity.id, 'remind'], replace_existing=True)
 
 
@@ -249,7 +249,7 @@ scheduler.add_job(notifyActivityStart, "date",
 """
 def notifyActivity(aid, msg_type, msg=None):
     try:
-        activity = Activity.objects.get(id=activity_id)
+        activity = Activity.objects.get(id=aid)
         if msg_type == "newActivity":
             publish_activity(aid)
             return
@@ -267,7 +267,8 @@ def notifyActivity(aid, msg_type, msg=None):
         else:
             raise ValueError
         wechatNotifyActivity(aid, msg, send_to)
-    except:
+    except Exception as e:
+        print(f"Notification {msg} failed. Exception: {e}")
         # TODO send message to admin to debug
         pass
 

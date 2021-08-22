@@ -419,7 +419,7 @@ class Activity(models.Model):
     YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
     budget = models.FloatField("预算", default=0.0)
 
-    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, default=1800017717)
+    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
 
 
     class YQPointSource(models.IntegerChoices):

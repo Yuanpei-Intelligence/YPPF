@@ -3,6 +3,9 @@
 依赖于 /app/utils.py, /app/scheduler_func.py,
 
 scheduler_func 依赖于 wechat_send 依赖于 utils
+
+文件中参数存在 activity 的函数需要在 transaction.atomic() 块中进行。
+如果存在预期异常，抛出 ActivityException，否则抛出其他异常
 """
 from app.scheduler_func import scheduler, changeActivityStatus, notifyActivity
 from datetime import datetime, timedelta
@@ -458,9 +461,74 @@ def applyActivity(request, activity):
 
 
 def cancel_activity(request, activity):
-    
 
-    pass
+    if activity.status == activity.Status.PROGRESSING:
+        if activity.start.day == datetime.now().day and datetime.now() < activity.start + timedelta(days=1):
+            pass
+        else:
+            raise ActivityException("活动已于一天前开始，不能取消。")
+
+    org = Organization.objects.select_for_update().get(
+                organization_id=request.user
+            )
+    assert activity.organization_id == org
+    YP = Organization.objects.select_for_update().get(oname="元培学院")
+
+
+    if activity.YQPoint > 0:
+        if activity.source == Activity.YQPointSource.COLLEGE:
+            if org.YQPoint < activity.YQPoint:
+                raise ActivityException("没有足够的元气值退还给学院，不能取消。")
+            org.YQPoint -= activity.YQPoint
+            YP.YQPoint += activity.YQPoint
+            record = TransferRecord.objects.select_for_update().get(
+                proposer=YP, status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity
+            )
+            record.status = TransferRecord.TransferStatus.REFUND
+            record.save()
+        else:
+            records = TransferRecord.objects.select_for_update().filter(
+                status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity
+            )
+            total_amount = 0
+            for record in records:
+                payer = record.proposer
+                total_amount += record.amount
+                if record.message == "quota":
+                    payer.quota += amount
+                    YP.YQPoint += amount
+                else:
+                    payer.YQPoint += amount
+                record.status = TransferRecord.TransferStatus.REFUND
+                record.save()
+
+            if total_amount > org.YQPoint:
+                raise ActivityException("没有足够的元气值退还给同学，不能取消。")
+            org.YQPoint -= total_amount
+
+
+
+    activity.status = Activity.Status.CANCELED
+    participants = Participant.objects.select_for_update().filter(
+            activity_id=activity
+        )
+    for participant in participants:
+        participant.status = Participant.AttendStatus.APLLYFAILED
+        participant.save()
+    # TODO 取消审核评论
+    scheduler.remove_job(f"activity_{activity.id}_remind")
+    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
+    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
+    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+
+    notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
+
+
+    activity.save()
+    YP.save()
+    org.save()
+
+
 
 def withdraw_activity(request, activity):
 
