@@ -2917,8 +2917,10 @@ def addOrganization(request):
             else:
                 try:  # 发送给评论通知
                     with transaction.atomic():
-                        text=context['new_comment'].text
-                        content = "“{oname}”{otype_name}的新建组织申请有了新的评论。评论内容为“{text}” ".format(
+                        text = str(context['new_comment'].text)
+                        if len(text) >= 32:
+                            text = text[:31] + "……"
+                        content = "“{oname}”{otype_name}的新建组织申请有了新的评论：“{text}” ".format(
                                 oname=preorg.oname, otype_name=preorg.otype.otype_name,text=text)
                         Auditor = preorg.otype.incharge.person_id    #审核老师
                         URL = ""
@@ -2942,8 +2944,6 @@ def addOrganization(request):
         else:#取消+新建+修改
             #取消
             need_cancel=int(request.POST.get('cancel_submit',-1))
-            html_display['warn_code'] = 1
-            html_display['warn_message'] = "test{need_cancel}".format(need_cancel=need_cancel)
             if need_cancel==1:#1代表取消
                 if edit:
                     with transaction.atomic():#修改状态为取消
@@ -2969,7 +2969,8 @@ def addOrganization(request):
                             new_notification.save()
                     except:
                         html_display['warn_code'] = 1
-                        html_display['warn_message'] = "创建给审核老师的取消通知失败。请联系管理员。"
+                        html_display['warn_message'] = "创建给{auditor_name}老师的取消通知失败。请联系管理员。"\
+                            .format(auditor_name=preorg.otype.incharge.name)
                         return render(request, "organization_add.html", locals())
                         # 微信通知
                     if getattr(publish_notification, 'ENABLE_INSTANCE', False):
@@ -3037,7 +3038,8 @@ def addOrganization(request):
 
                 # 成功新建组织申请
                 html_display['warn_code'] = 2
-                html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
+                html_display['warn_message'] = "申请已成功发送，请耐心等待{auditor_name}老师审批！"\
+                    .format(auditor_name=preorg.otype.incharge.name)
                 return render(request, "organization_add.html", locals())
 
             # 修改组织申请
@@ -3083,7 +3085,8 @@ def addOrganization(request):
                     return render(request, "organization_add.html", locals())
                 # 成功新建组织申请
                 html_display['warn_code'] = 2
-                html_display['warn_message'] = "申请已成功发送，请耐心等待主管老师审批！"
+                html_display['warn_message'] = "申请已成功修改，请耐心等待{auditor_name}老师审批！"\
+                    .format(auditor_name=preorg.otype.incharge.name)
                 if notification_id!=-1:
                     context = notification_status_change(notification_id)
                     if context['warn_code'] != 0:
@@ -3181,8 +3184,10 @@ def auditOrganization(request):
 
             try:  # 发送给评论通知
                 with transaction.atomic():
-                    text = context['new_comment'].text
-                    content = "{teacher_name}老师给您的组织申请留言了。留言文字内容为“{text}“   点击链接查看详情。” ".format(
+                    text = str(context['new_comment'].text)
+                    if len(text)>=32:
+                        text=text[:31]+"……"
+                    content = "{teacher_name}老师给您的组织申请留有新的评论：“{text}“ ".format(
                          teacher_name=me.name,text=text)
                     receiver = preorg.pos  # 通知接收者
                     URL = ""
@@ -3246,14 +3251,6 @@ def auditOrganization(request):
                         receiver = preorg.pos  # 通知接收者
                         URL = ""
                         # URL = request.build_absolute_uri(URL)
-                        """# 如果老师另留有评论的话,将评论放在content里
-                        comments = preorg.comment
-                        text = ""
-                        for comment in comments.all():
-                            text += comment.text
-                        content += " 老师给你留言啦："
-                        content += text"""
-
                         new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
                                                                Notification.Title.VERIFY_INFORM, content, URL)
                         URL = "/addOrganization/?neworg_id={id}".format(id=preorg.id)
@@ -3266,7 +3263,9 @@ def auditOrganization(request):
                     return render(request, "organization_audit.html", locals())
                 # 成功新建组织
                 html_display['warn_code'] = 2
-                html_display['warn_message'] = "已通过新建组织申请，该组织已创建！"
+                html_display['warn_message'] = "已通过新建“{oname}”{otype_name}的申请，该组织已创建！"\
+                    .format(oname = preorg.oname, otype_name = preorg.otype.otype_name)
+
                 if notification_id!=-1:
                     context = notification_status_change(notification_id)
                 if context['warn_code'] != 2:
@@ -3282,18 +3281,11 @@ def auditOrganization(request):
                     with transaction.atomic():
                         preorg.status = NewOrganization.NewOrgStatus.REFUSED
                         preorg.save()
-                        content = "很遗憾，新建组织申请未通过！"
+                        content = "很遗憾，“{oname}”{otype_name}的新建组织申请未通过！"\
+                            .format(oname = preorg.oname, otype_name = preorg.otype.otype_name)
                         receiver = preorg.pos  # 通知接收者
                         URL = ""
                         # URL = request.build_absolute_uri(URL)
-                        """# 如果老师另留有评论的话,将评论放在content里
-                        comments = preorg.comment
-                        text = ""
-                        for comment in comments.all():
-                            text += comment.text
-                        content += " 老师给你留言啦："
-                        content += text"""
-
                         new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
                                                                Notification.Title.VERIFY_INFORM, content, URL)
                         URL = "/addOrganization/?neworg_id={id}".format(id=preorg.id)
@@ -3307,7 +3299,8 @@ def auditOrganization(request):
 
                 # 拒绝成功
                 html_display['warn_code'] = 2
-                html_display['warn_message'] = "已拒绝组织申请！"
+                html_display['warn_message'] = "已拒绝“{oname}”{otype_name}的新建组织申请！"\
+                    .format(oname = preorg.oname, otype_name = preorg.otype.otype_name)
                 if notification_id != -1:
                     context = notification_status_change(notification_id)
                 # 微信通知
