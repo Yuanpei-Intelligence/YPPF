@@ -1,20 +1,15 @@
-<div class="container">
-<div class="row layout-top-spacing">
-    <div class="col-lg-12 col-12 layout-top-spacing">
-        <div class="bio layout-spacing ">
-            <div class="widget-content widget-content-area">
-                <div data-toggle="collapse" href="#help-content" role="button"
-                            aria-expanded="true" aria-controls="collapseExample">       
-                    <h3>使用帮助</h3>
-                    
-                </div>
-                <div class="collapse" id="help-content">
-                    {% for para in bar_display.help_paragraphs %}
-                        <p>{{para | safe}}</p>
-                    {% endfor %}
-                </div>
+<div class="col-lg-12 col-12 layout-top-spacing">
+    <div class="bio layout-spacing ">
+        <div class="widget-content widget-content-area">
+            <div data-toggle="collapse" href="#help-content" role="button"
+                        aria-expanded="true" aria-controls="collapseExample">       
+                <h3>使用帮助</h3>
+            </div>
+            <div class="collapse" id="help-content">
+                {% for para in bar_display.help_paragraphs %}
+                    <p>{{para | safe}}</p>
+                {% endfor %}
             </div>
         </div>
     </div>
-</div>
 </div>
