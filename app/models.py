@@ -668,7 +668,7 @@ class NewOrganization(CommentBase):
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
 
     class NewOrgStatus(models.IntegerChoices):  # 表示申请组织的请求的状态
-        PENDING = (0, "待审核")
+        PENDING = (0, "处理中")
         CONFIRMED = (1, "主管老师已同意")  # 审过同意
         TOBEMODIFIED = (2, "需要修改")
         CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
