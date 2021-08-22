@@ -3525,6 +3525,10 @@ def addReimbursement(request):
             # YQP合法性的检查
             try:
                 reimb_YQP = float(request.POST.get('YQP'))
+                if reimb_YQP<0:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "申请失败，报销的元气值不能为负值！"
+                    return render(request, "reimbursement_add.html", locals())
                 if reimb_YQP > YQP:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "申请失败，报销的元气值不能超过组织当前元气值！"
