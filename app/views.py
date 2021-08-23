@@ -2994,15 +2994,16 @@ def addOrganization(request):
                 return render(request, "organization_add.html", locals())
             # 新建组织申请
             if edit == 0:
+                with transaction.atomic():
+                    new_org = NewOrganization.objects.create(oname=context['oname'], otype=context['otype'],
+                                                             pos=context['pos'])
+                    new_org.introduction = context['introduction']
+                    if context['avatar'] is not None:
+                        new_org.avatar = context['avatar']
+                    new_org.application = context['application']
+                    new_org.save()
                 try:
-                    with transaction.atomic():
-                        new_org = NewOrganization.objects.create(oname=context['oname'], otype=context['otype'],
-                                                                 pos=context['pos'])
-                        new_org.introduction = context['introduction']
-                        if context['avatar'] is not None:
-                            new_org.avatar = context['avatar']
-                        new_org.application = context['application']
-                        new_org.save()
+                    a=1
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建预备组织信息失败。请检查输入or联系管理员"
@@ -3165,7 +3166,6 @@ def auditOrganization(request):
     if preorg.status in TERMINATE_STATUSES and notification.status==Notification.Status.UNDONE:
         #未读变已读
         notification_status_change(notification_id)
-
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # TODO: 整理页面返回逻辑，统一返回render的地方
