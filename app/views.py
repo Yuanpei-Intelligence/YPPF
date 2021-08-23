@@ -1667,6 +1667,8 @@ def viewActivity(request, aid=None):
         return redirect("/welcome/")
 
     me = utils.get_person_or_org(request.user, user_type)
+
+    # 下面这些都是展示前端页面要用的
     title = activity.title
     org = activity.organization_id
     org_name = org.oname
@@ -1692,8 +1694,7 @@ def viewActivity(request, aid=None):
         capacity = "INF"
     if activity.examine_teacher == me:
         examine = True
-
-    # 特判
+    # person 表示是否是个人而非组织
     person = False
     if user_type == "Person":
         '''
@@ -1706,11 +1707,13 @@ def viewActivity(request, aid=None):
             participant = Participant.objects.get(
                 activity_id=activity, person_id=me.id
             )
+            # pStatus 是参与状态
             pStatus = participant.status
         except:
             pStatus = "无记录"
         if pStatus == "放弃":
             pStatus = "无记录"
+    # ownership 表示是否是这个活动的所有组织
     ownership = False
     if not person and org.organization_id == request.user:
         ownership = True
