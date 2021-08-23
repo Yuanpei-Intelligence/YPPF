@@ -1,4 +1,10 @@
 <!--begin comment-->
+<style type="text/css">
+img {
+    max-width: 200px;
+    max-height:200px;
+}
+</style>
 <div id="comments_display">
     {%for comment in comments.all%}
     <div class="form-group">
@@ -8,11 +14,11 @@
             </div>
             <div>
                 <p style="color: rgb(66, 67, 68);" align="right"><i class="fa fa-address-book"></i>
-                    {{comment.commentator}}</p>
+                    评论人：{{comment.commentator}}</p>
             </div>
         </div>
 
-        <textarea name="comment" class="form-control">{{comment.text}}</textarea>
+        <textarea name="comment" class="form-control" disabled="disabled">{{comment.text}}</textarea>
         {%for image in comment.comment_photos.all%}
 
         <img width="400px" height="200px" src={{image.imagepath}}>
