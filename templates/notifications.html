@@ -1,5 +1,20 @@
 {% extends "base.html" %}
 
+{% block add_css_file %}
+<!-- 和搜索页面相同，在需要引入“使用帮助”的页面，也要在add_css_file中添加以下style -->
+<style class="text/css">
+    [data-toggle="collapse"] .fa:before {
+        font-family: 'FontAwesome';  
+        content: "\f068";
+        float: right; 
+    }
+
+    [data-toggle="collapse"].collapsed .fa:before {
+        content: "\f067"; 
+    }
+</style>
+{% endblock %}
+
 
 {% block mainpage %}
 
