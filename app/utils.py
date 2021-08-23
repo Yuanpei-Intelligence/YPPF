@@ -335,8 +335,6 @@ def get_url_params(request, html_display):
             if key not in html_display.keys():  # 禁止覆盖
                 html_display[key] = value
 
-
-# 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
 def check_neworg_request(request,org=None):
     """
 
@@ -387,6 +385,33 @@ def check_neworg_request(request,org=None):
      # 组织类型，必须有
     context['pos'] = request.user  # 负责人，必须有滴
     context['introduction'] = str(request.POST.get('introduction', ""))  # 组织介绍，可能为空
+
+    context['application'] = str(request.POST.get('application', ""))  # 申请理由
+
+    if context['application']=="" :
+        context['warn_code'] = 1
+        context['warn_msg'] = "申请理由不能为空"
+    return context
+# 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
+
+def check_newpos_request(request,prepos=None):
+
+    context = dict()
+    context['warn_code'] = 0
+    if prepos is None:
+        oname = str(request.POST['oname'])
+    else:
+        oname = prepos.position.org.oname
+    if len(oname) >= 32:
+        context['warn_code'] = 1
+        context['warn_msg'] = "组织的名字不能超过32字节"
+        return context
+    if oname=="":
+        context['warn_code'] = 1
+        context['warn_msg'] = "组织的名字不能为空"
+        return context
+    
+    context['oname'] = oname  # 组织名字
 
     context['application'] = str(request.POST.get('application', ""))  # 申请理由
 

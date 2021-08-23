@@ -250,7 +250,7 @@ class PositionManager(models.Manager):
                 )
             application.apply_status = Position.ApplyStatus.PENDING
             application.save()
-            return apply_type
+            return apply_type, application
 
 
 class Position(models.Model):
@@ -701,6 +701,34 @@ class NewOrganization(CommentBase):
         if self.introduction and self.introduction != '这里暂时没有介绍哦~':
             display.append(('组织介绍', self.introduction))
         return display
+
+class NewPosition(CommentBase):
+    class Meta:
+        verbose_name = "申请人事的信息"
+        verbose_name_plural = verbose_name
+        ordering = ["-modify_time", "-time"]
+
+    position = models.OneToOneField(
+        to=Position, related_name="new_position", on_delete=models.CASCADE
+    )
+
+    application = models.TextField(
+        "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
+    )
+    class NewPosStatus(models.IntegerChoices):  # 表示申请人事的请求的状态
+        PENDING = (0, "处理中")
+        CONFIRMED = (1, "已通过")  
+        CANCELED = (2, "已取消")  
+        REFUSED = (3, "已拒绝")
+
+    status = models.SmallIntegerField(choices=NewPosStatus.choices, default=0)
+    
+    def __str__(self):
+        return f'{self.position.org.oname}人事申请'
+
+    def save(self, *args, **kwargs):
+        self.typename = "newposition"
+        super().save(*args, **kwargs)
 
 
 class Reimbursement(CommentBase):

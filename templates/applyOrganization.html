@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block mainpage %}
+
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+        <!--  BEGIN CUSTOM STYLE FILE  -->
+        <link rel="stylesheet" type="text/css" href="{% static "plugins/dropify/dropify.min.css" %}">
+        <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
+        <!--  END CUSTOM STYLE FILE  -->
+        <div class="container">
+            <div class="container">
+                {% if html_display.warn_code == 2 %}
+                <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+                {% elif html_display.warn_code == 1%}
+                <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+                {% endif %}
+                <div class="row layout-top-spacing">
+
+                    <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+                        <div class="row">
+                            <div class="col-md-12 mb-4">
+                                <div class="statbox widget box box-shadow">
+
+                                    <!--  BEGIN HEADER AREA  -->
+                                    <div class="widget-header">
+                                        <div class="row">
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                <h4>请填写加入组织的相关信息</h4>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!--  BEGIN CONTENT AREA  -->
+                                    <div class="widget-content widget-content-area">
+
+                                        <form role="form" method="POST" enctype="multipart/form-data">
+                                            <div class="form-group">
+                                                <label>组织名称</label>
+                                                {%if present%}
+                                                <textarea type="text" name="oname" class="form-control"
+                                                          aria-label="Default" placeholder="不超过32个字节"
+                                                           disabled="disabled" >{{html_display.oname}}</textarea>
+
+                                                {%else%}
+                                                <input type="text" name="oname" class="form-control"
+                                                       aria-label="Default" placeholder="不超过32个字节">
+                                                {%endif%}
+                                            </div>
+                                            
+                                            <div class="form-group">
+                                                <label for="aintro">申请理由</label>
+                                                <textarea name="application" class="form-control" rows="3" placeholder=
+                                                        "申请理由不能为空"{%if edit == 0 and present == 1 %} disabled="disabled" {%endif%}
+                                                >{% if edit %}{{html_display.application}}{% endif %}</textarea>
+                                            </div>
+                                            {%if edit%}
+                                            <div align="center">
+                                                <table>
+                                                    <tr>
+                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                    value="">修改并提交</button>
+                                                    </tr>
+                                                    <tr>
+                                                        <button type="submit" class="btn btn-warning btn-lg mb-4 mr-2"
+                                                    value="1" name="cancel_submit">取消申请</button>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                            {% elif present == 0 %}
+                                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
+                                                    value="">
+                                                提交
+                                            </button>
+                                            {%endif%}
+                                        </form>
+                                        <br>
+                                        <hr>
+                                    {% include 'comment.html' %}
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <!--  END CONTENT AREA  -->
+
+
+{% endblock %}
+
+{% block load_js_file %}
+    <!-- BEGIN GLOBAL MANDATORY SCRIPTS -->
+    <script src={% static "assets/js/libs/jquery-3.1.1.min.js" %}></script>
+    <script src={% static "bootstrap/js/popper.min.js" %}></script>
+    <script src={% static "bootstrap/js/bootstrap.min.js" %}></script>
+    <script src={% static "plugins/perfect-scrollbar/perfect-scrollbar.min.js" %}></script>
+    <script src={% static "assets/js/app.js" %}></script>
+
+    <script>
+        $(document).ready(function() {
+            App.init();
+        });
+    </script>
+    <script src={% static "assets/js/custom.js" %}></script>
+    <!-- END GLOBAL MANDATORY SCRIPTS -->
+
+    <!--  BEGIN CUSTOM SCRIPTS FILE  -->
+
+    <script src={% static "plugins/dropify/dropify.min.js" %}></script>
+    <script src={% static "plugins/blockui/jquery.blockUI.min.js" %}></script>
+    <!-- <script src="plugins/tagInput/tags-input.js"></script> -->
+    <script src={% static "assets/js/users/account-settings.js" %}></script>
+    <!--  END CUSTOM SCRIPTS FILE  -->
+{% endblock %}
+
+
+
+
