@@ -149,7 +149,7 @@ def get_sidebar_and_navbar(user,  navbar_name = "", title_name = "", bar_display
         bar_display["profile_url"] = "/orginfo/"
 
     bar_display["navbar_name"] = navbar_name
-    bar_display["title_name"] = title_name if not title_name else navbar_name # title_name默认与navbar_name相同
+    bar_display["title_name"] = title_name if title_name else navbar_name # title_name默认与navbar_name相同
 
     if navbar_name != "":
         bar_display["help_message"] = local_dict["help_message"].get(navbar_name, "")
