@@ -718,11 +718,20 @@ def account_setting(request):
     me = utils.get_person_or_org(user, user_type)
     former_img = utils.get_user_ava(me, user_type)
 
+    # 补充网页呈现所需信息
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "Account Setting"
+    bar_display["navbar_name"] = "账户设置"
+    bar_display["help_message"] = local_dict["help_message"]["账户设置"]
+
     if user_type == "Person":
         info = NaturalPerson.objects.filter(person_id=user)
         userinfo = info.values()[0]
 
         useroj = NaturalPerson.objects.get(person_id=user)
+
+        former_wallpaper = utils.get_user_wallpaper(me)
 
         # print(json.loads(request.body.decode("utf-8")))
         if request.method == "POST" and request.POST:
@@ -739,6 +748,7 @@ def account_setting(request):
             attr_dict['stu_dorm'] = request.POST['dorm']
 
             ava = request.FILES.get("avatar")
+            wallpaper = request.FILES.get("wallpaper")
             gender = request.POST['gender']
 
             show_dict = dict()
@@ -751,7 +761,8 @@ def account_setting(request):
             show_dict['show_major'] = request.POST.get('show_major') == 'on'
             show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
 
-            expr = bool(ava or (gender != useroj.get_gender_display()))
+            expr = bool(ava or wallpaper or (
+                gender != useroj.get_gender_display()))
             expr += bool(sum(
                 [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()]))
             expr += bool(sum([getattr(useroj, show_attr) != show_dict[show_attr]
@@ -765,16 +776,18 @@ def account_setting(request):
             for show_attr in show_dict.keys():
                 if getattr(useroj, show_attr) != show_dict[show_attr]:
                     setattr(useroj, show_attr, show_dict[show_attr])
-            if ava is None:
-                pass
-            else:
+            if ava is not None:
                 useroj.avatar = ava
-            useroj.save()
-            avatar_path = settings.MEDIA_URL + str(ava)
+            if wallpaper is not None:
+                useroj.wallpaper = wallpaper
             if expr >= 1:
+                useroj.save()
                 upload_state = True
                 return redirect("/stuinfo/?modinfo=success")
-            # else: 没有更新 从下面统一返回
+            # else: 没有更新
+
+        return render(request, "person_account_setting.html", locals())
+
     else:
         info = Organization.objects.filter(organization_id=user)
         userinfo = info.values()[0]
@@ -804,18 +817,8 @@ def account_setting(request):
             if expr >= 1:
                 upload_state = True
                 return redirect("/orginfo/?modinfo=success")
-            # else: 没有修改信息 统一从下面返回
+            # else: 没有更新
 
-    # 补充网页呈现所需信息
-    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "Account Setting"
-    bar_display["navbar_name"] = "账户设置"
-    bar_display["help_message"] = local_dict["help_message"]["账户设置"]
-
-    if user_type == "Person":
-        return render(request, "person_account_setting.html", locals())
-    else:
         return render(request, "org_account_setting.html", locals())
 
 
