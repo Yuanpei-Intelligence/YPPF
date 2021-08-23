@@ -1,6 +1,18 @@
 {% extends "base.html" %}
 
+{% block add_css_file %}
+<style class="text/css">
+    [data-toggle="collapse"] .fa:before {
+        font-family: 'FontAwesome';  
+        content: "\f068";
+        float: right; 
+    }
 
+    [data-toggle="collapse"].collapsed .fa:before {
+        content: "\f067"; 
+    }
+</style>
+{% endblock %}
 {% block mainpage %}
 
 
