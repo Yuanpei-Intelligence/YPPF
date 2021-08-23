@@ -337,7 +337,7 @@ def get_url_params(request, html_display):
 
 
 # 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
-def check_neworg_request(request,org=None):
+def check_neworg_request(request, org=None):
     """
 
     """
@@ -349,18 +349,11 @@ def check_neworg_request(request,org=None):
         context['warn_code'] = 1
         context['warn_msg'] = "组织的名字不能超过32字节"
         return context
-    if oname=="":
+    if oname == "":
         context['warn_code'] = 1
         context['warn_msg'] = "组织的名字不能为空"
         return context
-    if org is not None and oname==org.oname:
-        if len(NewOrganization.objects.exclude(status=NewOrganization.NewOrgStatus.CANCELED)
-                       .exclude(status=NewOrganization.NewOrgStatus.REFUSED).filter(oname=oname)) > 1 \
-                or len(Organization.objects.filter(oname=oname)) != 0:
-            context['warn_code'] = 1
-            context['warn_msg'] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
-            return context
-    else:
+    if org is None or oname != org.oname:
         if len(NewOrganization.objects.exclude(status=NewOrganization.NewOrgStatus.CANCELED)
                        .exclude(status=NewOrganization.NewOrgStatus.REFUSED).filter(oname=oname))!=0 \
                         or len(Organization.objects.filter(oname=oname))!=0:
