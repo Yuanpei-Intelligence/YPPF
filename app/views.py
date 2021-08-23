@@ -2908,11 +2908,7 @@ def addOrganization(request):
                                                   str(new_notification.id))
                         URL = "/auditOrganization?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(
                             id=new_org.id, nid=new_notification.id, en_pw=en_pw)
-<<<<<<< .merge_file_ibW3IB
-                        URL = request.build_absolute_uri(URL)
-=======
                         # URL = request.build_absolute_uri(URL)
->>>>>>> .merge_file_ePOnNB
                         new_notification.URL = URL
                         new_notification.save()
                 except:
