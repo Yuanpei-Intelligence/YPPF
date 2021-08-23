@@ -56,10 +56,29 @@
                         </div>
                     </div>
                     <!--  想做一个类似Facebook的日历小标签，TODO  -->
+                    <div class="col-lg-4 col-md-4 mb-5">
+                        <div style="position: relative; width: 150px; height: 150px;">
+                            <div style="position: relative; width: 100%; height: 100%;">
+                                <img src={% static "assets/img/calendaricon.png" %} style="width: 100%; height: 100%; position: relative; clear: both;" alt="">
+                            </div>
+                            <div class = "font-weight-bold text-center" 
+                            style="position: relative;
+                            font-size:50px;
+                            font-family: 'Times New Roman', Times, serif; 
+                            color: black; 
+                            clear: both;
+                            width: 100%;
+                            top: -60%;
+                            text-align: center;
+                            vertical-align: middle;">{{start_THEDAY}}</div>
+                        </div>
+                    </div>
+
                 </div>
+
                 <div class="row layout-top-spacing">
 
-                        <div class="col-xl-8 col-lg-6 col-md-7 col-sm-12 layout-top-spacing">
+                        <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12 layout-top-spacing">
     
                             <div class="col-lg-12 col-md-12 mb-5 p-0">
                                 <div class="statbox widget box box-shadow">
@@ -82,6 +101,8 @@
                                                 <span class="badge badge-pill badge-warning">审核中</span> 
                                                 {% elif status == "等待中" %}
                                                 <span class="badge badge-pill badge-info">等待中</span>
+                                                {% elif status == "已取消" or status == "已结束" %}
+                                                <span class="badge badge-pill badge-danger">{{status}}</span>
                                                 {% else %}
                                                 <span class="badge badge-pill badge-success">{{status}}</span>
                                                 {% endif %}
@@ -157,7 +178,7 @@
                                             <div>
                                             {% if person %}
                                                 {% if pStatus == "无记录" and status == "报名中" and bidding == True %}
-                                                <button class="btn btn-primary btn-block mb-4 mr-2" data-toggle="collapse" data-target="#extend-area">
+                                                <button class="btn btn-primary btn-block mb-4 mr-2" data-toggle="collapse" data-target="#bidding">
                                                     立即报名
                                                 </button>
                                                 {% elif pStatus == "无记录" and status == "报名中" and bidding == False %}
@@ -192,6 +213,11 @@
                                                 <a href="javascript:void(0);" class="btn btn-danger btn-block mb-4 mr-2">已退出</a>
                                                 {% endif %}
                                             {% elif ownership %}
+                                                {% if status == "已结束" %}
+                                                    <button class="btn btn-success btn-block mb-4 mr-2" data-toggle="collapse" data-target="#summaryphoto">
+                                                        上传总结照片
+                                                    </button>
+                                                {% endif %}
                                             <form method="POST">
                                                 <input type="hidden" name="option" value="edit">
                                                 <input type="hidden" name="aid" value={{aid}}>
@@ -211,7 +237,7 @@
                                             </div>
     
                                             <!--  如果要投点报名，则展示下面的部分  -->
-                                            <div id="extend-area" class="collapse">
+                                            <div id="bidding" class="collapse">
                                                 <form method="POST">
                                                     <input type="hidden" name="option" value="apply">
                                                     <input type="hidden" name="aid" value={{aid}}>
@@ -222,6 +248,20 @@
                                                             οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')">
                                                     <br/>
                                                     <button class="btn btn-primary btn-block mb-4 mr-2">确认报名</button>
+                                                </form>
+                                            </div>
+
+                                            <!--  如果要上传照片，则展示下面的部分  -->
+                                            <div id="summaryphoto" class="collapse">
+                                                <form method="POST" enctype="multipart/form-data">
+                                                    <input type="hidden" name="option" value="submitphoto">
+                                                    <input type="hidden" name="aid" value={{aid}}>
+                                                    <p>上传活动照片(请上传长:宽>3:2的横长方形图片)</p>
+                                                    <label title="活动总结照片">
+                                                        <input type="file" accept="image/*" name="images" multiple>
+                                                    </label>
+                                                    <br/><br/>
+                                                    <button class="btn btn-primary btn-block mb-4 mr-2">确认上传</button>
                                                 </form>
                                             </div>
     
@@ -256,7 +296,7 @@
                         </div>
                         
                         <!--  二维码展示模块  -->
-                        <div class="col-xl-4 col-lg-6 col-md-5 col-sm-12 layout-top-spacing">
+                        <div class="col-xl-4 col-lg-4 col-md-5 col-sm-12 layout-top-spacing">
                             <div class="container">
                                 <div class="row col-lg-12 col-md-12 mb-5 p-0">
                                 <div class="statbox widget box box-shadow">
