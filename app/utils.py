@@ -111,7 +111,12 @@ def get_org_left_navbar(org, is_myself, html_display):
 # user对象是request.user对象直接转移
 # 内容存储在bar_display中
 # Attention: 本函数请在render前的最后时刻调用
-def get_sidebar_and_navbar(user, bar_display = None):
+
+# added by syb, 8.23: 
+# 在函数中添加了title_name和navbar_name参数，根据这两个参数添加帮助信息
+# 现在最推荐的调用方式是：在views的函数中，写
+# bar_display = utils.get_sidebar_and_navbar(user, title_name, navbar_name)
+def get_sidebar_and_navbar(user,  navbar_name = "", title_name = "", bar_display = None):
     if bar_display is None:
         bar_display = {}            # 默认参数只会初始化一次，所以不应该设置为{}
     me = get_person_or_org(user)    # 获得对应的对象
@@ -142,6 +147,13 @@ def get_sidebar_and_navbar(user, bar_display = None):
     else:
         bar_display["profile_name"] = "组织主页"
         bar_display["profile_url"] = "/orginfo/"
+
+    bar_display["navbar_name"] = navbar_name
+    bar_display["title_name"] = title_name if not title_name else navbar_name # title_name默认与navbar_name相同
+
+    if navbar_name != "":
+        bar_display["help_message"] = local_dict["help_message"].get(navbar_name, "")
+        bar_display["help_paragraphs"] = local_dict["use_help"].get(navbar_name, list())
     
     return bar_display
 
