@@ -773,7 +773,7 @@ class Reimbursement(CommentBase):
 
     def extra_display(self):
         display = []
-        display.append(('报销金额', self.amount, 'jpy'))
+        display.append(('报销金额', str(self.amount) + '元', 'money'))
         if self.message:
             display.append(('备注', self.message))
         return display
