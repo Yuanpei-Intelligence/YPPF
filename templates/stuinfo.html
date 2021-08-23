@@ -398,43 +398,44 @@
 
                         <div class="timeline-alter bio bio-skill-box">
 
-                            {% if html_display.activity_len == 0 %}
-                            <p>没有参与的活动</p>
-                            {% endif %}
-
-                            {% for activity, status, same, activity_c, attend_c in html_display.activity_info %}
-                            <div
-                                class="item-timeline custom-activity-card custom-activity-issame-{{ same }} overflow-auto">
+                            {% if html_display.activity_info is None %}
+                            <p style="text-align: center;">没有参与的活动</p>
+                            {% else %}
+                            <p id="custom-activity-none" style="display: none; text-align: center;">没有共同的活动</p>
+                            {% for a, start, end, status, same, activity_c, attend_c in html_display.activity_info %}
+                            <div class="item-timeline custom-activity-card custom-activity-issame-{{ same }}">
                                 <div class="t-meta-date">
-                                    <p class="">{{ activity.start }}</p>
+                                    <p>{{ start }}-</p>
+                                    <p>{{ end }}&nbsp;</p>
                                 </div>
                                 <div class="t-dot" data-original-title="" title="">
                                 </div>
                                 <div class="t-text col-lg-8 col-md-12">
-                                    <div class="row b-skills pr-0">
-                                        <div class="col-4">
-                                            <a class="row m-0" href="/viewActivity/{{ activity.id }}">
+                                    <div class="row b-skills px-0">
+                                        <div class="col-6 ml-2">
+                                            <a class="row m-0" href="/viewActivity/{{ a.id }}">
                                                 <h5
                                                     style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                    <u>{{ activity.title }}</u>
+                                                    <span class="text-{{ activity_c }} mr-1">
+                                                        [{{ a.status }}]
+                                                    </span>
+                                                    <u>{{ a.title }}元培学院2020级本科生军训</u>
                                                 </h5>
                                             </a>
-                                            <p class="row">
-                                                <span class="mr-1">{{ activity.organization_id }}</span>
-                                                |
-                                                <span class="ml-1 text-{{ activity_c }}">{{ activity.status }}</span>
+                                            <p class="row ml-0">
+                                                <span class="mr-1">{{ a.organization_id }}</span>
                                             </p>
                                         </div>
-                                        <div class="row col-8 pr-0">
-                                            <p class="col-9"
-                                                style="line-height: 20px; height: 50px; overflow: scroll; word-wrap: break-word;">
-                                                {% if activity.introduction == '' %}
+                                        <div class="row col-6 pr-0">
+                                            <p class="col-7"
+                                                style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                {% if a.introduction == '' %}
                                                 没有介绍～
                                                 {% else %}
-                                                {{ activity.introduction }}
+                                                {{ a.introduction }}
                                                 {% endif %}
                                             </p>
-                                            <p class="col-3 text-{{ attend_c }} float-right pr-0">
+                                            <p class="col-5 text-{{ attend_c }} float-right pr-2">
                                                 {{ status }}
                                             </p>
                                         </div>
@@ -443,6 +444,7 @@
                             </div>
                             {% endfor %}
 
+                            {% endif %}
                         </div>
                     </div>
                 </div>

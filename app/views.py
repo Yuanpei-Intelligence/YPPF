@@ -291,7 +291,8 @@ def stuinfo(request, name=None):
         is_myself = user_type == "Person" and person.person_id == user  # 用一个字段储存是否是自己
         html_display["is_myself"] = is_myself  # 存入显示
 
-        # 组织卡片
+        # ----------------------------------- 组织卡片 ----------------------------------- #
+
         person_poss = Position.objects.activated().filter(Q(person=person))
         person_orgs = Organization.objects.filter(
             id__in=person_poss.values("org"))               # ta属于的组织
@@ -341,10 +342,15 @@ def stuinfo(request, name=None):
         html_display['hidden_orgs_info'] = list(zip(
             person_hidden_orgs, person_hidden_orgs_ava, person_hidden_orgs_pos, person_hidden_orgs_status)) or None
 
-        # 制作参与活动的卡片（时间，名称（+链接），组织，地点，介绍，状态）
+        # ----------------------------------- 活动卡片 ----------------------------------- #
+
         participants = Participant.objects.filter(person_id=person.id)
         activities = Activity.objects.filter(
             Q(id__in=participants.values('activity_id')), ~Q(status=Activity.Status.CANCELED))
+        activities_start = [activity.start.strftime(
+            '%m月%d日 %H:%M') for activity in activities]
+        activities_end = [activity.end.strftime(
+            '%m月%d日 %H:%M') for activity in activities]
         if user_type == 'Person':
             activities_me = Participant.objects.filter(
                 person_id=person.id).values('activity_id')
@@ -384,6 +390,8 @@ def stuinfo(request, name=None):
         activity_info = list(
             zip(
                 activities,
+                activities_start,
+                activities_end,
                 participate_status_list,
                 activity_is_same,
                 activity_color_list,
@@ -391,8 +399,7 @@ def stuinfo(request, name=None):
             )
         )
         activity_info.sort(key=lambda a: a[0].start, reverse=True)
-        html_display["activity_info"] = activity_info
-        html_display["activity_len"] = len(html_display["activity_info"])
+        html_display["activity_info"] = list(activity_info) or None
 
         # 警告呈现信息
 
