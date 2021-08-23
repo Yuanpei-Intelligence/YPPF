@@ -2772,6 +2772,10 @@ def addComment(request, comment_base):
         text = str(request.POST.get('comment'))
         # 检查图片合法性
         comment_images = request.FILES.getlist('comment_images')
+        if text=="" and comment_images is None:
+            context['warn_code'] = 1
+            context['warn_message'] = "评论内容为空，无法评论！"
+            return context
         if len(comment_images) > 0:
             for comment_image in comment_images:
                 if utils.if_image(comment_image) == False:
@@ -2897,16 +2901,7 @@ def addOrganization(request):
     bar_display["title_name"] = "新建组织"
     bar_display["navbar_name"] = "新建组织"
 
-    if present:  # 展示信息
-        comments = preorg.comments.order_by("time")
-        html_display['oname'] = preorg.oname
-        html_display['otype_id'] = preorg.otype.otype_id    #
-        html_display['otype_name'] = preorg.otype.otype_name  #
-        html_display['pos'] = preorg.pos    #组织负责人的呈现 TODO:主页可点击头像 学号+姓名
-        html_display['introduction'] = preorg.introduction#组织介绍
-        html_display['application'] = preorg.application#组织申请信息
-        html_display['status']=preorg.status #状态名字
-        org_avatar_path=utils.get_user_ava(preorg, "Organization")#组织头像
+
     org_types=OrganizationType.objects.order_by("-otype_id").all()#当前组织类型，前端展示需要
 
     if request.method == "POST" and request.POST:
@@ -2921,8 +2916,10 @@ def addOrganization(request):
                         text = str(context['new_comment'].text)
                         if len(text) >= 32:
                             text = text[:31] + "……"
-                        content = "“{oname}”{otype_name}的新建组织申请有了新的评论：“{text}” ".format(
-                                oname=preorg.oname, otype_name=preorg.otype.otype_name,text=text)
+                        content = "“{oname}”{otype_name}的新建组织申请有了新的评论 ".format(
+                                oname=preorg.oname, otype_name=preorg.otype.otype_name)
+                        if text!="":
+                            content+=":”{text}“".format(text=text)
                         Auditor = preorg.otype.incharge.person_id    #审核老师
                         URL = ""
                         new_notification = notification_create(Auditor, request.user, Notification.Type.NEEDREAD,
@@ -2941,6 +2938,8 @@ def addOrganization(request):
                     publish_notification(new_notification)
                 else:
                     publish_notification(new_notification.id)
+                html_display['warn_code'] = 2
+                html_display['warn_message'] = "评论成功！"
                 return render(request, "organization_add.html", locals())
         else:#取消+新建+修改
             #取消
@@ -3102,6 +3101,16 @@ def addOrganization(request):
                                 '?warn_code={}&warn_message={}'.format(
                                     html_display['warn_code'], html_display['warn_message']))
 
+    if present:  # 展示信息
+        comments = preorg.comments.order_by("time")
+        html_display['oname'] = preorg.oname
+        html_display['otype_id'] = preorg.otype.otype_id    #
+        html_display['otype_name'] = preorg.otype.otype_name  #
+        html_display['pos'] = preorg.pos    #组织负责人的呈现 TODO:主页可点击头像 学号+姓名
+        html_display['introduction'] = preorg.introduction#组织介绍
+        html_display['application'] = preorg.application#组织申请信息
+        html_display['status']=preorg.status #状态名字
+        org_avatar_path=utils.get_user_ava(preorg, "Organization")#组织头像
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织"
@@ -3158,15 +3167,7 @@ def auditOrganization(request):
     if preorg.status in TERMINATE_STATUSES and notification.status==Notification.Status.UNDONE:
         #未读变已读
         notification_status_change(notification_id)
-    # 以下需要在前端呈现
-    comments = preorg.comments.order_by('time')  # 加载评论
-    html_display['oname'] = preorg.oname
-    html_display['otype_name'] = preorg.otype.otype_name
-    html_display['applicant'] = utils.get_person_or_org(preorg.pos)
-    html_display["app_avatar_path"] = utils.get_user_ava(html_display['applicant'],"Person")
-    html_display['introduction'] = preorg.introduction
-    html_display['application'] = preorg.application
-    org_avatar_path = utils.get_user_ava(preorg, "Organization")
+
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # TODO: 整理页面返回逻辑，统一返回render的地方
@@ -3187,8 +3188,10 @@ def auditOrganization(request):
                     text = str(context['new_comment'].text)
                     if len(text)>=32:
                         text=text[:31]+"……"
-                    content = "{teacher_name}老师给您的组织申请留有新的评论：“{text}“ ".format(
-                         teacher_name=me.name,text=text)
+                    content = "{teacher_name}老师给您的组织申请留有新的评论 ".format(
+                         teacher_name=me.name)
+                    if text != "":
+                        content += ":“{text}”'".format(text=text)
                     receiver = preorg.pos  # 通知接收者
                     URL = ""
                     new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
@@ -3207,6 +3210,8 @@ def auditOrganization(request):
                 publish_notification(new_notification)
             else:
                 publish_notification(new_notification.id)
+            html_display['warn_code'] = 2
+            html_display['warn_message'] = "评论成功！"
             return render(request, "organization_audit.html", locals())
 
         # 对于审核老师来说，有三种操作，通过，申请需要修改和拒绝
@@ -3313,6 +3318,15 @@ def auditOrganization(request):
                 html_display['warn_message'] = "提交出现无法处理的未知参数，请联系管理员。"
                 return render(request, "organization_audit.html", locals())
 
+    # 以下需要在前端呈现
+    comments = preorg.comments.order_by('time')  # 加载评论
+    html_display['oname'] = preorg.oname
+    html_display['otype_name'] = preorg.otype.otype_name
+    html_display['applicant'] = utils.get_person_or_org(preorg.pos)
+    html_display["app_avatar_path"] = utils.get_user_ava(html_display['applicant'], "Person")
+    html_display['introduction'] = preorg.introduction
+    html_display['application'] = preorg.application
+    org_avatar_path = utils.get_user_ava(preorg, "Organization")
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织审核"
@@ -3456,8 +3470,11 @@ def addReimbursement(request):
                         text = str(context['new_comment'].text)
                         if len(text) >= 32:
                             text = text[:31] + "……"
-                        content = "“{act_name}”的经费申请有了新的评论：“{text}” ".format(
-                                act_name=pre_reimb.activity.title,text=text)
+
+                        content = "“{act_name}”的经费申请有了新的评论".format(
+                                act_name=pre_reimb.activity.title)
+                        if text!="":
+                            content+=":”{text}“".format(text=text)
                         URL = ""
                         new_notification = notification_create(Auditor, request.user, Notification.Type.NEEDREAD,
                                                                Notification.Title.VERIFY_INFORM, content, URL)
@@ -3475,6 +3492,8 @@ def addReimbursement(request):
                     publish_notification(new_notification)
                 else:
                     publish_notification(new_notification.id)
+                html_display['warn_code'] = 2
+                html_display['warn_message'] = "评论成功！"
                 return render(request, "reimbursement_add.html", locals())
 
         else:  # 取消+新建+修改
@@ -3737,8 +3756,10 @@ def auditReimbursement(request):
                     text = str(context['new_comment'].text)
                     if len(text)>=32:
                         text=text[:31]+"……"
-                    content = "{teacher_name}老师给您的经费申请留有新的评论：“{text}“ ".format(
-                         teacher_name=me.name,text=text)
+                    content = "{teacher_name}老师给您的经费申请留有新的评论".format(
+                         teacher_name=me.name)
+                    if text != "":
+                        content += ":”{text}“".format(text=text)
                     receiver = new_reimb.pos  # 通知接收者
                     URL = ""
                     new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
@@ -3757,6 +3778,8 @@ def auditReimbursement(request):
                 publish_notification(new_notification)
             else:
                 publish_notification(new_notification.id)
+            html_display['warn_code'] = 2
+            html_display['warn_message'] = "评论成功！"
             return render(request, "reimbursement_comment.html", locals())
 
         # 审核老师的两种操作：通过，和拒绝
