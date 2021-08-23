@@ -151,7 +151,7 @@ def get_sidebar_and_navbar(user, bar_display = None):
 
     if navbar_name != "":
         bar_display["help_message"] = local_dict["help_message"].get(navbar_name, "")
-        bar_display["help_paragraphs"] = local_dict["help_paras"].get(navbar_name, list())
+        bar_display["help_paragraphs"] = local_dict["use_help"].get(navbar_name, list())
     
     return bar_display
 
