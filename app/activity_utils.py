@@ -290,6 +290,8 @@ def modify_accepted_activity(request, activity):
     else:
         capacity = int(request.POST['capacity'])
         assert capacity > 0
+        if capacity < len(Participant.objects.filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)):
+            raise ActivityException(f"当前成功报名人数已超过{capacity}人")
     activity.capacity = capacity
 
     activity.end = datetime.strptime(request.POST["actend"], '%m/%d/%Y %H:%M %p')
@@ -340,9 +342,8 @@ def accept_activity(request, activity):
 
     # 通知
     notifyActivity(activity.id, "newActivity")
-    scheduler.add_job(notifyActivity, 'date', id=c,
+    scheduler.add_job(notifyActivity, 'date', id=f"activity_{activity.id}_remind",
         run_date=activity.act_start - timedelta(minutes=15), args=[activity.id, 'remind'], replace_existing=True)
-
     # 活动状态修改
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
         run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
