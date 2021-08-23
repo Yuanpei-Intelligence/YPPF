@@ -2916,8 +2916,8 @@ def addOrganization(request):
                         text = str(context['new_comment'].text)
                         if len(text) >= 32:
                             text = text[:31] + "……"
-                        content = "“{oname}”{otype_name}的新建组织申请有了新的评论 ".format(
-                                oname=preorg.oname, otype_name=preorg.otype.otype_name)
+                        content = "“{oname}”的新建组织申请有了新的评论 ".format(
+                                oname=preorg.oname)
                         if text!="":
                             content+=":”{text}“".format(text=text)
                         Auditor = preorg.otype.incharge.person_id    #审核老师
@@ -2951,7 +2951,7 @@ def addOrganization(request):
                         preorg.save()
                     try:
                         with transaction.atomic():
-                            content = "“{oname}”{otype_name}的新建组织申请已取消".format(
+                            content = "“{oname}”的新建组织申请已取消".format(
                                 oname=preorg.oname, otype_name=preorg.otype.otype_name)
                             # 在local_json.json新增审批人员信息,暂定为YPadmin
                             Auditor = preorg.otype.incharge.person_id    #审核老师
@@ -3010,8 +3010,7 @@ def addOrganization(request):
 
                 try:
                     with transaction.atomic():
-                        content = "新建组织申请：“{oname}”{otype_name}".format(
-                            oname=new_org.oname, otype_name=new_org.otype.otype_name)
+                        content = "新建组织申请：“{oname}”".format(oname=new_org.oname)
                         # 审核人员信息,暂定为各个otype的incharge
                         Auditor = new_org.otype.incharge.person_id    #审核老师
                         URL = ""
@@ -3063,8 +3062,7 @@ def addOrganization(request):
                 # 发送通知
                 try:
                     with transaction.atomic():
-                        content = "“{oname}”{otype_name}修改了申请材料，请您继续审核！".format(
-                            oname=preorg.oname, otype_name=preorg.otype.otype_name)
+                        content = "新建组织“{oname}”的材料已修改，请您继续审核！".format(oname=preorg.oname)
                         # 审核人员信息,暂定为各个otype的incharge
                         Auditor = preorg.otype.incharge.person_id  # 审核老师
                         URL = ""
@@ -3285,8 +3283,8 @@ def auditOrganization(request):
                     with transaction.atomic():
                         preorg.status = NewOrganization.NewOrgStatus.REFUSED
                         preorg.save()
-                        content = "很遗憾，“{oname}”{otype_name}的新建组织申请未通过！"\
-                            .format(oname = preorg.oname, otype_name = preorg.otype.otype_name)
+                        content = "很遗憾，新建组织“{oname}”的申请未通过！"\
+                            .format(oname = preorg.oname)
                         receiver = preorg.pos  # 通知接收者
                         URL = ""
                         # URL = request.build_absolute_uri(URL)
@@ -3303,7 +3301,7 @@ def auditOrganization(request):
 
                 # 拒绝成功
                 html_display['warn_code'] = 2
-                html_display['warn_message'] = "已拒绝“{oname}”{otype_name}的新建组织申请！"\
+                html_display['warn_message'] = "已拒绝新建组织“{oname}“的申请！"\
                     .format(oname = preorg.oname, otype_name = preorg.otype.otype_name)
                 if notification_id != -1:
                     context = notification_status_change(notification_id)
@@ -3470,7 +3468,6 @@ def addReimbursement(request):
                         text = str(context['new_comment'].text)
                         if len(text) >= 32:
                             text = text[:31] + "……"
-
                         content = "“{act_name}”的经费申请有了新的评论".format(
                                 act_name=pre_reimb.activity.title)
                         if text!="":
