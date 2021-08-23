@@ -3174,6 +3174,8 @@ def applyOrganization(request):
         html_display['application'] = prepos.application#组织申请信息
         html_display['status']=prepos.status #状态名字
         html_display['oname']=prepos.position.org.oname
+        html_display['apply_pos']=prepos.apply_pos
+        html_display['apply_type']=prepos.apply_type
 
     if request.method == "POST" and request.POST:
         if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
@@ -3240,9 +3242,21 @@ def applyOrganization(request):
             # 新建人事申请
             if edit == 0:
                 org = Organization.objects.get(oname=context['oname'])
-                _, pos = Position.objects.create_application(me, org, apply_type='JOIN', apply_pos=10)
+                apply_pos = context['apply_pos']
+                apply_type = context['apply_type']
                 try:
-                    new_pos = NewPosition.objects.create(position=pos, application=context['application'],status=NewPosition.NewPosStatus.PENDING)
+                    _, pos = Position.objects.create_application(me, org, apply_type=apply_type, apply_pos=apply_pos)
+                except:
+                    html_display['warn_code'] = 1
+                    if apply_type == 'JOIN':
+                        html_display['warn_message'] = "您已加入该组织，不能重复加入！"
+                    elif apply_type == 'TRANSFER':
+                        html_display['warn_message'] = "您未加入该组织，不能交接职务！"
+                    elif apply_type == 'WITHDRAW':
+                        html_display['warn_message'] = "您未加入该组织，不能退出该组织！"
+                    return render(request, "applyOrganization.html", locals())
+                try:
+                    new_pos = NewPosition.objects.create(position=pos, application=context['application'],status=NewPosition.NewPosStatus.PENDING,apply_pos=apply_pos,apply_type=apply_type)
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建人事申请信息失败。请检查输入or联系管理员"
@@ -3335,8 +3349,12 @@ def applyOrganization(request):
                                     html_display['warn_code'], html_display['warn_message']))
                     
 
-                
-                
+    if request.GET.get("org") is not None:
+        exist_org = True
+        html_display['default_oname'] = Organization.objects.get(organization_id__id=request.GET.get("org")).oname
+    else:
+        exist_org = False
+        
             
     return render(request, "applyOrganization.html", locals())
 
@@ -3393,6 +3411,8 @@ def auditPosition(request):
     # 以下需要在前端呈现
     comments = prepos.comments.order_by('time')  # 加载评论
     html_display['oname'] = prepos.position.org.oname
+    html_display['apply_pos'] = prepos.apply_pos
+    html_display['apply_type'] = prepos.apply_type
     html_display['applicant'] = utils.get_person_or_org(prepos.position.person.person_id)
     html_display["app_avatar_path"] = utils.get_user_ava(html_display['applicant'],"Person")
     html_display['application'] = prepos.application
@@ -3422,7 +3442,7 @@ def auditPosition(request):
                             application.pos = application.apply_pos
                         elif application.apply_type == Position.ApplyType.WITHDRAW:
                             application.status = Position.Status.DEPART
-                        elif application.apply_type == Position.AppltType.TRANSFER:
+                        elif application.apply_type == Position.ApplyType.TRANSFER:
                             application.pos = application.apply_pos
                         application.apply_status = Position.ApplyStatus.PASS
                         application.save()
@@ -3436,8 +3456,7 @@ def auditPosition(request):
                 
                 try:  # 发送给申请者的通过通知
                     with transaction.atomic():
-                        content = "新建人事申请已通过，组织名为 “{oname}” ，您的职务为 “{position}” ，请尽快登录修改密码。" \
-                                  "登录方式：(1)在负责人账户点击左侧“切换账号”；(2)从登录页面用组织编号或组织名称以及密码登录。" \
+                        content = "新建人事申请已通过，组织名为 “{oname}” ，您的职务为 “{position}”。恭喜！"\
                             .format(oname=application.org.oname, position=application.pos)
                         receiver = application.person.person_id  # 通知接收者
                         URL = ""
@@ -3467,6 +3486,7 @@ def auditPosition(request):
             elif submit == 3:  # 拒绝
                 try:  # 发送给申请者的拒绝通知
                     with transaction.atomic():
+                        prepos.position.apply_status = Position.ApplyStatus.REJECT
                         prepos.status = NewPosition.NewPosStatus.REFUSED
                         prepos.save()
                         content = "很遗憾，新建人事申请未通过！"
@@ -3506,6 +3526,7 @@ def auditPosition(request):
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建人事审核"
     bar_display["navbar_name"] = "新建人事审核"
+    print(html_display)
 
     return render(request, "position_audit.html", locals())        
                 

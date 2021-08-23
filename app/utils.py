@@ -402,6 +402,8 @@ def check_newpos_request(request,prepos=None):
         oname = str(request.POST['oname'])
     else:
         oname = prepos.position.org.oname
+    context['apply_pos'] = int(request.POST.get('apply_pos',10))
+    context['apply_type'] = str(request.POST.get('apply_type',"加入组织"))
     if len(oname) >= 32:
         context['warn_code'] = 1
         context['warn_msg'] = "组织的名字不能超过32字节"

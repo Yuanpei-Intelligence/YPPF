@@ -45,11 +45,31 @@
                                                            disabled="disabled" >{{html_display.oname}}</textarea>
 
                                                 {%else%}
-                                                <input type="text" name="oname" class="form-control"
-                                                       aria-label="Default" placeholder="不超过32个字节">
+                                                    {% if exist_org %}
+                                                        <input type="text" name="oname" class="form-control"
+                                                            aria-label="Default" readonly value="{{html_display.default_oname}}">
+                                                    {% else %}
+                                                        <input type="text" name="oname" class="form-control"
+                                                            aria-label="Default" placeholder="不超过32个字节">
+                                                    {% endif %}
                                                 {%endif%}
                                             </div>
-                                            
+
+                                            <div class="form-group">
+                                                <label for="aintro">人事变动类型</label>
+                                                <select class="form-control" id="apply_type" name="apply_type" {%if edit == 0 and present == 1 %} disabled="disabled" {%endif%}>
+                                                    <option value="JOIN" {% if html.apply_type == "JOIN" %} selected {% endif %}>加入组织</option>
+                                                    <option value="TRANSFER" {% if html.apply_type == "TRANSFER" %} selected {% endif %}>修改职位</option>
+                                                    <option value="WITHDRAW" {% if html.apply_type == "WITHDRAW" %} selected {% endif %}>退出组织</option>
+                                                </select>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="aintro">申请职位</label>
+                                                <textarea name="apply_pos" class="form-control" aria-label="Default" placeholder=
+                                                        "申请职位不能为空"{%if edit == 0 and present == 1 %} disabled="disabled" {%endif%}
+                                                >{% if edit %}{{html_display.apply_pos}}{% endif %}</textarea>
+                                            </div>
+
                                             <div class="form-group">
                                                 <label for="aintro">申请理由</label>
                                                 <textarea name="application" class="form-control" rows="3" placeholder=
