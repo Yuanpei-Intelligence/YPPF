@@ -402,4 +402,6 @@ def publish_activity(activity_or_id, only_activated=False):
         else:
             base_send_wechat(userids, message, **kws)  # 不使用定时任务请改为这句
     return True
+
+    
 publish_activity.ENABLE_INSTANCE = True     # 标识接收的参数类型

@@ -396,10 +396,7 @@ def stuinfo(request, name=None):
         context["wallpaper_path"] = utils.get_user_wallpaper(person)
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
-        bar_display = utils.get_sidebar_and_navbar(request.user)
-        bar_display["title_name"] = "个人主页"
-        bar_display["navbar_name"] = "个人主页"
-        bar_display["help_message"] = local_dict["help_message"]["个人主页"]
+        bar_display = utils.get_sidebar_and_navbar(request.user, "个人主页")
         origin = request.get_full_path()
 
         return render(request, "stuinfo.html", locals())
@@ -2755,11 +2752,8 @@ def notifications(request):
     )
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "Notifications"
-    bar_display["navbar_name"] = "通知信箱"
-    bar_display["help_message"] = local_dict["help_message"]["通知信箱"]
-
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
+    
     return render(request, "notifications.html", locals())
 
 # 新建评论，
