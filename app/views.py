@@ -2952,7 +2952,7 @@ def addOrganization(request):
                     try:
                         with transaction.atomic():
                             content = "“{oname}”的新建组织申请已取消".format(
-                                oname=preorg.oname, otype_name=preorg.otype.otype_name)
+                                oname=preorg.oname)
                             # 在local_json.json新增审批人员信息,暂定为YPadmin
                             Auditor = preorg.otype.incharge.person_id    #审核老师
                             URL = ""
@@ -2994,16 +2994,15 @@ def addOrganization(request):
                 return render(request, "organization_add.html", locals())
             # 新建组织申请
             if edit == 0:
-                with transaction.atomic():
-                    new_org = NewOrganization.objects.create(oname=context['oname'], otype=context['otype'],
-                                                             pos=context['pos'])
-                    new_org.introduction = context['introduction']
-                    if context['avatar'] is not None:
-                        new_org.avatar = context['avatar']
-                    new_org.application = context['application']
-                    new_org.save()
                 try:
-                    a=1
+                    with transaction.atomic():
+                        new_org = NewOrganization.objects.create(oname=context['oname'], otype=context['otype'],
+                                                                 pos=context['pos'])
+                        new_org.introduction = context['introduction']
+                        if context['avatar'] is not None:
+                            new_org.avatar = context['avatar']
+                        new_org.application = context['application']
+                        new_org.save()
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "创建预备组织信息失败。请检查输入or联系管理员"
@@ -3159,13 +3158,15 @@ def auditOrganization(request):
         # 是否为审核老师
     if request.user != preorg.otype.incharge.person_id:
         return redirect('/notifications/')
-    if preorg.status == NewOrganization.NewOrgStatus.PENDING:  # 正在申请中，可以评论。
-        commentable = 1  # 可以评论
-    TERMINATE_STATUSES=[NewOrganization.NewOrgStatus.CANCELED,NewOrganization.NewOrgStatus.CONFIRMED,
-                        NewOrganization.NewOrgStatus.REFUSED ]
-    if preorg.status in TERMINATE_STATUSES and notification.status==Notification.Status.UNDONE:
-        #未读变已读
-        notification_status_change(notification_id)
+    # 以下需要在前端呈现
+    comments = preorg.comments.order_by('time')  # 加载评论
+    html_display['oname'] = preorg.oname
+    html_display['otype_name'] = preorg.otype.otype_name
+    html_display['applicant'] = utils.get_person_or_org(preorg.pos)
+    html_display["app_avatar_path"] = utils.get_user_ava(html_display['applicant'], "Person")
+    html_display['introduction'] = preorg.introduction
+    html_display['application'] = preorg.application
+    org_avatar_path = utils.get_user_ava(preorg, "Organization")
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # TODO: 整理页面返回逻辑，统一返回render的地方
@@ -3266,8 +3267,8 @@ def auditOrganization(request):
                     return render(request, "organization_audit.html", locals())
                 # 成功新建组织
                 html_display['warn_code'] = 2
-                html_display['warn_message'] = "已通过新建“{oname}”{otype_name}的申请，该组织已创建！"\
-                    .format(oname = preorg.oname, otype_name = preorg.otype.otype_name)
+                html_display['warn_message'] = "已通过新建“{oname}”的申请，该组织已创建！"\
+                    .format(oname = preorg.oname)
                 if notification_id!=-1:
                     context = notification_status_change(notification_id)
                 if context['warn_code'] != 2:
@@ -3302,7 +3303,7 @@ def auditOrganization(request):
                 # 拒绝成功
                 html_display['warn_code'] = 2
                 html_display['warn_message'] = "已拒绝新建组织“{oname}“的申请！"\
-                    .format(oname = preorg.oname, otype_name = preorg.otype.otype_name)
+                    .format(oname = preorg.oname)
                 if notification_id != -1:
                     context = notification_status_change(notification_id)
                 # 微信通知
@@ -3316,15 +3317,14 @@ def auditOrganization(request):
                 html_display['warn_message'] = "提交出现无法处理的未知参数，请联系管理员。"
                 return render(request, "organization_audit.html", locals())
 
-    # 以下需要在前端呈现
-    comments = preorg.comments.order_by('time')  # 加载评论
-    html_display['oname'] = preorg.oname
-    html_display['otype_name'] = preorg.otype.otype_name
-    html_display['applicant'] = utils.get_person_or_org(preorg.pos)
-    html_display["app_avatar_path"] = utils.get_user_ava(html_display['applicant'], "Person")
-    html_display['introduction'] = preorg.introduction
-    html_display['application'] = preorg.application
-    org_avatar_path = utils.get_user_ava(preorg, "Organization")
+    if preorg.status == NewOrganization.NewOrgStatus.PENDING:  # 正在申请中，可以评论。
+        commentable = 1  # 可以评论
+    TERMINATE_STATUSES=[NewOrganization.NewOrgStatus.CANCELED,NewOrganization.NewOrgStatus.CONFIRMED,
+                        NewOrganization.NewOrgStatus.REFUSED ]
+    if preorg.status in TERMINATE_STATUSES and notification.status==Notification.Status.UNDONE:
+        #未读变已读
+        notification_status_change(notification_id)
+
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织审核"
@@ -3726,14 +3726,7 @@ def auditReimbursement(request):
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "报销审核"
     bar_display["navbar_name"] = "报销审核"
-    if new_reimb.status == Reimbursement.ReimburseStatus.WAITING:  # 正在申请中，可以评论。
-        commentable = 1  # 可以评论
 
-    TERMINATE_STATUSES=[Reimbursement.ReimburseStatus.CANCELED,Reimbursement.ReimburseStatus.CONFIRMED,
-                        Reimbursement.ReimburseStatus.REFUSED]
-    if new_reimb.status in TERMINATE_STATUSES and notification.status==Notification.Status.UNDONE:
-        #未读变已读
-        notification_status_change(notification_id)
     # 以下前端展示
     comments = new_reimb.comments.order_by('time')  # 加载评论
     html_display['activity_title'] = new_reimb.activity.title
@@ -3881,7 +3874,14 @@ def auditReimbursement(request):
                                 '?warn_code={}&warn_message={}'.format(
                                     html_display['warn_code'], html_display['warn_message']))
 
+    if new_reimb.status == Reimbursement.ReimburseStatus.WAITING:  # 正在申请中，可以评论。
+        commentable = 1  # 可以评论
 
+    TERMINATE_STATUSES=[Reimbursement.ReimburseStatus.CANCELED,Reimbursement.ReimburseStatus.CONFIRMED,
+                        Reimbursement.ReimburseStatus.REFUSED]
+    if new_reimb.status in TERMINATE_STATUSES and notification.status==Notification.Status.UNDONE:
+        #未读变已读
+        notification_status_change(notification_id)
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "报销审核"
