@@ -329,7 +329,7 @@ def stuinfo(request, name=None):
             person_joined_orgs, person_joined_orgs_ava, person_joined_orgs_pos, person_joined_orgs_same)) or None
 
         # 隐藏的组织
-        person_hidden_poss = person_poss.filter(~Q(pos=0) & Q(show_post=False))
+        person_hidden_poss = person_poss.filter(show_post=False)
         person_hidden_orgs = person_orgs.filter(
             id__in=person_hidden_poss.values("org"))        # ta隐藏的组织
         person_hidden_orgs_ava = [utils.get_user_ava(

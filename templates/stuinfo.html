@@ -231,7 +231,6 @@
                 <div class="bio layout-spacing">
 
                     <!--  BEGIN OWNED ORGANIZATIONS  -->
-                    {% if html_display.owned_orgs_info is not None %}
                     <div class="widget-content widget-content-area my-3">
 
                         <div class="row">
@@ -239,7 +238,9 @@
                         </div>
 
                         <div class="bio-skill-box">
-
+                            {% if html_display.owned_orgs_info is None %}
+                            <p style="text-align: center;">没有管理的组织</p>
+                            {% else %}
                             <div class="row">
                                 {% for org, ava, pos in html_display.owned_orgs_info %}
                                 <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
@@ -262,11 +263,11 @@
                                     </div>
                                 </div>
                                 {% endfor %}
-                            </div>
-                        </div>
 
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
-                    {% endif %}
                     <!--  END OWNED ORGANIZATIONS  -->
 
                     <!--  BEGIN JOINED ORGANIZATIONS  -->
@@ -277,25 +278,23 @@
                             {% if html_display.is_myself == False and user_type == 'Person' %}
                             <div class="col-0 mr-4 custom-control custom-switch">
                                 <input type="checkbox" class="custom-control-input" id="org-show-same-button"
-                                    onclick="toggle_same.call(this, `org`, `组织`, `inline-block`, '共同');this.blur();">
+                                    onclick="toggle_same.call(this, `组织`, `inline-block`, '共同');this.blur();">
                                 <label class="custom-control-label" id="org-show-same-label"
                                     for="org-show-same-button">所有组织</label>
                             </div>
                             {% endif %}
                         </div>
 
+
                         <div class="bio-skill-box">
 
                             {% if html_display.joined_orgs_info is None %}
-                            {% if html_display.is_myself == True %}
-                            <p style="text-align: center;">没有加入任何组织</p>
-                            {% else %}
-                            <p style="text-align: center;">没有加入任何组织或未公开</p>
-                            {% endif %}
-                            {% else %}
+                            <p style="text-align: center;">没有加入的组织或未公开</p>
+                            <p id="custom-org-none" style="text-align: center; display: none;">没有共同的组织</p>
                             <div class="row">
                                 {% for org, ava, pos, same in html_display.joined_orgs_info %}
-                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                <div
+                                    class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 custom-org-card custom-org-issame-{{ same }}">
                                     <div
                                         style="padding-left: 2%;padding-right: 2%; background-image: url({{ ava }}); background-size: 55%; background-repeat: no-repeat; background-position: right;">
                                         <div class=" b-skills row" style="background-color: #ffffffcc;">
@@ -458,20 +457,34 @@
 
 {% block add_js_file %}
 <script type="text/javascript">
-    function toggle_same(type, labelName, display, prefix) {
-        const cards = document.querySelectorAll(`.custom-${type}-card`);
+    function toggle_same(labelName, display, prefix) {
+        const cards = document.querySelectorAll(`.custom-org-card`);
         if (this.checked) {
-            const label = document.querySelector(`#${type}-show-same-label`);
+            const label = document.querySelector(`#org-show-same-label`);
             label.innerHTML = `${prefix}${labelName}`;
+
+            const hasSame = false;
             cards.forEach((card) => {
-                const same = card.classList.contains(`custom-${type}-issame-True`);
+                const same = card.classList.contains(`custom-org-issame-True`);
                 if (!same) card.style.display = 'none';
+                else hasSame = true;
             });
+
+            if (hasSame === false) {
+                const p = document.querySelector(`#custom-org-none`);
+                if (p !== null) p.style.display = `block`;
+            }
+
             this.checked = true;
         } else {
-            const label = document.querySelector(`#${type}-show-same-label`);
+            const label = document.querySelector(`#org-show-same-label`);
             label.innerHTML = `所有${labelName}`;
+
             cards.forEach((card) => card.style.display = display)
+
+            const p = document.querySelector(`#custom-org-none`);
+            if (p !== null) p.style.display = `none`;
+
             this.checked = false;
         }
     }
