@@ -220,36 +220,28 @@ def changeActivityStatus(aid, cur_status, to_status):
     
             if activity.status == Activity.Status.WAITING:
                 if activity.bidding:
+                    """
+                    投点时使用
                     if activity.source == Activity.YQPointSource.COLLEGE:
                         draw_lots(activity)
                     else:
                         weighted_draw_lots(activity)
-
-                # 提醒参与者
-                scheduler.add_job(notifyActivity, 'date', id=c,
-                    run_date=activity.act_start - timedelta(minutes=15), args=[activity.id, 'remind'], replace_existing=True)
+                    """
+                draw_lots(activity)
 
 
             # 活动变更为进行中时，修改参与人参与状态
             elif activity.status == Activity.Status.PROGRESSING:
-                participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
-                for participant in participants:
-                    # TODO: 还没确认签到的接口
-                    if not activity.need_checkin:
-                        participant.status = Participant.AttendStatus.ATTENDED
-                    else:
-                        participant.status = Participant.AttendStatus.UNATTENDED
-                    participant.save()
+                if activity.need_checkin:
+                    Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS).update(status=Participant.AttendStatus.UNATTENDED)
+                else:
+                    Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS).update(status=Participant.AttendStatus.ATTENDED)
+
 
             # 结束，计算积分    
             else:
                 hours = (activity.end - activity.start).seconds / 3600
-                participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.ATTENDED)
-                for participant in participants:
-                    np = NaturalPerson.objects.select_for_update().get(person_id=participant.person_id.person_id)
-                    np.bonusPoint += hours
-                    np.save()
-
+                Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.ATTENDED).update(bonusPoint=F('bonusPoint') + hours)
 
             activity.save()
 
@@ -265,16 +257,19 @@ def changeActivityStatus(aid, cur_status, to_status):
 所有涉及到 activity 的函数，都应该先锁 activity
 """
 def draw_lots(activity):
-    participants = Participant.objects().select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)
-    l = len(participants)
+    participants_applying = Participant.objects().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)
+    l = len(participants_applying)
 
-    if l <= activity.capacity:
-        for participant in participants:
-            participant.status = Participant.AttendStatus.APLLYSUCCESS
-            participant.save()
+    participants_applySuccess = Participant.objects().filter(activity_id=activity.id, status=Participant.AttendStatus.APLLYSUCCESS)
+    engaged = len(participants_applySuccess)
+
+    leftQuota = activity.capacity - engaged
+
+    if l <= leftQuota:
+        Participant.objects().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING).update(status=Participant.AttendStatus.APLLYSUCCESS)
     else:
-        lucky_ones = sample(range(l), activity.capacity)
-        for i, participant in enumerate(participants):
+        lucky_ones = sample(range(l), leftQuota)
+        for i, participant in enumerate(Participant.objects().select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)):
             if i in lucky_ones:
                 participant.status = Participant.AttendStatus.APLLYSUCCESS
             else:
@@ -282,8 +277,8 @@ def draw_lots(activity):
             participant.save()
 
 """
+投点情况下的抽签，暂时不用
 需要在 transaction 中使用
-"""
 def weighted_draw_lots(activity):
     participants = Participant.objects().select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)
     l = len(participants)
@@ -309,6 +304,9 @@ def weighted_draw_lots(activity):
             else:
                 participant.status = Participant.AttendStatus.APLLYFAILED
             participant.save()
+"""
+
+
 
 """
 使用方式：

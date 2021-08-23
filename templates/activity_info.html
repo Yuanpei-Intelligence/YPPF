@@ -162,6 +162,8 @@
                                             </button>
                                             {% endif %}
                                             {% if person %}
+                                                <!-- 这一段是如果允许投点需要的逻辑 -->
+                                                <!--
                                                 {% if pStatus == "无记录" and status == "报名中" and bidding == True %}
                                                 <button class="btn btn-primary btn-block mb-4 mr-2" data-toggle="collapse" data-target="#extend-area">
                                                     立即报名
@@ -172,6 +174,11 @@
                                                     <input type="hidden" name="aid" value={{aid}}>
                                                     <button class="btn btn-primary btn-block mb-4 mr-2">立即报名</button>
                                                 </form>
+                                                -->
+                                                {% if pStatus == "无记录" and status == "报名中" %}
+                                                <button class="btn btn-primary btn-block mb-4 mr-2" data-toggle="collapse" data-target="#extend-area">
+                                                    立即报名
+                                                </button>
                                                 {% elif pStatus == "无记录" and status != "审核中" %}
                                                 <a href="javascript:void(0);" class="btn btn-danger btn-block mb-4 mr-2">报名截止</a>
                                                 {% elif pStatus == "申请中" %}
@@ -221,6 +228,7 @@
                                             </div>
     
                                             <!--  如果要投点报名，则展示下面的部分  -->
+                                            <!--
                                             <div id="extend-area" class="collapse">
                                                 <form method="POST">
                                                     <input type="hidden" name="option" value="apply">
@@ -234,6 +242,7 @@
                                                     <button class="btn btn-primary btn-block mb-4 mr-2">确认报名</button>
                                                 </form>
                                             </div>
+                                            -->
     
                                         </div>
         

@@ -82,7 +82,6 @@ def activity_base_check(request):
     # examine_teacher 需要特殊检查
     context['examine_teacher'] = request.POST['examine_teacher']
 
-
     # 时间
     # datetime 这里有 bug，PM 不会把时间加上去，到时候考虑 patch ......
     act_start = datetime.strptime(request.POST["actstart"], '%m/%d/%Y %H:%M %p')  # 活动报名时间
@@ -302,9 +301,8 @@ def modify_accepted_activity(request, activity):
     if activity.status == Activity.Status.APPLYING:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
             run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
-    else:
-        scheduler.add_job(notifyActivity, 'date', id=f"activity_{activity.id}_remind",
-            run_date=activity.act_start - timedelta(minutes=15), args=[activity.id, 'remind'], replace_existing=True)
+    scheduler.add_job(notifyActivity, 'date', id=f"activity_{activity.id}_remind",
+        run_date=activity.act_start - timedelta(minutes=15), args=[activity.id, 'remind'], replace_existing=True)
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
         run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
@@ -342,8 +340,10 @@ def accept_activity(request, activity):
 
     # 通知
     notifyActivity(activity.id, "newActivity")
+    scheduler.add_job(notifyActivity, 'date', id=c,
+        run_date=activity.act_start - timedelta(minutes=15), args=[activity.id, 'remind'], replace_existing=True)
 
-
+    # 活动状态修改
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
         run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
@@ -384,7 +384,6 @@ def applyActivity(request, activity):
 
 
     if activity.source == Activity.YQPointSource.COLLEGE:
-        amount = activity.YQPoint
         if not activity.bidding:
             if activity.current_participants < activity.capacity:
                 activity.current_participants += 1
@@ -393,6 +392,8 @@ def applyActivity(request, activity):
         else:
             activity.current_participants += 1
     else:
+        '''
+        存在投点的逻辑，暂时不用
         if not activity.bidding:
             amount = float(activity.YQPoint)
             if activity.current_participants < activity.capacity:
@@ -406,8 +407,21 @@ def applyActivity(request, activity):
             # 依然增加，此时current_participants统计的是报名的人数，是可以比总人数多的
             activity.current_participants += 1
             assert amount == int(amount * 10) / 10
+        '''
+        amount = float(activity.YQPoint)
+        if activity.bidding:
+            activity.current_participants += 1
+        else:
+            if activity.current_participants < activity.capacity:
+                activity.current_participants += 1
+            else:
+                raise ActivityException("活动已报满，请稍后再试。")
 
-        assert payer.YQPoint + payer.quota >= amount
+
+
+        # 这里 assert 对吗
+        if not payer.YQPoint + payer.quota >= amount:
+            raise ActivityException("没有足够的元气值。")
 
         use_quota = amount
         if payer.quota >= amount:
