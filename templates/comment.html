@@ -1,33 +1,36 @@
 <!--begin comment-->
 <style type="text/css">
 img {
-    max-width: 200px;
-    max-height:200px;
+    max-width: 2000px;
+    max-height:500px;
 }
 </style>
 <div id="comments_display" class="widget-header">
-    {%if  commentable == 1 or comments is not None%}
+    {%if  commentable == 1 or comments.len > 0 %}
     <label><h4>评论区</h4></label>
     {%endif%}
     {%for comment in comments%}
     <div class="form-group">
         <div class="d-flex justify-content-between">
             <div>
-                <p style="color: rgb(66, 67, 68);"><i class="fa fa-calendar-o"></i>评论时间：{{comment.time}}</p>
+                <p style="color: rgb(66, 67, 68);"><i class="fa fa-calendar-o"></i>{{comment.time}}</p>
             </div>
             <div align="right">
-                <h4><img src={{ comment.ava }} width="24" height="24" alt="avatar">
+                <img src={{ comment.ava }} width="24" height="24" alt="avatar">
                     <a href='{{comment.URL}}'><u>{{comment.commentator_name}}</u></a>
-                </h4>
             </div>
         </div>
         {%if comment.text != ""%}
         <textarea name="comment" class="form-control" disabled="disabled">{{comment.text}}</textarea>
         {%endif%}
-        {%for image in comment.comment_photos.all%}
-        <img width="400px" height="200px" src={{image.imagepath}}>
-        <!--移动端图片大小需要修正!-->
-        {%endfor%}
+        {%if comment.len > 0 %}
+            <div style="height:500px;overflow:auto;">
+            {%for image in comment.comment_photos.all%}
+            <img  src={{image.imagepath}}>
+            <!--移动端图片大小需要修正!-->
+            {%endfor%}
+            </div>
+        {%endif%}
         <hr>
     </div>
     {% endfor %}
