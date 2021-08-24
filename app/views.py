@@ -1800,7 +1800,7 @@ def viewActivity(request, aid=None):
         return render(request, "activity_info.html", locals())
 
     elif option == "payment":
-        raise NotImplementedError
+        return redirect('/addReimbursement/')
 
     else:
         html_display["warn_code"] = 1
