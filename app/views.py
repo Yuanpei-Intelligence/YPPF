@@ -401,7 +401,7 @@ def stuinfo(request, name=None):
         context["wallpaper_path"] = utils.get_user_wallpaper(person)
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
-        bar_display = utils.get_sidebar_and_navbar(request.user, "个人主页")
+        bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name = "个人主页")
         origin = request.get_full_path()
 
         return render(request, "stuinfo.html", locals())
@@ -1227,7 +1227,7 @@ def transaction_page(request, rid=None):
 
     # 获取名字
     _, _, context = utils.check_user_type(user)
-    context = utils.get_sidebar_and_navbar(user, context)
+    context = utils.get_sidebar_and_navbar(user,bar_display = context)
     name = recipient.name if context["user_type"] == "Person" else recipient.oname
     context["name"] = name
     context["rid"] = rid
@@ -2658,31 +2658,26 @@ def addComment(request, comment_base):
 @utils.check_user_access(redirect_url="/logout/")
 def showNewOrganization(request):
     '''
+    YWolfeee: modefied on Aug 24 1:33 a.m. UTC-8
     新建组织的聚合界面
     '''
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type == "Organization":
-        html_display["warn_code"] = 1
-        html_display["warn_code"] = "请不要使用组织账号申请新组织！"
-        return redirect("/welcome/" + 
-                        '?warn_code={}&warn_message={}'.format(
-                            html_display['warn_code'], html_display['warn_message']))
+        return redirect("/welcome/")  # 组织只能指定学生姓名访问
+        
+    me = utils.get_person_or_org(request.user, user_type)
 
-    is_auditor = False
-    try:
-        person = utils.get_person_or_org(request.user, user_type)
-        if person.name == local_dict["audit_teacher"]["Funds"]:
-            is_auditor = True
-    except:
-        pass
-    if is_auditor:
-        shown_instances = NewOrganization.objects.all()
-    else:
-        shown_instances = NewOrganization.objects.filter(pos=request.user)
-    shown_instances = shown_instances.order_by('-modify_time', '-time')
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "新建组织"
-    bar_display["navbar_name"] = "组织申请进度"
+    # 拉取我负责管理申请的组织，这部分由我审核
+    charge_org = NewOrganization.objects.filter(otype__in = me.incharge.all())
+
+    # 拉去由我发起的申请，这部分等待审核
+    applied_org = NewOrganization.objects.filter(pos = request.user)
+
+    # 排序整合，用于前端呈现
+    shown_instances = charge_org.union(applied_org).order_by('-modify_time', '-time')
+    
+    
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name = "新组织申请")
     return render(request, 'neworganization_show.html', locals())
 
 
