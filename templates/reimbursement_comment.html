@@ -24,14 +24,15 @@
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                <br>
+                                                    <br>
                                                     <br>
                                                 {% with new_reimb.get_status_display as status %}
                                                 <div align="center">
                                                     <h4><a href="/viewActivity/{{html_display.activity.id}}"><u>{{html_display.activity.title}}</u></a>
-                                                        ({{html_display.activity.start.month}}月{{html_display.activity.start.day}}日)   {{status}}</h4>
-                                                </div>
+                                                        ({{html_display.activity.start.month}}月{{html_display.activity.start.day}}日)   <span style="color: red">{{status}}</span></h4>
                                                 {%endwith%}
+                                                </div>
+
                                                 <br>
                                                 <div class="d-flex justify-content-between">
                                                         <div >
@@ -58,7 +59,7 @@
 
 
                                             <div class="form-group">
-                                                <label>报销额度</label>
+                                                <label>报销额度   (学院当前开销：-{{html_display.our_college.YQPoint}})</label>
                                                 <br>
                                                 <textarea id="amount" name="amount" class="form-control"
                                                           aria-label="Default" disabled="disabled">{{html_display.amount}}</textarea>
