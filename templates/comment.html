@@ -5,7 +5,8 @@ img {
     max-height:200px;
 }
 </style>
-<div id="comments_display">
+<div id="comments_display" class="widget-header">
+    <label><h4>评论区</h4></label>
     {%for comment in comments.all%}
     <div class="form-group">
         <div class="d-flex justify-content-between">
@@ -25,7 +26,6 @@ img {
         <!--移动端图片大小需要修正!-->
         {%endfor%}
         <hr>
-        <br>
     </div>
     {% endfor %}
 </div>
@@ -33,7 +33,6 @@ img {
 <form role="form" method="POST" enctype="multipart/form-data">
     <div>
         <div class="form-group">
-            <label><h4>评论</h4></label>
             <div>
                 <p style="color: rgb(66, 67, 68);" align="right"><i
                         class="fa fa-address-book"></i> {{request.user}}</p>
@@ -41,7 +40,7 @@ img {
             <textarea type="text" id="comment" name="comment"
                       class="form-control"
                       aria-label="Default" rows="3"
-                      placeholder="Leave a comment"></textarea>
+                      placeholder="添加评论"></textarea>
             <br>
             <div>
                 <label title="评论图片">
