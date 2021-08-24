@@ -64,7 +64,7 @@
                                                 <br>
                                                 {%if present%}
                                                     {% if edit %}
-                                                <select name="otype">
+                                                <select name="otype" class="form-control">
                                                     {%for org_type in org_types%}
                                                     <option value={{org_type.otype_id}} {% if html_display.otype_id == org_type.otype_id %}
                                                             selected="selected"
