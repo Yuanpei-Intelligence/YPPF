@@ -6,7 +6,7 @@ from django.conf import settings
 from boottest import local_dict
 
 # 模型与加密模型
-from app.models import NaturalPerson, Organization, Activity, Notification
+from app.models import NaturalPerson, Organization, Activity, Notification, Participant
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 # 日期与定时任务
@@ -48,13 +48,10 @@ wechat_coder = MySHA256Hasher(local_dict["hash"]["wechat"])
 
 # 一批发送的最大数量
 SEND_LIMIT = 500     # 上限1000
-NOTIFICATION_BATCH = 500
-ACTIVITY_BATCH = 500
+SEND_BATCH = 500
 try: SEND_LIMIT = min(1000, int(local_dict['threholds']['wechat_send_number']))
 except: pass
-try: NOTIFICATION_BATCH = int(local_dict['threholds']['notification_send_batch'])
-except: pass
-try: ACTIVITY_BATCH = int(local_dict['threholds']['activity_send_batch'])
+try: SEND_BATCH = min(1000, int(local_dict['threholds']['wechat_send_batch']))
 except: pass
 
 # 限制接收范围
@@ -126,10 +123,45 @@ def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=T
         print(f"向企业微信发送失败：失败用户：{failed[:3]}等{len(failed)}人，主要失败原因：{errmsg}")
 
 
+def send_wechat(users, message, card=True, url=None, btntxt=None, default=True,
+                *, multithread=True, check_duplicate=False):
+    '''
+    附带了去重、多线程和batch的发送，默认不去重；注意这个函数不应被直接调用
+
+    参数(部分)
+    --------
+    - users: 随机访问容器，如果检查重复，则可以是任何可迭代对象
+    - message: 一段文字，第一个\n被视为标题和内容的分隔符
+    - card: 发送文本卡片，建议message长度小于120时开启
+    - url: 文本卡片的链接
+    - btntxt: 文本卡片的提示短语，不超过4个字
+    - default: 填充默认值
+    - multithread: 不堵塞线程
+    - check_duplicate: 检查重复值
+    '''
+    if check_duplicate:
+        users = sorted(set(users))
+    total_ct = len(users)
+    for i in range(0, total_ct, SEND_BATCH):
+        userids = users[i:i+SEND_BATCH]   # 一次最多接受1000个
+        args = (userids, message)
+        kws = {'card': card, 'url': url, 'btntxt': btntxt, 'default': default}
+        if USE_MULTITHREAD and multithread:
+            # 多线程
+            scheduler.add_job(base_send_wechat, 'date',
+                              args=args,
+                              kwargs=kws,
+                              next_run_time=datetime.now() + timedelta(seconds=5+round(i/50))
+                              )
+        else:
+            base_send_wechat(*args, **kws)  # 不使用定时任务请改为这句
+    
+
+
 def publish_notification(notification_or_id):
     '''
     根据单个通知或id（实际是主键）向通知的receiver发送
-    别创建了好多通知然后循环调用这个，之后会出批量发送的
+    别创建了好多通知然后循环调用这个，批量发送用publish_notifications
     '''
     try:
         if isinstance(notification_or_id, Notification):
@@ -182,20 +214,9 @@ def publish_notification(notification_or_id):
     else:   # 组织
         wechat_receivers = list(receiver.position_set.filter(pos=0).
                                 values_list("person__person_id__username", flat=True))
-        if len(wechat_receivers) == 0:
-            return True
-    if USE_MULTITHREAD:
-        # 多线程
-        scheduler.add_job(base_send_wechat, 'date',
-                            args=(wechat_receivers, message),
-                            kwargs=kws,
-                            next_run_time=datetime.now() + timedelta(seconds=5)
-                            )
-    else:
-        base_send_wechat(wechat_receivers,
-                            message, **kws) # 不使用定时任务请改为这句
+
+    send_wechat(wechat_receivers, message, **kws) # 不使用定时任务请改为这句
     return True
-publish_notification.ENABLE_INSTANCE = True # 标识接收的参数类型
 
 
 def publish_notifications(notifications_or_ids=None, filter_kws=None, exclude_kws=None,
@@ -314,22 +335,11 @@ def publish_notifications(notifications_or_ids=None, filter_kws=None, exclude_kw
         wechat_receivers.extend(managers)
         receiver_set.update(managers)
     
-    total_ct = len(wechat_receivers)
-    for i in range(0, total_ct, NOTIFICATION_BATCH):
-        userids = wechat_receivers[i:i+NOTIFICATION_BATCH]   # 一次最多接受1000个
-        if USE_MULTITHREAD:
-            # 多线程
-            scheduler.add_job(base_send_wechat, 'date',
-                              args=(userids, message),
-                              kwargs=kws,
-                              next_run_time=datetime.now() + timedelta(seconds=5+round(i/50))
-                              )
-        else:
-            base_send_wechat(userids, message, **kws)  # 不使用定时任务请改为这句
+    send_wechat(wechat_receivers, message, **kws)
     return True
 
 
-def publish_activity(activity_or_id, only_activated=False):
+def publish_activity(activity_or_id):
     '''根据活动或id（实际是主键）向所有订阅该组织信息的学生发送，可以只发给在校学生'''
     try:
         if isinstance(activity_or_id, Activity):
@@ -341,11 +351,8 @@ def publish_activity(activity_or_id, only_activated=False):
         return False
 
     org = activity.organization_id
-    subscribers = NaturalPerson.objects.exclude(
+    subscribers = NaturalPerson.objects.activated().exclude(
         id__in=org.unsubscribers.all())      # flat=True时必须只有一个键
-    if only_activated:
-        subscribers = subscribers.exclude(
-            status=NaturalPerson.GraduateStatus.GRADUATED)
     subscribers = list(subscribers.values_list("person_id__username", flat=True))
     num = len(subscribers)
     start, finish = activity.start, activity.finish
@@ -390,16 +397,24 @@ def publish_activity(activity_or_id, only_activated=False):
             message += f"\n\n<a href=\"{url}\">阅读原文</a>"
         else:
             message += f"\n\n<a href=\"{DEFAULT_URL}\">点击查看详情</a>"
-    for i in range(0, num, ACTIVITY_BATCH):
-        userids = subscribers[i:i+ACTIVITY_BATCH]   # 一次最多接受1000个
-        if USE_MULTITHREAD:
-            # 多线程
-            scheduler.add_job(base_send_wechat, 'date',
-                              args=(userids, message),
-                              kwargs=kws,
-                              next_run_time=datetime.now() + timedelta(seconds=5+round(i/50))
-                              )
-        else:
-            base_send_wechat(userids, message, **kws)  # 不使用定时任务请改为这句
+    send_wechat(subscribers, message, **kws)
     return True
-publish_activity.ENABLE_INSTANCE = True     # 标识接收的参数类型
+
+
+def wechat_notify_activity(aid, msg, send_to, url=None):
+    activity = Activity.objects.get(id=aid)
+    targets = set()
+    if send_to == 'participants' or send_to == 'all':
+        participants = Participant.objects.filter(activity_id=aid, 
+            status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING])
+        participants = list(participants.values_list("person_id__username", flat=True))
+        targets |= set(participants)
+
+    if send_to == 'subscribers' or send_to == 'all':
+        org = activity.organization_id
+        subcribers = NaturalPerson.objects.difference(org.unsubsribers)   
+        subcribers = subcribers.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
+        subcribers = list(subcribers.values_list("person_id__username", flat=True))
+        targets |= set(subcribers)
+
+    send_wechat(targets, msg, card=int(len(msg)<120), url=url, check_duplicate=True)
