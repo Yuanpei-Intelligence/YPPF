@@ -706,51 +706,33 @@ def account_setting(request):
 
         # print(json.loads(request.body.decode("utf-8")))
         if request.method == "POST" and request.POST:
+        
+            # 合法性检查
+            attr_dict, show_dict, html_display = utils.check_account_setting(request, user_type)
+            attr_check_list = [attr for attr in attr_dict.keys() if attr  not in ['gender','ava']]
+            if html_display['warn_code'] == 1:
+                return render(request, "person_account_setting.html", locals())
 
-            attr_dict = dict()
-
-            attr_dict['nickname'] = request.POST['nickname']
-            attr_dict['biography'] = request.POST["aboutBio"]
-            attr_dict['telephone'] = request.POST["tel"]
-            attr_dict['email'] = request.POST["email"]
-            attr_dict['stu_major'] = request.POST["major"]
-            #attr_dict['stu_grade'] = request.POST['grade'] 用户无法填写
-            #attr_dict['stu_class'] = request.POST['class'] 用户无法填写
-            attr_dict['stu_dorm'] = request.POST['dorm']
-
-            ava = request.FILES.get("avatar")
-            gender = request.POST['gender']
-
-            show_dict = dict()
-
-            show_dict['show_nickname'] = request.POST.get(
-                'show_nickname') == 'on'
-            show_dict['show_gender'] = request.POST.get('show_gender') == 'on'
-            show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
-            show_dict['show_email'] = request.POST.get('show_email') == 'on'
-            show_dict['show_major'] = request.POST.get('show_major') == 'on'
-            show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
-
-            expr = bool(ava or (gender != useroj.get_gender_display()))
+            expr = bool(attr_dict['ava'] or (attr_dict['gender'] != useroj.get_gender_display()))
             expr += bool(sum(
-                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()]))
+                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_check_list]))
             expr += bool(sum([getattr(useroj, show_attr) != show_dict[show_attr]
                          for show_attr in show_dict.keys()]))
 
-            if gender != useroj.gender:
-                useroj.gender = NaturalPerson.Gender.MALE if gender == '男' else NaturalPerson.Gender.FEMALE
-            for attr in attr_dict.keys():
+            if attr_dict['gender'] != useroj.gender:
+                useroj.gender = NaturalPerson.Gender.MALE if attr_dict['gender'] == '男' else NaturalPerson.Gender.FEMALE
+            for attr in attr_check_list:
                 if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
                     setattr(useroj, attr, attr_dict[attr])
             for show_attr in show_dict.keys():
                 if getattr(useroj, show_attr) != show_dict[show_attr]:
                     setattr(useroj, show_attr, show_dict[show_attr])
-            if ava is None:
+            if attr_dict['ava'] is None:
                 pass
             else:
-                useroj.avatar = ava
+                useroj.avatar = attr_dict['ava']
             useroj.save()
-            avatar_path = settings.MEDIA_URL + str(ava)
+            avatar_path = settings.MEDIA_URL + str(attr_dict['ava'])
             if expr >= 1:
                 upload_state = True
                 return redirect("/stuinfo/?modinfo=success")
@@ -763,16 +745,19 @@ def account_setting(request):
 
         if request.method == "POST" and request.POST:
 
-            attr_dict = dict()
-            attr_dict['introduction'] = request.POST['introduction']
 
             ava = request.FILES.get("avatar")
-
+            # 合法性检查
+            attr_dict, show_dict, html_display = utils.check_account_setting(request, user_type)
+            attr_check_list = [attr for attr in attr_dict.keys() if attr  not in ['gender','ava']]
+            if html_display['warn_code'] == 1:
+                return render(request, "person_account_setting.html", locals())
+                
             expr = bool(ava)
             expr += bool(sum(
-                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_dict.keys()]))
+                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_check_list]))
 
-            for attr in attr_dict.keys():
+            for attr in attr_check_list:
                 if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
                     setattr(useroj, attr, attr_dict[attr])
             if ava is None:
@@ -2660,6 +2645,7 @@ def addComment(request, comment_base):
 def showNewOrganization(request):
     '''
     新建组织的聚合界面
+
     '''
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type == "Organization":
@@ -2668,7 +2654,6 @@ def showNewOrganization(request):
         return redirect("/welcome/" + 
                         '?warn_code={}&warn_message={}'.format(
                             html_display['warn_code'], html_display['warn_message']))
-
     is_auditor = False
     try:
         person = utils.get_person_or_org(request.user, user_type)

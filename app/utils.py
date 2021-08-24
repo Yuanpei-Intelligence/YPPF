@@ -310,3 +310,57 @@ def random_code_init():
     for i in range(0, 6):
         password = password + random.choice(b)
     return password
+
+def check_account_setting(request,user_type):
+    if user_type == 'Person':
+        html_display = dict()
+        attr_dict = dict()
+
+        html_display['warn_code'] = 0
+        html_display['warn_message'] = ""
+
+        attr_dict['nickname'] = request.POST['nickname']
+        attr_dict['biography'] = request.POST["aboutBio"]
+        attr_dict['telephone'] = request.POST["tel"]
+        attr_dict['email'] = request.POST["email"]
+        attr_dict['stu_major'] = request.POST["major"]
+        #attr_dict['stu_grade'] = request.POST['grade'] 用户无法填写
+        #attr_dict['stu_class'] = request.POST['class'] 用户无法填写
+        attr_dict['stu_dorm'] = request.POST['dorm']
+        attr_dict['ava'] = request.FILES.get("avatar")
+        attr_dict['gender'] = request.POST['gender']
+
+        show_dict = dict()
+
+        show_dict['show_nickname'] = request.POST.get(
+            'show_nickname') == 'on'
+        show_dict['show_gender'] = request.POST.get('show_gender') == 'on'
+        show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
+        show_dict['show_email'] = request.POST.get('show_email') == 'on'
+        show_dict['show_major'] = request.POST.get('show_major') == 'on'
+        show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
+
+        # 合法性检查
+        if len(attr_dict['nickname']) > 20:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] += "输入的昵称过长，不能超过20个字符哦！"
+
+        if len(attr_dict['biography']) > 1024:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] += "输入的简介过长，不能超过1024个字符哦！"
+        
+        if len(attr_dict['stu_major']) > 25:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] += "输入的专业过长，不能超过25个字符哦！"
+
+        if len(attr_dict['stu_dorm']) > 6:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] += "输入的宿舍过长，不能超过6个字符哦！"
+    else:
+        html_display = dict()
+        attr_dict = dict()
+        show_dict = dict()
+        html_display['warn_code'] = 0
+        html_display['warn_message'] = ""
+        attr_dict['introduction'] = request.POST['introduction']
+    return attr_dict, show_dict, html_display
