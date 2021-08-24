@@ -50,6 +50,7 @@ class NaturalPerson(models.Model):
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
 
     YQPoint = models.FloatField("现存元气值", default=0)
+    YQPoint_credit_card = models.FloatField("元气值信用", default=0)
     quota = models.FloatField("元气值配额", default=0)
     bonusPoint = models.FloatField("积分", default=0)
 
