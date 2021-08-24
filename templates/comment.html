@@ -6,7 +6,9 @@ img {
 }
 </style>
 <div id="comments_display" class="widget-header">
+    {%if  commentable == 1 or comments is not None%}
     <label><h4>评论区</h4></label>
+    {%endif%}
     {%for comment in comments.all%}
     <div class="form-group">
         <div class="d-flex justify-content-between">
@@ -18,14 +20,15 @@ img {
                     评论人：{{comment.commentator}}</p>
             </div>
         </div>
-
+        {%if comment.text != ""%}
         <textarea name="comment" class="form-control" disabled="disabled">{{comment.text}}</textarea>
+        {%endif%}
         {%for image in comment.comment_photos.all%}
 
         <img width="400px" height="200px" src={{image.imagepath}}>
         <!--移动端图片大小需要修正!-->
-        {%endfor%}
         <hr>
+        {%endfor%}
     </div>
     {% endfor %}
 </div>
