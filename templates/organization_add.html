@@ -83,25 +83,6 @@
                                                        aria-label="Default" placeholder="不超过32个字节">
                                                 {%endif%}
                                             </div>
-                                            <!-- <div class="form-group">
-                                                <label>组织类型</label>
-                                                {% if present %}
-                                                <select name="otype" class="form-control selectpicker">
-                                                    {%for org_type in org_types%}
-                                                    <option value={{org_type.otype_id}} {% if html_display.otype_id == org_type.otype_id %}
-                                                            selected="selected"
-                                                            {% endif %}>{{org_type.otype_name}}
-                                                    </option>
-                                                    {%endfor%}
-                                                </select>
-                                                {% else %}
-                                                <select name="otype" class="form-control selectpicker">
-                                                    {%for org_type in org_types%}
-                                                    <option value={{org_type.otype_id}}>{{org_type.otype_name}}</option>
-                                                    {%endfor%}
-                                                </select>
-                                                {% endif %}
-                                            </div> -->
                                             <div class="form-group">
                                                 <label>组织类型</label>
                                                 <br>
