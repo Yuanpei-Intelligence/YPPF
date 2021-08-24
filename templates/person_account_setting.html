@@ -114,8 +114,14 @@
                                                                 {% endif %}
                                                                 <label class="form-check-label" for="show_dorm">对外展示</label>
                                                             </div>
+                                                            <label for="profession">我的年级</label>
+                                                            <input type="text" class="form-control" id="grade" readonly="readonly"
+                                                                name="grade" placeholder="{{userinfo.stu_grade}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
+                                                            <label for="profession">我的班级</label>
+                                                            <input type="text" class="form-control" id="class" readonly="readonly"
+                                                                name="class" placeholder="{{userinfo.stu_class}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
                                                             <label for="profession">我的邮箱</label>
-                                                            <input type="text" class="form-control" id="email"
+                                                            <input type="text" class="form-control" id="email" 
                                                                 name="email" placeholder="{{userinfo.email}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
                                                                 <div class="form-check mb-4">
                                                                     {% if useroj.show_email %}
