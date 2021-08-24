@@ -152,8 +152,14 @@ def get_sidebar_and_navbar(user,  navbar_name = "", title_name = "", bar_display
     bar_display["title_name"] = title_name if title_name else navbar_name # title_name默认与navbar_name相同
 
     if navbar_name != "":
-        bar_display["help_message"] = local_dict["help_message"].get(navbar_name, "")
-        bar_display["help_paragraphs"] = local_dict["use_help"].get(navbar_name, list())
+        try:
+            bar_display["help_message"] = local_dict["help_message"].get(navbar_name, "")
+        except:
+            bar_display["help_message"] = ""
+        try:
+            bar_display["help_paragraphs"] = local_dict["use_help"].get(navbar_name, list())
+        except:
+            bar_display["help_paragraphs"] = list()
     
     return bar_display
 
@@ -432,3 +438,31 @@ def random_code_init():
     for i in range(0, 6):
         password = password + random.choice(b)
     return password
+
+
+def notifications_create(
+        receivers, sender, typename, title, content, URL=None, relate_TransferRecord=None, *, publish_to_wechat=False
+):
+    """
+        批量创建通知
+    """
+    notifications = [Notification(
+        receiver=receiver,
+        sender=sender,
+        typename=typename,
+        title=title,
+        content=content,
+        URL=URL,
+        relate_TransferRecord=relate_TransferRecord,
+    ) for receiver in receivers]
+    Notification.objects.bulk_create(notifications)
+
+
+def set_YQPoint_credit_to(YQP):
+    '''
+        后台设定所有自然人的元气值为一特定值，这个值就是每月的限额
+        给所有用户发送通知
+    '''
+    activated_npeople = NaturalPerson.objects.activated()
+    activated_npeople.update(YQPoint_credit_card=YQP)
+    notification_content = f""

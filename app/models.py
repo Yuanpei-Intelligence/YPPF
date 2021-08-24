@@ -49,6 +49,7 @@ class NaturalPerson(models.Model):
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
 
     YQPoint = models.FloatField("元气值", default=0)
+    YQPoint_credit_card = models.FloatField("元气值信用", default=0)
 
     class Identity(models.IntegerChoices):
         TEACHER = (0, "教职工")
