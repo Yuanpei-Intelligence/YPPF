@@ -2966,6 +2966,7 @@ def applyOrganization(request):
     present = 0  # 前端需要，1代表能展示，0代表初始申请
     commentable = 0 # 前端需要，表示能否评论。
     notification_id = -1
+    js_oname_list = list(Organization.objects.all().values_list('oname',flat=True))
     if request.GET.get("newpos_id") is not None and request.GET.get('notifi_id') is None:
         try:
             id = int(request.GET.get('newpos_id'))  # 新建组织ID
