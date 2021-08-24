@@ -2553,10 +2553,7 @@ def notification_create(
         relate_TransferRecord=relate_TransferRecord,
     )
     if publish_to_wechat == True:
-        if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-            publish_notification(notification)
-        else:
-            publish_notification(notification.id)
+        publish_notification(notification)
     return notification
 
 
@@ -2774,12 +2771,12 @@ def addOrganization(request):
                 try:  # 发送给评论通知
                     with transaction.atomic():
                         text = str(context['new_comment'].text)
-                        if len(text) >= 32:
-                            text = text[:31] + "……"
-                        content = "“{oname}”的新建组织申请有了新的评论 ".format(
+                        if len(text) > 32:
+                            text = text[:32] + "……"
+                        content = "“{oname}”的新建申请有新的评论".format(
                                 oname=preorg.oname)
                         if text!="":
-                            content+=":”{text}“".format(text=text)
+                            content+=":“{text}”".format(text=text)
                         Auditor = preorg.otype.incharge.person_id    #审核老师
                         URL = ""
                         new_notification = notification_create(Auditor, request.user, Notification.Type.NEEDREAD,
@@ -2794,10 +2791,7 @@ def addOrganization(request):
                     html_display['warn_message'] = "创建发送给审核老师的评论通知失败。请联系管理员！"
                     return render(request, "organization_add.html", locals())
                 # 微信通知
-                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                    publish_notification(new_notification)
-                else:
-                    publish_notification(new_notification.id)
+                publish_notification(new_notification)
                 html_display['warn_code'] = 2
                 html_display['warn_message'] = "评论成功！"
                 return render(request, "organization_add.html", locals())
@@ -2811,7 +2805,7 @@ def addOrganization(request):
                         preorg.save()
                     try:
                         with transaction.atomic():
-                            content = "“{oname}”的新建组织申请已取消".format(
+                            content = "“{oname}”的新建申请已取消".format(
                                 oname=preorg.oname)
                             # 在local_json.json新增审批人员信息,暂定为YPadmin
                             Auditor = preorg.otype.incharge.person_id    #审核老师
@@ -2832,11 +2826,8 @@ def addOrganization(request):
                         html_display['warn_message'] = "创建给{auditor_name}老师的取消通知失败。请联系管理员。"\
                             .format(auditor_name=preorg.otype.incharge.name)
                         return render(request, "organization_add.html", locals())
-                        # 微信通知
-                    if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                        publish_notification(new_notification)
-                    else:
-                        publish_notification(new_notification.id)
+                    # 微信通知
+                    publish_notification(new_notification)
                     # 成功新建组织申请
                     html_display['warn_code'] = 2
                     html_display['warn_message'] = "已成功取消申请！"
@@ -2890,10 +2881,7 @@ def addOrganization(request):
                     html_display['warn_message'] = "创建通知失败。请检查输入or联系管理员"
                     return render(request, "organization_add.html", locals())
 
-                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                    publish_notification(new_notification)
-                else:
-                    publish_notification(new_notification.id)
+                publish_notification(new_notification)
 
                 # 成功新建组织申请
                 html_display['warn_code'] = 2
@@ -2950,10 +2938,7 @@ def addOrganization(request):
                     if context['warn_code'] != 0:
                         html_display['warn_message'] = context['warn_message']
                 #微信通知
-                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                    publish_notification(new_notification)
-                else:
-                    publish_notification(new_notification.id)
+                publish_notification(new_notification)
 
                 return redirect('/notifications/' +
                                 '?warn_code={}&warn_message={}'.format(
@@ -3042,12 +3027,12 @@ def auditOrganization(request):
             try:  # 发送给评论通知
                 with transaction.atomic():
                     text = str(context['new_comment'].text)
-                    if len(text)>=32:
-                        text=text[:31]+"……"
-                    content = "{teacher_name}老师给您的组织申请留有新的评论 ".format(
+                    if len(text) > 32:
+                        text=text[:32] + "……"
+                    content = "{teacher_name}老师给您的组织申请留了新评论".format(
                          teacher_name=me.name)
                     if text != "":
-                        content += ":“{text}”'".format(text=text)
+                        content += "：“{text}”".format(text=text)
                     receiver = preorg.pos  # 通知接收者
                     URL = ""
                     new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
@@ -3062,12 +3047,7 @@ def auditOrganization(request):
                 html_display['warn_message'] = "创建发送给申请者的评论通知失败。请联系管理员！"
                 return render(request, "organization_audit.html", locals())
             # 微信通知
-            if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                publish_notification(new_notification)
-            else:
-                publish_notification(new_notification.id)
-            html_display['warn_code'] = 2
-            html_display['warn_message'] = "评论成功！"
+            publish_notification(new_notification)
             return render(request, "organization_audit.html", locals())
 
         # 对于审核老师来说，有三种操作，通过，申请需要修改和拒绝
@@ -3131,17 +3111,14 @@ def auditOrganization(request):
                 if context['warn_code'] != 2:
                     html_display['warn_message'] = context['warn_message']
                 # 微信通知
-                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                    publish_notification(new_notification)
-                else:
-                    publish_notification(new_notification.id)
+                publish_notification(new_notification)
                 return render(request, "organization_audit.html", locals())
             elif submit == 3:  # 拒绝
                 try:  # 发送给申请者的拒绝通知
                     with transaction.atomic():
                         preorg.status = NewOrganization.NewOrgStatus.REFUSED
                         preorg.save()
-                        content = "很遗憾，新建组织“{oname}”的申请未通过！"\
+                        content = "很遗憾，新建“{oname}”的申请未通过！"\
                             .format(oname = preorg.oname)
                         receiver = preorg.pos  # 通知接收者
                         URL = ""
@@ -3159,28 +3136,23 @@ def auditOrganization(request):
 
                 # 拒绝成功
                 html_display['warn_code'] = 2
-                html_display['warn_message'] = "已拒绝新建组织“{oname}“的申请！"\
+                html_display['warn_message'] = "已拒绝新建“{oname}”组织的申请！"\
                     .format(oname = preorg.oname)
                 if notification_id != -1:
                     context = notification_status_change(notification_id, Notification.Status.DONE)
                 # 微信通知
-                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                    publish_notification(new_notification)
-                else:
-                    publish_notification(new_notification.id)
+                publish_notification(new_notification)
                 return render(request, "organization_audit.html", locals())
             else:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "提交出现无法处理的未知参数，请联系管理员。"
                 return render(request, "organization_audit.html", locals())
 
-    if preorg.status == NewOrganization.NewOrgStatus.PENDING:  # 正在申请中，可以评论。
+    if preorg.status not in TERMINATE_STATUSES:  # 正在申请中，可以评论。
         commentable = 1  # 可以评论
-    TERMINATE_STATUSES=[NewOrganization.NewOrgStatus.CANCELED,NewOrganization.NewOrgStatus.CONFIRMED,
-                        NewOrganization.NewOrgStatus.REFUSED ]
     if preorg.status in TERMINATE_STATUSES and notification.status==Notification.Status.UNDONE:
         #未读变已读
-        notification_status_change(notification_id)
+        notification_status_change(notification_id, Notification.Status.DONE)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
@@ -3319,12 +3291,12 @@ def addReimbursement(request):
                 try:  # 发送给评论通知
                     with transaction.atomic():
                         text = str(context['new_comment'].text)
-                        if len(text) >= 32:
-                            text = text[:31] + "……"
-                        content = "“{act_name}”的经费申请有了新的评论".format(
+                        if len(text) > 32:
+                            text = text[:32] + "……"
+                        content = "“{act_name}”的经费申请有新的评论".format(
                                 act_name=pre_reimb.activity.title)
                         if text!="":
-                            content+=":”{text}“".format(text=text)
+                            content+="：“{text}”".format(text=text)
                         URL = ""
                         new_notification = notification_create(Auditor, request.user, Notification.Type.NEEDREAD,
                                                                Notification.Title.VERIFY_INFORM, content, URL)
@@ -3338,12 +3310,7 @@ def addReimbursement(request):
                     html_display['warn_message'] = "创建发送给审核老师的评论通知失败。请联系管理员！"
                     return render(request, "reimbursement_add.html", locals())
                 # 微信通知
-                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                    publish_notification(new_notification)
-                else:
-                    publish_notification(new_notification.id)
-                html_display['warn_code'] = 2
-                html_display['warn_message'] = "评论成功！"
+                publish_notification(new_notification)
                 return render(request, "reimbursement_add.html", locals())
 
         else:  # 取消+新建+修改
@@ -3373,11 +3340,8 @@ def addReimbursement(request):
                         html_display['warn_code'] = 1
                         html_display['warn_message'] = "创建给审核老师的取消通知失败。请联系管理员。"
                         return render(request, "reimbursement_add.html", locals())
-                        # 微信通知
-                    if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                        publish_notification(new_notification)
-                    else:
-                        publish_notification(new_notification.id)
+                    # 微信通知
+                    publish_notification(new_notification)
                     # 成功取消经费申请
                     html_display['warn_code'] = 2
                     html_display['warn_message'] = "已成功取消“{act_name}”的经费申请！".format(act_name=pre_reimb.activity.title)
@@ -3458,10 +3422,7 @@ def addReimbursement(request):
                     html_display['warn_message'] = "创建通知失败。请检查输入or联系管理员"
                     return render(request, "reimbursement_add.html", locals())
                 # 微信通知
-                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                    publish_notification(new_notification)
-                else:
-                    publish_notification(new_notification.id)
+                publish_notification(new_notification)
                 # 成功发送报销申请
                 html_display['warn_code'] = 2
                 html_display['warn_message'] = "经费申请已成功发送，请耐心等待{auditor_name}老师审批！" \
@@ -3513,10 +3474,7 @@ def addReimbursement(request):
                     if context['warn_code'] == 1:
                         html_display['warn_message'] = context['warn_message']
                 # 发送微信消息
-                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                    publish_notification(new_notification)
-                else:
-                    publish_notification(new_notification.id)
+                publish_notification(new_notification)
                 return render(request, "reimbursement_add.html", locals())
 
         return render(request, "reimbursement_add.html", locals())
@@ -3606,9 +3564,9 @@ def auditReimbursement(request):
             try:  # 发送给评论通知
                 with transaction.atomic():
                     text = str(context['new_comment'].text)
-                    if len(text)>=32:
-                        text=text[:31]+"……"
-                    content = "{teacher_name}老师给您的经费申请留有新的评论".format(
+                    if len(text) > 32:
+                        text=text[:32]+"……"
+                    content = "{teacher_name}老师给您的经费申请留了新评论".format(
                          teacher_name=me.name)
                     if text != "":
                         content += ":”{text}“".format(text=text)
@@ -3626,12 +3584,7 @@ def auditReimbursement(request):
                 html_display['warn_message'] = "创建发送给申请者的评论通知失败。请联系管理员！"
                 return render(request, "reimbursement_comment.html", locals())
             # 微信通知
-            if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                publish_notification(new_notification)
-            else:
-                publish_notification(new_notification.id)
-            html_display['warn_code'] = 2
-            html_display['warn_message'] = "评论成功！"
+            publish_notification(new_notification)
             return render(request, "reimbursement_comment.html", locals())
 
         # 审核老师的两种操作：通过，和拒绝
@@ -3694,10 +3647,7 @@ def auditReimbursement(request):
                     html_display['warn_code'] = 1
                     html_display['warn_message'] += context['warn_message']
                 # 微信通知
-                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                    publish_notification(new_notification)
-                else:
-                    publish_notification(new_notification.id)
+                publish_notification(new_notification)
                 return render(request, "reimbursement_comment.html", locals())
             elif submit == 3:  # 拒绝
                 try:  # 发送给申请者的拒绝通知
@@ -3724,10 +3674,7 @@ def auditReimbursement(request):
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = context['warn_message']
                 # 微信通知
-                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                    publish_notification(new_notification)
-                else:
-                    publish_notification(new_notification.id)
+                publish_notification(new_notification)
                 return render(request, "reimbursement_comment.html", locals())
             else:
                 html_display['warn_code'] = 1
@@ -3736,14 +3683,12 @@ def auditReimbursement(request):
                                 '?warn_code={}&warn_message={}'.format(
                                     html_display['warn_code'], html_display['warn_message']))
 
-    if new_reimb.status == Reimbursement.ReimburseStatus.WAITING:  # 正在申请中，可以评论。
+    if new_reimb.status not in TERMINATE_STATUSES:  # 正在申请中，可以评论。
         commentable = 1  # 可以评论
 
-    TERMINATE_STATUSES=[Reimbursement.ReimburseStatus.CANCELED,Reimbursement.ReimburseStatus.CONFIRMED,
-                        Reimbursement.ReimburseStatus.REFUSED]
     if new_reimb.status in TERMINATE_STATUSES and notification.status==Notification.Status.UNDONE:
         #未读变已读
-        notification_status_change(notification_id)
+        notification_status_change(notification_id, Notification.Status.DONE)
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "报销审核"
