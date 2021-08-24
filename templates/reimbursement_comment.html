@@ -24,9 +24,29 @@
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                <br>
+                                                    <br>
                                                 {% with new_reimb.get_status_display as status %}
-                                                <h4>审核报销  {{status}}</h4>
+                                                <div align="center">
+                                                    <h4><a href="/viewActivity/{{html_display.activity.id}}"><u>{{html_display.activity.title}}</u></a>
+                                                        ({{html_display.activity.start.month}}月{{html_display.activity.start.day}}日)   {{status}}</h4>
+                                                </div>
                                                 {%endwith%}
+                                                <br>
+                                                <div class="d-flex justify-content-between">
+                                                        <div >
+                                                        <h4 >申请时间：{{html_display.apply_time}}</h4>
+                                                        </div>
+                                                    <div align="right">
+                                                            <h4>
+                                                                申请组织：
+                                                            <img src={{ html_display.app_avatar_path }} width="24" height="24" alt="avatar">
+                                                            <a href='/orginfo/{{html_display.applicant.oname}}'>
+                                                                <u>{{html_display.applicant.oname}}</u></a>
+                                                            </h4>
+                                                    </div>
+                                                </div>
+
                                             </div>
                                         </div>
                                     </div>
@@ -36,17 +56,7 @@
 
                                         <form role="form" method="POST" enctype="multipart/form-data">
 
-                                            <div class="form-group">
-                                                <label>组织名称</label>
-                                                <textarea id="oname" name="oname" class="form-control"
-                                                          aria-label="Default" disabled="disabled">{{html_display.oname}}</textarea>
-                                            </div>
 
-                                            <div class="form-group">
-                                                <label>报销活动</label>
-                                                <textarea id="activity_title" name="activity_title" class="form-control"
-                                                          aria-label="Default" disabled="disabled">{{html_display.activity_title}}</textarea>
-                                            </div>
                                             <div class="form-group">
                                                 <label>报销额度</label>
                                                 <br>
@@ -55,7 +65,7 @@
                                             </div>
 
                                             <div class="form-group">
-                                                <label for="aintro">备注信息</label>
+                                                <label for="aintro">报销说明</label>
 
                                                 <textarea name="message" class="form-control"
                                                           rows="3"

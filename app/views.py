@@ -3010,11 +3010,6 @@ def auditOrganization(request):
         # 是否为审核老师
     if request.user != preorg.otype.incharge.person_id:
         return redirect('/notifications/')
-    if preorg.status not in TERMINATE_STATUSES:  # 正在申请中，可以评论。
-        commentable = 1  # 可以评论
-    if preorg.status in TERMINATE_STATUSES and notification.status==Notification.Status.UNDONE:
-        #未读变已读
-        notification_status_change(notification_id, Notification.Status.DONE)
     # 以下需要在前端呈现
     comments = preorg.comments.order_by('time')  # 加载评论
     html_display['oname'] = preorg.oname
@@ -3044,10 +3039,10 @@ def auditOrganization(request):
                     text = str(context['new_comment'].text)
                     if len(text)>=32:
                         text=text[:31]+"……"
-                    content = "{teacher_name}老师给您的组织申请留有新的评论 ".format(
+                    content = "{teacher_name}老师给您的组织申请留有新的评论".format(
                          teacher_name=me.name)
                     if text != "":
-                        content += ":“{text}”'".format(text=text)
+                        content += ":“{text}”".format(text=text)
                     receiver = preorg.pos  # 通知接收者
                     URL = ""
                     new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
@@ -3180,7 +3175,7 @@ def auditOrganization(request):
                         NewOrganization.NewOrgStatus.REFUSED ]
     if preorg.status in TERMINATE_STATUSES and notification.status==Notification.Status.UNDONE:
         #未读变已读
-        notification_status_change(notification_id)
+        notification_status_change(notification_id,Notification.Status.DONE)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
@@ -3288,6 +3283,7 @@ def addReimbursement(request):
         except:
             html_display['warn_code'] = 1
             html_display['warn_message'] = "该URL被篡改，请输入正确的URL地址"
+            return redirect("/welcome/")
             return redirect('/notifications/' + '?warn_code={}&warn_message={}'.format(
                 html_display['warn_code'], html_display['warn_message']))
         if pre_reimb.pos != request.user:   #判断是否为本人
@@ -3387,6 +3383,11 @@ def addReimbursement(request):
             try:
                 reimb_act_id = int(request.POST.get('activity_id'))
                 reimb_act = Activity.objects.get(id=reimb_act_id)
+                if edit ==0:
+                    if reimb_act not in activities:#防止篡改POST导致伪造别人的报销活动
+                        html_display['warn_code'] = 1
+                        html_display['warn_message'] = "找不到该活动，请检查报销的活动的合法性！"
+                        return render(request, "reimbursement_add.html", locals())
             except:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "找不到该活动，请检查报销的活动的合法性！"
@@ -3407,7 +3408,11 @@ def addReimbursement(request):
                 html_display['warn_message'] = "元气值不能为空，请完整填写。"
                 return render(request, "reimbursement_add.html", locals())
             # 报销材料图片的保存
-            message = request.POST.get('message')  # 备注信息
+            message = str(request.POST.get('message'))  # 报销说明
+            if message=="":
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "报销说明不能为空，请完整填写。"
+                return render(request, "reimbursement_add.html", locals())
 
             if edit == 0:
 
@@ -3584,17 +3589,16 @@ def auditReimbursement(request):
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "报销审核"
     bar_display["navbar_name"] = "报销审核"
-    if new_reimb.status not in TERMINATE_STATUSES:  # 正在申请中，可以评论。
-        commentable = 1  # 可以评论
-    if new_reimb.status in TERMINATE_STATUSES and notification.status==Notification.Status.UNDONE:
-        #未读变已读
-        notification_status_change(notification_id, Notification.Status.DONE)
+
     # 以下前端展示
     comments = new_reimb.comments.order_by('time')  # 加载评论
-    html_display['activity_title'] = new_reimb.activity.title
+    html_display['activity'] = new_reimb.activity
     html_display['amount'] = new_reimb.amount  # 报销金额
     html_display['message'] = new_reimb.message  # 备注信息
     html_display['oname'] = new_reimb.pos.organization.oname  # 组织姓名
+    html_display['apply_time']=new_reimb.time
+    html_display['applicant'] = utils.get_person_or_org(new_reimb.pos)
+    html_display["app_avatar_path"] = utils.get_user_ava(html_display['applicant'], "Organization")
 
     if request.method == "POST" and request.POST:
 
@@ -3602,7 +3606,7 @@ def auditReimbursement(request):
             context = addComment(request, new_reimb)
             if context['warn_code'] == 1:
                 html_display['warn_code'] = 1
-                html_display['warn_message'] = context['warn_code']
+                html_display['warn_message'] = context['warn_message']
             try:  # 发送给评论通知
                 with transaction.atomic():
                     text = str(context['new_comment'].text)
@@ -3735,15 +3739,11 @@ def auditReimbursement(request):
                 return redirect('/notifications/' +
                                 '?warn_code={}&warn_message={}'.format(
                                     html_display['warn_code'], html_display['warn_message']))
-
     if new_reimb.status == Reimbursement.ReimburseStatus.WAITING:  # 正在申请中，可以评论。
         commentable = 1  # 可以评论
-
-    TERMINATE_STATUSES=[Reimbursement.ReimburseStatus.CANCELED,Reimbursement.ReimburseStatus.CONFIRMED,
-                        Reimbursement.ReimburseStatus.REFUSED]
     if new_reimb.status in TERMINATE_STATUSES and notification.status==Notification.Status.UNDONE:
         #未读变已读
-        notification_status_change(notification_id)
+        notification_status_change(notification_id,Notification.Status.DONE)
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "报销审核"
