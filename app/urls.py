@@ -42,6 +42,7 @@ urlpatterns = [
     path("getActivityInfo/", views.getActivityInfo, name="getActivityInfo"),
     path("checkinActivity/", views.checkinActivity, name="checkinActivity"),
     path("addActivities/", views.addActivities, name="addActivities"),
+    path("examineActivity/<str:aid>", views.examineActivity, name="examineActivity"),
     path("subscribeActivities/", views.subscribeActivities, name="subscribeActivities"),
     path("save_subscribe_status", views.save_subscribe_status, name="save_subscribe_status"),
     path("notifications/", views.notifications, name="notifications"),

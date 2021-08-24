@@ -1,4 +1,7 @@
-from app.models import NaturalPerson, Organization, OrganizationType, Position, Notification,NewOrganization
+from app.models import (
+    NaturalPerson, Organization, OrganizationType, 
+    Position, Notification, NewOrganization, Activity
+)
 from django.contrib.auth.models import User
 from django.dispatch.dispatcher import receiver
 from django.contrib import auth
@@ -111,7 +114,12 @@ def get_org_left_navbar(org, is_myself, html_display):
 # user对象是request.user对象直接转移
 # 内容存储在bar_display中
 # Attention: 本函数请在render前的最后时刻调用
-def get_sidebar_and_navbar(user, bar_display = None):
+
+# added by syb, 8.23: 
+# 在函数中添加了title_name和navbar_name参数，根据这两个参数添加帮助信息
+# 现在最推荐的调用方式是：在views的函数中，写
+# bar_display = utils.get_sidebar_and_navbar(user, title_name, navbar_name)
+def get_sidebar_and_navbar(user,  navbar_name = "", title_name = "", bar_display = None):
     if bar_display is None:
         bar_display = {}            # 默认参数只会初始化一次，所以不应该设置为{}
     me = get_person_or_org(user)    # 获得对应的对象
@@ -142,158 +150,18 @@ def get_sidebar_and_navbar(user, bar_display = None):
     else:
         bar_display["profile_name"] = "组织主页"
         bar_display["profile_url"] = "/orginfo/"
+
+    bar_display["navbar_name"] = navbar_name
+    bar_display["title_name"] = title_name if not title_name else navbar_name # title_name默认与navbar_name相同
+
+    if navbar_name != "":
+        bar_display["help_message"] = local_dict["help_message"].get(navbar_name, "")
+        bar_display["help_paragraphs"] = local_dict["use_help"].get(navbar_name, list())
     
     return bar_display
 
-# 检查发起活动的request的合法性
-def check_ac_request(request):
-    # oid的获取
-    context = dict()
-    context['warn_code'] = 0
-
-    try:
-        assert request.POST['edit'] == "True"
-        edit = True
-    except:
-        edit = False
-
-    # signup_start = request.POST["actstar"]
-    act_start = request.POST.get("actstart")  # 活动报名时间
-    act_end = request.POST.get("actend")  # 活动报名结束时间
-    prepare_scheme = request.POST.get("prepare_scheme")
-    context['need_check'] = False
-
-    # edit 不能改预算和报名方式
-    if not edit:
-        try:
-            budget = float(request.POST["budget"])
-            context['budget'] = budget
-            if context['budget'] > local_dict['thresholds']['activity_budget']:
-                context['need_check'] = True
-        except:
-            budget = local_dict['thresholds']['activity_budget']
-        try:
-            schema = int(request.POST["signschema"])
-        except:
-            schema = 0
-        context['signschema'] = schema
-
-    # 准备时间
-    try:
-        prepare_scheme = int(prepare_scheme)
-        prepare_times = [1, 24, 72, 168]
-        prepare_time = prepare_times[prepare_scheme]
-        context['prepare_scheme'] = prepare_scheme
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "非预期错误，请联系管理员"
-            return context
-
-    # 人数限制
-    try:
-        t = int(request.POST["unlimited_capacity"])
-        capacity = 10000
-    except:
-        capacity = 0
-    try:
-        if capacity == 0:
-            capacity = int(request.POST["maxpeople"])
-        if capacity <= 0:
-            context['warn_code'] = 1
-            context['warn_msg'] = "人数限制应当大于 0。"
-            return context
-        context['capacity'] = capacity
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "人数限制必须是一个整数。"
-            return context
-
-    # 价格
-    try:
-        aprice = float(request.POST["aprice"])
-        assert int(aprice * 10) / 10 == aprice
-        if aprice < 0:
-            context['warn_code'] = 1
-            context['warn_msg'] = "价格应该大于 0。"
-            return context
-        context['aprice'] = aprice
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "价格必须是一个单精度浮点数。"
-            return context
-
-    # 时间
-    try:
-        act_start = datetime.strptime(act_start, '%m/%d/%Y %H:%M %p')
-        act_end = datetime.strptime(act_end, '%m/%d/%Y %H:%M %p')
-        now_time = datetime.now()
-
-        # 创建活动即开始报名
-        signup_start = now_time
-        signup_end = act_start - timedelta(hours=prepare_time)
-
-        # print('now', now_time)
-        # print('end', signup_end)
-
-        if signup_start >= signup_end:
-            context['warn_code'] = 1
-            context['warn_msg'] = "没有足够的时间准备活动。"
-            return context
-
-        if now_time + timedelta(days=30) < act_start:
-            context['warn_code'] = 1
-            context['warn_msg'] = "活动应该在一个月之内。"
-            return context
-
-        context['signup_start'] = signup_start
-        context['signup_end'] = signup_end
-        context['act_start'] = act_start
-        context['act_end'] = act_end
-
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "错误的时间格式。"
-            return context
-
-    try:
-        context['URL'] = request.POST["URL"]
-    except:
-        pass
-    if context['warn_code'] != 0:
-        return context
-
-    try:
-        context['aname'] = str(request.POST["aname"])  # 活动名称
-        context['content'] = str(request.POST["content"])  # 活动内容
-        context['location'] = str(request.POST["location"])  # 活动地点
-        if context.get('aname'):
-            assert len(context['aname']) > 0
-        if context.get('content'):
-            assert len(context['content']) > 0
-        if context.get('location'):
-            assert len(context['location']) > 0
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "请确认已输入活动名称/地点/简介。"
-    return context
 
 
-# 时间合法性的检查，检查时间是否在当前时间的一个月以内，并且检查开始的时间是否早于结束的时间，
-def check_ac_time(start_time, end_time):
-    try:
-        now_time = datetime.now().strptime("%Y-%m-%d %H:%M:%S")
-        month_late = now_time + datetime.timedelta(days=30)
-        if now_time < start_time < end_time < month_late:
-            return True  # 时间所处范围正确
-    except:
-        return False
-
-    return False
 
 
 def url_check(arg_url):
@@ -337,7 +205,7 @@ def get_url_params(request, html_display):
 
 
 # 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
-def check_neworg_request(request,org=None):
+def check_neworg_request(request, org=None):
     """
 
     """
@@ -349,18 +217,11 @@ def check_neworg_request(request,org=None):
         context['warn_code'] = 1
         context['warn_msg'] = "组织的名字不能超过32字节"
         return context
-    if oname=="":
+    if oname == "":
         context['warn_code'] = 1
         context['warn_msg'] = "组织的名字不能为空"
         return context
-    if org is not None and oname==org.oname:
-        if len(NewOrganization.objects.exclude(status=NewOrganization.NewOrgStatus.CANCELED)
-                       .exclude(status=NewOrganization.NewOrgStatus.REFUSED).filter(oname=oname)) > 1 \
-                or len(Organization.objects.filter(oname=oname)) != 0:
-            context['warn_code'] = 1
-            context['warn_msg'] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
-            return context
-    else:
+    if org is None or oname != org.oname:
         if len(NewOrganization.objects.exclude(status=NewOrganization.NewOrgStatus.CANCELED)
                        .exclude(status=NewOrganization.NewOrgStatus.REFUSED).filter(oname=oname))!=0 \
                         or len(Organization.objects.filter(oname=oname))!=0:
