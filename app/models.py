@@ -43,7 +43,7 @@ class NaturalPerson(models.Model):
     telephone = models.CharField("电话", max_length=20, null=True, blank=True)
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
-    wallpaper = models.ImageField(upload_to=f"avatar/", blank=True)
+    wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
     first_time_login = models.BooleanField(default=True)
     last_time_login = models.DateTimeField("活动开始时间", blank=True, null=True)
     objects = NaturalPersonManager()
