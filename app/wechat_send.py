@@ -6,7 +6,7 @@ from django.conf import settings
 from boottest import local_dict
 
 # 模型与加密模型
-from app.models import NaturalPerson, Organization, Activity, Notification
+from app.models import NaturalPerson, Organization, Activity, Notification, Participant
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 # 日期与定时任务
@@ -403,5 +403,28 @@ def publish_activity(activity_or_id, only_activated=False):
             base_send_wechat(userids, message, **kws)  # 不使用定时任务请改为这句
     return True
 
-    
+
+def wechatNotifyActivity(aid, msg, send_to):
+    activity = Activity.objects.get(id=aid)
+    targets = set()
+    if send_to == 'participants' or send_to == 'all':
+        participants = Participant.objects.filter(activity_id=aid, 
+            status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING])
+        participants = list(participants.values_list("person_id__username", flat=True))
+        targets |= set(participants)
+
+    if send_to == 'subscribers' or send_to == 'all':
+        org = activity.organization_id
+        subcribers = NaturalPerson.objects.difference(org.unsubsribers)   
+        subcribers = subcribers.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
+        subcribers = list(subcribers.values_list("person_id__username", flat=True))
+        targets |= set(subcribers)
+
+    targets = list(targets)
+    num = len(targets)
+    for i in range(0, num, 500):
+        userids = targets[i:i+500]   # 一次最多接受1000个，方便传送只发500个
+        base_send_wechat(userids, msg, **kws)
+
+
 publish_activity.ENABLE_INSTANCE = True     # 标识接收的参数类型
