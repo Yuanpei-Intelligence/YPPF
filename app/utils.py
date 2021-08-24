@@ -201,7 +201,7 @@ def check_ac_request(request):
 
     bar_display["navbar_name"] = navbar_name
     bar_display["title_name"] = (
-        title_name if not title_name else navbar_name
+        title_name if title_name else navbar_name
     )  # title_name默认与navbar_name相同
 
     if navbar_name != "":
