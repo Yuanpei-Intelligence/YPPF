@@ -3344,11 +3344,13 @@ def addReimbursement(request):
                         html_display['warn_code'] = 1
                         html_display['warn_message'] = "创建给审核老师的取消通知失败。请联系管理员。"
                         return render(request, "reimbursement_add.html", locals())
-                    # 微信通知
-                    publish_notification(new_notification)
-                    # 成功取消经费申请
-                    html_display['warn_code'] = 2
-                    html_display['warn_message'] = "已成功取消“{act_name}”的经费申请！".format(act_name=pre_reimb.activity.title)
+                # 微信通知
+                publish_notification(new_notification)
+                # 成功取消经费申请
+                html_display['warn_code'] = 2
+                html_display['warn_message'] = "已成功取消“{act_name}”的经费申请！".format(act_name=pre_reimb.activity.title)
+                edit = 0
+                commentable=0
             else:
                 if edit == 0:
                     # 活动实例
@@ -3433,6 +3435,7 @@ def addReimbursement(request):
                         html_display['warn_code'] = 1
                         html_display['warn_message'] = "创建通知失败。请检查输入or联系管理员"
                         return render(request, "reimbursement_add.html", locals())
+
                     # 微信通知
                     publish_notification(new_notification)
                     # 成功发送报销申请

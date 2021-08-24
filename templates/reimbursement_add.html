@@ -28,13 +28,13 @@
                                                 {% with pre_reimb.get_status_display as status %}
                                                     {% if edit %}
                                                     <div>
-                                                        <h4>修改经费申请    {{status}}</h4>
+                                                        <h4>修改经费申请    <span style="color: red">{{status}}</span></h4>
                                                     </div>
                                                     <div>
                                                         <h4>当前剩余元气值：{{me.YQPoint}}</h4>
                                                     </div>
                                                     {% else %}
-                                                    <h4>经费申请    {{status}}</h4>
+                                                    <h4>经费申请    <span style="color: red">{{status}}</span></h4>
                                                     {% endif %}
                                                 {% endwith%}
                                                 {% else %}

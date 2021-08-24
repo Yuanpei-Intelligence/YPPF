@@ -38,11 +38,9 @@ img {
 {%if commentable %}
 <form role="form" method="POST" enctype="multipart/form-data">
     <div>
+        <br>
+        <br>
         <div class="form-group">
-            <div>
-                <p style="color: rgb(66, 67, 68);" align="right"><i
-                        class="fa fa-address-book"></i> {{request.user}}</p>
-            </div>
             <textarea type="text" id="comment" name="comment"
                       class="form-control"
                       aria-label="Default" rows="3"
