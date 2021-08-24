@@ -79,7 +79,7 @@ def check_user_type(user):
 
 def get_user_ava(obj, user_type):
     ava = obj.avatar
-    if ava:
+    if not ava:
         if user_type == "Person":
             return settings.MEDIA_URL + "avatar/person_default.jpg"
         else:
