@@ -3591,7 +3591,7 @@ def auditReimbursement(request):
     html_display['apply_time']=new_reimb.time       #申请时间
     html_display['applicant'] = utils.get_person_or_org(new_reimb.pos) #申请组织
     html_display['app_avatar_path'] = utils.get_user_ava(html_display['applicant'], "Organization")#申请组织的头像
-    html_display['our_college']=Organization.objects.get(oname="元培学院")
+    html_display['our_college']=Organization.objects.get(oname="元培学院") #获取元培学院的元气值
 
     if request.method == "POST" and request.POST:
 
