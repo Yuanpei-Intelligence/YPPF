@@ -39,11 +39,16 @@
                                     enctype="multipart/form-data">
                                     <div class="info">
                                         <h6 class="">个人信息</h6>
-                                        <div class="row">
-                                            <div class="upload m-auto">
+                                        <div class="row d-flex justify-content-center">
+                                            <div class="upload mr-3" style="border: none;">
                                                 <input type="file" id="avatar" class="dropify" name="avatar"
                                                     data-default-file="{{former_img}}" data-max-file-size="512K" />
-                                                <p class="mt-2 text-center">{{useroj.name}}</p>
+                                                <p class="mt-2 text-center">头像</p>
+                                            </div>
+                                            <div class="upload ml-3" style="border: none;">
+                                                <input type="file" id="wallpaper" class="dropify" name="wallpaper"
+                                                    data-default-file="{{former_wallpaper}}" data-max-file-size="512K" />
+                                                <p class="mt-2 text-center">背景图片</p>
                                             </div>
                                         </div>
                                         <div class="row">

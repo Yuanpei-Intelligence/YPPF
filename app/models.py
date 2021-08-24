@@ -50,6 +50,7 @@ class NaturalPerson(models.Model):
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
 
     YQPoint = models.FloatField("现存元气值", default=0)
+    YQPoint_credit_card = models.FloatField("元气值信用", default=0)
     quota = models.FloatField("元气值配额", default=0)
     bonusPoint = models.FloatField("积分", default=0)
 
@@ -704,7 +705,9 @@ class NewOrganization(CommentBase):
     status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
     
     def __str__(self):
-        return f'{self.oname}{self.otype.otype_name}'
+        # YWolfeee: 不认为应该把类型放在如此重要的位置
+        # return f'{self.oname}{self.otype.otype_name}'
+        return f'{self.oname}'
 
     def save(self, *args, **kwargs):
         self.typename = "neworganization"
