@@ -9,34 +9,26 @@ img {
     {%if  commentable == 1 or comments is not None%}
     <label><h4>评论区</h4></label>
     {%endif%}
-    {%for comment in comments.all%}
+    {%for comment in comments%}
     <div class="form-group">
         <div class="d-flex justify-content-between">
             <div>
                 <p style="color: rgb(66, 67, 68);"><i class="fa fa-calendar-o"></i>评论时间：{{comment.time}}</p>
             </div>
-            <div>
-                <p style="color: rgb(66, 67, 68);" align="right"><i class="fa fa-address-book"></i>
-                    评论人：{{comment.commentator}}</p>
-            </div>
-            <!--如何前端实现判别user组织还是自然人呢？ 如何在前端展示组织头像呢（需要一个绝对路径）？
             <div align="right">
-                <h4><img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
-                    <a href='/orginfo/{{comment.commentator.organization.oname}}'>
-                        <u>{{comment.commentator.organization.oname}}</u></a>
+                <h4><img src={{ comment.ava }} width="24" height="24" alt="avatar">
+                    <a href='{{comment.URL}}'><u>{{comment.commentator_name}}</u></a>
                 </h4>
             </div>
-            -->
         </div>
         {%if comment.text != ""%}
         <textarea name="comment" class="form-control" disabled="disabled">{{comment.text}}</textarea>
         {%endif%}
         {%for image in comment.comment_photos.all%}
-
         <img width="400px" height="200px" src={{image.imagepath}}>
         <!--移动端图片大小需要修正!-->
-        <hr>
         {%endfor%}
+        <hr>
     </div>
     {% endfor %}
 </div>
