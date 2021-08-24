@@ -1,3 +1,4 @@
+
 {% extends "base.html" %}
 
 {% load static %}
@@ -9,8 +10,6 @@
         <!--  BEGIN CUSTOM STYLE FILE  -->
         <link rel="stylesheet" type="text/css" href="{% static "plugins/dropify/dropify.min.css" %}">
         <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
-        <!--  END CUSTOM STYLE FILE  -->
-        
         <div class="container">
             <div class="container">
                 {% if html_display.warn_code == 2 %}
@@ -29,17 +28,7 @@
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                {% if present %}
-                                                    {% with preorg.get_status_display as status %}
-                                                    {%if edit%}
-                                                    <h4>重新修改申请的组织信息  {{status}}</h4>
-                                                    {% else %}
-                                                    <h4>新建组织申请  {{status}}</h4>
-                                                    {% endif %}
-                                                    {%endwith%}
-                                                {% else %}
-                                                <h4>请填写新建组织的相关信息</h4>
-                                                {% endif %}
+                                                <h4>请填写加入组织的相关信息</h4>
                                             </div>
                                         </div>
                                     </div>
@@ -48,73 +37,39 @@
                                     <div class="widget-content widget-content-area">
 
                                         <form role="form" method="POST" enctype="multipart/form-data">
-                                            {%if present%}
-                                                    <div class="form-group">
-                                                        <label>修改组织图标</label>
-                                                        <br>
-                                                        {% if edit %}
-                                                        <input type="file" id="preavatar" class="dropify" name="avatar"
-                                                           data-default-file="{{org_avatar_path}}"
-                                                           data-max-file-size="512K"/>
-                                                        {%else%}
-                                                        <img src="{{org_avatar_path}}" width="200px" height="200px" alt="组织图标"/>
-                                                        {%endif%}
-                                                    </div>
-                                            {%else%}
-                                                <label>组织图标</label>
-                                                <br>
-                                                <div class="row">
-                                                    <div class="upload m-auto">
-                                                        <input type="file" id="avatar" class="dropify" name="avatar" 
-                                                            data-default-file="{{former_img}}" data-max-file-size="512K" />
-                                                    </div>
-                                                </div>
-                                            {%endif%}
-                                            <hr>
                                             <div class="form-group">
                                                 <label>组织名称</label>
                                                 {%if present%}
                                                 <textarea type="text" name="oname" class="form-control"
                                                           aria-label="Default" placeholder="不超过32个字节"
-                                                          {%if edit == 0 %} disabled="disabled" {%endif%}>{{html_display.oname}}</textarea>
+                                                           disabled="disabled" >{{html_display.oname}}</textarea>
 
                                                 {%else%}
-                                                <input type="text" name="oname" class="form-control"
-                                                       aria-label="Default" placeholder="不超过32个字节">
+                                                    {% if exist_org %}
+                                                        <input type="text" name="oname" class="form-control"
+                                                            aria-label="Default" readonly value="{{html_display.default_oname}}">
+                                                    {% else %}
+                                                        <input type="text" name="oname" class="form-control"
+                                                            aria-label="Default" placeholder="不超过32个字节">
+                                                    {% endif %}
                                                 {%endif%}
                                             </div>
+                                            
                                             <div class="form-group">
-                                                <label>组织类型</label>
-                                                <br>
-                                                {%if present%}
-                                                    {% if edit %}
-                                                <select name="otype" class="form-control">
-                                                    {%for org_type in org_types%}
-                                                    <option value={{org_type.otype_id}} {% if html_display.otype_id == org_type.otype_id %}
-                                                            selected="selected"
-                                                            {% endif %}>{{org_type.otype_name}}
-                                                    </option>
-                                                    {%endfor%}
+                                                <label for="aintro">人事变动类型</label>
+                                                <select class="form-control" id="apply_type" name="apply_type" {%if edit == 0 and present == 1 %} disabled="disabled" {%endif%}>
+                                                    <option value="JOIN" {% if html.apply_type == "JOIN" %} selected {% endif %}>加入组织</option>
+                                                    <option value="TRANSFER" {% if html.apply_type == "TRANSFER" %} selected {% endif %}>修改职位</option>
+                                                    <option value="WITHDRAW" {% if html.apply_type == "WITHDRAW" %} selected {% endif %}>退出组织</option>
                                                 </select>
-                                                    {%else%}
-                                                 <textarea id="otype" name="otype" class="form-control"
-                                                          aria-label="Default" {%if edit == 0 %} disabled="disabled" {%endif%}
-                                                 >{{html_display.otype_name}}</textarea>
-                                                    {%endif%}
-                                                {%else%}
-                                                <select name="otype" class="form-control selectpicker">
-                                                    {%for org_type in org_types%}
-                                                    <option value={{org_type.otype_id}}>{{org_type.otype_name}}</option>
-                                                    {%endfor%}
-                                                </select>
-                                                {%endif%}
                                             </div>
                                             <div class="form-group">
-                                                <label for="aintro">组织简介</label>
-                                                <textarea name="introduction" class="form-control" rows="3"
-                                                          placeholder="空" {%if edit == 0 and present == 1 %} disabled="disabled" {%endif%}
-                                                    >{%if edit%}{{html_display.introduction}}{%endif%}</textarea>
+                                                <label for="aintro">申请职位</label>
+                                                <textarea name="apply_pos" class="form-control" aria-label="Default" placeholder=
+                                                        "申请职位不能为空"{%if edit == 0 and present == 1 %} disabled="disabled" {%endif%}
+                                                >{% if edit %}{{html_display.apply_pos}}{% endif %}</textarea>
                                             </div>
+
                                             <div class="form-group">
                                                 <label for="aintro">申请理由</label>
                                                 <textarea name="application" class="form-control" rows="3" placeholder=
@@ -134,13 +89,14 @@
                                                     </tr>
                                                 </table>
                                             </div>
-                                            {%elif present == 0%}
+                                            {% elif present == 0 %}
                                             <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
                                                     value="">
                                                 提交
                                             </button>
                                             {%endif%}
                                         </form>
+                                        <br>
                                         <hr>
                                     {% include 'comment.html' %}
                                     </div>
@@ -183,7 +139,4 @@
     <script src={% static "assets/js/users/account-settings.js" %}></script>
     <!--  END CUSTOM SCRIPTS FILE  -->
 {% endblock %}
-
-
-
 

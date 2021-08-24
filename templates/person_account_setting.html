@@ -16,7 +16,11 @@
         <link rel="stylesheet" type="text/css" href="{% static "plugins/dropify/dropify.min.css" %}">
         <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
         <!--  END CUSTOM STYLE FILE  -->
-
+        {% if html_display.warn_code == 1 %}
+        <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+        {% elif html_display.warn_code == 2 %}
+        <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
+        {% endif %}
         <div class="layout-px-spacing">
 
             <div class="account-settings-container layout-top-spacing">
@@ -120,11 +124,11 @@
                                                                 <label class="form-check-label" for="show_dorm">对外展示</label>
                                                             </div>
                                                             <label for="profession">我的年级</label>
-                                                            <input type="text" class="form-control" id="grade" readonly="readonly"
-                                                                name="grade" placeholder="{{userinfo.stu_grade}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
+                                                            <input type="text" class="form-control " id="grade" readonly="readonly"
+                                                                name="grade" value="{{userinfo.stu_grade}}" >
                                                             <label for="profession">我的班级</label>
                                                             <input type="text" class="form-control" id="class" readonly="readonly"
-                                                                name="class" placeholder="{{userinfo.stu_class}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
+                                                                name="class" value="{{userinfo.stu_class}}">
                                                             <label for="profession">我的邮箱</label>
                                                             <input type="text" class="form-control" id="email" 
                                                                 name="email" placeholder="{{userinfo.email}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
