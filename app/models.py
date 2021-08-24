@@ -681,7 +681,7 @@ class NewOrganization(CommentBase):
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
-    oname = models.CharField(max_length=32, unique=True)
+    oname = models.CharField(max_length=32) #这里不设置unique的原因是可能是已取消
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
     introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     application = models.TextField(
