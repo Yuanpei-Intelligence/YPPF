@@ -24,7 +24,9 @@
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                <h4>审核报销</h4>
+                                                {% with new_reimb.get_status_display as status %}
+                                                <h4>审核报销  {{status}}</h4>
+                                                {%endwith%}
                                             </div>
                                         </div>
                                     </div>
@@ -37,19 +39,19 @@
                                             <div class="form-group">
                                                 <label>组织名称</label>
                                                 <textarea id="oname" name="oname" class="form-control"
-                                                          aria-label="Default">{{html_display.oname}}</textarea>
+                                                          aria-label="Default" disabled="disabled">{{html_display.oname}}</textarea>
                                             </div>
 
                                             <div class="form-group">
                                                 <label>报销活动</label>
                                                 <textarea id="activity_title" name="activity_title" class="form-control"
-                                                          aria-label="Default">{{html_display.activity_title}}</textarea>
+                                                          aria-label="Default" disabled="disabled">{{html_display.activity_title}}</textarea>
                                             </div>
                                             <div class="form-group">
                                                 <label>报销额度</label>
                                                 <br>
                                                 <textarea id="amount" name="amount" class="form-control"
-                                                          aria-label="Default">{{html_display.amount}}</textarea>
+                                                          aria-label="Default" disabled="disabled">{{html_display.amount}}</textarea>
                                             </div>
 
                                             <div class="form-group">
@@ -57,19 +59,11 @@
 
                                                 <textarea name="message" class="form-control"
                                                           rows="3"
-                                                          placeholder="空">{{html_display.message}}</textarea>
+                                                          placeholder="空" disabled="disabled">{{html_display.message}}</textarea>
                                             </div>
-
+                                            {%if commentable%}
                                             <div align="center">
                                                 <table>
-                                                    <tr>
-                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
-                                                                name="submit"
-                                                                value="1">
-                                                            需要修改
-                                                        </button>
-
-                                                    </tr>
                                                     <tr>
                                                         <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
                                                                 name="submit"
@@ -79,7 +73,7 @@
                                                     </tr>
 
                                                     <tr>
-                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                        <button type="submit" class="btn btn-warning btn-lg mb-4 mr-2"
                                                                 name="submit"
                                                                 value="3">
                                                             拒绝
@@ -87,6 +81,7 @@
                                                     </tr>
                                                 </table>
                                             </div>
+                                            {%endif%}
 
                                         </form>
 
