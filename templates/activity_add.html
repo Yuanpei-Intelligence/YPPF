@@ -71,9 +71,17 @@
                                             <!-- 前端没想好怎么设计 -->
                                             {% if not examine %}
                                             <div class="form-group">
+                                                <!--
                                                 <input type="text" id="examine_teacher" name="examine_teacher" class="form-control"
                                                     aria-label="Default" placeholder="审批老师" required="required" onclick="fill_value(this)">
+                                                -->
+                                                <select id="examine_teacher" name="examine_teacher" class="form-control selectpicker" >
+                                                    {% for avialable_teacher in avialable_teachers %}
+                                                        <option value="{{avialable_teacher.name}}">{{avialable_teacher.name}}</option>
+                                                    {% endfor %}
+                                                </select>
                                             </div>
+
                                             {% endif %}
 
 
@@ -152,6 +160,21 @@
                                                                     name="unlimited_capacity">
                                                                 <label class="form-check-label" for="defaultCheck1">
                                                                     无人数限制
+                                                                </label>
+
+                                                            </div>
+                                                        </center>
+                                                    </div>
+                                                    <div class="col"
+                                                        style="display: flex; flex-direction: column;justify-content: center;text-align: center;">
+                                                        <center>
+                                                            <div class="form-check"
+                                                                style="align-content: center; vertical-align: middle;">
+                                                                <input class="form-check-input" type="checkbox"
+                                                                    value="1" id="need_checkin"
+                                                                    name="need_checkin">
+                                                                <label class="form-check-label" for="defaultCheck1">
+                                                                    需要签到
                                                                 </label>
 
                                                             </div>
@@ -307,9 +330,6 @@
                                             </button>
                                         </form>
                                         {% endif %}
-                                        <div>
-                                        {% include 'comment.html' %}
-                                        </div>
                                     </div>
 
                                 </div>
@@ -413,7 +433,7 @@
     document.getElementById('datetimepicker3').placeholder='{{start}}';
     document.getElementById('datetimepicker4').placeholder='{{end}}';
     {% if not examine %}
-    document.getElementById('examine_teacher').placeholder='{{examine_teacher}}';
+    document.getElementById('examine_teacher').value='{{examine_teacher}}';
     {% endif %}
     // 报名信息
     document.getElementById('pricebutton').innerHTML = '{{signscheme}}';
@@ -424,6 +444,9 @@
     document.getElementById('maxpeople').disabled = true;
     {% else %}
     document.getElementById('maxpeople').placeholder = '{{capacity}}';
+    {% endif %}
+    {% if need_checkin %}
+    document.getElementById('need_checkin').checked = true;
     {% endif %}
     {% if not examine %}
     document.getElementById("inputState").value = {{endbefore}};
@@ -474,6 +497,8 @@
             document.getElementById('title').disabled = true;
             document.getElementById('budget').disabled = true;
             document.getElementById('examine_teacher').disabled = true;
+            // 不允许改是否能签到，不常用
+            document.getElementById('need_checkin').disabled = true;
         {% endif %}
 
     {% else %}

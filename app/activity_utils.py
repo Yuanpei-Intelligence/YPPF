@@ -114,6 +114,10 @@ def activity_base_check(request):
         assert capacity >= 0
     context['capacity'] = capacity
 
+    # 需要签到
+    if request.POST.get("need_checkin"):
+        context['need_checkin'] = True
+
     # 价格
     aprice = float(request.POST["aprice"])
     assert int(aprice * 10) / 10 == aprice
@@ -288,7 +292,7 @@ def modify_accepted_activity(request, activity):
     if request.POST.get('unlimited_capacity'):
         capacity = 10000
     else:
-        capacity = int(request.POST['capacity'])
+        capacity = int(request.POST['maxpeople'])
         assert capacity > 0
         if capacity < len(Participant.objects.filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)):
             raise ActivityException(f"当前成功报名人数已超过{capacity}人")
@@ -304,7 +308,7 @@ def modify_accepted_activity(request, activity):
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
             run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
     scheduler.add_job(notifyActivity, 'date', id=f"activity_{activity.id}_remind",
-        run_date=activity.act_start - timedelta(minutes=15), args=[activity.id, 'remind'], replace_existing=True)
+        run_date=activity.start - timedelta(minutes=15), args=[activity.id, 'remind'], replace_existing=True)
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
         run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
@@ -343,7 +347,7 @@ def accept_activity(request, activity):
     # 通知
     notifyActivity(activity.id, "newActivity")
     scheduler.add_job(notifyActivity, 'date', id=f"activity_{activity.id}_remind",
-        run_date=activity.act_start - timedelta(minutes=15), args=[activity.id, 'remind'], replace_existing=True)
+        run_date=activity.start - timedelta(minutes=15), args=[activity.id, 'remind'], replace_existing=True)
     # 活动状态修改
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
         run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
