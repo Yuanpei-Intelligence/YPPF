@@ -1,4 +1,12 @@
-from app.models import NaturalPerson, Organization, OrganizationType, Position, Notification, NewOrganization
+from app.models import (
+    NaturalPerson,
+    Organization,
+    OrganizationType,
+    Position,
+    Notification,
+    NewOrganization,
+    Activity,
+)
 from django.contrib.auth.models import User
 from django.dispatch.dispatcher import receiver
 from django.contrib import auth
@@ -19,6 +27,7 @@ def check_user_access(redirect_url="/logout/"):
     to specific url if necessary. Then it checks that the user is not
     first time login, redirecting to the modify password page otherwise.
     """
+
     def actual_decorator(view_function):
         @wraps(view_function)
         def _wrapped_view(request, *args, **kwargs):
@@ -26,14 +35,15 @@ def check_user_access(redirect_url="/logout/"):
             if not valid:
                 return redirect(redirect_url)
 
-            isFirst = get_person_or_org(
-                request.user, user_type).first_time_login
+            isFirst = get_person_or_org(request.user, user_type).first_time_login
             # 如果是首次登陆，会跳转到密码修改的页面
             if isFirst:
                 return redirect("/modpw/")
 
             return view_function(request, *args, **kwargs)
+
         return _wrapped_view
+
     return actual_decorator
 
 
@@ -49,12 +59,11 @@ def get_person_or_org(user, user_type=None):
         else Organization.objects.get(organization_id=user)
     )
 
+
 # YWolfeee, Aug 16
 # check_user_type只是获得user的类型，其他用于呈现html_display的内容全部转移到get_siderbar_and_navbar中
 # 同步开启一个html_display，方便拓展前端逻辑的呈现
-
-
-def check_user_type(user):  # return Valid(Bool), otype
+def check_user_type(user):
     html_display = {}
     if user.is_superuser:
         return False, "", html_display
@@ -63,21 +72,20 @@ def check_user_type(user):  # return Valid(Bool), otype
         html_display["user_type"] = user_type
     else:
         user_type = "Person"
-        html_display['user_type'] = user_type
+        html_display["user_type"] = user_type
 
     return True, user_type, html_display
 
 
 def get_user_ava(obj, user_type):
-    try:
-        ava = obj.avatar
-        assert ava != ""
-        return settings.MEDIA_URL + str(ava)
-    except:
+    ava = obj.avatar
+    if ava:
         if user_type == "Person":
             return settings.MEDIA_URL + "avatar/person_default.jpg"
         else:
             return settings.MEDIA_URL + "avatar/org_default.png"
+    else:
+        return settings.MEDIA_URL + str(ava)
 
 
 def get_user_wallpaper(person):
@@ -90,7 +98,8 @@ def get_user_left_navbar(person, is_myself, html_display):
     #        "is_myself" in html_display.keys()
     # ), "Forget to tell the website whether this is the user itself!"
     raise NotImplementedError(
-        "old left_navbar function has been abandoned, please use `get_sidebar_and_navbar` instead!")
+        "old left_navbar function has been abandoned, please use `get_sidebar_and_navbar` instead!"
+    )
     html_display["underground_url"] = local_dict["url"]["base_url"]
 
     my_org_id_list = Position.objects.activated().filter(person=person).filter(pos=0)
@@ -104,7 +113,8 @@ def get_org_left_navbar(org, is_myself, html_display):
     #        "is_myself" in html_display.keys()
     # ), "Forget to tell the website whether this is the user itself!"
     raise NotImplementedError(
-        "old left_navbar function has been abandoned, please use `get_sidebar_and_navbar` instead!")
+        "old left_navbar function has been abandoned, please use `get_sidebar_and_navbar` instead!"
+    )
     html_display["switch_org_name"] = org.oname
     html_display["underground_url"] = local_dict["url"]["base_url"]
     html_display["org"] = org
@@ -122,10 +132,10 @@ def get_org_left_navbar(org, is_myself, html_display):
 # 在函数中添加了title_name和navbar_name参数，根据这两个参数添加帮助信息
 # 现在最推荐的调用方式是：在views的函数中，写
 # bar_display = utils.get_sidebar_and_navbar(user, title_name, navbar_name)
-def get_sidebar_and_navbar(user,  navbar_name="", title_name="", bar_display=None):
+def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None):
     if bar_display is None:
-        bar_display = {}            # 默认参数只会初始化一次，所以不应该设置为{}
-    me = get_person_or_org(user)    # 获得对应的对象
+        bar_display = {}  # 默认参数只会初始化一次，所以不应该设置为{}
+    me = get_person_or_org(user)  # 获得对应的对象
     _, user_type, _ = check_user_type(user)
     bar_display["user_type"] = user_type
 
@@ -135,8 +145,9 @@ def get_sidebar_and_navbar(user,  navbar_name="", title_name="", bar_display=Non
     bar_display["avatar_path"] = get_user_ava(me, user_type)
 
     # 信箱数量
-    bar_display['mail_num'] = Notification.objects.filter(
-        receiver=user, status=Notification.Status.UNDONE).count()
+    bar_display["mail_num"] = Notification.objects.filter(
+        receiver=user, status=Notification.Status.UNDONE
+    ).count()
 
     if user_type == "Person":
         bar_display["profile_name"] = "个人主页"
@@ -162,168 +173,52 @@ def get_sidebar_and_navbar(user,  navbar_name="", title_name="", bar_display=Non
     if navbar_name != "":
         try:
             bar_display["help_message"] = local_dict["help_message"].get(
-                navbar_name, "")
+                navbar_name, ""
+            )
         except:
             bar_display["help_message"] = ""
         try:
             bar_display["help_paragraphs"] = local_dict["use_help"].get(
-                navbar_name, list())
+                navbar_name, list()
+            )
         except:
             bar_display["help_paragraphs"] = list()
 
     return bar_display
 
+
 # 检查发起活动的request的合法性
-
-
 def check_ac_request(request):
     # oid的获取
     context = dict()
-    context['warn_code'] = 0
+    context["warn_code"] = 0
 
     try:
-        assert request.POST['edit'] == "True"
+        assert request.POST["edit"] == "True"
         edit = True
     except:
         edit = False
 
-    # signup_start = request.POST["actstar"]
-    act_start = request.POST.get("actstart")  # 活动报名时间
-    act_end = request.POST.get("actend")  # 活动报名结束时间
-    prepare_scheme = request.POST.get("prepare_scheme")
-    context['need_check'] = False
+    bar_display["navbar_name"] = navbar_name
+    bar_display["title_name"] = (
+        title_name if not title_name else navbar_name
+    )  # title_name默认与navbar_name相同
 
-    # edit 不能改预算和报名方式
-    if not edit:
+    if navbar_name != "":
         try:
-            budget = float(request.POST["budget"])
-            context['budget'] = budget
-            if context['budget'] > local_dict['thresholds']['activity_budget']:
-                context['need_check'] = True
-        except:
-            budget = local_dict['thresholds']['activity_budget']
+            bar_display["help_message"] = local_dict["help_message"].get(
+                navbar_name, ""
+            )
+        except:  # 找不到提醒, 直接跳过
+            pass
         try:
-            schema = int(request.POST["signschema"])
-        except:
-            schema = 0
-        context['signschema'] = schema
+            bar_display["help_paragraphs"] = local_dict["use_help"].get(
+                navbar_name, list()
+            )
+        except:  # 找不到提醒, 直接跳过
+            pass
 
-    # 准备时间
-    try:
-        prepare_scheme = int(prepare_scheme)
-        prepare_times = [1, 24, 72, 168]
-        prepare_time = prepare_times[prepare_scheme]
-        context['prepare_scheme'] = prepare_scheme
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "非预期错误，请联系管理员"
-            return context
-
-    # 人数限制
-    try:
-        t = int(request.POST["unlimited_capacity"])
-        capacity = 10000
-    except:
-        capacity = 0
-    try:
-        if capacity == 0:
-            capacity = int(request.POST["maxpeople"])
-        if capacity <= 0:
-            context['warn_code'] = 1
-            context['warn_msg'] = "人数限制应当大于 0。"
-            return context
-        context['capacity'] = capacity
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "人数限制必须是一个整数。"
-            return context
-
-    # 价格
-    try:
-        aprice = float(request.POST["aprice"])
-        assert int(aprice * 10) / 10 == aprice
-        if aprice < 0:
-            context['warn_code'] = 1
-            context['warn_msg'] = "价格应该大于 0。"
-            return context
-        context['aprice'] = aprice
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "价格必须是一个单精度浮点数。"
-            return context
-
-    # 时间
-    try:
-        act_start = datetime.strptime(act_start, '%m/%d/%Y %H:%M %p')
-        act_end = datetime.strptime(act_end, '%m/%d/%Y %H:%M %p')
-        now_time = datetime.now()
-
-        # 创建活动即开始报名
-        signup_start = now_time
-        signup_end = act_start - timedelta(hours=prepare_time)
-
-        # print('now', now_time)
-        # print('end', signup_end)
-
-        if signup_start >= signup_end:
-            context['warn_code'] = 1
-            context['warn_msg'] = "没有足够的时间准备活动。"
-            return context
-
-        if now_time + timedelta(days=30) < act_start:
-            context['warn_code'] = 1
-            context['warn_msg'] = "活动应该在一个月之内。"
-            return context
-
-        context['signup_start'] = signup_start
-        context['signup_end'] = signup_end
-        context['act_start'] = act_start
-        context['act_end'] = act_end
-
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "错误的时间格式。"
-            return context
-
-    try:
-        context['URL'] = request.POST["URL"]
-    except:
-        pass
-    if context['warn_code'] != 0:
-        return context
-
-    try:
-        context['aname'] = str(request.POST["aname"])  # 活动名称
-        context['content'] = str(request.POST["content"])  # 活动内容
-        context['location'] = str(request.POST["location"])  # 活动地点
-        if context.get('aname'):
-            assert len(context['aname']) > 0
-        if context.get('content'):
-            assert len(context['content']) > 0
-        if context.get('location'):
-            assert len(context['location']) > 0
-    except:
-        if not edit:
-            context['warn_code'] = 1
-            context['warn_msg'] = "请确认已输入活动名称/地点/简介。"
-    return context
-
-
-# 时间合法性的检查，检查时间是否在当前时间的一个月以内，并且检查开始的时间是否早于结束的时间，
-def check_ac_time(start_time, end_time):
-    try:
-        now_time = datetime.now().strptime("%Y-%m-%d %H:%M:%S")
-        month_late = now_time + datetime.timedelta(days=30)
-        if now_time < start_time < end_time < month_late:
-            return True  # 时间所处范围正确
-    except:
-        return False
-
-    return False
+    return bar_display
 
 
 def url_check(arg_url):
@@ -331,7 +226,7 @@ def url_check(arg_url):
     return True
     if arg_url is None:
         return True
-    if re.match('^/[^/?]*/', arg_url):  # 相对地址
+    if re.match("^/[^/?]*/", arg_url):  # 相对地址
         return True
     for url in local_dict["url"].values():
         base = re.findall("^https?://[^/]*/?", url)[0]
@@ -368,93 +263,104 @@ def get_url_params(request, html_display):
 
 # 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
 def check_neworg_request(request, org=None):
-    """
-
-    """
-
     context = dict()
-    context['warn_code'] = 0
-    oname = str(request.POST['oname'])
+    context["warn_code"] = 0
+    oname = str(request.POST["oname"])
     if len(oname) >= 32:
-        context['warn_code'] = 1
-        context['warn_msg'] = "组织的名字不能超过32字节"
+        context["warn_code"] = 1
+        context["warn_msg"] = "组织的名字不能超过32字节"
         return context
     if oname == "":
-        context['warn_code'] = 1
-        context['warn_msg'] = "组织的名字不能为空"
+        context["warn_code"] = 1
+        context["warn_msg"] = "组织的名字不能为空"
         return context
     if org is not None and oname == org.oname:
-        if len(NewOrganization.objects.exclude(status=NewOrganization.NewOrgStatus.CANCELED)
-               .exclude(status=NewOrganization.NewOrgStatus.REFUSED).filter(oname=oname)) > 1 \
-                or len(Organization.objects.filter(oname=oname)) != 0:
-            context['warn_code'] = 1
-            context['warn_msg'] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
+        if (
+            len(
+                NewOrganization.objects.exclude(
+                    status=NewOrganization.NewOrgStatus.CANCELED
+                )
+                .exclude(status=NewOrganization.NewOrgStatus.REFUSED)
+                .filter(oname=oname)
+            )
+            > 1
+            or len(Organization.objects.filter(oname=oname)) != 0
+        ):
+            context["warn_code"] = 1
+            context["warn_msg"] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
             return context
     else:
-        if len(NewOrganization.objects.exclude(status=NewOrganization.NewOrgStatus.CANCELED)
-               .exclude(status=NewOrganization.NewOrgStatus.REFUSED).filter(oname=oname)) != 0 \
-                or len(Organization.objects.filter(oname=oname)) != 0:
-            context['warn_code'] = 1
-            context['warn_msg'] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
+        if (
+            len(
+                NewOrganization.objects.exclude(
+                    status=NewOrganization.NewOrgStatus.CANCELED
+                )
+                .exclude(status=NewOrganization.NewOrgStatus.REFUSED)
+                .filter(oname=oname)
+            )
+            != 0
+            or len(Organization.objects.filter(oname=oname)) != 0
+        ):
+            context["warn_code"] = 1
+            context["warn_msg"] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
             return context
 
     try:
-        otype = int(request.POST.get('otype'))
-        context['otype'] = OrganizationType.objects.get(otype_id=otype)
+        otype = int(request.POST.get("otype"))
+        context["otype"] = OrganizationType.objects.get(otype_id=otype)
     except:
-        context['warn_code'] = 1
+        context["warn_code"] = 1
         # user can't see it . we use it for debugging
-        context['warn_msg'] = "数据库没有小组的所在类型，请联系管理员！"
+        context["warn_msg"] = "数据库没有小组的所在类型，请联系管理员！"
         return context
 
-    context['avatar'] = request.FILES.get('avatar')
-    if context['avatar'] is not None:
-        if if_image(context['avatar']) == 1:
-            context['warn_code'] = 1
-            context['warn_msg'] = "组织的头像应当为图片格式！"
+    context["avatar"] = request.FILES.get("avatar")
+    if context["avatar"] is not None:
+        if if_image(context["avatar"]) == 1:
+            context["warn_code"] = 1
+            context["warn_msg"] = "组织的头像应当为图片格式！"
             return context
 
-    context['oname'] = oname  # 组织名字
+    context["oname"] = oname  # 组织名字
     # 组织类型，必须有
-    context['pos'] = request.user  # 负责人，必须有滴
-    context['introduction'] = str(
-        request.POST.get('introduction', ""))  # 组织介绍，可能为空
+    context["pos"] = request.user  # 负责人，必须有滴
+    context["introduction"] = str(request.POST.get("introduction", ""))  # 组织介绍，可能为空
 
-    context['application'] = str(request.POST.get('application', ""))  # 申请理由
+    context["application"] = str(request.POST.get("application", ""))  # 申请理由
 
-    if context['application'] == "":
-        context['warn_code'] = 1
-        context['warn_msg'] = "申请理由不能为空"
+    if context["application"] == "":
+        context["warn_code"] = 1
+        context["warn_msg"] = "申请理由不能为空"
     return context
 
+
 # 查询组织代号的最大值+1 用于addOrganization()函数，新建组织
-
-
 def find_max_oname():
     organizations = Organization.objects.filter(
-        organization_id__username__startswith='zz').order_by("-organization_id__username")
+        organization_id__username__startswith="zz"
+    ).order_by("-organization_id__username")
     max_org = organizations[0]
     max_oname = str(max_org.organization_id.username)
-    max_oname = int(max_oname[2:])+1
+    max_oname = int(max_oname[2:]) + 1
     prefix = "zz"
-    max_oname = prefix+str(max_oname).zfill(5)
+    max_oname = prefix + str(max_oname).zfill(5)
     return max_oname
 
+
 # 判断是否为图片
-
-
 def if_image(image):
     if image == None:
         return 0
-    imgType_list = {'jpg', 'bmp', 'png', 'jpeg', 'rgb', 'tif'}
+    imgType_list = {"jpg", "bmp", "png", "jpeg", "rgb", "tif"}
+
     if imghdr.what(image) in imgType_list:
         return 2  # 为图片
     return 1  # 不是图片
+
+
 # 用于新建组织时，生成6位随机密码
-
-
 def random_code_init():
-    b = string.digits + string.ascii_letters   # 构建密码池
+    b = string.digits + string.ascii_letters  # 构建密码池
     password = ""
     for i in range(0, 6):
         password = password + random.choice(b)
@@ -462,33 +368,50 @@ def random_code_init():
 
 
 def notifications_create(
-        receivers, sender, typename, title, content, URL=None, relate_TransferRecord=None, *, publish_to_wechat=False
+    receivers,
+    sender,
+    typename,
+    title,
+    content,
+    URL=None,
+    relate_TransferRecord=None,
+    *,
+    publish_to_wechat=False,
 ):
     """
         批量创建通知
     """
-    notifications = [Notification(
-        receiver=receiver,
-        sender=sender,
-        typename=typename,
-        title=title,
-        content=content,
-        URL=URL,
-        relate_TransferRecord=relate_TransferRecord,
-    ) for receiver in receivers]
+    notifications = [
+        Notification(
+            receiver=receiver,
+            sender=sender,
+            typename=typename,
+            title=title,
+            content=content,
+            URL=URL,
+            relate_TransferRecord=relate_TransferRecord,
+        )
+        for receiver in receivers
+    ]
     Notification.objects.bulk_create(notifications)
 
 
 def set_YQPoint_credit_to(YQP):
-    '''
+    """
         后台设定所有自然人的元气值为一特定值，这个值就是每月的限额
         给所有用户发送通知
-    '''
+    """
     activated_npeople = NaturalPerson.objects.activated()
     activated_npeople.update(YQPoint_credit_card=YQP)
     notification_content = f"学院已经将大家的元气信用值充值为{YQP},祝您使用愉快！"
     title = Notification.Title.VERIFY_INFORM
     YPcollege = Organization.objects.get(oname="元培学院")
-    notifications_create(activated_npeople, YPcollege,
-                         Notification.Type.NEEDREAD, title, notification_content)
+    notifications_create(
+        activated_npeople,
+        YPcollege,
+        Notification.Type.NEEDREAD,
+        title,
+        notification_content,
+    )
     return
+
