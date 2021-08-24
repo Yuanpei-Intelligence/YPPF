@@ -19,13 +19,14 @@ img {
                 <p style="color: rgb(66, 67, 68);" align="right"><i class="fa fa-address-book"></i>
                     评论人：{{comment.commentator}}</p>
             </div>
+            <!--如何前端实现判别user组织还是自然人呢？ 如何在前端展示组织头像呢（需要一个绝对路径）？
             <div align="right">
                 <h4><img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
-                    {%if
-                    <a href='/orginfo/{{html_display.applicant.oname}}'>
-                        <u>{{html_display.applicant.oname}}</u></a>
+                    <a href='/orginfo/{{comment.commentator.organization.oname}}'>
+                        <u>{{comment.commentator.organization.oname}}</u></a>
                 </h4>
             </div>
+            -->
         </div>
         {%if comment.text != ""%}
         <textarea name="comment" class="form-control" disabled="disabled">{{comment.text}}</textarea>
