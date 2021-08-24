@@ -3064,7 +3064,6 @@ def auditOrganization(request):
                 html_display['warn_code'] = 2
                 html_display['warn_message'] = "评论成功！"
 
-
         # 对于审核老师来说，有三种操作，通过，申请需要修改和拒绝
         else:
             submit = int(request.POST.get('submit', -1))
@@ -3175,6 +3174,14 @@ def auditOrganization(request):
     if preorg.status in TERMINATE_STATUSES and notification.status==Notification.Status.UNDONE:
         #未读变已读
         notification_status_change(notification_id,Notification.Status.DONE)
+
+    if preorg.status == NewOrganization.NewOrgStatus.PENDING:  # 正在申请中，可以评论。
+        commentable = 1  # 可以评论
+    TERMINATE_STATUSES=[NewOrganization.NewOrgStatus.CANCELED,NewOrganization.NewOrgStatus.CONFIRMED,
+                        NewOrganization.NewOrgStatus.REFUSED ]
+    if preorg.status in TERMINATE_STATUSES and notification.status==Notification.Status.UNDONE:
+        #未读变已读
+        notification_status_change(notification_id)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
