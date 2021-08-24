@@ -2066,11 +2066,11 @@ def addActivities(request):
                 return redirect("/welcome/")
             '''
         else:
-            '''
+
             # DEBUG:
             aid = create_activity(request)
             return redirect(f"/viewActivity/{aid}")
-            '''
+
             try:
                 aid = create_activity(request)
                 return redirect(f"/viewActivity/{aid}")
@@ -2085,6 +2085,8 @@ def addActivities(request):
 
         edit = request.GET.get("edit")
         if edit is None or edit != "True":
+            # 在前端展示选项
+            avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
             edit = False
             bar_display["title_name"] = "新建活动"
             bar_display["narbar_name"] = "新建活动"
@@ -2134,6 +2136,8 @@ def addActivities(request):
             status = activity.status
             if status != Activity.Status.REVIEWING:
                 accepted = True
+            avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
+            need_checkin = activity.need_checkin
 
         html_display["today"] = datetime.now().strftime("%Y-%m-%d")
         bar_display = utils.get_sidebar_and_navbar(request.user)
