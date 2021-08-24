@@ -745,11 +745,10 @@ def account_setting(request):
 
         if request.method == "POST" and request.POST:
 
-
             ava = request.FILES.get("avatar")
             # 合法性检查
             attr_dict, show_dict, html_display = utils.check_account_setting(request, user_type)
-            attr_check_list = [attr for attr in attr_dict.keys() if attr  not in ['gender','ava']]
+            attr_check_list = [attr for attr in attr_dict.keys()]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
                 
