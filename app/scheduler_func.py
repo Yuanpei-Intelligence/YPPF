@@ -9,9 +9,12 @@ from django.urls import reverse
 from datetime import datetime, timedelta, timezone, time, date
 from django.db import transaction  # 原子化更改数据库
 
-from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User
-from app.wechat_send import base_send_wechat
+from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant
+from app.wechat_send import wechat_notify_activity, publish_activity
 from app.forms import YQPointDistributionForm
+
+from random import sample
+from numpy.random import choice
 
 # 定时任务生成器
 scheduler = BackgroundScheduler()
@@ -179,3 +182,164 @@ def YQPoint_Distributions(request):
     else:
         dis_id = int(dis_id)
         return YQPoint_Distribution(request, dis_id)
+
+
+"""
+使用方式：
+
+scheduler.add_job(changeActivityStatus, "date", 
+    id=f"activity_{aid}_{to_status}", run_date, args)
+
+注意：
+    1、当 cur_status 不为 None 时，检查活动是否为给定状态
+    2、一个活动每一个目标状态最多保留一个定时任务
+
+允许的状态变换：
+    2、报名中 -> 等待中
+    3、等待中 -> 进行中
+    4、进行中 -> 已结束
+
+活动变更为进行中时，更新报名成功人员状态
+"""
+def changeActivityStatus(aid, cur_status, to_status):
+    try:
+        with transaction.atomic():
+            activity = Activity.objects.select_for_update().get(id=aid)
+            if cur_status is not None:
+                assert cur_status == activity.status
+            if cur_status == Activity.Status.APPLYING:
+                assert to_status == Activity.Status.WAITING
+            elif cur_status == Activity.Status.WAITING:
+                assert to_status == Activity.Status.PROGRESSING
+            elif cur_status == Activity.Status.PROGRESSING:
+                assert to_status == Activity.Status.END
+            else:
+                raise ValueError
+
+            activity.status = to_status
+    
+            if activity.status == Activity.Status.WAITING:
+                if activity.bidding:
+                    """
+                    投点时使用
+                    if activity.source == Activity.YQPointSource.COLLEGE:
+                        draw_lots(activity)
+                    else:
+                        weighted_draw_lots(activity)
+                    """
+                draw_lots(activity)
+
+
+            # 活动变更为进行中时，修改参与人参与状态
+            elif activity.status == Activity.Status.PROGRESSING:
+                if activity.need_checkin:
+                    Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS).update(status=Participant.AttendStatus.UNATTENDED)
+                else:
+                    Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS).update(status=Participant.AttendStatus.ATTENDED)
+
+
+            # 结束，计算积分    
+            else:
+                hours = (activity.end - activity.start).seconds / 3600
+                Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.ATTENDED).update(bonusPoint=F('bonusPoint') + hours)
+
+            activity.save()
+
+
+    except Exception as e:
+        print(e)
+        # TODO send message to admin to debug
+        pass
+
+
+"""
+需要在 transaction 中使用
+所有涉及到 activity 的函数，都应该先锁 activity
+"""
+def draw_lots(activity):
+    participants_applying = Participant.objects().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)
+    l = len(participants_applying)
+
+    participants_applySuccess = Participant.objects().filter(activity_id=activity.id, status=Participant.AttendStatus.APLLYSUCCESS)
+    engaged = len(participants_applySuccess)
+
+    leftQuota = activity.capacity - engaged
+
+    if l <= leftQuota:
+        Participant.objects().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING).update(status=Participant.AttendStatus.APLLYSUCCESS)
+    else:
+        lucky_ones = sample(range(l), leftQuota)
+        for i, participant in enumerate(Participant.objects().select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)):
+            if i in lucky_ones:
+                participant.status = Participant.AttendStatus.APLLYSUCCESS
+            else:
+                participant.status = Participant.AttendStatus.APLLYFAILED
+            participant.save()
+
+"""
+投点情况下的抽签，暂时不用
+需要在 transaction 中使用
+def weighted_draw_lots(activity):
+    participants = Participant.objects().select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)
+    l = len(participants)
+
+    if l <= activity.capacity:
+        for participant in participants:
+            participant.status = Participant.AttendStatus.APLLYSUCCESS
+            participant.save()
+    else:
+        weights = []
+        for participant in participants:
+            records = TransferRecord.objects(),filter(corres_act=activity, status=TransferRecord.TransferStatus.ACCEPTED, person_id=participant.proposer)
+            weight = 0
+            for record in records:
+                weight += record.amount
+            weights.append(weight)
+        total_weight = sum(weights)
+        d = [weight/total_weight for weight in weights]
+        lucky_ones = choice(l, activity.capacity, replacement=False, p=weights)
+        for i, participant in enumerate(participants):
+            if i in lucky_ones:
+                participant.status = Participant.AttendStatus.APLLYSUCCESS
+            else:
+                participant.status = Participant.AttendStatus.APLLYFAILED
+            participant.save()
+"""
+
+
+
+"""
+使用方式：
+
+scheduler.add_job(notifyActivityStart, "date", 
+    id=f"activity_{aid}_{start_notification}", run_date, args)
+
+"""
+def notifyActivity(aid, msg_type, msg=None):
+    try:
+        activity = Activity.objects.get(id=aid)
+        if msg_type == "newActivity":
+            publish_activity(aid)
+            return
+        elif msg_type == "remind":
+            msg = f"您参与的活动 <{activity.title}> 即将开始。\n"
+            msg += f"开始时间: {activity.act_start}\n"
+            msg += f"活动地点: {activity.location}\n"
+            send_to = 'participants'
+        elif msg_type == 'modification_sub':
+            send_to = 'subscribers'
+        elif msg_type == 'modification_par':
+            send_to = 'participants'
+        elif msg_type == 'modification_all':
+            send_to = 'all'
+        else:
+            raise ValueError
+        wechat_notify_activity(aid, msg, send_to)
+    except Exception as e:
+        print(f"Notification {msg} failed. Exception: {e}")
+        # TODO send message to admin to debug
+        pass
+
+
+
+

@@ -155,15 +155,19 @@
         
                                             <!--  按钮部分  -->
                                             <div>
+                                            {% if examine %}
+                                            <button class="btn btn-primary btn-block mb-4 mr-2" data-toggle="collapse" data-target="#extend-area"
+                                                    onclick="location='/examineActivity/{{aid}}'">
+                                                    审批活动
+                                            </button>
+                                            {% endif %}
                                             {% if person %}
-                                                {% if pStatus == "无记录" and status == "报名中" and bidding == True %}
-                                                <button class="btn btn-primary btn-block mb-4 mr-2" data-toggle="collapse" data-target="#extend-area">
-                                                    立即报名
-                                                </button>
-                                                {% elif pStatus == "无记录" and status == "报名中" and bidding == False %}
+
+
+
+                                                {% if pStatus == "无记录" and status == "报名中" %}
                                                 <form method="POST">
                                                     <input type="hidden" name="option" value="apply">
-                                                    <input type="hidden" name="aid" value={{aid}}>
                                                     <button class="btn btn-primary btn-block mb-4 mr-2">立即报名</button>
                                                 </form>
                                                 {% elif pStatus == "无记录" and status != "审核中" %}
@@ -192,38 +196,28 @@
                                                 <a href="javascript:void(0);" class="btn btn-danger btn-block mb-4 mr-2">已退出</a>
                                                 {% endif %}
                                             {% elif ownership %}
-                                            <form method="POST">
-                                                <input type="hidden" name="option" value="edit">
-                                                <input type="hidden" name="aid" value={{aid}}>
-                                                <button class="btn btn-primary btn-block mb-4 mr-2">修改信息</button>
-                                            </form>
-                                            <form method="POST">
-                                                <input type="hidden" name="option" value="payment">
-                                                <input type="hidden" name="aid" value={{aid}}>
-                                                <button class="btn btn-primary btn-block mb-4 mr-2">申请报销</button>
-                                            </form>
-                                            <form method="POST">
-                                                <input type="hidden" name="option" value="cancel">
-                                                <input type="hidden" name="aid" value={{aid}}>
-                                                <button class="btn btn-danger btn-block mb-4 mr-2">取消活动</button>
-                                            </form>
+                                                {% if status == "审核中" or status == "报名中" or status == "等待中" %}
+                                                <form method="POST">
+                                                    <input type="hidden" name="option" value="edit">
+                                                    <input type="hidden" name="aid" value={{aid}}>
+                                                    <button class="btn btn-primary btn-block mb-4 mr-2">修改信息</button>
+                                                </form>
+                                                <form method="POST">
+                                                    <input type="hidden" name="option" value="cancel">
+                                                    <input type="hidden" name="aid" value={{aid}}>
+                                                    <button class="btn btn-danger btn-block mb-4 mr-2">取消活动</button>
+                                                </form>
+                                                {% endif %}
+                                                {% if status == "已结束" %}
+                                                <form method="POST">
+                                                    <input type="hidden" name="option" value="payment">
+                                                    <input type="hidden" name="aid" value={{aid}}>
+                                                    <button class="btn btn-primary btn-block mb-4 mr-2">申请报销</button>
+                                                </form>
+                                                {% endif %}
                                             {% endif %}
                                             </div>
     
-                                            <!--  如果要投点报名，则展示下面的部分  -->
-                                            <div id="extend-area" class="collapse">
-                                                <form method="POST">
-                                                    <input type="hidden" name="option" value="apply">
-                                                    <input type="hidden" name="aid" value={{aid}}>
-                                                    <p>意愿投点的点数(您的现有元气值：{{me.YQPoint}})</p>
-                                                    <input type="number" class="form-control"
-                                                            aria-label="Text input with dropdown button" id="willingness"
-                                                            name="willingness" placeholder="最小精度为0.1" step="0.1"
-                                                            οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')">
-                                                    <br/>
-                                                    <button class="btn btn-primary btn-block mb-4 mr-2">确认报名</button>
-                                                </form>
-                                            </div>
     
                                         </div>
         
@@ -285,3 +279,4 @@
 
 
 {% endblock %}
+
