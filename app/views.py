@@ -3122,7 +3122,7 @@ def applyOrganization(request):
     html_display['is_myself'] = True
     edit = 0    # 前端需要，表示第一次申请后修改
     present = 0  # 前端需要，1代表能展示，0代表初始申请
-    commentable=0 # 前端需要，表示能否评论。
+    commentable = 0 # 前端需要，表示能否评论。
     notification_id = -1
     if request.GET.get("newpos_id") is not None and request.GET.get('notifi_id') is None:
         try:
@@ -3136,7 +3136,7 @@ def applyOrganization(request):
         if prepos.status == NewPosition.NewPosStatus.PENDING:
             commentable = 1
             edit = 1
-        present=1
+        present = 1
     elif request.GET.get('newpos_id') is not None and request.GET.get('notifi_id') is not None:
         try:
             id = int(request.GET.get('newpos_id'))  # 新建组织ID
@@ -3191,9 +3191,9 @@ def applyOrganization(request):
             need_cancel=int(request.POST.get('cancel_submit',-1))
             html_display['warn_code'] = 1
             html_display['warn_message'] = "test{need_cancel}".format(need_cancel=need_cancel)
-            if need_cancel==1:#1代表取消
+            if need_cancel == 1:                    # 1代表取消
                 if edit:
-                    with transaction.atomic():#修改状态为取消
+                    with transaction.atomic():      # 修改状态为取消
                         prepos.status=NewPosition.NewPosStatus.CANCELED
                         prepos.save()
                     try:
