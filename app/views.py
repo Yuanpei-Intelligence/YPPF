@@ -2655,11 +2655,11 @@ def showComment(commentbase):
         commentator=get_person_or_org(comment.commentator)
         if comment.commentator.username[:2]=="zz":
             comment.ava = utils.get_user_ava(comment.commentator,"Organization")
-            comment.URL="/orginfo/{orgname}".format(orgname=commentator.oname)
+            comment.URL="/orginfo/{name}".format(name=commentator.oname)
             comment.commentator_name=commentator.oname
         else:
             comment.ava = utils.get_user_ava(comment.commentator, "Person")
-            comment.URL = "/orginfo/{orgname}".format(orgname=commentator.name)
+            comment.URL = "/stuinfo/{name}".format(name=commentator.name)
             comment.commentator_name = commentator.name
     return comments
 @login_required(redirect_field_name='origin')
