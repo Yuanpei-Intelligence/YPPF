@@ -2649,8 +2649,19 @@ def addComment(request, comment_base):
             context['warn_message'] = "评论失败，请联系管理员。"
         context['new_comment'] = new_comment
     return context
-
-
+def showComment(commentbase):
+    comments=commentbase.comments.order_by("time")
+    for comment in comments:
+        commentator=get_person_or_org(comment.commentator)
+        if comment.commentator.username[:2]=="zz":
+            comment.ava = utils.get_user_ava(comment.commentator,"Organization")
+            comment.URL="/orginfo/{orgname}".format(orgname=commentator.oname)
+            comment.commentator_name=commentator.oname
+        else:
+            comment.ava = utils.get_user_ava(comment.commentator, "Person")
+            comment.URL = "/orginfo/{orgname}".format(orgname=commentator.name)
+            comment.commentator_name = commentator.name
+    return comments
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 def showNewOrganization(request):
@@ -2738,7 +2749,7 @@ def addOrganization(request):
         present = 1         #id正确时总是能展示
 
     if present:  # 展示信息
-        comments = preorg.comments.order_by("time")
+        comments = showComment(preorg)
         html_display['oname'] = preorg.oname
         html_display['otype_id'] = preorg.otype.otype_id    #
         html_display['otype_name'] = preorg.otype.otype_name  #
@@ -2991,7 +3002,7 @@ def auditOrganization(request):
     if request.user != preorg.otype.incharge.person_id:
         return redirect('/notifications/')
     # 以下需要在前端呈现
-    comments = preorg.comments.order_by('time')  # 加载评论
+    comments = showComment(preorg) # 加载评论
     html_display['oname'] = preorg.oname
     html_display['otype_name'] = preorg.otype.otype_name
     html_display['applicant'] = utils.get_person_or_org(preorg.pos)
@@ -3272,7 +3283,7 @@ def addReimbursement(request):
         present = 1  # 只要id正确就能显示
 
     if present:  # 第一次打开页面信息的准备工作,以下均为前端展示需要
-        comments = pre_reimb.comments.order_by("time")
+        comments = showComment(pre_reimb)
         html_display['audit_activity'] = pre_reimb.activity  # 正在报销的活动，避免被过滤掉
         html_display['amount'] = pre_reimb.amount           # 报销金额
         html_display['message'] = pre_reimb.message         # 备注信息
@@ -3548,7 +3559,7 @@ def auditReimbursement(request):
     bar_display["navbar_name"] = "报销审核"
 
     # 以下前端展示
-    comments = new_reimb.comments.order_by('time')  # 加载评论
+    comments = showComment(new_reimb) # 加载评论
     html_display['activity'] = new_reimb.activity #报销活动
     html_display['amount'] = new_reimb.amount  # 报销金额
     html_display['message'] = new_reimb.message  # 报销说明
