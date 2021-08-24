@@ -274,6 +274,7 @@ def if_image(image):
     if imghdr.what(image)  in imgType_list:
         return 2 #为图片
     return 1    #不是图片
+    
 #用于新建组织时，生成6位随机密码
 def random_code_init():
     b = string.digits + string.ascii_letters   # 构建密码池

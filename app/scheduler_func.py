@@ -9,8 +9,8 @@ from django.urls import reverse
 from datetime import datetime, timedelta, timezone, time, date
 from django.db import transaction  # 原子化更改数据库
 
-from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity
-from app.wechat_send import base_send_wechat, wechatNotifyActivity, publish_activity
+from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant
+from app.wechat_send import wechat_notify_activity, publish_activity
 from app.forms import YQPointDistributionForm
 
 from random import sample
@@ -334,7 +334,7 @@ def notifyActivity(aid, msg_type, msg=None):
             send_to = 'all'
         else:
             raise ValueError
-        wechatNotifyActivity(aid, msg, send_to)
+        wechat_notify_activity(aid, msg, send_to)
     except Exception as e:
         print(f"Notification {msg} failed. Exception: {e}")
         # TODO send message to admin to debug
