@@ -2895,6 +2895,16 @@ def addOrganization(request):
             edit = 1
         present=1
 
+    if present:  # 展示信息
+        comments = preorg.comments.order_by("time")
+        html_display['oname'] = preorg.oname
+        html_display['otype_id'] = preorg.otype.otype_id    #
+        html_display['otype_name'] = preorg.otype.otype_name  #
+        html_display['pos'] = preorg.pos    #组织负责人的呈现 TODO:主页可点击头像 学号+姓名
+        html_display['introduction'] = preorg.introduction#组织介绍
+        html_display['application'] = preorg.application#组织申请信息
+        html_display['status']=preorg.status #状态名字
+        org_avatar_path=utils.get_user_ava(preorg, "Organization")#组织头像
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # TODO: 整理页面返回逻辑，统一返回render的地方
     bar_display = utils.get_sidebar_and_navbar(request.user)
@@ -3099,16 +3109,7 @@ def addOrganization(request):
                                 '?warn_code={}&warn_message={}'.format(
                                     html_display['warn_code'], html_display['warn_message']))
 
-    if present:  # 展示信息
-        comments = preorg.comments.order_by("time")
-        html_display['oname'] = preorg.oname
-        html_display['otype_id'] = preorg.otype.otype_id    #
-        html_display['otype_name'] = preorg.otype.otype_name  #
-        html_display['pos'] = preorg.pos    #组织负责人的呈现 TODO:主页可点击头像 学号+姓名
-        html_display['introduction'] = preorg.introduction#组织介绍
-        html_display['application'] = preorg.application#组织申请信息
-        html_display['status']=preorg.status #状态名字
-        org_avatar_path=utils.get_user_ava(preorg, "Organization")#组织头像
+
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织"
@@ -3551,7 +3552,7 @@ def addReimbursement(request):
                     return render(request, "reimbursement_add.html", locals())
             except:
                 html_display['warn_code'] = 1
-                html_display['warn_message'] = "输入的元气值的格式不正确，请联系管理员"
+                html_display['warn_message'] = "元气值不能为空，请完整填写。"
                 return render(request, "reimbursement_add.html", locals())
             # 报销材料图片的保存
             message = request.POST.get('message')  # 备注信息
