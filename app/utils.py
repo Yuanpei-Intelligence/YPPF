@@ -396,14 +396,14 @@ def notifications_create(
     Notification.objects.bulk_create(notifications)
 
 
-def set_YQPoint_credit_to(YQP):
+def set_nperson_quota_to(quota):
     """
         后台设定所有自然人的元气值为一特定值，这个值就是每月的限额
         给所有用户发送通知
     """
     activated_npeople = NaturalPerson.objects.activated()
-    activated_npeople.update(YQPoint_credit_card=YQP)
-    notification_content = f"学院已经将大家的元气信用值充值为{YQP},祝您使用愉快！"
+    activated_npeople.update(quota=quota)
+    notification_content = f"学院已经将大家的元气值配额重新设定为{quota},祝您使用愉快！"
     title = Notification.Title.VERIFY_INFORM
     YPcollege = Organization.objects.get(oname="元培学院")
     notifications_create(
