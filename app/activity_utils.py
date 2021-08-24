@@ -476,7 +476,7 @@ def applyActivity(request, activity):
 
 def cancel_activity(request, activity):
 
-    if activity.status == activity.Status.PROGRESSING:
+    if activity.status == Activity.Status.PROGRESSING:
         if activity.start.day == datetime.now().day and datetime.now() < activity.start + timedelta(days=1):
             pass
         else:
@@ -489,7 +489,7 @@ def cancel_activity(request, activity):
     YP = Organization.objects.select_for_update().get(oname="元培学院")
 
 
-    if activity.YQPoint > 0:
+    if activity.status != Activity.Status.REVIEWING and activity.YQPoint > 0:
         if activity.source == Activity.YQPointSource.COLLEGE:
             if org.YQPoint < activity.YQPoint:
                 raise ActivityException("没有足够的元气值退还给学院，不能取消。")
@@ -521,14 +521,10 @@ def cancel_activity(request, activity):
             org.YQPoint -= total_amount
 
 
-
     activity.status = Activity.Status.CANCELED
-    participants = Participant.objects.select_for_update().filter(
+    participants = Participant.objects.filter(
             activity_id=activity
-        )
-    for participant in participants:
-        participant.status = Participant.AttendStatus.APLLYFAILED
-        participant.save()
+        ).update(status=Participant.AttendStatus.APLLYFAILED)
 
     # TODO 取消审核评论
     scheduler.remove_job(f"activity_{activity.id}_remind")
