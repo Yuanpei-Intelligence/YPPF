@@ -3604,7 +3604,7 @@ def modifyPosition(request):
                 make_relevant_notification(application)    
 
             elif context["warn_code"] != 1: # 没有返回操作提示
-                raise NotImplementedError("处理认识申请是遭遇为遇见状态")
+                raise NotImplementedError("处理人事申请是遭遇为遇见状态")   # TODO lhw:这个是啥意思？
             
 
         else:   # 如果是新增评论
@@ -3657,9 +3657,9 @@ def modifyPosition(request):
     # 用户写表格?
     allow_form_edit = True if (user_type == "Person") and (
                 is_new_application or application.is_pending()) else False
-    # 老师审核?
-    allow_audit_submit = True if (not is_new_application) and (
-                not application.is_pending()) else False
+    # 组织审核?
+    allow_audit_submit = True if (not user_type == "Person") and (not is_new_application) and (
+                application.is_pending()) else False
     # 评论区?
     allow_comment = True if (not is_new_application) and (application.is_pending()) \
                     else False
@@ -3667,12 +3667,13 @@ def modifyPosition(request):
     # (2) 表单变量的默认值
 
         # 首先禁用一些选项
-
+    
+    # 用于前端展示：是否禁用表单修改
+    change_disable = (allow_audit_submit == 1) or (allow_form_edit == 0 and allow_audit_submit == 0)
+    # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
+    apply_person = me if is_new_application else application.person
     # 获取个人与组织[在当前学年]的关系
-    if is_new_application:
-        current_pos_list = Position.objects.current().filter(person=me,org=applied_org)
-    else:
-        current_pos_list = Position.objects.current().filter(person=application.person,org=applied_org)
+    current_pos_list = Position.objects.current().filter(person=apply_person,org=applied_org)
     # 应当假设只有至多一个类型
     
     # 检查该同学是否已经属于这个组织
@@ -3703,26 +3704,12 @@ def showPosition(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)
 
-    # TODO: 修改呈现方式
-
-    if user_type == "Organization":
-        html_display["warn_code"] = 1
-        html_display["warn_code"] = "请不要使用组织账号申请新组织！"
-        return redirect("/welcome/" + 
-                        '?warn_code={}&warn_message={}'.format(
-                            html_display['warn_code'], html_display['warn_message']))
-
-    is_auditor = False
-    try:
-        person = utils.get_person_or_org(request.user, user_type)
-        if person.name == local_dict["audit_teacher"]["Funds"]:
-            is_auditor = True
-    except:
-        pass
-    if is_auditor:
-        shown_instances = NewPosition.objects.all()
+    # 查看人事聚合页面：拉取个人或组织相关的申请
+    if user_type == "Person":
+        shown_instances = ModifyPosition.objects.filter(person=me)
     else:
-        shown_instances = NewPosition.objects.filter(position__person__person_id=request.user)
+        shown_instances = ModifyPosition.objects.filter(org=me)
+
     shown_instances = shown_instances.order_by('-modify_time', '-time')
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name = "人事申请")

@@ -3,7 +3,7 @@
 
 {% block mainpage %}
 
-{% with title='人事申请' link='/applyOrganization/' new_link='' query_field='newpos_id' new_btn_name='新建申请' btn_name='详情' empty_info='列表空空如也！点击按钮进行人事变动申请吧~' %}
+{% with title='人事申请' link='/modifyPosition/' new_link='' query_field='pos_id' new_btn_name='新建申请' btn_name='详情' empty_info='列表空空如也！点击按钮进行人事变动申请吧~' %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -29,14 +29,14 @@
                                 <p>您可以点击<u>标题链接</u>查看老师留言、追加评论、取消正在审核的申请或查看已完成事务详情。尽情体验吧！</p>
                                 </br>
                             </div>
-                            <div class="col-lg-12">
+                            <!-- <div class="col-lg-12">
                                 <br />
                                 <br />
                                 <a href="{{link}}{{new_link}}" class="btn btn-info" tabindex="1" role="button"
                                     style="position:absolute;right:30px;top:4px;">
                                     {{new_btn_name}}
                                 </a>
-                            </div>
+                            </div> -->
                             <hr style="filter:alpha(opacity=100,finishopacity=0,style=3);" width="80%" color="#0000FF"
                                 size="3">
 
