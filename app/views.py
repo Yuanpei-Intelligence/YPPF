@@ -2087,9 +2087,10 @@ def addActivities(request):
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # TODO: 整理结构，统一在结束时返回render
-    bar_display = utils.get_sidebar_and_navbar(request.user)
+    # bar_display = utils.get_sidebar_and_navbar(request.user)
 
     # 处理 POST 请求
+    # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
     if request.method == "POST" and request.POST:
 
         # 看是否是 edit，如果是做一些检查
@@ -2128,8 +2129,8 @@ def addActivities(request):
         edit = request.GET.get("edit")
         if edit is None or edit != "True":
             edit = False
-            bar_display["title_name"] = "新建活动"
-            bar_display["narbar_name"] = "新建活动"
+            # bar_display["title_name"] = "新建活动"
+            # bar_display["narbar_name"] = "新建活动"
         else:
             # 编辑状态下，填写 placeholder 为旧值
             edit = True
@@ -2174,14 +2175,18 @@ def addActivities(request):
             if capacity == 10000:
                 no_limit = True
             examine_teacher = activity.examine_teacher.name
-            bar_display["title_name"] = "修改活动"
-            bar_display["narbar_name"] = "修改活动"
+            # bar_display["title_name"] = "修改活动"
+            # bar_display["narbar_name"] = "修改活动"
             status = activity.status
             if status != Activity.Status.REVIEWING:
                 accepted = True
 
         html_display["today"] = datetime.now().strftime("%Y-%m-%d")
-        bar_display = utils.get_sidebar_and_navbar(request.user)
+
+        if not edit:
+            bar_display = utils.get_sidebar_and_navbar(request.user, "新建活动")
+        else:
+            bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
 
         return render(request, "activity_add.html", locals())
 
