@@ -79,7 +79,7 @@ def check_user_type(user):
 
 def get_user_ava(obj, user_type):
     ava = obj.avatar
-    if ava:
+    if not ava:
         if user_type == "Person":
             return settings.MEDIA_URL + "avatar/person_default.jpg"
         else:
@@ -260,7 +260,6 @@ def get_url_params(request, html_display):
             if key not in html_display.keys():  # 禁止覆盖
                 html_display[key] = value
 
-
 # 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
 def check_neworg_request(request, org=None):
     context = dict()
@@ -331,6 +330,35 @@ def check_neworg_request(request, org=None):
     if context["application"] == "":
         context["warn_code"] = 1
         context["warn_msg"] = "申请理由不能为空"
+    return context
+# 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
+
+def check_newpos_request(request,prepos=None):
+
+    context = dict()
+    context['warn_code'] = 0
+    if prepos is None:
+        oname = str(request.POST['oname'])
+    else:
+        oname = prepos.position.org.oname
+    context['apply_pos'] = int(request.POST.get('apply_pos',10))
+    context['apply_type'] = str(request.POST.get('apply_type',"加入组织"))
+    if len(oname) >= 32:
+        context['warn_code'] = 1
+        context['warn_msg'] = "组织的名字不能超过32字节"
+        return context
+    if oname=="":
+        context['warn_code'] = 1
+        context['warn_msg'] = "组织的名字不能为空"
+        return context
+    
+    context['oname'] = oname  # 组织名字
+
+    context['application'] = str(request.POST.get('application', ""))  # 申请理由
+
+    if context['application']=="" :
+        context['warn_code'] = 1
+        context['warn_msg'] = "申请理由不能为空"
     return context
 
 
@@ -415,3 +443,57 @@ def set_YQPoint_credit_to(YQP):
     )
     return
 
+def check_account_setting(request,user_type):
+    if user_type == 'Person':
+        html_display = dict()
+        attr_dict = dict()
+
+        html_display['warn_code'] = 0
+        html_display['warn_message'] = ""
+
+        attr_dict['nickname'] = request.POST['nickname']
+        attr_dict['biography'] = request.POST["aboutBio"]
+        attr_dict['telephone'] = request.POST["tel"]
+        attr_dict['email'] = request.POST["email"]
+        attr_dict['stu_major'] = request.POST["major"]
+        #attr_dict['stu_grade'] = request.POST['grade'] 用户无法填写
+        #attr_dict['stu_class'] = request.POST['class'] 用户无法填写
+        attr_dict['stu_dorm'] = request.POST['dorm']
+        attr_dict['ava'] = request.FILES.get("avatar")
+        attr_dict['gender'] = request.POST['gender']
+        attr_dict['wallpaper'] = request.FILES.get("wallpaper")
+
+        show_dict = dict()
+
+        show_dict['show_nickname'] = request.POST.get(
+            'show_nickname') == 'on'
+        show_dict['show_gender'] = request.POST.get('show_gender') == 'on'
+        show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
+        show_dict['show_email'] = request.POST.get('show_email') == 'on'
+        show_dict['show_major'] = request.POST.get('show_major') == 'on'
+        show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
+
+        # 合法性检查
+        if len(attr_dict['nickname']) > 20:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] += "输入的昵称过长，不能超过20个字符哦！"
+
+        if len(attr_dict['biography']) > 1024:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] += "输入的简介过长，不能超过1024个字符哦！"
+        
+        if len(attr_dict['stu_major']) > 25:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] += "输入的专业过长，不能超过25个字符哦！"
+
+        if len(attr_dict['stu_dorm']) > 6:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] += "输入的宿舍过长，不能超过6个字符哦！"
+    else:
+        html_display = dict()
+        attr_dict = dict()
+        show_dict = dict()
+        html_display['warn_code'] = 0
+        html_display['warn_message'] = ""
+        attr_dict['introduction'] = request.POST['introduction']
+    return attr_dict, show_dict, html_display
