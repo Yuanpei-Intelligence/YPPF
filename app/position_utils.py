@@ -12,12 +12,14 @@ from django.db import transaction
 
 # 在错误的情况下返回的字典,message为错误信息
 def wrong(message="检测到恶意的申请操作. 如有疑惑，请联系管理员!"):
+    context = dict()
     context["warn_code"] = 1
     context["warn_message"] = message
     return context
 
 
 def succeed(message):
+    context = dict()
     context["warn_code"] = 2
     context["warn_message"] = message
     return context
@@ -43,7 +45,7 @@ def update_pos_application(application, me, user_type, applied_org, info):
         feasible_post = ["new_submit", "modify_submit",
                          "cancel_submit", "accept_submit", "refuse_submit"]
         if post_type not in feasible_post:
-            return wrong()
+            return wrong("申请状态异常！")
 
         # 接下来确定访问的个人/组织是不是在做分内的事情
         if (user_type == "Person" and feasible_post.index(post_type) >= 3) or (
@@ -54,16 +56,16 @@ def update_pos_application(application, me, user_type, applied_org, info):
 
             # 访问者一定是个人
             try:
-                assert user_tupe == "Person"
+                assert user_type == "Person"
             except:
-                return wrong()
+                return wrong("访问者身份异常！")
 
             # 如果是取消申请
             if post_type == "cancel_submit":
                 if not application.is_pending():    # 如果不在pending状态, 可能是重复点击
                     return wrong("该申请已经完成或被取消!")
                 # 接下来可以进行取消操作
-                application.update(status=ModifyPosition.Status.CANCELED)
+                ModifyPosition.objects.filter(id=application.id).update(status=ModifyPosition.Status.CANCELED)
                 context = succeed("成功取消向" + applied_org.oname + "的申请!")
                 context["application_id"] = application.id
                 return context
@@ -82,9 +84,10 @@ def update_pos_application(application, me, user_type, applied_org, info):
                 if apply_type == "加入组织":
                     # 此时应该满足的条件是不存在对应的在职职位
                     if Position.objects.activated().filter(person=me, org=applied_org).exists():
-                        return wrong()
-                    apply_pos = cur_position.otype.get_pos_from_str(
-                        apply_pos_name)
+                        return wrong("加入已存在的组织！")
+                    
+                    apply_pos_name = str(info.get('apply_pos'))
+                    apply_pos = applied_org.otype.get_pos_from_str(apply_pos_name)
                 elif apply_type == "退出组织":
                     if not Position.objects.activated().filter(person=me, org=applied_org).exists():
                         return wrong()
@@ -124,8 +127,8 @@ def update_pos_application(application, me, user_type, applied_org, info):
                             application.pos == apply_pos:
                         return wrong("没有检测到修改!")
                     # 至此可以发起修改
-                    application.update(
-                        apply_pos=apply_pos, apply_reason=apply_reason, apply_type=apply_type)
+                    ModifyPosition.objects.filter(id=application.id).update(
+                        pos=apply_pos, reason=apply_reason, apply_type=apply_type)
                     context = succeed("成功修改向" + applied_org.oname + "的申请!")
                     context["application_id"] = application.id
                     return context
@@ -137,7 +140,7 @@ def update_pos_application(application, me, user_type, applied_org, info):
                 return wrong("无法操作, 该申请已经完成或被取消!")
             # 否则，应该直接完成状态修改
             if post_type == "refuse_submit":
-                application.update(status=ModifyPosition.Status.REFUSED)
+                ModifyPosition.objects.filter(id=application.id).update(status=ModifyPosition.Status.REFUSED)
                 context = succeed("成功拒绝来自" + application.person.name + "的申请!")
                 context["application_id"] = application.id
                 return context

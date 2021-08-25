@@ -778,7 +778,7 @@ class ModifyPosition(CommentBase):
     status = models.SmallIntegerField(choices=Status.choices, default=0)
     
     def __str__(self):
-        return f'{self.position.org.oname}人事申请'
+        return f'{self.org.oname}人事申请'
 
     class ApplyType(models.TextChoices):  # 人事变动申请类型
         JOIN = "加入组织"
@@ -796,11 +796,11 @@ class ModifyPosition(CommentBase):
             return self.status == ModifyPosition.Status.PENDING
 
     def accept_submit(self): #同意申请，假设都是合法操作
-        if apply_type == ModifyPosition.ApplyType.WITHDRAW:
+        if self.apply_type == ModifyPosition.ApplyType.WITHDRAW:
             Position.objects.activated().get(
                 org = self.org, person = self.person
             ).update(status = Position.Status.DEPART)
-        elif apply_type == ModifyPosition.ApplyType.JOIN:
+        elif self.apply_type == ModifyPosition.ApplyType.JOIN:
             # 尝试获取已有的position
             if Position.objects.current().filter(
                 org = self.org, person = self.person).exists(): # 如果已经存在这个量了
@@ -813,13 +813,15 @@ class ModifyPosition(CommentBase):
         else:   # 修改 则必定存在这个量
             Position.objects.activate().get(org = self.org, person = self.person
                 ).update(pos = self.pos)
+        # 修改申请状态
+        ModifyPosition.objects.filter(id=self.id).update(status=ModifyPosition.Status.CONFIRMED)
 
     def save(self, *args, **kwargs):
         self.typename = "modifyposition"
         super().save(*args, **kwargs)
 
 # YWolfeee: 废弃这个类 重构
-'''
+
 class NewPosition(CommentBase):
     class Meta:
         verbose_name = "申请人事的信息"
@@ -864,7 +866,7 @@ class NewPosition(CommentBase):
     def save(self, *args, **kwargs):
         self.typename = "newposition"
         super().save(*args, **kwargs)
-'''
+
 
 class Reimbursement(CommentBase):
     class Meta:
