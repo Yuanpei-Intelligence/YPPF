@@ -47,7 +47,7 @@
                                             </div>
                                             <div class="upload ml-3" style="border: none;">
                                                 <input type="file" id="wallpaper" class="dropify" name="wallpaper"
-                                                    data-default-file="{{former_wallpaper}}" data-max-file-size="512K" />
+                                                    data-default-file="{{former_wallpaper}}" data-max-file-size="2048K" />
                                                 <p class="mt-2 text-center">背景图片</p>
                                             </div>
                                         </div>
@@ -123,12 +123,14 @@
                                                                 {% endif %}
                                                                 <label class="form-check-label" for="show_dorm">对外展示</label>
                                                             </div>
-                                                            <label for="profession">我的年级</label>
+                                                            <!-- YWolfeee 请不要把年级和班级放进来了 -->
+                                                            <!--<label for="profession">我的年级</label>
                                                             <input type="text" class="form-control " id="grade" readonly="readonly"
                                                                 name="grade" value="{{userinfo.stu_grade}}" >
                                                             <label for="profession">我的班级</label>
                                                             <input type="text" class="form-control" id="class" readonly="readonly"
                                                                 name="class" value="{{userinfo.stu_class}}">
+                                                            -->
                                                             <label for="profession">我的邮箱</label>
                                                             <input type="text" class="form-control" id="email" 
                                                                 name="email" placeholder="{{userinfo.email}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
