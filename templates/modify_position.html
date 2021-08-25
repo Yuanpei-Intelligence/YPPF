@@ -48,7 +48,7 @@
                                         <form role="form" method="POST" enctype="multipart/form-data">
                                             <div class="form-group">
                                                 <label for="aintro">人事变动类型</label>
-                                                <select class="form-control selectpicker" data-live-search = "true" id="apply_type" name="apply_type" onchange = "type_change()" {%if change_disable %} readonly="readonly"{%endif%}>
+                                                <select class="form-control selectpicker" data-live-search = "true" id="apply_type" name="apply_type" onchange = "type_change()" {%if not allow_form_edit %} readonly="readonly"{%endif%}>
                                                     {% for key, value in apply_type_list.items %}
                                                     {% if not value.disabled %}
                                                     <option value="{{value.display}}" {% if value.selected %} selected {% endif %} >
@@ -65,7 +65,7 @@
                                             </div>
                                             <div class="form-group" id="position_group">
                                                 <label for="aintro">申请职位</label>
-                                                <select class="form-control selectpicker" data-live-search = "true" id="apply_pos" name="apply_pos" {%if change_disable == 1 %} readonly="readonly"{%endif%}>
+                                                <select class="form-control selectpicker" data-live-search = "true" id="apply_pos" name="apply_pos" {%if not allow_form_edit %} readonly="readonly"{%endif%}>
                                                     {% for value in position_name_list %}
                                                     {% if not value.disabled %}
                                                     <option value="{{value.display}}" {% if value.selected %} selected {% endif %} >
@@ -83,7 +83,7 @@
                                             <div class="form-group">
                                                 <label for="aintro">申请理由或陈述</label>
                                                 <textarea name="apply_reason" class="form-control" rows="15" placeholder=
-                                                        "解释你为什么申请加入，或陈述你的个人情况。发起申请后可以在评论区继续补充或上传图片。"{%if change_disable == 1 %} readonly="readonly"{%endif%}
+                                                        "解释你为什么申请加入，或陈述你的个人情况。发起申请后可以在评论区继续补充或上传图片。"{%if not allow_form_edit %} readonly="readonly"{%endif%}
                                                 >{% if not is_new_application %}{{application.reason}}{% endif %}</textarea>
                                             </div>
                                             {%if allow_form_edit %}

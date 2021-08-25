@@ -88,7 +88,6 @@ def update_pos_application(application, me, user_type, applied_org, info):
                     
                     apply_pos_name = str(info.get('apply_pos'))
                     apply_pos = applied_org.otype.get_pos_from_str(apply_pos_name)
-                    print(apply_pos_name,apply_pos)
                 elif apply_type == "退出组织":
                     if not Position.objects.activated().filter(person=me, org=applied_org).exists():
                         return wrong()

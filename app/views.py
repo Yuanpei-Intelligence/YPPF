@@ -3604,7 +3604,7 @@ def modifyPosition(request):
                 make_relevant_notification(application)    
 
             elif context["warn_code"] != 1: # 没有返回操作提示
-                raise NotImplementedError("处理人事申请是遭遇为遇见状态")   # TODO lhw:这个是啥意思？
+                raise NotImplementedError("处理人事申请中出现未预见状态，请联系管理员处理！")   
             
 
         else:   # 如果是新增评论
@@ -3668,8 +3668,6 @@ def modifyPosition(request):
 
         # 首先禁用一些选项
     
-    # 用于前端展示：是否禁用表单修改
-    change_disable = (allow_audit_submit == 1) or (allow_form_edit == 0 and allow_audit_submit == 0)
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
     apply_person = me if is_new_application else application.person
     # 获取个人与组织[在当前学年]的关系
