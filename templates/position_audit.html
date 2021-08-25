@@ -2,6 +2,7 @@
 
 {% load static %}
 
+
 {% block mainpage %}
 
     <!--  BEGIN CONTENT AREA  -->
@@ -24,15 +25,13 @@
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                    <br>
-                                                    <br>
+
                                                     <div align="center">
-                                                    <h3>新建组织申请</h3>
+                                                    <h3>人事申请信息 </h3>
                                                     </div>
-                                                <br>
                                                     <div class="d-flex justify-content-between">
-                                                        <div>
-                                                        {% with preorg.get_status_display as status %}
+                                                        <div align="right">
+                                                        {% with prepos.get_status_display as status %}
                                                         <h4 >当前状态：{{status}}</h4>
                                                         {%endwith%}
                                                         </div>
@@ -62,22 +61,17 @@
                                                 >{{html_display.oname}}</textarea>
                                             </div>
                                             <div class="form-group">
-                                                <label>组织类型</label>
-                                                <br>
-                                                <textarea id="otype" name="otype" class="form-control" aria-label="Default"
-                                                disabled="disabled">{{html_display.otype_name}}</textarea>
+                                                <label>人事变动类型</label>
+                                                <textarea id="apply_type" name="apply_type" class="form-control"
+                                                          aria-label="Default" disabled="disabled"
+                                                >{{html_display.apply_type}}</textarea>
                                             </div>
                                             <div class="form-group">
-                                                <label>组织图标</label>
-                                                <br>
-                                                <img src="{{org_avatar_path}}" width="200px" height="200px" alt="组织图标"/>
+                                                <label>申请职位</label>
+                                                <textarea id="apply_pos" name="apply_pos" class="form-control"
+                                                          aria-label="Default" disabled="disabled"
+                                                >{{html_display.apply_pos}}</textarea>
                                             </div>
-                                            <div class="form-group">
-                                                <label for="aintro">组织简介</label>
-                                                <textarea id="introduction" name="introduction" class="form-control"
-                                                          rows="3" disabled="disabled">{{html_display.introduction}}</textarea>
-                                            </div>
-                                            <br>
                                             <div class="form-group">
                                                 <label for="aintro">申请理由</label>
                                                 <textarea id="apply" name="application" class="form-control"
