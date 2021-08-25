@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+
+{% block mainpage %}
+
+{% with title='人事申请' link='/applyOrganization/' new_link='' query_field='newpos_id' new_btn_name='新建申请' btn_name='详情' empty_info='列表空空如也！点击按钮进行人事变动申请吧~' %}
+
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    {% if html_display.warn_code == 1 %}
+    <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+    {% elif html_display.warn_code == 2 %}
+    <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
+    {% endif %}
+    <div class="container">
+        <div class="container">
+
+
+
+            <div class="row layout-top-spacing">
+
+                <div class="col-lg-12 col-12 layout-top-spacing">
+                    <div class="bio layout-spacing ">
+                        <div class="widget-content widget-content-area">
+                            <h3>{{title}}</h3>
+                            <div class="col-12">
+                                <p>欢迎来到你的{{title}}列表！这里汇集了在<strong>Yuanpei Profile</strong>中由您创建或待您审核的所有{{title}}信息~</p>
+                                <p>这些事务依据更新的时间和状态由近到远呈现，提供了具体的更新时间和其他信息。</p>
+                                <p>您可以点击<u>标题链接</u>查看老师留言、追加评论、取消正在审核的申请或查看已完成事务详情。尽情体验吧！</p>
+                                </br>
+                            </div>
+                            <div class="col-lg-12">
+                                <br />
+                                <br />
+                                <a href="{{link}}{{new_link}}" class="btn btn-info" tabindex="1" role="button"
+                                    style="position:absolute;right:30px;top:4px;">
+                                    {{new_btn_name}}
+                                </a>
+                            </div>
+                            <hr style="filter:alpha(opacity=100,finishopacity=0,style=3);" width="80%" color="#0000FF"
+                                size="3">
+
+                            <div id="myTabContent" class="tab-content">
+                                <div class="tab-pane fade in active show" id="home">
+                                    {% if not shown_instances %}
+                                    <br />
+                                    <p></p>
+                                    <p style="text-align: center;">{{empty_info}}</p>
+                                    <br />
+                                    {% else %}
+                                    <div class="bio-skill-box">
+                                        <div class="row">
+
+
+                                            {% for instance in shown_instances %}
+                                            {% with instance.get_instance.get_status_display as status %}
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+
+                                                <div class=" b-skills">
+
+
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h5>
+                                                                <a
+                                                                    href="{{link}}{% if query_field %}?{{query_field}}={{instance.id}}{% endif %}">
+                                                                    <u>{{instance.get_instance}}</u>
+                                                                </a>
+                                                                <br />
+                                                            </h5>
+                                                        </div>
+                                                        {% if status is not None %}
+                                                        <div>
+                                                            {% if '拒绝' in status or '未' in status or '不' in status %}
+                                                            <h4 class="text-danger">{{status}}</h4>
+                                                            {% elif '通过' in status or '接受' in status %}
+                                                            <h4 class="text-success">已通过</h4>
+                                                            {% elif '修改' in status %}
+                                                            <h4 class="text-warning">待修改</h4>
+                                                            {% elif '取消' in status %}
+                                                            <h4 class="text-muted">{{status}}</h4>
+                                                            {% else %}
+                                                            <h4 class="text-info">审核中</h4>
+                                                            {% endif %}
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            {% for display in instance.extra_display %}
+                                                            {% if display|length == 2 or display|length == 3 %}
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-{{display.2|default:'envelope-o'}}"></i>
+                                                                {{display.0}}：{{display.1}}
+                                                            </p>
+                                                            {% endif %}
+                                                            {% endfor %}
+                                                        </div>
+                                                        {% if instance.get_poster_name %}
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-address-book"></i>
+                                                                {{instance.get_poster_name}}
+                                                            </p>
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-calendar-plus-o"></i>
+                                                                创建时间：{{instance.time|date:'m/d H:i'}}
+                                                            </p>
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-calendar-o"></i>
+                                                                上次修改：{{instance.modify_time|date:'m/d H:i'}}
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <h5>
+                                                                <a href="#" class="btn btn-primary my-3 my-sm-2"
+                                                                    tabindex="-1" role="button"
+                                                                    onclick="window.location='{{link}}{% if query_field %}?{{query_field}}={{instance.id}}{% endif %}'">
+                                                                    {{btn_name}}
+                                                                </a>
+                                                            </h5>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endwith %}
+                                            {% endfor %}
+                                        </div>
+
+                                    </div>
+
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+<!--  END CONTENT AREA  -->
+
+{% endwith %}
+
+{% endblock %}
