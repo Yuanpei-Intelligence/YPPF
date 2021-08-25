@@ -79,11 +79,7 @@ def check_user_type(user):
 
 def get_user_ava(obj, user_type):
     ava = obj.avatar
-<<<<<<< HEAD
-    if ava:
-=======
     if not ava:
->>>>>>> ca3a81db98377e51a179a83d2528b9037a3377d8
         if user_type == "Person":
             return settings.MEDIA_URL + "avatar/person_default.jpg"
         else:
@@ -196,62 +192,12 @@ def check_ac_request(request):
     # oid的获取
     context = dict()
     context["warn_code"] = 0
-<<<<<<< HEAD
 
     try:
         assert request.POST["edit"] == "True"
         edit = True
     except:
         edit = False
-
-    bar_display["navbar_name"] = navbar_name
-    bar_display["title_name"] = (
-        title_name if title_name else navbar_name
-    )  # title_name默认与navbar_name相同
-
-    if navbar_name != "":
-        try:
-            bar_display["help_message"] = local_dict["help_message"].get(
-                navbar_name, ""
-            )
-        except:  # 找不到提醒, 直接跳过
-            pass
-        try:
-            bar_display["help_paragraphs"] = local_dict["use_help"].get(
-                navbar_name, list()
-            )
-        except:  # 找不到提醒, 直接跳过
-            pass
-
-=======
-
-    try:
-        assert request.POST["edit"] == "True"
-        edit = True
-    except:
-        edit = False
-
-    bar_display["navbar_name"] = navbar_name
-    bar_display["title_name"] = (
-        title_name if not title_name else navbar_name
-    )  # title_name默认与navbar_name相同
-
-    if navbar_name != "":
-        try:
-            bar_display["help_message"] = local_dict["help_message"].get(
-                navbar_name, ""
-            )
-        except:  # 找不到提醒, 直接跳过
-            pass
-        try:
-            bar_display["help_paragraphs"] = local_dict["use_help"].get(
-                navbar_name, list()
-            )
-        except:  # 找不到提醒, 直接跳过
-            pass
-
->>>>>>> ca3a81db98377e51a179a83d2528b9037a3377d8
-    return bar_display
 
 
 def url_check(arg_url):
@@ -357,8 +303,6 @@ def check_neworg_request(request, org=None):
     # 组织类型，必须有
     context["pos"] = request.user  # 负责人，必须有滴
     context["introduction"] = str(request.POST.get("introduction", ""))  # 组织介绍，可能为空
-<<<<<<< HEAD
-=======
 
     context["application"] = str(request.POST.get("application", ""))  # 申请理由
 
@@ -388,7 +332,6 @@ def check_newpos_request(request,prepos=None):
         return context
     
     context['oname'] = oname  # 组织名字
->>>>>>> ca3a81db98377e51a179a83d2528b9037a3377d8
 
     context["application"] = str(request.POST.get("application", ""))  # 申请理由
 
@@ -460,23 +403,14 @@ def notifications_create(
     Notification.objects.bulk_create(notifications)
 
 
-<<<<<<< HEAD
 def set_nperson_quota_to(quota):
-=======
-def set_YQPoint_credit_to(YQP):
->>>>>>> ca3a81db98377e51a179a83d2528b9037a3377d8
     """
         后台设定所有自然人的元气值为一特定值，这个值就是每月的限额
         给所有用户发送通知
     """
     activated_npeople = NaturalPerson.objects.activated()
-<<<<<<< HEAD
     activated_npeople.update(quota=quota)
     notification_content = f"学院已经将大家的元气值配额重新设定为{quota},祝您使用愉快！"
-=======
-    activated_npeople.update(YQPoint_credit_card=YQP)
-    notification_content = f"学院已经将大家的元气信用值充值为{YQP},祝您使用愉快！"
->>>>>>> ca3a81db98377e51a179a83d2528b9037a3377d8
     title = Notification.Title.VERIFY_INFORM
     YPcollege = Organization.objects.get(oname="元培学院")
     notifications_create(
@@ -488,8 +422,6 @@ def set_YQPoint_credit_to(YQP):
     )
     return
 
-<<<<<<< HEAD
-=======
 def check_account_setting(request,user_type):
     if user_type == 'Person':
         html_display = dict()
@@ -544,4 +476,3 @@ def check_account_setting(request,user_type):
         html_display['warn_message'] = ""
         attr_dict['introduction'] = request.POST['introduction']
     return attr_dict, show_dict, html_display
->>>>>>> ca3a81db98377e51a179a83d2528b9037a3377d8
