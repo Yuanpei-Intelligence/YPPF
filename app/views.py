@@ -49,13 +49,12 @@ from django.views.decorators.http import require_POST, require_GET
 import json
 from time import mktime
 from datetime import date, datetime, timedelta
-from urllib import parse
+from urllib import parse, request as urllib2
 import re
 import random
 import requests  # 发送验证码
 import io
 import csv
-import qrcode
 
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
@@ -717,7 +716,7 @@ def homepage(request):
                 np.save()
 
     # 今天开始进行的活动,且不展示结束的活动。按开始时间由近到远排序
-    today_activity_list = (
+    activities = (
         Activity.objects.activated()
             .filter(
             Q(start__year=nowtime.year)
@@ -733,16 +732,13 @@ def homepage(request):
         )
             .order_by("start")
     )
-    # 今天可以报名的活动。按截止时间由近到远排序
-    prepare_times = Activity.EndBeforeHours.prepare_times
-    signup_rec = Activity.objects.activated().filter(status=Activity.Status.APPLYING)
-    today_signup_list = []
-    for act in signup_rec:
-        dictmp = {}
-        dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
-        dictmp["act"] = act
-        today_signup_list.append(dictmp)
-    today_signup_list.sort(key=lambda x: x["endbefore"])
+    activities_start = [
+        activity.start.strftime("%H:%M") for activity in activities
+    ]
+    html_display['today_activities'] = list(zip(activities, activities_start)) or None
+
+    weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
+    html_display['weather'] = json.loads(weather)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
