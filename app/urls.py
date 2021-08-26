@@ -56,8 +56,9 @@ urlpatterns = [
     path("addOrganization/", views.addOrganization, name="addOrganization"),
     path("auditOrganization/", views.auditOrganization, name="auditOrganization"),
     path('applyOrganization/', views.applyOrganization, name="applyOrganization"),
-    path('showApplyOrganization/', views.showApplyOrganization, name="showApplyOrganization"),
+    path('showPosition/', views.showPosition, name="showPosition"),
     path("auditPosition/", views.auditPosition, name="auditPosition"),
+    path("modifyPosition/",views.modifyPosition, name="modifyPosition"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
