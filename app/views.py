@@ -2676,7 +2676,6 @@ def addComment(request, comment_base,receiver=None):
     else:
         sender_name = sender.name
     context = dict()
-    new_comment = ""
     typename=comment_base.typename
     content = {
         'modifyposition': f'{sender_name}在人事变动申请留有新的评论',
