@@ -641,6 +641,13 @@ class Notification(models.Model):
         blank=True,
         null=True,
     )
+    relate_instance = models.ForeignKey(
+        CommentBase,
+        related_name="relate_notifications",
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+    )
 
     objects = NotificationManager()
 
@@ -811,3 +818,5 @@ class Reimbursement(CommentBase):
         if self.message:
             display.append(('备注', self.message))
         return display
+    def is_pending(self):   #表示是不是pending状态
+            return self.status == Reimbursement.ReimburseStatus.WAITING

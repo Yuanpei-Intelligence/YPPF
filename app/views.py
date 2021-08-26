@@ -22,6 +22,7 @@ from django.db.models import Max
 import app.utils as utils
 from app.forms import UserForm
 from app.utils import url_check, check_cross_site, get_person_or_org
+from app.reimbursement_utils import update_reimb_application
 from app.activity_utils import (
     create_activity,
     modify_activity,
@@ -2570,6 +2571,7 @@ def notification_create(
         content,
         URL=None,
         relate_TransferRecord=None,
+        relate_instance=None,
         *,
         publish_to_wechat=False,
 ):
@@ -2581,14 +2583,12 @@ def notification_create(
         title: 请在数据表中查找相应事件类型，若找不到，直接创建一个新的choice
         content: 输入通知的内容
         URL: 需要跳转到处理事务的页面
-
     注意事项：
         publish_to_wechat: bool 仅关键字参数
         - 你不应该输入这个参数，除非你清楚wechat_send.py的所有逻辑
         - 在最坏的情况下，可能会阻塞近10s
         - 简单来说，涉及订阅或者可能向多人连续发送类似通知时，都不要发送到微信
         - 在线程锁或原子锁内时，也不要发送
-
     现在，你应该在不急于等待的时候显式调用publish_notification(s)这两个函数，
         具体选择哪个取决于你创建的通知是一批类似通知还是单个通知
     """
@@ -2600,11 +2600,11 @@ def notification_create(
         content=content,
         URL=URL,
         relate_TransferRecord=relate_TransferRecord,
+        relate_instance=relate_instance,
     )
     if publish_to_wechat == True:
         publish_notification(notification)
     return notification
-
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
@@ -2662,26 +2662,48 @@ def notifications(request):
 # 新建评论，
 
 
-def addComment(request, comment_base):
+def addComment(request, comment_base,receiver=None):
     """
     传入POST得到的request和与评论相关联的实例即可
     返回值为1代表失败，返回2代表新建评论成功
     """
+
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    sender = utils.get_person_or_org(request.user)
+    if user_type == "Organization":
+        sender_name=sender.oname
+    else:
+        sender_name = sender.name
     context = dict()
-    context["warn_code"] = 2
+    try:
+        typename=comment_base.typename  #三种类型
+    except:
+        context["warn_code"] = 1
+        context["warn_message"] = "传入的评论基类的实例错误，请联系管理员！"
+        return context
+    content = {
+        'modifyposition': f'{sender_name}在人事变动申请留有新的评论',
+        'neworganization': f'{sender_name}在新建组织中留有新的评论',
+        'reimbursement': f'{sender_name}在经费申请中留有新的评论',
+    }
+    URL={
+        'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
+        'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
+        'reimbursement': f'/modifyReimbursement/?reimb_id={comment_base.id}',
+    }
     if request.POST.get("comment_submit") is not None:  # 新建评论信息，并保存
         text = str(request.POST.get("comment"))
         # 检查图片合法性
         comment_images = request.FILES.getlist('comment_images')
         if text == "" and comment_images == []:
             context['warn_code'] = 1
-            context['warn_message'] = "评论内容为空，无法评论！"
+            context['warn_message'] = "评论内容均为空，无法评论！"
             return context
         if len(comment_images) > 0:
             for comment_image in comment_images:
                 if utils.if_image(comment_image) == False:
                     context["warn_code"] = 1
-                    context["warn_message"] = "上传的附件只支持图片格式。"
+                    context["warn_message"] = "评论中上传的附件只支持图片格式。"
                     return context
         try:
             with transaction.atomic():
@@ -2697,7 +2719,22 @@ def addComment(request, comment_base):
         except:
             context["warn_code"] = 1
             context["warn_message"] = "评论失败，请联系管理员。"
+            return context
+        if len(text) >= 32:
+            text = text[:31] + "……"
+        content[typename] += f':{text}'
+        if receiver is not None:
+            notification_create(
+                receiver,
+                request.user,
+                Notification.Type.NEEDREAD,
+                Notification.Title.VERIFY_INFORM,
+                content[typename],
+                URL[typename],
+            )
         context["new_comment"] = new_comment
+        context["warn_code"] = 2
+        context["warn_message"] = "评论成功。"
     return context
 
 
@@ -3777,6 +3814,11 @@ def showReimbursement(request):
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_auditor = False
+    try:
+        html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
+    except:
+        return redirect("/welcome/")
+    html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
     if user_type == "Person":
         try:
             person = utils.get_person_or_org(request.user, user_type)
@@ -4250,7 +4292,6 @@ def auditReimbursement(request):
             submit = int(request.POST.get("submit", -1))
             if submit == 2:  # 通过
                 org = new_reimb.pos.organization
-
                 try:
                     with transaction.atomic():
                         if org.YQPoint < new_reimb.amount:
@@ -4374,3 +4415,178 @@ def auditReimbursement(request):
     bar_display["navbar_name"] = "报销审核"
     return render(request, "reimbursement_comment.html", locals())
 
+# 新建+修改+取消+审核 报销信息
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+def modeifyReimbursement(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = utils.get_person_or_org(request.user)  # 获取自身
+
+    # 前端使用量user_type，表示观察者是组织还是个人
+
+    # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
+
+    # 设置application为None, 如果非None则自动覆盖
+    application = None
+    # 根据是否有newid来判断是否是第一次
+    reimb_id = request.GET.get("reimb_id", None)
+    #审核老师
+    auditor = User.objects.get(username=local_dict["audit_teacher"]["Funds"])
+    auditor_name=utils.get_person_or_org(auditor).name
+
+    if reimb_id is not None:  # 如果存在对应报销
+        try:  # 尝试获取已经新建的Reimbursement
+            application = Reimbursement.objects.get(id=reimb_id)
+            # 接下来检查是否有权限check这个条目
+            # 至少应该是申请人或者被审核老师之一
+            assert (application.pos==request.user) or (auditor==request.user)
+        except:  # 恶意跳转
+            return redirect("/welcome/")
+        is_new_application = False  # 前端使用量, 表示是老申请还是新的
+
+    else:  # 如果不存在id, 默认应该传入活动信息
+        #只有组织才有可能报销
+        try:
+            assert user_type == "Organization"
+        except:  # 恶意跳转
+            return redirect("/welcome/")
+        is_new_application = True  # 新的申请
+
+         # 这种写法是为了方便随时取消某个条件
+    #通知的接收者
+    if user_type == "Organization":
+        receiver= auditor
+    else:
+        receiver=application.pos
+    '''
+        至此，如果是新申请那么application为None，否则为对应申请
+        application = None只有在组织新建申请的时候才可能出现，对应位is_new_application为True
+        接下来POST
+    '''
+
+    # ———————— Post操作，分为申请变更以及添加评论   ————————
+
+    if request.method == "POST":
+        # 如果是状态变更
+        if request.POST.get("post_type", None) is not None:
+
+            # 主要操作函数，更新申请状态
+            context = update_reimb_application(application, me, user_type, request,auditor_name)
+
+            if context["warn_code"] == 2:  # 成功修改申请
+                # 回传id 防止意外的锁操作
+                application = Reimbursement.objects.get(id=context["application_id"])
+                is_new_application = False  # 状态变更
+
+                # 处理通知相关的操作，并根据情况发送微信
+                # 默认需要成功,失败也不是用户的问题，直接给管理员报错
+                #组织名字
+                org_name = application.pos.organization.oname
+                #活动标题
+                act_title = application.activity.title
+                # 准备创建notification需要的构件：发送内容
+                content = {
+                    'new_submit': f'{org_name}发起活动{act_title}的经费申请，请审核~',
+                    'modify_submit': f'{org_name}修改了活动{act_title}的经费申请，请审核~',
+                    'cancel_submit': f'{org_name}取消了活动{act_title}的经费申请。',
+                    'accept_submit': f'恭喜，您申请的经费申请：{act_title}，审核已通过！已扣除元气值{application.amount}',
+                    'refuse_submit': f'抱歉，您申请的经费申请：{act_title}，审核未通过！',
+                }
+                #创建通知
+                make_notification(application,request,content,receiver)
+                if request.POST.get("post_type", None)=="new_submit":
+                    return redirect(
+                        "/showReimbursement/?&warn_code=2&warn_message={message}"
+                            .format(message=context['warn_message']))#TODO：message的呈现
+
+            elif context["warn_code"] != 1:  # 没有返回操作提示
+                raise NotImplementedError("处理经费申请中出现未预见状态，请联系管理员处理！")
+
+
+        else:  # 如果是新增评论
+            # 权限检查
+            allow_comment = True if (not is_new_application) and (
+                application.is_pending()) else False
+            if not allow_comment:  # 存在不合法的操作
+                return redirect(
+                    "/welcome/?warn_code=1&warn_message=存在不合法操作,请与管理员联系!")
+            context = addComment(request, application,receiver)
+
+        # 准备用户提示量
+        html_display["warn_code"] = context["warn_code"]
+        html_display["warn_message"] = context["warn_message"]
+
+    # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
+    '''
+        组织：可能是新建、修改申请
+        老师：可能是审核申请
+    '''
+
+    # (1) 是否允许修改表单
+    # 组织写表格?
+    allow_form_edit = True if (user_type == "Organization") and (
+            is_new_application or application.is_pending()) else False
+    # 老师审核?
+    allow_audit_submit = True if (user_type == "Person") and (not is_new_application) and (
+        application.is_pending()) else False
+
+    # 是否可以评论
+    commentable = True if (not is_new_application) and (application.is_pending()) \
+        else False
+    comments = showComment(application) if application is not None else None
+    # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
+    apply_person = me if is_new_application else utils.get_person_or_org(application.pos)
+    #申请人头像
+    app_avatar_path = utils.get_user_ava(apply_person,"Organization")
+
+    # 未报销活动
+    activities = utils.get_unreimb_activity(apply_person)
+    #元培学院
+    our_college=Organization.objects.get(oname="元培学院") if allow_audit_submit else None
+
+
+    # TODO: 设置默认值
+
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="经费申请详情")
+    return render(request, "modify_reimbursement.html", locals())
+
+
+# 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
+# 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
+def make_notification(application, request,content,receiver):
+    # 考虑不同post_type的信息发送行为
+    post_type = request.POST.get("post_type")
+    feasible_post = ["new_submit", "modify_submit", "cancel_submit", "accept_submit", "refuse_submit"]
+
+
+    # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
+    URL = {
+        'modifyposition': f'/modifyPosition/?pos_id={application.id}',
+        'neworganization': f'/modifyOrganization/?org_id={application.id}',
+        'reimbursement': f'/modifyReimbursement/?reimb_id={application.id}',
+    }
+    sender = request.user
+    typename = Notification.Type.NEEDDO if post_type == 'new_submit' else Notification.Type.NEEDREAD
+    title = Notification.Title.VERIFY_INFORM if post_type != 'accept_submit' else Notification.Title.POSITION_INFORM
+    relate_instance = application if post_type == 'new_submit' else None
+    publish_to_wechat = True
+    # TODO cancel是否要发送notification？是否发送微信？
+
+    # 正式创建notification
+    notification_create(
+        receiver=receiver,
+        sender=sender,
+        typename=typename,
+        title=title,
+        content=content[post_type],
+        URL=URL[application.typename],
+        relate_instance=relate_instance,
+        publish_to_wechat=publish_to_wechat
+    )
+    # 对于处理类通知的完成(done)，修改状态
+    # 这里的逻辑保证：所有的处理类通知的生命周期必须从“人事发起”开始，从“取消”“通过”“拒绝”结束。
+    if feasible_post.index(post_type) >= 2:
+        notification_status_change(
+            application.relate_notifications.get(status=Notification.Status.UNDONE).id,
+            Notification.Status.DONE
+        )

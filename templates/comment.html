@@ -24,7 +24,7 @@ img {
         <textarea name="comment" class="form-control" disabled="disabled">{{comment.text}}</textarea>
         {%endif%}
         {%if comment.len > 0 %}
-            <div style="height:500px;overflow:auto;">
+            <div style="max-height:1000px;overflow:auto;">
             {%for image in comment.comment_photos.all%}
             <img  src={{image.imagepath}} >
             <!--移动端图片大小需要修正!-->
@@ -48,14 +48,10 @@ img {
             <br>
             <div>
                 <label title="评论图片">
-                    <div style="text-align:left;">
-                        <input type="file" accept="image/*" name="comment_images"
-                               multiple>
-                    </div>
                     <div class="custom-file" lang="zh">
                         <input onchange="showFilename(this.files)" type="file" class="custom-file-input"
                                id="customFile" name="comment_images" accept="image/*"  multiple>
-                        <label id="uploadfile" class="custom-file-label" for="customFile">上传图片</label>
+                        <label id="uploadfile" class="custom-file-label" for="customFile">添加评论图片</label>
                     </div>
                 </label>
                 <div style="text-align:right;">
