@@ -2663,26 +2663,44 @@ def notifications(request):
 # 新建评论，
 
 
-def addComment(request, comment_base):
+def addComment(request, comment_base,receiver=None):
     """
     传入POST得到的request和与评论相关联的实例即可
     返回值为1代表失败，返回2代表新建评论成功
     """
+
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    sender = utils.get_person_or_org(request.user)
+    if user_type == "Organization":
+        sender_name=sender.oname
+    else:
+        sender_name = sender.name
     context = dict()
-    context["warn_code"] = 2
+    new_comment = ""
+    typename=comment_base.typename
+    content = {
+        'modifyposition': f'{sender_name}在人事变动申请留有新的评论',
+        'neworganization': f'{sender_name}在新建组织中留有新的评论',
+        'reimbursement': f'{sender_name}在经费申请中留有新的评论',
+    }
+    URL={
+        'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
+        'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
+        'reimbursement': f'modifyReimbursement/?reimb_id={comment_base.id}',
+    }
     if request.POST.get("comment_submit") is not None:  # 新建评论信息，并保存
         text = str(request.POST.get("comment"))
         # 检查图片合法性
         comment_images = request.FILES.getlist('comment_images')
         if text == "" and comment_images == []:
             context['warn_code'] = 1
-            context['warn_message'] = "评论内容为空，无法评论！"
+            context['warn_message'] = "评论内容均为空，无法评论！"
             return context
         if len(comment_images) > 0:
             for comment_image in comment_images:
                 if utils.if_image(comment_image) == False:
                     context["warn_code"] = 1
-                    context["warn_message"] = "上传的附件只支持图片格式。"
+                    context["warn_message"] = "评论中上传的附件只支持图片格式。"
                     return context
         try:
             with transaction.atomic():
@@ -2698,7 +2716,22 @@ def addComment(request, comment_base):
         except:
             context["warn_code"] = 1
             context["warn_message"] = "评论失败，请联系管理员。"
+            return context
+        if len(text) >= 32:
+            text = text[:31] + "……"
+        content[typename] += f':{text}'
+        if receiver is not None:
+            notification_create(
+                receiver,
+                request.user,
+                Notification.Type.NEEDREAD,
+                Notification.Title.VERIFY_INFORM,
+                content,
+                URL[typename],
+            )
         context["new_comment"] = new_comment
+        context["warn_code"] = 2
+        context["warn_message"] = "评论成功。"
     return context
 
 
@@ -2707,11 +2740,11 @@ def showComment(commentbase):
     for comment in comments:
         commentator = get_person_or_org(comment.commentator)
         if comment.commentator.username[:2] == "zz":
-            comment.ava = utils.get_user_ava(comment.commentator, "Organization")
+            comment.ava = utils.get_user_ava(commentator, "Organization")
             comment.URL = "/orginfo/{name}".format(name=commentator.oname)
             comment.commentator_name = commentator.oname
         else:
-            comment.ava = utils.get_user_ava(comment.commentator, "Person")
+            comment.ava = utils.get_user_ava(commentator, "Person")
             comment.URL = "/stuinfo/{name}".format(name=commentator.name)
             comment.commentator_name = commentator.name
         comment.len = len(comment.comment_photos.all())
@@ -4408,12 +4441,6 @@ def auditReimbursement(request):
     comments = showComment(new_reimb)  # 加载评论
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "报销审核"
-    bar_display["navbar_name"] = "报销审核"
-    return render(request, "reimbursement_comment.html", locals())
-    bar_display["title_name"] = "报销审核"
-    bar_display["navbar_name"] = "报销审核"
-    return render(request, "reimbursement_comment.html", locals())
     bar_display["title_name"] = "报销审核"
     bar_display["navbar_name"] = "报销审核"
     return render(request, "reimbursement_comment.html", locals())
