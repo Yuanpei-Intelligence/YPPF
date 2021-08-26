@@ -221,6 +221,7 @@ class PositionManager(models.Manager):
         with transaction.atomic():
             if apply_type == "JOIN":
                 apply_type = Position.ApplyType.JOIN
+                assert len(self.activated().filter(person=person, org=org))==0
                 application, created = self.current().get_or_create(
                     person=person, org=org, apply_type=apply_type, apply_pos=apply_pos
                 )
@@ -255,7 +256,7 @@ class PositionManager(models.Manager):
                 )
             application.apply_status = Position.ApplyStatus.PENDING
             application.save()
-            return apply_type
+            return apply_type, application
 
 
 class Position(models.Model):
@@ -313,15 +314,16 @@ class Position(models.Model):
         TRANSFER = "交接职务"
         NONE = "无申请流程"  # 指派职务
 
+    apply_type = models.CharField(
+        "申请类型", choices=ApplyType.choices, max_length=32, default=ApplyType.NONE
+    )
+
     class ApplyStatus(models.TextChoices):  # 人事变动申请状态
         PENDING = "等待中"
         PASS = "已通过"
         REJECT = "未通过"
         NONE = ""  # 对应“无申请流程”
 
-    apply_type = models.CharField(
-        "申请类型", choices=ApplyType.choices, max_length=32, default=ApplyType.NONE
-    )
     apply_status = models.CharField(
         "申请状态", choices=ApplyStatus.choices, max_length=32, default=ApplyStatus.NONE
     )
@@ -678,7 +680,7 @@ class CommentPhoto(models.Model):
 
 class NewOrganization(CommentBase):
     class Meta:
-        verbose_name = "申请建立组织的信息"
+        verbose_name = "新建组织"
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
@@ -724,10 +726,48 @@ class NewOrganization(CommentBase):
             display.append(('组织介绍', self.introduction))
         return display
 
+class NewPosition(CommentBase):
+    class Meta:
+        verbose_name = "申请人事的信息"
+        verbose_name_plural = verbose_name
+        ordering = ["-modify_time", "-time"]
+
+    position = models.ForeignKey(
+        to=Position, related_name="new_position", on_delete=models.CASCADE
+    )
+
+    application = models.TextField(
+        "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
+    )
+    class NewPosStatus(models.IntegerChoices):  # 表示申请人事的请求的状态
+        PENDING = (0, "处理中")
+        CONFIRMED = (1, "已通过")  
+        CANCELED = (2, "已取消")  
+        REFUSED = (3, "已拒绝")
+
+    status = models.SmallIntegerField(choices=NewPosStatus.choices, default=0)
+    
+    apply_pos = models.SmallIntegerField(verbose_name="申请职务等级", default=10)
+    def __str__(self):
+        return f'{self.position.org.oname}人事申请'
+
+    class ApplyType(models.TextChoices):  # 人事变动申请类型
+        JOIN = "加入组织"
+        WITHDRAW = "退出组织"
+        TRANSFER = "交接职务"
+        NONE = "无申请流程"  # 指派职务
+
+    apply_type = models.CharField(
+        "申请类型", choices=ApplyType.choices, max_length=32, default=ApplyType.NONE
+    )
+    def save(self, *args, **kwargs):
+        self.typename = "newposition"
+        super().save(*args, **kwargs)
+
 
 class Reimbursement(CommentBase):
     class Meta:
-        verbose_name = "报销信息"
+        verbose_name = "新建报销"
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
