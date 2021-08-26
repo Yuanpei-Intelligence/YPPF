@@ -4279,40 +4279,8 @@ def auditReimbursement(request):
 
         if request.POST.get("comment_submit") is not None:  # 新建评论信息，并保存
             context = addComment(request, new_reimb,new_reimb.pos)
-            if context['warn_code'] == 1:
-                html_display['warn_code'] = 1
-                html_display['warn_message'] = context['warn_message']
-            else:
-                try:  # 发送给评论通知
-                    with transaction.atomic():
-                        text = str(context['new_comment'].text)
-                        if len(text) >= 32:
-                            text = text[:31] + "……"
-                        content = "{teacher_name}老师给您的经费申请留有新的评论".format(
-                            teacher_name=me.name)
-                        if text != "":
-                            content += ":”{text}“".format(text=text)
-                        receiver = new_reimb.pos  # 通知接收者
-                        URL = ""
-                        new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
-                                                               Notification.Title.VERIFY_INFORM, content, URL)
-                        en_pw = hash_coder.encode(str(new_reimb.id) + '新建报销' + str(new_notification.id))
-                        URL = "/addReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(
-                            id=new_reimb.id, nid=new_notification.id, en_pw=en_pw)
-                        new_notification.URL = URL
-                        new_notification.save()
-                except:
-                    html_display['warn_code'] = 1
-                    html_display['warn_message'] = "创建发送给申请者的评论通知失败。请联系管理员！"
-                    return render(request, "reimbursement_comment.html", locals())
-                # 微信通知
-                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                    publish_notification(new_notification)
-                else:
-                    publish_notification(new_notification.id)
-                html_display['warn_code'] = 2
-                html_display['warn_message'] = "评论成功！"
-
+            html_display['warn_code'] = context['warn_code']
+            html_display['warn_message'] = context['warn_message']
 
         # 审核老师的两种操作：通过，和拒绝
         else:
