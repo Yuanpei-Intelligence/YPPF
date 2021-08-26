@@ -313,7 +313,7 @@ def stuinfo(request, name=None):
                 Q(person=oneself) & Q(show_post=True)
             )
         )
-        oneself_orgs_id = oneself_orgs.values("id")  # 自己的组织
+        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id")  # 自己的组织
 
         # 管理的组织
         person_owned_poss = person_poss.filter(pos=0, status=Position.Status.INSERVICE)
