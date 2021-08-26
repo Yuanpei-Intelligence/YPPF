@@ -1,3 +1,4 @@
+import urllib
 from app.models import NewPosition
 from threading import local
 from django.dispatch.dispatcher import NO_RECEIVERS, receiver
@@ -9,6 +10,8 @@ from app.models import (
     OrganizationType,
     Position,
     Activity,
+    ActivitySummaryPhoto,
+    ActivityAnnouncePhoto,
     TransferRecord,
     Participant,
     Notification,
@@ -17,6 +20,7 @@ from app.models import (
     CommentPhoto,
     YQPointDistribute,
     Reimbursement,
+    Wishes
 )
 from django.db.models import Max
 import app.utils as utils
@@ -535,6 +539,9 @@ def orginfo(request, name=None):
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
 
+    if not valid:
+        return redirect("/logout/")
+
     me = utils.get_person_or_org(user, user_type)
 
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
@@ -547,7 +554,7 @@ def orginfo(request, name=None):
 
         full_path = request.get_full_path()
         append_url = "" if ("?" not in full_path) else "?" + full_path.split("?")[1]
-
+            
         return redirect("/orginfo/" + org.oname + append_url)
 
     try:  # 指定名字访问组织账号的，可以是自然人也可以是法人。在html里要注意区分！
@@ -567,8 +574,8 @@ def orginfo(request, name=None):
     # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
         Activity.objects.activated()
-            .filter(organization_id=org)
-            .filter(
+        .filter(organization_id=org)
+        .filter(
             status__in=[
                 Activity.Status.REVIEWING,
                 Activity.Status.APPLYING,
@@ -638,15 +645,18 @@ def orginfo(request, name=None):
             member["job"] = org.otype.get_name(p.pos)
             member["highest"] = True if p.pos == 0 else False
 
-            member["avatar_path"] = utils.get_user_ava(member["person"], "Person")
+            member["avatar_path"] = utils.get_user_ava(
+                member["person"], "Person")
 
             member_list.append(member)
 
     try:
-        html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
+        html_display["warn_code"] = int(
+            request.GET.get("warn_code", 0))  # 是否有来自外部的消息
     except:
         return redirect("/welcome/")
-    html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+    html_display["warn_message"] = request.GET.get(
+        "warn_message", "")  # 提醒的具体内容
 
     modpw_status = request.GET.get("modinfo", None)
     if modpw_status is not None and modpw_status == "success":
@@ -661,6 +671,7 @@ def orginfo(request, name=None):
     # 再处理修改信息的回弹
     modpw_status = request.GET.get("modinfo", None)
     html_display["modpw_code"] = modpw_status is not None and modpw_status == "success"
+
 
     # 组织活动的信息
 
@@ -700,10 +711,12 @@ def homepage(request):
     html_display["is_myself"] = True
 
     try:
-        html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
+        html_display["warn_code"] = int(
+            request.GET.get("warn_code", 0))  # 是否有来自外部的消息
     except:
         return redirect("/welcome/")
-    html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+    html_display["warn_message"] = request.GET.get(
+        "warn_message", "")  # 提醒的具体内容
 
     nowtime = datetime.now()
     # 今天第一次访问 welcome 界面，积分加 0.5
@@ -714,8 +727,25 @@ def homepage(request):
                 np.last_time_login = nowtime
                 np.bonusPoint += 0.5
                 np.save()
+    # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
+    mintime = nowtime-timedelta(days = 7)
+    maxtime = nowtime+timedelta(days = 7)
+    recentactivity_list = (
+        Activity.objects.activated()
+        .filter(start__gt = mintime)
+        .filter(start__lt = maxtime)
+        .filter(
+            status__in=[
+                Activity.Status.APPLYING,
+                Activity.Status.WAITING,
+                Activity.Status.PROGRESSING,
+                Activity.Status.END
+            ]
+        )
+        .order_by("-start")
+    )
 
-    # 今天开始进行的活动,且不展示结束的活动。按开始时间由近到远排序
+    # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
     activities = (
         Activity.objects.activated()
             .filter(
@@ -730,21 +760,69 @@ def homepage(request):
                 Activity.Status.PROGRESSING,
             ]
         )
-            .order_by("start")
+        .order_by("start")
     )
     activities_start = [
         activity.start.strftime("%H:%M") for activity in activities
     ]
     html_display['today_activities'] = list(zip(activities, activities_start)) or None
 
-    weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
+
+    # 最新（三天内）发布的活动，按发布的时间逆序
+    newlyreleased_list = (
+        Activity.objects.activated()
+        .filter(publish_time__gt = nowtime-timedelta(days = 3))
+        .filter(
+            status__in=[
+                Activity.Status.APPLYING,
+                Activity.Status.WAITING,
+                Activity.Status.PROGRESSING
+            ]
+        )
+        .order_by("-publish_time")
+    )
+
+    # 今天截止的活动，按截止时间正序
+    prepare_times = Activity.EndBeforeHours.prepare_times
+    signup_rec = (
+        Activity.objects.activated()
+        .filter(status = Activity.Status.APPLYING)
+    )
+    today_signup_list = []
+    for act in signup_rec:
+        deadline = act.start - timedelta(hours=prepare_times[act.endbefore])
+        if deadline.year==nowtime.year and deadline.month==nowtime.month and deadline.day==nowtime.day : # 今天截止
+            dictmp = {}
+            dictmp["deadline"] = deadline
+            dictmp["act"] = act
+            today_signup_list.append(dictmp)
+    today_signup_list.sort(key=lambda x:x["deadline"])
+
+    # 如果提交了心愿，发生如下的操作
+    if request.method == "POST" and request.POST:
+        wishtext = request.POST.get("wish")
+        new_wish = Wishes.objects.create(text = wishtext, time = nowtime)
+        new_wish.save()
+
+    # 心愿墙！！！！!前100个心愿,已经按照时间逆序排好了
+    wishes = Wishes.objects.all()[:100]
+
+    # 展示活动照片,选取前五个，已经按时间逆序排好了
+    photos = ActivitySummaryPhoto.objects.all()[:5]
+    for photo in photos:
+        if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+            photo.image = settings.MEDIA_URL + str(photo.image)
+    firstpic = photos[0]
+    photos = photos[1:]
+
+    # 天气
+    weather = urllib.request.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     html_display['weather'] = json.loads(weather)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "Welcome Page"
     bar_display["navbar_name"] = "元培生活"
-
 
     return render(request, "welcome_page.html", locals())
 
@@ -905,7 +983,6 @@ def org_spec(request, *args, **kwargs):
         person_incharge = '负责人'
     return render(request, 'org_spec.html', locals())
 """
-
 
 def get_stu_img(request):
     print("in get stu img")
@@ -1698,7 +1775,6 @@ def viewActivity(request, aid=None):
     aprice = request.POST["aprice"]  # 活动价格
     capacity = request.POST["capacity"]  # 活动举办的容量
     """
-
     try:
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
@@ -1716,13 +1792,14 @@ def viewActivity(request, aid=None):
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
     start_time = activity.start
+    start_THEDAY = start_time.day # 前端使用量
     end_time = activity.end
     prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.apply_end
     introduction = activity.introduction
-    show_url = True  # 前端使用量
+    show_url = True # 前端使用量
     aURL = activity.URL
-    if aURL is None:
+    if (aURL is None) or (aURL == ""):
         show_url = False
     aQRcode = activity.QRcode
     bidding = activity.bidding
@@ -1735,6 +1812,7 @@ def viewActivity(request, aid=None):
         capacity = "INF"
     if activity.examine_teacher == me:
         examine = True
+
     # person 表示是否是个人而非组织
     person = False
     if user_type == "Person":
@@ -1756,6 +1834,16 @@ def viewActivity(request, aid=None):
     ownership = False
     if not person and org.organization_id == request.user:
         ownership = True
+
+    # 活动图片！！
+    photos = ActivityAnnouncePhoto.objects.filter(
+        activity_id = activity
+    )
+    for photo in photos:
+        if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+            photo.image = settings.MEDIA_URL + str(photo.image)
+    firstpic = photos[0].image
+    photos = photos[1:]
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
@@ -1841,6 +1929,28 @@ def viewActivity(request, aid=None):
 
     elif option == "payment":
         return redirect("/addReimbursement/")
+
+    elif option == "submitphoto":
+        try:
+            summaryphotos = request.FILES.getlist('images')
+            if len(summaryphotos) == 0 :
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "上传活动照片不能为空"
+                return render(request, "activity_info.html", locals())
+            for photo in summaryphotos:
+                if utils.if_image(photo) == False:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "上传的附件只支持图片格式。"
+                    return render(request, "activity_info.html", locals())
+                ActivitySummaryPhoto.objects.create(image = photo,activity = activity)
+        except:
+            html_display["warn_code"] = 1
+            html_display["warn_message"] = "非法的图片上传，请联系管理员"
+            return render(request, "activity_info.html", locals())
+
+        html_display["warn_code"] = 2
+        html_display["warn_message"] = "成功提交活动照片。"
+        return render(request, "activity_info.html", locals())
 
     else:
         html_display["warn_code"] = 1
@@ -2114,8 +2224,44 @@ def addActivities(request):
             return redirect(f"/viewActivity/{aid}")
             """
             try:
+
+                # 活动预告图片的合法性检查
+                existannouncephoto = False
+                pictures = []
+                pictures.append(request.POST.get("picture1"))
+                pictures.append(request.POST.get("picture2"))
+                pictures.append(request.POST.get("picture3"))
+                pictures.append(request.POST.get("picture4"))
+                pictures.append(request.POST.get("picture5"))
+
+                for pic in pictures:
+                    if pic is not None:
+                        existannouncephoto = True
+                announcephotos = request.FILES.getlist("images")
+                if len(announcephotos)==0 :
+                    if existannouncephoto is False:
+                        html_display['warn_code'] = 1
+                        html_display['warn_message'] = "上传活动照片不能为空"
+                        return render(request, "activity_add.html", locals())
+                else:
+                    for photo in announcephotos:
+                        if utils.if_image(photo) == False:
+                            html_display['warn_code'] = 1
+                            html_display['warn_message'] = "上传的附件只支持图片格式。"
+                            return render(request, "activity_add.html", locals())
+
+                # 开始进行活动创建
                 aid = create_activity(request)
+                activity = Activity.objects.get(id=aid)
+                for pic in pictures:
+                    if pic is not None:
+                        ActivityAnnouncePhoto.objects.create(image = pic,activity = activity)
+                if len(announcephotos)>0 :
+                    for photo in announcephotos:
+                        ActivityAnnouncePhoto.objects.create(image = photo,activity = activity)                    
+
                 return redirect(f"/viewActivity/{aid}")
+
             except:
                 return redirect("/welcome/")
 
@@ -2258,7 +2404,6 @@ def examineActivity(request, aid):
 
     else:
         return redirect("/welcome/")
-
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
@@ -2462,7 +2607,8 @@ def notification2Display(notification_list):
         # 时间
         lis[-1]["start_time"] = notification.start_time.strftime("%m/%d %H:%M")
         if notification.finish_time is not None:
-            lis[-1]["finish_time"] = notification.finish_time.strftime("%m/%d %H:%M")
+            lis[-1]["finish_time"] = notification.finish_time.strftime(
+                "%m/%d %H:%M")
 
         # 留言
         lis[-1]["content"] = notification.content
@@ -2483,93 +2629,34 @@ def notification2Display(notification_list):
     return lis
 
 
-def notification_status_change(notification_or_id, to_status=None):
+def notification_status_change(notification_id):
     """
     调用该函数以完成一项通知。对于知晓类通知，在接收到用户点击按钮后的post表单，该函数会被调用。
     对于需要完成的待处理通知，需要在对应的事务结束判断处，调用该函数。
-    notification_id是notification的主键:id
-    to_status是希望这条notification转变为的状态，包括
-        DONE = (0, "已处理")
-        UNDONE = (1, "待处理")
-        DELETE = (2, "已删除")
-    若不给to_status传参，默认为状态翻转：已处理<->未处理
     """
     context = dict()
     context["warn_code"] = 1
-    context["warn_message"] = "在修改通知状态的过程中发生错误，请联系管理员！"
-
-    if isinstance(notification_or_id, Notification):
-        notification_id = notification_or_id.id
-    else:
-        notification_id = notification_or_id
-
-    if to_status is None:  # 表示默认的状态翻转操作
-        if isinstance(notification_or_id, Notification):
-            now_status = notification_or_id.status
-        else:
-            try:
-                notification = Notification.objects.get(id=notification_id)
-                now_status = notification.status
-            except:
-                context["warn_message"] = "该通知不存在！"
-                return context
-        if now_status == Notification.Status.DONE:
-            to_status = Notification.Status.UNDONE
-        elif now_status == Notification.Status.UNDONE:
-            to_status = Notification.Status.DONE
-        else:
-            to_status = Notification.Status.DELETE
-            # context["warn_message"] = "已删除的通知无法翻转状态！"
-            # return context    # 暂时允许
-
     with transaction.atomic():
-        try:
-            notification = Notification.objects.select_for_update().get(
-                id=notification_id
-            )
-        except:
-            context["warn_message"] = "该通知不存在！"
-            return context
-        if notification.status == to_status:
-            context["warn_code"] = 2
-            context["warn_message"] = "通知状态无需改变！"
-            return context
-        if (
-                notification.status == Notification.Status.DELETE
-                and notification.status != to_status
-        ):
-            context["warn_code"] = 2
-            context["warn_message"] = "不能修改已删除的通知！"
-            return context
-        if to_status == Notification.Status.DONE:
+        notification = Notification.objects.select_for_update().get(id=notification_id)
+        if notification.status == Notification.Status.UNDONE:
             notification.status = Notification.Status.DONE
             notification.finish_time = datetime.now()  # 通知完成时间
             notification.save()
             context["warn_code"] = 2
             context["warn_message"] = "您已成功阅读一条通知！"
-        elif to_status == Notification.Status.UNDONE:
+        elif notification.status == Notification.Status.DONE:
             notification.status = Notification.Status.UNDONE
             notification.save()
             context["warn_code"] = 2
             context["warn_message"] = "成功设置一条通知为未读！"
-        elif to_status == Notification.Status.DELETE:
-            notification.status = Notification.Status.DELETE
-            notification.save()
-            context["warn_code"] = 2
-            context["warn_message"] = "成功删除一条通知！"
         return context
+    context["warn_message"] = "在阅读通知的过程中发生错误，请联系管理员！"
+    return context
 
 
 def notification_create(
-        receiver,
-        sender,
-        typename,
-        title,
-        content,
-        URL=None,
-        relate_TransferRecord=None,
-        *,
-        publish_to_wechat=False,
+        receiver, sender, typename, title, content, URL=None, relate_TransferRecord=None
+        , *, publish_to_wechat=False
 ):
     """
     对于一个需要创建通知的事件，请调用该函数创建通知！
@@ -2581,14 +2668,11 @@ def notification_create(
         URL: 需要跳转到处理事务的页面
 
     注意事项：
-        publish_to_wechat: bool 仅关键字参数
+        publish_to_wechat: bool 仅位置参数
         - 你不应该输入这个参数，除非你清楚wechat_send.py的所有逻辑
         - 在最坏的情况下，可能会阻塞近10s
         - 简单来说，涉及订阅或者可能向多人连续发送类似通知时，都不要发送到微信
-        - 在线程锁或原子锁内时，也不要发送
-
-    现在，你应该在不急于等待的时候显式调用publish_notification(s)这两个函数，
-        具体选择哪个取决于你创建的通知是一批类似通知还是单个通知
+        - 在线程锁内时，也不要发送
     """
     notification = Notification.objects.create(
         receiver=receiver,
@@ -2600,8 +2684,12 @@ def notification_create(
         relate_TransferRecord=relate_TransferRecord,
     )
     if publish_to_wechat == True:
-        publish_notification(notification)
+        if getattr(publish_notification, 'ENABLE_INSTANCE', False):
+            publish_notification(notification)
+        else:
+            publish_notification(notification.id)
     return notification
+
 
 
 @login_required(redirect_field_name="origin")
@@ -2660,26 +2748,43 @@ def notifications(request):
 # 新建评论，
 
 
-def addComment(request, comment_base):
+def addComment(request, comment_base,receiver=None):
     """
     传入POST得到的request和与评论相关联的实例即可
     返回值为1代表失败，返回2代表新建评论成功
     """
+
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    sender = utils.get_person_or_org(request.user)
+    if user_type == "Organization":
+        sender_name=sender.oname
+    else:
+        sender_name = sender.name
     context = dict()
-    context["warn_code"] = 2
+    typename=comment_base.typename
+    content = {
+        'modifyposition': f'{sender_name}在人事变动申请留有新的评论',
+        'neworganization': f'{sender_name}在新建组织中留有新的评论',
+        'reimbursement': f'{sender_name}在经费申请中留有新的评论',
+    }
+    URL={
+        'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
+        'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
+        'reimbursement': f'modifyReimbursement/?reimb_id={comment_base.id}',
+    }
     if request.POST.get("comment_submit") is not None:  # 新建评论信息，并保存
         text = str(request.POST.get("comment"))
         # 检查图片合法性
         comment_images = request.FILES.getlist('comment_images')
         if text == "" and comment_images == []:
             context['warn_code'] = 1
-            context['warn_message'] = "评论内容为空，无法评论！"
+            context['warn_message'] = "评论内容均为空，无法评论！"
             return context
         if len(comment_images) > 0:
             for comment_image in comment_images:
                 if utils.if_image(comment_image) == False:
                     context["warn_code"] = 1
-                    context["warn_message"] = "上传的附件只支持图片格式。"
+                    context["warn_message"] = "评论中上传的附件只支持图片格式。"
                     return context
         try:
             with transaction.atomic():
@@ -2695,7 +2800,22 @@ def addComment(request, comment_base):
         except:
             context["warn_code"] = 1
             context["warn_message"] = "评论失败，请联系管理员。"
+            return context
+        if len(text) >= 32:
+            text = text[:31] + "……"
+        content[typename] += f':{text}'
+        if receiver is not None:
+            notification_create(
+                receiver,
+                request.user,
+                Notification.Type.NEEDREAD,
+                Notification.Title.VERIFY_INFORM,
+                content[typename],
+                URL[typename],
+            )
         context["new_comment"] = new_comment
+        context["warn_code"] = 2
+        context["warn_message"] = "评论成功。"
     return context
 
 
@@ -2704,11 +2824,11 @@ def showComment(commentbase):
     for comment in comments:
         commentator = get_person_or_org(comment.commentator)
         if comment.commentator.username[:2] == "zz":
-            comment.ava = utils.get_user_ava(comment.commentator, "Organization")
+            comment.ava = utils.get_user_ava(commentator, "Organization")
             comment.URL = "/orginfo/{name}".format(name=commentator.oname)
             comment.commentator_name = commentator.oname
         else:
-            comment.ava = utils.get_user_ava(comment.commentator, "Person")
+            comment.ava = utils.get_user_ava(commentator, "Person")
             comment.URL = "/stuinfo/{name}".format(name=commentator.name)
             comment.commentator_name = commentator.name
         comment.len = len(comment.comment_photos.all())
@@ -3523,9 +3643,6 @@ def auditPosition(request):
     return render(request, "position_audit.html", locals())        
                 
 
-    
-
-
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 def showApplyOrganization(request):
@@ -4243,41 +4360,9 @@ def auditReimbursement(request):
     if request.method == "POST" and request.POST:
 
         if request.POST.get("comment_submit") is not None:  # 新建评论信息，并保存
-            context = addComment(request, new_reimb)
-            if context['warn_code'] == 1:
-                html_display['warn_code'] = 1
-                html_display['warn_message'] = context['warn_message']
-            else:
-                try:  # 发送给评论通知
-                    with transaction.atomic():
-                        text = str(context['new_comment'].text)
-                        if len(text) >= 32:
-                            text = text[:31] + "……"
-                        content = "{teacher_name}老师给您的经费申请留有新的评论".format(
-                            teacher_name=me.name)
-                        if text != "":
-                            content += ":”{text}“".format(text=text)
-                        receiver = new_reimb.pos  # 通知接收者
-                        URL = ""
-                        new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
-                                                               Notification.Title.VERIFY_INFORM, content, URL)
-                        en_pw = hash_coder.encode(str(new_reimb.id) + '新建报销' + str(new_notification.id))
-                        URL = "/addReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(
-                            id=new_reimb.id, nid=new_notification.id, en_pw=en_pw)
-                        new_notification.URL = URL
-                        new_notification.save()
-                except:
-                    html_display['warn_code'] = 1
-                    html_display['warn_message'] = "创建发送给申请者的评论通知失败。请联系管理员！"
-                    return render(request, "reimbursement_comment.html", locals())
-                # 微信通知
-                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                    publish_notification(new_notification)
-                else:
-                    publish_notification(new_notification.id)
-                html_display['warn_code'] = 2
-                html_display['warn_message'] = "评论成功！"
-
+            context = addComment(request, new_reimb,new_reimb.pos)
+            html_display['warn_code'] = context['warn_code']
+            html_display['warn_message'] = context['warn_message']
 
         # 审核老师的两种操作：通过，和拒绝
         else:
@@ -4405,12 +4490,6 @@ def auditReimbursement(request):
     comments = showComment(new_reimb)  # 加载评论
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "报销审核"
-    bar_display["navbar_name"] = "报销审核"
-    return render(request, "reimbursement_comment.html", locals())
-    bar_display["title_name"] = "报销审核"
-    bar_display["navbar_name"] = "报销审核"
-    return render(request, "reimbursement_comment.html", locals())
     bar_display["title_name"] = "报销审核"
     bar_display["navbar_name"] = "报销审核"
     return render(request, "reimbursement_comment.html", locals())
