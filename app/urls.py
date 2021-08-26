@@ -35,7 +35,6 @@ urlpatterns = [
     path("getStuImg", views.get_stu_img, name="get_stu_img"),
     path("transPage/<str:rid>", views.transaction_page, name="transPage"),
     path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"),
-    path("startTrans/", views.start_transaction, name="startTrans"),
     path("applyActivity/<str:aid>", views.applyActivity, name="applyActivity"),
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
     path("viewActivity/<str:aid>", views.viewActivity, name="viewActivity"),
@@ -49,13 +48,16 @@ urlpatterns = [
     path("YQPoint_Distributions/", scheduler_func.YQPoint_Distributions, name="YQPoint_Distributions"),
     # path("YQPoint_Distribution/<int:dis_id>", scheduler_func.YQPoint_Distribution, name="YQPoint_Distributions"),
     # path("new_YQP_distribution", scheduler_func.new_YQP_distribute, name="new_YQP_distribution"),
-    path("personnelMobilization/", views.personnel_mobilization, name="personnel_mobilization"),
+    # path("personnelMobilization/", views.personnel_mobilization, name="personnel_mobilization"),
     path("showReimbursement/",views.showReimbursement,name="addReimbursement"),
     path("addReimbursement/",views.addReimbursement,name="addReimbursement"),
     path("auditReimbursement/",views.auditReimbursement,name="auditReimbursement"),
     path("showNewOrganization/", views.showNewOrganization, name="showNewOrganization"),
     path("addOrganization/", views.addOrganization, name="addOrganization"),
     path("auditOrganization/", views.auditOrganization, name="auditOrganization"),
+    path('applyOrganization/', views.applyOrganization, name="applyOrganization"),
+    path('showApplyOrganization/', views.showApplyOrganization, name="showApplyOrganization"),
+    path("auditPosition/", views.auditPosition, name="auditPosition"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

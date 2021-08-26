@@ -10,6 +10,7 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 from app.scheduler_func import scheduler, changeActivityStatus, notifyActivity
 from datetime import datetime, timedelta
 from app.utils import get_person_or_org
+from app.notification_utils import notification_create
 from app.models import (
     NaturalPerson,
     Position,
@@ -52,77 +53,77 @@ def activity_base_check(request):
     context = dict()
 
     # title, introduction, location 创建时不能为空
-    context['title'] = request.POST["title"]
-    context['introduction'] = request.POST["introduction"]
-    context['location'] = request.POST["location"]
-    assert len(context['title']) > 0
-    assert len(context['introduction']) > 0
-    assert len(context['location']) > 0
+    context["title"] = request.POST["title"]
+    context["introduction"] = request.POST["introduction"]
+    context["location"] = request.POST["location"]
+    assert len(context["title"]) > 0
+    assert len(context["introduction"]) > 0
+    assert len(context["location"]) > 0
 
     # url
-    context['url'] = request.POST["URL"]
+    context["url"] = request.POST["URL"]
 
     # 预算，元气值支付模式，是否直接向学院索要元气值
     # 在审核通过后，这些不可修改
-    context['budget'] = float(request.POST["budget"])
+    context["budget"] = float(request.POST["budget"])
     signscheme = int(request.POST["signscheme"])
     if signscheme:
-        context['bidding'] = True
+        context["bidding"] = True
     else:
-        context['bidding'] = False
+        context["bidding"] = False
 
     # 向学院申请元气值
     from_college = request.POST["from_college"]
-    if from_college == '1':
-        context['from_college'] = True
-    elif from_college == '0':
-        context['from_college'] = False
+    if from_college == "1":
+        context["from_college"] = True
+    elif from_college == "0":
+        context["from_college"] = False
 
 
     # examine_teacher 需要特殊检查
-    context['examine_teacher'] = request.POST['examine_teacher']
+    context["examine_teacher"] = request.POST["examine_teacher"]
 
     # 时间
     # datetime 这里有 bug，PM 不会把时间加上去，到时候考虑 patch ......
-    act_start = datetime.strptime(request.POST["actstart"], '%m/%d/%Y %H:%M %p')  # 活动报名时间
-    act_end = datetime.strptime(request.POST["actend"], '%m/%d/%Y %H:%M %p')  # 活动报名结束时间
+    act_start = datetime.strptime(request.POST["actstart"], "%m/%d/%Y %H:%M %p")  # 活动报名时间
+    act_end = datetime.strptime(request.POST["actend"], "%m/%d/%Y %H:%M %p")  # 活动报名结束时间
     now_time = datetime.now()
-    context['start'] = act_start
-    context['end'] = act_end
+    context["start"] = act_start
+    context["end"] = act_end
     assert check_ac_time(act_start, act_end)
 
     # create 或者调整报名时间，都是要确保活动不要立刻截止报名
-    if request.POST.get('edit') is None or request.POST.get('adjust_apply_ddl'):
+    if request.POST.get("edit") is None or request.POST.get("adjust_apply_ddl"):
         prepare_scheme = int(request.POST["prepare_scheme"])
         prepare_times = Activity.EndBeforeHours.prepare_times
         prepare_time = prepare_times[prepare_scheme]
         signup_end = act_start - timedelta(hours=prepare_time)
         assert now_time <= signup_end
-        context['endbefore'] = prepare_scheme
-        context['signup_end'] = signup_end
+        context["endbefore"] = prepare_scheme
+        context["signup_end"] = signup_end
     else:
         # 修改但不调整报名截止时间，后面函数自己查
-        context['adjust_apply'] = False
+        context["adjust_apply"] = False
 
     # 人数限制
     capacity = request.POST.get("maxpeople")
     no_limit = request.POST.get("unlimited_capacity")
     if no_limit is not None:
         capacity = 10000
-    if capacity is not None and capacity != '':
+    if capacity is not None and capacity != "":
         capacity = int(capacity)
         assert capacity >= 0
-    context['capacity'] = capacity
+    context["capacity"] = capacity
 
     # 需要签到
     if request.POST.get("need_checkin"):
-        context['need_checkin'] = True
+        context["need_checkin"] = True
 
     # 价格
     aprice = float(request.POST["aprice"])
     assert int(aprice * 10) / 10 == aprice
     assert aprice >= 0
-    context['aprice'] = aprice
+    context["aprice"] = aprice
 
     return context
 
@@ -132,38 +133,40 @@ def create_activity(request):
     context = activity_base_check(request)
 
     # 审批老师存在
-    examine_teacher = NaturalPerson.objects.get(name=context['examine_teacher'])
+    examine_teacher = NaturalPerson.objects.get(name=context["examine_teacher"])
     assert examine_teacher.identity == NaturalPerson.Identity.TEACHER
     # TODO 添加审核数据，通知老师
 
 
     # 检查完毕，创建活动
-    org = get_person_or_org(request.user, 'Organization')
+    org = get_person_or_org(request.user, "Organization")
     activity = Activity.objects.create(
-                    title=context['title'], organization_id=org,
+                    title=context["title"], organization_id=org,
                     examine_teacher=examine_teacher
                 )
-    activity.title = context['title']
-    activity.introduction = context['introduction']
-    activity.location = context['location']
-    activity.capacity = context['capacity']
-    activity.URL = context['url']
-    activity.budget = context['budget']
-    activity.start = context['start']
-    activity.end = context['end']
-    activity.YQPoint = context['aprice']
-    activity.bidding = context['bidding']
-    activity.apply_end = context['signup_end']
-    if context['from_college']:
+    activity.title = context["title"]
+    activity.introduction = context["introduction"]
+    activity.location = context["location"]
+    activity.capacity = context["capacity"]
+    activity.URL = context["url"]
+    activity.budget = context["budget"]
+    activity.start = context["start"]
+    activity.end = context["end"]
+    activity.YQPoint = context["aprice"]
+    activity.bidding = context["bidding"]
+    activity.apply_end = context["signup_end"]
+    if context["from_college"]:
         activity.source = Activity.YQPointSource.COLLEGE
-    activity.endbefore = context['endbefore']
+    activity.endbefore = context["endbefore"]
+    if context.get("need_checkin"):
+        activity.need_checkin = True
     activity.save()
 
     return activity.id
 
 
 
-    '''
+    """
     审核通过后，需要进行通知，并添加定时任务
     if activity.status == Activity.Status.APPLYING:
         notifyActivity(activity.id, "newActivity")
@@ -175,12 +178,12 @@ def create_activity(request):
 、
 
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
-        run_date=context['signup_end'], args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
+        run_date=context["signup_end"], args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
-        run_date=context['act_start'], args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
+        run_date=context["act_start"], args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
-        run_date=context['act_end'], args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
-    '''
+        run_date=context["act_end"], args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
+    """
 
 
 
@@ -205,34 +208,36 @@ def modify_reviewing_activity(request, activity):
 
     context = activity_base_check(request)
 
-    if context['examine_teacher'] == activity.examine_teacher.name:
+    if context["examine_teacher"] == activity.examine_teacher.name:
         pass
     else:
-        examine_teacher = NaturalPerson.objects.get(name=context['examine_teacher'])
+        examine_teacher = NaturalPerson.objects.get(name=context["examine_teacher"])
         assert examine_teacher.identity == NaturalPerson.Identity.TEACHER
         activity.examine_teacher = examine_teacher
         # TODO
         # 修改审核记录，通知老师
 
-    if context.get('adjust_apply') is not None:
+    if context.get("adjust_apply") is not None:
         # 注意这里是不调整
-        assert context['adjust_apply'] == False
-        assert activity.apply_end < context['start'] - timedelta(hours=1)
+        assert context["adjust_apply"] == False
+        assert activity.apply_end < context["start"] - timedelta(hours=1)
     else:
-        activity.apply_end = context['signup_end']
+        activity.apply_end = context["signup_end"]
 
-    activity.title = context['title']
-    activity.introduction = context['introduction']
-    activity.location = context['location']
-    activity.capacity = context['capacity']
-    activity.URL = context['url']
-    activity.budget = context['budget']
-    activity.start = context['start']
-    activity.end = context['end']
-    activity.YQPoint = context['aprice']
-    activity.bidding = context['bidding']
-    if context['from_college']:
+    activity.title = context["title"]
+    activity.introduction = context["introduction"]
+    activity.location = context["location"]
+    activity.capacity = context["capacity"]
+    activity.URL = context["url"]
+    activity.budget = context["budget"]
+    activity.start = context["start"]
+    activity.end = context["end"]
+    activity.YQPoint = context["aprice"]
+    activity.bidding = context["bidding"]
+    if context["from_college"]:
         activity.source = Activity.YQPointSource.COLLEGE
+    if context.get("need_checkin"):
+        activity.need_checkin = True
     activity.save()
 
 
@@ -249,13 +254,13 @@ def modify_accepted_activity(request, activity):
 
     to_participants = [f"您参与的活动{activity.title}发生变化"]
     to_subscribers = [f"您关注的活动{activity.title}发生变化"]
-    if activity.location != request.POST['location']:
+    if activity.location != request.POST["location"]:
         to_participants.append("活动地点修改为" + activity.location)
-        activity.location = request.POST['location']
+        activity.location = request.POST["location"]
 
     # 不是学院来源时，价格可能会变
     if activity.source != Activity.YQPointSource.COLLEGE:
-        aprice = float(request.POST['aprice'])
+        aprice = float(request.POST["aprice"])
         assert int(aprice * 10) / 10 == aprice
         assert aprice >= 0
         if activity.YQPoint != aprice:
@@ -264,10 +269,10 @@ def modify_accepted_activity(request, activity):
             activity.YQPoint = aprice
 
     # 时间改变
-    act_start = datetime.strptime(request.POST["actstart"], '%m/%d/%Y %H:%M %p')
+    act_start = datetime.strptime(request.POST["actstart"], "%m/%d/%Y %H:%M %p")
     now_time = datetime.now()
     assert now_time < act_start
-    if request.POST.get('adjust_apply_ddl'):
+    if request.POST.get("adjust_apply_ddl"):
         prepare_scheme = int(request.POST["prepare_scheme"])
         prepare_times = Activity.EndBeforeHours.prepare_times
         prepare_time = prepare_times[prepare_scheme]
@@ -289,26 +294,27 @@ def modify_accepted_activity(request, activity):
         activity.status = Activity.Status.APPLYING
 
 
-    if request.POST.get('unlimited_capacity'):
+    if request.POST.get("unlimited_capacity"):
         capacity = 10000
     else:
-        capacity = int(request.POST['maxpeople'])
+        capacity = int(request.POST["maxpeople"])
         assert capacity > 0
         if capacity < len(Participant.objects.filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)):
             raise ActivityException(f"当前成功报名人数已超过{capacity}人")
     activity.capacity = capacity
 
-    activity.end = datetime.strptime(request.POST["actend"], '%m/%d/%Y %H:%M %p')
+    activity.end = datetime.strptime(request.POST["actend"], "%m/%d/%Y %H:%M %p")
     assert activity.start < activity.end
-    activity.URL = request.POST['URL']
-    activity.introduction = request.POST['introduction']
+    activity.URL = request.POST["URL"]
+    activity.introduction = request.POST["introduction"]
     activity.save()
 
     if activity.status == Activity.Status.APPLYING:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
             run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
-    scheduler.add_job(notifyActivity, 'date', id=f"activity_{activity.id}_remind",
-        run_date=activity.start - timedelta(minutes=15), args=[activity.id, 'remind'], replace_existing=True)
+    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
+        run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
+
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
         run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
@@ -346,8 +352,8 @@ def accept_activity(request, activity):
 
     # 通知
     notifyActivity(activity.id, "newActivity")
-    scheduler.add_job(notifyActivity, 'date', id=f"activity_{activity.id}_remind",
-        run_date=activity.start - timedelta(minutes=15), args=[activity.id, 'remind'], replace_existing=True)
+    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
+        run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
     # 活动状态修改
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
         run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
@@ -397,7 +403,7 @@ def applyActivity(request, activity):
         else:
             activity.current_participants += 1
     else:
-        '''
+        """
         存在投点的逻辑，暂时不用
         if not activity.bidding:
             amount = float(activity.YQPoint)
@@ -406,13 +412,13 @@ def applyActivity(request, activity):
             else:
                 raise ActivityException("活动已报满，请稍后再试。")
         else:
-            amount = float(request.POST['willingness'])
+            amount = float(request.POST["willingness"])
             if not activity.YQPoint <= amount <= activity.YQPoint * 3:
                 raise ActivityException("投点范围为基础值的 1-3 倍")
             # 依然增加，此时current_participants统计的是报名的人数，是可以比总人数多的
             activity.current_participants += 1
             assert amount == int(amount * 10) / 10
-        '''
+        """
         amount = float(activity.YQPoint)
         if activity.bidding:
             activity.current_participants += 1
@@ -578,7 +584,7 @@ def withdraw_activity(request, activity):
                 corres_act=activity,
                 proposer=request.user,
                 status=TransferRecord.TransferStatus.ACCEPTED,
-                message='quota'
+                message="quota"
             )
         except:
             pass
@@ -600,7 +606,7 @@ def withdraw_activity(request, activity):
                 corres_act=activity,
                 proposer=request.user,
                 status=TransferRecord.TransferStatus.ACCEPTED,
-                message='YQPoint'
+                message="YQPoint"
             )
         except:
             pass

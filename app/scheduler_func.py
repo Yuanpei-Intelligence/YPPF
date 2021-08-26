@@ -9,8 +9,8 @@ from django.urls import reverse
 from datetime import datetime, timedelta, timezone, time, date
 from django.db import transaction  # 原子化更改数据库
 
-from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity
-from app.wechat_send import base_send_wechat, wechatNotifyActivity, publish_activity
+from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant
+from app.wechat_send import wechat_notify_activity, publish_activity
 from app.forms import YQPointDistributionForm
 
 from random import sample
@@ -204,7 +204,7 @@ scheduler.add_job(changeActivityStatus, "date",
 def changeActivityStatus(aid, cur_status, to_status):
     try:
         with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=aid)
+            activity = Activity.objects.select_for_update().get(id=int(aid))
             if cur_status is not None:
                 assert cur_status == activity.status
             if cur_status == Activity.Status.APPLYING:
@@ -248,7 +248,12 @@ def changeActivityStatus(aid, cur_status, to_status):
 
     except Exception as e:
         print(e)
+
+
+
         # TODO send message to admin to debug
+        with open("/Users/liuzhanpeng/working/yp/YPPF/logs", "w") as f:
+            f.write(str(e))
         pass
 
 
@@ -334,7 +339,7 @@ def notifyActivity(aid, msg_type, msg=None):
             send_to = 'all'
         else:
             raise ValueError
-        wechatNotifyActivity(aid, msg, send_to)
+        wechat_notify_activity(aid, msg, send_to)
     except Exception as e:
         print(f"Notification {msg} failed. Exception: {e}")
         # TODO send message to admin to debug

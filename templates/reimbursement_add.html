@@ -23,18 +23,30 @@
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-
+                                                <div class="d-flex justify-content-between">
                                                 {%if present%}
                                                 {% with pre_reimb.get_status_display as status %}
                                                     {% if edit %}
-                                                    <h4>修改经费申请   {{status}}</h4>
+                                                    <div>
+                                                        <h4>修改经费申请    <span style="color: red">{{status}}</span></h4>
+                                                    </div>
+                                                    <div>
+                                                        <h4>当前剩余元气值：{{me.YQPoint}}</h4>
+                                                    </div>
                                                     {% else %}
-                                                    <h4>经费申请  {{status}}</h4>
+                                                    <h4>经费申请    <span style="color: red">{{status}}</span></h4>
                                                     {% endif %}
                                                 {% endwith%}
                                                 {% else %}
-                                                    <h4>新建经费申请</h4>
+                                                    <div>
+                                                        <h4>新建经费申请</h4>
+                                                    </div>
+
+                                                    <div>
+                                                        <h4>当前剩余元气值：{{me.YQPoint}}</h4>
+                                                    </div>
                                                 {% endif %}
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -47,28 +59,15 @@
                                             <div class="form-group">
                                                 <label>报销活动</label>
                                                 {%if present %}
-                                                    {%if edit%}
-                                                    <select name="activity_id" class="form-control">
-                                                        {% if html_display.audit_activity %}
-                                                        <option value={{html_display.audit_activity.id}} selected="selected">
-                                                            {{html_display.audit_activity.title}}
-                                                        </option>
-                                                        {% endif %}
-
-                                                        {% for activity in activities.all %}
-                                                        {% if html_display.audit_activity.id != activity.id %}
-                                                        <option value={{activity.id}}>{{activity.title}}</option>
-                                                        {% endif %}
-                                                        {% endfor %}
-                                                    </select>
-                                                    {%else%}
-                                                    <textarea name="activity_id" class="form-control" aria-label="Default"
-                                                              disabled="disabled">{{html_display.audit_activity.title}}</textarea>
-                                                    {%endif%}
+                                                        <textarea name="activity_id" class="form-control" aria-label="Default"
+                                                                  disabled="disabled"
+                                                        >{{html_display.audit_activity.title}}({{html_display.audit_activity.start.month}}月{{html_display.audit_activity.start.day}}日 活动预算:{{html_display.audit_activity.budget}})</textarea>
                                                 {%else%}
-                                                <select name="activity_id" class="form-control">
+                                                <select name="activity_id"  class="form-control">
                                                         {% for activity in activities.all%}
-                                                        <option value={{activity.id}}>{{activity.title}}</option>
+                                                        <option value={{activity.id}}
+                                                        >{{activity.title}}({{activity.start.month}}月{{activity.start.day}}日 活动预算:{{activity.budget}})
+                                                            </option>
                                                         {%endfor%}
                                                     </select>
                                                 {%endif%}
@@ -83,8 +82,10 @@
                                                                    aria-label="Text input with dropdown button"
                                                                    placeholder="上次你输入的是{{html_display.amount}}"
                                                                    id="aprice"
-                                                                   name="YQP" placeholder="{{amount}}" step="0.1"
-                                                                   οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')" >
+                                                                   name="YQP"
+                                                                   placeholder="{{amount}}" step="0.1"
+                                                                   οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')"
+                                                            >
                                                         </div>
                                                     {%else%}
                                                     <textarea id="amount" name="amount" class="form-control"
@@ -97,33 +98,33 @@
                                                             <input type="number" class="form-control"
                                                                    aria-label="Text input with dropdown button"
                                                                    id="newaprice"
-                                                                   name="YQP" placeholder="{{amount}}" step="0.1"
+                                                                   name="YQP" required="required"
+                                                                   placeholder="{{amount}}" step="0.1"
                                                                    οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')" >
                                                         </div>
                                                 {%endif%}
                                             {%if present == 0%}
-                                            <div class="form-group form-row">
-                                                <label class="col-sm-2 control-label uText">报销材料</label>
-                                                <div class="row">
-                                                    <div class="col-xs-10 col-sm-8 mTop5">
-                                                        <label title="初始报销材料">
-                                                            <input type="file" accept="image/*" name="images" multiple>
-                                                        </label>
-                                                    </div>
-                                                </div>
+                                            <label>报销材料</label>
+                                             <br>
+                                            <div class="form-group">
+                                                <input  type="file" accept="image/*" name="images" value="上传图片" multiple>
                                             </div>
                                             {%endif%}
 
                                             <div class="form-group">
-                                                <label for="aintro">备注信息</label>
+                                                <label for="aintro">报销说明</label>
                                                 {%if present%}
                                                         <textarea name="message" class="form-control" rows="3"
-                                                          placeholder="空"{%if edit == 0%}disabled="disabled"{%endif%}
+                                                          placeholder="关于本次报销的详细说明，如活动的成果、报销发票的主要内容、实报超预算的原因等"
+                                                                  {%if edit == 0%}disabled="disabled"{%endif%}
+
                                                         >{{html_display.message}}</textarea>
                                                 {%else%}
                                                 <textarea name="message" class="form-control"
                                                           rows="3"
-                                                          placeholder="空"></textarea>
+                                                          placeholder="关于本次报销的详细说明，如活动的成果、报销发票的主要内容、实报超预算的原因等"
+                                                          required="required"
+                                                ></textarea>
                                                 {%endif%}
                                             </div>
                                             <br>
@@ -168,5 +169,6 @@
 <!--  END CONTENT AREA  -->
 
 {% endblock %}
+
 
 
