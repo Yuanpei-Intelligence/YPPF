@@ -805,8 +805,8 @@ def account_setting(request):
             for show_attr in show_dict.keys():
                 if getattr(useroj, show_attr) != show_dict[show_attr]:
                     setattr(useroj, show_attr, show_dict[show_attr])
-            if 'avatar' in attr_dict.keys() and attr_dict['avatar'] is not None:
-                useroj.avatar =  attr_dict['avatar']
+            if 'ava' in attr_dict.keys() and attr_dict['ava'] is not None:
+                useroj.avatar =  attr_dict['ava']
             if 'wallpaper' in attr_dict.keys() and attr_dict['wallpaper'] is not None:
                 useroj.wallpaper = attr_dict['wallpaper']
             if expr >= 1:
