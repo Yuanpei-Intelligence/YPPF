@@ -1,3 +1,4 @@
+from django.dispatch.dispatcher import receiver
 from app.models import (
     NaturalPerson,
     Organization,
@@ -158,9 +159,3 @@ def update_pos_application(application, me, user_type, applied_org, info):
                 except:
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
                 
-
-# 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
-# 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
-def make_relevant_notification(application):
-
-    pass

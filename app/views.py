@@ -34,7 +34,6 @@ from app.activity_utils import (
 )
 from app.position_utils import(
     update_pos_application,
-    make_relevant_notification,
 )
 from app.wechat_send import publish_notification
 from boottest import local_dict
@@ -2576,6 +2575,7 @@ def notification_create(
         content,
         URL=None,
         relate_TransferRecord=None,
+        relate_instance=None,
         *,
         publish_to_wechat=False,
 ):
@@ -2606,6 +2606,7 @@ def notification_create(
         content=content,
         URL=URL,
         relate_TransferRecord=relate_TransferRecord,
+        relate_instance=relate_instance,
     )
     if publish_to_wechat == True:
         publish_notification(notification)
@@ -3306,7 +3307,7 @@ def applyOrganization(request):
                 except:
                     html_display['warn_code'] = 1
                     html_display['warn_message'] = "修改申请失败。请检查输入or联系管理员"
-                    return render(request, "organization_add.html", locals())
+                    return render(request, "applyOrganization.html", locals())
 
                 # 发送通知
                 try:
@@ -3601,7 +3602,7 @@ def modifyPosition(request):
 
                 # 处理通知相关的操作，并根据情况发送微信
                 # 默认需要成功,失败也不是用户的问题，直接给管理员报错
-                make_relevant_notification(application)    
+                make_relevant_notification(application, request.POST)    
 
             elif context["warn_code"] != 1: # 没有返回操作提示
                 raise NotImplementedError("处理人事申请中出现未预见状态，请联系管理员处理！")   
@@ -4570,3 +4571,51 @@ def auditReimbursement(request):
     bar_display["title_name"] = "报销审核"
     bar_display["navbar_name"] = "报销审核"
     return render(request, "reimbursement_comment.html", locals())
+
+
+# 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
+# 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
+def make_relevant_notification(application, info):
+    
+    # 考虑不同post_type的信息发送行为
+    post_type = info.get("post_type")
+    print(post_type)
+    feasible_post = ["new_submit", "modify_submit", "cancel_submit", "accept_submit", "refuse_submit"]
+    
+    # 准备呈现使用的变量与信息
+
+    # 先准备一些复杂变量
+    position_name = application.org.otype.get_name(application.pos)  # 职位名称
+
+    # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
+    content = {
+        'new_submit':f'{application.person.name}申请加入组织，应聘职位为{position_name}，请审核~',
+        'modify_submit':f'{application.person.name}修改了组织申请信息，请审核~',
+        'cancel_submit':f'{application.person.name}取消了组织申请信息。',
+        'accept_submit':f'恭喜，您申请的组织：{application.org.oname}，审核已通过！申请职位：{position_name}。',
+        'refuse_submit':f'抱歉，您申请的组织：{application.org.oname}，审核未通过！申请职位：{position_name}。',
+    }
+    sender = application.person.person_id if feasible_post.index(post_type) < 3 else application.org.organization_id
+    receiver = application.org.organization_id if feasible_post.index(post_type) < 3 else application.person.person_id
+    typename = Notification.Type.NEEDDO if  post_type == 'new_submit' else Notification.Type.NEEDREAD
+    title = Notification.Title.VERIFY_INFORM if post_type != 'accept_submit' else Notification.Title.POSITION_INFORM
+    URL = f'/modifyPosition/?pos_id={application.id}'
+    relate_instance = application if post_type == 'new_submit' else None
+
+    # 正式创建notification
+    notification_create(
+        receiver=receiver,
+        sender=sender,
+        typename=typename,
+        title=title,
+        content=content[post_type],
+        URL=URL,
+        relate_instance=relate_instance
+    )
+
+    # 对于处理类通知的完成(done)，修改状态
+    # 这里的逻辑保证：所有的处理类通知的生命周期必须从“人事发起”开始，从“取消”“通过”“拒绝”结束。
+    if feasible_post.index(post_type) >= 2:
+        notification_status_change(
+            application.relate_notification.get().id
+        )
