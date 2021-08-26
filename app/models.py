@@ -1,4 +1,5 @@
 from django.db import models, transaction
+from django.db.models.fields import related
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
@@ -653,6 +654,13 @@ class Notification(models.Model):
         blank=True,
         null=True,
     )
+    relate_instance = models.ForeignKey(
+        CommentBase,
+        related_name="relate_notifications",
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+    )
 
     objects = NotificationManager()
 
@@ -762,7 +770,7 @@ class ModifyPosition(CommentBase):
     )
 
     # 申请职务等级
-    pos = models.SmallIntegerField(verbose_name="申请职务等级", default=10)
+    pos = models.SmallIntegerField(verbose_name="申请职务等级", blank=True, null=True)
     
 
     reason = models.TextField(
@@ -797,7 +805,7 @@ class ModifyPosition(CommentBase):
 
     def accept_submit(self): #同意申请，假设都是合法操作
         if self.apply_type == ModifyPosition.ApplyType.WITHDRAW:
-            Position.objects.activated().get(
+            Position.objects.activated().filter(
                 org = self.org, person = self.person
             ).update(status = Position.Status.DEPART)
         elif self.apply_type == ModifyPosition.ApplyType.JOIN:
@@ -811,7 +819,7 @@ class ModifyPosition(CommentBase):
             else: # 不存在 直接新建
                 Position.objects.create(pos=self.pos, person=self.person, org=self.org)
         else:   # 修改 则必定存在这个量
-            Position.objects.activate().get(org = self.org, person = self.person
+            Position.objects.activated().filter(org = self.org, person = self.person
                 ).update(pos = self.pos)
         # 修改申请状态
         ModifyPosition.objects.filter(id=self.id).update(status=ModifyPosition.Status.CONFIRMED)
