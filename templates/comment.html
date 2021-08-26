@@ -1,8 +1,8 @@
 <!--begin comment-->
 <style type="text/css">
 img {
-    max-width: 2000px;
-    max-height:500px;
+    max-width: 300px;
+    max-height:600px;
 }
 </style>
 <div id="comments_display" class="widget-header">
@@ -26,7 +26,7 @@ img {
         {%if comment.len > 0 %}
             <div style="height:500px;overflow:auto;">
             {%for image in comment.comment_photos.all%}
-            <img  src={{image.imagepath}}>
+            <img  src={{image.imagepath}} >
             <!--移动端图片大小需要修正!-->
             {%endfor%}
             </div>
@@ -52,6 +52,11 @@ img {
                         <input type="file" accept="image/*" name="comment_images"
                                multiple>
                     </div>
+                    <div class="custom-file" lang="zh">
+                        <input onchange="showFilename(this.files)" type="file" class="custom-file-input"
+                               id="customFile" name="comment_images" accept="image/*"  multiple>
+                        <label id="uploadfile" class="custom-file-label" for="customFile">上传图片</label>
+                    </div>
                 </label>
                 <div style="text-align:right;">
                     <button type="submit"
@@ -66,6 +71,21 @@ img {
 </form>
 <!--end comment-->
 {%endif%}
+{% block add_js_file %}
 <script>
-<!--后续补充js实现无渲染添加评论-->
-</script>
+function showFilename(files){
+    var text = "";
+    for (i = 0; i < files.length; i++)
+    {
+    text += (" "+files[i].name);
+    }
+    $("#uploadfile").html(text);
+}
+ </script>
+{%endblock%}
+{% block add_css_file %}
+<style>
+    .custom-file-input:lang(zh)~.custom-file-label::after {
+    content: "上传";}
+</style>
+{%endblock%}

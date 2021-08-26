@@ -107,8 +107,13 @@
                                             <label>报销材料</label>
                                              <br>
                                             <div class="form-group">
-                                                <input  type="file" accept="image/*" name="images" value="上传图片" multiple>
+                                                <div class="custom-file" lang="zh">
+                                                  <input onchange="showFilename(this.files)" type="file"
+                                                         class="custom-file-input" id="customFile" name="images" accept="image/*"  multiple>
+                                                  <label id="uploadfile" class="custom-file-label" for="customFile">上传图片</label>
+                                                </div>
                                             </div>
+
                                             {%endif%}
 
                                             <div class="form-group">
@@ -169,6 +174,22 @@
 <!--  END CONTENT AREA  -->
 
 {% endblock %}
-
-
+{% block add_js_file %}
+<script>
+function showFilename(files){
+    var text = "";
+    for (i = 0; i < files.length; i++)
+    {
+    text += (" "+files[i].name);
+    }
+    $("#uploadfile").html(text);
+}
+</script>
+{%endblock%}
+{% block add_css_file %}
+<style>
+    .custom-file-input:lang(zh)~.custom-file-label::after {
+    content: "上传";}
+</style>
+{%endblock%}
 
