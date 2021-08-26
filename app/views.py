@@ -2706,11 +2706,11 @@ def showComment(commentbase):
     for comment in comments:
         commentator = get_person_or_org(comment.commentator)
         if comment.commentator.username[:2] == "zz":
-            comment.ava = utils.get_user_ava(comment.commentator, "Organization")
+            comment.ava = utils.get_user_ava(commentator, "Organization")
             comment.URL = "/orginfo/{name}".format(name=commentator.oname)
             comment.commentator_name = commentator.oname
         else:
-            comment.ava = utils.get_user_ava(comment.commentator, "Person")
+            comment.ava = utils.get_user_ava(commentator, "Person")
             comment.URL = "/stuinfo/{name}".format(name=commentator.name)
             comment.commentator_name = commentator.name
         comment.len = len(comment.comment_photos.all())
@@ -2776,10 +2776,7 @@ def addOrganization(request):
     edit = 0  # 前端需要，表示第一次申请后修改
     notification_id = -1
     # 0可以新建，一个可以查看，如果正在申请中，则可以新建评论，可以取消。两个表示的话，啥都可以。
-    if (
-            request.GET.get("neworg_id") is not None
-            and request.GET.get("notifi_id") is None
-    ):
+    if request.GET.get("neworg_id") is not None:
         # 不是初次申请，而是修改或访问记录
         # 只要id正确，就能显示
         # 是否能够取消,
@@ -2822,41 +2819,6 @@ def addOrganization(request):
             commentable = 1  # 可以评论
             edit = 1  # 能展示也能修改
         present = 1  # 能展示
-    if (
-            request.GET.get("neworg_id") is not None
-            and request.GET.get("notifi_id") is not None
-    ):
-        try:
-            id = int(request.GET.get("neworg_id"))  # 新建组织ID
-            notification_id = int(request.GET.get("notifi_id"))  # 通知ID
-            en_pw = str(request.GET.get("enpw"))
-            if (
-                    hash_coder.verify(str(id) + "新建组织" + str(notification_id), en_pw)
-                    == False
-            ):
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "该URL被篡改，请输入正确的URL地址"
-                return redirect(
-                    "/notifications/"
-                    + "?warn_code={}&warn_message={}".format(
-                        html_display["warn_code"], html_display["warn_message"]
-                    )
-                )
-            preorg = NewOrganization.objects.get(id=id)
-            notification = Notification.objects.get(id=notification_id)
-        except:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "获取申请信息失败，请联系管理员。"
-            return redirect(
-                "/notifications/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
-        if preorg.status == NewOrganization.NewOrgStatus.PENDING:  # 正在申请中，可以评论。
-            commentable = 1  # 可以评论
-            edit = 1
-        present = 1
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # TODO: 整理页面返回逻辑，统一返回render的地方
@@ -2873,13 +2835,15 @@ def addOrganization(request):
         html_display['application'] = preorg.application  # 组织申请信息
         html_display['status'] = preorg.status  # 状态名字
         org_avatar_path = utils.get_user_ava(preorg, "Organization")  # 组织头像
+    org_types = OrganizationType.objects.order_by("-otype_id").all()  # 当前组织类型，前端展示需要
+
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # TODO: 整理页面返回逻辑，统一返回render的地方
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "新建组织"
     bar_display["navbar_name"] = "新建组织"
 
-    org_types = OrganizationType.objects.order_by("-otype_id").all()  # 当前组织类型，前端展示需要
+
 
     if request.method == "POST" and request.POST:
         if request.POST.get("comment_submit") is not None:  # 新建评论信息，并保存
