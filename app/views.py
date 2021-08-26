@@ -2286,11 +2286,11 @@ def subscribeActivities(request):
         if org.organization_id.username not in unsubscribe_list
     ]  # 获取订阅列表
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的订阅", title_name="Subscribe")
     # 补充一些呈现信息
-    bar_display["title_name"] = "Subscribe"
-    bar_display["navbar_name"] = "我的订阅"  #
-    bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
+    # bar_display["title_name"] = "Subscribe"
+    # bar_display["navbar_name"] = "我的订阅"  #
+    # bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     subscribe_url = reverse("save_subscribe_status")
     return render(request, "activity_subscribe.html", locals())
