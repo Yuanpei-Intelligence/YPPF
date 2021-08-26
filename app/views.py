@@ -49,13 +49,12 @@ from django.views.decorators.http import require_POST, require_GET
 import json
 from time import mktime
 from datetime import date, datetime, timedelta
-from urllib import parse
+from urllib import parse, request as urllib2
 import re
 import random
 import requests  # 发送验证码
 import io
 import csv
-import qrcode
 
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
@@ -717,7 +716,7 @@ def homepage(request):
                 np.save()
 
     # 今天开始进行的活动,且不展示结束的活动。按开始时间由近到远排序
-    today_activity_list = (
+    activities = (
         Activity.objects.activated()
             .filter(
             Q(start__year=nowtime.year)
@@ -733,16 +732,13 @@ def homepage(request):
         )
             .order_by("start")
     )
-    # 今天可以报名的活动。按截止时间由近到远排序
-    prepare_times = Activity.EndBeforeHours.prepare_times
-    signup_rec = Activity.objects.activated().filter(status=Activity.Status.APPLYING)
-    today_signup_list = []
-    for act in signup_rec:
-        dictmp = {}
-        dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
-        dictmp["act"] = act
-        today_signup_list.append(dictmp)
-    today_signup_list.sort(key=lambda x: x["endbefore"])
+    activities_start = [
+        activity.start.strftime("%H:%M") for activity in activities
+    ]
+    html_display['today_activities'] = list(zip(activities, activities_start)) or None
+
+    weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
+    html_display['weather'] = json.loads(weather)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
@@ -2668,26 +2664,43 @@ def notifications(request):
 # 新建评论，
 
 
-def addComment(request, comment_base):
+def addComment(request, comment_base,receiver=None):
     """
     传入POST得到的request和与评论相关联的实例即可
     返回值为1代表失败，返回2代表新建评论成功
     """
+
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    sender = utils.get_person_or_org(request.user)
+    if user_type == "Organization":
+        sender_name=sender.oname
+    else:
+        sender_name = sender.name
     context = dict()
-    context["warn_code"] = 2
+    typename=comment_base.typename
+    content = {
+        'modifyposition': f'{sender_name}在人事变动申请留有新的评论',
+        'neworganization': f'{sender_name}在新建组织中留有新的评论',
+        'reimbursement': f'{sender_name}在经费申请中留有新的评论',
+    }
+    URL={
+        'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
+        'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
+        'reimbursement': f'modifyReimbursement/?reimb_id={comment_base.id}',
+    }
     if request.POST.get("comment_submit") is not None:  # 新建评论信息，并保存
         text = str(request.POST.get("comment"))
         # 检查图片合法性
         comment_images = request.FILES.getlist('comment_images')
         if text == "" and comment_images == []:
             context['warn_code'] = 1
-            context['warn_message'] = "评论内容为空，无法评论！"
+            context['warn_message'] = "评论内容均为空，无法评论！"
             return context
         if len(comment_images) > 0:
             for comment_image in comment_images:
                 if utils.if_image(comment_image) == False:
                     context["warn_code"] = 1
-                    context["warn_message"] = "上传的附件只支持图片格式。"
+                    context["warn_message"] = "评论中上传的附件只支持图片格式。"
                     return context
         try:
             with transaction.atomic():
@@ -2703,7 +2716,22 @@ def addComment(request, comment_base):
         except:
             context["warn_code"] = 1
             context["warn_message"] = "评论失败，请联系管理员。"
+            return context
+        if len(text) >= 32:
+            text = text[:31] + "……"
+        content[typename] += f':{text}'
+        if receiver is not None:
+            notification_create(
+                receiver,
+                request.user,
+                Notification.Type.NEEDREAD,
+                Notification.Title.VERIFY_INFORM,
+                content[typename],
+                URL[typename],
+            )
         context["new_comment"] = new_comment
+        context["warn_code"] = 2
+        context["warn_message"] = "评论成功。"
     return context
 
 
@@ -2712,11 +2740,11 @@ def showComment(commentbase):
     for comment in comments:
         commentator = get_person_or_org(comment.commentator)
         if comment.commentator.username[:2] == "zz":
-            comment.ava = utils.get_user_ava(comment.commentator, "Organization")
+            comment.ava = utils.get_user_ava(commentator, "Organization")
             comment.URL = "/orginfo/{name}".format(name=commentator.oname)
             comment.commentator_name = commentator.oname
         else:
-            comment.ava = utils.get_user_ava(comment.commentator, "Person")
+            comment.ava = utils.get_user_ava(commentator, "Person")
             comment.URL = "/stuinfo/{name}".format(name=commentator.name)
             comment.commentator_name = commentator.name
         comment.len = len(comment.comment_photos.all())
@@ -4251,41 +4279,9 @@ def auditReimbursement(request):
     if request.method == "POST" and request.POST:
 
         if request.POST.get("comment_submit") is not None:  # 新建评论信息，并保存
-            context = addComment(request, new_reimb)
-            if context['warn_code'] == 1:
-                html_display['warn_code'] = 1
-                html_display['warn_message'] = context['warn_message']
-            else:
-                try:  # 发送给评论通知
-                    with transaction.atomic():
-                        text = str(context['new_comment'].text)
-                        if len(text) >= 32:
-                            text = text[:31] + "……"
-                        content = "{teacher_name}老师给您的经费申请留有新的评论".format(
-                            teacher_name=me.name)
-                        if text != "":
-                            content += ":”{text}“".format(text=text)
-                        receiver = new_reimb.pos  # 通知接收者
-                        URL = ""
-                        new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
-                                                               Notification.Title.VERIFY_INFORM, content, URL)
-                        en_pw = hash_coder.encode(str(new_reimb.id) + '新建报销' + str(new_notification.id))
-                        URL = "/addReimbursement?reimb_id={id}&notifi_id={nid}&enpw={en_pw}".format(
-                            id=new_reimb.id, nid=new_notification.id, en_pw=en_pw)
-                        new_notification.URL = URL
-                        new_notification.save()
-                except:
-                    html_display['warn_code'] = 1
-                    html_display['warn_message'] = "创建发送给申请者的评论通知失败。请联系管理员！"
-                    return render(request, "reimbursement_comment.html", locals())
-                # 微信通知
-                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
-                    publish_notification(new_notification)
-                else:
-                    publish_notification(new_notification.id)
-                html_display['warn_code'] = 2
-                html_display['warn_message'] = "评论成功！"
-
+            context = addComment(request, new_reimb,new_reimb.pos)
+            html_display['warn_code'] = context['warn_code']
+            html_display['warn_message'] = context['warn_message']
 
         # 审核老师的两种操作：通过，和拒绝
         else:
@@ -4416,10 +4412,3 @@ def auditReimbursement(request):
     bar_display["title_name"] = "报销审核"
     bar_display["navbar_name"] = "报销审核"
     return render(request, "reimbursement_comment.html", locals())
-    bar_display["title_name"] = "报销审核"
-    bar_display["navbar_name"] = "报销审核"
-    return render(request, "reimbursement_comment.html", locals())
-    bar_display["title_name"] = "报销审核"
-    bar_display["navbar_name"] = "报销审核"
-    return render(request, "reimbursement_comment.html", locals())
-
