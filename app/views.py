@@ -2725,7 +2725,7 @@ def addComment(request, comment_base,receiver=None):
                 request.user,
                 Notification.Type.NEEDREAD,
                 Notification.Title.VERIFY_INFORM,
-                content,
+                content[typename],
                 URL[typename],
             )
         context["new_comment"] = new_comment
@@ -4278,7 +4278,7 @@ def auditReimbursement(request):
     if request.method == "POST" and request.POST:
 
         if request.POST.get("comment_submit") is not None:  # 新建评论信息，并保存
-            context = addComment(request, new_reimb)
+            context = addComment(request, new_reimb,new_reimb.pos)
             if context['warn_code'] == 1:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = context['warn_message']
