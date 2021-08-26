@@ -2676,6 +2676,7 @@ def addComment(request, comment_base):
     """
     context = dict()
     context["warn_code"] = 2
+    context["warn_message"] = ""
     if request.POST.get("comment_submit") is not None:  # 新建评论信息，并保存
         text = str(request.POST.get("comment"))
         # 检查图片合法性
@@ -3669,12 +3670,15 @@ def modifyPosition(request):
 
         # 首先禁用一些选项
     
+    # 评论区
+    commentable = allow_comment
+    comments = showComment(application) if application is not None else None
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
     apply_person = me if is_new_application else application.person
     # 获取个人与组织[在当前学年]的关系
     current_pos_list = Position.objects.current().filter(person=apply_person,org=applied_org)
     # 应当假设只有至多一个类型
-    
+
     # 检查该同学是否已经属于这个组织
     whether_belong = True if len(current_pos_list) and \
         current_pos_list[0].status == Position.Status.INSERVICE else False
@@ -4585,11 +4589,14 @@ def make_relevant_notification(application, info):
     # 准备呈现使用的变量与信息
 
     # 先准备一些复杂变量
-    position_name = application.org.otype.get_name(application.pos)  # 职位名称
+    try:
+        position_name = application.org.otype.get_name(application.pos)  # 职位名称
+    except:
+        position_name = "退出组织"
 
     # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
     content = {
-        'new_submit':f'{application.person.name}申请加入组织，应聘职位为{position_name}，请审核~',
+        'new_submit':f'{application.person.name}发起组织人事变动申请，人事申请：{position_name}，请审核~',
         'modify_submit':f'{application.person.name}修改了组织申请信息，请审核~',
         'cancel_submit':f'{application.person.name}取消了组织申请信息。',
         'accept_submit':f'恭喜，您申请的组织：{application.org.oname}，审核已通过！申请职位：{position_name}。',
@@ -4601,6 +4608,8 @@ def make_relevant_notification(application, info):
     title = Notification.Title.VERIFY_INFORM if post_type != 'accept_submit' else Notification.Title.POSITION_INFORM
     URL = f'/modifyPosition/?pos_id={application.id}'
     relate_instance = application if post_type == 'new_submit' else None
+    publish_to_wechat = True
+    # TODO cancel是否要发送notification？是否发送微信？
 
     # 正式创建notification
     notification_create(
@@ -4610,12 +4619,13 @@ def make_relevant_notification(application, info):
         title=title,
         content=content[post_type],
         URL=URL,
-        relate_instance=relate_instance
+        relate_instance=relate_instance,
+        publish_to_wechat=publish_to_wechat
     )
 
     # 对于处理类通知的完成(done)，修改状态
     # 这里的逻辑保证：所有的处理类通知的生命周期必须从“人事发起”开始，从“取消”“通过”“拒绝”结束。
     if feasible_post.index(post_type) >= 2:
         notification_status_change(
-            application.relate_notification.get().id
+            application.relate_notifications.get(status=Notification.Status.UNDONE).id
         )

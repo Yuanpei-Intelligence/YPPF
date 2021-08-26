@@ -91,17 +91,18 @@ def update_pos_application(application, me, user_type, applied_org, info):
                     apply_pos = applied_org.otype.get_pos_from_str(apply_pos_name)
                 elif apply_type == "退出组织":
                     if not Position.objects.activated().filter(person=me, org=applied_org).exists():
-                        return wrong()
+                        return wrong("退出组织出错！")
                     # 退出组织不应该有apply_pos
+                    apply_pos = None
                 elif apply_type == "修改职位":
                     try:
                         cur_position = Position.objects.activated().get(person=me, org=applied_org)
                         apply_pos_name = str(info.get('apply_pos'))
-                        apply_pos = cur_position.otype.get_pos_from_str(
+                        apply_pos = cur_position.org.otype.get_pos_from_str(
                             apply_pos_name)
                         assert apply_pos != cur_position.pos
                     except:
-                        return wrong()
+                        return wrong("修改职位出错！")
                 else:  # 非法操作
                     return wrong()
 
