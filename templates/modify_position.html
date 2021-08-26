@@ -33,18 +33,31 @@
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                <h4>向{{applied_org.oname}}申请[加个状态]</h4>
+                                                    <br>
+                                                    <br>
+                                                    <div align="center">
+                                                    <h3>人事申请[{% if not is_new_application %}{{application.get_status_display}}{% else %}新建中{% endif %}]</h3>
+                                                    </div>
+                                                <br>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h4>向{{applied_org.oname}}申请</h4>
+                                                        </div>
+                                                    <div align="right">
+                                                            <h4>
+                                                            <img src={{ app_avatar_path }} width="24" height="24" alt="avatar">
+                                                            <a href='/stuinfo/{{apply_person.name}}'>
+                                                                <u>{{apply_person.name}}</u></a>
+                                                            </h4>
+                                                    </div>
+                                                    </div>
+
+
                                             </div>
                                         </div>
                                     </div>
-
                                     <!--  BEGIN CONTENT AREA  -->
                                     <div class="widget-content widget-content-area">
-                                        <div class="form-group">
-                                            <label for="aintro">申请人</label>
-                                            <input type="text" id="title" name="title" class="form-control"
-                                                aria-label="Default" readonly="readonly" value="{{apply_person.name}}">
-                                        </div>
                                         <form role="form" method="POST" enctype="multipart/form-data">
                                             <div class="form-group">
                                                 <label for="aintro">人事变动类型</label>
@@ -82,7 +95,7 @@
 
                                             <div class="form-group">
                                                 <label for="aintro">申请理由或陈述</label>
-                                                <textarea name="apply_reason" class="form-control" rows="15" placeholder=
+                                                <textarea name="apply_reason" class="form-control" rows="7" placeholder=
                                                         "解释你为什么申请加入，或陈述你的个人情况。发起申请后可以在评论区继续补充或上传图片。"{%if not allow_form_edit %} readonly="readonly"{%endif%}
                                                 >{% if not is_new_application %}{{application.reason}}{% endif %}</textarea>
                                             </div>

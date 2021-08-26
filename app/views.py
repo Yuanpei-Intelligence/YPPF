@@ -2669,7 +2669,7 @@ def notifications(request):
 # 新建评论，
 
 
-def addComment(request, comment_base):
+def addComment(request, comment_base, receiver=None):
     """
     传入POST得到的request和与评论相关联的实例即可
     返回值为1代表失败，返回2代表新建评论成功
@@ -3616,7 +3616,7 @@ def modifyPosition(request):
             if not allow_comment:   # 存在不合法的操作
                 return redirect(
                     "/welcome/?warn_code=1&warn_message=存在不合法操作,请与管理员联系!")
-            context = addComment(request, application)
+            context = addComment(request, application, application.org.organization_id if user_type == 'Person' else application.person.person_id)
 
         # 准备用户提示量
         html_display["warn_code"] = context["warn_code"]
@@ -3675,6 +3675,7 @@ def modifyPosition(request):
     comments = showComment(application) if application is not None else None
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
     apply_person = me if is_new_application else application.person
+    app_avatar_path = utils.get_user_ava(apply_person,"Person")
     # 获取个人与组织[在当前学年]的关系
     current_pos_list = Position.objects.current().filter(person=apply_person,org=applied_org)
     # 应当假设只有至多一个类型
