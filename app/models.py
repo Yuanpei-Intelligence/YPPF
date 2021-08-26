@@ -43,12 +43,16 @@ class NaturalPerson(models.Model):
     telephone = models.CharField("电话", max_length=20, null=True, blank=True)
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
-    wallpaper = models.ImageField(upload_to=f"avatar/", blank=True)
+    wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
     first_time_login = models.BooleanField(default=True)
+    last_time_login = models.DateTimeField("活动开始时间", blank=True, null=True)
     objects = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
 
-    YQPoint = models.FloatField("元气值", default=0)
+    YQPoint = models.FloatField("现存元气值", default=0)
+    YQPoint_credit_card = models.FloatField("元气值信用", default=0)
+    quota = models.FloatField("元气值配额", default=0)
+    bonusPoint = models.FloatField("积分", default=0)
 
     class Identity(models.IntegerChoices):
         TEACHER = (0, "教职工")
@@ -117,10 +121,11 @@ class NaturalPerson(models.Model):
                 info[i] = unpublished
         return info
 
+
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
+        self.bonusPoint = round(self.bonusPoint, 1)
         super().save(*args, **kwargs)
-
 
 class OrganizationType(models.Model):
     class Meta:
@@ -216,6 +221,7 @@ class PositionManager(models.Manager):
         with transaction.atomic():
             if apply_type == "JOIN":
                 apply_type = Position.ApplyType.JOIN
+                assert len(self.activated().filter(person=person, org=org))==0
                 application, created = self.current().get_or_create(
                     person=person, org=org, apply_type=apply_type, apply_pos=apply_pos
                 )
@@ -250,7 +256,7 @@ class PositionManager(models.Manager):
                 )
             application.apply_status = Position.ApplyStatus.PENDING
             application.save()
-            return apply_type
+            return apply_type, application
 
 
 class Position(models.Model):
@@ -308,15 +314,16 @@ class Position(models.Model):
         TRANSFER = "交接职务"
         NONE = "无申请流程"  # 指派职务
 
+    apply_type = models.CharField(
+        "申请类型", choices=ApplyType.choices, max_length=32, default=ApplyType.NONE
+    )
+
     class ApplyStatus(models.TextChoices):  # 人事变动申请状态
         PENDING = "等待中"
         PASS = "已通过"
         REJECT = "未通过"
         NONE = ""  # 对应“无申请流程”
 
-    apply_type = models.CharField(
-        "申请类型", choices=ApplyType.choices, max_length=32, default=ApplyType.NONE
-    )
     apply_status = models.CharField(
         "申请状态", choices=ApplyStatus.choices, max_length=32, default=ApplyStatus.NONE
     )
@@ -352,6 +359,45 @@ class ActivityManager(models.Manager):
             semester__contains=local_dict["semester_data"]["semester"]
         )
 
+class CommentBase(models.Model):
+    '''
+    带有评论的模型基类
+    子类必须定义typename，值应为为类名的小写版本或类名
+
+    子类如果希望直接使用聚合页面呈现模板，应该定义__str__方法
+    默认的呈现内容为：实例名称、创建时间、上次修改时间
+    如果希望呈现审核页面，如审核中、创建者信息，则应该分别定义get_status_display和get_poster_name
+    其中，如果你的status是一个枚举字段，则无需定义get_status_display
+        status的display建议为：
+            包含“未/不/拒绝”的表示失败
+            此外包含“通过/接受”的表示审核通过
+            包含“修改”的为需要修改（可能用不到）
+            包含“取消”的为自己取消
+            其他都默认呈现“审核中”，可以自行修改html模板增加状态
+    如果你希望呈现更多信息，应该定义extra_display，返回一个二或三元组构成的列表
+        (键, 值, 图标名="envelope-o")将被渲染为一行[图标]键：值
+        图标名请参考fontawesome的图标类名
+    '''
+    class Meta:
+        verbose_name = "带有评论"
+        verbose_name_plural = verbose_name
+
+    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的基类信息
+    typename = models.CharField("模型类型", max_length=32, default="commentbase")   # 子类信息
+    time = models.DateTimeField("发起时间", auto_now_add=True)
+    modify_time = models.DateTimeField("上次修改时间", auto_now_add=True) # 每次评论自动更新
+
+    def get_instance(self):
+        if self.typename.lower() == 'commentbase':
+            return self
+        try:
+            return getattr(self, self.typename.lower())
+        except:
+            return self
+
+    def save(self, *args, **kwargs):
+        self.modify_time = datetime.now()   # 自动更新修改时间
+        super().save(*args, **kwargs)
 
 class Activity(models.Model):
     class Meta:
@@ -402,6 +448,8 @@ class Activity(models.Model):
     endbefore = models.SmallIntegerField(
         "报名截止于", choices=EndBefore.choices, default=EndBefore.oneday
     )
+
+    apply_end = models.DateTimeField("报名截止时间", blank=True, default=datetime.now)
     start = models.DateTimeField("活动开始时间", blank=True, default=datetime.now)
     end = models.DateTimeField("活动结束时间", blank=True, default=datetime.now)
     # prepare_time = models.FloatField("活动准备小时数", default=24.0)
@@ -412,16 +460,29 @@ class Activity(models.Model):
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
     # url,活动二维码
-
     bidding = models.BooleanField("是否投点竞价", default=False)
     YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
     budget = models.FloatField("预算", default=0.0)
+
+    need_checkin = models.BooleanField("是否需要签到", default=False)
+
+    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+
+
+    class YQPointSource(models.IntegerChoices):
+        COLLEGE = (0, "学院")
+        STUDENT = (1, "学生")
+
+    source = models.SmallIntegerField(
+        "元气值来源", choices=YQPointSource.choices, default=1
+    )
 
     # 允许是正无穷, 可以考虑用INTINF
     capacity = models.IntegerField("活动最大参与人数", default=100)
     current_participants = models.IntegerField("活动当前报名人数", default=0)
 
     URL = models.URLField("活动相关(推送)网址", null=True, blank=True)
+
 
     def __str__(self):
         return f"活动：{self.title}"
@@ -436,7 +497,7 @@ class Activity(models.Model):
 
     # 恢复活动状态的类别
     status = models.CharField(
-        "活动状态", choices=Status.choices, default=Status.APPLYING, max_length=32
+        "活动状态", choices=Status.choices, default=Status.REVIEWING, max_length=32
     )
 
     objects = ActivityManager()
@@ -584,45 +645,6 @@ class Notification(models.Model):
     objects = NotificationManager()
 
 
-class CommentBase(models.Model):
-    '''
-    带有评论的模型基类
-    子类必须定义typename，值应为为类名的小写版本或类名
-
-    子类如果希望直接使用聚合页面呈现模板，应该定义__str__方法
-    默认的呈现内容为：实例名称、创建时间、上次修改时间
-    如果希望呈现审核页面，如审核中、创建者信息，则应该分别定义get_status_display和get_poster_name
-    其中，如果你的status是一个枚举字段，则无需定义get_status_display
-        status的display建议为：
-            包含“未/不/拒绝”的表示失败
-            此外包含“通过/接受”的表示审核通过
-            包含“修改”的为需要修改（可能用不到）
-            包含“取消”的为自己取消
-            其他都默认呈现“审核中”，可以自行修改html模板增加状态
-    如果你希望呈现更多信息，应该定义extra_display，返回一个二或三元组构成的列表
-        (键, 值, 图标名="envelope-o")将被渲染为一行[图标]键：值
-        图标名请参考fontawesome的图标类名
-    '''
-    class Meta:
-        verbose_name = "带有评论"
-        verbose_name_plural = verbose_name
-
-    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的基类信息
-    typename = models.CharField("模型类型", max_length=32, default="commentbase")   # 子类信息
-    time = models.DateTimeField("发起时间", auto_now_add=True)
-    modify_time = models.DateTimeField("上次修改时间", auto_now_add=True) # 每次评论自动更新
-
-    def get_instance(self):
-        if self.typename.lower() == 'commentbase':
-            return self
-        try:
-            return getattr(self, self.typename.lower())
-        except:
-            return self
-
-    def save(self, *args, **kwargs):
-        self.modify_time = datetime.now()   # 自动更新修改时间
-        super().save(*args, **kwargs)
 
 
 class Comment(models.Model):
@@ -662,7 +684,7 @@ class NewOrganization(CommentBase):
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
-    oname = models.CharField(max_length=32, unique=True)
+    oname = models.CharField(max_length=32) #这里不设置unique的原因是可能是已取消
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
     introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     application = models.TextField(
@@ -683,7 +705,9 @@ class NewOrganization(CommentBase):
     status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
     
     def __str__(self):
-        return f'{self.oname}{self.otype.otype_name}'
+        # YWolfeee: 不认为应该把类型放在如此重要的位置
+        # return f'{self.oname}{self.otype.otype_name}'
+        return f'{self.oname}'
 
     def save(self, *args, **kwargs):
         self.typename = "neworganization"
@@ -701,6 +725,44 @@ class NewOrganization(CommentBase):
         if self.introduction and self.introduction != '这里暂时没有介绍哦~':
             display.append(('组织介绍', self.introduction))
         return display
+
+class NewPosition(CommentBase):
+    class Meta:
+        verbose_name = "申请人事的信息"
+        verbose_name_plural = verbose_name
+        ordering = ["-modify_time", "-time"]
+
+    position = models.ForeignKey(
+        to=Position, related_name="new_position", on_delete=models.CASCADE
+    )
+
+    application = models.TextField(
+        "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
+    )
+    class NewPosStatus(models.IntegerChoices):  # 表示申请人事的请求的状态
+        PENDING = (0, "处理中")
+        CONFIRMED = (1, "已通过")  
+        CANCELED = (2, "已取消")  
+        REFUSED = (3, "已拒绝")
+
+    status = models.SmallIntegerField(choices=NewPosStatus.choices, default=0)
+    
+    apply_pos = models.SmallIntegerField(verbose_name="申请职务等级", default=10)
+    def __str__(self):
+        return f'{self.position.org.oname}人事申请'
+
+    class ApplyType(models.TextChoices):  # 人事变动申请类型
+        JOIN = "加入组织"
+        WITHDRAW = "退出组织"
+        TRANSFER = "交接职务"
+        NONE = "无申请流程"  # 指派职务
+
+    apply_type = models.CharField(
+        "申请类型", choices=ApplyType.choices, max_length=32, default=ApplyType.NONE
+    )
+    def save(self, *args, **kwargs):
+        self.typename = "newposition"
+        super().save(*args, **kwargs)
 
 
 class Reimbursement(CommentBase):
@@ -722,7 +784,7 @@ class Reimbursement(CommentBase):
         REFUSED = (5, "已拒绝")
 
     activity = models.ForeignKey(
-        Activity, related_name="reimbursement", on_delete=models.CASCADE
+        Activity, on_delete=models.CASCADE
     )
     amount = models.FloatField("报销金额", default=0)
     message = models.TextField("备注信息", default="", blank=True)
@@ -745,7 +807,7 @@ class Reimbursement(CommentBase):
 
     def extra_display(self):
         display = []
-        display.append(('报销金额', self.amount, 'jpy'))
+        display.append(('报销金额', str(self.amount) + '元', 'money'))
         if self.message:
             display.append(('备注', self.message))
         return display

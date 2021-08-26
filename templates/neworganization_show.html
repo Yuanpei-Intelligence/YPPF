@@ -24,8 +24,8 @@
                         <div class="widget-content widget-content-area">
                             <h3>{{title}}</h3>
                             <div class="col-12">
-                                <p>欢迎来到你的{{title}}列表！这里汇集了你在<strong>Yuanpei Profile</strong>中创建的所有{{title}}信息~</p>
-                                <p>这些事务依据更新的时间和状态由近到远呈现，提供了具体的更新时间和其他信息。</p>
+                                <p>欢迎来到你的{{title}}列表！这里汇集了在<strong>Yuanpei Profile</strong>中由您创建或需您审核的所有{{title}}信息~</p>
+                                <!--<p>这些事务依据更新的时间和状态由近到远呈现，提供了具体的更新时间和其他信息。</p>-->
                                 <p>您可以点击<u>标题链接</u>查看老师留言、追加评论、取消正在审核的申请或查看已完成事务详情。尽情体验吧！</p>
                                 </br>
                             </div>
@@ -84,6 +84,7 @@
             {% endif %}
         </div>
         <div class="d-flex justify-content-between">
+            {% if instance.extra_display %}
             <div>
                 {% for display in instance.extra_display %}
                 {% if display|length == 2 or display|length == 3 %}
@@ -94,6 +95,7 @@
                 {% endif %}
                 {% endfor %}
             </div>
+            {% endif %}
             {% if instance.get_poster_name %}
             <div>
                 <p style="color: rgb(66, 67, 68);">

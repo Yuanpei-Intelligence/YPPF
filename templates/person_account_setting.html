@@ -16,7 +16,11 @@
         <link rel="stylesheet" type="text/css" href="{% static "plugins/dropify/dropify.min.css" %}">
         <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
         <!--  END CUSTOM STYLE FILE  -->
-
+        {% if html_display.warn_code == 1 %}
+        <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+        {% elif html_display.warn_code == 2 %}
+        <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
+        {% endif %}
         <div class="layout-px-spacing">
 
             <div class="account-settings-container layout-top-spacing">
@@ -35,11 +39,16 @@
                                     enctype="multipart/form-data">
                                     <div class="info">
                                         <h6 class="">个人信息</h6>
-                                        <div class="row">
-                                            <div class="upload m-auto">
+                                        <div class="row d-flex justify-content-center">
+                                            <div class="upload mr-3" style="border: none;">
                                                 <input type="file" id="avatar" class="dropify" name="avatar"
                                                     data-default-file="{{former_img}}" data-max-file-size="512K" />
-                                                <p class="mt-2 text-center">{{useroj.name}}</p>
+                                                <p class="mt-2 text-center">头像</p>
+                                            </div>
+                                            <div class="upload ml-3" style="border: none;">
+                                                <input type="file" id="wallpaper" class="dropify" name="wallpaper"
+                                                    data-default-file="{{former_wallpaper}}" data-max-file-size="512K" />
+                                                <p class="mt-2 text-center">背景图片</p>
                                             </div>
                                         </div>
                                         <div class="row">
@@ -114,8 +123,14 @@
                                                                 {% endif %}
                                                                 <label class="form-check-label" for="show_dorm">对外展示</label>
                                                             </div>
+                                                            <label for="profession">我的年级</label>
+                                                            <input type="text" class="form-control " id="grade" readonly="readonly"
+                                                                name="grade" value="{{userinfo.stu_grade}}" >
+                                                            <label for="profession">我的班级</label>
+                                                            <input type="text" class="form-control" id="class" readonly="readonly"
+                                                                name="class" value="{{userinfo.stu_class}}">
                                                             <label for="profession">我的邮箱</label>
-                                                            <input type="text" class="form-control" id="email"
+                                                            <input type="text" class="form-control" id="email" 
                                                                 name="email" placeholder="{{userinfo.email}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
                                                                 <div class="form-check mb-4">
                                                                     {% if useroj.show_email %}

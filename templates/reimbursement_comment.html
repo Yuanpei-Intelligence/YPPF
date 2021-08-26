@@ -24,7 +24,30 @@
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                <h4>审核报销</h4>
+                                                    <br>
+                                                    <br>
+                                                {% with new_reimb.get_status_display as status %}
+                                                <div align="center">
+                                                    <h4><a href="/viewActivity/{{html_display.activity.id}}"><u>{{html_display.activity.title}}</u></a>
+                                                        ({{html_display.activity.start.month}}月{{html_display.activity.start.day}}日)   <span style="color: red">{{status}}</span></h4>
+                                                {%endwith%}
+                                                </div>
+
+                                                <br>
+                                                <div class="d-flex justify-content-between">
+                                                        <div >
+                                                        <h4 >申请时间：{{html_display.apply_time}}</h4>
+                                                        </div>
+                                                    <div align="right">
+                                                            <h4>
+                                                                申请组织：
+                                                            <img src={{ html_display.app_avatar_path }} width="24" height="24" alt="avatar">
+                                                            <a href='/orginfo/{{html_display.applicant.oname}}'>
+                                                                <u>{{html_display.applicant.oname}}</u></a>
+                                                            </h4>
+                                                    </div>
+                                                </div>
+
                                             </div>
                                         </div>
                                     </div>
@@ -34,42 +57,24 @@
 
                                         <form role="form" method="POST" enctype="multipart/form-data">
 
-                                            <div class="form-group">
-                                                <label>组织名称</label>
-                                                <textarea id="oname" name="oname" class="form-control"
-                                                          aria-label="Default">{{html_display.oname}}</textarea>
-                                            </div>
 
                                             <div class="form-group">
-                                                <label>报销活动</label>
-                                                <textarea id="activity_title" name="activity_title" class="form-control"
-                                                          aria-label="Default">{{html_display.activity_title}}</textarea>
-                                            </div>
-                                            <div class="form-group">
-                                                <label>报销额度</label>
+                                                <label>报销额度   (学院当前开销：-{{html_display.our_college.YQPoint}})</label>
                                                 <br>
                                                 <textarea id="amount" name="amount" class="form-control"
-                                                          aria-label="Default">{{html_display.amount}}</textarea>
+                                                          aria-label="Default" disabled="disabled">{{html_display.amount}}</textarea>
                                             </div>
 
                                             <div class="form-group">
-                                                <label for="aintro">备注信息</label>
+                                                <label for="aintro">报销说明</label>
 
                                                 <textarea name="message" class="form-control"
                                                           rows="3"
-                                                          placeholder="空">{{html_display.message}}</textarea>
+                                                          placeholder="空" disabled="disabled">{{html_display.message}}</textarea>
                                             </div>
-
+                                            {%if commentable%}
                                             <div align="center">
                                                 <table>
-                                                    <tr>
-                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
-                                                                name="submit"
-                                                                value="1">
-                                                            需要修改
-                                                        </button>
-
-                                                    </tr>
                                                     <tr>
                                                         <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
                                                                 name="submit"
@@ -79,7 +84,7 @@
                                                     </tr>
 
                                                     <tr>
-                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                        <button type="submit" class="btn btn-warning btn-lg mb-4 mr-2"
                                                                 name="submit"
                                                                 value="3">
                                                             拒绝
@@ -87,6 +92,7 @@
                                                     </tr>
                                                 </table>
                                             </div>
+                                            {%endif%}
 
                                         </form>
 
