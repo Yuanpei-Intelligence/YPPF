@@ -811,3 +811,18 @@ class Reimbursement(CommentBase):
         if self.message:
             display.append(('备注', self.message))
         return display
+
+
+class Help(models.Model):
+    '''
+        页面帮助类
+    '''
+    title = models.CharField("帮助标题", max_length=20, blank=False)
+    content = models.CharField("帮助内容", max_length=500)
+
+    class Meta:
+        verbose_name = "页面帮助"
+        verbose_name_plural = "页面帮助"
+
+    def __str__(self) -> str:
+        return self.title

@@ -6,6 +6,19 @@
 <link href={% static "datetimepicker/css/bootstrap-datetimepicker-standalone.css" %} rel="stylesheet" type="text/css" />
 <link href={% static "datetimepicker/css/bootstrap-datetimepicker.css" %} rel="stylesheet" type="text/css" />
 <link href={% static "datetimepicker/css/bootstrap-datetimepicker.min.css" %} rel="stylesheet" type="text/css" />
+
+<style class="text/css">
+    [data-toggle="collapse"] .fa:before {
+        font-family: 'FontAwesome';  
+        content: "\f068";
+        float: right; 
+    }
+
+    [data-toggle="collapse"].collapsed .fa:before {
+        content: "\f067"; 
+    }
+</style>
+
 {% endblock %}
 
 {% block mainpage %}
@@ -13,6 +26,9 @@
     <div id="content" class="main-content">
         <div class="container">
             <div class="container">
+                {% if bar_display.help_paragraphs %}
+                    {% include 'help.html' %}
+                {% endif %}
                 <div class="alert alert-warning  text-center" id="warn_msg" style="display: none;">test</div>
                 <div class="row layout-top-spacing">
 
