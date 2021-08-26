@@ -31,7 +31,7 @@ from app.activity_utils import (
     withdraw_activity,
     ActivityException,
 )
-from app.position_utils import (
+from app.position_utils import(
     update_pos_application,
 )
 from app.wechat_send import publish_notification
@@ -786,8 +786,7 @@ def account_setting(request):
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
-            expr = bool(
-                attr_dict['ava'] or attr_dict['wallpaper'] or (attr_dict['gender'] != useroj.get_gender_display()))
+            expr = bool(attr_dict['ava'] or attr_dict['wallpaper'] or (attr_dict['gender'] != useroj.get_gender_display()))
             expr += bool(sum(
                 [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_check_list]))
             expr += bool(sum([getattr(useroj, show_attr) != show_dict[show_attr]
@@ -2674,7 +2673,7 @@ def addComment(request, comment_base, receiver=None):
         'neworganization': f'{sender_name}在新建组织中留有新的评论',
         'reimbursement': f'{sender_name}在经费申请中留有新的评论',
     }
-    URL = {
+    URL={
         'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
         'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
         'reimbursement': f'modifyReimbursement/?reimb_id={comment_base.id}',
@@ -3127,7 +3126,7 @@ def addOrganization(request):
     bar_display["title_name"] = "新建组织"
     bar_display["navbar_name"] = "新建组织"
     return render(request, "organization_add.html", locals())
-
+              
 
 # YWolfeee: 重构人事申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
@@ -3145,36 +3144,35 @@ def modifyPosition(request):
 
     # 根据是否有newid来判断是否是第一次
     position_id = request.GET.get("pos_id", None)
-
-    if position_id is not None:  # 如果存在对应组织
-        try:  # 尝试获取已经新建的Position
-            application = ModifyPosition.objects.get(id=position_id)
+    if position_id is not None: # 如果存在对应组织
+        try:    # 尝试获取已经新建的Position
+            application = ModifyPosition.objects.get(id = position_id)
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被申请组织之一
-            assert (application.org == me) or (application.person == me)
-        except:  # 恶意跳转
+            assert (application.org == me) or (application.person == me) 
+        except: #恶意跳转
             return redirect("/welcome/")
-        is_new_application = False  # 前端使用量, 表示是老申请还是新的
+        is_new_application = False # 前端使用量, 表示是老申请还是新的
         applied_org = application.org
 
-    else:  # 如果不存在id, 默认应该传入org_name参数
+    else:   # 如果不存在id, 默认应该传入org_name参数
         org_name = request.GET.get("org_name", None)
         try:
             applied_org = Organization.objects.activated().get(oname=org_name)
-            assert user_type == "Person"  # 只有个人能看到这个新建申请的界面
+            assert user_type == "Person" # 只有个人能看到这个新建申请的界面
 
         except:
             # 非法的名字, 出现恶意修改参数的情况
             return redirect("/welcome/")
-
+        
         # 查找已经存在的处理中的申请
         try:
             application = ModifyPosition.objects.get(
-                org=applied_org, person=me, status=ModifyPosition.Status.PENDING)
-            is_new_application = False  # 如果找到, 直接跳转老申请
+                org = applied_org, person = me, status = ModifyPosition.Status.PENDING)
+            is_new_application = False # 如果找到, 直接跳转老申请
         except:
             is_new_application = True
-
+        
     '''
         至此，如果是新申请那么application为None，否则为对应申请
         application = None只有在个人新建申请的时候才可能出现，对应位is_new_application
@@ -3186,34 +3184,33 @@ def modifyPosition(request):
 
     if request.method == "POST":
         # 如果是状态变更
-        if request.POST.get("post_type", None) is not None:
+        if request.POST.get("post_type", None) is not None:            
 
             # 主要操作函数，更新申请状态
-            context = update_pos_application(application, me, user_type,
-                                             applied_org, request.POST)
+            context = update_pos_application(application, me, user_type, 
+                    applied_org, request.POST)
 
-            if context["warn_code"] == 2:  # 成功修改申请
+            if context["warn_code"] == 2:   # 成功修改申请
                 # 回传id 防止意外的锁操作
-                application = ModifyPosition.objects.get(id=context["application_id"])
-                is_new_application = False  # 状态变更
+                application = ModifyPosition.objects.get(id = context["application_id"])
+                is_new_application = False  #状态变更
 
                 # 处理通知相关的操作，并根据情况发送微信
                 # 默认需要成功,失败也不是用户的问题，直接给管理员报错
-                make_relevant_notification(application, request.POST)
+                make_relevant_notification(application, request.POST)    
 
-            elif context["warn_code"] != 1:  # 没有返回操作提示
-                raise NotImplementedError("处理人事申请中出现未预见状态，请联系管理员处理！")
+            elif context["warn_code"] != 1: # 没有返回操作提示
+                raise NotImplementedError("处理人事申请中出现未预见状态，请联系管理员处理！")   
+            
 
-
-        else:  # 如果是新增评论
+        else:   # 如果是新增评论
             # 权限检查
             allow_comment = True if (not is_new_application) and (
                 application.is_pending()) else False
-            if not allow_comment:  # 存在不合法的操作
+            if not allow_comment:   # 存在不合法的操作
                 return redirect(
                     "/welcome/?warn_code=1&warn_message=存在不合法操作,请与管理员联系!")
-            context = addComment(request, application,
-                                 application.org.organization_id if user_type == 'Person' else application.person.person_id)
+            context = addComment(request, application, application.org.organization_id if user_type == 'Person' else application.person.person_id)
 
         # 准备用户提示量
         html_display["warn_code"] = context["warn_code"]
@@ -3224,20 +3221,20 @@ def modifyPosition(request):
     # 首先是写死的前端量
     # 申请的职务类型, 对应ModifyPosition.ApplyType
     apply_type_list = {
-        w: {
-            # 对应的status设置, 属于ApplyType
-            'display': str(w),  # 前端呈现的使用量
-            'disabled': False,  # 是否禁止选择这个量
-            'selected': False  # 是否默认选中这个量
+        w:{
+                    # 对应的status设置, 属于ApplyType
+            'display' : str(w),  # 前端呈现的使用量
+            'disabled' : False,  # 是否禁止选择这个量
+            'selected' : False   # 是否默认选中这个量
         }
         for w in ModifyPosition.ApplyType
     }
     # 申请的职务等级
     position_name_list = [
         {
-            'display': applied_org.otype.get_name(i),  # 名称
-            'disabled': False,  # 是否禁止选择这个量
-            'selected': False,  # 是否默认选中这个量
+            'display' : applied_org.otype.get_name(i),  #名称
+            'disabled' : False,  # 是否禁止选择这个量
+            'selected' : False,   # 是否默认选中这个量
         }
         for i in range(applied_org.otype.get_length())
     ]
@@ -3246,25 +3243,26 @@ def modifyPosition(request):
         个人：可能是初次申请或者是修改申请
         组织：可能是审核申请
         # TODO 也可能是两边都想自由的查看这个申请
+
         区别：
             (1) 整个表单允不允许修改和评论
             (2) 变量的默认值[可以全部统一做]
     '''
-
+    
     # (1) 是否允许修改&允许评论
     # 用户写表格?
     allow_form_edit = True if (user_type == "Person") and (
-            is_new_application or application.is_pending()) else False
+                is_new_application or application.is_pending()) else False
     # 组织审核?
     allow_audit_submit = True if (not user_type == "Person") and (not is_new_application) and (
-        application.is_pending()) else False
+                application.is_pending()) else False
     # 评论区?
     allow_comment = True if (not is_new_application) and (application.is_pending()) \
-        else False
+                    else False
 
     # (2) 表单变量的默认值
 
-    # 首先禁用一些选项
+        # 首先禁用一些选项
 
     # 评论区
     commentable = allow_comment
@@ -3278,14 +3276,14 @@ def modifyPosition(request):
 
     # 检查该同学是否已经属于这个组织
     whether_belong = True if len(current_pos_list) and \
-                             current_pos_list[0].status == Position.Status.INSERVICE else False
+        current_pos_list[0].status == Position.Status.INSERVICE else False
     if whether_belong:
         # 禁用掉加入组织
         apply_type_list[ModifyPosition.ApplyType.JOIN]['disabled'] = True
         # 禁用掉修改职位中的自己的那个等级
         position_name_list[current_pos_list[0].get_pos_number()]["disabled"] = True
-        # current_pos_name = applied_org.otype.get_name(current_pos_list[0].pos)
-    else:  # 不属于组织, 只能选择加入组织
+        #current_pos_name = applied_org.otype.get_name(current_pos_list[0].pos)
+    else:   #不属于组织, 只能选择加入组织
         apply_type_list[ModifyPosition.ApplyType.WITHDRAW]['disabled'] = True
         apply_type_list[ModifyPosition.ApplyType.TRANSFER]['disabled'] = True
 
@@ -3312,10 +3310,9 @@ def showPosition(request):
 
     shown_instances = shown_instances.order_by('-modify_time', '-time')
 
+
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="人事申请")
     return render(request, 'showPosition.html', locals())
-
-
 # 修改和审批申请新建组织的信息，只用该函数即可
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
@@ -3776,7 +3773,6 @@ def modeifyReimbursement(request):
     activities = utils.get_unreimb_activity(apply_person)
     #元培学院
     our_college=Organization.objects.get(oname="元培学院") if allow_audit_submit else None
-
 
     # TODO: 设置默认值
 
