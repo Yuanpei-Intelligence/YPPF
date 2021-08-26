@@ -828,54 +828,6 @@ class ModifyPosition(CommentBase):
         self.typename = "modifyposition"
         super().save(*args, **kwargs)
 
-# YWolfeee: 废弃这个类 重构
-
-class NewPosition(CommentBase):
-    class Meta:
-        verbose_name = "申请人事的信息"
-        verbose_name_plural = verbose_name
-        ordering = ["-modify_time", "-time"]
-
-    # 我认为应该不去挂载这个外键，因为有可能没有，这样子逻辑会显得很复杂
-    # 只有在修改被通过的一瞬间才修改Pisition类
-    # 只有在创建的一瞬间对比Pisition检查状态是否合法（如时候是修改人事）
-    #position = models.ForeignKey(
-    #    to=Position, related_name="new_position", on_delete=models.CASCADE
-    #)
-
-
-
-
-    application = models.TextField(
-        "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
-    )
-    class NewPosStatus(models.IntegerChoices):  # 表示申请人事的请求的状态
-        PENDING = (0, "处理中")
-        CONFIRMED = (1, "已通过")  
-        CANCELED = (2, "已取消")  
-        REFUSED = (3, "已拒绝")
-
-    status = models.SmallIntegerField(choices=NewPosStatus.choices, default=0)
-    
-    apply_pos = models.SmallIntegerField(verbose_name="申请职务等级", default=10)
-    def __str__(self):
-        return f'{self.position.org.oname}人事申请'
-
-    class ApplyType(models.TextChoices):  # 人事变动申请类型
-        JOIN = "加入组织"
-        WITHDRAW = "退出组织"
-        TRANSFER = "修改职位"
-        # 指派职务不需要通过NewPosition类来实现
-        NONE = "无申请流程"  # 指派职务
-
-    apply_type = models.CharField(
-        "申请类型", choices=ApplyType.choices, max_length=32, default=ApplyType.NONE
-    )
-    def save(self, *args, **kwargs):
-        self.typename = "newposition"
-        super().save(*args, **kwargs)
-
-
 class Reimbursement(CommentBase):
     class Meta:
         verbose_name = "新建报销"
