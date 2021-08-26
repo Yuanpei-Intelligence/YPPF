@@ -1,4 +1,5 @@
 from django.db import models, transaction
+from django.db.models.fields import related
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
@@ -155,6 +156,13 @@ class OrganizationType(models.Model):
             return "成员"
         return self.job_name_list[pos]
 
+    def get_pos_from_str(self, pos_name):  # 若非列表内的名字，返回最低级
+        if not pos_name in self.job_name_list:
+            return len(self.job_name_list)
+        return self.job_name_list.index(pos_name)
+
+    def get_length(self):
+        return len(self.job_name_list) + 1
 
 class Semester(models.TextChoices):
     FALL = "Fall"
@@ -302,16 +310,17 @@ class Position(models.Model):
     class Status(models.TextChoices):  # 职务状态
         INSERVICE = "在职"
         DEPART = "离职"
-        NONE = "无职务状态"  # 用于第一次加入组织申请
+        # NONE = "无职务状态"  # 用于第一次加入组织申请
 
     status = models.CharField(
-        "职务状态", choices=Status.choices, max_length=32, default=Status.NONE
+        "职务状态", choices=Status.choices, max_length=32, default=Status.INSERVICE
     )
 
+    '''
     class ApplyType(models.TextChoices):  # 人事变动申请类型
         JOIN = "加入组织"
         WITHDRAW = "退出组织"
-        TRANSFER = "交接职务"
+        TRANSFER = "修改职位"
         NONE = "无申请流程"  # 指派职务
 
     apply_type = models.CharField(
@@ -323,13 +332,17 @@ class Position(models.Model):
         PASS = "已通过"
         REJECT = "未通过"
         NONE = ""  # 对应“无申请流程”
-
+    
     apply_status = models.CharField(
         "申请状态", choices=ApplyStatus.choices, max_length=32, default=ApplyStatus.NONE
     )
     apply_pos = models.SmallIntegerField(verbose_name="申请职务等级", default=10)
-
+    '''
     objects = PositionManager()
+
+    def get_pos_number(self): #返回对应的pos number 并作超出处理
+        return min(len(self.org.otype.job_name_list), self.pos)
+
 
 
 class Course(models.Model):
@@ -641,6 +654,13 @@ class Notification(models.Model):
         blank=True,
         null=True,
     )
+    relate_instance = models.ForeignKey(
+        CommentBase,
+        related_name="relate_notifications",
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+    )
 
     objects = NotificationManager()
 
@@ -726,44 +746,87 @@ class NewOrganization(CommentBase):
             display.append(('组织介绍', self.introduction))
         return display
 
-class NewPosition(CommentBase):
+class ModifyPosition(CommentBase):
     class Meta:
-        verbose_name = "申请人事的信息"
+        verbose_name = "人事申请详情"
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
-    position = models.ForeignKey(
-        to=Position, related_name="new_position", on_delete=models.CASCADE
+    # 我认为应该不去挂载这个外键，因为有可能没有，这样子逻辑会显得很复杂
+    # 只有在修改被通过的一瞬间才修改Pisition类
+    # 只有在创建的一瞬间对比Pisition检查状态是否合法（如时候是修改人事）
+    #position = models.ForeignKey(
+    #    to=Position, related_name="new_position", on_delete=models.CASCADE
+    #)
+
+    # 申请人
+    person = models.ForeignKey(
+        to = NaturalPerson, related_name = "position_application", on_delete = models.CASCADE
     )
 
-    application = models.TextField(
+    # 申请组织
+    org = models.ForeignKey(
+        to = Organization, related_name = "position_application", on_delete = models.CASCADE
+    )
+
+    # 申请职务等级
+    pos = models.SmallIntegerField(verbose_name="申请职务等级", blank=True, null=True)
+    
+
+    reason = models.TextField(
         "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
     )
-    class NewPosStatus(models.IntegerChoices):  # 表示申请人事的请求的状态
+
+    class Status(models.IntegerChoices):  # 表示申请人事的请求的状态
         PENDING = (0, "处理中")
         CONFIRMED = (1, "已通过")  
         CANCELED = (2, "已取消")  
         REFUSED = (3, "已拒绝")
 
-    status = models.SmallIntegerField(choices=NewPosStatus.choices, default=0)
+    status = models.SmallIntegerField(choices=Status.choices, default=0)
     
-    apply_pos = models.SmallIntegerField(verbose_name="申请职务等级", default=10)
     def __str__(self):
-        return f'{self.position.org.oname}人事申请'
+        return f'{self.org.oname}人事申请'
 
     class ApplyType(models.TextChoices):  # 人事变动申请类型
         JOIN = "加入组织"
+        TRANSFER = "修改职位"
         WITHDRAW = "退出组织"
-        TRANSFER = "交接职务"
-        NONE = "无申请流程"  # 指派职务
+        # 指派职务不需要通过NewPosition类来实现
+        # NONE = "无申请流程"  # 指派职务
 
     apply_type = models.CharField(
-        "申请类型", choices=ApplyType.choices, max_length=32, default=ApplyType.NONE
+        "申请类型", choices=ApplyType.choices, max_length=32
     )
-    def save(self, *args, **kwargs):
-        self.typename = "newposition"
-        super().save(*args, **kwargs)
 
+
+    def is_pending(self):   #表示是不是pending状态
+            return self.status == ModifyPosition.Status.PENDING
+
+    def accept_submit(self): #同意申请，假设都是合法操作
+        if self.apply_type == ModifyPosition.ApplyType.WITHDRAW:
+            Position.objects.activated().filter(
+                org = self.org, person = self.person
+            ).update(status = Position.Status.DEPART)
+        elif self.apply_type == ModifyPosition.ApplyType.JOIN:
+            # 尝试获取已有的position
+            if Position.objects.current().filter(
+                org = self.org, person = self.person).exists(): # 如果已经存在这个量了
+                Position.objects.current().get(org = self.org, person = self.person
+                ).update(
+                    status = Position.Status.INSERVICE,
+                    pos = self.pos)
+            else: # 不存在 直接新建
+                Position.objects.create(pos=self.pos, person=self.person, org=self.org)
+        else:   # 修改 则必定存在这个量
+            Position.objects.activated().filter(org = self.org, person = self.person
+                ).update(pos = self.pos)
+        # 修改申请状态
+        ModifyPosition.objects.filter(id=self.id).update(status=ModifyPosition.Status.CONFIRMED)
+
+    def save(self, *args, **kwargs):
+        self.typename = "modifyposition"
+        super().save(*args, **kwargs)
 
 class Reimbursement(CommentBase):
     class Meta:
