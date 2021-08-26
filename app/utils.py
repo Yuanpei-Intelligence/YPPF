@@ -182,7 +182,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
                 navbar_name, list()
             )
         except:
-            bar_display["help_paragraphs"] = list()
+            bar_display["help_paragraphs"] = ""
 
     return bar_display
 
