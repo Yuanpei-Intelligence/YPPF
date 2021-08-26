@@ -6,6 +6,7 @@ from app.models import (
     Notification,
     NewOrganization,
     Activity,
+    Help,
 )
 from django.contrib.auth.models import User
 from django.dispatch.dispatcher import receiver
@@ -178,9 +179,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         except:
             bar_display["help_message"] = ""
         try:
-            bar_display["help_paragraphs"] = local_dict["use_help"].get(
-                navbar_name, list()
-            )
+            bar_display["help_paragraphs"] = Help.objects.get(title=navbar_name).content
         except:
             bar_display["help_paragraphs"] = ""
 
