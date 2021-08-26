@@ -680,7 +680,7 @@ class CommentPhoto(models.Model):
 
 class NewOrganization(CommentBase):
     class Meta:
-        verbose_name = "申请建立组织的信息"
+        verbose_name = "新建组织"
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
@@ -767,7 +767,7 @@ class NewPosition(CommentBase):
 
 class Reimbursement(CommentBase):
     class Meta:
-        verbose_name = "报销信息"
+        verbose_name = "新建报销"
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
