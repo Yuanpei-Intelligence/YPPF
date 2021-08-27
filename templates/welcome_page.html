@@ -29,9 +29,13 @@
                        </ol> 
                        <div class="carousel-inner">
                            <div class="carousel-item active">
+                               {% if photos|length == 0 %}
+                               <img class="d-block w-100 slide-image" src={{homepagephoto}} >
+                               {% else %}
                                <a href="/viewActivity/{{firstpic.activity_id}}">
                                <img class="d-block w-100 slide-image" src={{firstpic.image}} >
                                 </a>
+                                {% endif %}
                            </div>
                            {% for photo in photos %}
                            <div class="carousel-item">
@@ -106,7 +110,10 @@
                     <h5>今日活动</h5>
                     <div class="timeline-alter px-0 py-1" style="overflow-y: scroll; overflow-x: show;"
                         id="custom-activities">
-
+                        {% if html_display.today_activities|length == 0 %}
+                        <br/>
+                        <p style="text-align: center; ">没有今天开始的活动</p>
+                        {% endif %}
                         {% for activity, start in html_display.today_activities %}
                         <div class="item-timeline">
                             <div class="t-meta-date pb-0">
