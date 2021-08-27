@@ -88,7 +88,7 @@ class NaturalPerson(models.Model):
 
     # 注意：这是不订阅的列表！！
     unsubscribe_list = models.ManyToManyField(
-        "Organization", related_name="unsubsribers", db_index=True
+        "Organization", related_name="unsubscribers", db_index=True
     )
 
     def __str__(self):
