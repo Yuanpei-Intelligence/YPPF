@@ -332,6 +332,9 @@ def notifyActivity(aid:int, msg_type:str, msg=None):
         bulk_identifier = hasher.encode(str(datetime.now()) + str(random()))
         print("bulk_identifier", bulk_identifier)
         if msg_type == "newActivity":
+            msg = f"您关注的组织{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
+            msg += f"开始时间: {activity.act_start}\n"
+            msg += f"活动地点: {activity.location}\n"
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
             )
@@ -340,7 +343,7 @@ def notifyActivity(aid:int, msg_type:str, msg=None):
                 sender=activity.organization_id.organization_id,
                 typename=Notification.Type.NEEDREAD,
                 title=Notification.Title.ACTIVITY_INFORM,
-                content=f"您关注的组织{activity.organization_id.oname}发布了新的活动：{activity.title}。",
+                content=msg,
                 URL=f"/viewActivity/{aid}",
                 bulk_identifier=bulk_identifier,
                 relate_instance=activity,
@@ -414,7 +417,7 @@ def notifyActivity(aid:int, msg_type:str, msg=None):
         Notification.objects.bulk_create(notifications, 50)
         filter_kws={"bulk_identifier":bulk_identifier}
         assert publish_notifications(filter_kws=filter_kws)
-        
+
     except Exception as e:
         print(f"Notification {msg} failed. Exception: {e}")
         # TODO send message to admin to debug
