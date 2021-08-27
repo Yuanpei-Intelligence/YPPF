@@ -300,12 +300,16 @@ def load_help(request):
         context = {"message": "请先以超级账户登录后台后再操作！"}
         return render(request, "debugging.html", context)
     try:
-        with open("test_data/help.json", encoding="utf_8") as help_json:
-            help_dict = json.load(help_json)
+        help_df = load_file("help.csv")
     except:
-        context = {"message": "没有找到help.json,请确认该文件已经在test_data中。"}
+        context = {"message": "没有找到help.csv,请确认该文件已经在test_data中。"}
         return render(request, "debugging.html", context)
-    helps = [Help(title=title, content=content) for title, content in help_dict.items()]
+    # helps = [Help(title=title, content=content) for title, content in help_dict.items()]
+    helps = []
+    for _, help_dict in help_df.iterrows():
+        content = help_dict["content"]
+        title = help_dict["title"]
+        helps.append(Help(title=title, content=content))
     Help.objects.bulk_create(helps)
     context = {"message": "成功导入帮助信息！"}
     return render(request, "debugging.html", context)
