@@ -329,15 +329,13 @@
                                         </form>
                                         {% if examine %}
                                         <form method="POST" role="form" onsubmit="return check_examine()">
-                                            <input type="hidden" name="examine" value="True">
-                                            <input type="hidden" name="aid", value="{{aid}}">
                                             <button id="review_submit" type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
                                                 通过活动
                                             </button>
                                         </form>
                                         {% endif %}
+                                        {% include 'comment.html' %}
                                     </div>
-
                                 </div>
                             </div>
                         </div>

@@ -515,6 +515,7 @@ class Activity(CommentBase):
 
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
+        self.typename = "addActivity"
         super().save(*args, **kwargs)
 
 
