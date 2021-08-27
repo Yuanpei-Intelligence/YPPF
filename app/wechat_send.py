@@ -451,10 +451,11 @@ def wechat_notify_activity(aid, msg, send_to, url=None):
 
     if send_to == "subscribers" or send_to == "all":
         org = activity.organization_id
-        subcribers = NaturalPerson.objects.difference(org.unsubsribers)
-        subcribers = subcribers.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
-        subcribers = list(subcribers.values_list("person_id__username", flat=True))
-        targets |= set(subcribers)
+        subscribers = NaturalPerson.objects.activated().exclude(
+            id__in=org.unsubscribers.all()
+        )  # flat=True时必须只有一个键
+        subscribers = list(subscribers.values_list("person_id__username", flat=True))
+        targets |= set(subscribers)
 
     send_wechat(targets, msg, card=int(len(msg) < 120), url=url, check_duplicate=True)
 
