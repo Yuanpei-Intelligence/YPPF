@@ -854,7 +854,7 @@ class Reimbursement(CommentBase):
         ordering = ["-modify_time", "-time"]
 
     class ReimburseStatus(models.IntegerChoices):
-        WAITING = (0, "待确认")
+        WAITING = (0, "待审核")
 
         CONFIRM1 = (1, "主管老师已确认")
         CONFIRM2 = (2, "财务老师已确认")
@@ -893,6 +893,8 @@ class Reimbursement(CommentBase):
         if self.message:
             display.append(('备注', self.message))
         return display
+    def is_pending(self):   #表示是不是pending状态
+            return self.status == Reimbursement.ReimburseStatus.WAITING
 
 class Wishes(models.Model):
     class Meta:
