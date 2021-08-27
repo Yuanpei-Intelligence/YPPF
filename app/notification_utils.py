@@ -1,3 +1,8 @@
+from app.models import Notification
+from app.wechat_send import publish_notification
+from django.db import transaction
+from datetime import datetime
+
 def notification_status_change(notification_or_id, to_status=None):
     """
     调用该函数以完成一项通知。对于知晓类通知，在接收到用户点击按钮后的post表单，该函数会被调用。
@@ -116,6 +121,7 @@ def notification_create(
         relate_TransferRecord=relate_TransferRecord,
         relate_instance=relate_instance,
     )
+    notification.save()
     if publish_to_wechat == True:
         publish_notification(notification)
     return notification

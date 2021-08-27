@@ -9,8 +9,8 @@ from django.urls import reverse
 from datetime import datetime, timedelta, timezone, time, date
 from django.db import transaction  # 原子化更改数据库
 
-from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant
-from app.wechat_send import wechat_notify_activity, publish_activity
+from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant, Notification
+from app.wechat_send import publish_notifications
 from app.forms import YQPointDistributionForm
 
 from random import sample
@@ -202,6 +202,8 @@ scheduler.add_job(changeActivityStatus, "date",
 活动变更为进行中时，更新报名成功人员状态
 """
 def changeActivityStatus(aid, cur_status, to_status):
+    with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
+        f.write(f"aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
     try:
         with transaction.atomic():
             activity = Activity.objects.select_for_update().get(id=int(aid))
@@ -252,8 +254,8 @@ def changeActivityStatus(aid, cur_status, to_status):
 
 
         # TODO send message to admin to debug
-        with open("/Users/liuzhanpeng/working/yp/YPPF/logs", "w") as f:
-            f.write(str(e))
+        with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
+            f.write(str(e) + "\n")
         pass
 
 
@@ -320,26 +322,88 @@ scheduler.add_job(notifyActivityStart, "date",
     id=f"activity_{aid}_{start_notification}", run_date, args)
 
 """
-def notifyActivity(aid, msg_type, msg=None):
+def notifyActivity(aid:int, msg_type:str, msg=None):
     try:
         activity = Activity.objects.get(id=aid)
         if msg_type == "newActivity":
-            publish_activity(aid)
-            return
+            subscribers = NaturalPerson.objects.activated().exclude(
+                id__in=activity.organization_id.unsubscribers.all()
+            )
+            notifications = [ Notification(
+                receiver=np.person_id,
+                sender=activity.organization_id.organization_id,
+                typename=Notification.Type.NEEDREAD,
+                title=Notification.Title.ACTIVITY_INFORM,
+                content=f"您关注的组织{activity.organization_id.oname}发布了新的活动：{activity.title}。",
+                URL=f"/viewActivity/{aid}",
+                relate_instance=activity,
+            ) for np in subscribers ]
         elif msg_type == "remind":
             msg = f"您参与的活动 <{activity.title}> 即将开始。\n"
             msg += f"开始时间: {activity.act_start}\n"
             msg += f"活动地点: {activity.location}\n"
-            send_to = 'participants'
+            participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
+            notifications = [ Notification(
+                receiver=participant.person_id.person_id,
+                sender=activity.organization_id.organization_id,
+                typename=Notification.Type.NEEDREAD,
+                title=Notification.Title.ACTIVITY_INFORM,
+                content=msg,
+                URL=f"/viewActivity/{aid}",
+                relate_instance=activity,
+            ) for participant in participants ]
         elif msg_type == 'modification_sub':
-            send_to = 'subscribers'
+            subscribers = NaturalPerson.objects.activated().exclude(
+                id__in=activity.organization_id.unsubscribers.all()
+            )
+            notifications = [ Notification(
+                receiver=np.person_id,
+                sender=activity.organization_id.organization_id,
+                typename=Notification.Type.NEEDREAD,
+                title=Notification.Title.ACTIVITY_INFORM,
+                content=msg,
+                URL=f"/viewActivity/{aid}",
+                relate_instance=activity,
+            ) for np in subscribers ]
         elif msg_type == 'modification_par':
-            send_to = 'participants'
+            participants = Participant.objects.filter(
+                activity_id=aid, 
+                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
+            )
+            notifications = [ Notification(
+                receiver=participant.person_id.person_id,
+                sender=activity.organization_id.organization_id,
+                typename=Notification.Type.NEEDREAD,
+                title=Notification.Title.ACTIVITY_INFORM,
+                content=msg,
+                URL=f"/viewActivity/{aid}",
+                relate_instance=activity,
+            ) for participant in participants ]
+        # 应该用不到了，调用的时候分别发给 par 和 sub
         elif msg_type == 'modification_all':
-            send_to = 'all'
+            participants = Participant.objects.filter(
+                activity_id=aid, 
+                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
+            )
+            subscribers = NaturalPerson.objects.activated().exclude(
+                id__in=activity.organization_id.unsubscribers.all()
+            )
+            receivers = set([participant.person_id for participant in participants]) | set(subscribers)
+            notifications = [ Notification(
+                receiver=receiver.person_id,
+                sender=activity.organization_id.organization_id,
+                typename=Notification.Type.NEEDREAD,
+                title=Notification.Title.ACTIVITY_INFORM,
+                content=msg,
+                URL=f"/viewActivity/{aid}",
+                relate_instance=activity,
+            ) for receiver in receivers ]
         else:
             raise ValueError
-        wechat_notify_activity(aid, msg, send_to)
+        Notification.objects.bulk_create(notifications, 50)
+        notification_ids = [notification.id for notification in notifications]
+        publish_notifications(notification_ids)
+        print("GOTCHA!")
     except Exception as e:
         print(f"Notification {msg} failed. Exception: {e}")
         # TODO send message to admin to debug

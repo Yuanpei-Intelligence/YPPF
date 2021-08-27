@@ -135,8 +135,6 @@ def create_activity(request):
     # 审批老师存在
     examine_teacher = NaturalPerson.objects.get(name=context["examine_teacher"])
     assert examine_teacher.identity == NaturalPerson.Identity.TEACHER
-    # TODO 添加审核数据，通知老师
-
 
     # 检查完毕，创建活动
     org = get_person_or_org(request.user, "Organization")
@@ -161,6 +159,16 @@ def create_activity(request):
     if context.get("need_checkin"):
         activity.need_checkin = True
     activity.save()
+
+    notification_create(
+        receiver=examine_teacher.person_id,
+        sender=request.user,
+        typename=Notification.Type.NEEDDO,
+        title=Notification.Title.VERIFY_INFORM,
+        content="您有一个活动待审批",
+        URL=f"/examineActivity/{activity.id}",
+        relate_instance=activity,
+    )
 
     return activity.id
 
@@ -215,7 +223,22 @@ def modify_reviewing_activity(request, activity):
         assert examine_teacher.identity == NaturalPerson.Identity.TEACHER
         activity.examine_teacher = examine_teacher
         # TODO
-        # 修改审核记录，通知老师
+        # 修改审核记录，通知老师 
+
+        notification = Notification.objects.select_for_update().get(relate_instance=activity, status=Notification.Status.UNDONE)
+        notification.status = Notification.Status.DELETE
+        notification.save()
+
+        notification_create(
+            receiver=examine_teacher.person_id,
+            sender=request.user,
+            typename=Notification.Type.NEEDDO,
+            title=Notification.Title.VERIFY_INFORM,
+            content="您有一个活动待审批",
+            URL=f"/examineActivity/{activity.id}",
+            relate_instance=activity,
+        )
+
 
     if context.get("adjust_apply") is not None:
         # 注意这里是不调整
@@ -238,6 +261,8 @@ def modify_reviewing_activity(request, activity):
         activity.source = Activity.YQPointSource.COLLEGE
     if context.get("need_checkin"):
         activity.need_checkin = True
+    else:
+        activity.need_checkin = False
     activity.save()
 
 
@@ -309,6 +334,7 @@ def modify_accepted_activity(request, activity):
     activity.introduction = request.POST["introduction"]
     activity.save()
 
+
     if activity.status == Activity.Status.APPLYING:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
             run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
@@ -349,8 +375,25 @@ def accept_activity(request, activity):
         YP.save()
         organization.save()
 
-
     # 通知
+    notification = Notification.objects.select_for_update().get(
+        relate_instance=activity, 
+        status=Notification.Status.UNDONE
+    )
+    notification.status = Notification.Status.DONE
+    notification.save()
+
+    notification_create(
+        receiver=activity.organization_id.organization_id,
+        sender=request.user,
+        typename=Notification.Type.NEEDREAD,
+        title=Notification.Title.ACTIVITY_INFORM,
+        content=f"您的活动{activity.title}已通过审批，正在报名中。",
+        URL=f"/viewActivity/{activity.id}",
+        relate_instance=activity,
+    )
+
+
     notifyActivity(activity.id, "newActivity")
     scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
         run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)

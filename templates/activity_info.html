@@ -110,17 +110,23 @@
                                                     报名截止时间：{{apply_deadline}}
                                                 </p>
                                                 <p>
+                                                    <!-- TODO 这里需要换个图标 -->
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                                                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                                                 stroke-linejoin="round">
                                                                 <line x1="12" y1="1" x2="12" y2="23" />
                                                                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                                                     </svg>
-                                                    {% if bidding %}
-                                                        投点基础价格：{{price}}
-                                                    {% else %}
-                                                        元气值定价：{{price}}
-                                                    {% endif %}
+                                                    报名方式：{{apply_manner}}
+                                                </p>
+                                                <p>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                                                stroke-linejoin="round">
+                                                                <line x1="12" y1="1" x2="12" y2="23" />
+                                                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                                                    </svg>
+                                                    元气值定价：{{price}}
                                                 </p>
                                                
                                                 <p> 

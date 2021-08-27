@@ -411,7 +411,7 @@ class CommentBase(models.Model):
         self.modify_time = datetime.now()   # 自动更新修改时间
         super().save(*args, **kwargs)
 
-class Activity(models.Model):
+class Activity(CommentBase):
     class Meta:
         verbose_name = "活动"
         verbose_name_plural = verbose_name
@@ -845,7 +845,7 @@ class Reimbursement(CommentBase):
         CANCELED = (4, "已取消")
         REFUSED = (5, "已拒绝")
 
-    activity = models.ForeignKey(
+    related_activity = models.ForeignKey(
         Activity, on_delete=models.CASCADE
     )
     amount = models.FloatField("报销金额", default=0)
