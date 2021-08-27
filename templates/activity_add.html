@@ -586,7 +586,7 @@
         {% else %}
         var before_start = new Date(start);
         before_start = new Date(before_start.setHours(before_start.getHours()-1));
-        var applyEnd = new Date("{{apply_end}}");
+        var applyEnd = new Date("{{apply_end_for_js}}");
         if (document.getElementById("adjust_apply_ddl").checked) {
             if (prepare_option == "0")
                 applyEnd = new Date(start.setHours(start.getHours()-1));

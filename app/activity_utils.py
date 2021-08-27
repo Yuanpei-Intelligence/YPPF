@@ -84,9 +84,17 @@ def activity_base_check(request):
     context["examine_teacher"] = request.POST["examine_teacher"]
 
     # 时间
-    # datetime 这里有 bug，PM 不会把时间加上去，到时候考虑 patch ......
     act_start = datetime.strptime(request.POST["actstart"], "%m/%d/%Y %H:%M %p")  # 活动报名时间
     act_end = datetime.strptime(request.POST["actend"], "%m/%d/%Y %H:%M %p")  # 活动报名结束时间
+    # python datetime 不考虑 AM, PM, 且小时从 0 开始算
+    if act_start.hour == 12:
+        act_start -= timedelta(hours=12)
+    if act_end.hour == 12:
+        act_end -= timedelta(hours=12)
+    if request.POST["actstart"][-2:] == "PM":
+        act_start += timedelta(hours=12)
+    if request.POST["actend"][-2:] == "PM":
+        act_end += timedelta(hours=12)
     now_time = datetime.now()
     context["start"] = act_start
     context["end"] = act_end
@@ -296,6 +304,12 @@ def modify_accepted_activity(request, activity):
     # 时间改变
     act_start = datetime.strptime(request.POST["actstart"], "%m/%d/%Y %H:%M %p")
     now_time = datetime.now()
+    # python datetime 不考虑 AM, PM, 且小时从 0 开始算
+    if act_start.hour == 12:
+        act_start -= timedelta(hours=12)
+    if request.POST["actstart"][-2:] == "PM":
+        act_start += timedelta(hours=12)
+
     assert now_time < act_start
     if request.POST.get("adjust_apply_ddl"):
         prepare_scheme = int(request.POST["prepare_scheme"])
@@ -329,6 +343,10 @@ def modify_accepted_activity(request, activity):
     activity.capacity = capacity
 
     activity.end = datetime.strptime(request.POST["actend"], "%m/%d/%Y %H:%M %p")
+    if act_end.hour == 12:
+        act_end -= timedelta(hours=12)
+    if request.POST["actend"][-2:] == "PM":
+        act_end += timedelta(hours=12)
     assert activity.start < activity.end
     activity.URL = request.POST["URL"]
     activity.introduction = request.POST["introduction"]

@@ -1624,10 +1624,10 @@ def viewActivity(request, aid=None):
     org_name = org.oname
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
-    start_time = activity.start
-    end_time = activity.end
+    start_time = activity.start.strftime("%m/%d/%Y %H:%M %p")
+    end_time = activity.end.strftime("%m/%d/%Y %H:%M %p")
     prepare_times = Activity.EndBeforeHours.prepare_times
-    apply_deadline = activity.apply_end
+    apply_deadline = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
     introduction = activity.introduction
     show_url = True  # 前端使用量
     aURL = activity.URL
@@ -2099,6 +2099,7 @@ def addActivities(request):
             start = activity.start.strftime("%m/%d/%Y %H:%M %p")
             end = activity.end.strftime("%m/%d/%Y %H:%M %p")
             apply_end = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
+            apply_end_for_js = apply_end[:-2]
             introduction = activity.introduction
             url = activity.URL
             endbefore = activity.endbefore
