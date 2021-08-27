@@ -56,9 +56,7 @@ urlpatterns = [
     path("showNewOrganization/", views.showNewOrganization, name="showNewOrganization"),
     path("addOrganization/", views.addOrganization, name="addOrganization"),
     path("auditOrganization/", views.auditOrganization, name="auditOrganization"),
-    path('applyOrganization/', views.applyOrganization, name="applyOrganization"),
     path('showPosition/', views.showPosition, name="showPosition"),
-    path("auditPosition/", views.auditPosition, name="auditPosition"),
     path("modifyPosition/",views.modifyPosition, name="modifyPosition"),
 ]
 if settings.DEBUG:
