@@ -816,11 +816,11 @@ def homepage(request):
     for photo in photos:
         if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
-    firstpic = photos[0]
+    firstpic = None if len(photos) == 0 else photos[0]
     photos = photos[1:]
 
     # 天气
-    weather = urllib.request.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
+    weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     html_display['weather'] = json.loads(weather)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
