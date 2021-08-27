@@ -8,7 +8,6 @@ from datetime import datetime, timedelta
 from boottest import local_dict
 from django.conf import settings
 
-
 class NaturalPersonManager(models.Manager):
     def activated(self):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
@@ -639,6 +638,7 @@ class Notification(models.Model):
         VERIFY_INFORM = (2, "审核信息通知")
         POSITION_INFORM = (3, "人事变动通知")
         TRANSFER_FEEDBACK = (4, "转账回执")
+        NEW_ORGANIZATION = (5, "新建组织通知")
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
     title = models.SmallIntegerField(choices=Title.choices, blank=True, null=True)
@@ -698,7 +698,7 @@ class CommentPhoto(models.Model):
         return settings.MEDIA_URL + str(self.image)
 
 
-class NewOrganization(CommentBase):
+class ModifyOrganization(CommentBase):
     class Meta:
         verbose_name = "新建组织"
         verbose_name_plural = verbose_name
@@ -715,19 +715,18 @@ class NewOrganization(CommentBase):
     )
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
 
-    class NewOrgStatus(models.IntegerChoices):  # 表示申请组织的请求的状态
+    class Status(models.IntegerChoices):  # 表示申请组织的请求的状态
         PENDING = (0, "处理中")
-        CONFIRMED = (1, "已通过")  # 主管老师已同意，如果新增审核老师就增加主管老师已同意的状态
-        TOBEMODIFIED = (2, "需要修改")
-        CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
-        REFUSED = (4, "已拒绝")
+        CONFIRMED = (1, "已通过")  
+        CANCELED = (2, "已取消")  
+        REFUSED = (3, "已拒绝")
 
-    status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
+    status = models.SmallIntegerField(choices=Status.choices, default=0)
     
     def __str__(self):
         # YWolfeee: 不认为应该把类型放在如此重要的位置
         # return f'{self.oname}{self.otype.otype_name}'
-        return f'{self.oname}'
+        return f'新建组织{self.oname}的申请'
 
     def save(self, *args, **kwargs):
         self.typename = "neworganization"
@@ -745,6 +744,9 @@ class NewOrganization(CommentBase):
         if self.introduction and self.introduction != '这里暂时没有介绍哦~':
             display.append(('组织介绍', self.introduction))
         return display
+        
+    def is_pending(self):   #表示是不是pending状态
+            return self.status == ModifyOrganization.Status.PENDING
 
 class ModifyPosition(CommentBase):
     class Meta:
