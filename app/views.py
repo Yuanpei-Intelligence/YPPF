@@ -3683,7 +3683,6 @@ def send_message_check(me, request):
             created_not = Notification.objects.bulk_create(not_list)
         except:
             return wrong("创建通知的时候出现错误！请联系管理员！")
-    
     try:
         publish_notifications(created_not)
     except:
