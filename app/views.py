@@ -3748,9 +3748,7 @@ def showReimbursement(request):
     else:
         shown_instances = Reimbursement.objects.filter(pos=request.user)
     shown_instances = shown_instances.order_by("-modify_time", "-time")
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "报销信息"
-    bar_display["navbar_name"] = "报销信息"
+    bar_display = utils.get_sidebar_and_navbar(request.user, "报销信息")
     return render(request, "reimbursement_show.html", locals())
 
 
