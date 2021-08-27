@@ -21,7 +21,7 @@ from app.models import (
     TransferRecord,
     Participant,
     Notification,
-    NewOrganization,
+    ModifyOrganization,
     Comment,
     CommentPhoto,
     YQPointDistribute
