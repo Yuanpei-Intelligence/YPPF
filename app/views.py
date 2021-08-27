@@ -25,7 +25,7 @@ from app.models import (
 from django.db.models import Max
 import app.utils as utils
 from app.forms import UserForm
-from app.utils import url_check, check_cross_site, get_person_or_org, update_org_application
+from app.utils import url_check, check_cross_site, get_person_or_org, update_org_application, wrong, succeed
 from app.activity_utils import (
     create_activity,
     modify_activity,
@@ -39,7 +39,7 @@ from app.position_utils import(
     update_pos_application,
 )
 from app.reimbursement_utils import update_reimb_application
-from app.wechat_send import publish_notification
+from app.wechat_send import publish_notification, publish_notifications
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from django.shortcuts import render, redirect
@@ -3585,7 +3585,7 @@ def sendMessage(request):
     
     if request.method == "POST":
         # 合法性检查
-        context = utils.send_message_check(me,request)
+        context = send_message_check(me,request)
         
         # 准备用户提示量
         html_display["warn_code"] = context["warn_code"]
@@ -3616,3 +3616,81 @@ def sendMessage(request):
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="信息发送中心")
     return render(request, "sendMessage.html", locals())
+
+                
+def send_message_check(me, request):
+    # 已经检查了我的类型合法，并且确认是post
+    # 设置默认量
+    receiver_type = request.POST.get('receiver_type', None)
+    url = request.POST.get('url', "")
+    content = request.POST.get('content', "")
+    title = request.POST.get('title', "")
+
+    if receiver_type is None:
+        return wrong("发生了意想不到的错误：未接收到您选择的发送者类型！请联系管理员~")
+    
+    if len(content) == 0:
+        return wrong("请填写通知的内容！")
+    elif len(content) > 225:
+        return wrong("通知的长度不能超过225个字！你超过了！")
+    
+    if len(title) == 0:
+        return wrong("不能不写通知的标题！补起来！")
+    elif len(title) > 10:
+        return wrong("通知的标题不能超过10个字！不然发出来的通知会很丑！")
+    
+    if len(url) == 0:
+        url = None
+
+    not_list = []
+    sender = me.organization_id
+    status = Notification.Status.UNDONE
+    title = title
+    content = content
+    typename = Notification.Type.NEEDREAD
+    URL = url
+    if receiver_type == "订阅用户":
+        try:
+            for receiver in NaturalPerson.objects.exclude(id__in=me.unsubscribers.all()):
+                not_list.append(
+                Notification(
+                    receiver=receiver.person_id,
+                    sender=sender,
+                    status=status,
+                    title=title,
+                    content=content,
+                    URL=URL,
+                    typename=typename,
+                )
+            )
+            created_not = Notification.objects.bulk_create(not_list)
+        except:
+            return wrong("创建通知的时候出现错误！请联系管理员！")
+    else:   # 检查过逻辑了，不可能是其他的
+        try:
+            for receiver in NaturalPerson.objects.filter(id__in=me.position_set.values_list('person_id', flat=True)):
+                not_list.append(
+                Notification(
+                    receiver=receiver.person_id,
+                    sender=sender,
+                    status=status,
+                    title=title,
+                    content=content,
+                    URL=URL,
+                    typename=typename,
+                )
+            )
+            created_not = Notification.objects.bulk_create(not_list)
+        except:
+            return wrong("创建通知的时候出现错误！请联系管理员！")
+    
+    try:
+        publish_notifications(created_not)
+    except:
+        return wrong("发送微信的过程出现错误！请联系管理员！")
+    
+    return succeed(f"成功将创建知晓类消息，发送给所有的{receiver_type}了!")
+        
+    
+
+
