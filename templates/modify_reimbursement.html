@@ -31,7 +31,16 @@
                                                 <div align="center">
                                                     <h4><a href="/viewActivity/{{application.activity.id}}"><u>{{application.activity.title}}</u></a>
                                                         ({{application.activity.start.month}}月{{application.activity.start.day}}日)
-                                                        <span style="color: red">{{status}}</span></h4>
+                                                        {%if status == "待审核"%}
+                                                        <span class="badge badge-primary">{{status}}</span>
+                                                        {%elif status == "已通过"%}
+                                                        <span class="badge badge-success">{{status}}</span>
+                                                        {%elif status == "已取消"%}
+                                                        <span class="badge badge-dark">{{status}}</span>
+                                                        {%else%}
+                                                        <span class="badge badge-danger">{{status}}</span>
+                                                        {%endif%}
+                                                    </h4>
                                                 </div>
                                                 {%endwith%}
                                                 <br>
@@ -183,7 +192,9 @@
                                                     <tr>
                                                         <button type="submit" class="btn btn-warning btn-lg mb-4 mr-2"
                                                                  name="post_type"
-                                                                    value="cancel_submit">取消申请
+                                                                value="cancel_submit"
+                                                                onclick="return confirm('您确定要取消此活动的经费申请吗？')"
+                                                        >取消申请
                                                         </button>
                                                     </tr>
                                                 </table>
