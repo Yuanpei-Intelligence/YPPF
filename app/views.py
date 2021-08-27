@@ -1644,6 +1644,12 @@ def viewActivity(request, aid=None):
         capacity = "INF"
     if activity.examine_teacher == me:
         examine = True
+    if activity.source == Activity.YQPointSource.COLLEGE:
+        price = 0
+    if activity.bidding:
+        apply_manner = "抽签模式"
+    else:
+        apply_manner = "先到先得"
     # person 表示是否是个人而非组织
     person = False
     if user_type == "Person":
@@ -1890,8 +1896,29 @@ def getActivityInfo(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-def checkinActivity(request):
-    pass
+def checkinActivity(request, aid=None):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    try:
+        assert user_type == "Person"
+        np = get_person_or_org(request.user)
+        activity = Activity.objects.get(id=int(aid))
+        varifier = request.GET["auth"]
+        assert varifier == hash_coder.encode(activity.organization_id.oname)
+    except:
+        return redirect("/welcome/")
+    try:
+        with transaction.atomic():
+            participant = Participant.objects.select_for_update().get(
+                activity_id=int(aid), person_id=np, 
+                status=Participant.AttendStatus.UNATTENDED
+            )
+            participant.status = Participant.AttendStatus.ATTENDED
+            participant.save()
+    except:
+        pass
+    # TODO 在 activity_info 里加更多信息
+    return redirect(f"/viewActivity/{aid}")
+
 
 # participant checkin activity
 # GET参数?activityid=id
@@ -2148,6 +2175,8 @@ def examineActivity(request, aid):
         bar_display["title_name"] = "审查活动"
         bar_display["narbar_name"] = "审查活动"
         html_display["today"] = datetime.now().strftime("%Y-%m-%d")
+        html_display["app_avatar_path"] = activity.organization_id.avatar
+        html_display["applicant_name"] = activity.organization_id.oname
         bar_display = utils.get_sidebar_and_navbar(request.user)
         status = activity.status
         if activity.status != Activity.Status.REVIEWING:

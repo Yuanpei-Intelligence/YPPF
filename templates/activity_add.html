@@ -24,7 +24,7 @@
                                     <!--  BEGIN HEADER AREA  -->
                                     <div class="widget-header">
                                         <div class="row">
-                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12" align="left">
                                                 {% if edit %}
                                                 <h4>编辑活动 <span class="badge badge-pill badge-success">{{status}}</span></h4>
                                                 {% elif examine %}
@@ -33,6 +33,14 @@
                                                 <h4>创建活动</h4>
                                                 {% endif %}
                                             </div>
+                                            {% if examine %}
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12" align="right">
+                                                    申请组织：
+                                                <img src={{ html_display.app_avatar_path }} width="24" height="24" alt="avatar">
+                                                <a href='/orginfo/{{html_display.applicant_name}}'>
+                                                    <u>{{html_display.applicant_name}}</u></a>
+                                            </div>
+                                            {% endif %}
                                         </div>
                                     </div>
 
@@ -136,7 +144,7 @@
                                                     <input type="number" class="form-control"
                                                         aria-label="Text input with dropdown button" id="aprice"
                                                         name="aprice" placeholder="最小精度为0.1" step="0.1" min="0" required="required" 
-                                                        οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, "$1")" onclick="fill_value(this)">
+                                                        οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')" onclick="fill_value(this)">
 
                                                 </div>
                                             </div>
@@ -348,12 +356,11 @@
 {% endblock %}
 
 {% block add_js_file %}
-<!--<script src={% static "datetimepicker/js/collapse.js" %}></script>-->
 <script src={% static "datetimepicker/js/bootstrap-datetimepicker.min.js" %}></script>
 
 
 <script>
-    $("input[name="adjust_apply_ddl"]").on("change", function () {
+    $("input[name='adjust_apply_ddl']").on("change", function () {
         //输出选中状态
         if (false === $(this).prop("checked")) {
             document.getElementById("inputState").disabled = true;
@@ -362,7 +369,7 @@
             // document.getElementById("maxpeople").placeholder = "";
         }
     });
-    $("input[name="unlimited_capacity"]").on("change", function () {
+    $("input[name='unlimited_capacity']").on("change", function () {
         //输出选中状态
         if (false === $(this).prop("checked")) {
             document.getElementById("maxpeople").disabled = false;
@@ -633,8 +640,8 @@
         /* 检查人数限制 */
         // 如果编辑状态都可以不选
         // 如果非编辑状态，没有人数限制，数量至少填一个
-        /* TODO 部分整合 */
-        {% if not edit %}
+        // 如果是编辑但之前选了无限制，也得至少有一个
+        {% if not edit or no_limit %}
         var no_limit = document.getElementById("unlimited_capacity");
         var max_people = document.getElementById("maxpeople");
         console.log(max_people.value);
@@ -658,6 +665,7 @@
         if (document.getElementById("aintro").value == "")
             document.getElementById("aintro").value = document.getElementById("aintro").placeholder;
         {% endif %}
+
         return true;
     }
     {% if examine %}
