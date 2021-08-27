@@ -2187,6 +2187,7 @@ def examineActivity(request, aid):
         html_display["applicant_name"] = activity.organization_id.oname
         bar_display = utils.get_sidebar_and_navbar(request.user)
         status = activity.status
+        comments = showComment(activity)
         if activity.status != Activity.Status.REVIEWING:
             no_review = True
         else:
