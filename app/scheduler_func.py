@@ -12,6 +12,7 @@ from django.db import transaction  # 原子化更改数据库
 from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant, Notification
 from app.wechat_send import publish_notifications
 from app.forms import YQPointDistributionForm
+from boottest.hasher import MySHA256Hasher
 
 from random import sample
 from numpy.random import choice
@@ -19,6 +20,8 @@ from numpy.random import choice
 # 定时任务生成器
 scheduler = BackgroundScheduler()
 scheduler.add_jobstore(DjangoJobStore(), "default")
+# 只起散列作用，不用加盐
+hasher = MySHA256Hasher("")
 
 def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
     '''
@@ -325,6 +328,9 @@ scheduler.add_job(notifyActivityStart, "date",
 def notifyActivity(aid:int, msg_type:str, msg=None):
     try:
         activity = Activity.objects.get(id=aid)
+        from random import random
+        bulk_identifier = hasher.encode(str(datetime.now()) + str(random()))
+        print("bulk_identifier", bulk_identifier)
         if msg_type == "newActivity":
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
@@ -336,6 +342,7 @@ def notifyActivity(aid:int, msg_type:str, msg=None):
                 title=Notification.Title.ACTIVITY_INFORM,
                 content=f"您关注的组织{activity.organization_id.oname}发布了新的活动：{activity.title}。",
                 URL=f"/viewActivity/{aid}",
+                bulk_identifier=bulk_identifier,
                 relate_instance=activity,
             ) for np in subscribers ]
         elif msg_type == "remind":
@@ -350,6 +357,7 @@ def notifyActivity(aid:int, msg_type:str, msg=None):
                 title=Notification.Title.ACTIVITY_INFORM,
                 content=msg,
                 URL=f"/viewActivity/{aid}",
+                bulk_identifier=bulk_identifier,
                 relate_instance=activity,
             ) for participant in participants ]
         elif msg_type == 'modification_sub':
@@ -363,6 +371,7 @@ def notifyActivity(aid:int, msg_type:str, msg=None):
                 title=Notification.Title.ACTIVITY_INFORM,
                 content=msg,
                 URL=f"/viewActivity/{aid}",
+                bulk_identifier=bulk_identifier,
                 relate_instance=activity,
             ) for np in subscribers ]
         elif msg_type == 'modification_par':
@@ -377,6 +386,7 @@ def notifyActivity(aid:int, msg_type:str, msg=None):
                 title=Notification.Title.ACTIVITY_INFORM,
                 content=msg,
                 URL=f"/viewActivity/{aid}",
+                bulk_identifier=bulk_identifier,
                 relate_instance=activity,
             ) for participant in participants ]
         # 应该用不到了，调用的时候分别发给 par 和 sub
@@ -396,14 +406,15 @@ def notifyActivity(aid:int, msg_type:str, msg=None):
                 title=Notification.Title.ACTIVITY_INFORM,
                 content=msg,
                 URL=f"/viewActivity/{aid}",
+                bulk_identifier=bulk_identifier,
                 relate_instance=activity,
             ) for receiver in receivers ]
         else:
             raise ValueError
         Notification.objects.bulk_create(notifications, 50)
-        notification_ids = [notification.id for notification in notifications]
-        publish_notifications(notification_ids)
-        print("GOTCHA!")
+        filter_kws={"bulk_identifier":bulk_identifier}
+        assert publish_notifications(filter_kws=filter_kws)
+        
     except Exception as e:
         print(f"Notification {msg} failed. Exception: {e}")
         # TODO send message to admin to debug

@@ -645,6 +645,7 @@ class Notification(models.Model):
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
     typename = models.SmallIntegerField(choices=Type.choices, default=0)
     URL = models.URLField("相关网址", null=True, blank=True)
+    bulk_identifier = models.CharField("批量信息标识", max_length=64, default="")
     relate_TransferRecord = models.ForeignKey(
         TransferRecord,
         related_name="transfer_notification",
