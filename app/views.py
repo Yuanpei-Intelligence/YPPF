@@ -1065,6 +1065,13 @@ def search(request):
         | Q(id__in=pos_list.values("org"))
     ).prefetch_related("position_set")
 
+    now = datetime.now()
+    def get_recent_activity(org):
+        activities = Activity.objects.activated().filter(Q(organization_id=org.id) & ~Q(status=Activity.Status.CANCELED))
+        activities = list(activities)
+        activities.sort(key=lambda activity: abs(now - activity.start))
+        return None if len(activities) == 0 else activities[0]
+
     org_display_list = []
     for org in organization_list:
         org_display_list.append(
@@ -1079,6 +1086,7 @@ def search(request):
                             .values("person__name")
                     )
                 ],
+                "activity": get_recent_activity(org)
             }
         )
 

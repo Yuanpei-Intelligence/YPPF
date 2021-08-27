@@ -102,13 +102,12 @@ class NaturalPerson(models.Model):
             注意：major, gender, nickname, email, tel, dorm可能为None
             班级和年级现在好像也可以为None
         """
-        unpublished = "未公开"
         gender = ["男", "女"]
         info = [self.name, self.stu_grade, self.stu_class]
         # info.append(self.nickname if (self.show_nickname) else unpublished)
         # info.append(
         #    unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
-        info.append(self.stu_major if (self.show_major) else unpublished)
+        info.append(self.stu_major if (self.show_major) else "未公开")
         # info.append(self.email if (self.show_email) else unpublished)
         # info.append(self.telephone if (self.show_tel) else unpublished)
         # info.append(self.stu_dorm if (self.show_dorm) else unpublished)
@@ -118,10 +117,7 @@ class NaturalPerson(models.Model):
             if self.status == NaturalPerson.GraduateStatus.UNDERGRADUATED
             else "已毕业"
         )
-        # 防止显示None
-        for i in range(len(info)):
-            if info[i] == None:
-                info[i] = unpublished
+
         return info
 
     def save(self, *args, **kwargs):
