@@ -2198,12 +2198,12 @@ def examineActivity(request, aid):
         # try:
         with transaction.atomic():
             activity = Activity.objects.select_for_update().get(
-                id=int(request.POST["aid"])
+                id=int(aid)
             )
             assert activity.status == Activity.Status.REVIEWING
             assert activity.examine_teacher == me
             accept_activity(request, activity)
-        return redirect(f"/examineActivity/{request.POST['aid']}")
+        return redirect(f"/examineActivity/{aid}")
         """
         except:
             return redirect("/welcome/")
