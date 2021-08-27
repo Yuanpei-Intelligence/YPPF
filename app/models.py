@@ -834,7 +834,7 @@ class Reimbursement(CommentBase):
         ordering = ["-modify_time", "-time"]
 
     class ReimburseStatus(models.IntegerChoices):
-        WAITING = (0, "待确认")
+        WAITING = (0, "待审核")
 
         CONFIRM1 = (1, "主管老师已确认")
         CONFIRM2 = (2, "财务老师已确认")
