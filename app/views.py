@@ -1,3 +1,5 @@
+import urllib
+from app.models import NewPosition
 from threading import local
 from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
@@ -7,7 +9,6 @@ from app.models import (
     Organization,
     OrganizationType,
     Position,
-    ModifyPosition,
     Activity,
     ActivitySummaryPhoto,
     ActivityAnnouncePhoto,
@@ -33,9 +34,6 @@ from app.activity_utils import (
     cancel_activity,
     withdraw_activity,
     ActivityException,
-)
-from app.position_utils import(
-    update_pos_application,
 )
 from app.wechat_send import publish_notification
 from boottest import local_dict
@@ -814,8 +812,11 @@ def homepage(request):
     for photo in photos:
         if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
-    firstpic = photos[0]
-    photos = photos[1:]
+    if len(photos)==0:
+        homepagephoto = "/static/assets/img/taskboard.jpg"
+    else:
+        firstpic = photos[0]
+        photos = photos[1:]
 
     # 天气
     weather = urllib.request.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
@@ -864,7 +865,7 @@ def account_setting(request):
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
-            expr = bool(attr_dict['ava'] or attr_dict['wallpaper'] or (attr_dict['gender'] != useroj.get_gender_display()))
+            expr = bool(attr_dict['ava'] or (attr_dict['gender'] != useroj.get_gender_display()))
             expr += bool(sum(
                 [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_check_list]))
             expr += bool(sum([getattr(useroj, show_attr) != show_dict[show_attr]
@@ -878,9 +879,9 @@ def account_setting(request):
             for show_attr in show_dict.keys():
                 if getattr(useroj, show_attr) != show_dict[show_attr]:
                     setattr(useroj, show_attr, show_dict[show_attr])
-            if 'ava' in attr_dict.keys() and attr_dict['ava'] is not None:
-                useroj.avatar =  attr_dict['ava']
-            if 'wallpaper' in attr_dict.keys() and attr_dict['wallpaper'] is not None:
+            if  attr_dict['avatar'] is not None:
+                useroj.avatar =  attr_dict['avatar']
+            if  attr_dict['wallpaper'] is not None:
                 useroj.wallpaper = attr_dict['wallpaper']
             if expr >= 1:
                 useroj.save()
@@ -2715,7 +2716,6 @@ def notification_create(
         content,
         URL=None,
         relate_TransferRecord=None,
-        relate_instance=None,
         *,
         publish_to_wechat=False,
 ):
@@ -2746,7 +2746,6 @@ def notification_create(
         content=content,
         URL=URL,
         relate_TransferRecord=relate_TransferRecord,
-        relate_instance=relate_instance,
     )
     if publish_to_wechat == True:
         publish_notification(notification)
@@ -2809,7 +2808,7 @@ def notifications(request):
 # 新建评论，
 
 
-def addComment(request, comment_base, receiver=None):
+def addComment(request, comment_base,receiver=None):
     """
     传入POST得到的request和与评论相关联的实例即可
     返回值为1代表失败，返回2代表新建评论成功
@@ -3281,193 +3280,459 @@ def addOrganization(request):
     bar_display["title_name"] = "新建组织"
     bar_display["navbar_name"] = "新建组织"
     return render(request, "organization_add.html", locals())
-              
 
-# YWolfeee: 重构人事申请页面 Aug 24 12:30 UTC-8
+# 加入组织 or 修改加入组织信息
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-def modifyPosition(request):
+def applyOrganization(request):
+
     valid, user_type, html_display = utils.check_user_type(request.user)
-    me = utils.get_person_or_org(request.user)  # 获取自身
+    if user_type == "Organization":
+        return redirect("/welcome/")  # test
 
-    # 前端使用量user_type，表示观察者是组织还是个人
-
-    # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
-
-    # 设置application为None, 如果非None则自动覆盖
-    application = None
-
-    # 根据是否有newid来判断是否是第一次
-    position_id = request.GET.get("pos_id", None)
-
-    if position_id is not None: # 如果存在对应组织
-        try:    # 尝试获取已经新建的Position
-            application = ModifyPosition.objects.get(id = position_id)
-            # 接下来检查是否有权限check这个条目
-            # 至少应该是申请人或者被申请组织之一
-            assert (application.org == me) or (application.person == me) 
-        except: #恶意跳转
-            return redirect("/welcome/")
-        is_new_application = False # 前端使用量, 表示是老申请还是新的
-        applied_org = application.org
-
-    else:   # 如果不存在id, 默认应该传入org_name参数
-        org_name = request.GET.get("org_name", None)
+    me = utils.get_person_or_org(request.user, user_type)
+    html_display['is_myself'] = True
+    edit = 0    # 前端需要，表示第一次申请后修改
+    present = 0  # 前端需要，1代表能展示，0代表初始申请
+    commentable = 0 # 前端需要，表示能否评论。
+    notification_id = -1
+    if request.GET.get("newpos_id") is not None and request.GET.get('notifi_id') is None:
         try:
-            applied_org = Organization.objects.activated().get(oname=org_name)
-            assert user_type == "Person" # 只有个人能看到这个新建申请的界面
-
+            id = int(request.GET.get('newpos_id'))  # 新建组织ID
+            prepos = NewPosition.objects.get(id=id)
         except:
-            # 非法的名字, 出现恶意修改参数的情况
-            return redirect("/welcome/")
-        
-        # 查找已经存在的处理中的申请
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "该URL被篡改，请输入正确的URL地址"
+            return redirect('/notifications/' +'?warn_code={}&warn_message={}'.format(
+                html_display['warn_code'], html_display['warn_message']))
+        if prepos.status == NewPosition.NewPosStatus.PENDING:
+            commentable = 1
+            edit = 1
+        present = 1
+    elif request.GET.get('newpos_id') is not None and request.GET.get('notifi_id') is not None:
         try:
-            application = ModifyPosition.objects.get(
-                org = applied_org, person = me, status = ModifyPosition.Status.PENDING)
-            is_new_application = False # 如果找到, 直接跳转老申请
+            id = int(request.GET.get('newpos_id'))  # 新建组织ID
+            notification_id = int(request.GET.get('notifi_id'))  # 通知ID
+            en_pw = str(request.GET.get('enpw'))
+            if hash_coder.verify(str(id) + '人事申请' + str(notification_id),
+                                 en_pw) == False:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "该URL被篡改，请输入正确的URL地址"
+                return redirect('/notifications/' +
+                                '?warn_code={}&warn_message={}'.format(
+                                    html_display['warn_code'], html_display['warn_message']))
+            prepos = NewPosition.objects.get(id=id)
+            notification = Notification.objects.get(id=notification_id)
         except:
-            is_new_application = True
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
+            return redirect('/notifications/' +
+                            '?warn_code={}&warn_message={}'.format(
+                                html_display['warn_code'], html_display['warn_message']))
+        if prepos.status == NewPosition.NewPosStatus.PENDING:  # 正在申请中，可以评论。
+            commentable = 1  # 可以评论
+            edit = 1
+        present=1
         
-    '''
-        至此，如果是新申请那么application为None，否则为对应申请
-        application = None只有在个人新建申请的时候才可能出现，对应位is_new_application
-        applied_org为对应的组织
-        接下来POST
-    '''
 
-    # ———————— Post操作，分为申请变更以及添加评论   ————————
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    # TODO: 整理页面返回逻辑，统一返回render的地方
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "人事申请"
+    bar_display["navbar_name"] = "人事申请"
+    
+    if present:  # 展示信息
+        comments = prepos.comments.order_by("time")
+        html_display['application'] = prepos.application#组织申请信息
+        html_display['status']=prepos.status #状态名字
+        html_display['oname']=prepos.position.org.oname
+        html_display['apply_pos']=prepos.apply_pos
+        html_display['apply_type']=prepos.apply_type
 
-    if request.method == "POST":
-        # 如果是状态变更
-        if request.POST.get("post_type", None) is not None:            
-
-            # 主要操作函数，更新申请状态
-            context = update_pos_application(application, me, user_type, 
-                    applied_org, request.POST)
-
-            if context["warn_code"] == 2:   # 成功修改申请
-                # 回传id 防止意外的锁操作
-                application = ModifyPosition.objects.get(id = context["application_id"])
-                is_new_application = False  #状态变更
-
-                # 处理通知相关的操作，并根据情况发送微信
-                # 默认需要成功,失败也不是用户的问题，直接给管理员报错
-                make_relevant_notification(application, request.POST)    
-
-            elif context["warn_code"] != 1: # 没有返回操作提示
-                raise NotImplementedError("处理人事申请中出现未预见状态，请联系管理员处理！")   
+    if request.method == "POST" and request.POST:
+        if request.POST.get('comment_submit') is not None:  # 新建评论信息，并保存
+            context = addComment(request, prepos)
+            if context['warn_code'] == 1:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = context['warn_code']
+            else:
+                #TODO 评论通知的发送，wechat发送通知
+                pass
+        else:#取消+新建+修改
+            #取消
+            need_cancel=int(request.POST.get('cancel_submit',-1))
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "test{need_cancel}".format(need_cancel=need_cancel)
+            if need_cancel == 1:                    # 1代表取消
+                if edit:
+                    with transaction.atomic():      # 修改状态为取消
+                        prepos.status=NewPosition.NewPosStatus.CANCELED
+                        prepos.save()
+                    try:
+                        with transaction.atomic():
+                            content = "“{name}”的加入“{oname}”新建组织申请已取消".format(
+                                name=prepos.position.person.name, oname=prepos.position.org.oname)
+                            
+                            Auditor = prepos.position.org.organization_id    #组织发送
+                            URL = ""
+                            new_notification = notification_create(Auditor, request.user,
+                                                                   Notification.Type.NEEDREAD,
+                                                                   Notification.Title.VERIFY_INFORM, content,
+                                                                   URL)
+                            en_pw = hash_coder.encode(str(prepos.id) + '人事变动' +
+                                                      str(new_notification.id))
+                            URL = "/auditPosition?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(
+                                id=prepos.id, nid=new_notification.id, en_pw=en_pw)
+                            # URL = request.build_absolute_uri(URL)
+                            new_notification.URL = URL
+                            new_notification.save()
+                    except:
+                        html_display['warn_code'] = 1
+                        html_display['warn_message'] = "创建给组织审核的取消通知失败。请联系管理员。"
+                        return render(request, "applyOrganization.html", locals())
+                        # 微信通知
+                    if getattr(publish_notification, 'ENABLE_INSTANCE', False):
+                        publish_notification(new_notification)
+                    else:
+                        publish_notification(new_notification.id)
+                    # 成功新建组织申请
+                    html_display['warn_code'] = 2
+                    html_display['warn_message'] = "已成功取消申请！"
+                    return render(request, "applyOrganization.html", locals())
+            # 参数合法性检查 TODO 修改为pos的合法性
             
+            if edit:
+                context = utils.check_newpos_request(request,prepos)  # check
+            else:
+                context = utils.check_newpos_request(request)  # check
+            if context['warn_code'] != 0:
+                html_display['warn_code'] = context['warn_code']
+                html_display['warn_message'] = "新建人事申请失败。" + \
+                    context['warn_msg']
+                return render(request, "applyOrganization.html", locals())
+            
+            # 新建人事申请
+            if edit == 0:
+                org = Organization.objects.get(oname=context['oname'])
+                apply_pos = context['apply_pos']
+                apply_type = context['apply_type']
+                try:
+                    _, pos = Position.objects.create_application(me, org, apply_type=apply_type, apply_pos=apply_pos)
+                except:
+                    html_display['warn_code'] = 1
+                    if apply_type == 'JOIN':
+                        html_display['warn_message'] = "您已加入该组织，不能重复加入！"
+                    elif apply_type == 'TRANSFER':
+                        html_display['warn_message'] = "您未加入该组织，不能交接职务！"
+                    elif apply_type == 'WITHDRAW':
+                        html_display['warn_message'] = "您未加入该组织，不能退出该组织！"
+                    return render(request, "applyOrganization.html", locals())
+                try:
+                    new_pos = NewPosition.objects.create(position=pos, application=context['application'],status=NewPosition.NewPosStatus.PENDING,apply_pos=apply_pos,apply_type=apply_type)
+                except:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "创建人事申请信息失败。请检查输入or联系管理员"
+                    return render(request, "applyOrganization.html", locals())
+                
+                with transaction.atomic():
+                    content = "新建人事申请：“{name}申请{oname}".format(
+                        name=new_pos.position.org.oname, oname=new_pos.position.person.name)
+                    # 审核人员信息,暂定为各个otype的incharge
+                    Auditor = new_pos.position.org.organization_id  #审核老师
+                    URL = ""
+                    new_notification = notification_create(Auditor, request.user,
+                                                            Notification.Type.NEEDDO,
+                                                            Notification.Title.VERIFY_INFORM, content,
+                                                            URL)
+                    en_pw = hash_coder.encode(str(new_pos.id) + '人事申请' +
+                                                str(new_notification.id))
+                    URL = "/auditPosition?newpos_id={id}&notifi_id={nid}&enpw={en_pw}".format(
+                        id=new_pos.id, nid=new_notification.id, en_pw=en_pw)
+                    # URL = request.build_absolute_uri(URL)
+                    new_notification.URL = URL
+                    new_notification.save()
+                try:
+                    pass
+                except:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "创建通知失败。请检查输入or联系管理员"
+                    return render(request, "applyOrganization.html", locals())
 
-        else:   # 如果是新增评论
-            # 权限检查
-            allow_comment = True if (not is_new_application) and (
-                application.is_pending()) else False
-            if not allow_comment:   # 存在不合法的操作
-                return redirect(
-                    "/welcome/?warn_code=1&warn_message=存在不合法操作,请与管理员联系!")
-            context = addComment(request, application, application.org.organization_id if user_type == 'Person' else application.person.person_id)
+                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
+                    publish_notification(new_notification)
+                else:
+                    publish_notification(new_notification.id)
+                
+                # 成功新建组织申请
+                html_display['warn_code'] = 2
+                html_display['warn_message'] = "申请已成功发送，请耐心等待组织审批！"
+                return render(request, "applyOrganization.html", locals())
+            # 修改组织申请
+            else:
+                # 修改信息
+                try:
+                    with transaction.atomic():
+                        prepos.oname = context['oname']
+                        prepos.application = context['application']
+                        prepos.save()
+                except:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "修改申请失败。请检查输入or联系管理员"
+                    return render(request, "organization_add.html", locals())
 
-        # 准备用户提示量
-        html_display["warn_code"] = context["warn_code"]
-        html_display["warn_message"] = context["warn_message"]
+                # 发送通知
+                try:
+                    with transaction.atomic():
+                        content = "“{name}”修改了申请信息，请您继续审核！".format(
+                            name=prepos.position.person.name)
+                        # 审核人员信息,暂定为各个otype的incharge
+                        Auditor = prepos.position.org.organization_id  # 审核老师
+                        URL = ""
+                        new_notification = notification_create(Auditor, request.user,
+                                                               Notification.Type.NEEDDO,
+                                                               Notification.Title.VERIFY_INFORM, content,
+                                                               URL)
+                        en_pw = hash_coder.encode(str(prepos.id) + '人事申请' +
+                                                  str(new_notification.id))
+                        URL = "/auditPosition?neworg_id={id}&notifi_id={nid}&enpw={en_pw}".format(
+                            id=prepos.id, nid=new_notification.id, en_pw=en_pw)
+                        # URL = request.build_absolute_uri(URL)
+                        new_notification.URL = URL
+                        new_notification.save()
+                except:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "创建通知失败。请检查输入or联系管理员"
+                    return render(request, "applyOrganization.html", locals())
+                # 成功新建组织申请
+                html_display['warn_code'] = 2
+                html_display['warn_message'] = "申请已成功发送，请耐心等待组织审批！"
+                if notification_id!=-1:
+                    context = notification_status_change(notification_id)
+                    if context['warn_code'] != 0:
+                        html_display['warn_message'] = context['warn_message']
+                #微信通知
+                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
+                    publish_notification(new_notification)
+                else:
+                    publish_notification(new_notification.id)
 
-    # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
+                return redirect('/notifications/' +
+                                '?warn_code={}&warn_message={}'.format(
+                                    html_display['warn_code'], html_display['warn_message']))
+                    
 
-    # 首先是写死的前端量
-    # 申请的职务类型, 对应ModifyPosition.ApplyType
-    apply_type_list = {
-        w:{
-                    # 对应的status设置, 属于ApplyType
-            'display' : str(w),  # 前端呈现的使用量
-            'disabled' : False,  # 是否禁止选择这个量
-            'selected' : False   # 是否默认选中这个量
-        }
-        for w in ModifyPosition.ApplyType
-    }
-    # 申请的职务等级
-    position_name_list = [
-        {
-            'display' : applied_org.otype.get_name(i),  #名称
-            'disabled' : False,  # 是否禁止选择这个量
-            'selected' : False,   # 是否默认选中这个量
-        }
-        for i in range(applied_org.otype.get_length())
-    ]
+    if request.GET.get("org") is not None:
+        exist_org = True
+        html_display['default_oname'] = Organization.objects.get(organization_id__id=request.GET.get("org")).oname
+    else:
+        exist_org = False
+        
+            
+    return render(request, "applyOrganization.html", locals())
 
-    '''
-        个人：可能是初次申请或者是修改申请
-        组织：可能是审核申请
-        # TODO 也可能是两边都想自由的查看这个申请
 
-        区别：
-            (1) 整个表单允不允许修改和评论
-            (2) 变量的默认值[可以全部统一做]
-    '''
+# 修改和审批申请新建组织的信息，只用该函数即可
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+def auditPosition(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    me = utils.get_person_or_org(request.user, user_type)
+    html_display['is_myself'] = True
+    html_display['warn_code'] = 0
+    commentable=0
+    notification_id=-1
+
+    try:  # 获取申请信息
+        id = int(request.GET.get('newpos_id', -1))  # 新建组织ID
+        notification_id = int(request.GET.get('notifi_id', -1))  # 通知ID
+        if id == -1 or notification_id == -1:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
+            return redirect('/notifications/' +
+                            '?warn_code={}&warn_message={}'.format(
+                                html_display['warn_code'], html_display['warn_message']))
+        en_pw = str(request.GET.get('enpw'))
+        if hash_coder.verify(str(id) + '人事申请' + str(notification_id),
+                             en_pw) == False:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "该URL被篡改，请输入正确的URL地址"
+            return redirect('/notifications/' +
+                            '?warn_code={}&warn_message={}'.format(
+                                html_display['warn_code'], html_display['warn_message']))
+        prepos = NewPosition.objects.get(id=id)
+        notification = Notification.objects.get(id=notification_id)
+    except:
+        html_display['warn_code'] = 1
+        html_display['warn_message'] = "获取申请信息失败，请联系管理员。"
+        return redirect('/notifications/' +
+                        '?warn_code={}&warn_message={}'.format(
+                            html_display['warn_code'], html_display['warn_message']))
+        # 是否为组织
+    if request.user != prepos.position.org.organization_id:
+        return redirect('/notifications/')
+    if prepos.status == NewPosition.NewPosStatus.PENDING:  # 正在申请中，可以评论。
+        commentable = 1  # 可以评论
+    if prepos.status==NewPosition.NewPosStatus.CANCELED and notification.status==Notification.Status.UNDONE:
+        #未读变已读
+        notification_status_change(notification_id)
+    if prepos.status==NewPosition.NewPosStatus.CONFIRMED and notification.status==Notification.Status.UNDONE:
+        #未读变已读
+        notification_status_change(notification_id)
     
-    # (1) 是否允许修改&允许评论
-    # 用户写表格?
-    allow_form_edit = True if (user_type == "Person") and (
-                is_new_application or application.is_pending()) else False
-    # 组织审核?
-    allow_audit_submit = True if (not user_type == "Person") and (not is_new_application) and (
-                application.is_pending()) else False
-    # 评论区?
-    allow_comment = True if (not is_new_application) and (application.is_pending()) \
-                    else False
+    # 以下需要在前端呈现
+    comments = prepos.comments.order_by('time')  # 加载评论
+    html_display['oname'] = prepos.position.org.oname
+    html_display['apply_pos'] = prepos.apply_pos
+    html_display['apply_type'] = prepos.apply_type
+    html_display['applicant'] = utils.get_person_or_org(prepos.position.person.person_id)
+    html_display["app_avatar_path"] = utils.get_user_ava(html_display['applicant'],"Person")
+    html_display['application'] = prepos.application
 
-    # (2) 表单变量的默认值
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    # TODO: 整理页面返回逻辑，统一返回render的地方
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "新建人事审核"
+    bar_display["navbar_name"] = "新建人事审核"
 
-        # 首先禁用一些选项
+
+    if request.method == "POST" and request.POST:
+        if int(request.POST.get('comment_submit',-1))==1:  # 新建评论信息，并保存
+            context = addComment(request, prepos)
+            if context['warn_code'] == 1:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = context['warn_code']
+        # 对于审核老师来说，有三种操作，通过，申请需要修改和拒绝
+        else:
+            submit = int(request.POST.get('submit', -1))
+            if submit == 2:  # 通过 # TODO 怎么是写死的？？？？？
+                try:
+                    with transaction.atomic():  # 新建组织
+                        application = prepos.position
+                        if application.apply_type == Position.ApplyType.JOIN:
+                            application.status = Position.Status.INSERVICE
+                            application.pos = application.apply_pos
+                        elif application.apply_type == Position.ApplyType.WITHDRAW:
+                            application.status = Position.Status.DEPART
+                        elif application.apply_type == Position.ApplyType.TRANSFER:
+                            application.pos = application.apply_pos
+                        application.apply_status = Position.ApplyStatus.PASS
+                        application.save()
+
+                        prepos.status = NewPosition.NewPosStatus.CONFIRMED
+                        prepos.save()
+                except:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "职位创建失败。请联系管理员！"
+                    return render(request, "position_audit.html", locals())
+                
+                try:  # 发送给申请者的通过通知
+                    with transaction.atomic():
+                        content = "新建人事申请已通过，组织名为 “{oname}” ，您的职务为 “{position}”。恭喜！"\
+                            .format(oname=application.org.oname, position=application.pos)
+                        receiver = application.person.person_id  # 通知接收者
+                        URL = ""
+                        new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
+                                                               Notification.Title.VERIFY_INFORM, content, URL)
+                        URL = "/applyOrganization/?neworg_id={id}".format(id=prepos.id)
+                        new_notification.URL=URL
+                        new_notification.save()
+
+                except:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
+                    return render(request, "organization_audit.html", locals())
+                 # 成功新建组织
+                html_display['warn_code'] = 2
+                html_display['warn_message'] = "已通过新建人事申请，组织已创建！"
+                if notification_id!=-1:
+                    context = notification_status_change(notification_id)
+                if context['warn_code'] != 0:
+                    html_display['warn_message'] = context['warn_message']
+                # 微信通知
+                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
+                    publish_notification(new_notification)
+                else:
+                    publish_notification(new_notification.id)
+                return render(request, "organization_audit.html", locals())
+            elif submit == 3:  # 拒绝
+                try:  # 发送给申请者的拒绝通知
+                    with transaction.atomic():
+                        prepos.position.apply_status = Position.ApplyStatus.REJECT
+                        prepos.status = NewPosition.NewPosStatus.REFUSED
+                        prepos.save()
+                        content = "很遗憾，新建人事申请未通过！"
+                        receiver = prepos.position.person.person_id  # 通知接收者
+                        URL = ""
+
+                        new_notification = notification_create(receiver, request.user, Notification.Type.NEEDREAD,
+                                                               Notification.Title.VERIFY_INFORM, content, URL)
+                        URL = "/applyOrganization/?neworg_id={id}".format(id=prepos.id)
+                        new_notification.URL = URL
+                        new_notification.save()
+                except:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "创建发送给申请者的通知失败。请联系管理员！"
+                    return render(request, "position_audit.html", locals())
+
+                # 拒绝成功
+                html_display['warn_code'] = 2
+                html_display['warn_message'] = "已拒绝人事申请！"
+                if notification_id != -1:
+                    context = notification_status_change(notification_id)
+                
+                # 微信通知
+                if getattr(publish_notification, 'ENABLE_INSTANCE', False):
+                    publish_notification(new_notification)
+                else:
+                    publish_notification(new_notification.id)
+                return redirect('/notifications/' +
+                                '?warn_code={}&warn_message={}'.format(
+                                    html_display['warn_code'], html_display['warn_message']))
+            else:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "系统出现问题，请联系管理员"
+                return render(request, "position_audit.html", locals())
     
-    # 评论区
-    commentable = allow_comment
-    comments = showComment(application) if application is not None else None
-    # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
-    apply_person = me if is_new_application else application.person
-    app_avatar_path = utils.get_user_ava(apply_person,"Person")
-    # 获取个人与组织[在当前学年]的关系
-    current_pos_list = Position.objects.current().filter(person=apply_person,org=applied_org)
-    # 应当假设只有至多一个类型
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "新建人事审核"
+    bar_display["navbar_name"] = "新建人事审核"
+    print(html_display)
 
-    # 检查该同学是否已经属于这个组织
-    whether_belong = True if len(current_pos_list) and \
-        current_pos_list[0].status == Position.Status.INSERVICE else False
-    if whether_belong:
-        # 禁用掉加入组织
-        apply_type_list[ModifyPosition.ApplyType.JOIN]['disabled'] = True
-        # 禁用掉修改职位中的自己的那个等级
-        position_name_list[current_pos_list[0].get_pos_number()]["disabled"] = True
-        #current_pos_name = applied_org.otype.get_name(current_pos_list[0].pos)
-    else:   #不属于组织, 只能选择加入组织
-        apply_type_list[ModifyPosition.ApplyType.WITHDRAW]['disabled'] = True
-        apply_type_list[ModifyPosition.ApplyType.TRANSFER]['disabled'] = True
-
-        # TODO: 设置默认值
-
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="人事申请详情")
-    return render(request, "modify_position.html", locals())
-
+    return render(request, "position_audit.html", locals())        
+                
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-def showPosition(request):
+def showApplyOrganization(request):
     '''
     人事的聚合界面
     '''
     valid, user_type, html_display = utils.check_user_type(request.user)
-    me = utils.get_person_or_org(request.user)
+    if user_type == "Organization":
+        html_display["warn_code"] = 1
+        html_display["warn_code"] = "请不要使用组织账号申请新组织！"
+        return redirect("/welcome/" + 
+                        '?warn_code={}&warn_message={}'.format(
+                            html_display['warn_code'], html_display['warn_message']))
 
-    # 查看人事聚合页面：拉取个人或组织相关的申请
-    if user_type == "Person":
-        shown_instances = ModifyPosition.objects.filter(person=me)
+    is_auditor = False
+    try:
+        person = utils.get_person_or_org(request.user, user_type)
+        if person.name == local_dict["audit_teacher"]["Funds"]:
+            is_auditor = True
+    except:
+        pass
+    if is_auditor:
+        shown_instances = NewPosition.objects.all()
     else:
-        shown_instances = ModifyPosition.objects.filter(org=me)
-
+        shown_instances = NewPosition.objects.filter(position__person__person_id=request.user)
     shown_instances = shown_instances.order_by('-modify_time', '-time')
-
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name = "人事申请")
-    return render(request, 'showPosition.html', locals())
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "人事申请"
+    bar_display["navbar_name"] = "人事申请进度"
+    return render(request, 'showApplyOrganization.html', locals())
 
 # 修改和审批申请新建组织的信息，只用该函数即可
 @login_required(redirect_field_name="origin")
@@ -4288,56 +4553,3 @@ def auditReimbursement(request):
     bar_display["title_name"] = "报销审核"
     bar_display["navbar_name"] = "报销审核"
     return render(request, "reimbursement_comment.html", locals())
-
-# 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
-# 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
-def make_relevant_notification(application, info):
-    
-    # 考虑不同post_type的信息发送行为
-    post_type = info.get("post_type")
-    print(post_type)
-    feasible_post = ["new_submit", "modify_submit", "cancel_submit", "accept_submit", "refuse_submit"]
-    
-    # 准备呈现使用的变量与信息
-
-    # 先准备一些复杂变量
-    try:
-        position_name = application.org.otype.get_name(application.pos)  # 职位名称
-    except:
-        position_name = "退出组织"
-
-    # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
-    content = {
-        'new_submit':f'{application.person.name}发起组织人事变动申请，人事申请：{position_name}，请审核~',
-        'modify_submit':f'{application.person.name}修改了组织申请信息，请审核~',
-        'cancel_submit':f'{application.person.name}取消了组织申请信息。',
-        'accept_submit':f'恭喜，您申请的组织：{application.org.oname}，审核已通过！申请职位：{position_name}。',
-        'refuse_submit':f'抱歉，您申请的组织：{application.org.oname}，审核未通过！申请职位：{position_name}。',
-    }
-    sender = application.person.person_id if feasible_post.index(post_type) < 3 else application.org.organization_id
-    receiver = application.org.organization_id if feasible_post.index(post_type) < 3 else application.person.person_id
-    typename = Notification.Type.NEEDDO if  post_type == 'new_submit' else Notification.Type.NEEDREAD
-    title = Notification.Title.VERIFY_INFORM if post_type != 'accept_submit' else Notification.Title.POSITION_INFORM
-    URL = f'/modifyPosition/?pos_id={application.id}'
-    relate_instance = application if post_type == 'new_submit' else None
-    publish_to_wechat = True
-    # TODO cancel是否要发送notification？是否发送微信？
-
-    # 正式创建notification
-    notification_create(
-        receiver=receiver,
-        sender=sender,
-        typename=typename,
-        title=title,
-        content=content[post_type],
-        URL=URL,
-        relate_instance=relate_instance,
-        publish_to_wechat=publish_to_wechat
-    )
-
-    # 对于处理类通知的完成(done)，修改状态
-    # 这里的逻辑保证：所有的处理类通知的生命周期必须从“人事发起”开始，从“取消”“通过”“拒绝”结束。
-    if feasible_post.index(post_type) >= 2:
-        notification_status_change(
-            application.relate_notifications.get(status=Notification.Status.UNDONE).id
-        )
