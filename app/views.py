@@ -323,7 +323,7 @@ def stuinfo(request, name=None):
                 Q(person=oneself) & Q(show_post=True)
             )
         )
-        oneself_orgs_id = oneself_orgs.values("id")  # 自己的组织
+        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id")  # 自己的组织
 
         # 管理的组织
         person_owned_poss = person_poss.filter(pos=0, status=Position.Status.INSERVICE)
@@ -817,11 +817,11 @@ def homepage(request):
     for photo in photos:
         if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
-    firstpic = photos[0]
+    firstpic = None if len(photos) == 0 else photos[0]
     photos = photos[1:]
 
     # 天气
-    weather = urllib.request.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
+    weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     html_display['weather'] = json.loads(weather)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
@@ -1757,7 +1757,7 @@ def viewActivity(request, aid=None):
     for photo in photos:
         if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
-    firstpic = photos[0].image
+    firstpic = None if len(photos) == 0 else photos[0].image
     photos = photos[1:]
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
