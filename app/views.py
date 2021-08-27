@@ -764,10 +764,10 @@ def account_setting(request):
 
     # 补充网页呈现所需信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "Account Setting"
-    bar_display["navbar_name"] = "账户设置"
-    bar_display["help_message"] = local_dict["help_message"]["账户设置"]
+    bar_display = utils.get_sidebar_and_navbar(request.user, "账户设置")
+    # bar_display["title_name"] = "Account Setting"
+    # bar_display["navbar_name"] = "账户设置"
+    # bar_display["help_message"] = local_dict["help_message"]["账户设置"]
 
     if user_type == "Person":
         info = NaturalPerson.objects.filter(person_id=user)
@@ -1230,10 +1230,10 @@ def modpw(request):
                 err_code = 4
                 err_message = "原始密码不正确"
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display = utils.get_sidebar_and_navbar(request.user, "修改密码")
     # 补充一些呈现信息
-    bar_display["title_name"] = "Modify Password"
-    bar_display["navbar_name"] = "修改密码"
+    # bar_display["title_name"] = "Modify Password"
+    # bar_display["navbar_name"] = "修改密码"
     return render(request, "modpw.html", locals())
 
 
@@ -1658,11 +1658,11 @@ def myYQPoint(request):
     }
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
     # 补充一些呈现信息
-    bar_display["title_name"] = "My YQPoint"
-    bar_display["navbar_name"] = "我的元气值"  #
-    bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
+    # bar_display["title_name"] = "My YQPoint"
+    # bar_display["navbar_name"] = "我的元气值"  #
+    # bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
 
     return render(request, "myYQPoint.html", locals())
 
