@@ -1067,7 +1067,11 @@ def search(request):
 
     org_display_list = []
     for org in organization_list:
-        recent_activity = Activity.objects.filter(organization_id=org).order_by("-start")[0]
+        try:
+            recent_activity = Activity.objects.filter(organization_id=org).order_by("-start")[0]
+        except:
+            recent_activity = {"title": "暂无", "id": "#"}
+
         org_display_list.append(
             {
                 "oname": org.oname,
