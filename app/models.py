@@ -1,4 +1,5 @@
 from django.db import models, transaction
+from django.db.models.fields import related
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
@@ -6,7 +7,6 @@ from django.dispatch import receiver
 from datetime import datetime, timedelta
 from boottest import local_dict
 from django.conf import settings
-
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
@@ -39,6 +39,7 @@ class NaturalPerson(models.Model):
         "性别", choices=Gender.choices, null=True, blank=True
     )
 
+    
     email = models.EmailField("邮箱", null=True, blank=True)
     telephone = models.CharField("电话", max_length=20, null=True, blank=True)
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
@@ -80,7 +81,9 @@ class NaturalPerson(models.Model):
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
+    show_class = models.BooleanField(default=True)
     show_major = models.BooleanField(default=True)
+    show_grade = models.BooleanField(default=True)
     show_dorm = models.BooleanField(default=False)
 
     # 注意：这是不订阅的列表！！
@@ -121,11 +124,11 @@ class NaturalPerson(models.Model):
                 info[i] = unpublished
         return info
 
-
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
         self.bonusPoint = round(self.bonusPoint, 1)
         super().save(*args, **kwargs)
+
 
 class OrganizationType(models.Model):
     class Meta:
@@ -155,6 +158,13 @@ class OrganizationType(models.Model):
             return "成员"
         return self.job_name_list[pos]
 
+    def get_pos_from_str(self, pos_name):  # 若非列表内的名字，返回最低级
+        if not pos_name in self.job_name_list:
+            return len(self.job_name_list)
+        return self.job_name_list.index(pos_name)
+
+    def get_length(self):
+        return len(self.job_name_list) + 1
 
 class Semester(models.TextChoices):
     FALL = "Fall"
@@ -302,16 +312,17 @@ class Position(models.Model):
     class Status(models.TextChoices):  # 职务状态
         INSERVICE = "在职"
         DEPART = "离职"
-        NONE = "无职务状态"  # 用于第一次加入组织申请
+        # NONE = "无职务状态"  # 用于第一次加入组织申请
 
     status = models.CharField(
-        "职务状态", choices=Status.choices, max_length=32, default=Status.NONE
+        "职务状态", choices=Status.choices, max_length=32, default=Status.INSERVICE
     )
 
+    '''
     class ApplyType(models.TextChoices):  # 人事变动申请类型
         JOIN = "加入组织"
         WITHDRAW = "退出组织"
-        TRANSFER = "交接职务"
+        TRANSFER = "修改职位"
         NONE = "无申请流程"  # 指派职务
 
     apply_type = models.CharField(
@@ -323,13 +334,17 @@ class Position(models.Model):
         PASS = "已通过"
         REJECT = "未通过"
         NONE = ""  # 对应“无申请流程”
-
+    
     apply_status = models.CharField(
         "申请状态", choices=ApplyStatus.choices, max_length=32, default=ApplyStatus.NONE
     )
     apply_pos = models.SmallIntegerField(verbose_name="申请职务等级", default=10)
-
+    '''
     objects = PositionManager()
+
+    def get_pos_number(self): #返回对应的pos number 并作超出处理
+        return min(len(self.org.otype.job_name_list), self.pos)
+
 
 
 class Course(models.Model):
@@ -363,7 +378,6 @@ class CommentBase(models.Model):
     '''
     带有评论的模型基类
     子类必须定义typename，值应为为类名的小写版本或类名
-
     子类如果希望直接使用聚合页面呈现模板，应该定义__str__方法
     默认的呈现内容为：实例名称、创建时间、上次修改时间
     如果希望呈现审核页面，如审核中、创建者信息，则应该分别定义get_status_display和get_poster_name
@@ -460,6 +474,7 @@ class Activity(models.Model):
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
     # url,活动二维码
+
     bidding = models.BooleanField("是否投点竞价", default=False)
     YQPoint = models.FloatField("元气值定价/投点基础价格", default=0.0)
     budget = models.FloatField("预算", default=0.0)
@@ -467,7 +482,6 @@ class Activity(models.Model):
     need_checkin = models.BooleanField("是否需要签到", default=False)
 
     examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
-
 
     class YQPointSource(models.IntegerChoices):
         COLLEGE = (0, "学院")
@@ -482,7 +496,6 @@ class Activity(models.Model):
     current_participants = models.IntegerField("活动当前报名人数", default=0)
 
     URL = models.URLField("活动相关(推送)网址", null=True, blank=True)
-
 
     def __str__(self):
         return f"活动：{self.title}"
@@ -505,6 +518,24 @@ class Activity(models.Model):
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
         super().save(*args, **kwargs)
+
+class ActivityAnnouncePhoto(models.Model):
+    class Meta:
+        verbose_name = "活动预告图片"
+        verbose_name_plural = verbose_name
+
+    image = models.ImageField(upload_to=f"activity/announcephoto/%Y/%m/", verbose_name=u'活动预告图片', null=True, blank=True)
+    activity = models.ForeignKey(Activity, related_name="annoucephoto", on_delete=models.CASCADE)
+
+class ActivitySummaryPhoto(models.Model):
+    class Meta:
+        verbose_name = "活动总结图片"
+        verbose_name_plural = verbose_name
+        ordering = ["-time"]
+
+    image = models.ImageField(upload_to=f"activity/summaryphoto/%Y/%m/", verbose_name=u'活动总结图片', null=True, blank=True)
+    activity = models.ForeignKey(Activity, related_name="summaryphoto", on_delete=models.CASCADE)
+    time = models.DateTimeField("上传时间", auto_now_add=True)
 
 
 class TransferRecord(models.Model):
@@ -626,6 +657,7 @@ class Notification(models.Model):
         VERIFY_INFORM = (2, "审核信息通知")
         POSITION_INFORM = (3, "人事变动通知")
         TRANSFER_FEEDBACK = (4, "转账回执")
+        NEW_ORGANIZATION = (5, "新建组织通知")
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
     title = models.SmallIntegerField(choices=Title.choices, blank=True, null=True)
@@ -641,10 +673,15 @@ class Notification(models.Model):
         blank=True,
         null=True,
     )
+    relate_instance = models.ForeignKey(
+        CommentBase,
+        related_name="relate_notifications",
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+    )
 
     objects = NotificationManager()
-
-
 
 
 class Comment(models.Model):
@@ -678,7 +715,7 @@ class CommentPhoto(models.Model):
         return settings.MEDIA_URL + str(self.image)
 
 
-class NewOrganization(CommentBase):
+class ModifyOrganization(CommentBase):
     class Meta:
         verbose_name = "新建组织"
         verbose_name_plural = verbose_name
@@ -695,19 +732,18 @@ class NewOrganization(CommentBase):
     )
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
 
-    class NewOrgStatus(models.IntegerChoices):  # 表示申请组织的请求的状态
+    class Status(models.IntegerChoices):  # 表示申请组织的请求的状态
         PENDING = (0, "处理中")
-        CONFIRMED = (1, "已通过")  # 主管老师已同意，如果新增审核老师就增加主管老师已同意的状态
-        TOBEMODIFIED = (2, "需要修改")
-        CANCELED = (3, "已取消")  # 老师不同意或者发起者取消
-        REFUSED = (4, "已拒绝")
+        CONFIRMED = (1, "已通过")  
+        CANCELED = (2, "已取消")  
+        REFUSED = (3, "已拒绝")
 
-    status = models.SmallIntegerField(choices=NewOrgStatus.choices, default=0)
+    status = models.SmallIntegerField(choices=Status.choices, default=0)
     
     def __str__(self):
         # YWolfeee: 不认为应该把类型放在如此重要的位置
         # return f'{self.oname}{self.otype.otype_name}'
-        return f'{self.oname}'
+        return f'新建组织{self.oname}的申请'
 
     def save(self, *args, **kwargs):
         self.typename = "neworganization"
@@ -725,45 +761,91 @@ class NewOrganization(CommentBase):
         if self.introduction and self.introduction != '这里暂时没有介绍哦~':
             display.append(('组织介绍', self.introduction))
         return display
+        
+    def is_pending(self):   #表示是不是pending状态
+            return self.status == ModifyOrganization.Status.PENDING
 
-class NewPosition(CommentBase):
+class ModifyPosition(CommentBase):
     class Meta:
-        verbose_name = "申请人事的信息"
+        verbose_name = "人事申请详情"
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
-    position = models.ForeignKey(
-        to=Position, related_name="new_position", on_delete=models.CASCADE
+    # 我认为应该不去挂载这个外键，因为有可能没有，这样子逻辑会显得很复杂
+    # 只有在修改被通过的一瞬间才修改Pisition类
+    # 只有在创建的一瞬间对比Pisition检查状态是否合法（如时候是修改人事）
+    #position = models.ForeignKey(
+    #    to=Position, related_name="new_position", on_delete=models.CASCADE
+    #)
+
+    # 申请人
+    person = models.ForeignKey(
+        to = NaturalPerson, related_name = "position_application", on_delete = models.CASCADE
     )
 
-    application = models.TextField(
+    # 申请组织
+    org = models.ForeignKey(
+        to = Organization, related_name = "position_application", on_delete = models.CASCADE
+    )
+
+    # 申请职务等级
+    pos = models.SmallIntegerField(verbose_name="申请职务等级", blank=True, null=True)
+    
+
+    reason = models.TextField(
         "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
     )
-    class NewPosStatus(models.IntegerChoices):  # 表示申请人事的请求的状态
+
+    class Status(models.IntegerChoices):  # 表示申请人事的请求的状态
         PENDING = (0, "处理中")
         CONFIRMED = (1, "已通过")  
         CANCELED = (2, "已取消")  
         REFUSED = (3, "已拒绝")
 
-    status = models.SmallIntegerField(choices=NewPosStatus.choices, default=0)
+    status = models.SmallIntegerField(choices=Status.choices, default=0)
     
-    apply_pos = models.SmallIntegerField(verbose_name="申请职务等级", default=10)
     def __str__(self):
-        return f'{self.position.org.oname}人事申请'
+        return f'{self.org.oname}人事申请'
 
     class ApplyType(models.TextChoices):  # 人事变动申请类型
         JOIN = "加入组织"
+        TRANSFER = "修改职位"
         WITHDRAW = "退出组织"
-        TRANSFER = "交接职务"
-        NONE = "无申请流程"  # 指派职务
+        # 指派职务不需要通过NewPosition类来实现
+        # NONE = "无申请流程"  # 指派职务
 
     apply_type = models.CharField(
-        "申请类型", choices=ApplyType.choices, max_length=32, default=ApplyType.NONE
+        "申请类型", choices=ApplyType.choices, max_length=32
     )
-    def save(self, *args, **kwargs):
-        self.typename = "newposition"
-        super().save(*args, **kwargs)
 
+
+    def is_pending(self):   #表示是不是pending状态
+            return self.status == ModifyPosition.Status.PENDING
+
+    def accept_submit(self): #同意申请，假设都是合法操作
+        if self.apply_type == ModifyPosition.ApplyType.WITHDRAW:
+            Position.objects.activated().filter(
+                org = self.org, person = self.person
+            ).update(status = Position.Status.DEPART)
+        elif self.apply_type == ModifyPosition.ApplyType.JOIN:
+            # 尝试获取已有的position
+            if Position.objects.current().filter(
+                org = self.org, person = self.person).exists(): # 如果已经存在这个量了
+                Position.objects.current().get(org = self.org, person = self.person
+                ).update(
+                    status = Position.Status.INSERVICE,
+                    pos = self.pos)
+            else: # 不存在 直接新建
+                Position.objects.create(pos=self.pos, person=self.person, org=self.org)
+        else:   # 修改 则必定存在这个量
+            Position.objects.activated().filter(org = self.org, person = self.person
+                ).update(pos = self.pos)
+        # 修改申请状态
+        ModifyPosition.objects.filter(id=self.id).update(status=ModifyPosition.Status.CONFIRMED)
+
+    def save(self, *args, **kwargs):
+        self.typename = "modifyposition"
+        super().save(*args, **kwargs)
 
 class Reimbursement(CommentBase):
     class Meta:
@@ -772,7 +854,7 @@ class Reimbursement(CommentBase):
         ordering = ["-modify_time", "-time"]
 
     class ReimburseStatus(models.IntegerChoices):
-        WAITING = (0, "待确认")
+        WAITING = (0, "待审核")
 
         CONFIRM1 = (1, "主管老师已确认")
         CONFIRM2 = (2, "财务老师已确认")
@@ -811,3 +893,13 @@ class Reimbursement(CommentBase):
         if self.message:
             display.append(('备注', self.message))
         return display
+    def is_pending(self):   #表示是不是pending状态
+            return self.status == Reimbursement.ReimburseStatus.WAITING
+
+class Wishes(models.Model):
+    class Meta:
+        verbose_name = "心愿"
+        verbose_name_plural = verbose_name
+        ordering = ["-time"]
+    text = models.TextField("心愿内容", default="", blank=True)
+    time = models.DateTimeField("发布时间", auto_now_add=True)

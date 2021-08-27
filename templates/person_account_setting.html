@@ -47,7 +47,7 @@
                                             </div>
                                             <div class="upload ml-3" style="border: none;">
                                                 <input type="file" id="wallpaper" class="dropify" name="wallpaper"
-                                                    data-default-file="{{former_wallpaper}}" data-max-file-size="512K" />
+                                                    data-default-file="{{former_wallpaper}}" data-max-file-size="2048K" />
                                                 <p class="mt-2 text-center">背景图片</p>
                                             </div>
                                         </div>
@@ -114,7 +114,7 @@
                                                             </div>
                                                             <label for="profession">我的宿舍</label>
                                                             <input type="text" class="form-control" id="dorm"
-                                                                name="dorm" placeholder="{{userinfo.stu_dorm}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
+                                                                name="dorm" placeholder="{{userinfo.stu_dorm}}" readonly>
                                                             <div class="form-check mb-4">
                                                                 {% if useroj.show_dorm %}
                                                                 <input type="checkbox" class="form-check-input" id="show_dorm" name="show_dorm" checked>
@@ -123,12 +123,14 @@
                                                                 {% endif %}
                                                                 <label class="form-check-label" for="show_dorm">对外展示</label>
                                                             </div>
-                                                            <label for="profession">我的年级</label>
+                                                            <!-- YWolfeee 请不要把年级和班级放进来了 -->
+                                                            <!--<label for="profession">我的年级</label>
                                                             <input type="text" class="form-control " id="grade" readonly="readonly"
                                                                 name="grade" value="{{userinfo.stu_grade}}" >
                                                             <label for="profession">我的班级</label>
                                                             <input type="text" class="form-control" id="class" readonly="readonly"
                                                                 name="class" value="{{userinfo.stu_class}}">
+                                                            -->
                                                             <label for="profession">我的邮箱</label>
                                                             <input type="text" class="form-control" id="email" 
                                                                 name="email" placeholder="{{userinfo.email}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
@@ -156,6 +158,7 @@
                             <div class="col-md-12 text-right mb-5">
                                 <button id="submit" class="btn btn-primary">Submit</button>
                             </div>
+                        
                         </div>
 
                         </form>

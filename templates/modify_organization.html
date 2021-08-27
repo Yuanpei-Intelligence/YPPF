@@ -1,0 +1,188 @@
+
+{% extends "base.html" %}
+
+{% load static %}
+
+
+{% block mainpage %}
+<style>
+    select[readonly] {
+  background: #eee; /*Simular campo inativo - Sugestão @GabrielRodrigues*/
+  pointer-events: none;
+  touch-action: none;
+}
+</style>
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+
+        <!--  BEGIN CUSTOM STYLE FILE  -->
+        <link rel="stylesheet" type="text/css" href="{% static "plugins/dropify/dropify.min.css" %}">
+        <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
+        <!--  END CUSTOM STYLE FILE  -->
+        
+        <div class="container">
+            <div class="container">
+                {% if html_display.warn_code == 2 %}
+                <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+                {% elif html_display.warn_code == 1%}
+                <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+                {% endif %}
+                <div class="row layout-top-spacing">
+
+                    <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+                        <div class="row">
+                            <div class="col-md-12 mb-4">
+                                <div class="statbox widget box box-shadow">
+
+                                    <!--  BEGIN HEADER AREA  -->
+                                    <div class="widget-header">
+                                        <div class="row">
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                    <br>
+                                                    <br>
+                                                    <div align="center">
+                                                    <h3>组织申请[{% if not is_new_application %}{{application.get_status_display}}{% else %}新建中{% endif %}]</h3>
+                                                    </div>
+                                                <br>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h4></h4>
+                                                        </div>
+                                                    <div align="right">
+                                                            <h4>
+                                                            <img src={{ app_avatar_path }} width="24" height="24" alt="avatar">
+                                                            <a href='/stuinfo/{{apply_person.name}}'>
+                                                                <u>{{apply_person.name}}</u></a>
+                                                            </h4>
+                                                    </div>
+                                                    </div>
+
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!--  BEGIN CONTENT AREA  -->
+                                    <div class="widget-content widget-content-area">
+                                        <form role="form" method="POST" enctype="multipart/form-data">
+                                            
+                                            {%if not is_new_application %}
+                                                    <div class="form-group">
+                                                        <label>组织图标</label>
+                                                        <br>
+                                                        {% if allow_form_edit %}
+                                                        <input type="file" id="preavatar" class="dropify" name="avatar"
+                                                           data-default-file="{{org_avatar_path}}"
+                                                           data-max-file-size="512K"/>
+                                                        {%else%}
+                                                        <img src="{{org_avatar_path}}" width="200px" height="200px" alt="组织图标"/>
+                                                        {%endif%}
+                                                    </div>
+                                            {%else%}
+                                                <label>组织图标</label>
+                                                <br>
+                                                <div class="row">
+                                                    <div class="upload m-auto">
+                                                        <input type="file" id="avatar" class="dropify" name="avatar" 
+                                                            data-default-file="{{former_img}}" data-max-file-size="512K" />
+                                                    </div>
+                                                </div>
+                                            {%endif%}
+                                            <hr>
+
+                                            <div class="form-group">
+                                                <label>组织名称</label>
+                                                {%if not is_new_application %}
+                                                <textarea type="text" name="oname" class="form-control"
+                                                          aria-label="Default" placeholder="不超过32个字节"
+                                                          {%if allow_form_edit == 0 %} disabled="disabled" {%endif%}>{{application.oname}}</textarea>
+
+                                                {%else%}
+                                                <input type="text" name="oname" class="form-control"
+                                                       aria-label="Default" placeholder="不超过32个字节">
+                                                {%endif%}
+                                            </div>
+                                            
+
+                                            <div class="form-group">
+                                                <label for="aintro">组织类型</label>
+                                                <select class="form-control selectpicker" data-live-search = "true" id="otype" name="otype" {%if not allow_form_edit %} readonly="readonly"{%endif%}>
+                                                    {% for key, value in org_type_list.items %}
+                                                    {% if not value.disabled %}
+                                                    <option value="{{value.display}}" {% if value.selected %} selected {% endif %} >
+                                                        {{value.display}}
+                                                    </option>
+                                                    {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="aintro">组织简介</label>
+                                                <textarea name="introduction" class="form-control" rows="3"
+                                                          placeholder="空" {%if allow_form_edit == 0 and is_new_application == 0 %} disabled="disabled" {%endif%}
+                                                    >{%if not is_new_application %}{{application.introduction}}{%endif%}</textarea>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="aintro">申请理由</label>
+                                                <textarea name="application" class="form-control" rows="3" placeholder=
+                                                        "申请理由不能为空"{%if allow_form_edit == 0 and is_new_application == 0 %} disabled="disabled" {%endif%}
+                                                >{% if not is_new_application %}{{application.application}}{% endif %}</textarea>
+                                            </div>
+
+
+                                            {%if allow_form_edit %}
+                                                {% if not is_new_application %}
+                                                    <div align="center">
+                                                        
+                                                                <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                            value="modify_submit" name="post_type">修改申请</button>
+                                                            
+                                                                <button type="submit" class="btn btn-lg mb-4 mr-2"
+                                                            value="cancel_submit" name="post_type">取消申请</button>
+                                                            
+                                                    </div>
+                                                {%else%}
+                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
+                                                        value="new_submit" name="post_type">
+                                                    提交申请
+                                                </button>
+                                                {% endif %}
+                                            {% elif allow_audit_submit %}
+                                                <div align="center">
+                                                    <table>
+                                                        <tr>
+                                                            <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                        value="accept_submit" name="post_type">通过申请</button>
+                                                        </tr>
+                                                        <tr>
+                                                            <button type="submit" class="btn btn-lg mb-4 mr-2"
+                                                        value="refuse_submit" name="post_type">拒绝申请</button>
+                                                        </tr>
+                                                    </table>
+                                                </div>
+                                            {% endif %}
+
+                                            
+                                        </form>
+                                        <br>
+                                        <hr>
+                                    {% include 'comment.html' %}
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <!--  END CONTENT AREA  -->
+
+
+{% endblock %}
+
+{% block add_js_file %}
+
+{% endblock %}
