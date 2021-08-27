@@ -1710,13 +1710,13 @@ def viewActivity(request, aid=None):
                 activity.status == activity.Status.APPLYING
                 or activity.status == activity.Status.REVIEWING
         ):
-            return redirect(f"/addActivities/?edit=True&aid={aid}")
+            return redirect(f"/editActivity/{aid}")
         if activity.status == activity.Status.WAITING:
             if start_time + timedelta(hours=1) > datetime.now():
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = f"活动即将开始, 不能修改活动。"
                 return render(request, "activity_info.html", locals())
-            return redirect(f"/addActivities/?edit=True&aid={aid}")
+            return redirect(f"/editActivity/{aid}")
         else:
             html_display["warn_code"] = 1
             html_display["warn_message"] = f"活动状态为{activity.status}, 不能修改。"
@@ -2017,7 +2017,7 @@ P.S.
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-def addActivities(request):
+def addActivity(request, aid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type == "Person":
         return redirect("/welcome/")  # test
@@ -2029,16 +2029,28 @@ def addActivities(request):
     # TODO: 整理结构，统一在结束时返回render
     bar_display = utils.get_sidebar_and_navbar(request.user)
 
+    if aid is None:
+        edit = False
+    else:
+        try:
+            aid = int(aid)
+            activity = Activity.objects.get(id=aid)
+            edit = True
+        except Exception as e:
+            print(e)
+            return redirect("/welcome/")
+
     # 处理 POST 请求
     if request.method == "POST" and request.POST:
 
-        # 看是否是 edit，如果是做一些检查
-        edit = request.POST.get("edit")
-        if edit is not None:
+        if request.POST.get("comment"):
+            # TODO: try 
+            addComment(request, activity, activity.organization_id.organization_id)
+            return redirect(f"/editActivity/{aid}")
+
+        if edit:
 
             # try:
-            aid = int(request.POST["aid"])
-            assert edit == "True"
             # 只能修改自己的活动
             with transaction.atomic():
                 activity = Activity.objects.select_for_update().get(id=aid)
@@ -2065,23 +2077,17 @@ def addActivities(request):
     # 处理 GET 请求
     elif request.method == "GET":
 
-        edit = request.GET.get("edit")
-        if edit is None or edit != "True":
-            edit = False
+        if not edit:
             bar_display["title_name"] = "新建活动"
             bar_display["narbar_name"] = "新建活动"
             avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
         else:
             # 编辑状态下，填写 placeholder 为旧值
-            edit = True
-            commentable = True
             try:
-                aid = int(request.GET["aid"])
-                activity = Activity.objects.get(id=aid)
                 org = get_person_or_org(request.user, "Organization")
                 assert activity.organization_id == org
                 if activity.status == Activity.Status.REVIEWING:
-                    pass
+                    commentable = True
                 elif (
                         activity.status == Activity.Status.APPLYING
                         or activity.status == Activity.Status.WAITING
@@ -2123,6 +2129,7 @@ def addActivities(request):
                 accepted = True
             avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
             need_checkin = activity.need_checkin
+            comments = showComment(activity)
 
         html_display["today"] = datetime.now().strftime("%Y-%m-%d")
         bar_display = utils.get_sidebar_and_navbar(request.user)
@@ -2182,11 +2189,12 @@ def examineActivity(request, aid):
         status = activity.status
         if activity.status != Activity.Status.REVIEWING:
             no_review = True
+        else:
+            commentable = True
         return render(request, "activity_add.html", locals())
 
     elif request.method == "POST" and request.POST:
         # try:
-        assert request.POST["examine"] == "True"
         with transaction.atomic():
             activity = Activity.objects.select_for_update().get(
                 id=int(request.POST["aid"])
@@ -2488,7 +2496,6 @@ def addComment(request, comment_base, receiver=None):
     传入POST得到的request和与评论相关联的实例即可
     返回值为1代表失败，返回2代表新建评论成功
     """
-
     valid, user_type, html_display = utils.check_user_type(request.user)
     sender = utils.get_person_or_org(request.user)
     if user_type == "Organization":
@@ -2497,16 +2504,21 @@ def addComment(request, comment_base, receiver=None):
         sender_name = sender.name
     context = dict()
     typename=comment_base.typename
+    print("typename", typename)
     content = {
         'modifyposition': f'{sender_name}在人事变动申请留有新的评论',
         'neworganization': f'{sender_name}在新建组织中留有新的评论',
         'reimbursement': f'{sender_name}在经费申请中留有新的评论',
+        "addActivity": f"{sender_name}在活动申请中留有新的评论"
     }
     URL={
         'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
         'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
         'reimbursement': f'modifyReimbursement/?reimb_id={comment_base.id}',
+        "addActivity": f"/examineActivity/{comment_base.id}"
     }
+    if user_type == "Organization":
+        URL["addActivity"] = f"/editActivity/{comment_base.id}"
     if request.POST.get("comment_submit") is not None:  # 新建评论信息，并保存
         text = str(request.POST.get("comment"))
         # 检查图片合法性
