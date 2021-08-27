@@ -1845,7 +1845,7 @@ def viewActivity(request, aid=None):
     for photo in photos:
         if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
-    firstpic = photos[0].image
+    firstpic = None if len(photos) == 0 else photos[0].image
     photos = photos[1:]
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了

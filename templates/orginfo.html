@@ -380,7 +380,7 @@
                                                                     <i class="fa fa-money-bill"></i>
                                                                 </p>
                                                                 <p class="flex">
-                                                                    {{ rec.act.YQPoint }}
+                                                                    元气值{{ rec.act.YQPoint }}
                                                                 </p>
                                                             </div>
 
@@ -440,32 +440,67 @@
                                                     <div class="text-nowrap"
                                                         style='overflow: hidden;text-overflow: ellipsis;'>
                                                         <div class="d-flex justify-content-between">
-                                                            <h5>{{rec.act.title}}
+                                                            <h5
+                                                                style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+
                                                                 {% if user_type == "Person" and rec.status == "已参与" %}
                                                                 <span class="badge badge-pill badge-primary">已参与</span>
                                                                 {% elif user_type == "Person" and rec.status == "未参与" %}
                                                                 <span
                                                                     class="badge badge-pill badge-secondary">未参与</span>
                                                                 {% else %}
-                                                                <span
-                                                                    class="badge badge-pill badge-danger">{{rec.act.status}}</span>
+                                                                <span class="badge badge-pill badge-danger">
+                                                                    {{ rec.act.status }}
+                                                                </span>
                                                                 {% endif %}
+
+                                                                {{ rec.act.title }}
+
                                                             </h5>
                                                         </div>
 
-                                                        <p>{{rec.act.introduction}}</p>
-                                                        <p>报名结束时间： {{rec.act.endbefore}}</p>
-                                                        <p>活动开始时间： {{rec.act.start}}</p>
-                                                        <p>已报名/最大人数：{{rec.act.current_participants}}/{{rec.act.capacity}}
-                                                        </p>
+                                                        <p>{{ rec.act.introduction }}</p>
+
+                                                        <div class="d-flex justify-content-start">
+                                                            <p class="flex mr-3" style="width: 20px;">
+                                                                <i class="fa fa-clock"></i>
+                                                            </p>
+                                                            <p class="flex">
+                                                                {{ rec.act.start }}
+                                                            </p>
+                                                        </div>
+
+                                                        <div class="d-flex justify-content-start">
+                                                            <p class="flex mr-3" style="width: 20px;">
+                                                                <i class="fa fa-users"></i>
+                                                            </p>
+                                                            <p class="flex">
+                                                                {{ rec.act.current_participants }}
+                                                                /
+                                                                {{ rec.act.capacity }}
+                                                            </p>
+                                                        </div>
+
                                                         <div class="row">
-                                                            <div class="col">
-                                                                <p>价格：{{rec.act.YQPoint}}</p>
+                                                            <div class="col d-flex justify-content-start">
+                                                                <p class="flex mr-3" style="width: 20px;">
+                                                                    <i class="fa fa-money-bill"></i>
+                                                                </p>
+                                                                <p class="flex">
+                                                                    元气值{{ rec.act.YQPoint }}
+                                                                </p>
                                                             </div>
-                                                            <div class="col">
-                                                                <p>地点：{{rec.act.location}}</p>
+
+                                                            <div class="col d-flex justify-content-start">
+                                                                <p class="flex mr-3" style="width: 20px;">
+                                                                    <i class="fa fa-location-arrow"></i>
+                                                                </p>
+                                                                <p class="flex">
+                                                                    {{ rec.act.location }}
+                                                                </p>
                                                             </div>
                                                         </div>
+
                                                     </div>
                                                 </div>
                                             </a>
