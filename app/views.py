@@ -1,4 +1,3 @@
-from app.models import NewPosition
 from threading import local
 from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
