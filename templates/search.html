@@ -166,7 +166,11 @@
                                                     {% endfor %}
                                                 </td>
                                                 <td>
+                                                {% if orgn.recent_activity.title != "暂无" %}
                                                     <u><a href="/viewActivity/{{orgn.recent_activity.id}}">{{orgn.recent_activity.title}}</u>
+                                                {% else %}
+                                                    {{orgn.recent_activity.title}}
+                                                {% endif %}
                                                 </td>
                                             </tr>
                                             {% endfor %}
