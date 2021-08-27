@@ -651,3 +651,80 @@ def update_org_application(application, me, request):
                 except:
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
                                 
+def send_message_check(me, request):
+    # 已经检查了我的类型合法，并且确认是post
+    # 设置默认量
+    receiver_type = request.POST.get('receiver_type', None)
+    url = request.POST.get('url', "")
+    content = request.POST.get('content', "")
+    title = request.POST.get('title', "")
+
+    if receiver_type is None:
+        return wrong("发生了意想不到的错误：未接收到您选择的发送者类型！请联系管理员~")
+    
+    if len(content) == 0:
+        return wrong("请填写通知的内容！")
+    elif len(content) > 225:
+        return wrong("通知的长度不能超过225个字！你超过了！")
+    
+    if len(title) == 0:
+        return wrong("不能不写通知的标题！补起来！")
+    elif len(title) > 10:
+        return wrong("通知的标题不能超过10个字！不然发出来的通知会很丑！")
+    
+    if len(url) == 0:
+        url = None
+
+    not_list = []
+    sender = me.organization_id
+    status = Notification.Status.UNDONE
+    title = title
+    content = content
+    typename = Notification.Type.NEEDREAD
+    URL = url
+    if receiver_type == "订阅用户":
+        try:
+            for receiver in NaturalPerson.objects.exclude(id__in=me.unsubscribers.values_list("person_id", flat=True)):
+                not_list.append(
+                Notification(
+                    receiver=receiver,
+                    sender=sender,
+                    status=status,
+                    title=title,
+                    content=content,
+                    URL=URL,
+                    typename=typename,
+                )
+            )
+            created_not = Notification.objects.bulk_create(not_list)
+        except:
+            return wrong("创建通知的时候出现错误！请联系管理员！")
+    else:   # 检查过逻辑了，不可能是其他的
+        try:
+            for receiver in NaturalPerson.objects.filter(id__in=me.position_set.values_list('person_id', flat=True)):
+                not_list.append(
+                Notification(
+                    receiver=receiver,
+                    sender=sender,
+                    status=status,
+                    title=title,
+                    content=content,
+                    URL=URL,
+                    typename=typename,
+                )
+            )
+            created_not = Notification.objects.bulk_create(not_list)
+        except:
+            return wrong("创建通知的时候出现错误！请联系管理员！")
+    
+    try:
+        #publish_notifications(created_not)
+        pass
+    except:
+        return wrong("发送微信的过程出现错误！请联系管理员！")
+    
+    return succeed(f"成功将创建知晓类消息，发送给所有的{receiver_type}了!")
+        
+    
+
+
