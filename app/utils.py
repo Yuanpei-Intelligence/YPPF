@@ -7,6 +7,7 @@ from app.models import (
     Notification,
     ModifyOrganization,
     Activity,
+    Reimbursement,
     ModifyPosition,
 )
 from django.contrib.auth.models import User
@@ -499,6 +500,27 @@ def check_account_setting(request,user_type):
         attr_dict['introduction'] = request.POST['introduction']
     return attr_dict, show_dict, html_display
 
+#获取未报销的活动
+def get_unreimb_activity(org):
+    """
+    用于views.py&reimbursement_utils.py
+    注意：默认传入参数org类型为Organization
+    """
+    reimbursed_act_ids = (
+        Reimbursement.objects.all()
+            .exclude(
+            status=Reimbursement.ReimburseStatus.CANCELED  # 未取消报销的
+            # 未被拒绝的
+        )
+            .exclude(status=Reimbursement.ReimburseStatus.REFUSED)
+            .values_list("activity_id", flat=True)
+    )
+    activities = (
+        Activity.objects.activated()  # 本学期的
+            .filter(organization_id=org)  # 本部门组织的
+            .filter(status=Activity.Status.END)  # 已结束的
+            .exclude(id__in=reimbursed_act_ids))  # 还没有报销的
+    return activities
 def accept_modifyorg_submit(application): #同意申请，假设都是合法操作
     # 新建一系列东西
     user = User.objects.create(username=find_max_oname(),\
