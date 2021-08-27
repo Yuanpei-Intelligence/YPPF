@@ -29,7 +29,7 @@
                                                 <br>
                                                 {% with application.get_status_display as status %}
                                                 <div align="center">
-                                                    <h4><a href="/viewActivity/{{html_display.activity.id}}"><u>{{application.activity.title}}</u></a>
+                                                    <h4><a href="/viewActivity/{{application.activity.id}}"><u>{{application.activity.title}}</u></a>
                                                         ({{application.activity.start.month}}月{{application.activity.start.day}}日)
                                                         <span style="color: red">{{status}}</span></h4>
                                                 </div>
