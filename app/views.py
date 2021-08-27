@@ -543,9 +543,6 @@ def orginfo(request, name=None):
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
 
-    if not valid:
-        return redirect("/logout/")
-
     me = utils.get_person_or_org(user, user_type)
 
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
