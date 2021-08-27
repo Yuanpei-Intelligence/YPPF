@@ -3726,10 +3726,7 @@ def modeifyReimbursement(request):
                 #创建通知
                 make_notification(application,request,content,receiver)
                 if request.POST.get("post_type", None)=="new_submit":
-                    return redirect(
-                        "/showReimbursement/?&warn_code=2&warn_message={message}"
-                            .format(message=context['warn_message']))#TODO：message的呈现
-
+                    is_new_application=True
             elif context["warn_code"] != 1:  # 没有返回操作提示
                 raise NotImplementedError("处理经费申请中出现未预见状态，请联系管理员处理！")
 
