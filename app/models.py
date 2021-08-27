@@ -646,17 +646,18 @@ class Notification(models.Model):
         NEEDREAD = (0, "知晓类")  # 只需选择“已读”即可
         NEEDDO = (1, "处理类")  # 需要处理的事务
 
-    class Title(models.IntegerChoices):
-        # 等待逻辑补充
-        TRANSFER_CONFIRM = (0, "转账确认通知")
-        ACTIVITY_INFORM = (1, "活动状态通知")
-        VERIFY_INFORM = (2, "审核信息通知")
-        POSITION_INFORM = (3, "人事变动通知")
-        TRANSFER_FEEDBACK = (4, "转账回执")
-        NEW_ORGANIZATION = (5, "新建组织通知")
+    class Title(models.TextChoices):
+        # 等待逻辑补充，可以自定义
+        TRANSFER_CONFIRM = "转账确认通知"
+        ACTIVITY_INFORM = "活动状态通知"
+        VERIFY_INFORM = "审核信息通知"
+        POSITION_INFORM = "人事变动通知"
+        TRANSFER_FEEDBACK = "转账回执"
+        NEW_ORGANIZATION = "新建组织通知"
+
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
-    title = models.SmallIntegerField(choices=Title.choices, blank=True, null=True)
+    title = models.CharField("通知标题", blank=True, null=True, max_length=10)
     content = models.CharField("通知内容", max_length=225, blank=True)
     start_time = models.DateTimeField("通知发出时间", auto_now_add=True)
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
@@ -678,6 +679,9 @@ class Notification(models.Model):
     )
 
     objects = NotificationManager()
+
+    def get_title_display(self):
+        return str(self.title)
 
 
 class Comment(models.Model):
