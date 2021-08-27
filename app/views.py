@@ -9,6 +9,8 @@ from app.models import (
     Position,
     ModifyPosition,
     Activity,
+    ActivitySummaryPhoto,
+    ActivityAnnouncePhoto,
     TransferRecord,
     Participant,
     Notification,
@@ -17,6 +19,7 @@ from app.models import (
     CommentPhoto,
     YQPointDistribute,
     Reimbursement,
+    Wishes
 )
 from django.db.models import Max
 import app.utils as utils
@@ -538,6 +541,9 @@ def orginfo(request, name=None):
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
 
+    if not valid:
+        return redirect("/logout/")
+
     me = utils.get_person_or_org(user, user_type)
 
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
@@ -550,7 +556,7 @@ def orginfo(request, name=None):
 
         full_path = request.get_full_path()
         append_url = "" if ("?" not in full_path) else "?" + full_path.split("?")[1]
-
+            
         return redirect("/orginfo/" + org.oname + append_url)
 
     try:  # 指定名字访问组织账号的，可以是自然人也可以是法人。在html里要注意区分！
@@ -570,8 +576,8 @@ def orginfo(request, name=None):
     # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
         Activity.objects.activated()
-            .filter(organization_id=org)
-            .filter(
+        .filter(organization_id=org)
+        .filter(
             status__in=[
                 Activity.Status.REVIEWING,
                 Activity.Status.APPLYING,
@@ -641,15 +647,18 @@ def orginfo(request, name=None):
             member["job"] = org.otype.get_name(p.pos)
             member["highest"] = True if p.pos == 0 else False
 
-            member["avatar_path"] = utils.get_user_ava(member["person"], "Person")
+            member["avatar_path"] = utils.get_user_ava(
+                member["person"], "Person")
 
             member_list.append(member)
 
     try:
-        html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
+        html_display["warn_code"] = int(
+            request.GET.get("warn_code", 0))  # 是否有来自外部的消息
     except:
         return redirect("/welcome/")
-    html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+    html_display["warn_message"] = request.GET.get(
+        "warn_message", "")  # 提醒的具体内容
 
     modpw_status = request.GET.get("modinfo", None)
     if modpw_status is not None and modpw_status == "success":
@@ -664,6 +673,7 @@ def orginfo(request, name=None):
     # 再处理修改信息的回弹
     modpw_status = request.GET.get("modinfo", None)
     html_display["modpw_code"] = modpw_status is not None and modpw_status == "success"
+
 
     # 组织活动的信息
 
@@ -703,10 +713,12 @@ def homepage(request):
     html_display["is_myself"] = True
 
     try:
-        html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
+        html_display["warn_code"] = int(
+            request.GET.get("warn_code", 0))  # 是否有来自外部的消息
     except:
         return redirect("/welcome/")
-    html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
+    html_display["warn_message"] = request.GET.get(
+        "warn_message", "")  # 提醒的具体内容
 
     nowtime = datetime.now()
     # 今天第一次访问 welcome 界面，积分加 0.5
@@ -717,8 +729,25 @@ def homepage(request):
                 np.last_time_login = nowtime
                 np.bonusPoint += 0.5
                 np.save()
+    # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
+    mintime = nowtime-timedelta(days = 7)
+    maxtime = nowtime+timedelta(days = 7)
+    recentactivity_list = (
+        Activity.objects.activated()
+        .filter(start__gt = mintime)
+        .filter(start__lt = maxtime)
+        .filter(
+            status__in=[
+                Activity.Status.APPLYING,
+                Activity.Status.WAITING,
+                Activity.Status.PROGRESSING,
+                Activity.Status.END
+            ]
+        )
+        .order_by("-start")
+    )
 
-    # 今天开始进行的活动,且不展示结束的活动。按开始时间由近到远排序
+    # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
     activities = (
         Activity.objects.activated()
             .filter(
@@ -733,14 +762,63 @@ def homepage(request):
                 Activity.Status.PROGRESSING,
             ]
         )
-            .order_by("start")
+        .order_by("start")
     )
     activities_start = [
         activity.start.strftime("%H:%M") for activity in activities
     ]
     html_display['today_activities'] = list(zip(activities, activities_start)) or None
 
-    weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
+
+    # 最新（三天内）发布的活动，按发布的时间逆序
+    newlyreleased_list = (
+        Activity.objects.activated()
+        .filter(publish_time__gt = nowtime-timedelta(days = 3))
+        .filter(
+            status__in=[
+                Activity.Status.APPLYING,
+                Activity.Status.WAITING,
+                Activity.Status.PROGRESSING
+            ]
+        )
+        .order_by("-publish_time")
+    )
+
+    # 今天截止的活动，按截止时间正序
+    prepare_times = Activity.EndBeforeHours.prepare_times
+    signup_rec = (
+        Activity.objects.activated()
+        .filter(status = Activity.Status.APPLYING)
+    )
+    today_signup_list = []
+    for act in signup_rec:
+        deadline = act.start - timedelta(hours=prepare_times[act.endbefore])
+        if deadline.year==nowtime.year and deadline.month==nowtime.month and deadline.day==nowtime.day : # 今天截止
+            dictmp = {}
+            dictmp["deadline"] = deadline
+            dictmp["act"] = act
+            today_signup_list.append(dictmp)
+    today_signup_list.sort(key=lambda x:x["deadline"])
+
+    # 如果提交了心愿，发生如下的操作
+    if request.method == "POST" and request.POST:
+        wishtext = request.POST.get("wish")
+        new_wish = Wishes.objects.create(text = wishtext, time = nowtime)
+        new_wish.save()
+
+    # 心愿墙！！！！!前100个心愿,已经按照时间逆序排好了
+    wishes = Wishes.objects.all()[:100]
+
+    # 展示活动照片,选取前五个，已经按时间逆序排好了
+    photos = ActivitySummaryPhoto.objects.all()[:5]
+    for photo in photos:
+        if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+            photo.image = settings.MEDIA_URL + str(photo.image)
+    firstpic = photos[0]
+    photos = photos[1:]
+
+    # 天气
+    weather = urllib.request.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     html_display['weather'] = json.loads(weather)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
@@ -907,7 +985,6 @@ def org_spec(request, *args, **kwargs):
         person_incharge = '负责人'
     return render(request, 'org_spec.html', locals())
 """
-
 
 def get_stu_img(request):
     print("in get stu img")
@@ -1700,7 +1777,6 @@ def viewActivity(request, aid=None):
     aprice = request.POST["aprice"]  # 活动价格
     capacity = request.POST["capacity"]  # 活动举办的容量
     """
-
     try:
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
@@ -1718,13 +1794,14 @@ def viewActivity(request, aid=None):
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
     start_time = activity.start
+    start_THEDAY = start_time.day # 前端使用量
     end_time = activity.end
     prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.apply_end
     introduction = activity.introduction
-    show_url = True  # 前端使用量
+    show_url = True # 前端使用量
     aURL = activity.URL
-    if aURL is None:
+    if (aURL is None) or (aURL == ""):
         show_url = False
     aQRcode = activity.QRcode
     bidding = activity.bidding
@@ -1737,6 +1814,7 @@ def viewActivity(request, aid=None):
         capacity = "INF"
     if activity.examine_teacher == me:
         examine = True
+
     # person 表示是否是个人而非组织
     person = False
     if user_type == "Person":
@@ -1758,6 +1836,16 @@ def viewActivity(request, aid=None):
     ownership = False
     if not person and org.organization_id == request.user:
         ownership = True
+
+    # 活动图片！！
+    photos = ActivityAnnouncePhoto.objects.filter(
+        activity_id = activity
+    )
+    for photo in photos:
+        if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+            photo.image = settings.MEDIA_URL + str(photo.image)
+    firstpic = photos[0].image
+    photos = photos[1:]
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
@@ -1843,6 +1931,28 @@ def viewActivity(request, aid=None):
 
     elif option == "payment":
         return redirect("/addReimbursement/")
+
+    elif option == "submitphoto":
+        try:
+            summaryphotos = request.FILES.getlist('images')
+            if len(summaryphotos) == 0 :
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "上传活动照片不能为空"
+                return render(request, "activity_info.html", locals())
+            for photo in summaryphotos:
+                if utils.if_image(photo) == False:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "上传的附件只支持图片格式。"
+                    return render(request, "activity_info.html", locals())
+                ActivitySummaryPhoto.objects.create(image = photo,activity = activity)
+        except:
+            html_display["warn_code"] = 1
+            html_display["warn_message"] = "非法的图片上传，请联系管理员"
+            return render(request, "activity_info.html", locals())
+
+        html_display["warn_code"] = 2
+        html_display["warn_message"] = "成功提交活动照片。"
+        return render(request, "activity_info.html", locals())
 
     else:
         html_display["warn_code"] = 1
@@ -2116,8 +2226,44 @@ def addActivities(request):
             return redirect(f"/viewActivity/{aid}")
             """
             try:
+
+                # 活动预告图片的合法性检查
+                existannouncephoto = False
+                pictures = []
+                pictures.append(request.POST.get("picture1"))
+                pictures.append(request.POST.get("picture2"))
+                pictures.append(request.POST.get("picture3"))
+                pictures.append(request.POST.get("picture4"))
+                pictures.append(request.POST.get("picture5"))
+
+                for pic in pictures:
+                    if pic is not None:
+                        existannouncephoto = True
+                announcephotos = request.FILES.getlist("images")
+                if len(announcephotos)==0 :
+                    if existannouncephoto is False:
+                        html_display['warn_code'] = 1
+                        html_display['warn_message'] = "上传活动照片不能为空"
+                        return render(request, "activity_add.html", locals())
+                else:
+                    for photo in announcephotos:
+                        if utils.if_image(photo) == False:
+                            html_display['warn_code'] = 1
+                            html_display['warn_message'] = "上传的附件只支持图片格式。"
+                            return render(request, "activity_add.html", locals())
+
+                # 开始进行活动创建
                 aid = create_activity(request)
+                activity = Activity.objects.get(id=aid)
+                for pic in pictures:
+                    if pic is not None:
+                        ActivityAnnouncePhoto.objects.create(image = pic,activity = activity)
+                if len(announcephotos)>0 :
+                    for photo in announcephotos:
+                        ActivityAnnouncePhoto.objects.create(image = photo,activity = activity)                    
+
                 return redirect(f"/viewActivity/{aid}")
+
             except:
                 return redirect("/welcome/")
 
@@ -2260,7 +2406,6 @@ def examineActivity(request, aid):
 
     else:
         return redirect("/welcome/")
-
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
