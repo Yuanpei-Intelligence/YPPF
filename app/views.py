@@ -744,9 +744,9 @@ def homepage(request):
     html_display['weather'] = json.loads(weather)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "Welcome Page"
-    bar_display["navbar_name"] = "元培生活"
+    bar_display = utils.get_sidebar_and_navbar(request.user, "元培生活")
+    # bar_display["title_name"] = "Welcome Page"
+    # bar_display["navbar_name"] = "元培生活"
 
     return render(request, "welcome_page.html", locals())
 
@@ -1018,9 +1018,9 @@ def search(request):
     html_display["is_myself"] = True
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "Search"
-    bar_display["navbar_name"] = "信息搜索"  #
+    bar_display = utils.get_sidebar_and_navbar(request.user, "信息搜索")
+    # bar_display["title_name"] = "Search"
+    # bar_display["navbar_name"] = "信息搜索"  #
 
     return render(request, "search.html", locals())
 
