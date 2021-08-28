@@ -650,4 +650,3 @@ def update_org_application(application, me, request):
                     return context
                 except:
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
-
