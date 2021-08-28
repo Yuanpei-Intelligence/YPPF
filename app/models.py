@@ -395,11 +395,11 @@ class ActivityManager(models.Manager):
         ).order_by("-start")
 
     def get_newlyreleased_activity(self):
-        # 最新（三天内）发布的活动，按发布的时间逆序
+        # 最新一周内发布的活动，按发布的时间逆序
         nowtime = datetime.now()
         return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
             semester__contains=local_dict["semester_data"]["semester"]
-        ).filter(publish_time__gt = nowtime-timedelta(days = 3)).filter(
+        ).filter(publish_time__gt = nowtime-timedelta(days = 7)).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
