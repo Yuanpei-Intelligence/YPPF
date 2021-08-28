@@ -942,6 +942,20 @@ class Reimbursement(CommentBase):
         return display
     def is_pending(self):   #表示是不是pending状态
             return self.status == Reimbursement.ReimburseStatus.WAITING
+   
+class Help(models.Model):
+     '''
+         页面帮助类
+     '''
+     title = models.CharField("帮助标题", max_length=20, blank=False)
+     content = models.TextField("帮助内容", max_length=500)
+
+     class Meta:
+         verbose_name = "页面帮助"
+         verbose_name_plural = "页面帮助"
+
+     def __str__(self) -> str:
+         return self.title
 
 class Wishes(models.Model):
     class Meta:
