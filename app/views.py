@@ -2633,7 +2633,7 @@ def addComment(request, comment_base, receiver=None):
     URL={
         'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
         'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
-        'reimbursement': f'modifyReimbursement/?reimb_id={comment_base.id}',
+        'reimbursement': f'/modifyReimbursement/?reimb_id={comment_base.id}',
         "activity": f"/examineActivity/{comment_base.id}"
     }
     if user_type == "Organization":
@@ -2922,8 +2922,6 @@ def showPosition(request):
         shown_instances = ModifyPosition.objects.filter(org=me)
 
     shown_instances = shown_instances.order_by('-modify_time', '-time')
-
-
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="人事申请")
     return render(request, 'showPosition.html', locals())
 
@@ -3134,6 +3132,7 @@ def modeifyReimbursement(request):
                 make_notification(application,request,content,receiver)
                 if request.POST.get("post_type", None)=="new_submit":
                     is_new_application=True
+                    application=None
             elif context["warn_code"] != 1:  # 没有返回操作提示
                 raise NotImplementedError("处理经费申请中出现未预见状态，请联系管理员处理！")
 
@@ -3187,6 +3186,7 @@ def modeifyReimbursement(request):
 
 # 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
 # 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
+#用于报销的通知
 def make_notification(application, request,content,receiver):
     # 考虑不同post_type的信息发送行为
     post_type = request.POST.get("post_type")
@@ -3225,7 +3225,6 @@ def make_notification(application, request,content,receiver):
             application.relate_notifications.get(status=Notification.Status.UNDONE).id,
             Notification.Status.DONE
         )
-
 
 # YWolfeee: 重构组织申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
