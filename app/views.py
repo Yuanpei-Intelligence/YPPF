@@ -1633,7 +1633,7 @@ def myYQPoint(request):
     # bar_display["title_name"] = "My YQPoint"
     # bar_display["navbar_name"] = "我的元气值"  #
     # bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
-S
+
     return render(request, "myYQPoint.html", locals())
 
 
