@@ -2163,6 +2163,8 @@ def addActivities(request):
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # TODO: 整理结构，统一在结束时返回render
     bar_display = utils.get_sidebar_and_navbar(request.user)
+    
+    defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
 
     # 处理 POST 请求
     if request.method == "POST" and request.POST:
