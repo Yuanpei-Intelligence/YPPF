@@ -3,13 +3,13 @@
 {% block add_css_file %}
 <style class="text/css">
     [data-toggle="collapse"] .fa:before {
-        font-family: 'FontAwesome';  
+        font-family: 'FontAwesome';
         content: "\f068";
-        float: right; 
+        float: right;
     }
 
     [data-toggle="collapse"].collapsed .fa:before {
-        content: "\f067"; 
+        content: "\f067";
     }
 </style>
 {% endblock %}
@@ -17,24 +17,22 @@
 {% block mainpage %}
 
 
-    <!--  BEGIN CONTENT AREA  -->
-    <div id="content" class="main-content">
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    <div class="container">
         <div class="container">
-            <div class="container">
 
-                <div id="navSection" data-spy="affix" class="nav sidenav">
+            <div id="navSection" data-spy="affix" class="nav sidenav"></div>
 
-                </div>
-
-                <div class="row layout-top-spacing">
-                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
-                        <div class="statbox widget box box-shadow">
-                            <div class="widget-header">
-                                <div class="row">
-                                    <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                        <div data-toggle="collapse" href="#personsearch" role="button"
-                                            aria-expanded="false" aria-controls="collapseExample">
-                                            <div class="d-flex justify-content-between">
+            <div class="row layout-top-spacing">
+                <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+                    <div class="statbox widget box box-shadow">
+                        <div class="widget-header">
+                            <div class="row">
+                                <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                    <div data-toggle="collapse" href="#personsearch" role="button" aria-expanded="false"
+                                        aria-controls="collapseExample">
+                                        <div class="d-flex justify-content-between">
                                             <div>
                                                 <h4>人员搜索({{people_list|length}}条)</h4>
                                             </div>
@@ -44,31 +42,31 @@
                                                 <i class="fa" aria-hidden="true"></i>
                                             </div>
                                         </div>
-                                        </div>
                                     </div>
                                 </div>
                             </div>
-                            <div class="collapse show" id="personsearch">
-                                <div class="widget-content widget-content-area">
-                                    <div class="table-responsive">
-                                        <table class="table table-bordered mb-4">
-                                            {% if people_list.count != 0 %}
-                                            <thead>
-                                                <tr>
-                                                    <!-- <th>Name</th>
+                        </div>
+                        <div class="collapse show" id="personsearch">
+                            <div class="widget-content widget-content-area">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered mb-4">
+                                        {% if people_list.count != 0 %}
+                                        <thead>
+                                            <tr>
+                                                <!-- <th>Name</th>
                                                 <th>Gender</th>
                                                 <th>Year</th>
                                                 <th class="text-center">Major</th> -->
 
-                                                    {% for attribute in people_field %}
-                                                    <th class="text-center"> {{attribute}} </th>
-                                                    {% endfor %}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for person in people_list %}
-                                                <tr>
-                                                    <!--
+                                                {% for attribute in people_field %}
+                                                <th class="text-center"> {{attribute}} </th>
+                                                {% endfor %}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for person in people_list %}
+                                            <tr>
+                                                <!--
                                                 <td><a
                                                         href=../../stuinfo/{{person.name}}+{{person.id}}>{{person.name}}</a>
                                                 </td>
@@ -81,46 +79,67 @@
                                                             role="button">向Ta发起元气值转账</a></center>
                                                 </td>
                                                 -->
-                                                    <!-- <td class="text-center"><span class="badge badge-success">元培学生</span></td> -->
-                                                    {% for attribute in person.show_info %}
-                                                    {% if forloop.counter == 1 %}
-                                                    <!-- 说明此时要展示姓名，关联链接 -->
-                                                    <td><u><a
-                                                                href="/stuinfo/{{person.name}}+{{person.person_id.id}}">{{attribute}}</a></u>
-                                                    </td>
+                                                <!-- <td class="text-center"><span class="badge badge-success">元培学生</span></td> -->
+                                                {% for attribute in person.show_info %}
+
+                                                {% if forloop.counter == 1 %}
+                                                <!-- 说明此时要展示姓名，关联链接 -->
+                                                <td style="min-width: 80px;">
+                                                    <u>
+                                                        <a href="/stuinfo/{{ person.name }}+{{ person.person_id.id }}">
+                                                            {{ attribute }}
+                                                        </a>
+                                                    </u>
+                                                </td>
+                                                {% elif forloop.counter == 4 %}
+                                                <!-- 说明此时要展示专业-->
+                                                <td style="min-width: 140px;">
+                                                    {% if attribute is None or attribute == 'None' %}
+                                                    未填写
                                                     {% else %}
-                                                    <td> {{attribute}} </td>
+                                                    {{ attribute }}
                                                     {% endif %}
-                                                    {% endfor %}
-                                                    {% endfor %}
-                                            </tbody>
-                                            {% else %}
-                                            <!-- 如果列表为空 -->
-                                            <thead></thead>
-                                            <tbody>
-                                                <tr>
-                                                    <td> {{not_found_message}}</td>
-                                                </tr>
-                                            </tbody>
-                                            {% endif %}
-                                        </table>
-                                    </div>
+                                                </td>
+                                                {% else %}
+                                                <td style="min-width: 80px;">
+                                                    {% if attribute is None or attribute == 'None' %}
+                                                    未填写
+                                                    {% else %}
+                                                    {{ attribute }}
+                                                    {% endif %}
+                                                </td>
+                                                {% endif %}
+
+                                                {% endfor %}
+                                                {% endfor %}
+                                        </tbody>
+                                        {% else %}
+                                        <!-- 如果列表为空 -->
+                                        <thead></thead>
+                                        <tbody>
+                                            <tr>
+                                                <td> {{not_found_message}}</td>
+                                            </tr>
+                                        </tbody>
+                                        {% endif %}
+                                    </table>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
-                <div class="row layout-top-spacing">
-                    <!-- add by syb -->
-                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
-                        <div class="statbox widget box box-shadow">
-                            <div class="widget-header">
-                                <div class="row">
-                                    <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                        <div data-toggle="collapse" href="#orgsearch" role="button"
-                                            aria-expanded="false" aria-controls="collapseExample">
-                                            <div class="d-flex justify-content-between">
+            </div>
+
+            <div class="row layout-top-spacing">
+                <!-- add by syb -->
+                <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+                    <div class="statbox widget box box-shadow">
+                        <div class="widget-header">
+                            <div class="row">
+                                <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                    <div data-toggle="collapse" href="#orgsearch" role="button" aria-expanded="false"
+                                        aria-controls="collapseExample">
+                                        <div class="d-flex justify-content-between">
                                             <div>
                                                 <h4>组织搜索({{org_display_list|length}}条)</h4>
                                             </div>
@@ -133,8 +152,8 @@
                                     </div>
                                 </div>
                             </div>
-                            </div>
-                            <div class="collapse show" id="orgsearch">
+                        </div>
+                        <div class="collapse show" id="orgsearch">
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
@@ -150,23 +169,29 @@
                                                     href=../../orginfo/{{orgn.oname}}>{{attribute}}</a>
                                             </tr> -->
                                             {% for orgn in org_display_list %}
-                                            <tr>
-                                                <td>
-                                                    <u><a href="/orginfo/{{orgn.oname}}">{{orgn.oname}}</a></u>
+                                            <tr class="w-100">
+                                                <td style="min-width: 100px;">
+                                                    <u><a href="/orginfo/{{ orgn.oname }}">{{ orgn.oname }}</a></u>
                                                 </td>
-                                                <td>
-                                                    {{orgn.otype}}
+                                                <td style="min-width: 100px;">
+                                                    {{ orgn.otype }}
                                                 </td>
-                                                <td>
+                                                <td style="min-width: 80px;">
                                                     {% for pos_person in orgn.pos0 %}
-                                                   <a href="/stuinfo/{{pos_person}}">
-                                                    <u>{{pos_person}}</u> 
+                                                    <a href="/stuinfo/{{ pos_person }}">
+                                                        <u>{{ pos_person }}</u> <!-- 重名？ -->
                                                     </a>
-                                                    
+
                                                     {% endfor %}
                                                 </td>
-                                                <td>
-                                                    摸鱼
+                                                <td style="min-width: 100px;">
+                                                    {% if orgn.activity is None %}
+                                                    暂无活动
+                                                    {% else %}
+                                                    <a href="/viewActivity/{{ orgn.activity.id }}">
+                                                        <u>{{ orgn.activity.title }}</u>
+                                                    </a>
+                                                    {% endif %}
                                                 </td>
                                             </tr>
                                             {% endfor %}
@@ -182,21 +207,21 @@
                                     </table>
                                 </div>
                             </div>
-                            </div>
                         </div>
-                    </div>                 
+                    </div>
                 </div>
+            </div>
 
-                <div class="row layout-top-spacing">
-                    <!-- add by syb -->
-                    <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
-                        <div class="statbox widget box box-shadow">
-                            <div class="widget-header">
-                                <div class="row">
-                                    <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                        <div data-toggle="collapse" href="#activitysearch" role="button"
-                                            aria-expanded="false" aria-controls="collapseExample">
-                                            <div class="d-flex justify-content-between">
+            <div class="row layout-top-spacing">
+                <!-- add by syb -->
+                <div id="tableDropdown" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+                    <div class="statbox widget box box-shadow">
+                        <div class="widget-header">
+                            <div class="row">
+                                <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                    <div data-toggle="collapse" href="#activitysearch" role="button"
+                                        aria-expanded="false" aria-controls="collapseExample">
+                                        <div class="d-flex justify-content-between">
                                             <div>
                                                 <h4>活动搜索({{activity_list|length}}条)</h4>
                                             </div>
@@ -209,33 +234,37 @@
                                     </div>
                                 </div>
                             </div>
-                            </div>
-                            <div class="collapse show" id="activitysearch">
+                        </div>
+                        <div class="collapse show" id="activitysearch">
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
                                     <table class="table table-bordered mb-4">
                                         {% if activity_list.count != 0 %}
                                         <thead>
                                             {% for attribute in activity_field %}
-                                            <th> {{attribute}} </th>
+                                            <th> {{ attribute }} </th>
                                             {% endfor %}
                                         </thead>
                                         <tbody>
                                             {% for act in activity_list %}
                                             <tr>
-                                                <td>
-                                                    <u><a href="/viewActivity/{{act.id}}">{{act}}</a></u>
-                                                    {% comment %} 这个页面还没做好，可能要留下来修改 {% endcomment %}
+                                                <td style="min-width: 100px;">
+                                                    <u>
+                                                        <a href="/viewActivity/{{ act.id }}">{{ act.title }}</a>
+                                                    </u>
                                                 </td>
-                                                <td>
-                                                    <u><a href="/orginfo/{{act.organization_id}}">{{act.organization_id}}</a></u>
+
+                                                <td style="min-width: 80px;">
+                                                    <u>
+                                                        <a href="/orginfo/{{ act.organization_id }}">
+                                                            {{ act.organization_id }}
+                                                        </a>
+                                                    </u>
                                                 </td>
-                                                <td>
-                                                    {{act.status}}
+
+                                                <td style="min-width: 60px;">
+                                                    {{ act.status }}
                                                 </td>
-                                                <!-- <td>
-                                                    {{act.url}}
-                                                </td> -->
                                             </tr>
                                             {% endfor %}
                                         </tbody>
@@ -243,22 +272,20 @@
                                         <thead></thead>
                                         <tbody>
                                             <tr>
-                                                <td>{{not_found_message}}</td>
+                                                <td>{{ not_found_message }}</td>
                                             </tr>
                                         </tbody>
                                         {% endif %}
                                     </table>
                                 </div>
                             </div>
-                            </div>
                         </div>
-                    </div>                 
+                    </div>
                 </div>
             </div>
         </div>
     </div>
-    <!--  END CONTENT AREA  -->
+</div>
+<!--  END CONTENT AREA  -->
 
 {% endblock %}
-
-

@@ -102,13 +102,12 @@ class NaturalPerson(models.Model):
             注意：major, gender, nickname, email, tel, dorm可能为None
             班级和年级现在好像也可以为None
         """
-        unpublished = "未公开"
         gender = ["男", "女"]
         info = [self.name, self.stu_grade, self.stu_class]
         # info.append(self.nickname if (self.show_nickname) else unpublished)
         # info.append(
         #    unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
-        info.append(self.stu_major if (self.show_major) else unpublished)
+        info.append(self.stu_major if (self.show_major) else "未公开")
         # info.append(self.email if (self.show_email) else unpublished)
         # info.append(self.telephone if (self.show_tel) else unpublished)
         # info.append(self.stu_dorm if (self.show_dorm) else unpublished)
@@ -118,10 +117,7 @@ class NaturalPerson(models.Model):
             if self.status == NaturalPerson.GraduateStatus.UNDERGRADUATED
             else "已毕业"
         )
-        # 防止显示None
-        for i in range(len(info)):
-            if info[i] == None:
-                info[i] = unpublished
+
         return info
 
     def save(self, *args, **kwargs):
@@ -650,17 +646,18 @@ class Notification(models.Model):
         NEEDREAD = (0, "知晓类")  # 只需选择“已读”即可
         NEEDDO = (1, "处理类")  # 需要处理的事务
 
-    class Title(models.IntegerChoices):
-        # 等待逻辑补充
-        TRANSFER_CONFIRM = (0, "转账确认通知")
-        ACTIVITY_INFORM = (1, "活动状态通知")
-        VERIFY_INFORM = (2, "审核信息通知")
-        POSITION_INFORM = (3, "人事变动通知")
-        TRANSFER_FEEDBACK = (4, "转账回执")
-        NEW_ORGANIZATION = (5, "新建组织通知")
+    class Title(models.TextChoices):
+        # 等待逻辑补充，可以自定义
+        TRANSFER_CONFIRM = "转账确认通知"
+        ACTIVITY_INFORM = "活动状态通知"
+        VERIFY_INFORM = "审核信息通知"
+        POSITION_INFORM = "人事变动通知"
+        TRANSFER_FEEDBACK = "转账回执"
+        NEW_ORGANIZATION = "新建组织通知"
+
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
-    title = models.SmallIntegerField(choices=Title.choices, blank=True, null=True)
+    title = models.CharField("通知标题", blank=True, null=True, max_length=10)
     content = models.CharField("通知内容", max_length=225, blank=True)
     start_time = models.DateTimeField("通知发出时间", auto_now_add=True)
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
@@ -682,6 +679,9 @@ class Notification(models.Model):
     )
 
     objects = NotificationManager()
+
+    def get_title_display(self):
+        return str(self.title)
 
 
 class Comment(models.Model):
