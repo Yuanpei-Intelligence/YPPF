@@ -266,32 +266,11 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-lg-12 col-md-12 mb-5 p-0">
-                                <a href="/orginfo/{{org_name}}">
-                                    <div class="statbox widget box box-shadow">
-                                        <div class="widget-header">
-                                            <div class="row">
-                                                <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                    <h4>组织者</h4>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="widget-content widget-content-area">
-                                            <div class="media">
-                                                <div class="media-body">
-                                                    <h4>{{org_name}} - {{org_type}}</h4>
-                                                    <p>{{org.introduction}}</p>      
-                                                </div>
-                                                <img src="{{org_avatar_path}}" height="60px" width="60px" alt="avatar">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
     
                         </div>
                         
                         <!--  二维码展示模块  -->
+                        {% if ownership and need_checkin %}
                         <div class="col-xl-4 col-lg-4 col-md-5 col-sm-12 layout-top-spacing">
                             <div class="container">
                                 <div class="row col-lg-12 col-md-12 mb-5 p-0">
@@ -299,17 +278,41 @@
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                <h4>二维码</h4>
+                                                <h4>签到二维码</h4>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="widget-content widget-content-area">
-                                        <img class="d-block w-100" id="qrcode" src={% static "assets/img/1.jpeg.jpg" %} alt="Third slide">
+                                        <img class="d-block w-100" id="qrcode" src="{{aQRcode}}" alt="Third slide">
                                     </div>
                                 </div>
                                 </div>
                             </div>
                         </div>
+                        {% else %}
+                        <div class="col-xl-4 col-lg-4 col-md-5 col-sm-12 layout-top-spacing">
+                            <a href="/orginfo/{{org_name}}">
+                                <div class="statbox widget box box-shadow">
+                                    <div class="widget-header">
+                                        <div class="row">
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                <h4>组织者</h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="widget-content widget-content-area">
+                                        <div class="media">
+                                            <div class="media-body">
+                                                <h4>{{org_name}} - {{org_type}}</h4>
+                                                <p>{{org.introduction}}</p>      
+                                            </div>
+                                            <img src="{{org_avatar_path}}" height="60px" width="60px" alt="avatar">
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endif %}
                     </div>
 
                 </div>

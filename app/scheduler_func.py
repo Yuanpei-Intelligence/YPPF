@@ -13,6 +13,7 @@ from app.models import Organization, NaturalPerson, YQPointDistribute, TransferR
 from app.wechat_send import publish_notifications
 from app.forms import YQPointDistributionForm
 from boottest.hasher import MySHA256Hasher
+from app.notification_utils import bulk_notification_create
 
 from random import sample
 from numpy.random import choice
@@ -21,7 +22,6 @@ from numpy.random import choice
 scheduler = BackgroundScheduler()
 scheduler.add_jobstore(DjangoJobStore(), "default")
 # 只起散列作用，不用加盐
-hasher = MySHA256Hasher("")
 
 def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
     '''
@@ -205,11 +205,13 @@ scheduler.add_job(changeActivityStatus, "date",
 活动变更为进行中时，更新报名成功人员状态
 """
 def changeActivityStatus(aid, cur_status, to_status):
+    print(f"Change Activity Job works: aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
     with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
         f.write(f"aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
+        f.close()
     try:
         with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=int(aid))
+            activity = Activity.objects.select_for_update().get(id=aid)
             if cur_status is not None:
                 assert cur_status == activity.status
             if cur_status == Activity.Status.APPLYING:
@@ -259,6 +261,7 @@ def changeActivityStatus(aid, cur_status, to_status):
         # TODO send message to admin to debug
         with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
             f.write(str(e) + "\n")
+            f.close()
         pass
 
 
@@ -267,19 +270,19 @@ def changeActivityStatus(aid, cur_status, to_status):
 所有涉及到 activity 的函数，都应该先锁 activity
 """
 def draw_lots(activity):
-    participants_applying = Participant.objects().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)
+    participants_applying = Participant.objects.filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)
     l = len(participants_applying)
 
-    participants_applySuccess = Participant.objects().filter(activity_id=activity.id, status=Participant.AttendStatus.APLLYSUCCESS)
+    participants_applySuccess = Participant.objects.filter(activity_id=activity.id, status=Participant.AttendStatus.APLLYSUCCESS)
     engaged = len(participants_applySuccess)
 
     leftQuota = activity.capacity - engaged
 
     if l <= leftQuota:
-        Participant.objects().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING).update(status=Participant.AttendStatus.APLLYSUCCESS)
+        Participant.objects.filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING).update(status=Participant.AttendStatus.APLLYSUCCESS)
     else:
         lucky_ones = sample(range(l), leftQuota)
-        for i, participant in enumerate(Participant.objects().select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)):
+        for i, participant in enumerate(Participant.objects.select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)):
             if i in lucky_ones:
                 participant.status = Participant.AttendStatus.APLLYSUCCESS
             else:
@@ -328,71 +331,43 @@ scheduler.add_job(notifyActivityStart, "date",
 def notifyActivity(aid:int, msg_type:str, msg=None):
     try:
         activity = Activity.objects.get(id=aid)
-        from random import random
-        bulk_identifier = hasher.encode(str(datetime.now()) + str(random()))
-        print("bulk_identifier", bulk_identifier)
         if msg_type == "newActivity":
             msg = f"您关注的组织{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
-            msg += f"开始时间: {activity.act_start}\n"
+            msg += f"开始时间: {activity. start}\n"
             msg += f"活动地点: {activity.location}\n"
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
             )
-            notifications = [ Notification(
-                receiver=np.person_id,
-                sender=activity.organization_id.organization_id,
-                typename=Notification.Type.NEEDREAD,
-                title=Notification.Title.ACTIVITY_INFORM,
-                content=msg,
-                URL=f"/viewActivity/{aid}",
-                bulk_identifier=bulk_identifier,
-                relate_instance=activity,
-            ) for np in subscribers ]
+            receivers = [subscriber.person_id for subscriber in subscribers]
+            print("Receivers:", len(receivers))
         elif msg_type == "remind":
             msg = f"您参与的活动 <{activity.title}> 即将开始。\n"
-            msg += f"开始时间: {activity.act_start}\n"
+            msg += f"开始时间: {activity.start}\n"
             msg += f"活动地点: {activity.location}\n"
             participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
-            notifications = [ Notification(
-                receiver=participant.person_id.person_id,
-                sender=activity.organization_id.organization_id,
-                typename=Notification.Type.NEEDREAD,
-                title=Notification.Title.ACTIVITY_INFORM,
-                content=msg,
-                URL=f"/viewActivity/{aid}",
-                bulk_identifier=bulk_identifier,
-                relate_instance=activity,
-            ) for participant in participants ]
+            receivers = [participant.person_id.person_id for participant in participants]
         elif msg_type == 'modification_sub':
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
             )
-            notifications = [ Notification(
-                receiver=np.person_id,
-                sender=activity.organization_id.organization_id,
-                typename=Notification.Type.NEEDREAD,
-                title=Notification.Title.ACTIVITY_INFORM,
-                content=msg,
-                URL=f"/viewActivity/{aid}",
-                bulk_identifier=bulk_identifier,
-                relate_instance=activity,
-            ) for np in subscribers ]
+            receivers = [subscriber.person_id for subscriber in subscribers]
         elif msg_type == 'modification_par':
             participants = Participant.objects.filter(
                 activity_id=aid, 
                 status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
             )
-            notifications = [ Notification(
-                receiver=participant.person_id.person_id,
-                sender=activity.organization_id.organization_id,
-                typename=Notification.Type.NEEDREAD,
-                title=Notification.Title.ACTIVITY_INFORM,
-                content=msg,
-                URL=f"/viewActivity/{aid}",
-                bulk_identifier=bulk_identifier,
-                relate_instance=activity,
-            ) for participant in participants ]
+            receivers = [participant.person_id.person_id for participant in participants]
+        elif msg_type == "modification_sub_ex_par":
+            participants = Participant.objects.filter(
+                activity_id=aid, 
+                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
+            )
+            subscribers = NaturalPerson.objects.activated().exclude(
+                id__in=activity.organization_id.unsubscribers.all()
+            )
+            receivers =  set(subscribers) - set([participant.person_id for participant in participants])
         # 应该用不到了，调用的时候分别发给 par 和 sub
+        # 主要发给两类用户的信息往往是不一样的
         elif msg_type == 'modification_all':
             participants = Participant.objects.filter(
                 activity_id=aid, 
@@ -402,21 +377,19 @@ def notifyActivity(aid:int, msg_type:str, msg=None):
                 id__in=activity.organization_id.unsubscribers.all()
             )
             receivers = set([participant.person_id for participant in participants]) | set(subscribers)
-            notifications = [ Notification(
-                receiver=receiver.person_id,
-                sender=activity.organization_id.organization_id,
-                typename=Notification.Type.NEEDREAD,
-                title=Notification.Title.ACTIVITY_INFORM,
-                content=msg,
-                URL=f"/viewActivity/{aid}",
-                bulk_identifier=bulk_identifier,
-                relate_instance=activity,
-            ) for receiver in receivers ]
         else:
             raise ValueError
-        Notification.objects.bulk_create(notifications, 50)
-        filter_kws={"bulk_identifier":bulk_identifier}
-        assert publish_notifications(filter_kws=filter_kws)
+        success, _ = bulk_notification_create(
+            receivers=list(receivers),
+            sender=activity.organization_id.organization_id,
+            typename=Notification.Type.NEEDREAD,
+            title=Notification.Title.ACTIVITY_INFORM,
+            content=msg,
+            URL=f"/viewActivity/{aid}",
+            relate_instance=activity,
+            publish_to_wechat=True
+        )
+        assert success
 
     except Exception as e:
         print(f"Notification {msg} failed. Exception: {e}")

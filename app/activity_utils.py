@@ -9,7 +9,7 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 """
 from app.scheduler_func import scheduler, changeActivityStatus, notifyActivity
 from datetime import datetime, timedelta
-from app.utils import get_person_or_org
+from app.utils import get_person_or_org, if_image
 from app.notification_utils import notification_create
 from app.models import (
     NaturalPerson,
@@ -24,9 +24,42 @@ from app.models import (
     ModifyOrganization,
     Comment,
     CommentPhoto,
-    YQPointDistribute
+    YQPointDistribute,
+    ActivityAnnouncePhoto
 )
+import qrcode
+import os
+from boottest.hasher import MySHA256Hasher
+from boottest.settings import MEDIA_ROOT, MEDIA_URL
+from boottest import local_dict
+from django.core.files import File
+from django.core.files.base import ContentFile
+import io
+import base64
 
+hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
+
+def get_activity_QRcode(activity):
+
+    # 不管是否需要签到，都先生成二维码，简化后面的逻辑
+    auth_code = hash_coder.encode(str(activity.id))
+    url = f"http://localhost:8000/checkinActivity/{activity.id}?auth={auth_code}"
+    """
+    url = f"{os.path.join(
+            local_dict["url"]["login_url"], 
+            checkinActivity, 
+            f"{activity.id}?auth={auth_code}"
+        )}"
+    """
+
+    qr=qrcode.QRCode(version = 2,error_correction = qrcode.constants.ERROR_CORRECT_L,box_size=10,border=10,)
+    qr.add_data(url)
+    qr.make(fit=True)
+    img = qr.make_image()
+    io_buffer = io.BytesIO()
+    img.save(io_buffer, "png")
+    data = base64.encodebytes(io_buffer.getvalue()).decode()
+    return "data:image/png;base64," + str(data)
 
 class  ActivityException(Exception):
     def __init__(self, msg):
@@ -48,7 +81,7 @@ def check_ac_time(start_time, end_time):
     return False
 
 
-def activity_base_check(request):
+def activity_base_check(request, edit=False):
 
     context = dict()
 
@@ -101,7 +134,7 @@ def activity_base_check(request):
     assert check_ac_time(act_start, act_end)
 
     # create 或者调整报名时间，都是要确保活动不要立刻截止报名
-    if request.POST.get("edit") is None or request.POST.get("adjust_apply_ddl"):
+    if not edit or request.POST.get("adjust_apply_ddl"):
         prepare_scheme = int(request.POST["prepare_scheme"])
         prepare_times = Activity.EndBeforeHours.prepare_times
         prepare_time = prepare_times[prepare_scheme]
@@ -132,6 +165,27 @@ def activity_base_check(request):
     assert int(aprice * 10) / 10 == aprice
     assert aprice >= 0
     context["aprice"] = aprice
+
+
+    # 图片 优先使用上传的图片
+    announcephoto = request.FILES.getlist("images")
+    if len(announcephoto) > 0:
+        pic = announcephoto[0]
+        if if_image(pic) == False:
+            raise ActivityException("上传的附件只支持图片格式。")
+    else:
+        if request.POST.get("picture1"):
+            pic = request.POST.get("picture1")
+        elif request.POST.get("picture2"):
+            pic = request.POST.get("picture2")
+        else:
+            pic = request.POST.get("picture3")
+
+    if not edit:
+        assert pic is not None
+
+    context["pic"] = pic
+
 
     return context
 
@@ -168,6 +222,8 @@ def create_activity(request):
         activity.need_checkin = True
     activity.save()
 
+    ActivityAnnouncePhoto.objects.create(image=context["pic"], activity=activity)
+
     notification_create(
         receiver=examine_teacher.person_id,
         sender=request.user,
@@ -179,28 +235,6 @@ def create_activity(request):
     )
 
     return activity.id
-
-
-
-    """
-    审核通过后，需要进行通知，并添加定时任务
-    if activity.status == Activity.Status.APPLYING:
-        notifyActivity(activity.id, "newActivity")
-
-    TEST:
-    right_run = datetime.now() + timedelta(seconds=5)
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
-        run_date=right_run, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
-、
-
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
-        run_date=context["signup_end"], args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
-        run_date=context["act_start"], args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
-        run_date=context["act_end"], args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
-    """
-
 
 
 
@@ -222,7 +256,7 @@ def modify_activity(request, activity):
 """
 def modify_reviewing_activity(request, activity):
 
-    context = activity_base_check(request)
+    context = activity_base_check(request, edit=True)
 
     if context["examine_teacher"] == activity.examine_teacher.name:
         pass
@@ -272,6 +306,12 @@ def modify_reviewing_activity(request, activity):
     else:
         activity.need_checkin = False
     activity.save()
+
+    # 图片
+    if context["pic"] is not None:
+        pic = ActivityAnnouncePhoto.objects.get(activity=activity)
+        pic.image = context["pic"]
+        pic.save()
 
 
 
@@ -342,11 +382,12 @@ def modify_accepted_activity(request, activity):
             raise ActivityException(f"当前成功报名人数已超过{capacity}人")
     activity.capacity = capacity
 
-    activity.end = datetime.strptime(request.POST["actend"], "%m/%d/%Y %H:%M %p")
+    act_end = datetime.strptime(request.POST["actend"], "%m/%d/%Y %H:%M %p")
     if act_end.hour == 12:
         act_end -= timedelta(hours=12)
     if request.POST["actend"][-2:] == "PM":
         act_end += timedelta(hours=12)
+    activity.end = act_end
     assert activity.start < activity.end
     activity.URL = request.POST["URL"]
     activity.introduction = request.POST["introduction"]
@@ -365,7 +406,7 @@ def modify_accepted_activity(request, activity):
         run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
 
 
-    notifyActivity(activity.id, "modification_sub", "\n".join(to_subscribers))
+    notifyActivity(activity.id, "modification_sub_ex_par", "\n".join(to_subscribers))
     notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
 
 
@@ -422,10 +463,6 @@ def accept_activity(request, activity):
         run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
         run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
-
-    # TODO
-    # 审核状态更新
-    # 通知审核完成
 
     activity.save()
 
@@ -547,6 +584,18 @@ def applyActivity(request, activity):
 
 def cancel_activity(request, activity):
 
+    if activity.status == Activity.Status.REVIEWING:
+        activity.status = Activity.Status.CANCELED
+        activity.save()
+        # 修改老师的通知
+        notification = Notification.objects.select_for_update().get(
+            relate_instance=activity, 
+            status=Notification.Status.UNDONE
+        )
+        notification.status = Notification.Status.DELETE
+        notification.save()
+        return
+
     if activity.status == Activity.Status.PROGRESSING:
         if activity.start.day == datetime.now().day and datetime.now() < activity.start + timedelta(days=1):
             pass
@@ -597,7 +646,6 @@ def cancel_activity(request, activity):
             activity_id=activity
         ).update(status=Participant.AttendStatus.APLLYFAILED)
 
-    # TODO 取消审核评论
     scheduler.remove_job(f"activity_{activity.id}_remind")
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")

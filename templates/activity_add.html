@@ -307,14 +307,16 @@
                                                 {% endif %}
                                             </div>
 
+
+                                            {% if not examine and not accepted %}
                                             <div class="form-group">
                                                 <label for="aintro">上传活动预告图片</label><br/>
                                                 <div class="row">
                                                     <div class="col-4">
-                                                        <input type="file" accept="image/*" name="images" multiple>
+                                                        <input type="file" accept="image/*" name="images" multiple id="images">
                                                     </div>
                                                     <div class="col-8">
-                                                        <label>必选：请上传长:宽=16:9左右的图片。如无预告图片可上传，请在下列默认图片中选择一或多张</label>
+                                                        <label>必选：请上传一张长:宽=16:9左右的图片。或者下列默认图片中选择一张</label>
                                                     </div>
                                                 </div>
                                                 
@@ -351,6 +353,7 @@
                                                 </div>
                                                 
                                             </div>
+                                            {% endif %}
                                             <!--
                                             <div class="input-group mb-4">
                                                 <div class="input-group-prepend">
@@ -373,6 +376,15 @@
                                             {% endif %}
                                         </form>
                                         {% if examine %}
+                                        <!-- 活动图片 -->
+                                        <div class="form-group">
+                                            <label for="aintro">活动介绍图片</label>
+                                            <div class="widget-content widget-content-area">
+                                                <img class="d-block w-100" id="examine_pic" src="{{intro_pic}}" alt="Third slide">
+                                            </div>
+                                        </div>
+
+                                        <hr>
                                         <form method="POST" role="form" onsubmit="return check_examine()">
                                             <button id="review_submit" type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
                                                 通过活动
@@ -419,6 +431,25 @@
         } else {
             document.getElementById("maxpeople").disabled = true;
             // document.getElementById("maxpeople").placeholder = "";
+        }
+    });
+    $("input[name='picture1']").on("change", function () {
+        //输出选中状态
+        if (true === $(this).prop("checked")) {
+            document.getElementById("picture2").checked = false;
+            document.getElementById("picture3").checked = false;
+        }
+    });
+    $("input[name='picture2']").on("change", function () {
+        if (true === $(this).prop("checked")) {
+            document.getElementById("picture1").checked = false;
+            document.getElementById("picture3").checked = false;
+        }
+    });
+    $("input[name='picture3']").on("change", function () {
+        if (true === $(this).prop("checked")) {
+            document.getElementById("picture1").checked = false;
+            document.getElementById("picture2").checked = false;
         }
     });
     function shows(a) {
@@ -696,7 +727,27 @@
         }
         {% endif %}
 
-
+        /* 检查图片 */
+        {% if not examine and not accepted %}
+            {% if not edit %}
+            if (!(document.getElementById("picture1").checked ||
+                document.getElementById("picture2").checked ||
+                document.getElementById("picture3").checked ||
+                document.getElementById("images").files.length > 0)
+            ) {
+                document.getElementById("warn_msg").style.display = "";
+                document.getElementById("warn_msg").innerHTML = "选择活动介绍图片。";
+                document.body.scrollTop = document.documentElement.scrollTop = 0;
+                return false;
+            }
+            {% endif %}
+        if (document.getElementById("images").files.length > 1) {
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "仅支持上传一张图片。";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        {% endif %}
 
         {% if edit %}
         /* edit 情况下，未填入的 input 补为 placeholder */
