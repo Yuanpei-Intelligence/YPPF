@@ -1391,7 +1391,7 @@ def transaction_page(request, rid=None):
                     return redirect("/myYQPoint/")
 
         except Exception as e:
-            print(e)
+            # print(e)
             html_display["warn_code"] = 1
             html_display["warn_message"] = "出现无法预料的问题, 请联系管理员!"
 
@@ -1680,12 +1680,14 @@ def viewActivity(request, aid=None):
         ownership = False
         if user_type == "Organization" and org == me:
             ownership = True
+        examine = False
         if user_type == "Person" and activity.examine_teacher == me:
             examine = True
         if not (ownership or examine):
             assert activity.status != Activity.Status.REVIEWING
             assert activity.status != Activity.Status.ABORT
-    except:
+    except Exception as e:
+        # print(e)
         return redirect("/welcome/")
 
 
@@ -2117,7 +2119,7 @@ def addActivity(request, aid=None):
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
-        print(e)
+        # print(e)
         return redirect("/welcome/")
 
     # 处理 POST 请求
@@ -2165,24 +2167,24 @@ def addActivity(request, aid=None):
         if not edit:
             avialable_teachers = NaturalPerson.objects.teachers()
         else:
-            # try:
-            org = get_person_or_org(request.user, "Organization")
-            # 接受的状态为 审核中，申请中，等待中
-            if activity.status == Activity.Status.REVIEWING:
-                commentable = True
-                front_check = True
-            elif (
-                    activity.status == Activity.Status.APPLYING
-                    or activity.status == Activity.Status.WAITING
-            ):
-                accepted = True
-                # 活动只能在开始 1 小时前修改
-                assert datetime.now() + timedelta(hours=1) < activity.start
-            else:
-                raise Exception("不正常的活动状态")
-            # except Exception as e:
-            #     print(e)
-            #     return redirect("/welcome/")
+            try:
+                org = get_person_or_org(request.user, "Organization")
+                # 接受的状态为 审核中，申请中，等待中
+                if activity.status == Activity.Status.REVIEWING:
+                    commentable = True
+                    front_check = True
+                elif (
+                        activity.status == Activity.Status.APPLYING
+                        or activity.status == Activity.Status.WAITING
+                ):
+                    accepted = True
+                    # 活动只能在开始 1 小时前修改
+                    assert datetime.now() + timedelta(hours=1) < activity.start
+                else:
+                    raise Exception("不正常的活动状态")
+            except Exception as e:
+                # print(e)
+                return redirect("/welcome/")
 
             title = activity.title
             budget = activity.budget
@@ -2422,7 +2424,7 @@ def apply_position(request, oid=None):
         apply_type, _ = Position.objects.create_application(
             me, org, apply_type, apply_pos)
     except Exception as e:
-        print(e)
+        # print(e)
         return redirect(f"/orginfo/{org.oname}?warn_code=1&warn_message={e}")
 
     contents = [f"{apply_type}申请已提交审核", f"{apply_type}申请审核"]

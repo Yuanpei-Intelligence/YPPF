@@ -205,10 +205,10 @@ scheduler.add_job(changeActivityStatus, "date",
 活动变更为进行中时，更新报名成功人员状态
 """
 def changeActivityStatus(aid, cur_status, to_status):
-    print(f"Change Activity Job works: aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
-    with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
-        f.write(f"aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
-        f.close()
+    # print(f"Change Activity Job works: aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
+    # with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
+    #     f.write(f"aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
+    #     f.close()
     try:
         with transaction.atomic():
             activity = Activity.objects.select_for_update().get(id=aid)
@@ -255,7 +255,7 @@ def changeActivityStatus(aid, cur_status, to_status):
 
 
     except Exception as e:
-        print(e)
+        # print(e)
 
 
 
@@ -392,7 +392,7 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
         assert success
 
     except Exception as e:
-        print(f"Notification {msg} failed. Exception: {e}")
+        # print(f"Notification {msg} failed. Exception: {e}")
         # TODO send message to admin to debug
         pass
 
