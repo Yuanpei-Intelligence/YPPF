@@ -43,11 +43,11 @@ def get_activity_QRcode(activity):
 
     auth_code = hash_coder.encode(str(activity.id))
     # url = f"http://localhost:8000/checkinActivity/{activity.id}?auth={auth_code}"
-    url = f"{os.path.join(
+    url = os.path.join(
             local_dict["url"]["login_url"], 
             checkinActivity, 
             f"{activity.id}?auth={auth_code}"
-        )}"
+        )
 
     qr=qrcode.QRCode(version = 2,error_correction = qrcode.constants.ERROR_CORRECT_L,box_size=10,border=10,)
     qr.add_data(url)
