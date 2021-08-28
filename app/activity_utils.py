@@ -588,7 +588,7 @@ def applyActivity(request, activity):
 def cancel_activity(request, activity):
 
     if activity.status == Activity.Status.REVIEWING:
-        activity.status = Activity.Status.CANCELED
+        activity.status = Activity.Status.ABORT
         activity.save()
         # 修改老师的通知
         notification = Notification.objects.select_for_update().get(

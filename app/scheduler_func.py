@@ -329,7 +329,7 @@ scheduler.add_job(notifyActivityStart, "date",
     id=f"activity_{aid}_{start_notification}", run_date, args)
 
 """
-def notifyActivity(aid:int, msg_type:str, msg=None):
+def notifyActivity(aid:int, msg_type:str, msg=""):
     try:
         activity = Activity.objects.get(id=aid)
         if msg_type == "newActivity":
@@ -340,7 +340,6 @@ def notifyActivity(aid:int, msg_type:str, msg=None):
                 id__in=activity.organization_id.unsubscribers.all()
             )
             receivers = [subscriber.person_id for subscriber in subscribers]
-            print("Receivers:", len(receivers))
         elif msg_type == "remind":
             msg = f"您参与的活动 <{activity.title}> 即将开始。\n"
             msg += f"开始时间: {activity.start}\n"

@@ -3,6 +3,7 @@ from app.wechat_send import publish_notification, publish_notifications
 from django.db import transaction
 from datetime import datetime
 from boottest.hasher import MySHA256Hasher
+from random import random
 
 hasher = MySHA256Hasher("")
 
@@ -141,9 +142,7 @@ def bulk_notification_create(
         *,
         publish_to_wechat=False,
 ):
-    from random import random
     bulk_identifier = hasher.encode(str(datetime.now()) + str(random()))
-    print("Receivers:", len(receivers))
     notifications = [ Notification(
         receiver=receiver,
         sender=sender,
@@ -155,9 +154,8 @@ def bulk_notification_create(
         relate_TransferRecord=relate_TransferRecord,
         relate_instance=relate_instance,
     ) for receiver in receivers ]
-    print("Notifications:", len(notifications))
     Notification.objects.bulk_create(notifications, 50)
-    seccess = None
+    success = False
     if publish_to_wechat:
         filter_kws={"bulk_identifier":bulk_identifier}
         success = publish_notifications(filter_kws=filter_kws)

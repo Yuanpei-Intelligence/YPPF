@@ -1675,14 +1675,22 @@ def viewActivity(request, aid=None):
         activity = Activity.objects.get(id=aid)
         valid, user_type, html_display = utils.check_user_type(request.user)
         assert valid
+        org = activity.organization_id
+        me = utils.get_person_or_org(request.user, user_type)
+        ownership = False
+        if user_type == "Organization" and org == me:
+            ownership = True
+        if user_type == "Person" and activity.examine_teacher == me:
+            examine = True
+        if not (ownership or examine):
+            assert activity.status != Activity.Status.REVIEWING
+            assert activity.status != Activity.Status.ABORT
     except:
         return redirect("/welcome/")
 
-    me = utils.get_person_or_org(request.user, user_type)
 
     # 下面这些都是展示前端页面要用的
     title = activity.title
-    org = activity.organization_id
     org_name = org.oname
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
@@ -1704,8 +1712,6 @@ def viewActivity(request, aid=None):
     capacity = activity.capacity
     if capacity == -1 or capacity == 10000:
         capacity = "INF"
-    if activity.examine_teacher == me:
-        examine = True
     if activity.source == Activity.YQPointSource.COLLEGE:
         price = 0
     if activity.bidding:
@@ -1729,15 +1735,12 @@ def viewActivity(request, aid=None):
             pStatus = "无记录"
         if pStatus == "放弃":
             pStatus = "无记录"
-    # ownership 表示是否是这个活动的所有组织
-    ownership = False
-    if not person and org.organization_id == request.user:
-        ownership = True
-        aQRcode = get_activity_QRcode(activity)
 
     # 签到
     need_checkin = activity.need_checkin
-    print("need_checkin", need_checkin)
+
+    if ownership and need_checkin:
+        aQRcode = get_activity_QRcode(activity)
 
     # 活动图片！！
     photo = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
