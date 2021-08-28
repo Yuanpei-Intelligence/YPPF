@@ -372,6 +372,15 @@ class ActivityManager(models.Manager):
             semester__contains=local_dict["semester_data"]["semester"]
         )
 
+    def displayable(self):
+        # REVIEWING, ABORT 状态的活动，只对创建者和审批者可见，对其他人不可见
+        # 过审后被取消的活动，还是可能被看到，也应该让学生看到这个活动被取消了
+        return self.exclude(status__in=[
+            Activity.Status.REVIEWING,
+            # Activity.Status.CANCELED,
+            Activity.Status.ABORT
+        ])
+
     def get_newlyended_activity(self):
         # 一周内结束的活动
         nowtime = datetime.now()
@@ -552,6 +561,7 @@ class Activity(CommentBase):
 
     class Status(models.TextChoices):
         REVIEWING = "审核中"
+        ABORT = "未过审"
         CANCELED = "已取消"
         APPLYING = "报名中"
         WAITING = "等待中"
