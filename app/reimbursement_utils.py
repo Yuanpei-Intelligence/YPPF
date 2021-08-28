@@ -1,5 +1,6 @@
 from django.dispatch.dispatcher import receiver
 from app.models import (
+    Organization,
     Reimbursement,
     Activity,
     Comment,
@@ -28,7 +29,8 @@ def succeed(message):
 # me为操作者
 # 返回值为context, warn_code = 1表示失败, 2表示成功; 错误信息在context["warn_message"]
 # 如果成功context会返回update之后的application,
-
+#注意新建报销和修改报销时，元气值的合法性检查有所不同。
+#申请报销时，元气值要先扣除。除非老师拒绝或者组织取消报销，元气值一直处于扣除状态。
 
 def update_reimb_application(application, me, user_type, request,auditor_name):
     # 关于这个application与我的关系已经完成检查
@@ -37,7 +39,8 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
     # 首先上锁
     with transaction.atomic():
         if application is not None:
-            application = Reimbursement.objects.select_for_update().get(id=application.id)
+            application = Reimbursement.objects.select_related().get(id=application.id)
+            org = application.pos.organization
 
         # 首先确定申请状态
         post_type = request.POST.get("post_type")
@@ -49,7 +52,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
         # 接下来确定访问的个人/组织是不是在做分内的事情
         if (user_type == "Person" and feasible_post.index(post_type)<=2 ) or (
                 user_type == "Organization" and feasible_post.index(post_type) >= 3):
-            return wrong("您无权进行此操作. 如有疑惑, 请联系管理员")
+            return wrong("您无权进行此操作，如有疑惑, 请联系管理员")
 
         if feasible_post.index(post_type) <= 2:  # 是组织的操作, 新建\修改\取消
 
@@ -64,32 +67,38 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                 if not application.is_pending():  # 如果不在pending状态, 可能是重复点击
                     return wrong("该申请已经完成或被取消!")
                 # 接下来可以进行取消操作
-                Reimbursement.objects.filter(id=application.id).update(status=Reimbursement.ReimburseStatus.CANCELED)
+                #返还组织元气值
+                org.YQPoint += application.amount
+                org.save()
+                #修改申请状态
+                application.status=Reimbursement.ReimburseStatus.CANCELED
+                application.save()
                 context = succeed("成功取消“" +application.activity.title+ "”的经费申请!")
                 context["application_id"] = application.id
                 return context
 
             else:
                 # 无论是新建还是修改, 都应该首先对元气值、报销说明进行合法性检查
-
-                #元气值
-                YQP = me.YQPoint
-                try:
-                    reimb_YQP = float(request.POST.get('YQP'))
-                    if reimb_YQP < 0:
-                        return wrong("申请失败，报销的元气值不能为负值！")
-                    if reimb_YQP > YQP:
-                        return wrong("申请失败，报销的元气值不能超过组织当前元气值！")
-                except:
-                    return wrong("元气值不能为空，请完整填写。")
                 #报销说明
                 message = str(request.POST.get('message'))  # 报销说明
                 if message == "":
                     return wrong("报销说明不能为空，请完整填写。")
+                # 读取本组织和表单中的元气值，对元气值进行初始的合法性检查
+                org=Organization.objects.get(id=me.id)
+                YQP = org.YQPoint
+                try:
+                    reimb_YQP = float(request.POST.get('YQP'))
+                    if reimb_YQP < 0:
+                        return wrong("申请失败，报销的元气值不能为负值！")
+                except:
+                    return wrong("元气值不能为空，请完整填写。")
 
                 # 如果是新建申请,
                 if post_type == "new_submit":
-                    # 未报销的活动
+                    #元气值合法性检查，新建和重新修改时的合法性检查不同
+                    if reimb_YQP > YQP:
+                        return wrong("申请失败，报销的元气值不能超过组织当前元气值！")
+                    # 筛选出该组织未报销的活动
                     activities=utils.get_unreimb_activity(me)
                     try:
                         reimb_act_id = int(request.POST.get('activity_id'))
@@ -107,6 +116,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     # 至此可以新建申请, 创建一个空申请
                     application =Reimbursement.objects.create(
                                 activity=reimb_act, amount=reimb_YQP, pos=me.organization_id,message=message)
+                    #保存报销材料到评论中，后续如果需要更新报销材料则在评论中更新
                     if len(images)>0:
                         text = "以下默认为初始的报销材料"
                         reim_comment = Comment.objects.create(
@@ -115,7 +125,11 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                         for payload in images:
                             CommentPhoto.objects.create(
                                 image=payload, comment=reim_comment)
-                    context = succeed(f'活动{reimb_act.title}的经费申请已成功发送，请耐心等待{auditor_name}老师审批！' )
+                    #扣除组织元气值
+                    org.YQPoint-=application.amount
+                    org.save()
+                    #成功！
+                    context = succeed(f'活动“{reimb_act.title}”的经费申请已成功发送，请耐心等待{auditor_name}老师审批！' )
                     context["application_id"] = application.id
                     return context
 
@@ -126,10 +140,19 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     # 修改申请的状态应该有所变化
                     if application.amount == reimb_YQP and  application.message == message:
                         return wrong("没有检测到修改!")
-                    # 至此可以发起修改
-                    Reimbursement.objects.filter(id=application.id).update(
-                        amount=reimb_YQP,message=message)
-                    context = succeed(f'活动{application.activity.title}的经费申请已成功修改，请耐心等待{auditor_name}老师审批！' )
+                    #元气值合法性检查
+
+                    if org.YQPoint<(reimb_YQP-application.amount):
+                        return wrong("申请失败，报销的元气值不能超过组织当前元气值！")
+
+                    # 修改组织元气值
+                    org.YQPoint-=(reimb_YQP-application.amount)
+                    org.save()
+                    #修改申请
+                    application.amount=reimb_YQP
+                    application.message=message
+                    application.save()
+                    context = succeed(f'活动“{application.activity.title}”的经费申请已成功修改，请耐心等待{auditor_name}老师审批！' )
                     context["application_id"] = application.id
                     return context
 
@@ -144,8 +167,13 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
             act_title=application.activity.title
             # 否则，应该直接完成状态修改
             if post_type == "refuse_submit":
-                Reimbursement.objects.filter(id=application.id).update(status=Reimbursement.ReimburseStatus.REFUSED)
-                context = succeed(f'已成功拒绝活动{act_title}的经费申请！')
+                #返还组织的元气值
+                org.YQPoint+=application.amount
+                org.save()
+                #修改申请状态
+                application.status=Reimbursement.ReimburseStatus.REFUSED
+                application.save()
+                context = succeed(f'已成功拒绝活动“{act_title}”的经费申请！')
                 context["application_id"] = application.id
                 return context
             else:  # 通过申请
@@ -154,14 +182,9 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     例如不存在冲突申请、职位的申请是合理的等等
                     否则就不应该通过这条创建
                 '''
-                org = application.pos.organization
-                if org.YQPoint < application.amount:
-                    return wrong("当前组织没有足够的元气值。报销申请无法通过。")
-                else:  # 修改对应组织的元气值
-                    org.YQPoint -= application.amount
-                    org.save()
-                    application.status = Reimbursement.ReimburseStatus.CONFIRMED
-                    application.save()
-                context = succeed(f'活动{act_title}的经费申请已通过！')
+                 # 修改申请的状态
+                application.status = Reimbursement.ReimburseStatus.CONFIRMED
+                application.save()
+                context = succeed(f'活动“{act_title}”的经费申请已通过！')
                 context["application_id"] = application.id
                 return context
