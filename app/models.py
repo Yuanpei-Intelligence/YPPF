@@ -146,6 +146,8 @@ class OrganizationType(models.Model):
         base_field=models.CharField(max_length=10), size=4, max_length=44
     )  # [部长, 副部长, 部员]
 
+    allow_unsubscribe = models.BooleanField("允许取关?", default=True)
+
     def __str__(self):
         return str(self.otype_name)
 
