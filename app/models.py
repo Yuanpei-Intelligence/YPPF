@@ -577,7 +577,7 @@ class Activity(CommentBase):
 
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
-        self.typename = "addActivity"
+        self.typename = "activity"
         super().save(*args, **kwargs)
 
 class ActivityPhoto(models.Model):
