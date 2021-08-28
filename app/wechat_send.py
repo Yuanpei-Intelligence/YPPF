@@ -435,4 +435,27 @@ def publish_activity(activity_or_id):
     return True
 
 
+def wechat_notify_activity(aid, msg, send_to, url=None):
+    activity = Activity.objects.get(id=aid)
+    targets = set()
+    if send_to == "participants" or send_to == "all":
+        participants = Participant.objects.filter(
+            activity_id=aid,
+            status__in=[
+                Participant.AttendStatus.APLLYSUCCESS,
+                Participant.AttendStatus.APPLYING,
+            ],
+        )
+        participants = list(participants.values_list("person_id__username", flat=True))
+        targets |= set(participants)
+
+    if send_to == "subscribers" or send_to == "all":
+        org = activity.organization_id
+        subscribers = NaturalPerson.objects.activated().exclude(
+            id__in=org.unsubscribers.all()
+        )  # flat=True时必须只有一个键
+        subscribers = list(subscribers.values_list("person_id__username", flat=True))
+        targets |= set(subscribers)
+
+    send_wechat(targets, msg, card=int(len(msg) < 120), url=url, check_duplicate=True)
 
