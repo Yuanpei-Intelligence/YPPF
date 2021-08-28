@@ -7,6 +7,7 @@ from app.models import (
     Notification,
     ModifyOrganization,
     Activity,
+    Help,
     Reimbursement,
     ModifyPosition,
 )
@@ -184,11 +185,9 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         except:
             bar_display["help_message"] = ""
         try:
-            bar_display["help_paragraphs"] = local_dict["use_help"].get(
-                navbar_name, list()
-            )
+            bar_display["help_paragraphs"] = Help.objects.get(title=navbar_name).content
         except:
-            bar_display["help_paragraphs"] = list()
+            bar_display["help_paragraphs"] = ""
 
     return bar_display
 
@@ -204,27 +203,6 @@ def check_ac_request(request):
         edit = True
     except:
         edit = False
-
-    bar_display["navbar_name"] = navbar_name
-    bar_display["title_name"] = (
-        title_name if not title_name else navbar_name
-    )  # title_name默认与navbar_name相同
-
-    if navbar_name != "":
-        try:
-            bar_display["help_message"] = local_dict["help_message"].get(
-                navbar_name, ""
-            )
-        except:  # 找不到提醒, 直接跳过
-            pass
-        try:
-            bar_display["help_paragraphs"] = local_dict["use_help"].get(
-                navbar_name, list()
-            )
-        except:  # 找不到提醒, 直接跳过
-            pass
-
-    return bar_display
 
 
 def url_check(arg_url):
@@ -356,11 +334,11 @@ def check_newpos_request(request,prepos=None):
     
     context['oname'] = oname  # 组织名字
 
-    context['application'] = str(request.POST.get('application', ""))  # 申请理由
+    context["application"] = str(request.POST.get("application", ""))  # 申请理由
 
-    if context['application']=="" :
-        context['warn_code'] = 1
-        context['warn_msg'] = "申请理由不能为空"
+    if context["application"] == "":
+        context["warn_code"] = 1
+        context["warn_msg"] = "申请理由不能为空"
     return context
 
 
@@ -426,14 +404,14 @@ def notifications_create(
     Notification.objects.bulk_create(notifications)
 
 
-def set_YQPoint_credit_to(YQP):
+def set_nperson_quota_to(quota):
     """
         后台设定所有自然人的元气值为一特定值，这个值就是每月的限额
         给所有用户发送通知
     """
     activated_npeople = NaturalPerson.objects.activated()
-    activated_npeople.update(YQPoint_credit_card=YQP)
-    notification_content = f"学院已经将大家的元气信用值充值为{YQP},祝您使用愉快！"
+    activated_npeople.update(quota=quota)
+    notification_content = f"学院已经将大家的元气值配额重新设定为{quota},祝您使用愉快！"
     title = Notification.Title.VERIFY_INFORM
     YPcollege = Organization.objects.get(oname="元培学院")
     notifications_create(
