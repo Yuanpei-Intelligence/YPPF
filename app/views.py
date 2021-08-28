@@ -2189,44 +2189,9 @@ def addActivity(request, aid=None):
                 return redirect("/welcome/")
             """
         else:
-            aid = create_activity(request)
             try:
-
-                # 活动预告图片的合法性检查
-                existannouncephoto = False
-                pictures = []
-                pictures.append(request.POST.get("picture1"))
-                pictures.append(request.POST.get("picture2"))
-                pictures.append(request.POST.get("picture3"))
-                pictures.append(request.POST.get("picture4"))
-                pictures.append(request.POST.get("picture5"))
-
-                for pic in pictures:
-                    if pic is not None:
-                        existannouncephoto = True
-                announcephotos = request.FILES.getlist("images")
-                if len(announcephotos)==0 :
-                    if existannouncephoto is False:
-                        html_display['warn_code'] = 1
-                        html_display['warn_message'] = "上传活动照片不能为空"
-                        return render(request, "activity_add.html", locals())
-                else:
-                    for photo in announcephotos:
-                        if utils.if_image(photo) == False:
-                            html_display['warn_code'] = 1
-                            html_display['warn_message'] = "上传的附件只支持图片格式。"
-                            return render(request, "activity_add.html", locals())
-
                 # 开始进行活动创建
                 aid = create_activity(request)
-                activity = Activity.objects.get(id=aid)
-                for pic in pictures:
-                    if pic is not None:
-                        ActivityAnnouncePhoto.objects.create(image = pic, activity = activity)
-                if len(announcephotos)>0 :
-                    for photo in announcephotos:
-                        ActivityAnnouncePhoto.objects.create(image = photo, activity = activity)                    
-
                 return redirect(f"/viewActivity/{aid}")
 
             except:
@@ -2235,8 +2200,6 @@ def addActivity(request, aid=None):
     # 处理 GET 请求
     elif request.method == "GET":
         if not edit:
-            bar_display["title_name"] = "新建活动"
-            bar_display["narbar_name"] = "新建活动"
             avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
         else:
             # 编辑状态下，填写 placeholder 为旧值
