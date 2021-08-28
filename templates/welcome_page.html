@@ -311,6 +311,8 @@
 
                         <p>TIPS:展示今日心愿</p>
                         <div class="pre-scrollable bio-skill-box layout-top-spacing">
+                            {% if wishes|length == 0 %}
+                            <p style="text-align: center;">暂时没有心愿哦</p>
                             {% for wish in wishes %}
                             <div class="col-12" style="padding: 2%;">
                                     <div class="d-flex b-skills"style="padding: 5%;" >
@@ -324,46 +326,6 @@
                 </div>
 
             </div>
-            <!--
-            <div class="row layout-top-spacing">
-
-                <div class="jumbotron">
-                    <div class="container">
-                        <h1 class="display-3">你好，元培！</h1>
-                        <p>This is a template for a simple marketing or informational website. It includes a large callout called a jumbotron and three supporting pieces of content. Use it as a starting point to create something more unique.</p>
-                    </div>
-                </div>
-                
-                <div class="container">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <h2>元培团委</h2>
-                            <p>庆祝共产党成立100周年，学院举办学党史教育活动。 </p>
-                            <p><a class="btn btn-secondary" href="#" role="button">View details »</a></p>
-                        </div>
-                        <div class="col-md-4">
-                            <h2>元培学生会</h2>
-                            <p>绍兴论坛举办在即，点击查看详情。 </p>
-                            <p><a class="btn btn-secondary" href="#" role="button">View details »</a></p>
-                        </div>
-                        <div class="col-md-4">
-                            <h2>元培学学学</h2>
-                            <p>通识课改革问卷已发布，请同学们点此处填写！</p>
-                            <p><a class="btn btn-secondary" href="#" role="button">View details »</a></p>
-                        </div>
-                        <div class="col-md-4">
-                            <h2>元培书房</h2>
-                            <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-                            <p><a class="btn btn-secondary" href="#" role="button">View details »</a></p>
-                            </div>
-                    </div>
-                    <hr>
-                </div>
-            
-                <hr>
-            </div>
-            -->
-
         </div>
         <!--  END CONTENT PART  -->
 
