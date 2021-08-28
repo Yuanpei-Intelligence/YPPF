@@ -189,9 +189,6 @@ def publish_notification(notification_or_id):
         print(f"未找到id为{notification_or_id}的通知")
         return False
     sender = get_person_or_org(notification.sender)  # 也可能是组织
-    send_time = notification.start_time
-    timeformat = "%Y年%m月%d日 %H:%M"
-    send_time = send_time.strftime(timeformat)
 
     if len(notification.content) < 120:  # 卡片类型消息最多显示256字节
         kws = {"card": True}  # 因留白等原因，内容120字左右就超出了
@@ -199,10 +196,9 @@ def publish_notification(notification_or_id):
             (
                 notification.get_title_display(),
                 f"发送者：{str(sender)}",
-                f"通知时间：{send_time}",
                 "通知内容：",
                 notification.content,
-                "点击查看详情",
+                "查看详情",
             )
         )
         if notification.URL:
@@ -216,8 +212,6 @@ def publish_notification(notification_or_id):
                 "",
                 "发送者：",
                 f"{str(sender)}",
-                "通知时间：",
-                f"{send_time}",
                 "通知内容：",
                 notification.content,
             )
@@ -228,7 +222,7 @@ def publish_notification(notification_or_id):
                 url = THIS_URL + url
             message += f'\n\n<a href="{url}">阅读原文</a>'
         else:
-            message += f'\n\n<a href="{DEFAULT_URL}">点击查看详情</a>'
+            message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
     receiver = get_person_or_org(notification.receiver)
     if isinstance(receiver, NaturalPerson):
         wechat_receivers = [notification.receiver.username]  # user.username是id
@@ -252,7 +246,8 @@ def publish_notifications(
 
     Argument
     --------
-    - notifications_or_ids: Iter[notification | id] | None, 通知基本范围
+    - notifications_or_ids: QuerySet | List or Tuple[notification with id] |
+        Iter[id] | None, 通知基本范围, 别问参数类型为什么这么奇怪，问就是django不统一
     - filter_kws: dict | None, 这些参数将被直接传递给filter函数
     - exclude_kws: dict | None, 这些参数将被直接传递给exclude函数
     - 以上参数不能都为空
@@ -271,6 +266,11 @@ def publish_notifications(
     try:
         notifications = Notification.objects.all()
         if notifications_or_ids is not None:
+            if (isinstance(notifications_or_ids, (list, tuple))
+                and notifications_or_ids
+                and isinstance(notifications_or_ids[0], Notification)
+                ):
+                notifications_or_ids = [n.id for n in notifications_or_ids]
             notifications = notifications.filter(id__in=notifications_or_ids)
         if filter_kws is not None:
             notifications = notifications.filter(**filter_kws)
@@ -289,16 +289,18 @@ def publish_notifications(
         sender = latest_notification.sender
         typename = latest_notification.typename
         title = latest_notification.title
-        send_time = latest_notification.start_time
         content = latest_notification.content
         content_start = content[:10]
         content_end = content[-10:]
         url = latest_notification.URL
         if check:
+            send_time = latest_notification.start_time
+            before_5min = send_time - timedelta(minutes=5)  # 最多差5分钟
             notifications = notifications.filter(
                 sender=sender,
                 typename=typename,
                 title=title,
+                start_time__gte=before_5min,
                 content__startswith=content_start,
                 content__endswith=content_end,
                 URL=url,
@@ -308,8 +310,6 @@ def publish_notifications(
         return False
 
     sender = get_person_or_org(sender)  # 可能是组织或个人
-    timeformat = "%Y年%m月%d日 %H:%M"
-    send_time = send_time.strftime(timeformat)
     if url and url[0] == "/":  # 相对路径变为绝对路径
         url = THIS_URL + url
 
@@ -319,10 +319,9 @@ def publish_notifications(
             (
                 latest_notification.get_title_display(),
                 f"发送者：{str(sender)}",
-                f"通知时间：{send_time}",
                 "通知内容：",
                 content,
-                "点击查看详情",
+                "查看详情",
             )
         )
         if url:
@@ -336,8 +335,6 @@ def publish_notifications(
                 "",
                 "发送者：",
                 f"{str(sender)}",
-                "通知时间：",
-                f"{send_time}",
                 "通知内容：",
                 content,
             )
@@ -345,7 +342,7 @@ def publish_notifications(
         if url:
             message += f'\n\n<a href="{url}">阅读原文</a>'
         else:
-            message += f'\n\n<a href="{DEFAULT_URL}">点击查看详情</a>'
+            message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
 
     # 获取接收者列表，组织的接收者为其负责人，去重
     receiver_ids = notifications.values_list("receiver_id", flat=True)
