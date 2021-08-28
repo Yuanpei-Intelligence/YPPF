@@ -2,11 +2,12 @@ from app.models import TransferRecord
 from app.models import Notification
 import pandas as pd
 import os
-from app.models import NaturalPerson, Position, Organization, OrganizationType, Activity
+from app.models import NaturalPerson, Position, Organization, OrganizationType, Activity, Help
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
 from tqdm import tqdm
 import math
+import json
 from datetime import datetime
 from boottest import local_dict
 
@@ -293,3 +294,22 @@ def load_stu_info(request):
     context = {"message": "导入学生信息成功！"}
     return render(request, "debugging.html", context)
 
+
+def load_help(request):
+    if not request.user.is_superuser:
+        context = {"message": "请先以超级账户登录后台后再操作！"}
+        return render(request, "debugging.html", context)
+    try:
+        help_df = load_file("help.csv")
+    except:
+        context = {"message": "没有找到help.csv,请确认该文件已经在test_data中。"}
+        return render(request, "debugging.html", context)
+    # helps = [Help(title=title, content=content) for title, content in help_dict.items()]
+    helps = []
+    for _, help_dict in help_df.iterrows():
+        content = help_dict["content"]
+        title = help_dict["title"]
+        helps.append(Help(title=title, content=content))
+    Help.objects.bulk_create(helps)
+    context = {"message": "成功导入帮助信息！"}
+    return render(request, "debugging.html", context)

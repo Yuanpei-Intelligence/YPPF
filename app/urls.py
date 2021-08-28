@@ -28,6 +28,7 @@ urlpatterns = [
     path("loadtransferinfo/",data_import.load_transfer_info,name="loadtransferinfo"),
     path("loadactivity/",data_import.load_activity_info,name="loadactivity"),
     path("loadnotification/",data_import.load_notification_info,name="loadnotification"),
+    path("loadhelp/", data_import.load_help, name="load_help"),
     path("user_account_setting/", views.account_setting, name="user_account_setting"),
     path("search/", views.search, name="search"),
     path("minilogin", views.miniLogin, name="minilogin"),
