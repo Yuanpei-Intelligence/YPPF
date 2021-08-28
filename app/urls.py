@@ -52,12 +52,11 @@ urlpatterns = [
     # path("personnelMobilization/", views.personnel_mobilization, name="personnel_mobilization"),
     path("showReimbursement/",views.showReimbursement,name="showReimbursement"),
     path("showNewOrganization/", views.showNewOrganization, name="showNewOrganization"),
-    path("addOrganization/", views.addOrganization, name="addOrganization"),
-    path("auditOrganization/", views.auditOrganization, name="auditOrganization"),
     path("modifyReimbursement/",views.modeifyReimbursement,name="modeifyReimbursement"),
     path('showPosition/', views.showPosition, name="showPosition"),
     path("modifyPosition/",views.modifyPosition, name="modifyPosition"),
     path("modifyOrganization/", views.modifyOrganization, name="modifyOrganization"),
+    path("sendMessage/", views.sendMessage, name="sendMessage"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

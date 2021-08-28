@@ -221,5 +221,8 @@
             .catch(() => { success: false });
         return success;
     }
+    function disable(id){
+        document.getElementById(id).disabled = 'disabled'
+    }
 </script>
 {% endblock %}
