@@ -140,7 +140,7 @@ def bulk_notification_create(
         relate_TransferRecord=None,
         relate_instance=None,
         *,
-        publish_to_wechat=True,
+        publish_to_wechat=False,
 ):
     bulk_identifier = hasher.encode(str(datetime.now()) + str(random()))
     notifications = [ Notification(
@@ -155,7 +155,7 @@ def bulk_notification_create(
         relate_instance=relate_instance,
     ) for receiver in receivers ]
     Notification.objects.bulk_create(notifications, 50)
-    success = False
+    success = True
     if publish_to_wechat:
         filter_kws={"bulk_identifier":bulk_identifier}
         success = publish_notifications(filter_kws=filter_kws)
