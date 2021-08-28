@@ -28,6 +28,7 @@ urlpatterns = [
     path("loadtransferinfo/",data_import.load_transfer_info,name="loadtransferinfo"),
     path("loadactivity/",data_import.load_activity_info,name="loadactivity"),
     path("loadnotification/",data_import.load_notification_info,name="loadnotification"),
+    path("loadhelp/", data_import.load_help, name="load_help"),
     path("user_account_setting/", views.account_setting, name="user_account_setting"),
     path("search/", views.search, name="search"),
     path("minilogin", views.miniLogin, name="minilogin"),
@@ -52,12 +53,11 @@ urlpatterns = [
     # path("personnelMobilization/", views.personnel_mobilization, name="personnel_mobilization"),
     path("showReimbursement/",views.showReimbursement,name="showReimbursement"),
     path("showNewOrganization/", views.showNewOrganization, name="showNewOrganization"),
-    path("addOrganization/", views.addOrganization, name="addOrganization"),
-    path("auditOrganization/", views.auditOrganization, name="auditOrganization"),
     path("modifyReimbursement/",views.modeifyReimbursement,name="modeifyReimbursement"),
     path('showPosition/', views.showPosition, name="showPosition"),
     path("modifyPosition/",views.modifyPosition, name="modifyPosition"),
     path("modifyOrganization/", views.modifyOrganization, name="modifyOrganization"),
+    path("sendMessage/", views.sendMessage, name="sendMessage"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
