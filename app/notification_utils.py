@@ -140,7 +140,7 @@ def bulk_notification_create(
         relate_TransferRecord=None,
         relate_instance=None,
         *,
-        publish_to_wechat=False,
+        publish_to_wechat=True,
 ):
     bulk_identifier = hasher.encode(str(datetime.now()) + str(random()))
     notifications = [ Notification(

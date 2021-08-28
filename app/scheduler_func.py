@@ -260,9 +260,9 @@ def changeActivityStatus(aid, cur_status, to_status):
 
 
         # TODO send message to admin to debug
-        with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
-            f.write(str(e) + "\n")
-            f.close()
+        # with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
+        #     f.write(str(e) + "\n")
+        #     f.close()
         pass
 
 
@@ -334,7 +334,7 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
         activity = Activity.objects.get(id=aid)
         if msg_type == "newActivity":
             msg = f"您关注的组织{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
-            msg += f"开始时间: {activity. start}\n"
+            msg += f"开始时间: {activity.start}\n"
             msg += f"活动地点: {activity.location}\n"
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
