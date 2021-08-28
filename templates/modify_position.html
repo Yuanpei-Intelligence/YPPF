@@ -36,7 +36,19 @@
                                                     <br>
                                                     <br>
                                                     <div align="center">
-                                                    <h3>人事申请[{% if not is_new_application %}{{application.get_status_display}}{% else %}新建中{% endif %}]</h3>
+                                                    <h3>人事申请 {% if not is_new_application %}
+                                                            {% with application.get_status_display as status %}
+                                                            {%if status == "处理中"%}
+                                                            <span class="badge badge-primary">{{status}}</span>
+                                                            {%elif status == "已通过"%}
+                                                            <span class="badge badge-success">{{status}}</span>
+                                                            {%elif status == "已取消"%}
+                                                            <span class="badge badge-dark">{{status}}</span>
+                                                            {%else%}
+                                                            <span class="badge badge-danger">{{status}}</span>
+                                                            {%endif%}
+                                                            {%endwith%}
+                                                        {% endif %}</h3>
                                                     </div>
                                                 <br>
                                                     <div class="d-flex justify-content-between">
