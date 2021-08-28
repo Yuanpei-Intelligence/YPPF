@@ -27,10 +27,15 @@
     <div id="content" class="main-content">
         <div class="container">
             <div class="container">
+
                 {% if bar_display.help_paragraphs %}
                     {% include 'help.html' %}
                 {% endif %}
-                <div class="alert alert-warning  text-center" id="warn_msg" style="display: none;">test</div>
+                {% if html_display.warn_code == 1 %}
+                <div class="alert alert-warning  text-center" >{{ html_display.warn_message }}</div>
+                {% elif html_display.warn_code == 2 %}
+                <div class="alert alert-success  text-center" >{{ html_display.warn_message }}</div>
+                {% endif %}
                 <div class="row layout-top-spacing">
 
                     <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
@@ -92,7 +97,7 @@
                                                     </div>
                                                 </div>
                                             </div>
-
+                                            
                                             <!-- 前端没想好怎么设计 -->
                                             {% if not examine %}
                                             <div class="form-group">
@@ -257,55 +262,6 @@
                                                 
                                             </div>
                                             -->
-
-
-                                            <!--
-                                            <div class="form-group">
-                                                <label for="signupSdate" class="col-sm-2 control-label">报名开始日期</label>
-                                                <input id="signupSdate" name="signupSdate" type="date"
-                                                    value="{{html_display.today}}">
-                                                <label for="signupStime" class="col-sm-2 control-label">报名开始时间</label>
-                                                <input id="signupStime" name="signupStime" type="time">
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label for="signupEdate" class="col-sm-2 control-label">报名截止日期</label>
-                                                <input id="signupEdate" name="signupEdate" type="date">
-                                                <label for="signupEtime" class="col-sm-2 control-label">报名截止时间</label>
-                                                <input id="signupEtime" name="signupEtime" type="time">
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label for="actSdate" class="col-sm-2 control-label">活动开始日期</label>
-                                                <input id="actSdate" name="actSdate" type="date">
-                                                <label for="actStime" class="col-sm-2 control-label">活动开始时间</label>
-                                                <input id="actStime" name="actStime" type="time">
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label for="actEdate" class="col-sm-2 control-label">活动结束日期</label>
-                                                <input id="actEdate" name="actEdate" type="date">
-                                                <label for="actEtime" class="col-sm-2 control-label">活动结束时间</label>
-                                                <input id="actEtime" name="actEtime" type="time">
-                                            </div>
-
-
-
-                                            
-                                            <div class="form-group">
-                                                <label for="location" class="col-sm-2 control-label">活动地点</label>
-                                                <input type="text" id="location" name="location" aria-label="Default"
-                                                    aria-describedby="inputGroup-sizing-default">
-                                            </div>                                            <div class="input-group mb-4">
-                                                <div class="input-group-prepend">
-                                                    <span class="input-group-text"
-                                                        id="inputGroup-sizing-default">活动最大人数</span>
-                                                </div>
-                                                <input type="text" id="maxpeople" name="maxpeople" class="form-control"
-                                                    aria-label="Default" placeholder="最大100人"
-                                                    aria-describedby="inputGroup-sizing-default">
-                                            </div>
-                                            -->
                                             <hr>
 
                                             <p>宣传信息</p>
@@ -327,7 +283,7 @@
 
                                             {% if not examine and not accepted %}
                                             <div class="form-group">
-                                                <label for="aintro">上传活动预告图片</label><br/>
+                                                <label>上传活动预告图片</label><br/>
                                                 <div class="row">
                                                     <div class="col-4">
                                                         <input type="file" accept="image/*" name="images" multiple id="images">
@@ -342,32 +298,20 @@
                                             <div class="form-group">
                                                 <div class="form-check">
                                                     <div class="row">
-                                                    <div class="col-xl-3 col-lg-3 col-md-3 mb-5">
+
+                                                    {% for pic in defaultpics %}
+                                                    <div class="col-xl-4 col-lg-4 col-md-4 mb-5">
                                                         <input class="form-check-input" type="checkbox"
-                                                            value={% static "assets/img/1.jpeg.jpg" %}
-                                                            id="picture1" name="picture1">
+                                                            value={{pic.src}}
+                                                            id={{pic.id}} name={{pic.id}}>
                                                         <label class="form-check-label" for="defaultCheck1">
-                                                            <img src={% static "assets/img/1.jpeg.jpg" %} class="img-fluid">
+                                                            <img src={{pic.src}} class="img-fluid">
                                                         </label>
                                                     </div>
-                                                    <div class="col-xl-3 col-lg-3 col-md-3 mb-5">
-                                                        <input class="form-check-input" type="checkbox"
-                                                            value={% static "assets/img/1.jpeg.jpg" %}
-                                                            id="picture2" name="picture2">
-                                                        <label class="form-check-label" for="defaultCheck1">
-                                                            <img src={% static "assets/img/1.jpeg.jpg" %} class="img-fluid">
-                                                        </label>
-                                                    </div>
-                                                    <div class="col-xl-3 col-lg-3 col-md-3 mb-5">
-                                                        <input class="form-check-input" type="checkbox"
-                                                            value={% static "assets/img/1.jpeg.jpg" %}
-                                                            id="picture3" name="picture3">
-                                                        <label class="form-check-label" for="defaultCheck1">
-                                                            <img src={% static "assets/img/1.jpeg.jpg" %} class="img-fluid">
-                                                        </label>
+                                                    {% endfor %}
                                                     </div>
                                                 </div>
-                                                </div>
+
                                                 
                                             </div>
                                             {% endif %}
@@ -408,7 +352,9 @@
                                             </button>
                                         </form>
                                         {% endif %}
-                                        {% include 'comment.html' %}
+                                        <div>
+                                            {% include 'comment.html' %}
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -419,9 +365,7 @@
             </div>
         </div>
     </div>
-
     <!--  END CONTENT AREA  -->
-
 
 
 
