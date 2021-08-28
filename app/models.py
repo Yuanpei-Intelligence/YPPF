@@ -372,14 +372,18 @@ class ActivityManager(models.Manager):
         # 一周内结束的活动
         nowtime = datetime.now()
         mintime = nowtime-timedelta(days = 7)
-        return self.filter(end__gt = mintime).filter(status=Activity.Status.END)
+        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
+            semester__contains=local_dict["semester_data"]["semester"]
+        ).filter(end__gt = mintime).filter(status=Activity.Status.END)
 
     def get_recent_activity(self):
         # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
         nowtime = datetime.now()
         mintime = nowtime-timedelta(days = 7)
         maxtime = nowtime+timedelta(days = 7)
-        return self.filter(start__gt = mintime).filter(start__lt = maxtime).filter(
+        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
+            semester__contains=local_dict["semester_data"]["semester"]
+        ).filter(start__gt = mintime).filter(start__lt = maxtime).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -391,7 +395,9 @@ class ActivityManager(models.Manager):
     def get_newlyreleased_activity(self):
         # 最新（三天内）发布的活动，按发布的时间逆序
         nowtime = datetime.now()
-        return self.filter(publish_time__gt = nowtime-timedelta(days = 3)).filter(
+        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
+            semester__contains=local_dict["semester_data"]["semester"]
+        ).filter(publish_time__gt = nowtime-timedelta(days = 3)).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -402,7 +408,9 @@ class ActivityManager(models.Manager):
     def get_today_activity(self):
         # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
         nowtime = datetime.now()
-        return self.filter(
+        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
+            semester__contains=local_dict["semester_data"]["semester"]
+        ).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -935,21 +943,6 @@ class Reimbursement(CommentBase):
     def is_pending(self):   #表示是不是pending状态
             return self.status == Reimbursement.ReimburseStatus.WAITING
 
-
-class Help(models.Model):
-    '''
-        页面帮助类
-    '''
-    title = models.CharField("帮助标题", max_length=20, blank=False)
-    content = models.TextField("帮助内容", max_length=500)
-
-    class Meta:
-        verbose_name = "页面帮助"
-        verbose_name_plural = "页面帮助"
-
-    def __str__(self) -> str:
-        return self.title
-
 class Wishes(models.Model):
     class Meta:
         verbose_name = "心愿"
@@ -957,4 +950,3 @@ class Wishes(models.Model):
         ordering = ["-time"]
     text = models.TextField("心愿内容", default="", blank=True)
     time = models.DateTimeField("发布时间", auto_now_add=True)
-

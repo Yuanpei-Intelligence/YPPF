@@ -321,8 +321,7 @@ def stuinfo(request, name=None):
                 Q(person=oneself) & Q(show_post=True)
             )
         )
-
-        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id")  # 自己的组织
+        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id") # 自己的组织
 
         # 管理的组织
         person_owned_poss = person_poss.filter(pos=0, status=Position.Status.INSERVICE)
@@ -731,19 +730,19 @@ def homepage(request):
                 np.last_time_login = nowtime
                 np.bonusPoint += 0.5
                 np.save()
-    
+
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
-    recentactivity_list = Activity.objects.activated().get_recent_activity()
+    recentactivity_list = Activity.objects.get_recent_activity()
 
     # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
-    activities = Activity.objects.activated().get_today_activity()
+    activities = Activity.objects.get_today_activity()
     activities_start = [
         activity.start.strftime("%H:%M") for activity in activities
     ]
     html_display['today_activities'] = list(zip(activities, activities_start)) or None
 
     # 最新（三天内）发布的活动，按发布的时间逆序
-    newlyreleased_list = Activity.objects.activated().get_newlyreleased_activity()
+    newlyreleased_list = Activity.objects.get_newlyreleased_activity()
 
     # 今天截止的活动，按截止时间正序
     prepare_times = Activity.EndBeforeHours.prepare_times
@@ -761,7 +760,7 @@ def homepage(request):
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:
         wishtext = request.POST.get("wish")
-        new_wish = Wishes.objects.create(text = wishtext, time = nowtime)
+        new_wish = Wishes.objects.create(text = wishtext, time = datetime.now())
         new_wish.save()
 
     # 心愿墙！！！！!前100个心愿,已经按照时间逆序排好了
@@ -772,7 +771,7 @@ def homepage(request):
         如果列表为空，那么添加一张default，否则什么都不加。
     """
     photo_display = []
-    newlyended_activity = ActivityPhoto.objects.get_newlyended_activity()
+    newlyended_activity = Activity.objects.get_newlyended_activity()
     for act in newlyended_activity:
         summaryphotos = act.photos.filter(type = ActivityPhoto.PhotoType.SUMMARY)
         if len(summaryphotos)>0:
@@ -792,9 +791,9 @@ def homepage(request):
     html_display['weather'] = json.loads(weather)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "元培生活")
-    # bar_display["title_name"] = "Welcome Page"
-    # bar_display["navbar_name"] = "元培生活"
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "Welcome Page"
+    bar_display["navbar_name"] = "元培生活"
 
     return render(request, "welcome_page.html", locals())
 
@@ -812,10 +811,10 @@ def account_setting(request):
 
     # 补充网页呈现所需信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "账户设置")
-    # bar_display["title_name"] = "Account Setting"
-    # bar_display["navbar_name"] = "账户设置"
-    # bar_display["help_message"] = local_dict["help_message"]["账户设置"]
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "Account Setting"
+    bar_display["navbar_name"] = "账户设置"
+    bar_display["help_message"] = local_dict["help_message"]["账户设置"]
 
     if user_type == "Person":
         info = NaturalPerson.objects.filter(person_id=user)
@@ -1038,15 +1037,11 @@ def search(request):
         activities = Activity.objects.activated().filter(Q(organization_id=org.id) & ~Q(status=Activity.Status.CANCELED))
         activities = list(activities)
         activities.sort(key=lambda activity: abs(now - activity.start))
-        return None if len(activities) == 0 else activities[0:3]
+        return None if len(activities) == 0 else activities[0]
+
 
     org_display_list = []
     for org in organization_list:
-        try:
-            recent_activity = Activity.objects.filter(organization_id=org).order_by("-start")[0]
-        except:
-            recent_activity = {"title": "暂无", "id": "#"}
-
         org_display_list.append(
             {
                 "oname": org.oname,
@@ -1059,7 +1054,7 @@ def search(request):
                             .values("person__name")
                     )
                 ],
-                "activities": get_recent_activity(org)
+                "activity": get_recent_activity(org)
             }
         )
 
@@ -1078,9 +1073,9 @@ def search(request):
     html_display["is_myself"] = True
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "信息搜索")
-    # bar_display["title_name"] = "Search"
-    # bar_display["navbar_name"] = "信息搜索"  #
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "Search"
+    bar_display["navbar_name"] = "信息搜索"  #
 
     return render(request, "search.html", locals())
 
@@ -1290,10 +1285,10 @@ def modpw(request):
                 err_code = 4
                 err_message = "原始密码不正确"
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "修改密码")
+    bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
-    # bar_display["title_name"] = "Modify Password"
-    # bar_display["navbar_name"] = "修改密码"
+    bar_display["title_name"] = "Modify Password"
+    bar_display["navbar_name"] = "修改密码"
     return render(request, "modpw.html", locals())
 
 
@@ -1718,11 +1713,11 @@ def myYQPoint(request):
     }
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
+    bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
-    # bar_display["title_name"] = "My YQPoint"
-    # bar_display["navbar_name"] = "我的元气值"  #
-    # bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
+    bar_display["title_name"] = "My YQPoint"
+    bar_display["navbar_name"] = "我的元气值"  #
+    bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
 
     return render(request, "myYQPoint.html", locals())
 
@@ -1776,7 +1771,6 @@ def viewActivity(request, aid=None):
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
     start_time = activity.start
-    start_THEDAY = start_time.day # 前端使用量
     end_time = activity.end
     prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.apply_end
@@ -1931,7 +1925,6 @@ def viewActivity(request, aid=None):
 
         html_display["warn_code"] = 2
         html_display["warn_message"] = "成功提交活动照片"
-
         return render(request, "activity_info.html", locals())
 
     else:
@@ -2169,10 +2162,9 @@ def addActivities(request):
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # TODO: 整理结构，统一在结束时返回render
-    # bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display = utils.get_sidebar_and_navbar(request.user)
 
     # 处理 POST 请求
-    # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
     if request.method == "POST" and request.POST:
 
         # 看是否是 edit，如果是做一些检查
@@ -2208,7 +2200,6 @@ def addActivities(request):
                     if pic is not None:
                         existannouncephoto = True
                         break
-
                 announcephotos = request.FILES.getlist("images")
                 if len(announcephotos)==0 :
                     if existannouncephoto is False:
@@ -2243,8 +2234,8 @@ def addActivities(request):
         edit = request.GET.get("edit")
         if edit is None or edit != "True":
             edit = False
-            # bar_display["title_name"] = "新建活动"
-            # bar_display["narbar_name"] = "新建活动"
+            bar_display["title_name"] = "新建活动"
+            bar_display["narbar_name"] = "新建活动"
         else:
             # 编辑状态下，填写 placeholder 为旧值
             edit = True
@@ -2289,18 +2280,14 @@ def addActivities(request):
             if capacity == 10000:
                 no_limit = True
             examine_teacher = activity.examine_teacher.name
-            # bar_display["title_name"] = "修改活动"
-            # bar_display["narbar_name"] = "修改活动"
+            bar_display["title_name"] = "修改活动"
+            bar_display["narbar_name"] = "修改活动"
             status = activity.status
             if status != Activity.Status.REVIEWING:
                 accepted = True
 
         html_display["today"] = datetime.now().strftime("%Y-%m-%d")
-
-        if not edit:
-            bar_display = utils.get_sidebar_and_navbar(request.user, "新建活动")
-        else:
-            bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
+        bar_display = utils.get_sidebar_and_navbar(request.user)
 
         return render(request, "activity_add.html", locals())
 
@@ -2408,11 +2395,11 @@ def subscribeActivities(request):
 
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的订阅")
+    bar_display = utils.get_sidebar_and_navbar(request.user)
     # 补充一些呈现信息
-    # bar_display["title_name"] = "Subscribe"
-    # bar_display["navbar_name"] = "我的订阅"  #
-    # bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
+    bar_display["title_name"] = "Subscribe"
+    bar_display["navbar_name"] = "我的订阅"  #
+    bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     subscribe_url = reverse("save_subscribe_status")
     return render(request, "activity_subscribe.html", locals())
@@ -2781,7 +2768,6 @@ def notifications(request):
     undone_list = notification2Display(
         list(undone_set.union(undone_set).order_by("-start_time"))
     )
-    
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
@@ -3100,8 +3086,10 @@ def showPosition(request):
 
     shown_instances = shown_instances.order_by('-modify_time', '-time')
 
+
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="人事申请")
     return render(request, 'showPosition.html', locals())
+
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
@@ -3134,7 +3122,9 @@ def showReimbursement(request):
     else:
         shown_instances = Reimbursement.objects.filter(pos=request.user)
     shown_instances = shown_instances.order_by("-modify_time", "-time")
-    bar_display = utils.get_sidebar_and_navbar(request.user, "报销信息")
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "报销信息"
+    bar_display["navbar_name"] = "报销信息"
     return render(request, "reimbursement_show.html", locals())
 
 
@@ -3226,6 +3216,7 @@ def make_relevant_notification(application, info):
         notification_status_change(
             application.relate_notifications.get(status=Notification.Status.UNDONE).id
         )
+
 
 # 新建+修改+取消+审核 报销信息
 @login_required(redirect_field_name="origin")
@@ -3401,8 +3392,7 @@ def make_notification(application, request,content,receiver):
         )
 
 
-
-# YWolfeee: 重构组织申请页面 Aug 24 12:30 UTC-8
+# YWolfeee: 重构人事申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 def modifyOrganization(request):
@@ -3416,7 +3406,6 @@ def modifyOrganization(request):
             + "?warn_code={}&warn_message={}".format(
                 html_display["warn_code"], html_display["warn_message"]
             )
-          
         )
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
@@ -3508,7 +3497,6 @@ def modifyOrganization(request):
         个人：可能是初次申请或者是修改申请
         组织：可能是审核申请
         # TODO 也可能是两边都想自由的查看这个申请
-
         区别：
             (1) 整个表单允不允许修改和评论
             (2) 变量的默认值[可以全部统一做]
@@ -3666,3 +3654,4 @@ def send_message_check(me, request):
         return wrong("发送微信的过程出现错误！请联系管理员！")
     
     return succeed(f"成功将创建知晓类消息，发送给所有的{receiver_type}了!")
+        
