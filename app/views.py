@@ -34,6 +34,7 @@ from app.activity_utils import (
     cancel_activity,
     withdraw_activity,
     ActivityException,
+    get_activity_QRcode,
 )
 from app.position_utils import(
     update_pos_application,
@@ -1634,6 +1635,10 @@ def myYQPoint(request):
 
     to_list, amount = record2Display(to_set, request.user)
     issued_list, _ = record2Display(issued_set, request.user)
+    if user_type == "Person":
+        quota_and_YQPoint = me.YQPoint + me.quota
+    else:
+        quota_and_YQPoint = me.YQPoint
 
     show_table = {
         "obj": "对象",
@@ -1703,15 +1708,14 @@ def viewActivity(request, aid=None):
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
     start_time = activity.start.strftime("%m/%d/%Y %H:%M %p")
     end_time = activity.end.strftime("%m/%d/%Y %H:%M %p")
-    start_THEDAY = start_time.day # 前端使用量
+    start_THEDAY = activity.start.day # 前端使用量
     prepare_times = Activity.EndBeforeHours.prepare_times
-    apply_deadline = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
+    apImageFieldply_deadline = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
     introduction = activity.introduction
     show_url = True # 前端使用量
     aURL = activity.URL
     if (aURL is None) or (aURL == ""):
         show_url = False
-    aQRcode = activity.QRcode
     bidding = activity.bidding
     price = activity.YQPoint
     from_student = activity.source == Activity.YQPointSource.STUDENT
@@ -1749,6 +1753,11 @@ def viewActivity(request, aid=None):
     ownership = False
     if not person and org.organization_id == request.user:
         ownership = True
+        aQRcode = get_activity_QRcode(activity)
+
+    # 签到
+    need_checkin = activity.need_checkin
+    print("need_checkin", need_checkin)
 
     # 活动图片！！
     photos = ActivityAnnouncePhoto.objects.filter(
@@ -1800,7 +1809,7 @@ def viewActivity(request, aid=None):
         ):
             return redirect(f"/editActivity/{aid}")
         if activity.status == activity.Status.WAITING:
-            if start_time + timedelta(hours=1) > datetime.now():
+            if activity.start + timedelta(hours=1) > datetime.now():
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = f"活动即将开始, 不能修改活动。"
                 return render(request, "activity_info.html", locals())
@@ -2013,7 +2022,7 @@ def checkinActivity(request, aid=None):
         np = get_person_or_org(request.user)
         activity = Activity.objects.get(id=int(aid))
         varifier = request.GET["auth"]
-        assert varifier == hash_coder.encode(activity.organization_id.oname)
+        assert varifier == hash_coder.encode(aid)
     except:
         return redirect("/welcome/")
     try:
@@ -2166,11 +2175,7 @@ def addActivity(request, aid=None):
                 return redirect("/welcome/")
             """
         else:
-            """
-            # DEBUG:
             aid = create_activity(request)
-            return redirect(f"/viewActivity/{aid}")
-            """
             try:
 
                 # 活动预告图片的合法性检查
@@ -2203,10 +2208,10 @@ def addActivity(request, aid=None):
                 activity = Activity.objects.get(id=aid)
                 for pic in pictures:
                     if pic is not None:
-                        ActivityAnnouncePhoto.objects.create(image = pic,activity = activity)
+                        ActivityAnnouncePhoto.objects.create(image = pic, activity = activity)
                 if len(announcephotos)>0 :
                     for photo in announcephotos:
-                        ActivityAnnouncePhoto.objects.create(image = photo,activity = activity)                    
+                        ActivityAnnouncePhoto.objects.create(image = photo, activity = activity)                    
 
                 return redirect(f"/viewActivity/{aid}")
 
@@ -2215,28 +2220,29 @@ def addActivity(request, aid=None):
 
     # 处理 GET 请求
     elif request.method == "GET":
-
+        print("GOTCHA")
         if not edit:
             bar_display["title_name"] = "新建活动"
             bar_display["narbar_name"] = "新建活动"
             avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
         else:
             # 编辑状态下，填写 placeholder 为旧值
-            try:
-                org = get_person_or_org(request.user, "Organization")
-                assert activity.organization_id == org
-                if activity.status == Activity.Status.REVIEWING:
-                    commentable = True
-                elif (
-                        activity.status == Activity.Status.APPLYING
-                        or activity.status == Activity.Status.WAITING
-                ):
-                    accepted = True
-                    assert datetime.now() + timedelta(hours=1) < activity.start
-                else:
-                    raise ValueError
-            except:
-                return redirect("/welcome/")
+            # try:
+            org = get_person_or_org(request.user, "Organization")
+            assert activity.organization_id == org
+            if activity.status == Activity.Status.REVIEWING:
+                commentable = True
+            elif (
+                    activity.status == Activity.Status.APPLYING
+                    or activity.status == Activity.Status.WAITING
+            ):
+                accepted = True
+                assert datetime.now() + timedelta(hours=1) < activity.start
+            else:
+                raise ValueError
+            # except Exception as e:
+            #     print(e)
+            #     return redirect("/welcome/")
 
             title = activity.title
             budget = activity.budget
@@ -2282,18 +2288,17 @@ def examineActivity(request, aid):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect("/index/")
-    if user_type == "Organization":
-        return redirect("/welcome/")  # test
+    # try:
+    assert user_type == "Person"
     me = utils.get_person_or_org(request.user)
+    activity = Activity.objects.get(id=int(aid))
+    assert activity.examine_teacher == me
+    # except:
+    #     return redirect("/welcome/")
     html_display["is_myself"] = True
     bar_display = utils.get_sidebar_and_navbar(request.user)
 
     if request.method == "GET":
-        try:
-            activity = Activity.objects.get(id=int(aid))
-            assert activity.examine_teacher == me
-        except:
-            return redirect("/welcome/")
 
         examine = True
 
@@ -2327,20 +2332,31 @@ def examineActivity(request, aid):
         bar_display = utils.get_sidebar_and_navbar(request.user)
         status = activity.status
         comments = showComment(activity)
+
+        examine_pic = ActivityAnnouncePhoto.objects.filter(activity=activity).first()
+        if str(examine_pic.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+            examine_pic.image = settings.MEDIA_URL + str(examine_pic.image)
+        intro_pic = examine_pic.image
+
         if activity.status != Activity.Status.REVIEWING:
             no_review = True
         else:
             commentable = True
         return render(request, "activity_add.html", locals())
 
-    elif request.method == "POST" and request.POST:
+    elif request.method == "POST":
+
+        if request.POST.get("comment"):
+            # TODO: try 
+            addComment(request, activity, activity.organization_id.organization_id)
+            return redirect(f"/examineActivity/{aid}")
+
         # try:
         with transaction.atomic():
             activity = Activity.objects.select_for_update().get(
                 id=int(aid)
             )
             assert activity.status == Activity.Status.REVIEWING
-            assert activity.examine_teacher == me
             accept_activity(request, activity)
         return redirect(f"/examineActivity/{aid}")
         """

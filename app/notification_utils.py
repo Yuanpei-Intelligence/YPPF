@@ -1,7 +1,10 @@
 from app.models import Notification
-from app.wechat_send import publish_notification
+from app.wechat_send import publish_notification, publish_notifications
 from django.db import transaction
 from datetime import datetime
+from boottest.hasher import MySHA256Hasher
+
+hasher = MySHA256Hasher("")
 
 def notification_status_change(notification_or_id, to_status=None):
     """
@@ -125,3 +128,40 @@ def notification_create(
     if publish_to_wechat == True:
         publish_notification(notification)
     return notification
+
+def bulk_notification_create(
+        receivers,
+        sender,
+        typename,
+        title,
+        content,
+        URL=None,
+        relate_TransferRecord=None,
+        relate_instance=None,
+        *,
+        publish_to_wechat=False,
+):
+    from random import random
+    bulk_identifier = hasher.encode(str(datetime.now()) + str(random()))
+    print("Receivers:", len(receivers))
+    notifications = [ Notification(
+        receiver=receiver,
+        sender=sender,
+        typename=typename,
+        title=title,
+        content=content,
+        URL=URL,
+        bulk_identifier=bulk_identifier,
+        relate_TransferRecord=relate_TransferRecord,
+        relate_instance=relate_instance,
+    ) for receiver in receivers ]
+    print("Notifications:", len(notifications))
+    Notification.objects.bulk_create(notifications, 50)
+    seccess = None
+    if publish_to_wechat:
+        filter_kws={"bulk_identifier":bulk_identifier}
+        success = publish_notifications(filter_kws=filter_kws)
+    return success, bulk_identifier
+
+
+
