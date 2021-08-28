@@ -10,8 +10,7 @@ from app.models import (
     Position,
     ModifyPosition,
     Activity,
-    ActivitySummaryPhoto,
-    ActivityAnnouncePhoto,
+    ActivityPhoto,
     TransferRecord,
     Participant,
     Notification,
@@ -322,7 +321,7 @@ def stuinfo(request, name=None):
                 Q(person=oneself) & Q(show_post=True)
             )
         )
-        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id")  # 自己的组织
+        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id") # 自己的组织
 
         # 管理的组织
         person_owned_poss = person_poss.filter(pos=0, status=Position.Status.INSERVICE)
@@ -731,67 +730,23 @@ def homepage(request):
                 np.last_time_login = nowtime
                 np.bonusPoint += 0.5
                 np.save()
+
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
-    mintime = nowtime-timedelta(days = 7)
-    maxtime = nowtime+timedelta(days = 7)
-    recentactivity_list = (
-        Activity.objects.activated()
-        .filter(start__gt = mintime)
-        .filter(start__lt = maxtime)
-        .filter(
-            status__in=[
-                Activity.Status.APPLYING,
-                Activity.Status.WAITING,
-                Activity.Status.PROGRESSING,
-                Activity.Status.END
-            ]
-        )
-        .order_by("-start")
-    )
+    recentactivity_list = Activity.objects.get_recent_activity()
 
     # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
-    activities = (
-        Activity.objects.activated()
-            .filter(
-            Q(start__year=nowtime.year)
-            & Q(start__month=nowtime.month)
-            & Q(start__day=nowtime.day)
-        )
-            .filter(
-            status__in=[
-                Activity.Status.APPLYING,
-                Activity.Status.WAITING,
-                Activity.Status.PROGRESSING,
-            ]
-        )
-        .order_by("start")
-    )
+    activities = Activity.objects.get_today_activity()
     activities_start = [
         activity.start.strftime("%H:%M") for activity in activities
     ]
     html_display['today_activities'] = list(zip(activities, activities_start)) or None
 
-
     # 最新（三天内）发布的活动，按发布的时间逆序
-    newlyreleased_list = (
-        Activity.objects.activated()
-        .filter(publish_time__gt = nowtime-timedelta(days = 3))
-        .filter(
-            status__in=[
-                Activity.Status.APPLYING,
-                Activity.Status.WAITING,
-                Activity.Status.PROGRESSING
-            ]
-        )
-        .order_by("-publish_time")
-    )
+    newlyreleased_list = Activity.objects.get_newlyreleased_activity()
 
     # 今天截止的活动，按截止时间正序
     prepare_times = Activity.EndBeforeHours.prepare_times
-    signup_rec = (
-        Activity.objects.activated()
-        .filter(status = Activity.Status.APPLYING)
-    )
+    signup_rec = Activity.objects.activated().filter(status = Activity.Status.APPLYING)
     today_signup_list = []
     for act in signup_rec:
         deadline = act.start - timedelta(hours=prepare_times[act.endbefore])
@@ -805,19 +760,31 @@ def homepage(request):
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:
         wishtext = request.POST.get("wish")
-        new_wish = Wishes.objects.create(text = wishtext, time = nowtime)
+        new_wish = Wishes.objects.create(text = wishtext, time = datetime.now())
         new_wish.save()
 
     # 心愿墙！！！！!前100个心愿,已经按照时间逆序排好了
     wishes = Wishes.objects.all()[:100]
 
-    # 展示活动照片,选取前五个，已经按时间逆序排好了
-    photos = ActivitySummaryPhoto.objects.all()[:5]
-    for photo in photos:
+    """ 
+        取出过去一周的所有活动，filter出上传了照片的活动，从每个活动的照片中随机选择一张
+        如果列表为空，那么添加一张default，否则什么都不加。
+    """
+    photo_display = []
+    newlyended_activity = Activity.objects.get_newlyended_activity()
+    for act in newlyended_activity:
+        summaryphotos = act.photos.filter(type = ActivityPhoto.PhotoType.SUMMARY)
+        if len(summaryphotos)>0:
+            photo_display.append(summaryphotos[0]) # 朴素的随机
+    for photo in photo_display:
         if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
-    firstpic = None if len(photos) == 0 else photos[0]
-    photos = photos[1:]
+    
+    if len(photo_display)==0: # 这个分类是为了前端显示的便利，就不采用append了
+        homepagephoto = "/static/assets/img/taskboard.jpg"
+    else:
+        firstpic = photo_display[0]
+        photos = photo_display[1:]
 
     # 天气
     weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
@@ -1072,13 +1039,13 @@ def search(request):
         activities.sort(key=lambda activity: abs(now - activity.start))
         return None if len(activities) == 0 else activities[0:3]
 
+
     org_display_list = []
     for org in organization_list:
         try:
             recent_activity = Activity.objects.filter(organization_id=org).order_by("-start")[0]
         except:
             recent_activity = {"title": "暂无", "id": "#"}
-
         org_display_list.append(
             {
                 "oname": org.oname,
@@ -1751,10 +1718,10 @@ def myYQPoint(request):
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
-    # 补充一些呈现信息
-    # bar_display["title_name"] = "My YQPoint"
-    # bar_display["navbar_name"] = "我的元气值"  #
-    # bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
+     # 补充一些呈现信息
+     # bar_display["title_name"] = "My YQPoint"
+     # bar_display["navbar_name"] = "我的元气值"  #
+     # bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
 
     return render(request, "myYQPoint.html", locals())
 
@@ -1808,15 +1775,13 @@ def viewActivity(request, aid=None):
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
     start_time = activity.start
-    start_THEDAY = start_time.day # 前端使用量
     end_time = activity.end
     prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.apply_end
     introduction = activity.introduction
     show_url = True # 前端使用量
     aURL = activity.URL
-    if (aURL is None) or (aURL == ""):
-        show_url = False
+    show_url = True if activity.URL is not None and activity.URL != "" else False # 前端使用量，表示是否展示URL
     aQRcode = activity.QRcode
     bidding = activity.bidding
     price = activity.YQPoint
@@ -1852,13 +1817,11 @@ def viewActivity(request, aid=None):
         ownership = True
 
     # 活动图片！！
-    photos = ActivityAnnouncePhoto.objects.filter(
-        activity_id = activity
-    )
+    photos = activity.photos.filter(type = ActivityPhoto.PhotoType.ANNOUNCE)
     for photo in photos:
         if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
-    firstpic = None if len(photos) == 0 else photos[0].image
+    firstpic = "/static/assets/img/taskboard.jpg" if len(photos) == 0 else photos[0].image
     photos = photos[1:]
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
@@ -1949,23 +1912,23 @@ def viewActivity(request, aid=None):
     elif option == "submitphoto":
         try:
             summaryphotos = request.FILES.getlist('images')
-            if len(summaryphotos) == 0 :
-                html_display['warn_code'] = 1
-                html_display['warn_message'] = "上传活动照片不能为空"
-                return render(request, "activity_info.html", locals())
-            for photo in summaryphotos:
-                if utils.if_image(photo) == False:
-                    html_display['warn_code'] = 1
-                    html_display['warn_message'] = "上传的附件只支持图片格式。"
-                    return render(request, "activity_info.html", locals())
-                ActivitySummaryPhoto.objects.create(image = photo,activity = activity)
         except:
             html_display["warn_code"] = 1
             html_display["warn_message"] = "非法的图片上传，请联系管理员"
             return render(request, "activity_info.html", locals())
+        if len(summaryphotos) == 0 :
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "上传活动照片不能为空"
+            return render(request, "activity_info.html", locals())
+        for photo in summaryphotos:
+            if utils.if_image(photo) == False:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "上传的附件只支持图片格式"
+                return render(request, "activity_info.html", locals())
+            ActivityPhoto.objects.create(image = photo,activity = activity,time = datetime.now(),type = ActivityPhoto.PhotoType.SUMMARY)
 
         html_display["warn_code"] = 2
-        html_display["warn_message"] = "成功提交活动照片。"
+        html_display["warn_message"] = "成功提交活动照片"
         return render(request, "activity_info.html", locals())
 
     else:
@@ -2205,6 +2168,11 @@ def addActivities(request):
     # TODO: 整理结构，统一在结束时返回render
     # bar_display = utils.get_sidebar_and_navbar(request.user)
 
+    defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
+    for pic in defaultpics:
+        print(pic["id"])
+        print(pic["src"])
+
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
     if request.method == "POST" and request.POST:
@@ -2237,16 +2205,11 @@ def addActivities(request):
 
                 # 活动预告图片的合法性检查
                 existannouncephoto = False
-                pictures = []
-                pictures.append(request.POST.get("picture1"))
-                pictures.append(request.POST.get("picture2"))
-                pictures.append(request.POST.get("picture3"))
-                pictures.append(request.POST.get("picture4"))
-                pictures.append(request.POST.get("picture5"))
-
+                pictures = [request.POST.get("picture" + str(i+1)) for i in range(5)]
                 for pic in pictures:
                     if pic is not None:
                         existannouncephoto = True
+                        break
                 announcephotos = request.FILES.getlist("images")
                 if len(announcephotos)==0 :
                     if existannouncephoto is False:
@@ -2257,7 +2220,7 @@ def addActivities(request):
                     for photo in announcephotos:
                         if utils.if_image(photo) == False:
                             html_display['warn_code'] = 1
-                            html_display['warn_message'] = "上传的附件只支持图片格式。"
+                            html_display['warn_message'] = "上传的附件只支持图片格式"
                             return render(request, "activity_add.html", locals())
 
                 # 开始进行活动创建
@@ -2265,10 +2228,10 @@ def addActivities(request):
                 activity = Activity.objects.get(id=aid)
                 for pic in pictures:
                     if pic is not None:
-                        ActivityAnnouncePhoto.objects.create(image = pic,activity = activity)
+                        ActivityPhoto.objects.create(time=datetime.now(),image = pic,activity = activity,type = ActivityPhoto.PhotoType.ANNOUNCE)
                 if len(announcephotos)>0 :
                     for photo in announcephotos:
-                        ActivityAnnouncePhoto.objects.create(image = photo,activity = activity)                    
+                        ActivityPhoto.objects.create(time=datetime.now(),image = photo,activity = activity,type = ActivityPhoto.PhotoType.ANNOUNCE)                
 
                 return redirect(f"/viewActivity/{aid}")
 
@@ -2334,11 +2297,10 @@ def addActivities(request):
                 accepted = True
 
         html_display["today"] = datetime.now().strftime("%Y-%m-%d")
-
         if not edit:
-            bar_display = utils.get_sidebar_and_navbar(request.user, "新建活动")
+             bar_display = utils.get_sidebar_and_navbar(request.user, "新建活动")
         else:
-            bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
+             bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
 
         return render(request, "activity_add.html", locals())
 
@@ -2438,13 +2400,6 @@ def subscribeActivities(request):
     ]  # 获取订阅列表
 
 
-    # 禁用的组织
-    '''
-    disable_org = Organization.objects.get(oname="元培学院")
-    disable_otype = OrganizationType.objects.get(otype_name="元培学院")
-    org_list.remove(disable_org)
-    otype_list.remove(disable_otype)
-    '''
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的订阅")
@@ -2831,7 +2786,6 @@ def notifications(request):
     undone_list = notification2Display(
         list(undone_set.union(undone_set).order_by("-start_time"))
     )
-    
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
@@ -3077,7 +3031,6 @@ def modifyPosition(request):
         个人：可能是初次申请或者是修改申请
         组织：可能是审核申请
         # TODO 也可能是两边都想自由的查看这个申请
-
         区别：
             (1) 整个表单允不允许修改和评论
             (2) 变量的默认值[可以全部统一做]
@@ -3152,6 +3105,7 @@ def showPosition(request):
     shown_instances = shown_instances.order_by('-modify_time', '-time')
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="人事申请")
     return render(request, 'showPosition.html', locals())
+
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
@@ -3558,7 +3512,6 @@ def modifyOrganization(request):
         个人：可能是初次申请或者是修改申请
         组织：可能是审核申请
         # TODO 也可能是两边都想自由的查看这个申请
-
         区别：
             (1) 整个表单允不允许修改和评论
             (2) 变量的默认值[可以全部统一做]
@@ -3717,6 +3670,3 @@ def send_message_check(me, request):
     
     return succeed(f"成功将创建知晓类消息，发送给所有的{receiver_type}了!")
         
-    
-
-
