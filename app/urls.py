@@ -35,6 +35,7 @@ urlpatterns = [
     # re_path("^org([0-9]{2})",views.org_spec,name="org_spec"),
     path("getStuImg", views.get_stu_img, name="get_stu_img"),
     path("transPage/<str:rid>", views.transaction_page, name="transPage"),
+    path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"),
     path("startTrans/", views.start_transaction, name="startTrans"),
     path("applyActivity/<str:aid>", views.applyActivity, name="applyActivity"),
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
