@@ -2400,11 +2400,6 @@ def subscribeActivities(request):
     ]  # 获取订阅列表
 
 
-    # 禁用的组织
-    disable_org = Organization.objects.get(oname="元培学院")
-    disable_otype = OrganizationType.objects.get(otype_name="元培学院")
-    org_list.remove(disable_org)
-    otype_list.remove(disable_otype)
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的订阅")
@@ -2424,26 +2419,37 @@ def save_subscribe_status(request):
 
     me = utils.get_person_or_org(request.user, user_type)
     params = json.loads(request.body.decode("utf-8"))
-    print(params)
+    
     with transaction.atomic():
         if "id" in params.keys():
+            try:
+                org = Organization.objects.get(organization_id__username=params["id"])
+            except:
+                return JsonResponse({"success":False})
             if params["status"]:
-                me.unsubscribe_list.remove(
-                    Organization.objects.get(organization_id__username=params["id"])
-                )
+                me.unsubscribe_list.remove(org)
             else:
-                me.unsubscribe_list.add(
-                    Organization.objects.get(organization_id__username=params["id"])
-                )
+                if not org.otype.allow_unsubscribe: # 非法前端量修改
+                    return JsonResponse({"success":False})
+                me.unsubscribe_list.add(org)
         elif "otype" in params.keys():
-            unsubscribed_list = me.unsubscribe_list.filter(
-                otype__otype_id=params["otype"]
-            )
-            org_list = Organization.objects.filter(otype__otype_id=params["otype"])
+            try:
+                unsubscribed_list = me.unsubscribe_list.filter(
+                    otype__otype_id=params["otype"]
+                )
+                org_list = Organization.objects.filter(otype__otype_id=params["otype"])
+            except:
+                return JsonResponse({"success":False})
             if params["status"]:  # 表示要订阅
                 for org in unsubscribed_list:
                     me.unsubscribe_list.remove(org)
             else:  # 不订阅
+                try:
+                    otype = OrganizationType.objects.get(otype_id = params["otype"])
+                except:
+                    return JsonResponse({"success":False})
+                if not otype.allow_unsubscribe: # 非法前端量修改
+                    return JsonResponse({"success":False})
                 for org in org_list:
                     me.unsubscribe_list.add(org)
         me.save()
