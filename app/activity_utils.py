@@ -41,16 +41,13 @@ hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 
 def get_activity_QRcode(activity):
 
-    # 不管是否需要签到，都先生成二维码，简化后面的逻辑
     auth_code = hash_coder.encode(str(activity.id))
-    url = f"http://localhost:8000/checkinActivity/{activity.id}?auth={auth_code}"
-    """
+    # url = f"http://localhost:8000/checkinActivity/{activity.id}?auth={auth_code}"
     url = f"{os.path.join(
             local_dict["url"]["login_url"], 
             checkinActivity, 
             f"{activity.id}?auth={auth_code}"
         )}"
-    """
 
     qr=qrcode.QRCode(version = 2,error_correction = qrcode.constants.ERROR_CORRECT_L,box_size=10,border=10,)
     qr.add_data(url)
