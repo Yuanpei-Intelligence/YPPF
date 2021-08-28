@@ -20,6 +20,9 @@ class NaturalPersonManager(models.Manager):
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
 
+    def teachers(self):
+        return self.filter(identity=NaturalPerson.Identity.TEACHER)
+
 
 class NaturalPerson(models.Model):
     class Meta:
@@ -51,7 +54,6 @@ class NaturalPerson(models.Model):
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
 
     YQPoint = models.FloatField("现存元气值", default=0)
-    YQPoint_credit_card = models.FloatField("元气值信用", default=0)
     quota = models.FloatField("元气值配额", default=0)
     bonusPoint = models.FloatField("积分", default=0)
 
@@ -370,6 +372,15 @@ class ActivityManager(models.Manager):
             semester__contains=local_dict["semester_data"]["semester"]
         )
 
+    def displayable(self):
+        # REVIEWING, ABORT 状态的活动，只对创建者和审批者可见，对其他人不可见
+        # 过审后被取消的活动，还是可能被看到，也应该让学生看到这个活动被取消了
+        return self.exclude(status__in=[
+            Activity.Status.REVIEWING,
+            # Activity.Status.CANCELED,
+            Activity.Status.ABORT
+        ])
+
     def get_newlyended_activity(self):
         # 一周内结束的活动
         nowtime = datetime.now()
@@ -463,7 +474,7 @@ class CommentBase(models.Model):
         self.modify_time = datetime.now()   # 自动更新修改时间
         super().save(*args, **kwargs)
 
-class Activity(models.Model):
+class Activity(CommentBase):
     class Meta:
         verbose_name = "活动"
         verbose_name_plural = verbose_name
@@ -550,6 +561,7 @@ class Activity(models.Model):
 
     class Status(models.TextChoices):
         REVIEWING = "审核中"
+        ABORT = "未过审"
         CANCELED = "已取消"
         APPLYING = "报名中"
         WAITING = "等待中"
@@ -565,6 +577,7 @@ class Activity(models.Model):
 
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
+        self.typename = "activity"
         super().save(*args, **kwargs)
 
 class ActivityPhoto(models.Model):
@@ -712,6 +725,7 @@ class Notification(models.Model):
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
     typename = models.SmallIntegerField(choices=Type.choices, default=0)
     URL = models.URLField("相关网址", null=True, blank=True)
+    bulk_identifier = models.CharField("批量信息标识", max_length=64, default="")
     relate_TransferRecord = models.ForeignKey(
         TransferRecord,
         related_name="transfer_notification",
@@ -914,7 +928,7 @@ class Reimbursement(CommentBase):
         CANCELED = (4, "已取消")
         REFUSED = (5, "已拒绝")
 
-    activity = models.ForeignKey(
+    related_activity = models.ForeignKey(
         Activity, on_delete=models.CASCADE
     )
     amount = models.FloatField("报销金额", default=0)
