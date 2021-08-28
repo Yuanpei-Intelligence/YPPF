@@ -94,7 +94,6 @@ function showFilename(files){
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "不能发布空评论";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
-            console.log("GOTCHA");
             return false;
         }
         // 这个限制 html 好像自带，可以不用
@@ -108,8 +107,12 @@ function showFilename(files){
                     break;
                 }
             }
-            if (!flag)
+            if (!flag) {
+                document.getElementById("warn_msg").style.display = "";
+                document.getElementById("warn_msg").innerHTML = "仅支持图片类型文件。";
+                document.body.scrollTop = document.documentElement.scrollTop = 0;
                 return false
+            }
         }
         return true;
     }
