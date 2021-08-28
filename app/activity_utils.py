@@ -25,7 +25,7 @@ from app.models import (
     Comment,
     CommentPhoto,
     YQPointDistribute,
-    ActivityAnnouncePhoto
+    ActivityPhoto
 )
 import qrcode
 import os
@@ -178,8 +178,13 @@ def activity_base_check(request, edit=False):
             pic = request.POST.get("picture1")
         elif request.POST.get("picture2"):
             pic = request.POST.get("picture2")
-        else:
+        elif request.POST.get("picture3"):
             pic = request.POST.get("picture3")
+        elif request.POST.get("picture4"):
+            pic = request.POST.get("picture4")
+        else:
+            pic = request.POST.get("picture5")
+
 
     if not edit:
         assert pic is not None
@@ -222,7 +227,7 @@ def create_activity(request):
         activity.need_checkin = True
     activity.save()
 
-    ActivityAnnouncePhoto.objects.create(image=context["pic"], activity=activity)
+    ActivityPhoto.objects.create(image=context["pic"], type=ActivityPhoto.PhotoType.ANNOUNCE ,activity=activity)
 
     notification_create(
         receiver=examine_teacher.person_id,
@@ -309,9 +314,7 @@ def modify_reviewing_activity(request, activity):
 
     # 图片
     if context["pic"] is not None:
-        pic = ActivityAnnouncePhoto.objects.get(activity=activity)
-        pic.image = context["pic"]
-        pic.save()
+        pic = activity.photos.filter(type=ActivityPhoto.PhotoType.ANNOUNCE).update(image=context["pic"])
 
 
 

@@ -20,6 +20,9 @@ class NaturalPersonManager(models.Manager):
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
 
+    def teachers(self):
+        return self.filter(identity=NaturalPerson.Identity.TEACHER)
+
 
 class NaturalPerson(models.Model):
     class Meta:

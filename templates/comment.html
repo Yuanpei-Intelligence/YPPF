@@ -36,7 +36,7 @@ img {
     {% endfor %}
 </div>
 {%if commentable %}
-<form role="form" method="POST" enctype="multipart/form-data">
+<form role="form" method="POST" enctype="multipart/form-data" onsubmit="return check_comment_inputs()">
     <div>
         <br>
         <br>
@@ -84,4 +84,39 @@ function showFilename(files){
     .custom-file-input:lang(zh)~.custom-file-label::after {
     content: "上传";}
 </style>
+<script type="text/javascript">
+    {% if front_check %}
+    function check_comment_inputs() {
+        var images = document.getElementById("customFile").files;
+        var comments = document.getElementById("comment").value;
+        var formats = ["jpg", "bmp", "png", "jpeg", "rgb", "tif"]
+        if (images.length == 0 && comments == "") {
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "不能发布空评论";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            console.log("GOTCHA");
+            return false;
+        }
+        // 这个限制 html 好像自带，可以不用
+        for (var i = 0; i < images.length; i++) {
+            var name = images[i].name.toLowerCase();
+            var format = name.substring(name.lastIndexOf('.') + 1);
+            var flag = false;
+            for (var j = 0; j < formats.length; j++) {
+                if (formats[j] == format) {
+                    flag = true;
+                    break;
+                }
+            }
+            if (!flag)
+                return false
+        }
+        return true;
+    }
+    {% else %}
+    function check_comment_inputs() {
+        return true;
+    }
+    {% endif %}
+</script>
 {%endblock%}
