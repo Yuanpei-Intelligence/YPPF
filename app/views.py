@@ -1690,7 +1690,7 @@ def viewActivity(request, aid=None):
     end_time = activity.end.strftime("%m/%d/%Y %H:%M %p")
     start_THEDAY = activity.start.day # 前端使用量
     prepare_times = Activity.EndBeforeHours.prepare_times
-    apImageFieldply_deadline = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
+    apply_deadline = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
     introduction = activity.introduction
     show_url = True # 前端使用量
     aURL = activity.URL
@@ -1740,12 +1740,10 @@ def viewActivity(request, aid=None):
     print("need_checkin", need_checkin)
 
     # 活动图片！！
-    photos = activity.photos.filter(type = ActivityPhoto.PhotoType.ANNOUNCE)
-    for photo in photos:
-        if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
-            photo.image = settings.MEDIA_URL + str(photo.image)
-    firstpic = "/static/assets/img/taskboard.jpg" if len(photos) == 0 else photos[0].image
-    photos = photos[1:]
+    photo = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
+    if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+        photo.image = settings.MEDIA_URL + str(photo.image)
+    firstpic = photo.image
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
@@ -2089,58 +2087,54 @@ def checkinActivity(request):
 发起活动与修改活动页
 ---------------
 页面逻辑：
-该函数处理 GET, POST 两种请求
-1. 使用 GET 方法时，如果存在 edit=True 参数，展示修改活动的界面，否则展示创建活动的界面。
-    a. 创建活动的界面，placeholder 为 prompt
-    b. 编辑活动的界面，表单的 placeholder 会被修改为活动的旧值。并且添加两个 hidden input，分别提交 edit=True 和活动的 id
-2. 当请求方法为 POST 时，处理请求并修改数据库，如果没有问题，跳转到展示活动信息的界面
-    a. 页面检查逻辑主要放到前端，出现不合法输入跳转到 welcome 界面
-    b. 存在 edit 和 aid 参数时，为编辑操作。input 并不包含 model 所有 field 的数据，只对其中出现的进行修改
-P.S. 
-    编辑活动的页面，直接把 value 设成旧值而不是 placeholder 代码会简单很多。
-    只是觉得 placeholder 好看很多所以没用 value。
-    用 placeholder 在提交表单时会出现很多空值，check 函数需要特判，导致代码很臃肿......
-    一种可行的修改方式是表单提交的时候用 JS 把 value 的值全换成 placeholder 内的值。
-    好像也不是很优雅。
-    时间那里的检查比较复杂，表单提交前使用 JS 进行了修改
+
+该函数处理 GET, POST 两种请求，发起和修改两类操作
+1. 访问 /addActivity/ 时，为创建操作，要求用户是组织；
+2. 访问 /editActivity/aid 时，为编辑操作，要求用户是该活动的发起者
+3. GET 请求创建活动的界面，placeholder 为 prompt
+4. GET 请求编辑活动的界面，表单的 placeholder 会被修改为活动的旧值。
 """
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 def addActivity(request, aid=None):
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    if user_type == "Person":
-        return redirect("/welcome/")  # test
 
-    me = utils.get_person_or_org(request.user, user_type)
-    html_display["is_myself"] = True
-
-    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    # TODO: 整理结构，统一在结束时返回render
-    # bar_display = utils.get_sidebar_and_navbar(request.user)
-
-    if aid is None:
-        edit = False
-    else:
-        try:
+    # 检查：不是超级用户，必须是组织，修改是必须是自己
+    try:
+        valid, user_type, html_display = utils.check_user_type(request.user)
+        assert valid
+        assert user_type == "Organization"
+        me = utils.get_person_or_org(request.user, user_type)
+        if aid is None:
+            edit = False
+        else:
             aid = int(aid)
             activity = Activity.objects.get(id=aid)
+            assert activity.organization_id == me
             edit = True
-        except Exception as e:
-            print(e)
-            return redirect("/welcome/")
+        html_display["is_myself"] = True
+    except Exception as e:
+        print(e)
+        return redirect("/welcome/")
 
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
     if request.method == "POST" and request.POST:
 
-        if request.POST.get("comment"):
-            # TODO: try 
-            addComment(request, activity, activity.organization_id.organization_id)
-            return redirect(f"/editActivity/{aid}")
+        # 处理 comment
+        if request.POST.get("comment_submit"):
+            try:
+                # 创建活动只能在审核时添加评论
+                assert activity.status == Activity.Status.REVIEWING
+                context = addComment(request, activity, activity.organization_id.organization_id)
+                # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
+                assert context["warn_code"] == 2
+                # 成功后重新加载界面
+                return redirect(f"/editActivity/{aid}")
+            except:
+                return redirect("/welcome/")
 
         if edit:
-
             # try:
             # 只能修改自己的活动
             with transaction.atomic():
@@ -2155,7 +2149,6 @@ def addActivity(request, aid=None):
             """
         else:
             try:
-                # 开始进行活动创建
                 aid = create_activity(request)
                 return redirect(f"/viewActivity/{aid}")
 
@@ -2164,23 +2157,26 @@ def addActivity(request, aid=None):
 
     # 处理 GET 请求
     elif request.method == "GET":
+        # 下面的操作基本如无特殊说明，都是准备前端使用量
+        defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
         if not edit:
-            avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
+            avialable_teachers = NaturalPerson.objects.teachers()
         else:
-            # 编辑状态下，填写 placeholder 为旧值
             # try:
             org = get_person_or_org(request.user, "Organization")
-            assert activity.organization_id == org
+            # 接受的状态为 审核中，申请中，等待中
             if activity.status == Activity.Status.REVIEWING:
                 commentable = True
+                front_check = True
             elif (
                     activity.status == Activity.Status.APPLYING
                     or activity.status == Activity.Status.WAITING
             ):
                 accepted = True
+                # 活动只能在开始 1 小时前修改
                 assert datetime.now() + timedelta(hours=1) < activity.start
             else:
-                raise ValueError
+                raise Exception("不正常的活动状态")
             # except Exception as e:
             #     print(e)
             #     return redirect("/welcome/")
@@ -2208,14 +2204,13 @@ def addActivity(request, aid=None):
             if capacity == 10000:
                 no_limit = True
             examine_teacher = activity.examine_teacher.name
-            # bar_display["title_name"] = "修改活动"
-            # bar_display["narbar_name"] = "修改活动"
             status = activity.status
             if status != Activity.Status.REVIEWING:
                 accepted = True
             avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
             need_checkin = activity.need_checkin
             comments = showComment(activity)
+
 
         html_display["today"] = datetime.now().strftime("%Y-%m-%d")
         if not edit:
@@ -2231,17 +2226,16 @@ def addActivity(request, aid=None):
 @login_required(redirect_field_name="origin")
 def examineActivity(request, aid):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
-        return redirect("/index/")
-    # try:
-    assert user_type == "Person"
-    me = utils.get_person_or_org(request.user)
-    activity = Activity.objects.get(id=int(aid))
-    assert activity.examine_teacher == me
-    # except:
-    #     return redirect("/welcome/")
+    try:
+        assert valid
+        assert user_type == "Person"
+        me = utils.get_person_or_org(request.user)
+        activity = Activity.objects.get(id=int(aid))
+        assert activity.examine_teacher == me
+    except:
+        return redirect("/welcome/")
+
     html_display["is_myself"] = True
-    bar_display = utils.get_sidebar_and_navbar(request.user)
 
     if request.method == "GET":
 
@@ -2269,8 +2263,6 @@ def examineActivity(request, aid):
         if capacity == 10000:
             no_limit = True
         examine_teacher = activity.examine_teacher.name
-        bar_display["title_name"] = "审查活动"
-        bar_display["narbar_name"] = "审查活动"
         html_display["today"] = datetime.now().strftime("%Y-%m-%d")
         html_display["app_avatar_path"] = activity.organization_id.avatar
         html_display["applicant_name"] = activity.organization_id.oname
@@ -2278,7 +2270,7 @@ def examineActivity(request, aid):
         status = activity.status
         comments = showComment(activity)
 
-        examine_pic = ActivityAnnouncePhoto.objects.filter(activity=activity).first()
+        examine_pic = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
         if str(examine_pic.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             examine_pic.image = settings.MEDIA_URL + str(examine_pic.image)
         intro_pic = examine_pic.image
@@ -2287,27 +2279,36 @@ def examineActivity(request, aid):
             no_review = True
         else:
             commentable = True
+
+        bar_display = utils.get_sidebar_and_navbar(request.user)
+        bar_display["title_name"] = "审查活动"
+        bar_display["narbar_name"] = "审查活动"
         return render(request, "activity_add.html", locals())
 
     elif request.method == "POST":
 
-        if request.POST.get("comment"):
-            # TODO: try 
-            addComment(request, activity, activity.organization_id.organization_id)
-            return redirect(f"/examineActivity/{aid}")
+        if request.POST.get("comment_submit"):
+            try:
+                # 创建活动只能在审核时添加评论
+                assert activity.status == Activity.Status.REVIEWING
+                context = addComment(request, activity, activity.organization_id.organization_id)
+                # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
+                assert context["warn_code"] == 2
+                # 成功后重新加载界面
+                return redirect(f"/editActivity/{aid}")
+            except:
+                return redirect("/welcome/")
 
-        # try:
-        with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(
-                id=int(aid)
-            )
-            assert activity.status == Activity.Status.REVIEWING
-            accept_activity(request, activity)
-        return redirect(f"/examineActivity/{aid}")
-        """
+        try:
+            with transaction.atomic():
+                activity = Activity.objects.select_for_update().get(
+                    id=int(aid)
+                )
+                assert activity.status == Activity.Status.REVIEWING
+                accept_activity(request, activity)
+            return redirect(f"/examineActivity/{aid}")
         except:
             return redirect("/welcome/")
-        """
 
     else:
         return redirect("/welcome/")

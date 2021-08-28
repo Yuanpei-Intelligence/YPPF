@@ -31,11 +31,7 @@
                 {% if bar_display.help_paragraphs %}
                     {% include 'help.html' %}
                 {% endif %}
-                {% if html_display.warn_code == 1 %}
-                <div class="alert alert-warning  text-center" >{{ html_display.warn_message }}</div>
-                {% elif html_display.warn_code == 2 %}
-                <div class="alert alert-success  text-center" >{{ html_display.warn_message }}</div>
-                {% endif %}
+                <div class="alert alert-warning  text-center" id="warn_msg" style="display: none;">test</div>
                 <div class="row layout-top-spacing">
 
                     <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
@@ -58,7 +54,6 @@
                                             {% if examine %}
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12" align="right">
                                                     申请组织：
-                                                <img src={{ html_display.app_avatar_path }} width="24" height="24" alt="avatar">
                                                 <a href='/orginfo/{{html_display.applicant_name}}'>
                                                     <u>{{html_display.applicant_name}}</u></a>
                                             </div>
@@ -374,7 +369,8 @@
 {% block add_js_file %}
 <script src={% static "datetimepicker/js/bootstrap-datetimepicker.min.js" %}></script>
 
-
+<!-- 主要是一些监控函数 -->
+<!-- 根据页面不同，可能会有些多余的函数，但是不影响 js 执行 -->
 <script>
     $("input[name='adjust_apply_ddl']").on("change", function () {
         //输出选中状态
@@ -394,25 +390,19 @@
             // document.getElementById("maxpeople").placeholder = "";
         }
     });
-    $("input[name='picture1']").on("change", function () {
+
+    {% for pic in defaultpics %}
+    $("input[name='{{pic.id}}']").on("change", function () {
         //输出选中状态
         if (true === $(this).prop("checked")) {
-            document.getElementById("picture2").checked = false;
-            document.getElementById("picture3").checked = false;
+            {% for pic in defaultpics %}
+            document.getElementById("{{pic.id}}").checked = false;
+            {% endfor %}
+            document.getElementById("{{pic.id}}").checked = true;
         }
     });
-    $("input[name='picture2']").on("change", function () {
-        if (true === $(this).prop("checked")) {
-            document.getElementById("picture1").checked = false;
-            document.getElementById("picture3").checked = false;
-        }
-    });
-    $("input[name='picture3']").on("change", function () {
-        if (true === $(this).prop("checked")) {
-            document.getElementById("picture1").checked = false;
-            document.getElementById("picture2").checked = false;
-        }
-    });
+    {% endfor %}
+
     function shows(a) {
         $("#pricebutton").text(a);
         if ("先到先得" === a) {
@@ -429,16 +419,21 @@
         $("#yq_source").text(a);
         if ("向学生收取" === a) {
             document.getElementById("aprice").value = "";
+            {% if not edit %}
             document.getElementById("aprice").placeholder = "参与活动元气值价格";
+            {% endif %}
             document.getElementById("from_college").value = "0"
         } else {
             document.getElementById("aprice").value = "";
+            {% if not edit %}
             document.getElementById("aprice").placeholder = "向学院申请的元气值数量";
+            {% endif %}
             document.getElementById("from_college").value = "1"
         }
     }
-
 </script>
+
+<!-- 选择时间 -->
 <script type="text/javascript">
     $(function () {
         $("#datetimepicker1").datetimepicker({
@@ -458,8 +453,8 @@
             sideBySide: true
         });
     });
-
 </script>
+
 
 <!-- 请求为 edit 或 examine 时执行的脚本， -->
 {% if edit or examine %}
@@ -561,6 +556,7 @@
 </script>
 {% else %}
 <script type="text/javascript">
+    // 没用，只是防止报错影响 js 执行
     function fill_value(a) {
         console.log(a.value);
     }
