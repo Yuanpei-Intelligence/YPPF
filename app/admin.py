@@ -42,3 +42,4 @@ admin.site.register(TransferRecord)
 
 admin.site.register(YQPointDistribute)
 admin.site.register(Notification)
+admin.site.register(Help)

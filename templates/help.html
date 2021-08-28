@@ -18,9 +18,10 @@
             </div>
             <div class="collapse" id="help-content">
                 </br>
-                {% for para in bar_display.help_paragraphs %}
+                <!-- {% for para in bar_display.help_paragraphs %}
                     <p>{{para | safe}}</p>
-                {% endfor %}
+                {% endfor %} -->
+                {{bar_display.help_paragraphs | safe}}
             </br>
             </div>
         </div>
