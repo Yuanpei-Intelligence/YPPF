@@ -741,21 +741,21 @@ def homepage(request):
     ]
     html_display['today_activities'] = list(zip(activities, activities_start)) or None
 
-    # 最新（三天内）发布的活动，按发布的时间逆序
+    # 最新一周内发布的活动，按发布的时间逆序
     newlyreleased_list = Activity.objects.get_newlyreleased_activity()
 
-    # 今天截止的活动，按截止时间正序
+    # 即将截止的活动，按截止时间正序
     prepare_times = Activity.EndBeforeHours.prepare_times
     signup_rec = Activity.objects.activated().filter(status = Activity.Status.APPLYING)
-    today_signup_list = []
+    signup_list = []
     for act in signup_rec:
         deadline = act.start - timedelta(hours=prepare_times[act.endbefore])
-        if deadline.year==nowtime.year and deadline.month==nowtime.month and deadline.day==nowtime.day : # 今天截止
-            dictmp = {}
-            dictmp["deadline"] = deadline
-            dictmp["act"] = act
-            today_signup_list.append(dictmp)
-    today_signup_list.sort(key=lambda x:x["deadline"])
+        dictmp = {}
+        dictmp["deadline"] = deadline
+        dictmp["act"] = act
+        signup_list.append(dictmp)
+    signup_list.sort(key=lambda x:x["deadline"])
+    signup_list=signup_list[:10]
 
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:
