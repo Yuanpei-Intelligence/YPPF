@@ -2628,16 +2628,16 @@ def addComment(request, comment_base, receiver=None):
         'modifyposition': f'{sender_name}在人事变动申请留有新的评论',
         'neworganization': f'{sender_name}在新建组织中留有新的评论',
         'reimbursement': f'{sender_name}在经费申请中留有新的评论',
-        "addActivity": f"{sender_name}在活动申请中留有新的评论"
+        "activity": f"{sender_name}在活动申请中留有新的评论"
     }
     URL={
         'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
         'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
         'reimbursement': f'modifyReimbursement/?reimb_id={comment_base.id}',
-        "addActivity": f"/examineActivity/{comment_base.id}"
+        "activity": f"/examineActivity/{comment_base.id}"
     }
     if user_type == "Organization":
-        URL["addActivity"] = f"/editActivity/{comment_base.id}"
+        URL["activity"] = f"/editActivity/{comment_base.id}"
     if request.POST.get("comment_submit") is not None:  # 新建评论信息，并保存
         text = str(request.POST.get("comment"))
         # 检查图片合法性
