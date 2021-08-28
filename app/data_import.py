@@ -126,6 +126,7 @@ def load_activity_info(request):
                 YQPoint=YQPoint,
                 capacity=capacity,
                 URL=URL,
+                examine_teacher = NaturalPerson.objects.get(name="YPadmin")
             )
         )
     Activity.objects.bulk_create(act_list)
