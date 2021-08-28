@@ -29,7 +29,7 @@
                        </ol> 
                        <div class="carousel-inner">
                            <div class="carousel-item active">
-                               {% if photos|length == 0 %}
+                               {% if photo_display|length == 0 %}
                                <img class="d-block w-100 slide-image" src={{homepagephoto}} >
                                {% else %}
                                <a href="/viewActivity/{{firstpic.activity_id}}">
