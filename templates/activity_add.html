@@ -41,7 +41,7 @@
                                     <!--  BEGIN HEADER AREA  -->
                                     <div class="widget-header">
                                         <div class="row">
-                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12" align="left">
                                                 {% if edit %}
                                                 <h4>编辑活动 <span class="badge badge-pill badge-success">{{status}}</span></h4>
                                                 {% elif examine %}
@@ -50,6 +50,13 @@
                                                 <h4>创建活动</h4>
                                                 {% endif %}
                                             </div>
+                                            {% if examine %}
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12" align="right">
+                                                    申请组织：
+                                                <a href='/orginfo/{{html_display.applicant_name}}'>
+                                                    <u>{{html_display.applicant_name}}</u></a>
+                                            </div>
+                                            {% endif %}
                                         </div>
                                     </div>
 
@@ -75,24 +82,30 @@
                                             <div class="form-group">
                                                 <div class="row">
                                                     <div class="col">
-                                                        <input type='datetime' class="form-control" id='datetimepicker3'
+                                                        <input type="datetime" class="form-control" id="datetimepicker3"
                                                             name="actstart" placeholder="开始时间" required="required" onclick="fill_value(this)"/>
                                                     </div>
                                                     <div class="col">
-                                                        <input type='text' class="form-control" id='datetimepicker4'
+                                                        <input type="text" class="form-control" id="datetimepicker4"
                                                             name="actend" placeholder="结束时间" required="required" onclick="fill_value(this)"/>
                                                     </div>
                                                 </div>
                                             </div>
-
+                                            
                                             <!-- 前端没想好怎么设计 -->
                                             {% if not examine %}
                                             <div class="form-group">
+                                                <!--
                                                 <input type="text" id="examine_teacher" name="examine_teacher" class="form-control"
                                                     aria-label="Default" placeholder="审批老师" required="required" onclick="fill_value(this)">
+                                                -->
+                                                <select id="examine_teacher" name="examine_teacher" class="form-control selectpicker" >
+                                                    {% for avialable_teacher in avialable_teachers %}
+                                                        <option value="{{avialable_teacher.name}}">{{avialable_teacher.name}}</option>
+                                                    {% endfor %}
+                                                </select>
                                             </div>
                                             {% endif %}
-
 
                                             <hr>
                                             <p>报名信息</p>
@@ -174,6 +187,21 @@
                                                             </div>
                                                         </center>
                                                     </div>
+                                                    <div class="col"
+                                                        style="display: flex; flex-direction: column;justify-content: center;text-align: center;">
+                                                        <center>
+                                                            <div class="form-check"
+                                                                style="align-content: center; vertical-align: middle;">
+                                                                <input class="form-check-input" type="checkbox"
+                                                                    value="1" id="need_checkin"
+                                                                    name="need_checkin">
+                                                                <label class="form-check-label" for="defaultCheck1">
+                                                                    需要签到
+                                                                </label>
+
+                                                            </div>
+                                                        </center>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -228,55 +256,6 @@
                                                 
                                             </div>
                                             -->
-
-
-                                            <!--
-                                            <div class="form-group">
-                                                <label for="signupSdate" class="col-sm-2 control-label">报名开始日期</label>
-                                                <input id="signupSdate" name="signupSdate" type="date"
-                                                    value="{{html_display.today}}">
-                                                <label for="signupStime" class="col-sm-2 control-label">报名开始时间</label>
-                                                <input id="signupStime" name="signupStime" type="time">
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label for="signupEdate" class="col-sm-2 control-label">报名截止日期</label>
-                                                <input id="signupEdate" name="signupEdate" type="date">
-                                                <label for="signupEtime" class="col-sm-2 control-label">报名截止时间</label>
-                                                <input id="signupEtime" name="signupEtime" type="time">
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label for="actSdate" class="col-sm-2 control-label">活动开始日期</label>
-                                                <input id="actSdate" name="actSdate" type="date">
-                                                <label for="actStime" class="col-sm-2 control-label">活动开始时间</label>
-                                                <input id="actStime" name="actStime" type="time">
-                                            </div>
-
-                                            <div class="form-group">
-                                                <label for="actEdate" class="col-sm-2 control-label">活动结束日期</label>
-                                                <input id="actEdate" name="actEdate" type="date">
-                                                <label for="actEtime" class="col-sm-2 control-label">活动结束时间</label>
-                                                <input id="actEtime" name="actEtime" type="time">
-                                            </div>
-
-
-
-                                            
-                                            <div class="form-group">
-                                                <label for="location" class="col-sm-2 control-label">活动地点</label>
-                                                <input type="text" id="location" name="location" aria-label="Default"
-                                                    aria-describedby="inputGroup-sizing-default">
-                                            </div>                                            <div class="input-group mb-4">
-                                                <div class="input-group-prepend">
-                                                    <span class="input-group-text"
-                                                        id="inputGroup-sizing-default">活动最大人数</span>
-                                                </div>
-                                                <input type="text" id="maxpeople" name="maxpeople" class="form-control"
-                                                    aria-label="Default" placeholder="最大100人"
-                                                    aria-describedby="inputGroup-sizing-default">
-                                            </div>
-                                            -->
                                             <hr>
 
                                             <p>宣传信息</p>
@@ -295,14 +274,16 @@
                                                 {% endif %}
                                             </div>
 
+
+                                            {% if not examine and not accepted %}
                                             <div class="form-group">
-                                                <label for="aintro">上传活动预告图片</label><br/>
+                                                <label>上传活动预告图片</label><br/>
                                                 <div class="row">
                                                     <div class="col-4">
-                                                        <input type="file" accept="image/*" name="images" multiple>
+                                                        <input type="file" accept="image/*" name="images" multiple id="images">
                                                     </div>
                                                     <div class="col-8">
-                                                        <label>必选：请上传长:宽=16:9左右的图片。如无预告图片可上传，请在下列默认图片中选择一或多张</label>
+                                                        <label>必选：请上传一张长:宽=16:9左右的图片。或者下列默认图片中选择一张</label>
                                                     </div>
                                                 </div>
                                                 
@@ -311,34 +292,23 @@
                                             <div class="form-group">
                                                 <div class="form-check">
                                                     <div class="row">
-                                                    <div class="col-xl-3 col-lg-3 col-md-3 mb-5">
+
+                                                    {% for pic in defaultpics %}
+                                                    <div class="col-xl-4 col-lg-4 col-md-4 mb-5">
                                                         <input class="form-check-input" type="checkbox"
-                                                            value={% static "assets/img/1.jpeg.jpg" %}
-                                                            id="picture1" name="picture1">
+                                                            value={{pic.src}}
+                                                            id={{pic.id}} name={{pic.id}}>
                                                         <label class="form-check-label" for="defaultCheck1">
-                                                            <img src={% static "assets/img/1.jpeg.jpg" %} class="img-fluid">
+                                                            <img src={{pic.src}} class="img-fluid">
                                                         </label>
                                                     </div>
-                                                    <div class="col-xl-3 col-lg-3 col-md-3 mb-5">
-                                                        <input class="form-check-input" type="checkbox"
-                                                            value={% static "assets/img/1.jpeg.jpg" %}
-                                                            id="picture2" name="picture2">
-                                                        <label class="form-check-label" for="defaultCheck1">
-                                                            <img src={% static "assets/img/1.jpeg.jpg" %} class="img-fluid">
-                                                        </label>
-                                                    </div>
-                                                    <div class="col-xl-3 col-lg-3 col-md-3 mb-5">
-                                                        <input class="form-check-input" type="checkbox"
-                                                            value={% static "assets/img/1.jpeg.jpg" %}
-                                                            id="picture3" name="picture3">
-                                                        <label class="form-check-label" for="defaultCheck1">
-                                                            <img src={% static "assets/img/1.jpeg.jpg" %} class="img-fluid">
-                                                        </label>
+                                                    {% endfor %}
                                                     </div>
                                                 </div>
-                                                </div>
+
                                                 
                                             </div>
+                                            {% endif %}
                                             <!--
                                             <div class="input-group mb-4">
                                                 <div class="input-group-prepend">
@@ -361,19 +331,25 @@
                                             {% endif %}
                                         </form>
                                         {% if examine %}
+                                        <!-- 活动图片 -->
+                                        <div class="form-group">
+                                            <label for="aintro">活动介绍图片</label>
+                                            <div class="widget-content widget-content-area">
+                                                <img class="d-block w-100" id="examine_pic" src="{{intro_pic}}" alt="Third slide">
+                                            </div>
+                                        </div>
+
+                                        <hr>
                                         <form method="POST" role="form" onsubmit="return check_examine()">
-                                            <input type="hidden" name="examine" value="True">
-                                            <input type="hidden" name="aid", value="{{aid}}">
-                                            <button id='review_submit' type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
+                                            <button id="review_submit" type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
                                                 通过活动
                                             </button>
                                         </form>
                                         {% endif %}
                                         <div>
-                                        {% include 'comment.html' %}
+                                            {% include 'comment.html' %}
                                         </div>
                                     </div>
-
                                 </div>
                             </div>
                         </div>
@@ -383,85 +359,101 @@
             </div>
         </div>
     </div>
-
     <!--  END CONTENT AREA  -->
-
 
 
 
 {% endblock %}
 
 {% block add_js_file %}
-<!--<script src={% static "datetimepicker/js/collapse.js" %}></script>-->
 <script src={% static "datetimepicker/js/bootstrap-datetimepicker.min.js" %}></script>
 
-
+<!-- 主要是一些监控函数 -->
+<!-- 根据页面不同，可能会有些多余的函数，但是不影响 js 执行 -->
 <script>
-    $("input[name='adjust_apply_ddl']").on('change', function () {
+    $("input[name='adjust_apply_ddl']").on("change", function () {
         //输出选中状态
         if (false === $(this).prop("checked")) {
-            document.getElementById('inputState').disabled = true;
+            document.getElementById("inputState").disabled = true;
         } else {
-            document.getElementById('inputState').disabled = false;
-            // document.getElementById('maxpeople').placeholder = "";
+            document.getElementById("inputState").disabled = false;
+            // document.getElementById("maxpeople").placeholder = "";
         }
     });
-    $("input[name='unlimited_capacity']").on('change', function () {
+    $("input[name='unlimited_capacity']").on("change", function () {
         //输出选中状态
         if (false === $(this).prop("checked")) {
-            document.getElementById('maxpeople').disabled = false;
+            document.getElementById("maxpeople").disabled = false;
         } else {
-            document.getElementById('maxpeople').disabled = true;
-            // document.getElementById('maxpeople').placeholder = "";
+            document.getElementById("maxpeople").disabled = true;
+            // document.getElementById("maxpeople").placeholder = "";
         }
     });
+
+    {% for pic in defaultpics %}
+    $("input[name='{{pic.id}}']").on("change", function () {
+        //输出选中状态
+        if (true === $(this).prop("checked")) {
+            {% for pic in defaultpics %}
+            document.getElementById("{{pic.id}}").checked = false;
+            {% endfor %}
+            document.getElementById("{{pic.id}}").checked = true;
+        }
+    });
+    {% endfor %}
+
     function shows(a) {
-        $('#pricebutton').text(a);
+        $("#pricebutton").text(a);
         if ("先到先得" === a) {
-            document.getElementById('aprice').value = "";
-            // document.getElementById('aprice').placeholder = "参与活动元气值价格";
-            document.getElementById('signscheme').value = "0"
+            document.getElementById("aprice").value = "";
+            // document.getElementById("aprice").placeholder = "参与活动元气值价格";
+            document.getElementById("signscheme").value = "0"
         } else {
-            document.getElementById('aprice').value = "";
-            // document.getElementById('aprice').placeholder = "元气值投点最低额度";
-            document.getElementById('signscheme').value = "1"
+            document.getElementById("aprice").value = "";
+            // document.getElementById("aprice").placeholder = "元气值投点最低额度";
+            document.getElementById("signscheme").value = "1"
         }
     }
     function another_shows(a) {
-        $('#yq_source').text(a);
+        $("#yq_source").text(a);
         if ("向学生收取" === a) {
-            document.getElementById('aprice').value = "";
-            document.getElementById('aprice').placeholder = "参与活动元气值价格";
-            document.getElementById('from_college').value = "0"
+            document.getElementById("aprice").value = "";
+            {% if not edit %}
+            document.getElementById("aprice").placeholder = "参与活动元气值价格";
+            {% endif %}
+            document.getElementById("from_college").value = "0"
         } else {
-            document.getElementById('aprice').value = "";
-            document.getElementById('aprice').placeholder = "向学院申请的元气值数量";
-            document.getElementById('from_college').value = "1"
+            document.getElementById("aprice").value = "";
+            {% if not edit %}
+            document.getElementById("aprice").placeholder = "向学院申请的元气值数量";
+            {% endif %}
+            document.getElementById("from_college").value = "1"
         }
     }
-
 </script>
+
+<!-- 选择时间 -->
 <script type="text/javascript">
     $(function () {
-        $('#datetimepicker1').datetimepicker({
-            //format: 'LT'
+        $("#datetimepicker1").datetimepicker({
+            //format: "LT"
             sideBySide: true,
         });
-        $('#datetimepicker2').datetimepicker({
-            //format: 'LT'
+        $("#datetimepicker2").datetimepicker({
+            //format: "LT"
             sideBySide: true
         });
-        $('#datetimepicker3').datetimepicker({
-            //format: 'LT'
+        $("#datetimepicker3").datetimepicker({
+            //format: "LT"
             sideBySide: true
         });
-        $('#datetimepicker4').datetimepicker({
-            //format: 'LT'
+        $("#datetimepicker4").datetimepicker({
+            //format: "LT"
             sideBySide: true
         });
     });
-
 </script>
+
 
 <!-- 请求为 edit 或 examine 时执行的脚本， -->
 {% if edit or examine %}
@@ -469,43 +461,46 @@
     /* 将 palceholder 全部换为旧值，很长很啰嗦 */
     // 但是 Django 是做的文本替换，又必须全写出来......
     // 活动信息
-    document.getElementById("title").placeholder = '{{title}}';
-    document.getElementById("location").placeholder = '{{location}}';
-    document.getElementById("budget").placeholder='{{budget}}';
-    document.getElementById('datetimepicker3').placeholder='{{start}}';
-    document.getElementById('datetimepicker4').placeholder='{{end}}';
+    document.getElementById("title").placeholder = "{{title}}";
+    document.getElementById("location").placeholder = "{{location}}";
+    document.getElementById("budget").placeholder="{{budget}}";
+    document.getElementById("datetimepicker3").placeholder="{{start}}";
+    document.getElementById("datetimepicker4").placeholder="{{end}}";
     {% if not examine %}
-    document.getElementById('examine_teacher').placeholder='{{examine_teacher}}';
+    document.getElementById("examine_teacher").placeholder="{{examine_teacher}}";
     {% endif %}
     // 报名信息
-    document.getElementById('pricebutton').innerHTML = '{{signscheme}}';
-    document.getElementById('yq_source').innerHTML = '{{yq_source}}';
-    document.getElementById('aprice').placeholder = '{{amount}}';
+    document.getElementById("pricebutton").innerHTML = "{{signscheme}}";
+    document.getElementById("yq_source").innerHTML = "{{yq_source}}";
+    document.getElementById("aprice").placeholder = "{{amount}}";
     {% if no_limit %}
-    document.getElementById('unlimited_capacity').checked = true;
-    document.getElementById('maxpeople').disabled = true;
+    document.getElementById("unlimited_capacity").checked = true;
+    document.getElementById("maxpeople").disabled = true;
     {% else %}
-    document.getElementById('maxpeople').placeholder = '{{capacity}}';
+    document.getElementById("maxpeople").placeholder = "{{capacity}}";
     {% endif %}
     {% if not examine %}
     document.getElementById("inputState").value = {{endbefore}};
-    document.getElementById('inputState').disabled = true;
+    document.getElementById("inputState").disabled = true;
+    {% endif %}
+    {% if need_checkin %}
+    document.getElementById("need_checkin").checked = true;
     {% endif %}
     // 宣传信息
-    document.getElementById('aintro').placeholder = '{{introduction}}';
+    document.getElementById("aintro").placeholder = "{{introduction}}";
 
 
     // input 不再必须填写
-    var all_inputs = document.getElementsByTagName('input');
+    var all_inputs = document.getElementsByTagName("input");
     for(var i = 0; i < all_inputs.length; i++){
         all_inputs[i].required="";
     }
-    document.getElementById('aintro').required = "";
+    document.getElementById("aintro").required = "";
     // 点击自动填充可修改
 
     {% if edit %}
         // edit
-        document.getElementById('URL').placeholder = '{{url}}';
+        document.getElementById("URL").placeholder = "{{url}}";
         function fill_value(a) {
             if (a.value == "")
                 a.value = a.placeholder;
@@ -520,39 +515,39 @@
 
         {% if not accepted %}
             {% if bidding %}
-            document.getElementById('signscheme').value = '1';
+            document.getElementById("signscheme").value = "1";
             {% else %}
-            document.getElementById('signscheme').value = '0';
+            document.getElementById("signscheme").value = "0";
             {% endif %}
             {% if yq_source == "向学院申请" %}
-            document.getElementById('from_college').value = "1";
+            document.getElementById("from_college").value = "1";
             {% else %}
-            document.getElementById('from_college').value = "0";
+            document.getElementById("from_college").value = "0";
             {% endif %}
         {% else %}
             {% if yq_source == "向学院申请" %}
-            document.getElementById('aprice').disabled = true;
+            document.getElementById("aprice").disabled = true;
             {% endif %}
-            document.getElementById('title').disabled = true;
-            document.getElementById('budget').disabled = true;
-            document.getElementById('examine_teacher').disabled = true;
+            document.getElementById("title").disabled = true;
+            document.getElementById("budget").disabled = true;
+            document.getElementById("examine_teacher").disabled = true;
         {% endif %}
 
     {% else %}
         // examine
-        var all_inputs = document.getElementsByTagName('input');
+        var all_inputs = document.getElementsByTagName("input");
         // 最后两项是 hidden input
         for(var i = 0; i < all_inputs.length - 2; i++){
-            if (all_inputs[i].type != 'hidden')
+            if (all_inputs[i].type != "hidden")
                 all_inputs[i].disabled = true;
         }
-        document.getElementById('aintro').disabled = true;
+        document.getElementById("aintro").disabled = true;
         function fill_value(a) {
             console.log(a.value);
         }
         {% if no_review %}
-        document.getElementById('review_submit').innerHTML = '活动{{status}}';
-        document.getElementById('review_submit').disabled = true;
+        document.getElementById("review_submit").innerHTML = "活动{{status}}";
+        document.getElementById("review_submit").disabled = true;
         {% endif %}
     {% endif %}
 
@@ -560,6 +555,7 @@
 </script>
 {% else %}
 <script type="text/javascript">
+    // 没用，只是防止报错影响 js 执行
     function fill_value(a) {
         console.log(a.value);
     }
@@ -570,20 +566,20 @@
 <script type="text/javascript">
     function check_inputs() {
         /*   检查开始与结束时间   */
-        var start = document.getElementById('datetimepicker3').value;
-        var end = document.getElementById('datetimepicker4').value;
+        var start = document.getElementById("datetimepicker3").value;
+        var end = document.getElementById("datetimepicker4").value;
         var now = new Date();
-        var prepare_option = document.getElementById('inputState').value;
+        var prepare_option = document.getElementById("inputState").value;
         if (start == "")
-            start = document.getElementById('datetimepicker3').placeholder;
+            start = document.getElementById("datetimepicker3").placeholder;
         if (end == "")
-            end = document.getElementById('datetimepicker4').placeholder;
+            end = document.getElementById("datetimepicker4").placeholder;
         start = new Date(start);
         end = new Date(end);
         // 结束要比开始晚
         if (start > end) {
-            document.getElementById('warn_msg').style.display = "";
-            document.getElementById('warn_msg').innerHTML = "结束时间不能早于开始时间。";
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "结束时间不能早于开始时间。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
@@ -592,8 +588,8 @@
         var in_month = new Date();
         in_month = new Date(in_month.setDate(in_month.getDate() + 30));
         if (in_month < start) {
-            document.getElementById('warn_msg').style.display = "";
-            document.getElementById('warn_msg').innerHTML = "活动应在一个月之内申请，晚些再创建吧。";
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "活动应在一个月之内申请，晚些再创建吧。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
@@ -612,16 +608,16 @@
         else
             window.location.href = "/welcome/"
         if (applyEnd < now) {
-            document.getElementById('warn_msg').style.display = "";
-            document.getElementById('warn_msg').innerHTML = "没有足够的准备时间（报名截止时间早于当前时间）。";
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "没有足够的准备时间（报名截止时间早于当前时间）。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
         {% else %}
         var before_start = new Date(start);
         before_start = new Date(before_start.setHours(before_start.getHours()-1));
-        var applyEnd = new Date('{{apply_end}}');
-        if (document.getElementById('adjust_apply_ddl').checked) {
+        var applyEnd = new Date("{{apply_end_for_js}}");
+        if (document.getElementById("adjust_apply_ddl").checked) {
             if (prepare_option == "0")
                 applyEnd = new Date(start.setHours(start.getHours()-1));
             else if (prepare_option == "1")
@@ -634,8 +630,8 @@
                 window.location.href = "/welcome/"
             if (applyEnd < now) {
                 // 相当于提前截止报名，在这改太麻烦了，在 viewActivity 界面留一个 button吧
-                document.getElementById('warn_msg').style.display = "";
-                document.getElementById('warn_msg').innerHTML = "报名截止时间早于当前时间。若想提前截止报名，请返回活动详情界面操作。";
+                document.getElementById("warn_msg").style.display = "";
+                document.getElementById("warn_msg").innerHTML = "报名截止时间早于当前时间。若想提前截止报名，请返回活动详情界面操作。";
                 document.body.scrollTop = document.documentElement.scrollTop = 0;
                 return false;
             } 
@@ -643,8 +639,8 @@
             // 如果是已截止，也不需要提醒，重新开放就是了
         }
         if (before_start < applyEnd) {
-            document.getElementById('warn_msg').style.display = "";
-            document.getElementById('warn_msg').innerHTML = "活动报名应在活动开始前一小时截止。";
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "活动报名应在活动开始前一小时截止。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
@@ -652,18 +648,18 @@
 
         /* 非 edit 情况下，检查选择了报名方式 */
         {% if not edit %}
-        var option = document.getElementById('signscheme').value;
+        var option = document.getElementById("signscheme").value;
         if (option == "") {
-            document.getElementById('warn_msg').style.display = "";
-            document.getElementById('warn_msg').innerHTML = "尚未选择报名方式。";
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "尚未选择报名方式。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
         /* 检查选择了元气值来源 */
-        var from_college = document.getElementById('from_college').value;
+        var from_college = document.getElementById("from_college").value;
         if (from_college == "") {
-            document.getElementById('warn_msg').style.display = "";
-            document.getElementById('warn_msg').innerHTML = "尚未选择元气值来源。";
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "尚未选择元气值来源。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
@@ -674,40 +670,61 @@
         /* 检查人数限制 */
         // 如果编辑状态都可以不选
         // 如果非编辑状态，没有人数限制，数量至少填一个
-        /* TODO 部分整合 */
-        {% if not edit %}
-        var no_limit = document.getElementById('unlimited_capacity');
-        var max_people = document.getElementById('maxpeople');
+        // 如果是编辑但之前选了无限制，也得至少有一个
+        {% if not edit or no_limit %}
+        var no_limit = document.getElementById("unlimited_capacity");
+        var max_people = document.getElementById("maxpeople");
         console.log(max_people.value);
         if (no_limit.checked == false && max_people.value == "") {
-            document.getElementById('warn_msg').style.display = "";
-            document.getElementById('warn_msg').innerHTML = "请设置报名人数限制。";
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "请设置报名人数限制。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
         {% endif %}
 
-
+        /* 检查图片 */
+        {% if not examine and not accepted %}
+            {% if not edit %}
+            if (!(document.getElementById("picture1").checked ||
+                document.getElementById("picture2").checked ||
+                document.getElementById("picture3").checked ||
+                document.getElementById("images").files.length > 0)
+            ) {
+                document.getElementById("warn_msg").style.display = "";
+                document.getElementById("warn_msg").innerHTML = "选择活动介绍图片。";
+                document.body.scrollTop = document.documentElement.scrollTop = 0;
+                return false;
+            }
+            {% endif %}
+        if (document.getElementById("images").files.length > 1) {
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "仅支持上传一张图片。";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        {% endif %}
 
         {% if edit %}
         /* edit 情况下，未填入的 input 补为 placeholder */
-        var all_inputs = document.getElementsByTagName('input');
+        var all_inputs = document.getElementsByTagName("input");
         for(var i = 0; i < all_inputs.length; i++){
             if (all_inputs[i].value == "")
                 all_inputs[i].value = all_inputs[i].placeholder;
         }
-        if (document.getElementById('aintro').value == "")
-            document.getElementById('aintro').value = document.getElementById('aintro').placeholder;
+        if (document.getElementById("aintro").value == "")
+            document.getElementById("aintro").value = document.getElementById("aintro").placeholder;
         {% endif %}
+
         return true;
     }
     {% if examine %}
     function check_examine() {
-        var applyEnd = new Date('{{apply_end}}')
+        var applyEnd = new Date("{{apply_end}}")
         var now = new Date()
         if (applyEnd < now) {
-            document.getElementById('warn_msg').style.display = "";
-            document.getElementById('warn_msg').innerHTML = "活动报名截止时间已过，请通知组织负责人修改。";
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "活动报名截止时间已过，请通知组织负责人修改。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
