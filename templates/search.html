@@ -3,7 +3,7 @@
 {% block add_css_file %}
 <style class="text/css">
     [data-toggle="collapse"] .fa:before {
-        font-family: 'FontAwesome';
+        font-family: 'Font Awesome 5 Free';
         content: "\f068";
         float: right;
     }
@@ -185,13 +185,13 @@
                                                     {% endfor %}
                                                 </td>
                                                 <td style="min-width: 100px;">
-                                                    {% if orgn.activity is None %}
-                                                    暂无活动
-                                                    {% else %}
-                                                    <a href="/viewActivity/{{ orgn.activity.id }}">
-                                                        <u>{{ orgn.activity.title }}</u>
-                                                    </a>
-                                                    {% endif %}
+                                                    {% for activity in orgn.activities %}
+                                                        <a href="/viewActivity/{{ activity.id }}">
+                                                            <u>{{activity.title }}</u>
+                                                        </a>
+                                                    {% empty %}
+                                                        暂无活动
+                                                    {% endfor %}
                                                 </td>
                                             </tr>
                                             {% endfor %}
