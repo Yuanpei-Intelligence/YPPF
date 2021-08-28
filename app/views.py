@@ -321,7 +321,8 @@ def stuinfo(request, name=None):
                 Q(person=oneself) & Q(show_post=True)
             )
         )
-        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id") # 自己的组织
+
+        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id")  # 自己的组织
 
         # 管理的组织
         person_owned_poss = person_poss.filter(pos=0, status=Position.Status.INSERVICE)
@@ -730,7 +731,7 @@ def homepage(request):
                 np.last_time_login = nowtime
                 np.bonusPoint += 0.5
                 np.save()
-
+    
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
     recentactivity_list = Activity.objects.activated().get_recent_activity()
 
@@ -760,7 +761,7 @@ def homepage(request):
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:
         wishtext = request.POST.get("wish")
-        new_wish = Wishes.objects.create(text = wishtext, time = datetime.now())
+        new_wish = Wishes.objects.create(text = wishtext, time = nowtime)
         new_wish.save()
 
     # 心愿墙！！！！!前100个心愿,已经按照时间逆序排好了
@@ -1038,7 +1039,6 @@ def search(request):
         activities = list(activities)
         activities.sort(key=lambda activity: abs(now - activity.start))
         return None if len(activities) == 0 else activities[0]
-
 
     org_display_list = []
     for org in organization_list:
@@ -1771,6 +1771,7 @@ def viewActivity(request, aid=None):
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
     start_time = activity.start
+    start_THEDAY = start_time.day # 前端使用量
     end_time = activity.end
     prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.apply_end
@@ -1925,6 +1926,7 @@ def viewActivity(request, aid=None):
 
         html_display["warn_code"] = 2
         html_display["warn_message"] = "成功提交活动照片"
+
         return render(request, "activity_info.html", locals())
 
     else:
@@ -2200,6 +2202,7 @@ def addActivities(request):
                     if pic is not None:
                         existannouncephoto = True
                         break
+
                 announcephotos = request.FILES.getlist("images")
                 if len(announcephotos)==0 :
                     if existannouncephoto is False:
@@ -2768,6 +2771,7 @@ def notifications(request):
     undone_list = notification2Display(
         list(undone_set.union(undone_set).order_by("-start_time"))
     )
+    
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
@@ -3086,10 +3090,8 @@ def showPosition(request):
 
     shown_instances = shown_instances.order_by('-modify_time', '-time')
 
-
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="人事申请")
     return render(request, 'showPosition.html', locals())
-
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
@@ -3216,7 +3218,6 @@ def make_relevant_notification(application, info):
         notification_status_change(
             application.relate_notifications.get(status=Notification.Status.UNDONE).id
         )
-
 
 # 新建+修改+取消+审核 报销信息
 @login_required(redirect_field_name="origin")
@@ -3392,7 +3393,8 @@ def make_notification(application, request,content,receiver):
         )
 
 
-# YWolfeee: 重构人事申请页面 Aug 24 12:30 UTC-8
+
+# YWolfeee: 重构组织申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 def modifyOrganization(request):
@@ -3406,6 +3408,7 @@ def modifyOrganization(request):
             + "?warn_code={}&warn_message={}".format(
                 html_display["warn_code"], html_display["warn_message"]
             )
+          
         )
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
@@ -3497,6 +3500,7 @@ def modifyOrganization(request):
         个人：可能是初次申请或者是修改申请
         组织：可能是审核申请
         # TODO 也可能是两边都想自由的查看这个申请
+
         区别：
             (1) 整个表单允不允许修改和评论
             (2) 变量的默认值[可以全部统一做]
@@ -3654,4 +3658,3 @@ def send_message_check(me, request):
         return wrong("发送微信的过程出现错误！请联系管理员！")
     
     return succeed(f"成功将创建知晓类消息，发送给所有的{receiver_type}了!")
-        

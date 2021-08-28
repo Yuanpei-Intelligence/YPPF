@@ -942,3 +942,4 @@ class Wishes(models.Model):
         ordering = ["-time"]
     text = models.TextField("心愿内容", default="", blank=True)
     time = models.DateTimeField("发布时间", auto_now_add=True)
+
