@@ -192,6 +192,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     return bar_display
 
 
+
 # 检查发起活动的request的合法性
 def check_ac_request(request):
     # oid的获取
