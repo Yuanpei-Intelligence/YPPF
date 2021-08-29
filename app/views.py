@@ -767,8 +767,16 @@ def homepage(request):
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:
         wishtext = request.POST.get("wish")
-        background = "" if request.POST.get("backgroundcolor") is None else request.POST.get("backgroundcolor")
-        new_wish = Wishes.objects.create(text = wishtext, time = datetime.now(), background = background)
+        background = ""
+        if request.POST.get("backgroundcolor") is not None:
+            bg = request.POST["backgroundcolor"]
+            try:
+                assert len(bg) == 7 and bg[0] == "#"
+                int(bg[1:], base=16)
+                background = bg
+            except:
+                print(f"心愿背景颜色{bg}不合规")
+        new_wish = Wishes.objects.create(text = wishtext, background = background)
         new_wish.save()
 
     # 心愿墙！！！！!最近一周的心愿，已经逆序排列，如果超过100个取前100个就可
