@@ -325,7 +325,7 @@ def load_freshman_info(request):
         )
     Freshman.objects.bulk_create(freshman_list)
 
-    context = {"message": "导入学生信息成功！"}
+    context = {"message": "导入新生信息成功！"}
     return render(request, "debugging.html", context)
 
 
