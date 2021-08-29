@@ -43,7 +43,7 @@
                                                     <div align="center">
                                                     <h3>组织申请{% if not is_new_application %}
                                                         {% with application.get_status_display as status %}
-                                                        {%if status == "处理中"%}
+                                                        {%if status == "审核中"%}
                                                         <span class="badge badge-primary">{{status}}</span>
                                                         {%elif status == "已通过"%}
                                                         <span class="badge badge-success">{{status}}</span>

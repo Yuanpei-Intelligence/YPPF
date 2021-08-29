@@ -690,13 +690,14 @@ def orginfo(request, name=None):
     origin = request.get_full_path()
 
     # 补充订阅该组织的按钮
-    show_subscribe = False
-    if user_type == "Person" and organization_name != "元培学院":
-        show_subscribe = True
-        subscribe_flag = True  # 默认在订阅列表中
-
-        if organization_name in me.unsubscribe_list.values_list("oname", flat=True):
-            subscribe_flag = False
+    allow_unsubscribe = org.otype.allow_unsubscribe # 是否允许取关
+    is_person = True if user_type == "Person" else False
+    if is_person:
+        subscribe_flag = True if (
+            organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
+            else False
+    
+    
 
     return render(request, "orginfo.html", locals())
 
@@ -2269,7 +2270,7 @@ def examineActivity(request, aid):
             no_limit = True
         examine_teacher = activity.examine_teacher.name
         html_display["today"] = datetime.now().strftime("%Y-%m-%d")
-        html_display["app_avatar_path"] = activity.organization_id.avatar
+        html_display["app_avatar_path"] = utils.get_user_ava(activity.organization_id,"Organization")
         html_display["applicant_name"] = activity.organization_id.oname
         bar_display = utils.get_sidebar_and_navbar(request.user)
         status = activity.status
@@ -2544,7 +2545,8 @@ def notification2Display(notification_list):
         lis[-1]["URL"] = notification.URL
         lis[-1]["type"] = notification.get_typename_display()
         lis[-1]["title"] = notification.get_title_display()
-        if notification.sender.username[0] == "z":
+        _, user_type, _ = utils.check_user_type(notification.sender)
+        if user_type == "Organization":
             lis[-1]["sender"] = Organization.objects.get(
                 organization_id__username=notification.sender.username
             ).oname
@@ -2667,9 +2669,12 @@ def addComment(request, comment_base, receiver=None):
             context["warn_code"] = 1
             context["warn_message"] = "评论失败，请联系管理员。"
             return context
+        if len(text) > 0:
+            content[typename] += f':{text}'
+        else:
+            context[typename] += "。"
         if len(text) >= 32:
             text = text[:31] + "……"
-        content[typename] += f':{text}'
         if receiver is not None:
             notification_create(
                 receiver,
@@ -2682,6 +2687,8 @@ def addComment(request, comment_base, receiver=None):
         context["new_comment"] = new_comment
         context["warn_code"] = 2
         context["warn_message"] = "评论成功。"
+    else:
+        return wrong("找不到评论信息, 请重试!")
     return context
 
 
@@ -2772,7 +2779,7 @@ def modifyPosition(request):
             # 非法的名字, 出现恶意修改参数的情况
             return redirect("/welcome/")
         
-        # 查找已经存在的处理中的申请
+        # 查找已经存在的审核中的申请
         try:
             application = ModifyPosition.objects.get(
                 org = applied_org, person = me, status = ModifyPosition.Status.PENDING)
@@ -2876,6 +2883,7 @@ def modifyPosition(request):
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
     apply_person = me if is_new_application else application.person
     app_avatar_path = utils.get_user_ava(apply_person, "Person")
+    org_avatar_path = utils.get_user_ava(applied_org, "Organization")
     # 获取个人与组织[在当前学年]的关系
     current_pos_list = Position.objects.current().filter(person=apply_person, org=applied_org)
     # 应当假设只有至多一个类型
