@@ -32,7 +32,7 @@ RETRY = False
 
 if USE_SCHEDULER:
     try:
-        from app.scheduler_func import scheduler
+        from app.scheduler import scheduler
     except:
         from apscheduler.schedulers.background import BackgroundScheduler
         from django_apscheduler.jobstores import DjangoJobStore
@@ -47,7 +47,7 @@ THIS_URL = settings.LOGIN_URL  # 增加默认url前缀
 if THIS_URL[-1:] == "/" and THIS_URL[-2:] != "//":
     THIS_URL = THIS_URL[:-1]  # 去除尾部的/
 WECHAT_URL = local_dict["url"]["wechat_url"]
-INVITE_URL = WECHAT_URL + '' if WECHAT_URL.endswith('/') else '/' + 'invite_user'
+INVITE_URL = WECHAT_URL + ('' if WECHAT_URL.endswith('/') else '/') + 'invite_user'
 wechat_coder = MySHA256Hasher(local_dict["hash"]["wechat"])
 
 # 一批发送的最大数量
