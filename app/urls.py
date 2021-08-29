@@ -24,6 +24,7 @@ urlpatterns = [
     path("modpw/", views.modpw, name="modpw"),
     path("test/", views.test, name="test"),
     path("loaddata/", data_import.load_stu_info, name="load_data"),
+    path("loadfreshman/", data_import.load_freshman_info, name="load_freshman"),
     path("loadorgdata/", data_import.load_org_info, name="load_org_data"),
     path("loadtransferinfo/",data_import.load_transfer_info,name="loadtransferinfo"),
     path("loadactivity/",data_import.load_activity_info,name="loadactivity"),
