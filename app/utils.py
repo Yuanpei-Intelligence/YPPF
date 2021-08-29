@@ -495,7 +495,7 @@ def get_unreimb_activity(org):
             # 未被拒绝的
         )
             .exclude(status=Reimbursement.ReimburseStatus.REFUSED)
-            .values_list("activity_id", flat=True)
+            .values_list("related_activity_id", flat=True)
     )
     activities = (
         Activity.objects.activated()  # 本学期的

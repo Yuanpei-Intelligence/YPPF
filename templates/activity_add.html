@@ -289,16 +289,13 @@
                                             {% if not examine and not edit or full_editable %}
                                             <div class="form-group">
                                                 <label>上传活动预告图片</label><br/>
-                                                <div class="row">
-                                                    <div class="col-4">
-                                                        <div class="custom-file" lang="zh">
-                                                            <input onchange="showFilename(this.files)" type="file" 
-                                                                   class="custom-file-input" id="images" name="images" 
-                                                                   accept="image/*"  multiple>
-                                                            <label id="upload_annouce_photo" class="custom-file-label" 
-                                                                   for="customFile"> 请上传一张图片 </label>
-                                                        </div>
-                                                    </div>
+                                                <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12">
+                                                    <input onchange="showFilenameLocal(this.files)" type="file" 
+                                                           class="custom-file-input" id="images" name="images" 
+                                                           accept="image/*">
+                                                    <label id="upload_annouce_photo" name="upload_annouce_photo" class="custom-file-label" 
+                                                           for="customFile"> 请上传一张图片 </label>
+
                                                 </div>
                                                 
                                             </div>
@@ -436,6 +433,15 @@
         }
     });
     {% endfor %}
+
+    function showFilenameLocal(files){
+        var text = "";
+        for (i = 0; i < files.length; i++)
+        {
+        text += (" "+files[i].name);
+        }
+        $("#upload_annouce_photo").html(text);
+    }
 
     function shows(a) {
         $("#pricebutton").text(a);

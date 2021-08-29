@@ -1841,7 +1841,12 @@ def viewActivity(request, aid=None):
         return render(request, "activity_info.html", locals())
 
     elif option == "payment":
-        return redirect("/modifyReimbursement/")
+        try:
+            re = Reimbursement.objects.get(related_activity=activity)
+            return redirect(f"/modifyReimbursement/?reimb_id={re.id}")
+        except Exception as e:
+            # print("Exception", e)
+            return redirect("/modifyReimbursement/")
 
     elif option == "submitphoto":
         try:
@@ -3197,7 +3202,7 @@ def modeifyReimbursement(request):
                 #组织名字
                 org_name = application.pos.organization.oname
                 #活动标题
-                act_title = application.activity.title
+                act_title = application.related_activity.title
                 # 准备创建notification需要的构件：发送内容
                 content = {
                     'new_submit': f'{org_name}发起活动{act_title}的经费申请，请审核~',
