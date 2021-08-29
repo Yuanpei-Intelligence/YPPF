@@ -940,7 +940,7 @@ class Reimbursement(CommentBase):
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
 
     def __str__(self):
-        return f'{self.activity.title}活动报销'
+        return f'{self.related_activity.title}活动报销'
         
     def save(self, *args, **kwargs):
         self.typename = "reimbursement"
