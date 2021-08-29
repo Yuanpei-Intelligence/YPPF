@@ -335,7 +335,9 @@ def modify_reviewing_activity(request, activity):
 
     # 图片
     if context["pic"] is not None:
-        pic = activity.photos.filter(type=ActivityPhoto.PhotoType.ANNOUNCE).update(image=context["pic"])
+        pic = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
+        pic.image = context["pic"]
+        pic.save()
 
 
 
