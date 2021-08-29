@@ -4,7 +4,7 @@
         <div class="row">
             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
                 <div data-toggle="collapse" href="#help-content" role="button" aria-expanded="false"
-                    aria-controls="collapseExample">
+                    aria-controls="collapseExample" class="collapsed">
                     <div class="d-flex justify-content-between">
                         <div>
                             <h4>使用帮助</h4>
@@ -19,11 +19,11 @@
             </div>
         </div>
     </div>
-    <div class="collapse show" id="help-content">
+    <div class="collapse" id="help-content">
         <div class="widget-content widget-content-area">
-            <div class="table-responsive">
-                {{bar_display.help_paragraphs | safe}}
-            </div>
+            
+            {{bar_display.help_paragraphs | safe}}
+            
         </div>
     </div>
 </div>
