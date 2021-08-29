@@ -21,7 +21,6 @@ from numpy.random import choice
 # 定时任务生成器
 scheduler = BackgroundScheduler()
 scheduler.add_jobstore(DjangoJobStore(), "default")
-# 只起散列作用，不用加盐
 
 def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
     '''
