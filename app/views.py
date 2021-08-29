@@ -485,7 +485,7 @@ def stuinfo(request, name=None):
         context["title"] = "我" if is_myself else "Ta"
 
         context["avatar_path"] = utils.get_user_ava(person, "Person")
-        context["wallpaper_path"] = utils.get_user_wallpaper(person)
+        context["wallpaper_path"] = utils.get_user_wallpaper(person, "Person")
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
         bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="个人主页")
@@ -549,6 +549,7 @@ def orginfo(request, name=None):
         return redirect("/logout/")
 
     me = utils.get_person_or_org(user, user_type)
+    
 
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if user_type == "Person":
@@ -572,9 +573,13 @@ def orginfo(request, name=None):
     except:
         return redirect("/welcome/")
 
+    # 判断是否为组织账户本身在登录
+    html_display["is_myself"] = me == org
+
     organization_name = name
     organization_type_name = org.otype.otype_name
     org_avatar_path = utils.get_user_ava(org, "Organization")
+    wallpaper_path = utils.get_user_wallpaper(org, "Organization")
     # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
     # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
@@ -645,7 +650,7 @@ def orginfo(request, name=None):
     for p in positions:
         if p.person.person_id == user and p.pos == 0:
             html_display["isboss"] = True
-        if p.show_post == True or p.pos == 0:
+        if p.show_post == True or p.pos == 0 or html_display["is_myself"]:
             member = {}
             member["person"] = p.person
             member["job"] = org.otype.get_name(p.pos)
@@ -671,8 +676,7 @@ def orginfo(request, name=None):
 
     # 补充左边栏信息
 
-    # 判断是否为组织账户本身在登录
-    html_display["is_myself"] = me == org
+    
 
     # 再处理修改信息的回弹
     modpw_status = request.GET.get("modinfo", None)
@@ -826,7 +830,7 @@ def account_setting(request):
 
         useroj = NaturalPerson.objects.get(person_id=user)
 
-        former_wallpaper = utils.get_user_wallpaper(me)
+        former_wallpaper = utils.get_user_wallpaper(me, "Person")
 
         # print(json.loads(request.body.decode("utf-8")))
         if request.method == "POST" and request.POST:
@@ -2406,7 +2410,7 @@ def subscribeActivities(request):
     # bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     subscribe_url = reverse("save_subscribe_status")
-    return render(request, "activity_subscribe.html", locals())
+    return render(request, "organization_subscribe.html", locals())
 
 
 @login_required(redirect_field_name="origin")
