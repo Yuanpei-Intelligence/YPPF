@@ -79,13 +79,11 @@ class NaturalPerson(models.Model):
 
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
-    show_nickname = models.BooleanField(default=True)
+    show_nickname = models.BooleanField(default=False)
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
-    show_class = models.BooleanField(default=True)
     show_major = models.BooleanField(default=True)
-    show_grade = models.BooleanField(default=True)
     show_dorm = models.BooleanField(default=False)
 
     # 注意：这是不订阅的列表！！
@@ -406,11 +404,11 @@ class ActivityManager(models.Manager):
         ).order_by("-start")
 
     def get_newlyreleased_activity(self):
-        # 最新（三天内）发布的活动，按发布的时间逆序
+        # 最新一周内发布的活动，按发布的时间逆序
         nowtime = datetime.now()
         return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
             semester__contains=local_dict["semester_data"]["semester"]
-        ).filter(publish_time__gt = nowtime-timedelta(days = 3)).filter(
+        ).filter(publish_time__gt = nowtime-timedelta(days = 7)).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -796,7 +794,7 @@ class ModifyOrganization(CommentBase):
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
 
     class Status(models.IntegerChoices):  # 表示申请组织的请求的状态
-        PENDING = (0, "处理中")
+        PENDING = (0, "审核中")
         CONFIRMED = (1, "已通过")  
         CANCELED = (2, "已取消")  
         REFUSED = (3, "已拒绝")
@@ -860,7 +858,7 @@ class ModifyPosition(CommentBase):
     )
 
     class Status(models.IntegerChoices):  # 表示申请人事的请求的状态
-        PENDING = (0, "处理中")
+        PENDING = (0, "审核中")
         CONFIRMED = (1, "已通过")  
         CANCELED = (2, "已取消")  
         REFUSED = (3, "已拒绝")
