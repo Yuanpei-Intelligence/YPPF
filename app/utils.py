@@ -208,7 +208,6 @@ def check_ac_request(request):
         edit = False
 
 
-
 def url_check(arg_url):
     # DEBUG 默认通过
     return True

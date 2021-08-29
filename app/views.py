@@ -1171,7 +1171,6 @@ def search(request):
         activities.sort(key=lambda activity: abs(now - activity.start))
         return None if len(activities) == 0 else activities[0:3]
 
-
     org_display_list = []
     for org in organization_list:
         try:
@@ -1760,10 +1759,10 @@ def myYQPoint(request):
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
-     # 补充一些呈现信息
-     # bar_display["title_name"] = "My YQPoint"
-     # bar_display["navbar_name"] = "我的元气值"  #
-     # bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
+    # 补充一些呈现信息
+    # bar_display["title_name"] = "My YQPoint"
+    # bar_display["navbar_name"] = "我的元气值"  #
+    # bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
 
     return render(request, "myYQPoint.html", locals())
 
