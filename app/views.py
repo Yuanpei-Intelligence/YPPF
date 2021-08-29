@@ -768,11 +768,30 @@ def homepage(request):
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:
         wishtext = request.POST.get("wish")
-        new_wish = Wishes.objects.create(text = wishtext, time = datetime.now())
+        background = ""
+        if request.POST.get("backgroundcolor") is not None:
+            bg = request.POST["backgroundcolor"]
+            try:
+                assert len(bg) == 7 and bg[0] == "#"
+                int(bg[1:], base=16)
+                background = bg
+            except:
+                print(f"心愿背景颜色{bg}不合规")
+        new_wish = Wishes.objects.create(text = wishtext, background = background)
         new_wish.save()
 
-    # 心愿墙！！！！!前100个心愿,已经按照时间逆序排好了
-    wishes = Wishes.objects.all()[:100]
+    # 心愿墙！！！！!最近一周的心愿，已经逆序排列，如果超过100个取前100个就可
+    wishes = Wishes.objects.filter(
+        time__gt = nowtime-timedelta(days = 7)
+    )
+    wishes = wishes[:100]
+
+    # 心愿墙背景图片
+    colors = [
+        "#FDAFAB","#FFDAC1","#FAF1D6",
+        "#B6E3E9","#B5EAD7","#E2F0CB"
+    ]
+    backgroundpics = [{"src":"/static/assets/img/backgroundpics/"+str(i+1)+".png","color": colors[i] } for i in range(6)]
 
     """ 
         取出过去一周的所有活动，filter出上传了照片的活动，从每个活动的照片中随机选择一张
