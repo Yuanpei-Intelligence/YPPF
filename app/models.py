@@ -539,6 +539,9 @@ class Activity(CommentBase):
     need_checkin = models.BooleanField("是否需要签到", default=False)
 
     examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    # recorded 其实是冗余，但用着方便，存了吧
+    recorded = models.BooleanField("是否预报备", default=False)
+    valid = models.BooleanField("是否已审核", default=False)
 
     class YQPointSource(models.IntegerChoices):
         COLLEGE = (0, "学院")
@@ -552,14 +555,15 @@ class Activity(CommentBase):
     capacity = models.IntegerField("活动最大参与人数", default=100)
     current_participants = models.IntegerField("活动当前报名人数", default=0)
 
-    URL = models.URLField("活动相关(推送)网址", null=True, blank=True)
+    URL = models.URLField("活动相关(推送)网址", default="", blank=True)
 
     def __str__(self):
         return f"活动：{self.title}"
 
     class Status(models.TextChoices):
         REVIEWING = "审核中"
-        ABORT = "未过审"
+        ABORT = "已撤销"
+        REJECT = "未过审"
         CANCELED = "已取消"
         APPLYING = "报名中"
         WAITING = "等待中"
