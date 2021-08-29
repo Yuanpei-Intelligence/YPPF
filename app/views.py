@@ -29,6 +29,7 @@ from app.activity_utils import (
     create_activity,
     modify_activity,
     accept_activity,
+    reject_activity,
     applyActivity,
     cancel_activity,
     withdraw_activity,
@@ -1768,11 +1769,22 @@ def viewActivity(request, aid=None):
     if ownership and need_checkin:
         aQRcode = get_activity_QRcode(activity)
 
-    # 活动图片！！
+    # 活动宣传图片 ( 一定存在 )
     photo = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
-    if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
-        photo.image = settings.MEDIA_URL + str(photo.image)
-    firstpic = photo.image
+    firstpic = str(photo.image)
+    if firstpic[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+        firstpic = settings.MEDIA_URL + firstpic
+
+    # 总结图片，不一定存在
+    summary_photo_exists = False
+    if activity.status == Activity.Status.END:
+        try:
+            summary_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
+            summary_photo_exists = True
+            summary_photo = settings.MEDIA_URL + str(summary_photo.image)
+        except Exception as e:
+            # print(e)
+            pass
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
@@ -1787,25 +1799,24 @@ def viewActivity(request, aid=None):
 
     html_display = dict()
     # 处理 post 请求
-    # try:
     option = request.POST.get("option")
     if option == "cancel":
-        # try:
-        assert activity.status != Activity.Status.END
-        assert activity.status != Activity.Status.CANCELED
-        with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=aid)
-            cancel_activity(request, activity)
-
-            return redirect(f"/viewActivity/{aid}")
-        """
+        try:
+            assert activity.status != Activity.Status.REJECT
+            assert activity.status != Activity.Status.ABORT
+            assert activity.status != Activity.Status.END
+            assert activity.status != Activity.Status.CANCELED
+            with transaction.atomic():
+                activity = Activity.objects.select_for_update().get(id=aid)
+                cancel_activity(request, activity)
+                return redirect(f"/viewActivity/{aid}")
         except ActivityError as e:
             html_display["warn_code"] = 1
             html_display["warn_message"] = str(e)
             return render(request, "activity_info.html", locals())
         except:
             redirect("/welcome/")
-        """
+
 
     elif option == "edit":
         if (
@@ -1825,43 +1836,51 @@ def viewActivity(request, aid=None):
             return render(request, "activity_info.html", locals())
 
     elif option == "apply":
-        # try:
-        with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=int(aid))
-            applyActivity(request, activity)
-            return redirect(f"/viewActivity/{aid}")
-        """
-        except ActivityError as e:
+        try:
+            with transaction.atomic():
+                activity = Activity.objects.select_for_update().get(id=int(aid))
+                assert activity.status == Activity.Status.APPLYING
+                applyActivity(request, activity)
+                return redirect(f"/viewActivity/{aid}")
+        except ActivityException as e:
             html_display["warn_message"] = str(e)
         except:
             redirect('/welcome/')
-        """
+
         return render(request, "activity_info.html", locals())
 
 
     elif option == "quit":
-        # try:
-        with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=aid)
-            assert (
-                    activity.status == Activity.Status.APPLYING
-                    or activity.status == Activity.Status.WAITING
-            )
-            withdraw_activity(request, activity)
-            return redirect(f"/viewActivity/{aid}")
-        """
-        except ActivityError as e:
+        try:
+            with transaction.atomic():
+                activity = Activity.objects.select_for_update().get(id=aid)
+                assert (
+                        activity.status == Activity.Status.APPLYING
+                        or activity.status == Activity.Status.WAITING
+                )
+                withdraw_activity(request, activity)
+                return redirect(f"/viewActivity/{aid}")
+
+        except ActivityException as e:
             html_display["warn_message"] = str(e)
         except:
             return redirect('/welcome/')
-        """
+
 
         return render(request, "activity_info.html", locals())
 
     elif option == "payment":
-        return redirect("/modifyReimbursement/")
+        try:
+            assert activity.status == Activity.Status.END
+            re = Reimbursement.objects.get(related_activity=activity)
+            return redirect(f"/modifyReimbursement/?reimb_id={re.id}")
+        except Exception as e:
+            # print("Exception", e)
+            return redirect("/modifyReimbursement/")
 
     elif option == "submitphoto":
+        if not (ownership and activity.status == Activity.Status.END):
+            return redirect("/welcome/")
         try:
             summaryphotos = request.FILES.getlist('images')
         except:
@@ -1872,15 +1891,27 @@ def viewActivity(request, aid=None):
             html_display['warn_code'] = 1
             html_display['warn_message'] = "上传活动照片不能为空"
             return render(request, "activity_info.html", locals())
-        for photo in summaryphotos:
-            if utils.if_image(photo) == False:
-                html_display['warn_code'] = 1
-                html_display['warn_message'] = "上传的附件只支持图片格式"
-                return render(request, "activity_info.html", locals())
-            ActivityPhoto.objects.create(image = photo,activity = activity,time = datetime.now(),type = ActivityPhoto.PhotoType.SUMMARY)
+        photo = summaryphotos[0]
+        if utils.if_image(photo) == False:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "上传的附件只支持图片格式"
+            return render(request, "activity_info.html", locals())
+        if summary_photo_exists:
+            old_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
+            old_photo.image = photo
+            old_photo.save()
+            summary_photo = settings.MEDIA_URL + str(old_photo.image)
+            html_display["warn_message"] = "成功替换活动照片"
+        else:
+            ActivityPhoto.objects.create(
+                image=photo, 
+                activity=activity, 
+                time=datetime.now(),
+                type = ActivityPhoto.PhotoType.SUMMARY
+            )
+            html_display["warn_message"] = "成功提交活动照片"
 
         html_display["warn_code"] = 2
-        html_display["warn_message"] = "成功提交活动照片"
         return render(request, "activity_info.html", locals())
 
     else:
@@ -2150,21 +2181,37 @@ def addActivity(request, aid=None):
     # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
     if request.method == "POST" and request.POST:
 
+        if not edit:
+            try:
+                with transaction.atomic():
+                    aid = create_activity(request)
+                    return redirect(f"/viewActivity/{aid}")
+            except:
+                return redirect("/welcome/")
+
+        # 仅这几个阶段可以修改
+        if (
+                activity.status != Activity.Status.REVIEWING and
+                activity.status != Activity.Status.APPLYING and 
+                activity.status != Activity.Status.WAITING
+        ):
+            return redirect("/welcome/")
+
         # 处理 comment
         if request.POST.get("comment_submit"):
             try:
                 # 创建活动只能在审核时添加评论
-                assert activity.status == Activity.Status.REVIEWING
-                context = addComment(request, activity, activity.organization_id.organization_id)
+                assert not activity.valid
+                context = addComment(request, activity, activity.examine_teacher.person_id)
                 # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
                 assert context["warn_code"] == 2
                 # 成功后重新加载界面
                 return redirect(f"/editActivity/{aid}")
-            except:
+            except Exception as e:
+                print(e)
                 return redirect("/welcome/")
 
-        if edit:
-            # try:
+        try:
             # 只能修改自己的活动
             with transaction.atomic():
                 activity = Activity.objects.select_for_update().get(id=aid)
@@ -2172,17 +2219,9 @@ def addActivity(request, aid=None):
                 assert activity.organization_id == org
                 modify_activity(request, activity)
             return redirect(f"/viewActivity/{activity.id}")
-            """
-            except:
-                return redirect("/welcome/")
-            """
-        else:
-            try:
-                aid = create_activity(request)
-                return redirect(f"/viewActivity/{aid}")
+        except:
+            return redirect("/welcome/")
 
-            except:
-                return redirect("/welcome/")
 
     # 处理 GET 请求
     elif request.method == "GET":
@@ -2193,23 +2232,40 @@ def addActivity(request, aid=None):
         else:
             try:
                 org = get_person_or_org(request.user, "Organization")
-                # 接受的状态为 审核中，申请中，等待中
-                if activity.status == Activity.Status.REVIEWING:
+
+
+                # 没过审，可以编辑评论区
+                if not activity.valid:
                     commentable = True
                     front_check = True
+                # 全可编辑
+                full_editable = False
+                accepted = False
+                if activity.status == Activity.Status.REVIEWING:
+                    full_editable = True
+                    accepted = True
+                # 部分可编辑
+                # 活动只能在开始 1 小时前修改
                 elif (
                         activity.status == Activity.Status.APPLYING
                         or activity.status == Activity.Status.WAITING
-                ):
+                ) and datetime.now() + timedelta(hours=1) < activity.start:
                     accepted = True
-                    # 活动只能在开始 1 小时前修改
-                    assert datetime.now() + timedelta(hours=1) < activity.start
                 else:
-                    raise Exception("不正常的活动状态")
+                    # 不是三个可以评论的状态
+                    commentable = front_check = False
             except Exception as e:
                 # print(e)
                 return redirect("/welcome/")
 
+
+            # 决定状态的变量
+            # None/edit/examine ( 组织申请活动/组织编辑/老师审查 )
+            # full_editable/accepted/None ( 组织编辑活动：除审查老师外全可修改/部分可修改/全部不可改 )
+            #        full_editable 为 true 时，accepted 也为 true
+            # commentable ( 是否可以评论 )
+
+            # 下面是前端展示的变量
             title = activity.title
             budget = activity.budget
             location = activity.location
@@ -2234,8 +2290,6 @@ def addActivity(request, aid=None):
                 no_limit = True
             examine_teacher = activity.examine_teacher.name
             status = activity.status
-            if status != Activity.Status.REVIEWING:
-                accepted = True
             avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
             need_checkin = activity.need_checkin
             comments = showComment(activity)
@@ -2268,8 +2322,17 @@ def examineActivity(request, aid):
 
     if request.method == "GET":
 
+        # 状态量，无可编辑量
         examine = True
+        commentable = not activity.valid
+        if (
+                activity.status != Activity.Status.REVIEWING and
+                activity.status != Activity.Status.APPLYING and
+                activity.status != Activity.Status.WAITING
+        ):
+            commentable = False
 
+        # 展示变量
         title = activity.title
         budget = activity.budget
         location = activity.location
@@ -2304,40 +2367,66 @@ def examineActivity(request, aid):
             examine_pic.image = settings.MEDIA_URL + str(examine_pic.image)
         intro_pic = examine_pic.image
 
-        if activity.status != Activity.Status.REVIEWING:
-            no_review = True
-        else:
-            commentable = True
+        need_checkin = activity.need_checkin
 
         bar_display = utils.get_sidebar_and_navbar(request.user)
         bar_display["title_name"] = "审查活动"
         bar_display["narbar_name"] = "审查活动"
         return render(request, "activity_add.html", locals())
 
-    elif request.method == "POST":
+    elif request.method == "POST" and request.POST:
+
+        # 创建活动只能在审核时添加评论
+        # assert activity.status == Activity.Status.REVIEWING
+        # 改成审核完之前可以评论
+        if (
+                activity.status != Activity.Status.REVIEWING and
+                activity.status != Activity.Status.APPLYING and
+                activity.status != Activity.Status.WAITING
+        ) or activity.valid:
+            return redirect("/welcome/")
+
+        # 活动开始前一个小时老师也不能再操作
 
         if request.POST.get("comment_submit"):
             try:
-                # 创建活动只能在审核时添加评论
-                assert activity.status == Activity.Status.REVIEWING
                 context = addComment(request, activity, activity.organization_id.organization_id)
                 # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
                 assert context["warn_code"] == 2
                 # 成功后重新加载界面
-                return redirect(f"/editActivity/{aid}")
-            except:
+                return redirect(f"/examineActivity/{aid}")
+            except Exception as e:
+                # print(e)
                 return redirect("/welcome/")
 
-        try:
-            with transaction.atomic():
-                activity = Activity.objects.select_for_update().get(
-                    id=int(aid)
-                )
-                assert activity.status == Activity.Status.REVIEWING
-                accept_activity(request, activity)
-            return redirect(f"/examineActivity/{aid}")
-        except:
-            return redirect("/welcome/")
+        if request.POST.get("review_accepted"):
+            try:
+                with transaction.atomic():
+                    activity = Activity.objects.select_for_update().get(
+                        id=int(aid)
+                    )
+                    accept_activity(request, activity)
+                return redirect(f"/examineActivity/{aid}")
+            except Exception as e:
+                # print(e)
+                return redirect("/welcome/")
+        else:
+            try:
+                with transaction.atomic():
+                    activity = Activity.objects.select_for_update().get(
+                        id=int(aid)
+                    )
+                    assert (
+                        activity.status == Activity.Status.REVIEWING or
+                        activity.status == Activity.Status.APPLYING or
+                        activity.status == Activity.Status.WAITING
+                    )
+                    reject_activity(request, activity)
+                return redirect(f"/examineActivity/{aid}")
+            except Exception as e:
+                print(e)
+                return redirect("/welcome/")
+
 
     else:
         return redirect("/welcome/")
@@ -2653,13 +2742,13 @@ def addComment(request, comment_base, receiver=None):
         'modifyposition': f'{sender_name}在人事变动申请留有新的评论',
         'neworganization': f'{sender_name}在新建组织中留有新的评论',
         'reimbursement': f'{sender_name}在经费申请中留有新的评论',
-        "activity": f"{sender_name}在活动申请中留有新的评论"
+        'activity': f"{sender_name}在活动申请中留有新的评论"
     }
     URL={
         'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
         'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
         'reimbursement': f'/modifyReimbursement/?reimb_id={comment_base.id}',
-        "activity": f"/examineActivity/{comment_base.id}"
+        'activity': f"/examineActivity/{comment_base.id}"
     }
     if user_type == "Organization":
         URL["activity"] = f"/editActivity/{comment_base.id}"
@@ -2692,12 +2781,19 @@ def addComment(request, comment_base, receiver=None):
             context["warn_code"] = 1
             context["warn_message"] = "评论失败，请联系管理员。"
             return context
+
         if len(text) > 0:
             content[typename] += f':{text}'
         else:
-            context[typename] += "。"
+            content[typename] += "。"
         if len(text) >= 32:
             text = text[:31] + "……"
+       
+        if user_type == "Organization":
+            URL["activity"] = f"/examineActivity/{comment_base.id}"
+        else:
+            URL["activity"] = f"/editActivity/{comment_base.id}"
+
         if receiver is not None:
             notification_create(
                 receiver,
@@ -3150,7 +3246,7 @@ def modeifyReimbursement(request):
                 #组织名字
                 org_name = application.pos.organization.oname
                 #活动标题
-                act_title = application.activity.title
+                act_title = application.related_activity.title
                 # 准备创建notification需要的构件：发送内容
                 content = {
                     'new_submit': f'{org_name}发起活动{act_title}的经费申请，请审核~',
