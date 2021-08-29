@@ -95,9 +95,11 @@ def get_user_ava(obj, user_type):
         return settings.MEDIA_URL + str(ava)
 
 
-def get_user_wallpaper(person):
-    return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/default.jpg")
-
+def get_user_wallpaper(person, user_type):
+    if user_type == "Person":
+        return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/person_wall_default.jpg")
+    else:
+        return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.jpg")
 
 # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
 def get_user_left_navbar(person, is_myself, html_display):
@@ -192,6 +194,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     return bar_display
 
 
+
 # 检查发起活动的request的合法性
 def check_ac_request(request):
     # oid的获取
@@ -203,6 +206,7 @@ def check_ac_request(request):
         edit = True
     except:
         edit = False
+
 
 
 def url_check(arg_url):
@@ -244,7 +248,7 @@ def get_url_params(request, html_display):
             if key not in html_display.keys():  # 禁止覆盖
                 html_display[key] = value
 
-# 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
+# 检查neworg request参数的合法性 ,用在modifyorganization函数中
 def check_neworg_request(request, org=None):
     context = dict()
     context["warn_code"] = 0
@@ -311,7 +315,7 @@ def check_neworg_request(request, org=None):
         context["warn_code"] = 1
         context["warn_message"] = "申请理由不能为空"
     return context
-# 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
+# 检查neworg request参数的合法性 ,用在modifyoranization函数中
 
 def check_newpos_request(request,prepos=None):
 
@@ -342,7 +346,7 @@ def check_newpos_request(request,prepos=None):
     return context
 
 
-# 查询组织代号的最大值+1 用于addOrganization()函数，新建组织
+# 查询组织代号的最大值+1 用于modifyOrganization()函数，新建组织
 def find_max_oname():
     organizations = Organization.objects.filter(
         organization_id__username__startswith="zz"
@@ -628,4 +632,3 @@ def update_org_application(application, me, request):
                     return context
                 except:
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
-                

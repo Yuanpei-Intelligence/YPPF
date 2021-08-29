@@ -109,9 +109,12 @@
                                             >
                                         </div>
                                         {%else%}
-                                        <textarea id="amount" name="amount" class="form-control"
+                                        <div class="form-group">
+                                            <label>报销额度</label>
+                                            <br>
+                                            <textarea id="amount" name="amount" class="form-control"
                                                   aria-label="Default"
-                                                  disabled="disabled">{{application.amount}}</textarea>
+                                                      disabled="disabled">{{application.amount}}</textarea></div>
                                         {%endif%}
                                         {%else%}
                                         <div class="form-group">
@@ -244,7 +247,7 @@ function showFilename(files){
 {% block add_css_file %}
 <style>
     .custom-file-input:lang(zh)~.custom-file-label::after {
-    content: "上传";}
+    content: "上传图片";}
 </style>
 {%endblock%}
 
