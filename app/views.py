@@ -690,13 +690,14 @@ def orginfo(request, name=None):
     origin = request.get_full_path()
 
     # 补充订阅该组织的按钮
-    show_subscribe = False
-    if user_type == "Person" and organization_name != "元培学院":
-        show_subscribe = True
-        subscribe_flag = True  # 默认在订阅列表中
-
-        if organization_name in me.unsubscribe_list.values_list("oname", flat=True):
-            subscribe_flag = False
+    allow_unsubscribe = org.otype.allow_unsubscribe # 是否允许取关
+    is_person = True if user_type == "Person" else False
+    if is_person:
+        subscribe_flag = True if (
+            organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
+            else False
+    
+    
 
     return render(request, "orginfo.html", locals())
 
@@ -743,21 +744,21 @@ def homepage(request):
     ]
     html_display['today_activities'] = list(zip(activities, activities_start)) or None
 
-    # 最新（三天内）发布的活动，按发布的时间逆序
+    # 最新一周内发布的活动，按发布的时间逆序
     newlyreleased_list = Activity.objects.get_newlyreleased_activity()
 
-    # 今天截止的活动，按截止时间正序
+    # 即将截止的活动，按截止时间正序
     prepare_times = Activity.EndBeforeHours.prepare_times
     signup_rec = Activity.objects.activated().filter(status = Activity.Status.APPLYING)
-    today_signup_list = []
+    signup_list = []
     for act in signup_rec:
         deadline = act.start - timedelta(hours=prepare_times[act.endbefore])
-        if deadline.year==nowtime.year and deadline.month==nowtime.month and deadline.day==nowtime.day : # 今天截止
-            dictmp = {}
-            dictmp["deadline"] = deadline
-            dictmp["act"] = act
-            today_signup_list.append(dictmp)
-    today_signup_list.sort(key=lambda x:x["deadline"])
+        dictmp = {}
+        dictmp["deadline"] = deadline
+        dictmp["act"] = act
+        signup_list.append(dictmp)
+    signup_list.sort(key=lambda x:x["deadline"])
+    signup_list=signup_list[:10]
 
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:
@@ -2269,7 +2270,7 @@ def examineActivity(request, aid):
             no_limit = True
         examine_teacher = activity.examine_teacher.name
         html_display["today"] = datetime.now().strftime("%Y-%m-%d")
-        html_display["app_avatar_path"] = activity.organization_id.avatar
+        html_display["app_avatar_path"] = utils.get_user_ava(activity.organization_id,"Organization")
         html_display["applicant_name"] = activity.organization_id.oname
         bar_display = utils.get_sidebar_and_navbar(request.user)
         status = activity.status
@@ -2544,7 +2545,8 @@ def notification2Display(notification_list):
         lis[-1]["URL"] = notification.URL
         lis[-1]["type"] = notification.get_typename_display()
         lis[-1]["title"] = notification.get_title_display()
-        if notification.sender.username[0] == "z":
+        _, user_type, _ = utils.check_user_type(notification.sender)
+        if user_type == "Organization":
             lis[-1]["sender"] = Organization.objects.get(
                 organization_id__username=notification.sender.username
             ).oname
@@ -2633,7 +2635,7 @@ def addComment(request, comment_base, receiver=None):
     URL={
         'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
         'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
-        'reimbursement': f'modifyReimbursement/?reimb_id={comment_base.id}',
+        'reimbursement': f'/modifyReimbursement/?reimb_id={comment_base.id}',
         "activity": f"/examineActivity/{comment_base.id}"
     }
     if user_type == "Organization":
@@ -2667,9 +2669,12 @@ def addComment(request, comment_base, receiver=None):
             context["warn_code"] = 1
             context["warn_message"] = "评论失败，请联系管理员。"
             return context
+        if len(text) > 0:
+            content[typename] += f':{text}'
+        else:
+            context[typename] += "。"
         if len(text) >= 32:
             text = text[:31] + "……"
-        content[typename] += f':{text}'
         if receiver is not None:
             notification_create(
                 receiver,
@@ -2682,6 +2687,8 @@ def addComment(request, comment_base, receiver=None):
         context["new_comment"] = new_comment
         context["warn_code"] = 2
         context["warn_message"] = "评论成功。"
+    else:
+        return wrong("找不到评论信息, 请重试!")
     return context
 
 
@@ -2772,7 +2779,7 @@ def modifyPosition(request):
             # 非法的名字, 出现恶意修改参数的情况
             return redirect("/welcome/")
         
-        # 查找已经存在的处理中的申请
+        # 查找已经存在的审核中的申请
         try:
             application = ModifyPosition.objects.get(
                 org = applied_org, person = me, status = ModifyPosition.Status.PENDING)
@@ -2876,6 +2883,7 @@ def modifyPosition(request):
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
     apply_person = me if is_new_application else application.person
     app_avatar_path = utils.get_user_ava(apply_person, "Person")
+    org_avatar_path = utils.get_user_ava(applied_org, "Organization")
     # 获取个人与组织[在当前学年]的关系
     current_pos_list = Position.objects.current().filter(person=apply_person, org=applied_org)
     # 应当假设只有至多一个类型
@@ -2922,8 +2930,6 @@ def showPosition(request):
         shown_instances = ModifyPosition.objects.filter(org=me)
 
     shown_instances = shown_instances.order_by('-modify_time', '-time')
-
-
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="人事申请")
     return render(request, 'showPosition.html', locals())
 
@@ -3134,6 +3140,7 @@ def modeifyReimbursement(request):
                 make_notification(application,request,content,receiver)
                 if request.POST.get("post_type", None)=="new_submit":
                     is_new_application=True
+                    application=None
             elif context["warn_code"] != 1:  # 没有返回操作提示
                 raise NotImplementedError("处理经费申请中出现未预见状态，请联系管理员处理！")
 
@@ -3187,6 +3194,7 @@ def modeifyReimbursement(request):
 
 # 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
 # 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
+#用于报销的通知
 def make_notification(application, request,content,receiver):
     # 考虑不同post_type的信息发送行为
     post_type = request.POST.get("post_type")
@@ -3225,7 +3233,6 @@ def make_notification(application, request,content,receiver):
             application.relate_notifications.get(status=Notification.Status.UNDONE).id,
             Notification.Status.DONE
         )
-
 
 # YWolfeee: 重构组织申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')

@@ -1,3 +1,4 @@
+
 <!--begin comment-->
 <style type="text/css">
 img {
@@ -5,9 +6,10 @@ img {
     max-height:600px;
 }
 </style>
+<hr>
 <div id="comments_display" class="widget-header">
     {%if  commentable == 1 or comments.len > 0 %}
-    <label><h4>审核信息</h4></label>
+    <label><h4>评论区</h4></label>
     {%endif%}
     {%for comment in comments%}
     <div class="form-group">
@@ -22,6 +24,9 @@ img {
         </div>
         {%if comment.text != ""%}
         <textarea name="comment" class="form-control" disabled="disabled">{{comment.text}}</textarea>
+        {%if comment.len > 0 %}
+        <br>
+        {%endif %}
         {%endif%}
         {%if comment.len > 0 %}
             <div style="max-height:1000px;overflow:auto;">
@@ -38,31 +43,42 @@ img {
 {%if commentable %}
 <form role="form" method="POST" enctype="multipart/form-data" onsubmit="return check_comment_inputs()">
     <div>
-        <br>
-        <br>
+        
         <div class="form-group">
             <textarea type="text" id="comment" name="comment"
                       class="form-control"
                       aria-label="Default" rows="3"
                       placeholder="添加评论"></textarea>
+            
             <br>
-            <div>
-                <label title="评论图片">
+
+            <div class="form-group">
+                
                     <div class="custom-file" lang="zh">
-                        <input onchange="showFilename(this.files)" type="file" class="custom-file-input"
-                               id="customFile" name="comment_images" accept="image/*"  multiple>
-                        <label id="uploadfile" class="custom-file-label" for="customFile">添加评论图片</label>
+                        <input onchange="showFilename(this.files)" type="file" 
+                               class="custom-file-input" id="customFile" name="comment_images" 
+                               accept="image/*"  multiple>
+                        <label id="uploadfile" class="custom-file-label" 
+                               for="customFile">相关图片</label>
                     </div>
-                </label>
-                <div style="text-align:right;">
+                
+                </div>
+            </div>
+            <br>
+            <div class="d-flex justify-content-between">
+            <div>
+
+            </div>
+            <div class="" style="text-align: right;">
                     <button type="submit"
-                            class="btn btn-primary btn-sm mb-4 mr-2"
+                            class="btn btn-primary btn-block mb-4 mr-2"
                             name="comment_submit" value="1">
                         回复
                     </button>
                 </div>
             </div>
-        </div>
+            </div>
+        
     </div>
 </form>
 <!--end comment-->
