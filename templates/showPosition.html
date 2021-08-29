@@ -40,9 +40,7 @@
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
                             <h3>{{title}}</h3>
-                            <div class="col-12">
-                                </br>
-                            </div>
+                            
                             <!-- <div class="col-lg-12">
                                 <br />
                                 <br />
@@ -50,19 +48,18 @@
                                     style="position:absolute;right:30px;top:4px;">
                                     {{new_btn_name}}
                                 </a>
-                            </div> -->
+                            </div> 
                             <hr style="filter:alpha(opacity=100,finishopacity=0,style=3);" width="80%" color="#0000FF"
                                 size="3">
-
+                        -->
                             <div id="myTabContent" class="tab-content">
-                                <div class="tab-pane fade in active show" id="home">
                                     {% if not shown_instances %}
                                     <br />
                                     <p></p>
                                     <p style="text-align: center;">{{empty_info}}</p>
                                     <br />
                                     {% else %}
-                                    <div class="bio-skill-box">
+                                    <div class="bio-skill-box" style="padding-top: 3px;">
                                         <div class="row">
 
 
@@ -149,7 +146,7 @@
                                     </div>
 
                                     {% endif %}
-                                </div>
+                                
                             </div>
                         </div>
                     </div>
