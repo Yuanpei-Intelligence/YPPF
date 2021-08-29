@@ -67,7 +67,7 @@ import csv
 
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
-from .scheduler_func import scheduler
+from app.scheduler import scheduler
 
 # 注册启动以上schedule任务
 register_events(scheduler)
@@ -484,7 +484,7 @@ def stuinfo(request, name=None):
         context["title"] = "我" if is_myself else "Ta"
 
         context["avatar_path"] = utils.get_user_ava(person, "Person")
-        context["wallpaper_path"] = utils.get_user_wallpaper(person)
+        context["wallpaper_path"] = utils.get_user_wallpaper(person, "Person")
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
         bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="个人主页")
@@ -548,6 +548,7 @@ def orginfo(request, name=None):
         return redirect("/logout/")
 
     me = utils.get_person_or_org(user, user_type)
+    
 
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if user_type == "Person":
@@ -571,9 +572,13 @@ def orginfo(request, name=None):
     except:
         return redirect("/welcome/")
 
+    # 判断是否为组织账户本身在登录
+    html_display["is_myself"] = me == org
+
     organization_name = name
     organization_type_name = org.otype.otype_name
     org_avatar_path = utils.get_user_ava(org, "Organization")
+    wallpaper_path = utils.get_user_wallpaper(org, "Organization")
     # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
     # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
@@ -644,7 +649,7 @@ def orginfo(request, name=None):
     for p in positions:
         if p.person.person_id == user and p.pos == 0:
             html_display["isboss"] = True
-        if p.show_post == True or p.pos == 0:
+        if p.show_post == True or p.pos == 0 or html_display["is_myself"]:
             member = {}
             member["person"] = p.person
             member["job"] = org.otype.get_name(p.pos)
@@ -670,8 +675,7 @@ def orginfo(request, name=None):
 
     # 补充左边栏信息
 
-    # 判断是否为组织账户本身在登录
-    html_display["is_myself"] = me == org
+    
 
     # 再处理修改信息的回弹
     modpw_status = request.GET.get("modinfo", None)
@@ -763,11 +767,30 @@ def homepage(request):
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:
         wishtext = request.POST.get("wish")
-        new_wish = Wishes.objects.create(text = wishtext, time = datetime.now())
+        background = ""
+        if request.POST.get("backgroundcolor") is not None:
+            bg = request.POST["backgroundcolor"]
+            try:
+                assert len(bg) == 7 and bg[0] == "#"
+                int(bg[1:], base=16)
+                background = bg
+            except:
+                print(f"心愿背景颜色{bg}不合规")
+        new_wish = Wishes.objects.create(text = wishtext, background = background)
         new_wish.save()
 
-    # 心愿墙！！！！!前100个心愿,已经按照时间逆序排好了
-    wishes = Wishes.objects.all()[:100]
+    # 心愿墙！！！！!最近一周的心愿，已经逆序排列，如果超过100个取前100个就可
+    wishes = Wishes.objects.filter(
+        time__gt = nowtime-timedelta(days = 7)
+    )
+    wishes = wishes[:100]
+
+    # 心愿墙背景图片
+    colors = [
+        "#FDAFAB","#FFDAC1","#FAF1D6",
+        "#B6E3E9","#B5EAD7","#E2F0CB"
+    ]
+    backgroundpics = [{"src":"/static/assets/img/backgroundpics/"+str(i+1)+".png","color": colors[i] } for i in range(6)]
 
     """ 
         取出过去一周的所有活动，filter出上传了照片的活动，从每个活动的照片中随机选择一张
@@ -825,7 +848,7 @@ def account_setting(request):
 
         useroj = NaturalPerson.objects.get(person_id=user)
 
-        former_wallpaper = utils.get_user_wallpaper(me)
+        former_wallpaper = utils.get_user_wallpaper(me, "Person")
 
         # print(json.loads(request.body.decode("utf-8")))
         if request.method == "POST" and request.POST:
@@ -2346,7 +2369,7 @@ def subscribeActivities(request):
     # bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     subscribe_url = reverse("save_subscribe_status")
-    return render(request, "activity_subscribe.html", locals())
+    return render(request, "organization_subscribe.html", locals())
 
 
 @login_required(redirect_field_name="origin")
