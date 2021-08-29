@@ -39,7 +39,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
     # 首先上锁
     with transaction.atomic():
         if application is not None:
-            application = Reimbursement.objects.select_related().get(id=application.id)
+            application = Reimbursement.objects.select_related("pos__organization").get(id=application.id)
             org = application.pos.organization
 
         # 首先确定申请状态
@@ -90,14 +90,16 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     reimb_YQP = float(request.POST.get('YQP'))
                     if reimb_YQP < 0:
                         return wrong("申请失败，报销的元气值不能为负值！")
+                    if int(reimb_YQP * 10) / 10 != reimb_YQP:
+                        return wrong("元气值最高精度为0.1，请重新输入！")
                 except:
-                    return wrong("元气值不能为空，请完整填写。")
+                    return wrong("元气值为空或输入有误，请输入非负数。")
 
                 # 如果是新建申请,
                 if post_type == "new_submit":
                     #元气值合法性检查，新建和重新修改时的合法性检查不同
                     if reimb_YQP > YQP:
-                        return wrong("申请失败，报销的元气值不能超过组织当前元气值！")
+                        return wrong("申请失败，账户元气值不足！")
                     # 筛选出该组织未报销的活动
                     activities=utils.get_unreimb_activity(me)
                     try:
@@ -143,7 +145,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     #元气值合法性检查
 
                     if org.YQPoint<(reimb_YQP-application.amount):
-                        return wrong("申请失败，报销的元气值不能超过组织当前元气值！")
+                        return wrong("申请失败，账户元气值不足！")
 
                     # 修改组织元气值
                     org.YQPoint-=(reimb_YQP-application.amount)
