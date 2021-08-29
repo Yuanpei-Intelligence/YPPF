@@ -1799,25 +1799,24 @@ def viewActivity(request, aid=None):
 
     html_display = dict()
     # 处理 post 请求
-    # try:
     option = request.POST.get("option")
     if option == "cancel":
-        # try:
-        assert activity.status != Activity.Status.END
-        assert activity.status != Activity.Status.CANCELED
-        with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=aid)
-            cancel_activity(request, activity)
-
-            return redirect(f"/viewActivity/{aid}")
-        """
+        try:
+            assert activity.status != Activity.Status.REJECT
+            assert activity.status != Activity.Status.ABORT
+            assert activity.status != Activity.Status.END
+            assert activity.status != Activity.Status.CANCELED
+            with transaction.atomic():
+                activity = Activity.objects.select_for_update().get(id=aid)
+                cancel_activity(request, activity)
+                return redirect(f"/viewActivity/{aid}")
         except ActivityError as e:
             html_display["warn_code"] = 1
             html_display["warn_message"] = str(e)
             return render(request, "activity_info.html", locals())
         except:
             redirect("/welcome/")
-        """
+
 
     elif option == "edit":
         if (
@@ -1837,41 +1836,42 @@ def viewActivity(request, aid=None):
             return render(request, "activity_info.html", locals())
 
     elif option == "apply":
-        # try:
-        with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=int(aid))
-            applyActivity(request, activity)
-            return redirect(f"/viewActivity/{aid}")
-        """
-        except ActivityError as e:
+        try:
+            with transaction.atomic():
+                activity = Activity.objects.select_for_update().get(id=int(aid))
+                assert activity.status == Activity.Status.APPLYING
+                applyActivity(request, activity)
+                return redirect(f"/viewActivity/{aid}")
+        except ActivityException as e:
             html_display["warn_message"] = str(e)
         except:
             redirect('/welcome/')
-        """
+
         return render(request, "activity_info.html", locals())
 
 
     elif option == "quit":
-        # try:
-        with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=aid)
-            assert (
-                    activity.status == Activity.Status.APPLYING
-                    or activity.status == Activity.Status.WAITING
-            )
-            withdraw_activity(request, activity)
-            return redirect(f"/viewActivity/{aid}")
-        """
-        except ActivityError as e:
+        try:
+            with transaction.atomic():
+                activity = Activity.objects.select_for_update().get(id=aid)
+                assert (
+                        activity.status == Activity.Status.APPLYING
+                        or activity.status == Activity.Status.WAITING
+                )
+                withdraw_activity(request, activity)
+                return redirect(f"/viewActivity/{aid}")
+
+        except ActivityException as e:
             html_display["warn_message"] = str(e)
         except:
             return redirect('/welcome/')
-        """
+
 
         return render(request, "activity_info.html", locals())
 
     elif option == "payment":
         try:
+            assert activity.status == Activity.Status.END
             re = Reimbursement.objects.get(related_activity=activity)
             return redirect(f"/modifyReimbursement/?reimb_id={re.id}")
         except Exception as e:
@@ -1879,7 +1879,7 @@ def viewActivity(request, aid=None):
             return redirect("/modifyReimbursement/")
 
     elif option == "submitphoto":
-        if not ownership:
+        if not (ownership and activity.status == Activity.Status.END):
             return redirect("/welcome/")
         try:
             summaryphotos = request.FILES.getlist('images')
