@@ -8,6 +8,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no">
     <title>登录页面 | 元培成长档案</title>
 
+    <link type="image/x-icon" href="{% static '/assets/img/yp_favicon.png' %}" rel="icon">
+    
+
     <!-- BEGIN GLOBAL MANDATORY STYLES -->
     <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet">
     <link href={% static "bootstrap/css/bootstrap.min.css" %} rel="stylesheet" type="text/css" />
@@ -80,6 +83,11 @@
                                 <div class="d-flex justify-content-between "
                                     style="display:block;margin:0 auto;align-items:center;">
                                     <div class="field-wrapper">
+                                        <a class = "btn btn-outline-primary" href="/forgetpw/">新生注册</a>
+                                    </div>   
+                                    <div class="field-wrapper">
+                                        <div class="btn-group">
+                                        <a class = "btn btn-outline-primary" href="/forgetpw/">验证码</a>
                                         <!--
                                         <p class="d-inline-block">Show Password</p>
                                         <label class="switch s-primary">
@@ -88,10 +96,13 @@
                                         </label>
                                         -->
                                         <button type="submit" class="btn btn-primary" value="">登录</button>
+                                        </div>
                                     </div>
+                                    <!--
                                     <div class="field-wrapper text-center" style="vertical-align: middle;">
                                         <a href="/forgetpw/" >忘记密码?</a>
                                     </div>
+                                    -->
                                 </div>
 
                                 <!--
@@ -110,7 +121,7 @@
 
                         </form>
                         <p class="terms-conditions" align='center'>© Yuanpei Intelligence Campus <a href="">All Rights
-                                Reserved </a>.
+                                Reserved</a>.
                             <a href="/index/">Yuanpei Profile</a> is a product of Yuanpei College.
                         </p>
 
