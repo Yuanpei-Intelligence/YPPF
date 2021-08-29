@@ -27,7 +27,7 @@
                     </div> -->
                 <div class="row ">
                     <!--  活动照片展示模块  -->
-                    <div class="col-lg-8 col-md-8 mb-5 p-0">
+                    <div class="col-8 mb-5 p-0">
                         <div id="style1" class="carousel slide style-custom-1" data-ride="carousel">
                              <ol class="carousel-indicators">
                                 <li data-target="#style1 active" ></li>
@@ -55,8 +55,9 @@
                             </a> 
                         </div>
                     </div>
+
                     <!--  想做一个类似Facebook的日历小标签，TODO  -->
-                    <div class="col-lg-4 col-md-4 mb-5">
+                    <div class="col-4 mb-5">
                         <div style="position: relative; width: 150px; height: 150px;">
                             <div style="position: relative; width: 100%; height: 100%;">
                                 <img src={% static "assets/img/calendaricon.png" %} style="width: 100%; height: 100%; position: relative; clear: both;" alt="">
@@ -70,7 +71,7 @@
                             width: 100%;
                             top: -60%;
                             text-align: center;
-                            vertical-align: middle;">{{start_THEDAY}}</div>
+                            vertical-align: middle;">{{start_time.day}}</div>
                         </div>
                     </div>
 
@@ -131,17 +132,17 @@
                                                     报名截止时间：{{apply_deadline}}
                                                 </p>
                                                 <p>
+                                                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>
+                                                    报名方式：{{apply_manner}}
+                                                </p>
+                                                <p>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
                                                                 fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
                                                                 stroke-linejoin="round">
                                                                 <line x1="12" y1="1" x2="12" y2="23" />
                                                                 <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
                                                     </svg>
-                                                    {% if bidding %}
-                                                        投点基础价格：{{price}}
-                                                    {% else %}
-                                                        元气值定价：{{price}}
-                                                    {% endif %}
+                                                    元气值定价：{{price}}
                                                 </p>
                                                
                                                 <p> 
@@ -195,12 +196,13 @@
                                                     <button class="btn btn-primary btn-block mb-4 mr-2">立即报名</button>
                                                 </form>
                                                 {% elif pStatus == "无记录" and status != "审核中" %}
-                                                <a href="javascript:void(0);" class="btn btn-danger btn-block mb-4 mr-2">报名截止</a>
+                                                    {% if status == "等待中" %}
+                                                    <a href="javascript:void(0);" class="btn btn-danger btn-block mb-4 mr-2">报名截止</a>
+                                                    {% endif %}
                                                 {% elif pStatus == "申请中" %}
                                                 <a href="javascript:void(0);" class="btn btn-secondary btn-block mb-4 mr-2">申请中</a>
                                                 <form method="POST">
                                                     <input type="hidden" name="option" value="quit">
-                                                    <input type="hidden" name="aid" value={{aid}}>
                                                     <button class="btn btn-danger btn-block mb-4 mr-2">退出活动</button>
                                                 </form>
                                                 {% elif pStatus == "申请失败" %}
@@ -209,7 +211,6 @@
                                                 <a href="javascript:void(0);" class="btn btn-primary btn-block mb-4 mr-2">已报名</a>
                                                 <form method="POST">
                                                     <input type="hidden" name="option" value="quit">
-                                                    <input type="hidden" name="aid" value={{aid}}>
                                                     <button class="btn btn-danger btn-block mb-4 mr-2">退出活动</button>
                                                 </form>
                                                 {% elif pStatus == "已参与" %}
@@ -226,39 +227,21 @@
                                                     </button>
                                                     <form method="POST">
                                                         <input type="hidden" name="option" value="payment">
-                                                        <input type="hidden" name="aid" value={{aid}}>
                                                         <button class="btn btn-primary btn-block mb-4 mr-2">申请报销</button>
                                                     </form>
                                                 {% endif %}
                                                 {% if status == "审核中" or status == "报名中" or status == "等待中" %}
                                                 <form method="POST">
                                                     <input type="hidden" name="option" value="edit">
-                                                    <input type="hidden" name="aid" value={{aid}}>
                                                     <button class="btn btn-primary btn-block mb-4 mr-2">修改信息</button>
                                                 </form>
                                                 
                                                 <form method="POST">
                                                     <input type="hidden" name="option" value="cancel">
-                                                    <input type="hidden" name="aid" value={{aid}}>
                                                     <button class="btn btn-danger btn-block mb-4 mr-2">取消活动</button>
                                                 </form>
                                                 {% endif %}
                                             {% endif %}
-                                            </div>
-    
-                                            <!--  如果要投点报名，则展示下面的部分  -->
-                                            <div id="bidding" class="collapse">
-                                                <form method="POST">
-                                                    <input type="hidden" name="option" value="apply">
-                                                    <input type="hidden" name="aid" value={{aid}}>
-                                                    <p>意愿投点的点数(您的现有元气值：{{me.YQPoint}})</p>
-                                                    <input type="number" class="form-control"
-                                                            aria-label="Text input with dropdown button" id="willingness"
-                                                            name="willingness" placeholder="最小精度为0.1" step="0.1"
-                                                            οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')">
-                                                    <br/>
-                                                    <button class="btn btn-primary btn-block mb-4 mr-2">确认报名</button>
-                                                </form>
                                             </div>
 
                                             <!--  如果要上传照片，则展示下面的部分  -->
@@ -280,32 +263,11 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="col-lg-12 col-md-12 mb-5 p-0">
-                                <a href="/orginfo/{{org_name}}">
-                                    <div class="statbox widget box box-shadow">
-                                        <div class="widget-header">
-                                            <div class="row">
-                                                <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                    <h4>组织者</h4>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="widget-content widget-content-area">
-                                            <div class="media">
-                                                <div class="media-body">
-                                                    <h4>{{org_name}} - {{org_type}}</h4>
-                                                    <p>{{org.introduction}}</p>      
-                                                </div>
-                                                <img src="{{org_avatar_path}}" height="60px" width="60px" alt="avatar">
-                                            </div>
-                                        </div>
-                                    </div>
-                                </a>
-                            </div>
     
                         </div>
                         
                         <!--  二维码展示模块  -->
+                        {% if ownership and need_checkin and status == "报名中" %}
                         <div class="col-xl-4 col-lg-4 col-md-5 col-sm-12 layout-top-spacing">
                             <div class="container">
                                 <div class="row col-lg-12 col-md-12 mb-5 p-0">
@@ -313,17 +275,41 @@
                                     <div class="widget-header">
                                         <div class="row">
                                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                                <h4>二维码</h4>
+                                                <h4>签到二维码</h4>
                                             </div>
                                         </div>
                                     </div>
                                     <div class="widget-content widget-content-area">
-                                        <img class="d-block w-100" id="qrcode" src={% static "assets/img/1.jpeg.jpg" %} alt="Third slide">
+                                        <img class="d-block w-100" id="qrcode" src="{{aQRcode}}" alt="Third slide">
                                     </div>
                                 </div>
                                 </div>
                             </div>
                         </div>
+                        {% else %}
+                        <div class="col-xl-4 col-lg-4 col-md-5 col-sm-12 layout-top-spacing">
+                            <a href="/orginfo/{{org_name}}">
+                                <div class="statbox widget box box-shadow">
+                                    <div class="widget-header">
+                                        <div class="row">
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                <h4>组织者</h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="widget-content widget-content-area">
+                                        <div class="media">
+                                            <div class="media-body">
+                                                <h4>{{org_name}} - {{org_type}}</h4>
+                                                <p>{{org.introduction}}</p>      
+                                            </div>
+                                            <img src="{{org_avatar_path}}" height="60px" width="60px" alt="avatar">
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                        </div>
+                        {% endif %}
                     </div>
 
                 </div>

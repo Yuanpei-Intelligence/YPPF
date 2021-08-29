@@ -7,6 +7,7 @@ from app.models import (
     Notification,
     ModifyOrganization,
     Activity,
+    Help,
     Reimbursement,
     ModifyPosition,
 )
@@ -94,9 +95,11 @@ def get_user_ava(obj, user_type):
         return settings.MEDIA_URL + str(ava)
 
 
-def get_user_wallpaper(person):
-    return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/default.jpg")
-
+def get_user_wallpaper(person, user_type):
+    if user_type == "Person":
+        return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/person_wall_default.jpg")
+    else:
+        return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.jpg")
 
 # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
 def get_user_left_navbar(person, is_myself, html_display):
@@ -184,13 +187,12 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         except:
             bar_display["help_message"] = ""
         try:
-            bar_display["help_paragraphs"] = local_dict["use_help"].get(
-                navbar_name, list()
-            )
+            bar_display["help_paragraphs"] = Help.objects.get(title=navbar_name).content
         except:
-            bar_display["help_paragraphs"] = list()
+            bar_display["help_paragraphs"] = ""
 
     return bar_display
+
 
 
 # 检查发起活动的request的合法性
@@ -205,26 +207,6 @@ def check_ac_request(request):
     except:
         edit = False
 
-    bar_display["navbar_name"] = navbar_name
-    bar_display["title_name"] = (
-        title_name if not title_name else navbar_name
-    )  # title_name默认与navbar_name相同
-
-    if navbar_name != "":
-        try:
-            bar_display["help_message"] = local_dict["help_message"].get(
-                navbar_name, ""
-            )
-        except:  # 找不到提醒, 直接跳过
-            pass
-        try:
-            bar_display["help_paragraphs"] = local_dict["use_help"].get(
-                navbar_name, list()
-            )
-        except:  # 找不到提醒, 直接跳过
-            pass
-
-    return bar_display
 
 
 def url_check(arg_url):
@@ -266,7 +248,7 @@ def get_url_params(request, html_display):
             if key not in html_display.keys():  # 禁止覆盖
                 html_display[key] = value
 
-# 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
+# 检查neworg request参数的合法性 ,用在modifyorganization函数中
 def check_neworg_request(request, org=None):
     context = dict()
     context["warn_code"] = 0
@@ -333,7 +315,7 @@ def check_neworg_request(request, org=None):
         context["warn_code"] = 1
         context["warn_message"] = "申请理由不能为空"
     return context
-# 检查neworg request参数的合法性 ,用在addOrganization和auditOrganization函数中
+# 检查neworg request参数的合法性 ,用在modifyoranization函数中
 
 def check_newpos_request(request,prepos=None):
 
@@ -356,15 +338,15 @@ def check_newpos_request(request,prepos=None):
     
     context['oname'] = oname  # 组织名字
 
-    context['application'] = str(request.POST.get('application', ""))  # 申请理由
+    context["application"] = str(request.POST.get("application", ""))  # 申请理由
 
-    if context['application']=="" :
-        context['warn_code'] = 1
-        context['warn_msg'] = "申请理由不能为空"
+    if context["application"] == "":
+        context["warn_code"] = 1
+        context["warn_msg"] = "申请理由不能为空"
     return context
 
 
-# 查询组织代号的最大值+1 用于addOrganization()函数，新建组织
+# 查询组织代号的最大值+1 用于modifyOrganization()函数，新建组织
 def find_max_oname():
     organizations = Organization.objects.filter(
         organization_id__username__startswith="zz"
@@ -426,14 +408,14 @@ def notifications_create(
     Notification.objects.bulk_create(notifications)
 
 
-def set_YQPoint_credit_to(YQP):
+def set_nperson_quota_to(quota):
     """
         后台设定所有自然人的元气值为一特定值，这个值就是每月的限额
         给所有用户发送通知
     """
     activated_npeople = NaturalPerson.objects.activated()
-    activated_npeople.update(YQPoint_credit_card=YQP)
-    notification_content = f"学院已经将大家的元气信用值充值为{YQP},祝您使用愉快！"
+    activated_npeople.update(quota=quota)
+    notification_content = f"学院已经将大家的元气值配额重新设定为{quota},祝您使用愉快！"
     title = Notification.Title.VERIFY_INFORM
     YPcollege = Organization.objects.get(oname="元培学院")
     notifications_create(
@@ -650,4 +632,7 @@ def update_org_application(application, me, request):
                     return context
                 except:
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
+<<<<<<< HEAD
                 
+=======
+>>>>>>> upstream/develop

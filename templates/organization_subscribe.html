@@ -3,7 +3,7 @@
 {% block add_css_file %}
 <style class="text/css">
     [data-toggle="collapse"] .fa:before {
-        font-family: 'FontAwesome';
+        font-family: 'Font Awesome 5 Free';
         content: "\f068";
         float: right;
     }
@@ -20,10 +20,11 @@
     <div id="content" class="main-content">
         <div class="container">
             <div class="container">
-
-
-
+                
                 <div class="row layout-top-spacing">
+                    {% if bar_display.help_paragraphs %}
+                        {% include 'help.html' %}
+                    {% endif %}
                     {% for otype in otype_list %}
                     <div id="tableDropdown{{otype.otype_id}}" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
                         <div class="statbox widget box box-shadow">
@@ -48,6 +49,7 @@
                             </div>
                             <div class="collapse show" id="orgsearch{{otype.otype_id}}">
                                 <div class="widget-content widget-content-area">
+                                    {% if otype.allow_unsubscribe %}
                                     <div>
                                         <button type="button" class="btn btn-outline-primary" id="{{otype.otype_id}}"
                                             onclick="turn_on_all.call(this);this.blur();">全部开启</button>
@@ -56,6 +58,7 @@
                                             onclick="turn_off_all.call(this);this.blur();">全部关闭</button>
                                         </br></br>
                                     </div>
+                                    {% endif %}
                                     <div class="table-responsive">
                                         <table class="table table-bordered mb-4">
                                             <thead>
@@ -78,7 +81,7 @@
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
                                                                 id="{{org.organization_id.username}}_{{otype.otype_id}}"
-                                                                onclick="change_status.call(this);this.blur();" checked>
+                                                                onclick="change_status.call(this);this.blur();" checked {% if not otype.allow_unsubscribe %} disabled {% endif %}>
                                                             <label class="custom-control-label"
                                                                 for="{{org.organization_id.username}}_{{otype.otype_id}}"
                                                                 id="checkbox2{{org.organization_id.username}}_{{otype.otype_id}}">

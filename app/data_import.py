@@ -2,11 +2,12 @@ from app.models import TransferRecord
 from app.models import Notification
 import pandas as pd
 import os
-from app.models import NaturalPerson, Position, Organization, OrganizationType, Activity
+from app.models import NaturalPerson, Freshman, Position, Organization, OrganizationType, Activity, Help
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
 from tqdm import tqdm
 import math
+import json
 from datetime import datetime
 from boottest import local_dict
 
@@ -21,6 +22,7 @@ def load_orgtype():
     password = "YPPFtest"
     user.set_password(password)
     user.save()
+
     Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
     Nperson.name = username
     Nperson.save()
@@ -125,6 +127,7 @@ def load_activity_info(request):
                 YQPoint=YQPoint,
                 capacity=capacity,
                 URL=URL,
+                examine_teacher = NaturalPerson.objects.get(name="YPadmin")
             )
         )
     Activity.objects.bulk_create(act_list)
@@ -270,15 +273,15 @@ def load_stu_info(request):
                 email = sid + "@pku.edu.cn"
         tel = stu_dict["手机号"]
 
-        user = User.objects.create(username=username)
-        user.set_password(password)  # 这一步的PBKDF2加密算法太慢了
-        user.save()
+        user = User.objects.create_user(username=username, password=password)
+        # 这一步的PBKDF2加密算法太慢了
 
         # 批量导入比循环导入快很多，但可惜由于外键person_id的存在，必须先保存user，User模型无法批量导入。
         # 但重点还是 set_password 的加密算法太 TM 的慢了！
         stu_list.append(
             NaturalPerson(
                 person_id=user,
+                stu_id_dbonly=sid,
                 name=name,
                 gender=gender,
                 stu_major=stu_major,
@@ -293,3 +296,54 @@ def load_stu_info(request):
     context = {"message": "导入学生信息成功！"}
     return render(request, "debugging.html", context)
 
+
+def load_freshman_info(request):
+    if not request.user.is_superuser:
+        context = {"message": "请先以超级账户登录后台后再操作！"}
+        return render(request, "debugging.html", context)
+
+    freshman_df = load_file("freshman.csv")
+    freshman_list = []
+    for _, freshman_dict in tqdm(freshman_df.iterrows()):
+        sid = freshman_dict["学号"]
+        name = freshman_dict["姓名"]
+        gender = freshman_dict["性别"]
+        birthday = datetime.strptime(freshman_dict["生日"], "%Y/%m/%d").date()
+        place = freshman_dict["生源地"]
+        grade = freshman_dict.get("年级", "20" + sid[:2])
+
+        freshman_list.append(
+            Freshman(
+                sid=sid,
+                name=name,
+                gender=gender,
+                birthday=birthday,
+                place=place,
+                grade=grade,
+                status=Freshman.Status.UNREGISTERED
+            )
+        )
+    Freshman.objects.bulk_create(freshman_list)
+
+    context = {"message": "导入新生信息成功！"}
+    return render(request, "debugging.html", context)
+
+
+def load_help(request):
+    if not request.user.is_superuser:
+        context = {"message": "请先以超级账户登录后台后再操作！"}
+        return render(request, "debugging.html", context)
+    try:
+        help_df = load_file("help.csv")
+    except:
+        context = {"message": "没有找到help.csv,请确认该文件已经在test_data中。"}
+        return render(request, "debugging.html", context)
+    # helps = [Help(title=title, content=content) for title, content in help_dict.items()]
+    helps = []
+    for _, help_dict in help_df.iterrows():
+        content = help_dict["content"]
+        title = help_dict["title"]
+        helps.append(Help(title=title, content=content))
+    Help.objects.bulk_create(helps)
+    context = {"message": "成功导入帮助信息！"}
+    return render(request, "debugging.html", context)

@@ -20,6 +20,9 @@ class NaturalPersonManager(models.Manager):
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
 
+    def teachers(self):
+        return self.filter(identity=NaturalPerson.Identity.TEACHER)
+
 
 class NaturalPerson(models.Model):
     class Meta:
@@ -28,6 +31,11 @@ class NaturalPerson(models.Model):
 
     # Common Attributes
     person_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
+    
+    # 不要在任何地方使用此字段，建议先删除unique进行迁移，然后循环调用save
+    stu_id_dbonly = models.CharField("学号——仅数据库", max_length=150,
+                                     blank=True, unique=True)
+
     name = models.CharField("姓名", max_length=10)
     nickname = models.CharField("昵称", max_length=20, null=True, blank=True)
 
@@ -46,12 +54,11 @@ class NaturalPerson(models.Model):
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
     first_time_login = models.BooleanField(default=True)
-    last_time_login = models.DateTimeField("活动开始时间", blank=True, null=True)
+    last_time_login = models.DateTimeField("上次登录时间", blank=True, null=True)
     objects = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
 
     YQPoint = models.FloatField("现存元气值", default=0)
-    YQPoint_credit_card = models.FloatField("元气值信用", default=0)
     quota = models.FloatField("元气值配额", default=0)
     bonusPoint = models.FloatField("积分", default=0)
 
@@ -77,13 +84,11 @@ class NaturalPerson(models.Model):
 
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
-    show_nickname = models.BooleanField(default=True)
+    show_nickname = models.BooleanField(default=False)
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
-    show_class = models.BooleanField(default=True)
     show_major = models.BooleanField(default=True)
-    show_grade = models.BooleanField(default=True)
     show_dorm = models.BooleanField(default=False)
 
     # 注意：这是不订阅的列表！！
@@ -102,13 +107,12 @@ class NaturalPerson(models.Model):
             注意：major, gender, nickname, email, tel, dorm可能为None
             班级和年级现在好像也可以为None
         """
-        unpublished = "未公开"
         gender = ["男", "女"]
         info = [self.name, self.stu_grade, self.stu_class]
         # info.append(self.nickname if (self.show_nickname) else unpublished)
         # info.append(
         #    unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
-        info.append(self.stu_major if (self.show_major) else unpublished)
+        info.append(self.stu_major if (self.show_major) else "未公开")
         # info.append(self.email if (self.show_email) else unpublished)
         # info.append(self.telephone if (self.show_tel) else unpublished)
         # info.append(self.stu_dorm if (self.show_dorm) else unpublished)
@@ -118,16 +122,39 @@ class NaturalPerson(models.Model):
             if self.status == NaturalPerson.GraduateStatus.UNDERGRADUATED
             else "已毕业"
         )
-        # 防止显示None
-        for i in range(len(info)):
-            if info[i] == None:
-                info[i] = unpublished
+
         return info
 
     def save(self, *args, **kwargs):
+        if not self.stu_id_dbonly:
+            self.stu_id_dbonly = self.person_id.username
+        else:
+            assert self.stu_id_dbonly == self.person_id.username, "学号不匹配！"
         self.YQPoint = round(self.YQPoint, 1)
         self.bonusPoint = round(self.bonusPoint, 1)
         super().save(*args, **kwargs)
+
+
+class Freshman(models.Model):
+    class Meta:
+        verbose_name = "新生信息"
+        verbose_name_plural = verbose_name
+
+    sid = models.CharField("学号", max_length=20, unique=True)
+    name = models.CharField("姓名", max_length=10)
+    gender = models.CharField("性别", max_length=5)
+    birthday = models.DateField("生日")
+    place = models.CharField("生源地", default="其它", max_length=32, blank=True)
+
+    class Status(models.IntegerChoices):
+        UNREGISTERED = (0, "未注册")
+        REGISTERED = (1, "已注册")
+    
+    grade = models.CharField("年级", max_length=5, null=True, blank=True)
+    status = models.SmallIntegerField("注册状态", choices=Status.choices, default=0)
+
+    def exists(self):
+        return User.objects.filter(username=self.sid).exists()
 
 
 class OrganizationType(models.Model):
@@ -149,6 +176,8 @@ class OrganizationType(models.Model):
     job_name_list = ListCharField(
         base_field=models.CharField(max_length=10), size=4, max_length=44
     )  # [部长, 副部长, 部员]
+
+    allow_unsubscribe = models.BooleanField("允许取关?", default=True)
 
     def __str__(self):
         return str(self.otype_name)
@@ -205,6 +234,7 @@ class Organization(models.Model):
     introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
+    wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
 
     first_time_login = models.BooleanField(default=True)  # 是否第一次登录
 
@@ -324,11 +354,9 @@ class Position(models.Model):
         WITHDRAW = "退出组织"
         TRANSFER = "修改职位"
         NONE = "无申请流程"  # 指派职务
-
     apply_type = models.CharField(
         "申请类型", choices=ApplyType.choices, max_length=32, default=ApplyType.NONE
     )
-
     class ApplyStatus(models.TextChoices):  # 人事变动申请状态
         PENDING = "等待中"
         PASS = "已通过"
@@ -374,10 +402,73 @@ class ActivityManager(models.Manager):
             semester__contains=local_dict["semester_data"]["semester"]
         )
 
+    def displayable(self):
+        # REVIEWING, ABORT 状态的活动，只对创建者和审批者可见，对其他人不可见
+        # 过审后被取消的活动，还是可能被看到，也应该让学生看到这个活动被取消了
+        return self.exclude(status__in=[
+            Activity.Status.REVIEWING,
+            # Activity.Status.CANCELED,
+            Activity.Status.ABORT
+        ])
+
+    def get_newlyended_activity(self):
+        # 一周内结束的活动
+        nowtime = datetime.now()
+        mintime = nowtime-timedelta(days = 7)
+        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
+            semester__contains=local_dict["semester_data"]["semester"]
+        ).filter(end__gt = mintime).filter(status=Activity.Status.END)
+
+    def get_recent_activity(self):
+        # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
+        nowtime = datetime.now()
+        mintime = nowtime-timedelta(days = 7)
+        maxtime = nowtime+timedelta(days = 7)
+        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
+            semester__contains=local_dict["semester_data"]["semester"]
+        ).filter(start__gt = mintime).filter(start__lt = maxtime).filter(
+            status__in=[
+                Activity.Status.APPLYING,
+                Activity.Status.WAITING,
+                Activity.Status.PROGRESSING,
+                Activity.Status.END
+            ]
+        ).order_by("-start")
+
+    def get_newlyreleased_activity(self):
+        # 最新一周内发布的活动，按发布的时间逆序
+        nowtime = datetime.now()
+        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
+            semester__contains=local_dict["semester_data"]["semester"]
+        ).filter(publish_time__gt = nowtime-timedelta(days = 7)).filter(
+            status__in=[
+                Activity.Status.APPLYING,
+                Activity.Status.WAITING,
+                Activity.Status.PROGRESSING
+            ]
+        ).order_by("-publish_time")
+
+    def get_today_activity(self):
+        # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
+        nowtime = datetime.now()
+        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
+            semester__contains=local_dict["semester_data"]["semester"]
+        ).filter(
+            status__in=[
+                Activity.Status.APPLYING,
+                Activity.Status.WAITING,
+                Activity.Status.PROGRESSING,
+            ]
+        ).filter(start__year=nowtime.year
+        ).filter(start__month=nowtime.month
+        ).filter(start__day=nowtime.day
+        ).order_by("start")
+        
+
 class CommentBase(models.Model):
     '''
     带有评论的模型基类
-    子类必须定义typename，值应为为类名的小写版本或类名
+    子类必须重载save()保存typename，值必须为类名的小写版本或类名
     子类如果希望直接使用聚合页面呈现模板，应该定义__str__方法
     默认的呈现内容为：实例名称、创建时间、上次修改时间
     如果希望呈现审核页面，如审核中、创建者信息，则应该分别定义get_status_display和get_poster_name
@@ -399,7 +490,7 @@ class CommentBase(models.Model):
     id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的基类信息
     typename = models.CharField("模型类型", max_length=32, default="commentbase")   # 子类信息
     time = models.DateTimeField("发起时间", auto_now_add=True)
-    modify_time = models.DateTimeField("上次修改时间", auto_now_add=True) # 每次评论自动更新
+    modify_time = models.DateTimeField("上次修改时间", auto_now=True) # 每次评论自动更新
 
     def get_instance(self):
         if self.typename.lower() == 'commentbase':
@@ -409,17 +500,13 @@ class CommentBase(models.Model):
         except:
             return self
 
-    def save(self, *args, **kwargs):
-        self.modify_time = datetime.now()   # 自动更新修改时间
-        super().save(*args, **kwargs)
 
-class Activity(models.Model):
+class Activity(CommentBase):
     class Meta:
         verbose_name = "活动"
         verbose_name_plural = verbose_name
 
     """
-
     Jul 30晚, Activity类经历了较大的更新, 请阅读群里[活动发起逻辑]文档，看一下活动发起需要用到的变量
     (1) 删除是否允许改变价格, 直接允许价格变动, 取消政策见文档【不允许投点的价格变动】
     (2) 取消活动报名时间的填写, 改为选择在活动结束前多久结束报名，选项见EndBefore
@@ -428,7 +515,6 @@ class Activity(models.Model):
     (5) 除了定价方式[bidding]之外的量都可以改变, 其中[capicity]不能低于目前已经报名人数, 活动的开始时间不能早于当前时间+1h
     (6) 修改活动时间同步导致报名时间的修改, 当然也需要考虑EndBefore的修改; 这部分修改通过定时任务的时间体现, 详情请见地下室schedule任务的新建和取消
     (7) 增加活动管理的接口, activated, 筛选出这个学期的活动(见class [ActivityManager])
-
     """
 
     title = models.CharField("活动名称", max_length=25)
@@ -502,6 +588,7 @@ class Activity(models.Model):
 
     class Status(models.TextChoices):
         REVIEWING = "审核中"
+        ABORT = "未过审"
         CANCELED = "已取消"
         APPLYING = "报名中"
         WAITING = "等待中"
@@ -517,24 +604,22 @@ class Activity(models.Model):
 
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
+        self.typename = "activity"
         super().save(*args, **kwargs)
 
-class ActivityAnnouncePhoto(models.Model):
+class ActivityPhoto(models.Model):
     class Meta:
-        verbose_name = "活动预告图片"
-        verbose_name_plural = verbose_name
-
-    image = models.ImageField(upload_to=f"activity/announcephoto/%Y/%m/", verbose_name=u'活动预告图片', null=True, blank=True)
-    activity = models.ForeignKey(Activity, related_name="annoucephoto", on_delete=models.CASCADE)
-
-class ActivitySummaryPhoto(models.Model):
-    class Meta:
-        verbose_name = "活动总结图片"
+        verbose_name = "活动图片"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
 
-    image = models.ImageField(upload_to=f"activity/summaryphoto/%Y/%m/", verbose_name=u'活动总结图片', null=True, blank=True)
-    activity = models.ForeignKey(Activity, related_name="summaryphoto", on_delete=models.CASCADE)
+    class PhotoType(models.IntegerChoices):
+        ANNOUNCE = (0, "预告图片")
+        SUMMARY = (1, "总结图片")
+
+    type = models.SmallIntegerField(choices=PhotoType.choices)
+    image = models.ImageField(upload_to=f"activity/photo/%Y/%m/", verbose_name=u'活动图片', null=True, blank=True)
+    activity = models.ForeignKey(Activity, related_name="photos", on_delete=models.CASCADE)
     time = models.DateTimeField("上传时间", auto_now_add=True)
 
 
@@ -667,6 +752,7 @@ class Notification(models.Model):
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
     typename = models.SmallIntegerField(choices=Type.choices, default=0)
     URL = models.URLField("相关网址", null=True, blank=True)
+    bulk_identifier = models.CharField("批量信息标识", max_length=64, default="")
     relate_TransferRecord = models.ForeignKey(
         TransferRecord,
         related_name="transfer_notification",
@@ -737,7 +823,7 @@ class ModifyOrganization(CommentBase):
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
 
     class Status(models.IntegerChoices):  # 表示申请组织的请求的状态
-        PENDING = (0, "处理中")
+        PENDING = (0, "审核中")
         CONFIRMED = (1, "已通过")  
         CANCELED = (2, "已取消")  
         REFUSED = (3, "已拒绝")
@@ -801,7 +887,7 @@ class ModifyPosition(CommentBase):
     )
 
     class Status(models.IntegerChoices):  # 表示申请人事的请求的状态
-        PENDING = (0, "处理中")
+        PENDING = (0, "审核中")
         CONFIRMED = (1, "已通过")  
         CANCELED = (2, "已取消")  
         REFUSED = (3, "已拒绝")
@@ -869,7 +955,7 @@ class Reimbursement(CommentBase):
         CANCELED = (4, "已取消")
         REFUSED = (5, "已拒绝")
 
-    activity = models.ForeignKey(
+    related_activity = models.ForeignKey(
         Activity, on_delete=models.CASCADE
     )
     amount = models.FloatField("报销金额", default=0)
@@ -899,6 +985,20 @@ class Reimbursement(CommentBase):
         return display
     def is_pending(self):   #表示是不是pending状态
             return self.status == Reimbursement.ReimburseStatus.WAITING
+   
+class Help(models.Model):
+     '''
+         页面帮助类
+     '''
+     title = models.CharField("帮助标题", max_length=20, blank=False)
+     content = models.TextField("帮助内容", max_length=500)
+
+     class Meta:
+         verbose_name = "页面帮助"
+         verbose_name_plural = "页面帮助"
+
+     def __str__(self) -> str:
+         return self.title
 
 class Wishes(models.Model):
     class Meta:
@@ -907,3 +1007,4 @@ class Wishes(models.Model):
         ordering = ["-time"]
     text = models.TextField("心愿内容", default="", blank=True)
     time = models.DateTimeField("发布时间", auto_now_add=True)
+    background = models.TextField("颜色编码", default="")

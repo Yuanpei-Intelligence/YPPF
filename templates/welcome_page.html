@@ -29,9 +29,13 @@
                        </ol> 
                        <div class="carousel-inner">
                            <div class="carousel-item active">
+                               {% if photo_display|length == 0 %}
+                               <img class="d-block w-100 slide-image" src={{homepagephoto}} >
+                               {% else %}
                                <a href="/viewActivity/{{firstpic.activity_id}}">
                                <img class="d-block w-100 slide-image" src={{firstpic.image}} >
                                 </a>
+                                {% endif %}
                            </div>
                            {% for photo in photos %}
                            <div class="carousel-item">
@@ -106,7 +110,10 @@
                     <h5>今日活动</h5>
                     <div class="timeline-alter px-0 py-1" style="overflow-y: scroll; overflow-x: show;"
                         id="custom-activities">
-
+                        {% if html_display.today_activities|length == 0 %}
+                        <br/>
+                        <p style="text-align: center; ">没有今天开始的活动！</p>
+                        {% endif %}
                         {% for activity, start in html_display.today_activities %}
                         <div class="item-timeline">
                             <div class="t-meta-date pb-0">
@@ -129,8 +136,10 @@
                                     <!-- TODO: add various color -->
                                     {% if activity.status == "等待中" %}
                                     <span class="flex badge badge-pill badge-info">{{ activity.status }}</span>
+                                    {% elif activity.status == "已取消" or activity.status == "已结束" %}
+                                    <span class="badge badge-pill badge-danger">{{ activity.status }}</span>
                                     {% else %}
-                                    <span class="flex badge badge-pill badge-success">{{ activity.status }}</span>
+                                    <span class="badge badge-pill badge-success">{{ activity.status }}</span>
                                     {% endif %}
                                 </div>
                             </div>
@@ -146,35 +155,39 @@
 
             <div class="row">
 
-                 <!--2&3 近期活动&最新发布-->
+                 <!--2&3 近期活动&最新发布&即将截止-->
 
                 <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12 layout-top-spacing bio">
                     <div class="widget-content widget-content-area">
-
+                        <h3>活动一览</h3>
                         <ul id="Tab" class="nav nav-tabs nav-tabs-solid nav-justified">
                             <li class="nav-item">
-                                <a class="nav-link active" href="#todayactivity" data-toggle="tab">
+                                <a class="nav-link active" href="#recentactivity" data-toggle="tab">
                                     近期活动
                                 </a>
                             </li>
                     
                             <li class="nav-item">
-                                <a class="nav-link" href="#todaynews" data-toggle="tab">
-                                    最新发布&今日截止
+                                <a class="nav-link" href="#news" data-toggle="tab">
+                                    最新发布
                                 </a>
                             </li>
-                    
+
+                            <li class="nav-item">
+                                <a class="nav-link" href="#recentends" data-toggle="tab">
+                                    即将截止
+                                </a>
+                            </li>
                         </ul>
 
                         <div class="tab-content">
 
-                            <div id="todayactivity" class="tab-pane active">
-                                <h3>近期活动</h3>
-                                <p>TIP：这里展示前后一周内开始进行的活动</p>
-                                {% if recentactivity_list|length == 0 %}
-                                    <p style="text-align: center;">没有该类别的活动</p>
-                                {% endif %}
+                            <div id="recentactivity" class="tab-pane active">
                                 <div class="pre-scrollable bio-skill-box layout-top-spacing">
+                                    <p>TIP：这里展示前后一周内开始进行的活动</p>
+                                    {% if recentactivity_list|length == 0 %}
+                                        <p style="text-align: center;">没有该类别的活动！</p>
+                                    {% endif %}
                                     <div class="row">
                                         {% for act in recentactivity_list %}
                                             <div class="col-12 col-xl-6 col-lg-6 mb-xl-5 mb-5 ">
@@ -183,11 +196,13 @@
                                                         <div class="text-nowrap" style='overflow: hidden;text-overflow: ellipsis;'>
                                                             <div class="d-flex justify-content-between">
                                                                 <h5>{{act.title}}
-                                                                {% if act.status == "等待中" %}
-                                                                    <span class="badge badge-pill badge-info">{{act.status}}</span>
-                                                                {% else %}
-                                                                    <span class="badge badge-pill badge-success">{{act.status}}</span>
-                                                                {% endif %}
+                                                                    {% if act.status == "等待中" %}
+                                                                    <span class="flex badge badge-pill badge-info">{{ act.status }}</span>
+                                                                    {% elif act.status == "已取消" or act.status == "已结束" %}
+                                                                    <span class="badge badge-pill badge-danger">{{ act.status }}</span>
+                                                                    {% else %}
+                                                                    <span class="badge badge-pill badge-success">{{ act.status }}</span>
+                                                                    {% endif %}
                                                                 </h5>
                                                             </div>
                                                             <p>{{act.introduction}}</p>
@@ -201,13 +216,12 @@
                                 </div>
                             </div>
     
-                            <div id="todaynews" class="tab-pane fade">
-                                <h3>最新发布</h3>
-                                <p>TIP：这里展示近三日发布的活动</p>
-                                {% if newlyreleased_list|length == 0 %}
-                                    <p style="text-align: center;">没有该类别的消息</p>
-                                {% endif %}
+                            <div id="news" class="tab-pane fade">
                                 <div class="pre-scrollable bio-skill-box layout-top-spacing">
+                                    <p>TIP：这里展示一周内发布的活动</p>
+                                    {% if newlyreleased_list|length == 0 %}
+                                        <p style="text-align: center;">没有该类别的消息！</p>
+                                    {% endif %}
                                     <div class="row">
                                         {% for act in newlyreleased_list %}
                                         <div class="col-12 col-xl-6 col-lg-6 mb-xl-5 mb-5 ">
@@ -216,11 +230,13 @@
                                                     <div class="text-nowrap" style='overflow: hidden;text-overflow: ellipsis;'>
                                                         <div class="d-flex justify-content-between">
                                                             <h5>{{act.title}}
-                                                            {% if act.status == "等待中" %}
-                                                                <span class="badge badge-pill badge-info">{{act.status}}</span>
-                                                            {% else %}
-                                                                <span class="badge badge-pill badge-success">{{act.status}}</span>
-                                                            {% endif %}
+                                                                {% if act.status == "等待中" %}
+                                                                    <span class="flex badge badge-pill badge-info">{{ act.status }}</span>
+                                                                {% elif act.status == "已取消" or act.status == "已结束" %}
+                                                                    <span class="badge badge-pill badge-danger">{{ act.status }}</span>
+                                                                {% else %}
+                                                                    <span class="badge badge-pill badge-success">{{ act.status }}</span>
+                                                                {% endif %}
                                                             </h5>
                                                         </div>
                                                         <p>{{act.introduction}}</p>
@@ -232,22 +248,29 @@
                                     {% endfor %}
                                     </div>
                                 </div>
+                            </div>
 
-                                <h3>今日截止</h3>
-                                <p>TIP：这里展示今天截止报名的活动</p>
-                                {% if today_signup_list|length == 0 %}
-                                    <p style="text-align: center;">没有该类别的消息</p>
-                                {% endif %}
+                            <div id="recentends" class="tab-pane fade">
                                 <div class="pre-scrollable bio-skill-box layout-top-spacing">
+                                    <p>TIP：这里展示即将截止报名的活动</p>
+                                    {% if signup_list|length == 0 %}
+                                        <p style="text-align: center;">没有该类别的活动！</p>
+                                    {% endif %}
                                     <div class="row">
-                                        {% for rec in today_signup_list %}
+                                        {% for rec in signup_list %}
                                             <div class="col-12 col-xl-6 col-lg-6 mb-xl-5 mb-5 ">
                                                 <a href="/viewActivity/{{rec.act.id}}">
                                                     <div class="d-flex b-skills" >
                                                         <div class="text-nowrap" style='overflow: hidden;text-overflow: ellipsis;'>
                                                             <div class="d-flex justify-content-between">
                                                                 <h5>{{rec.act.title}}
-                                                                <span class="badge badge-pill badge-success">{{rec.act.status}}</span>
+                                                                    {% if rec.act.status == "等待中" %}
+                                                                    <span class="flex badge badge-pill badge-info">{{ rec.act.status }}</span>
+                                                                    {% elif rec.act.status == "已取消" or rec.act.status == "已结束" %}
+                                                                    <span class="badge badge-pill badge-danger">{{ rec.act.status }}</span>
+                                                                    {% else %}
+                                                                    <span class="badge badge-pill badge-success">{{ rec.act.status }}</span>
+                                                                    {% endif %}
                                                                 </h5>
                                                             </div>
                                                             <p>{{rec.act.introduction}}</p>
@@ -260,6 +283,7 @@
                                     </div>
                                 </div>
                             </div>
+
                         </div>
 
                     </div>
@@ -289,8 +313,25 @@
                                     <form method="POST">
                                         <!-- 模态框主体 -->
                                         <div class="modal-body">
-                                            <textarea id="wish" name="wish" class="form-control" rows="3"
-                                                placeholder="填写你的心愿"></textarea>
+                                            <div class="form-group">
+                                            <textarea id="wish" name="wish" class="form-control" rows="4"
+                                                placeholder="填写你的心愿，你的心愿是匿名的哦！（请共同创建文明友善的发言环境，否则可能面临封号和处分等风险）"></textarea>
+                                            </div>
+                                            <div class="form-group">
+                                                <p>选择你的背景(非必选)</p>
+                                                <div class="radio">
+                                                    <div class="row">
+                                                    {% for pic in backgroundpics %}
+                                                    <div class="col-2 mb-5">
+                                                        <label>
+                                                        <input type="radio" name="backgroundcolor" value={{pic.color}}>
+                                                            <img src={{pic.src}} class="img-fluid">
+                                                        </label>
+                                                    </div>
+                                                    {% endfor %}
+                                                    </div>
+                                                </div>
+                                            </div>                                        
                                         </div>
                                
                                         <!-- 模态框底部 -->
@@ -301,13 +342,16 @@
                                 </div>
                             </div>
                         </div>
-
-                        <p>TIPS:展示今日心愿</p>
-                        <div class="pre-scrollable bio-skill-box layout-top-spacing">
+                        <!-- 心愿墙 -->
+                        <div class="pre-scrollable bio-skill-box row layout-top-spacing">
+                            {% if wishes|length == 0 %}
+                            <p style="text-align: center;">暂时没有心愿！</p>
+                            {% endif %}
                             {% for wish in wishes %}
-                            <div class="col-12" style="padding: 2%;">
-                                    <div class="d-flex b-skills"style="padding: 5%;" >
-                                        <p>{{wish.text}}</p>
+                            <div class="col-12" style="padding: 2%; margin: 0;">
+                                    <div class="d-flex b-skills"
+                                    style="margin: 0; padding: 4%; background-color:{{wish.background}};">
+                                        <p style="margin: 0;">{{wish.text}}</p>
                                     </div>
                             </div><br/>
                             {% endfor %}
@@ -317,46 +361,6 @@
                 </div>
 
             </div>
-            <!--
-            <div class="row layout-top-spacing">
-
-                <div class="jumbotron">
-                    <div class="container">
-                        <h1 class="display-3">你好，元培！</h1>
-                        <p>This is a template for a simple marketing or informational website. It includes a large callout called a jumbotron and three supporting pieces of content. Use it as a starting point to create something more unique.</p>
-                    </div>
-                </div>
-                
-                <div class="container">
-                    <div class="row">
-                        <div class="col-md-4">
-                            <h2>元培团委</h2>
-                            <p>庆祝共产党成立100周年，学院举办学党史教育活动。 </p>
-                            <p><a class="btn btn-secondary" href="#" role="button">View details »</a></p>
-                        </div>
-                        <div class="col-md-4">
-                            <h2>元培学生会</h2>
-                            <p>绍兴论坛举办在即，点击查看详情。 </p>
-                            <p><a class="btn btn-secondary" href="#" role="button">View details »</a></p>
-                        </div>
-                        <div class="col-md-4">
-                            <h2>元培学学学</h2>
-                            <p>通识课改革问卷已发布，请同学们点此处填写！</p>
-                            <p><a class="btn btn-secondary" href="#" role="button">View details »</a></p>
-                        </div>
-                        <div class="col-md-4">
-                            <h2>元培书房</h2>
-                            <p>Donec id elit non mi porta gravida at eget metus. Fusce dapibus, tellus ac cursus commodo, tortor mauris condimentum nibh, ut fermentum massa justo sit amet risus. Etiam porta sem malesuada magna mollis euismod. Donec sed odio dui. </p>
-                            <p><a class="btn btn-secondary" href="#" role="button">View details »</a></p>
-                            </div>
-                    </div>
-                    <hr>
-                </div>
-            
-                <hr>
-            </div>
-            -->
-
         </div>
         <!--  END CONTENT PART  -->
 

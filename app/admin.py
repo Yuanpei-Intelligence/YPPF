@@ -21,6 +21,14 @@ class NaturalPersonAdmin(admin.ModelAdmin):
     ]
     search_fields = ("person_id__username", "name")
 
+class FreshmanAdmin(admin.ModelAdmin):
+    list_display = [
+        "sid",
+        "name",
+        "place",
+        "grade",
+    ]
+    search_fields = ("sid", "name", "place")
 
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ["oname"]
@@ -33,6 +41,7 @@ class PositionAdmin(admin.ModelAdmin):
 
 
 admin.site.register(NaturalPerson, NaturalPersonAdmin)
+admin.site.register(Freshman, FreshmanAdmin)
 admin.site.register(Organization, OrganizationAdmin)
 admin.site.register(Position, PositionAdmin)
 
@@ -42,3 +51,4 @@ admin.site.register(TransferRecord)
 
 admin.site.register(YQPointDistribute)
 admin.site.register(Notification)
+admin.site.register(Help)

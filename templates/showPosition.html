@@ -1,5 +1,19 @@
 {% extends "base.html" %}
 
+{% block add_css_file %}
+<!-- 和搜索页面相同，在需要引入“使用帮助”的页面，也要在add_css_file中添加以下style -->
+<style class="text/css">
+    [data-toggle="collapse"] .fa:before {
+        font-family: 'Font Awesome 5 Free';  
+        content: "\f068";
+        float: right; 
+    }
+
+    [data-toggle="collapse"].collapsed .fa:before {
+        content: "\f067"; 
+    }
+</style>
+{% endblock %}
 
 {% block mainpage %}
 
@@ -18,17 +32,15 @@
 
 
             <div class="row layout-top-spacing">
+                {% if bar_display.help_paragraphs %}
+                    {% include 'help.html' %}
+                {% endif %}
 
                 <div class="col-lg-12 col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
                             <h3>{{title}}</h3>
-                            <div class="col-12">
-                                <p>欢迎来到你的{{title}}列表！这里汇集了在<strong>Yuanpei Profile</strong>中由您创建或待您审核的所有{{title}}信息~</p>
-                                <p>这些事务依据更新的时间和状态由近到远呈现，提供了具体的更新时间和其他信息。</p>
-                                <p>您可以点击<u>标题链接</u>查看老师留言、追加评论、取消正在审核的申请或查看已完成事务详情。尽情体验吧！</p>
-                                </br>
-                            </div>
+                            
                             <!-- <div class="col-lg-12">
                                 <br />
                                 <br />
@@ -36,19 +48,18 @@
                                     style="position:absolute;right:30px;top:4px;">
                                     {{new_btn_name}}
                                 </a>
-                            </div> -->
+                            </div> 
                             <hr style="filter:alpha(opacity=100,finishopacity=0,style=3);" width="80%" color="#0000FF"
                                 size="3">
-
+                        -->
                             <div id="myTabContent" class="tab-content">
-                                <div class="tab-pane fade in active show" id="home">
                                     {% if not shown_instances %}
                                     <br />
                                     <p></p>
                                     <p style="text-align: center;">{{empty_info}}</p>
                                     <br />
                                     {% else %}
-                                    <div class="bio-skill-box">
+                                    <div class="bio-skill-box" style="padding-top: 3px;">
                                         <div class="row">
 
 
@@ -135,7 +146,7 @@
                                     </div>
 
                                     {% endif %}
-                                </div>
+                                
                             </div>
                         </div>
                     </div>
