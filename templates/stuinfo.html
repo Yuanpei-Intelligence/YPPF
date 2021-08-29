@@ -24,29 +24,7 @@
                     style="height: 40%; background: -webkit-linear-gradient(top, #00000000 0%, #000000dd 100%);">
                 </div>
             </div>
-            <div class="row m-0 w-100 align-self-center">
-                <div class="col-1"></div>
-                <div class="row col-11">
-                    <div class="col-1"></div>
-                    <div class="col-0">
-                        <img class="img-thumbnail" src={{ context.avatar_path }} alt="avatar" style="height: 90px;
-                            width: 90px;">
-                    </div>
-                    <div style="width: 25px;"></div>
-                    <div class="row col-0" style="width: max-width;">
-                        <h1 class="my-auto align-self-center font-weight-bold text-light"
-                            style="font-size: 60px; text-shadow: 2px 2px 5px #000000">
-                            {{ context.person.name }}</h1>
-                    </div>
-                    <div style="width: 25px;"></div>
-                    <div class="row col-lg-6 col-md-12">
-                        <div class="col-1"></div>
-                        <p class="col-10 align-self-end text-white mt-3 px-0"
-                            style="color:aliceblue; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0px 0px 2px #000000">
-                            {{ context.person.biography }}</p>
-                    </div>
-                </div>
-            </div>
+            
         </div>
     </div>
     <!--  END WALLPAPER SECTION  -->
@@ -196,6 +174,13 @@
                                 </ul>
                             </div>
                         </div>
+                        {% if not context.person.biography == "" %}
+                        <div class="d-flex justify-content-between">
+                            <h3 class="">个人简介</h3>
+                            <br /><br />
+                        </div>
+                        <p class="m-3">{{context.person.biography}}</p>
+                        {% endif %}
                     </div>
                 </div>
             </div>

@@ -95,9 +95,11 @@ def get_user_ava(obj, user_type):
         return settings.MEDIA_URL + str(ava)
 
 
-def get_user_wallpaper(person):
-    return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/default.jpg")
-
+def get_user_wallpaper(person, user_type):
+    if user_type == "Person":
+        return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/person_wall_default.jpg")
+    else:
+        return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.jpg")
 
 # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
 def get_user_left_navbar(person, is_myself, html_display):
@@ -192,6 +194,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     return bar_display
 
 
+
 # 检查发起活动的request的合法性
 def check_ac_request(request):
     # oid的获取
@@ -203,6 +206,7 @@ def check_ac_request(request):
         edit = True
     except:
         edit = False
+
 
 
 def url_check(arg_url):
