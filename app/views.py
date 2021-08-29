@@ -67,7 +67,7 @@ import csv
 
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
-from .scheduler_func import scheduler
+from app.scheduler import scheduler
 
 # 注册启动以上schedule任务
 register_events(scheduler)
