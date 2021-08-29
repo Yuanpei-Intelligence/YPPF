@@ -343,15 +343,15 @@
                             </div>
                         </div>
                         <!-- 心愿墙 -->
-                        <div class="pre-scrollable bio-skill-box layout-top-spacing">
+                        <div class="pre-scrollable bio-skill-box row layout-top-spacing">
                             {% if wishes|length == 0 %}
                             <p style="text-align: center;">暂时没有心愿！</p>
                             {% endif %}
                             {% for wish in wishes %}
-                            <div class="col-12" style="padding: 1%;">
+                            <div class="col-12" style="padding: 2%; margin: 0;">
                                     <div class="d-flex b-skills"
-                                    style="padding: 4%; background-color:{{wish.background}};">
-                                        <p>{{wish.text}}</p>
+                                    style="margin: 0; padding: 4%; background-color:{{wish.background}};">
+                                        <p style="margin: 0;">{{wish.text}}</p>
                                     </div>
                             </div><br/>
                             {% endfor %}
