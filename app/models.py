@@ -154,7 +154,10 @@ class Freshman(models.Model):
     status = models.SmallIntegerField("注册状态", choices=Status.choices, default=0)
 
     def exists(self):
-        return User.objects.filter(username=self.sid).exists()
+        user_exist = User.objects.filter(username=self.sid).exists()
+        person_exist = NaturalPerson.objects.filter(person_id__username=self.sid).exists()
+        return "person" if person_exist else(
+                "user" if user_exist else "")
 
 
 class OrganizationType(models.Model):
