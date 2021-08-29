@@ -129,7 +129,9 @@ def load_activity_info(request):
                 examine_teacher = NaturalPerson.objects.get(name="YPadmin")
             )
         )
-    Activity.objects.bulk_create(act_list)
+    # Activity.objects.bulk_create(act_list)
+    for act in act_list:
+        act.save()
     context = {"message": "导入活动信息成功！"}
     return render(request, "debugging.html", context)
 
