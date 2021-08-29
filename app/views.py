@@ -924,7 +924,7 @@ def account_setting(request):
 
 
 def freshman(request):
-    if request.user:
+    if request.user.is_authenticated:
         return redirect("/welcome/")
 
     if request.GET.get("success") is not None:
