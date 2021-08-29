@@ -10,7 +10,7 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 from app.scheduler_func import scheduler, changeActivityStatus, notifyActivity
 from datetime import datetime, timedelta
 from app.utils import get_person_or_org, if_image
-from app.notification_utils import notification_create
+from app.notification_utils import notification_create, bulk_notification_create
 from app.models import (
     NaturalPerson,
     Position,
@@ -45,7 +45,7 @@ def get_activity_QRcode(activity):
     # url = f"http://localhost:8000/checkinActivity/{activity.id}?auth={auth_code}"
     url = os.path.join(
             local_dict["url"]["login_url"], 
-            checkinActivity, 
+            "checkinActivity", 
             f"{activity.id}?auth={auth_code}"
         )
 
@@ -111,7 +111,12 @@ def activity_base_check(request, edit=False):
 
 
     # examine_teacher 需要特殊检查
-    context["examine_teacher"] = request.POST["examine_teacher"]
+    context["examine_teacher"] = request.POST.get("examine_teacher")
+
+    # 预报备
+    context["recorded"] = False
+    if request.POST.get("recorded"):
+        context["recorded"] = True
 
     # 时间
     act_start = datetime.strptime(request.POST["actstart"], "%m/%d/%Y %H:%M %p")  # 活动报名时间
@@ -222,6 +227,22 @@ def create_activity(request):
     activity.endbefore = context["endbefore"]
     if context.get("need_checkin"):
         activity.need_checkin = True
+    if context["recorded"]:
+        # 预报备活动，先开放报名，再审批
+        activity.recorded = True
+        activity.status = Activity.Status.APPLYING
+        notifyActivity(activity.id, "newActivity")
+
+        scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
+            run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
+        # 活动状态修改
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
+            run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
+            run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
+            run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
+    
     activity.save()
 
     ActivityPhoto.objects.create(image=context["pic"], type=ActivityPhoto.PhotoType.ANNOUNCE ,activity=activity)
@@ -260,6 +281,8 @@ def modify_reviewing_activity(request, activity):
 
     context = activity_base_check(request, edit=True)
 
+    """
+    不允许修改审批老师
     if context["examine_teacher"] == activity.examine_teacher.name:
         pass
     else:
@@ -282,6 +305,7 @@ def modify_reviewing_activity(request, activity):
             URL=f"/examineActivity/{activity.id}",
             relate_instance=activity,
         )
+    """
 
 
     if context.get("adjust_apply") is not None:
@@ -319,6 +343,8 @@ def modify_reviewing_activity(request, activity):
 对已经通过审核的活动进行修改
 不能修改预算，元气值支付模式，审批老师
 只能修改时间，地点，URL, 简介，向同学收取元气值时的元气值数量
+
+# 这个实际上应该是 activated/valid activity
 """
 def modify_accepted_activity(request, activity):
 
@@ -412,8 +438,49 @@ def modify_accepted_activity(request, activity):
 
 
 def accept_activity(request, activity):
-    activity.status = Activity.Status.APPLYING
 
+    # 审批通过
+    activity.valid = True
+
+    # 通知
+    notification = Notification.objects.select_for_update().get(
+        relate_instance=activity, 
+        status=Notification.Status.UNDONE,
+        title=Notification.Title.VERIFY_INFORM
+    )
+    notification.status = Notification.Status.DONE
+    notification.save()
+
+    notification_create(
+        receiver=activity.organization_id.organization_id,
+        sender=request.user,
+        typename=Notification.Type.NEEDREAD,
+        title=Notification.Title.ACTIVITY_INFORM,
+        content=f"您的活动{activity.title}已通过审批。",
+        URL=f"/viewActivity/{activity.id}",
+        relate_instance=activity,
+    )
+
+    if activity.status == Activity.Status.REVIEWING:
+
+        # 保证有时间来报名，不然前端提醒组织修改时间
+        assert datetime.now() < activity.apply_end
+
+        activity.status = Activity.Status.APPLYING
+
+        notifyActivity(activity.id, "newActivity")
+        scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
+            run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
+        # 活动状态修改
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
+            run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
+            run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
+            run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
+
+
+    # 向学院申请元气值时，审批通过后转账
     if activity.source == Activity.YQPointSource.COLLEGE:
         organization_id = activity.organization_id_id
         organization = Organization.objects.select_for_update().get(id=organization_id)
@@ -434,10 +501,19 @@ def accept_activity(request, activity):
         YP.save()
         organization.save()
 
+    activity.save()
+
+
+
+def reject_activity(request, activity):
+    # 审批通过
+    activity.valid = True
+
     # 通知
     notification = Notification.objects.select_for_update().get(
         relate_instance=activity, 
-        status=Notification.Status.UNDONE
+        status=Notification.Status.UNDONE,
+        title=Notification.Title.VERIFY_INFORM
     )
     notification.status = Notification.Status.DONE
     notification.save()
@@ -447,22 +523,27 @@ def accept_activity(request, activity):
         sender=request.user,
         typename=Notification.Type.NEEDREAD,
         title=Notification.Title.ACTIVITY_INFORM,
-        content=f"您的活动{activity.title}已通过审批，正在报名中。",
+        content=f"您的活动{activity.title}被拒绝。",
         URL=f"/viewActivity/{activity.id}",
         relate_instance=activity,
     )
 
+    if activity.status == Activity.Status.REVIEWING:
+        activity.status = Activity.Status.REJECT
+    else:
 
-    notifyActivity(activity.id, "newActivity")
-    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
-        run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
-    # 活动状态修改
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
-        run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
-        run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
-        run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
+        # TODO
+        # 前端得多一个判断，拒绝的时候啥时候都能拒绝
+        # 接受也不是必须在报名截止前，改前端......
+        notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
+        activity.status = Activity.Status.CANCELED
+        participants = Participant.objects.filter(
+                activity_id=activity
+            ).update(status=Participant.AttendStatus.APLLYFAILED)
+        scheduler.remove_job(f"activity_{activity.id}_remind")
+        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
+        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
+        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
 
     activity.save()
 
@@ -642,6 +723,8 @@ def cancel_activity(request, activity):
 
 
     activity.status = Activity.Status.CANCELED
+    notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
+
     participants = Participant.objects.filter(
             activity_id=activity
         ).update(status=Participant.AttendStatus.APLLYFAILED)
@@ -650,8 +733,6 @@ def cancel_activity(request, activity):
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
-
-    notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
 
     YP.save()
     org.save()

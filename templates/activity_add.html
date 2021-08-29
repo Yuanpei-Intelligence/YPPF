@@ -94,13 +94,9 @@
                                                 </div>
                                             </div>
                                             
-                                            <!-- 前端没想好怎么设计 -->
+                                            <!-- TOCHECK: edit 的时候填值，并且 disable 掉 -->
                                             {% if not examine %}
                                             <div class="form-group">
-                                                <!--
-                                                <input type="text" id="examine_teacher" name="examine_teacher" class="form-control"
-                                                    aria-label="Default" placeholder="审批老师" required="required" onclick="fill_value(this)">
-                                                -->
                                                 <select id="examine_teacher" name="examine_teacher" class="form-control selectpicker" >
                                                     <option value="" selected disabled>选择审核老师</option>
                                                     {% for avialable_teacher in avialable_teachers %}
@@ -110,24 +106,22 @@
                                             </div>
                                             {% endif %}
 
+                                            <div class="form-check"
+                                                style="align-content: center; vertical-align: middle;">
+                                                <input class="form-check-input" type="checkbox"
+                                                    value="1" id="recorded"
+                                                    name="recorded">
+                                                <label class="form-check-label" for="defaultCheck1">
+                                                    预报备 ( 此选项不可修改，擅自选择可能导致组织被取消 )
+                                                </label>
+
+                                            </div>
+
                                             <hr>
                                             <p>报名信息</p>
                                             <div class="form-group">
                                                 <div class="input-group mb-3">
-                                                    {% if accepted or examine %}
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary"
-                                                            type="button" id="pricebutton"
-                                                            aria-expanded="false">{{signscheme}}
-                                                        </button>
-                                                    </div>
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary"
-                                                            type="button" id="yq_source"
-                                                            aria-expanded="false">{{yq_source}}
-                                                        </button>
-                                                    </div>
-                                                    {% else %}
+                                                    {% if not edit and not examine or full_editable %}
                                                     <div class="input-group-prepend">
                                                         <button class="btn btn-outline-primary dropdown-toggle"
                                                             type="button" data-toggle="dropdown" aria-haspopup="true"
@@ -157,9 +151,22 @@
                                                         <input type="hidden" id="from_college" name="from_college"
                                                             value="" />
                                                     </div>
+                                                    {% else %}
+                                                    <div class="input-group-prepend">
+                                                        <button class="btn btn-outline-primary"
+                                                            type="button" id="pricebutton"
+                                                            aria-expanded="false">{{signscheme}}
+                                                        </button>
+                                                    </div>
+                                                    <div class="input-group-prepend">
+                                                        <button class="btn btn-outline-primary"
+                                                            type="button" id="yq_source"
+                                                            aria-expanded="false">{{yq_source}}
+                                                        </button>
+                                                    </div>
                                                     {% endif %}
 
-                                                    <!-- 如果是 applying 记得设成 disable -->
+                                                    <!-- TOCHECK: 如果是 applying 记得设成 disable -->
                                                     <input type="number" class="form-control"
                                                         aria-label="Text input with dropdown button" id="aprice"
                                                         name="aprice" placeholder="最小精度为0.1" step="0.1" min="0" required="required" 
@@ -210,6 +217,7 @@
                                                     </select>
                                                     {% else %}
                                                     <p>当前报名截止时间为 {{apply_end}}</p>
+                                                    <!-- TOCHECK: !(accepted) 时，不能修改-->
                                                     <div class="row">
                                                         <div class="col">
                                                         <select id="inputState" name="prepare_scheme" class="form-control selectpicker">
@@ -278,21 +286,33 @@
                                             </div>
 
 
-                                            {% if not examine and not accepted %}
+                                            {% if not examine and not edit or full_editable %}
                                             <div class="form-group">
                                                 <label>上传活动预告图片</label><br/>
                                                 <div class="row">
                                                     <div class="col-4">
-                                                        <input type="file" accept="image/*" name="images" multiple id="images">
-                                                    </div>
-                                                    <div class="col-8">
-                                                        <label>必选：请上传一张长:宽=16:9左右的图片。或者下列默认图片中选择一张</label>
+                                                        <div class="custom-file" lang="zh">
+                                                            <input onchange="showFilename(this.files)" type="file" 
+                                                                   class="custom-file-input" id="images" name="images" 
+                                                                   accept="image/*"  multiple>
+                                                            <label id="upload_annouce_photo" class="custom-file-label" 
+                                                                   for="customFile"> 请上传一张图片 </label>
+                                                        </div>
                                                     </div>
                                                 </div>
                                                 
                                             </div>
 
                                             <div class="form-group">
+                                                <div class="row">
+                                                    <div class="col-4">
+                                                        <div>
+                                                        <p></p>
+                                                        也可以选择一张默认图片
+                                                        <p></p>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                                 <div class="form-check">
                                                     <div class="row">
 
@@ -312,25 +332,17 @@
                                                 
                                             </div>
                                             {% endif %}
-                                            <!--
-                                            <div class="input-group mb-4">
-                                                <div class="input-group-prepend">
-                                                    <span class="input-group-text"
-                                                        id="inputGroup-sizing-default">活动推送链接(url)</span>
-                                                </div>
-                                                <input type="text" id="URL" name="URL" class="form-control"
-                                                    aria-label="Default" aria-describedby="inputGroup-sizing-default"
-                                                    placeholder="">
-                                            </div>
-                                            -->
-                                            {% if edit %}
-                                            <input type="hidden" name="edit" value="True">
-                                            <input type="hidden" name="aid", value="{{aid}}">
-                                            {% endif %}
+
                                             {% if not examine %}
-                                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
-                                                提交
-                                            </button>
+                                                {% if edit and not accepted %}
+                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" disabled>
+                                                    活动{{status}}
+                                                </button>
+                                                {% else %}
+                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
+                                                    提交
+                                                </button>
+                                                {% endif %}
                                             {% endif %}
                                         </form>
                                         {% if examine %}
@@ -341,13 +353,33 @@
                                                 <img class="d-block w-100" id="examine_pic" src="{{intro_pic}}" alt="Third slide">
                                             </div>
                                         </div>
-
-                                        <hr>
-                                        <form method="POST" role="form" onsubmit="return check_examine()">
-                                            <button id="review_submit" type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="">
-                                                通过活动
-                                            </button>
-                                        </form>
+                                            {% if commentable %}
+                                            <hr>
+                                            <form method="POST" role="form" onsubmit="return check_examine()">
+                                                <div class="row">
+                                                    <div class="col">
+                                                    <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
+                                                            name="review_accepted"
+                                                            value="2">
+                                                        通过
+                                                    </button>
+                                                    </div>
+                                                    <div class="col">
+                                                    <button type="submit" class="btn btn-warning btn-block mb-4 mr-2"
+                                                             name="review_reject"
+                                                            value="3">
+                                                        拒绝
+                                                    </button>
+                                                    </div>
+                                                </div>
+                                            </form>
+                                            {% else %}
+                                            <form method="POST" role="form" >
+                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" disabled>
+                                                    活动{{status}}
+                                                </button>
+                                            </form>
+                                            {% endif %}
                                         {% endif %}
                                         <div>
                                             {% include 'comment.html' %}
@@ -470,7 +502,12 @@
     document.getElementById("datetimepicker3").placeholder="{{start}}";
     document.getElementById("datetimepicker4").placeholder="{{end}}";
     {% if not examine %}
-    document.getElementById("examine_teacher").placeholder="{{examine_teacher}}";
+    document.getElementById("examine_teacher").value="{{examine_teacher}}";
+    document.getElementById("examine_teacher").disabled=true;
+    {% endif %}
+    document.getElementById("recorded").disabled = true;
+    {% if activity.recorded %}
+    document.getElementById("recorded").checked = true;
     {% endif %}
     // 报名信息
     document.getElementById("pricebutton").innerHTML = "{{signscheme}}";
@@ -499,24 +536,17 @@
         all_inputs[i].required="";
     }
     document.getElementById("aintro").required = "";
+
+    
     // 点击自动填充可修改
+    {% if edit and accepted %}
+    document.getElementById("URL").placeholder = "{{url}}";
+    function fill_value(a) {
+        if (a.value == "")
+            a.value = a.placeholder;
+    }
 
-    {% if edit %}
-        // edit
-        document.getElementById("URL").placeholder = "{{url}}";
-        function fill_value(a) {
-            if (a.value == "")
-                a.value = a.placeholder;
-        }
-        /* 检查是否应该显示这个界面 */
-        // 期望的是从 viewApplication 中的 “修改活动” 跳转过来
-        // 不允许直接访问这个 url
-        // 后端也会进行检查，这里其实不是太必要
-        var ref = document.referrer;
-        if (!ref.substr("/viewActivity/{{aid}}"))
-            window.location.href = "/welcome/"
-
-        {% if not accepted %}
+        {% if full_editable %}
             {% if bidding %}
             document.getElementById("signscheme").value = "1";
             {% else %}
@@ -529,18 +559,17 @@
             {% endif %}
         {% else %}
             {% if yq_source == "向学院申请" %}
-            document.getElementById("aprice").disabled = true;
+                document.getElementById("aprice").disabled = true;
             {% endif %}
             document.getElementById("title").disabled = true;
             document.getElementById("budget").disabled = true;
-            document.getElementById("examine_teacher").disabled = true;
         {% endif %}
 
     {% else %}
         // examine
         var all_inputs = document.getElementsByTagName("input");
         // 最后两项是 hidden input
-        for(var i = 0; i < all_inputs.length - 2; i++){
+        for(var i = 0; i < all_inputs.length; i++){
             if (all_inputs[i].type != "hidden")
                 all_inputs[i].disabled = true;
         }
@@ -548,10 +577,6 @@
         function fill_value(a) {
             console.log(a.value);
         }
-        {% if no_review %}
-        document.getElementById("review_submit").innerHTML = "活动{{status}}";
-        document.getElementById("review_submit").disabled = true;
-        {% endif %}
     {% endif %}
 
 
@@ -644,6 +669,16 @@
         if (before_start < applyEnd) {
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "活动报名应在活动开始前一小时截止。";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        {% endif %}
+
+        /* 选择了审核老师 */
+        {% if not examine %}
+        if (document.getElementById("examine_teacher").value == "") {
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "尚未选择审核老师。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
