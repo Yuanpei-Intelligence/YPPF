@@ -203,6 +203,7 @@ class Organization(models.Model):
     introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
+    wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
 
     first_time_login = models.BooleanField(default=True)  # 是否第一次登录
 
