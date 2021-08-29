@@ -1769,11 +1769,22 @@ def viewActivity(request, aid=None):
     if ownership and need_checkin:
         aQRcode = get_activity_QRcode(activity)
 
-    # 活动图片！！
+    # 活动宣传图片 ( 一定存在 )
     photo = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
-    if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
-        photo.image = settings.MEDIA_URL + str(photo.image)
-    firstpic = photo.image
+    firstpic = str(photo.image)
+    if firstpic[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+        firstpic = settings.MEDIA_URL + firstpic
+
+    # 总结图片，不一定存在
+    summary_photo_exists = False
+    if activity.status == Activity.Status.END:
+        try:
+            summary_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
+            summary_photo_exists = True
+            summary_photo = settings.MEDIA_URL + str(summary_photo.image)
+        except Exception as e:
+            # print(e)
+            pass
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
@@ -1868,6 +1879,8 @@ def viewActivity(request, aid=None):
             return redirect("/modifyReimbursement/")
 
     elif option == "submitphoto":
+        if not ownership:
+            return redirect("/welcome/")
         try:
             summaryphotos = request.FILES.getlist('images')
         except:
@@ -1878,15 +1891,27 @@ def viewActivity(request, aid=None):
             html_display['warn_code'] = 1
             html_display['warn_message'] = "上传活动照片不能为空"
             return render(request, "activity_info.html", locals())
-        for photo in summaryphotos:
-            if utils.if_image(photo) == False:
-                html_display['warn_code'] = 1
-                html_display['warn_message'] = "上传的附件只支持图片格式"
-                return render(request, "activity_info.html", locals())
-            ActivityPhoto.objects.create(image = photo,activity = activity,time = datetime.now(),type = ActivityPhoto.PhotoType.SUMMARY)
+        photo = summaryphotos[0]
+        if utils.if_image(photo) == False:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "上传的附件只支持图片格式"
+            return render(request, "activity_info.html", locals())
+        if summary_photo_exists:
+            old_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
+            old_photo.image = photo
+            old_photo.save()
+            summary_photo = settings.MEDIA_URL + str(old_photo.image)
+            html_display["warn_message"] = "成功替换活动照片"
+        else:
+            ActivityPhoto.objects.create(
+                image=photo, 
+                activity=activity, 
+                time=datetime.now(),
+                type = ActivityPhoto.PhotoType.SUMMARY
+            )
+            html_display["warn_message"] = "成功提交活动照片"
 
         html_display["warn_code"] = 2
-        html_display["warn_message"] = "成功提交活动照片"
         return render(request, "activity_info.html", locals())
 
     else:
