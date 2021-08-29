@@ -934,8 +934,9 @@ def freshman(request):
     # 选择生源地列表，前端使用量
     address_set = set(Freshman.objects.all().values_list("place", flat=True))
     address_set.discard("")
-    address_set.add("其它")
+    address_set.discard("其它")
     address_list = sorted(address_set)
+    address_list.append("其它")
     html_path = "freshman-top.html"
     if request.method == "POST":
         # 这些也是失败时的前端使用量
