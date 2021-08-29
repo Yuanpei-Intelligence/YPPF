@@ -112,7 +112,7 @@
                         id="custom-activities">
                         {% if html_display.today_activities|length == 0 %}
                         <br/>
-                        <p style="text-align: center; ">没有今天开始的活动</p>
+                        <p style="text-align: center; ">没有今天开始的活动！</p>
                         {% endif %}
                         {% for activity, start in html_display.today_activities %}
                         <div class="item-timeline">
@@ -155,35 +155,39 @@
 
             <div class="row">
 
-                 <!--2&3 近期活动&最新发布-->
+                 <!--2&3 近期活动&最新发布&即将截止-->
 
                 <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12 layout-top-spacing bio">
                     <div class="widget-content widget-content-area">
-
+                        <h3>活动一览</h3>
                         <ul id="Tab" class="nav nav-tabs nav-tabs-solid nav-justified">
                             <li class="nav-item">
-                                <a class="nav-link active" href="#todayactivity" data-toggle="tab">
+                                <a class="nav-link active" href="#recentactivity" data-toggle="tab">
                                     近期活动
                                 </a>
                             </li>
                     
                             <li class="nav-item">
-                                <a class="nav-link" href="#todaynews" data-toggle="tab">
-                                    最新发布&今日截止
+                                <a class="nav-link" href="#news" data-toggle="tab">
+                                    最新发布
                                 </a>
                             </li>
-                    
+
+                            <li class="nav-item">
+                                <a class="nav-link" href="#recentends" data-toggle="tab">
+                                    即将截止
+                                </a>
+                            </li>
                         </ul>
 
                         <div class="tab-content">
 
-                            <div id="todayactivity" class="tab-pane active">
-                                <h3>近期活动</h3>
-                                <p>TIP：这里展示前后一周内开始进行的活动</p>
-                                {% if recentactivity_list|length == 0 %}
-                                    <p style="text-align: center;">没有该类别的活动</p>
-                                {% endif %}
+                            <div id="recentactivity" class="tab-pane active">
                                 <div class="pre-scrollable bio-skill-box layout-top-spacing">
+                                    <p>TIP：这里展示前后一周内开始进行的活动</p>
+                                    {% if recentactivity_list|length == 0 %}
+                                        <p style="text-align: center;">没有该类别的活动！</p>
+                                    {% endif %}
                                     <div class="row">
                                         {% for act in recentactivity_list %}
                                             <div class="col-12 col-xl-6 col-lg-6 mb-xl-5 mb-5 ">
@@ -212,13 +216,12 @@
                                 </div>
                             </div>
     
-                            <div id="todaynews" class="tab-pane fade">
-                                <h3>最新发布</h3>
-                                <p>TIP：这里展示近三日发布的活动</p>
-                                {% if newlyreleased_list|length == 0 %}
-                                    <p style="text-align: center;">没有该类别的消息</p>
-                                {% endif %}
+                            <div id="news" class="tab-pane fade">
                                 <div class="pre-scrollable bio-skill-box layout-top-spacing">
+                                    <p>TIP：这里展示一周内发布的活动</p>
+                                    {% if newlyreleased_list|length == 0 %}
+                                        <p style="text-align: center;">没有该类别的消息！</p>
+                                    {% endif %}
                                     <div class="row">
                                         {% for act in newlyreleased_list %}
                                         <div class="col-12 col-xl-6 col-lg-6 mb-xl-5 mb-5 ">
@@ -245,15 +248,16 @@
                                     {% endfor %}
                                     </div>
                                 </div>
+                            </div>
 
-                                <h3>今日截止</h3>
-                                <p>TIP：这里展示今天截止报名的活动</p>
-                                {% if today_signup_list|length == 0 %}
-                                    <p style="text-align: center;">没有该类别的消息</p>
-                                {% endif %}
+                            <div id="recentends" class="tab-pane fade">
                                 <div class="pre-scrollable bio-skill-box layout-top-spacing">
+                                    <p>TIP：这里展示即将截止报名的活动</p>
+                                    {% if signup_list|length == 0 %}
+                                        <p style="text-align: center;">没有该类别的活动！</p>
+                                    {% endif %}
                                     <div class="row">
-                                        {% for rec in today_signup_list %}
+                                        {% for rec in signup_list %}
                                             <div class="col-12 col-xl-6 col-lg-6 mb-xl-5 mb-5 ">
                                                 <a href="/viewActivity/{{rec.act.id}}">
                                                     <div class="d-flex b-skills" >
@@ -262,7 +266,7 @@
                                                                 <h5>{{rec.act.title}}
                                                                     {% if rec.act.status == "等待中" %}
                                                                     <span class="flex badge badge-pill badge-info">{{ rec.act.status }}</span>
-                                                                    {% elif rec.act.status == "已取消" or act.status == "已结束" %}
+                                                                    {% elif rec.act.status == "已取消" or rec.act.status == "已结束" %}
                                                                     <span class="badge badge-pill badge-danger">{{ rec.act.status }}</span>
                                                                     {% else %}
                                                                     <span class="badge badge-pill badge-success">{{ rec.act.status }}</span>
@@ -279,6 +283,7 @@
                                     </div>
                                 </div>
                             </div>
+
                         </div>
 
                     </div>
@@ -309,7 +314,7 @@
                                         <!-- 模态框主体 -->
                                         <div class="modal-body">
                                             <textarea id="wish" name="wish" class="form-control" rows="3"
-                                                placeholder="填写你的心愿"></textarea>
+                                                placeholder="填写你的心愿，你的心愿是匿名的哦！（请共同创建文明友善的发言环境，否则可能面临封号和处分等风险）"></textarea>
                                         </div>
                                
                                         <!-- 模态框底部 -->
@@ -320,15 +325,14 @@
                                 </div>
                             </div>
                         </div>
-
-                        <p>TIPS:展示今日心愿</p>
+                        <p>TIP:展示今日心愿</p>
                         <div class="pre-scrollable bio-skill-box layout-top-spacing">
                             {% if wishes|length == 0 %}
-                            <p style="text-align: center;">暂时没有心愿哦</p>
+                            <p style="text-align: center;">暂时没有心愿！</p>
                             {% endif %}
                             {% for wish in wishes %}
-                            <div class="col-12" style="padding: 2%;">
-                                    <div class="d-flex b-skills"style="padding: 5%;" >
+                            <div class="col-12" style="padding: 1%;">
+                                    <div class="d-flex b-skills"style="padding: 2%;" >
                                         <p>{{wish.text}}</p>
                                     </div>
                             </div><br/>
