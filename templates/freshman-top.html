@@ -17,7 +17,7 @@
     <!-- END GLOBAL MANDATORY STYLES -->
 
     <link href="{% static 'plugins/flatpickr/flatpickr.css' %}" rel="stylesheet" type="text/css">
-    <!-- <link href="plugins" -->
+    <!-- 选择日期 -->
 
     <!--  BEGIN CUSTOM STYLE FILE  -->
     <link href="{% static 'assets/css/scrollspyNav.css' %}" rel="stylesheet" type="text/css" />
@@ -42,7 +42,7 @@
                             <div class="widget-header">
                                 <div class="row">
                                     <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                        <h4 style="text-align: center;">新生注册</h4>
+                                        <h3 style="text-align: center; padding-top: 20px;">新生注册</h3>
                                     </div>
                                 </div>
                             </div>
@@ -55,14 +55,14 @@
                                         <div class="form-group">
                                             <div class="row">
                                                 <div class="col">
-                                                <div id="username-field" class="field-wrapper input">
                                                     <label for="sname">姓名</label>
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-user"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                                                    <input name="sname" type="text" class="form-control"
+                                                    <input name="sname" type="text" class="form-control" placeholder="姓名"
                                                         value="{{sname}}" required>
                                                 </div>
                                                 <div class="col">
                                                     <label for="gender">性别</label>
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-users"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
                                                     <select id="gender" name="gender"
                                                         class="form-control selectpicker" required>
                                                         <option style="display: none;" {% if not gender %}selected{% endif %}></option>
@@ -74,18 +74,22 @@
                                         </div>
                                         <div class="form-group">
                                             <label for="sid">学号</label>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-credit-card"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
                                             <input name="sid" type="text" class="form-control"
                                                 id="sid" maxlength="10" value="{{sid}}"
+                                                placeholder="请填写正确的学号"
                                                 required>
                                         </div>
                                         <div class="form-group">
-                                            <label for="birthday">生日</label>
-                                            <input name="birthday" id="birthday" {% if birthday %}value={{birthday}}{% endif %}
+                                            <label for="basicFlatpickr">生日</label>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-calendar"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+                                            <input name="birthday" id="basicFlatpickr" {% if birthday %}value={{birthday}}{% endif %}
                                                 class="form-control flatpickr flatpickr-input" type="text"
-                                                placeholder="Select Date.." readonly="readonly" value="birthday"
+                                                placeholder="请选择您的生日" readonly="readonly"
                                                 required>
                                         </div>
                                         <label for="birthplace">生源地</label>
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-map-pin"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
                                         <div class="row mb-4">
                                             <div class="col">
                                                 <select id="birthplace" name="birthplace"
@@ -99,18 +103,16 @@
                                             </div>
                                         </div>
                                         <div class="form-group">
-                                            <label for="email">电子邮箱（可用于找回密码）</label>
-                                            <input id="email" type="email" name="email" placeholder="email@mail.com"
+                                            <label for="email">电子邮箱</label>
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-at-sign register"><circle cx="12" cy="12" r="4"></circle><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"></path></svg>
+                                            <input id="email" type="email" name="email" placeholder="邮箱可用于找回密码"
                                                 class="form-control" value="{{email}}"
                                                 required>
                                         </div>
 
                                         <div class="d-sm-flex justify-content-between">
-
-                                            <div class="field-wrapper">
-                                                <button type="submit" id="register" class="btn btn-primary" value=""
-                                                    style="display:block;margin:0 auto">完成注册！</button>
-                                            </div>
+                                            <button type="submit" id="register" class="btn btn-lg btn-primary" value=""
+                                                style="display:block;margin:0 auto">完成注册！</button>
                                         </div>
                                     </div>
                                     <!-- </div> -->

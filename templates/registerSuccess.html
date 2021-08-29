@@ -30,9 +30,9 @@
             <div class="form-form-wrap">
                 <div class="form-container">
                     <div class="form-content" >
-                        <div class="user-profile layout-spacing">
+                        <div class="user-profile layout-spacing" style="padding-bottom:10px">
                             <br/>
-                            <h3>欢迎来到元培成长档案！</h3>
+                            <h3>欢迎来到元培成长档案!</h3>
                             <div class="row">
                                 <div class="col-4"></div>
                                 <div class="col-4" style="text-align: left;">
@@ -40,35 +40,46 @@
                                 </div>
                                 <div class="col-4"></div>
                             </div>
-                            <p>在开始探索之前，请注意以下几项事务：</p>
+                            <p>在开始探索之前，请注意以下几项任务：</p>
                             <div class="row">
-                                <div class="col-2"></div>
-                                <div class="col-8" style="text-align: left;">
+                                <div class="col-1 col-sm-2"></div>
+                                <div class="col-10 col-sm-8" style="text-align: left;">
                                     <p>1.完成企业微信注册</p>
                                     <p>2.首次登录成长档案请使用验证码登录</p>
-                                    <p>3.关注微信企业号，即可在微信接受企业消息</p>
+                                    <p>3.关注微信企业号，用微信便捷接收消息</p>
                                     <p>4.如有需要，请进群交流您的意见或建议</p>
                                     <br/>
                                 </div>
-                                <div class="col-2"></div>
+                                <div class="col-1 col-sm-2"></div>
                             </div>
 
                             <div class="row">
-                                <div class="col-5">
-                        
-                                    <img src="/static/assets/img/company.jpeg" class="img-fluid">
-                                    <p style="text-align: center;">关注微信企业号</p>
+                                <div class="col-sm-1"></div>
+                                <div class="col-sm-10">
+                                    <div class="row">
+                                        <div class="col-5">
+                                
+                                            <img src="/static/assets/img/company.jpg" class="img-fluid">
+                                            <p style="text-align: center;">关注微信企业号</p>
+                                        </div>
+                                        <div class="col-2"></div>
+                                        <div class="col-5">
+                                            
+                                            <img src="/static/assets/img/communicate.jpg" class="img-fluid">
+                                            <p  style="text-align:center;">加入微信交流群</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="col-2"></div>
-                                <div class="col-5">
-                                    
-                                    <img src="/static/assets/img/communicate.jpeg" class="img-fluid">
-                                    <p  style="text-align:center;">加入微信交流群</p>
-                                </div>
+                                <div class="col-sm-1"></div>
                             </div>
                             <br/>
-                            <a href="/index/" class="btn btn-block btn-primary" id="index">我已了解</button>
-                            
+                            <div class="row">
+                                <div class="col-sm-3"></div>
+                                <div class="col-sm-6">
+                                    <a href="/index/" class="btn btn-block btn-primary" id="index">我已了解</a>
+                                </div>
+                                <div class="col-sm-3"></div>
+                            </div>
                         </div>
                     </div>                    
                 </div>
@@ -99,6 +110,5 @@
     <script src={% static "bootstrap/js/bootstrap.min.js" %}></script>
     
     <!-- END GLOBAL MANDATORY SCRIPTS -->
-    <script src={% static "assets/js/authentication/form-3.js" %}></script>
 </body>
 </html>
