@@ -12,6 +12,24 @@
     <div class="alert alert-warning text-center mb-0">{{html_display.warn_message}}</div>
     {% endif %}
 
+    <!--  BEGIN WALLPAPER SECTION  -->
+    <div class="d-flex m-0 p-0 overflow-hidden" style="height: 35vh">
+        <div class="d-flex w-100 align-self-center">
+            <img class="w-100" src={{ wallpaper_path }} alt="wallpaper">
+        </div>
+        <div class="row m-0 w-100 position-absolute" style="height: 35vh;">
+            <div class="w-100 h-100 m-0 p-0 position-absolute">
+                <div class="row w-100 m-0" style="height: 60%"></div>
+                <div class="row w-100 m-0"
+                    style="height: 40%; background: -webkit-linear-gradient(top, #00000000 0%, #000000dd 100%);">
+                </div>
+            </div>
+            
+        </div>
+    </div>
+    <!--  END WALLPAPER SECTION  -->
+
+
     <!--  BEGIN SWITCH TAB  -->
     <ul class="nav nav-tabs nav-tabs-solid nav-justified" role="tablist">
         <li class="nav-item">
@@ -123,12 +141,13 @@
                                 </ul>
                             </div>
                         </div>
-
+                        {% if not org.introduction == "" %}
                         <div class="d-flex justify-content-between">
                             <h3 class="">组织简介</h3>
                             <br /><br />
                         </div>
                         <p class="m-3">{{org.introduction}}</p>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -210,49 +229,7 @@
                     </div>
                     <!--  END MEMBERS  -->
 
-                    <!--  BEGIN HIDDEN MEMBERS  -->
-                    {% if html_display.is_myself == True %}
-                    <div class="widget-content widget-content-area my-3">
-
-                        <div class="row">
-                            <h3 class="col mb-0">隐藏的成员</h3>
-                        </div>
-
-                        <div class="bio-skill-box">
-
-                            {% if html_display.hidden_orgs_info is None %}
-                            <p style="text-align: center;">没有隐藏的成员</p>
-                            {% else %}
-                            <!-- <div class="row">
-                                {% for org, ava, pos, status in html_display.hidden_orgs_info %}
-                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
-                                    <div
-                                        style="padding-left: 2%;padding-right: 2%; background-image: url({{ ava }}); background-size: 55%; background-repeat: no-repeat; background-position: right;">
-                                        <div class=" b-skills row" style="background-color: #ffffffcc;">
-                                            <div class="col-9 container-fluid">
-                                                <a href="/orginfo/{{ org.oname }}">
-                                                    <h5>{{ org.oname }}</h5>
-                                                </a>
-                                                <p
-                                                    style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                    {{ org.introduction }}</p>
-                                            </div>
-                                            <div class="col-3 pr-0">
-                                                <p>职务 <b class="text-muted">{{ pos }}</b></p>
-                                                <p>状态 <b class="text-muted">{{ status }}</b></p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                {% endfor %}
-
-                            </div> -->
-                            {% endif %}
-                        </div>
-
-                    </div>
-                    {% endif %}
-                    <!--  END HIDDEN MEMBERS  -->
+                    
 
                 </div>
             </div>
