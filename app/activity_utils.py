@@ -712,10 +712,10 @@ def cancel_activity(request, activity):
                 payer = record.proposer
                 total_amount += record.amount
                 if record.message == "quota":
-                    payer.quota += amount
-                    YP.YQPoint += amount
+                    payer.quota += record.amount
+                    YP.YQPoint += record.amount
                 else:
-                    payer.YQPoint += amount
+                    payer.YQPoint += record.amount
                 record.status = TransferRecord.TransferStatus.REFUND
                 record.save()
 

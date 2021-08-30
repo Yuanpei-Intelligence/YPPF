@@ -1,3 +1,13 @@
+'''
+wechat_send.py
+
+集合了需要发送到微信的函数
+
+调用提示
+    base开头的函数是基础函数，通常作为定时任务，无返回值，但可能打印报错信息
+    其他函数可以假设是异步IO，参数符合条件时不抛出异常
+    由于异步假设，函数只返回尝试状态，即是否设置了定时任务，不保证成功发送
+'''
 import requests
 import json
 
@@ -234,7 +244,7 @@ def publish_notification(notification_or_id):
             )
         )
 
-    send_wechat(wechat_receivers, message, **kws)  # 不使用定时任务请改为这句
+    send_wechat(wechat_receivers, message, **kws)
     return True
 
 
@@ -366,7 +376,7 @@ def publish_notifications(
 
 
 def publish_activity(activity_or_id):
-    """根据活动或id（实际是主键）向所有订阅该组织信息的学生发送，可以只发给在校学生"""
+    """根据活动或id（实际是主键）向所有订阅该组织信息的在校学生发送"""
     try:
         if isinstance(activity_or_id, Activity):
             activity = activity_or_id
@@ -405,7 +415,7 @@ def publish_activity(activity_or_id):
                 f"活动时间：{start}-{finish}",
                 "活动内容：",
                 content,
-                "点击查看详情",
+                "查看详情",
             )
         )
         if url:
@@ -428,9 +438,25 @@ def publish_activity(activity_or_id):
         if url:
             message += f'\n\n<a href="{url}">阅读原文</a>'
         else:
-            message += f'\n\n<a href="{DEFAULT_URL}">点击查看详情</a>'
+            message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
     send_wechat(subscribers, message, **kws)
     return True
+
+
+def send_captcha(stu_id: str or int, captcha: str, url='/forgetpw/'):
+    users = (stu_id, )
+    kws = {"card": True}
+    if url and url[0] == "/":  # 相对路径变为绝对路径
+        url = THIS_URL + url
+    message = (
+                "YPPF登录验证\n"
+                "您的账号正在进行企业微信验证，本次请求的验证码为："
+                f"<div class=\"highlight\">{captcha}</div>"
+            )
+    if url:
+        kws["url"] = url
+        kws["btntxt"] = "登录"
+    send_wechat(users, message, **kws)
 
 
 def base_invite(stu_id:str or int, retry_times=None):
