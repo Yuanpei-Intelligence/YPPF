@@ -1237,6 +1237,9 @@ def forget_password(request):
         - 连接设置的timeout为6s
         - 如果引入企业微信验证，建议将send_captcha分为'qywx'和'email'
     """
+    if request.user.is_authenticated:
+        return redirect("/welcome/")
+
     if request.session.get("received_user"):
         username = request.session["received_user"]  # 自动填充，方便跳转后继续
     if request.method == "POST":
@@ -1257,7 +1260,7 @@ def forget_password(request):
                 display = wrong("暂不支持组织账号验证码登录！")
                 display["alert"] = True
                 return render(request, "forget_password.html", locals())
-            if send_captcha == "yes" or "email":
+            if send_captcha in ["yes", "email"]:    # 单个按钮(yes)发送邮件
                 email = person.email
                 if not email or email.lower() == "none" or "@" not in email:
                     display = wrong(
@@ -1314,7 +1317,7 @@ def forget_password(request):
                     display = wrong("请先发送验证码")
                 elif expired:
                     display = wrong("验证码已过期，请重新发送")
-                elif vertify_code.upper() == captcha.upper():
+                elif str(vertify_code).upper() == captcha.upper():
                     auth.login(request, user)
                     utils.clear_captcha_session(request)
                     request.session["username"] = username
