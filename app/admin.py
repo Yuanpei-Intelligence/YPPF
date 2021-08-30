@@ -21,6 +21,16 @@ class NaturalPersonAdmin(admin.ModelAdmin):
     ]
     search_fields = ("person_id__username", "name")
 
+class FreshmanAdmin(admin.ModelAdmin):
+    list_display = [
+        "sid",
+        "name",
+        "place",
+        "grade",
+        "status",
+    ]
+    search_fields = ("sid", "name")
+    list_filter = ("status", "grade", "place")
 
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ["oname"]
@@ -33,6 +43,7 @@ class PositionAdmin(admin.ModelAdmin):
 
 
 admin.site.register(NaturalPerson, NaturalPersonAdmin)
+admin.site.register(Freshman, FreshmanAdmin)
 admin.site.register(Organization, OrganizationAdmin)
 admin.site.register(Position, PositionAdmin)
 

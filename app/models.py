@@ -31,6 +31,11 @@ class NaturalPerson(models.Model):
 
     # Common Attributes
     person_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
+    
+    # 不要在任何地方使用此字段，建议先删除unique进行迁移，然后循环调用save
+    stu_id_dbonly = models.CharField("学号——仅数据库", max_length=150,
+                                    blank=True)
+
     name = models.CharField("姓名", max_length=10)
     nickname = models.CharField("昵称", max_length=20, null=True, blank=True)
 
@@ -49,7 +54,7 @@ class NaturalPerson(models.Model):
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
     first_time_login = models.BooleanField(default=True)
-    last_time_login = models.DateTimeField("活动开始时间", blank=True, null=True)
+    last_time_login = models.DateTimeField("上次登录时间", blank=True, null=True)
     objects = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
 
@@ -121,9 +126,38 @@ class NaturalPerson(models.Model):
         return info
 
     def save(self, *args, **kwargs):
+        if not self.stu_id_dbonly:
+            self.stu_id_dbonly = self.person_id.username
+        else:
+            assert self.stu_id_dbonly == self.person_id.username, "学号不匹配！"
         self.YQPoint = round(self.YQPoint, 1)
         self.bonusPoint = round(self.bonusPoint, 1)
         super().save(*args, **kwargs)
+
+
+class Freshman(models.Model):
+    class Meta:
+        verbose_name = "新生信息"
+        verbose_name_plural = verbose_name
+
+    sid = models.CharField("学号", max_length=20, unique=True)
+    name = models.CharField("姓名", max_length=10)
+    gender = models.CharField("性别", max_length=5)
+    birthday = models.DateField("生日")
+    place = models.CharField("生源地", default="其它", max_length=32, blank=True)
+
+    class Status(models.IntegerChoices):
+        UNREGISTERED = (0, "未注册")
+        REGISTERED = (1, "已注册")
+    
+    grade = models.CharField("年级", max_length=5, null=True, blank=True)
+    status = models.SmallIntegerField("注册状态", choices=Status.choices, default=0)
+
+    def exists(self):
+        user_exist = User.objects.filter(username=self.sid).exists()
+        person_exist = NaturalPerson.objects.filter(person_id__username=self.sid).exists()
+        return "person" if person_exist else(
+                "user" if user_exist else "")
 
 
 class OrganizationType(models.Model):
@@ -437,7 +471,7 @@ class ActivityManager(models.Manager):
 class CommentBase(models.Model):
     '''
     带有评论的模型基类
-    子类必须定义typename，值应为为类名的小写版本或类名
+    子类必须重载save()保存typename，值必须为类名的小写版本或类名
     子类如果希望直接使用聚合页面呈现模板，应该定义__str__方法
     默认的呈现内容为：实例名称、创建时间、上次修改时间
     如果希望呈现审核页面，如审核中、创建者信息，则应该分别定义get_status_display和get_poster_name
@@ -459,7 +493,7 @@ class CommentBase(models.Model):
     id = models.AutoField(primary_key=True)  # 自增ID，标识唯一的基类信息
     typename = models.CharField("模型类型", max_length=32, default="commentbase")   # 子类信息
     time = models.DateTimeField("发起时间", auto_now_add=True)
-    modify_time = models.DateTimeField("上次修改时间", auto_now_add=True) # 每次评论自动更新
+    modify_time = models.DateTimeField("上次修改时间", auto_now=True) # 每次评论自动更新
 
     def get_instance(self):
         if self.typename.lower() == 'commentbase':
@@ -469,9 +503,6 @@ class CommentBase(models.Model):
         except:
             return self
 
-    def save(self, *args, **kwargs):
-        self.modify_time = datetime.now()   # 自动更新修改时间
-        super().save(*args, **kwargs)
 
 class Activity(CommentBase):
     class Meta:
@@ -540,6 +571,9 @@ class Activity(CommentBase):
     need_checkin = models.BooleanField("是否需要签到", default=False)
 
     examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    # recorded 其实是冗余，但用着方便，存了吧
+    recorded = models.BooleanField("是否预报备", default=False)
+    valid = models.BooleanField("是否已审核", default=False)
 
     class YQPointSource(models.IntegerChoices):
         COLLEGE = (0, "学院")
@@ -553,14 +587,15 @@ class Activity(CommentBase):
     capacity = models.IntegerField("活动最大参与人数", default=100)
     current_participants = models.IntegerField("活动当前报名人数", default=0)
 
-    URL = models.URLField("活动相关(推送)网址", null=True, blank=True)
+    URL = models.URLField("活动相关(推送)网址", default="", blank=True)
 
     def __str__(self):
         return f"活动：{self.title}"
 
     class Status(models.TextChoices):
         REVIEWING = "审核中"
-        ABORT = "未过审"
+        ABORT = "已撤销"
+        REJECT = "未过审"
         CANCELED = "已取消"
         APPLYING = "报名中"
         WAITING = "等待中"
@@ -936,7 +971,7 @@ class Reimbursement(CommentBase):
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
 
     def __str__(self):
-        return f'{self.activity.title}活动报销'
+        return f'{self.related_activity.title}活动报销'
         
     def save(self, *args, **kwargs):
         self.typename = "reimbursement"
@@ -957,20 +992,21 @@ class Reimbursement(CommentBase):
         return display
     def is_pending(self):   #表示是不是pending状态
             return self.status == Reimbursement.ReimburseStatus.WAITING
-   
+
+
 class Help(models.Model):
-     '''
-         页面帮助类
-     '''
-     title = models.CharField("帮助标题", max_length=20, blank=False)
-     content = models.TextField("帮助内容", max_length=500)
+    '''
+        页面帮助类
+    '''
+    title = models.CharField("帮助标题", max_length=20, blank=False)
+    content = models.TextField("帮助内容", max_length=500)
 
-     class Meta:
-         verbose_name = "页面帮助"
-         verbose_name_plural = "页面帮助"
+    class Meta:
+        verbose_name = "页面帮助"
+        verbose_name_plural = "页面帮助"
 
-     def __str__(self) -> str:
-         return self.title
+    def __str__(self) -> str:
+        return self.title
 
 class Wishes(models.Model):
     class Meta:
@@ -979,3 +1015,4 @@ class Wishes(models.Model):
         ordering = ["-time"]
     text = models.TextField("心愿内容", default="", blank=True)
     time = models.DateTimeField("发布时间", auto_now_add=True)
+    background = models.TextField("颜色编码", default="")
