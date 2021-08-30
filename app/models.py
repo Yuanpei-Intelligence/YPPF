@@ -154,7 +154,10 @@ class Freshman(models.Model):
     status = models.SmallIntegerField("注册状态", choices=Status.choices, default=0)
 
     def exists(self):
-        return User.objects.filter(username=self.sid).exists()
+        user_exist = User.objects.filter(username=self.sid).exists()
+        person_exist = NaturalPerson.objects.filter(person_id__username=self.sid).exists()
+        return "person" if person_exist else(
+                "user" if user_exist else "")
 
 
 class OrganizationType(models.Model):
@@ -568,6 +571,9 @@ class Activity(CommentBase):
     need_checkin = models.BooleanField("是否需要签到", default=False)
 
     examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    # recorded 其实是冗余，但用着方便，存了吧
+    recorded = models.BooleanField("是否预报备", default=False)
+    valid = models.BooleanField("是否已审核", default=False)
 
     class YQPointSource(models.IntegerChoices):
         COLLEGE = (0, "学院")
@@ -581,14 +587,15 @@ class Activity(CommentBase):
     capacity = models.IntegerField("活动最大参与人数", default=100)
     current_participants = models.IntegerField("活动当前报名人数", default=0)
 
-    URL = models.URLField("活动相关(推送)网址", null=True, blank=True)
+    URL = models.URLField("活动相关(推送)网址", default="", blank=True)
 
     def __str__(self):
         return f"活动：{self.title}"
 
     class Status(models.TextChoices):
         REVIEWING = "审核中"
-        ABORT = "未过审"
+        ABORT = "已撤销"
+        REJECT = "未过审"
         CANCELED = "已取消"
         APPLYING = "报名中"
         WAITING = "等待中"
@@ -964,7 +971,7 @@ class Reimbursement(CommentBase):
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
 
     def __str__(self):
-        return f'{self.activity.title}活动报销'
+        return f'{self.related_activity.title}活动报销'
         
     def save(self, *args, **kwargs):
         self.typename = "reimbursement"
@@ -985,20 +992,21 @@ class Reimbursement(CommentBase):
         return display
     def is_pending(self):   #表示是不是pending状态
             return self.status == Reimbursement.ReimburseStatus.WAITING
-   
+
+
 class Help(models.Model):
-     '''
-         页面帮助类
-     '''
-     title = models.CharField("帮助标题", max_length=20, blank=False)
-     content = models.TextField("帮助内容", max_length=500)
+    '''
+        页面帮助类
+    '''
+    title = models.CharField("帮助标题", max_length=20, blank=False)
+    content = models.TextField("帮助内容", max_length=500)
 
-     class Meta:
-         verbose_name = "页面帮助"
-         verbose_name_plural = "页面帮助"
+    class Meta:
+        verbose_name = "页面帮助"
+        verbose_name_plural = "页面帮助"
 
-     def __str__(self) -> str:
-         return self.title
+    def __str__(self) -> str:
+        return self.title
 
 class Wishes(models.Model):
     class Meta:
