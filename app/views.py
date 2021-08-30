@@ -951,8 +951,8 @@ def freshman(request):
             err_msg = "提交信息不足"
             return render(request, html_path, locals())
         try:
-            sid = str(request.POST["sid"])
-            freshman = Freshman.objects.select_for_update().get(sid=sid)
+            sid = str(sid)
+            freshman = Freshman.objects.get(sid=sid)
         except:
             err_msg = "不存在该学号信息，你真的是新生吗？"
             return render(request, html_path, locals())
@@ -960,11 +960,11 @@ def freshman(request):
             exist = freshman.exists()
             assert exist != "user", "用户仅部分注册，请联系管理员"
             registered = freshman.status == Freshman.Status.REGISTERED
-            assert exist and not registered, "您尚未注册，但用户已存在，请联系管理员"
-            assert not exist and registered, "您已经注册，但用户不存在，请联系管理员"
+            assert not (exist and not registered), "您尚未注册，但用户已存在，请联系管理员"
+            assert not (not exist and registered), "您已经注册，但用户不存在，请联系管理员"
             if exist or registered:
                 err_msg = "您的账号已被注册过，请阅读使用说明！"
-                return redirect("/freshman/?success=1&alert=")
+                return redirect("/freshman/?success=1&alert=" + err_msg)
         except Exception as e:
             err_msg = str(e)
             return render(request, html_path, locals())
@@ -1012,8 +1012,8 @@ def freshman(request):
                     email=email,
                     )
                 current = "更新注册状态"
-                freshman.status = Freshman.Status.REGISTERED
-                freshman.save()
+                Freshman.objects.filter(sid=sid).select_for_update().update(
+                    status = Freshman.Status.REGISTERED)
         except:
             err_msg = f"在{current}时意外发生了错误，请联系管理员"
             return render(request, html_path, locals())
