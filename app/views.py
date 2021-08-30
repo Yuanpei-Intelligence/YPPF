@@ -971,7 +971,7 @@ def freshman(request):
         try:
             sname = str(sname)
             gender = str(gender)
-            birthday_date = datetime.strptime(birthday, "%Y-%m-%d")
+            birthday_date = datetime.strptime(birthday, "%Y-%m-%d").date()
             birthplace = str(birthplace)
             email = str(email)
         except:
