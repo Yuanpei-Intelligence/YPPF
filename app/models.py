@@ -34,7 +34,7 @@ class NaturalPerson(models.Model):
     
     # 不要在任何地方使用此字段，建议先删除unique进行迁移，然后循环调用save
     stu_id_dbonly = models.CharField("学号——仅数据库", max_length=150,
-                                     blank=True, unique=True)
+                                    blank=True)
 
     name = models.CharField("姓名", max_length=10)
     nickname = models.CharField("昵称", max_length=20, null=True, blank=True)
