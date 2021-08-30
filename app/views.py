@@ -4,6 +4,7 @@ from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
 from app.models import (
     NaturalPerson,
+    Freshman,
     Position,
     Organization,
     OrganizationType,
@@ -40,7 +41,7 @@ from app.position_utils import(
     update_pos_application,
 )
 from app.reimbursement_utils import update_reimb_application
-from app.wechat_send import publish_notification, publish_notifications
+from app.wechat_send import publish_notification, publish_notifications, invite
 from app.notification_utils import notification_create, notification_status_change
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
@@ -68,7 +69,7 @@ import csv
 
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
-from .scheduler_func import scheduler
+from app.scheduler import scheduler
 
 # 注册启动以上schedule任务
 register_events(scheduler)
@@ -922,7 +923,111 @@ def account_setting(request):
         return render(request, "org_account_setting.html", locals())
 
 
-def register(request):
+def freshman(request):
+    if request.user.is_authenticated:
+        return redirect("/welcome/")
+
+    if request.GET.get("success") is not None:
+        alert = request.GET.get("alert")
+        return render(request, "registerSuccess.html", locals())
+
+    # 选择生源地列表，前端使用量
+    address_set = set(Freshman.objects.all().values_list("place", flat=True))
+    address_set.discard("")
+    address_set.discard("其它")
+    address_list = sorted(address_set)
+    address_list.append("其它")
+    html_path = "freshman-top.html"
+    if request.method == "POST":
+        # 这些也是失败时的前端使用量
+        try:
+            sid = request.POST["sid"]
+            sname = request.POST["sname"]
+            gender = request.POST["gender"]
+            birthday = request.POST["birthday"] # 前端使用
+            birthplace = request.POST["birthplace"]
+            email = request.POST["email"]
+        except:
+            err_msg = "提交信息不足"
+            return render(request, html_path, locals())
+        try:
+            sid = str(request.POST["sid"])
+            freshman = Freshman.objects.select_for_update().get(sid=sid)
+        except:
+            err_msg = "不存在该学号信息，你真的是新生吗？"
+            return render(request, html_path, locals())
+        try:
+            exist = freshman.exists()
+            assert exist != "user", "用户仅部分注册，请联系管理员"
+            registered = freshman.status == Freshman.Status.REGISTERED
+            assert exist and not registered, "您尚未注册，但用户已存在，请联系管理员"
+            assert not exist and registered, "您已经注册，但用户不存在，请联系管理员"
+            if exist or registered:
+                err_msg = "您的账号已被注册过，请阅读使用说明！"
+                return redirect("/freshman/?success=1&alert=")
+        except Exception as e:
+            err_msg = str(e)
+            return render(request, html_path, locals())
+        try:
+            sname = str(sname)
+            gender = str(gender)
+            birthday_date = datetime.strptime(birthday, "%Y-%m-%d")
+            birthplace = str(birthplace)
+            email = str(email)
+        except:
+            err_msg = "错误的个人信息格式"
+            return render(request, html_path, locals())
+        try:
+            assert freshman.name == sname, "姓名不匹配"
+            assert freshman.gender == gender, "个人信息错误"
+            assert freshman.birthday == birthday_date, "个人信息错误"
+            if freshman.place != "":
+                assert freshman.place == birthplace, "生源地错误"
+            else:
+                assert "其它" == birthplace, "生源地错误"
+            assert "@" in email, "请使用合法的邮件地址"
+            assert gender in ["男", "女"], "性别数据异常，请联系管理员"
+        except Exception as e:
+            err_msg = str(e)
+            return render(request, html_path, locals())
+
+        np_gender = NaturalPerson.Gender.MALE if gender == "男" else\
+                    NaturalPerson.Gender.FEMALE
+
+        # 检查通过，这里假设user创建成功后自然人也能创建成功
+        current = "随机生成密码"
+        try:
+            with transaction.atomic():
+                password = hash_coder.encode(sname + str(random.random()))
+                current = "创建用户"
+                user = User.objects.create_user(username=sid, password=password)
+                current = "创建个人账号"
+                NaturalPerson.objects.create(
+                    person_id=user,
+                    stu_id_dbonly=sid,
+                    name=sname,
+                    gender=np_gender,
+                    stu_major="元培计划（待定）",
+                    stu_grade=freshman.grade,
+                    email=email,
+                    )
+                current = "更新注册状态"
+                freshman.status = Freshman.Status.REGISTERED
+                freshman.save()
+        except:
+            err_msg = f"在{current}时意外发生了错误，请联系管理员"
+            return render(request, html_path, locals())
+        
+        # 发送企业微信邀请，不会报错
+        invite(sid, multithread=True)
+        
+        err_msg = "您的账号已成功注册，请尽快加入企业微信以接受后续通知！"
+        return redirect("/freshman/?success=1&alert=" + err_msg)
+
+    return render(request, html_path, locals())
+
+
+def auth_register(request):
     if request.user.is_superuser:
         if request.method == "POST" and request.POST:
             name = request.POST["name"]
@@ -1065,7 +1170,6 @@ def search(request):
         activities = list(activities)
         activities.sort(key=lambda activity: abs(now - activity.start))
         return None if len(activities) == 0 else activities[0:3]
-
 
     org_display_list = []
     for org in organization_list:
@@ -1655,10 +1759,10 @@ def myYQPoint(request):
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
-     # 补充一些呈现信息
-     # bar_display["title_name"] = "My YQPoint"
-     # bar_display["navbar_name"] = "我的元气值"  #
-     # bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
+    # 补充一些呈现信息
+    # bar_display["title_name"] = "My YQPoint"
+    # bar_display["navbar_name"] = "我的元气值"  #
+    # bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
 
     return render(request, "myYQPoint.html", locals())
 
