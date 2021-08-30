@@ -27,7 +27,7 @@
                     </div> -->
                 <div class="row ">
                     <!--  活动照片展示模块  -->
-                    <div class="col-lg-8 col-md-8 mb-5 p-0">
+                    <div class="col-8 mb-5 p-0">
                         <div id="style1" class="carousel slide style-custom-1" data-ride="carousel">
                              <ol class="carousel-indicators">
                                 <li data-target="#style1 active" ></li>
@@ -57,7 +57,7 @@
                     </div>
 
                     <!--  想做一个类似Facebook的日历小标签，TODO  -->
-                    <div class="col-lg-4 col-md-4 mb-5">
+                    <div class="col-4 mb-5">
                         <div style="position: relative; width: 150px; height: 150px;">
                             <div style="position: relative; width: 100%; height: 100%;">
                                 <img src={% static "assets/img/calendaricon.png" %} style="width: 100%; height: 100%; position: relative; clear: both;" alt="">
@@ -121,6 +121,10 @@
                                                         <line x1="3" y1="10" x2="21" y2="10"></line>
                                                     </svg>
                                                     活动时间：{{start_time}} —— {{end_time}}
+                                                </p>
+                                                <p class="meta-time">
+                                                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>
+                                                    活动地点：{{activity.location}}
                                                 </p>
                                                 <p class="meta-time">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18"
@@ -225,6 +229,22 @@
                                                     <button class="btn btn-success btn-block mb-4 mr-2" data-toggle="collapse" data-target="#summaryphoto">
                                                         上传总结照片
                                                     </button>
+                                                    <!--  如果要上传照片，则展示下面的部分  -->
+                                                    <form method="POST" enctype="multipart/form-data">
+                                                        <div id="summaryphoto" class="collapse">
+                                                            <div class="form-group">
+                                                                <div class="col">
+                                                                    <input onchange="showFilenameLocal(this.files)" type="file" 
+                                                                           class="custom-file-input" id="images" name="images" 
+                                                                           accept="image/*">
+                                                                    <label id="upload_annouce_photo" name="upload_annouce_photo" class="custom-file-label" 
+                                                                           for="customFile"> 请上传一张图片 </label>
+                                                                </div>
+                                                            </div>
+                                                            <input type="hidden" name="option" value="submitphoto">
+                                                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2">确认上传</button>
+                                                        </div>
+                                                    </form>
                                                     <form method="POST">
                                                         <input type="hidden" name="option" value="payment">
                                                         <button class="btn btn-primary btn-block mb-4 mr-2">申请报销</button>
@@ -235,7 +255,6 @@
                                                     <input type="hidden" name="option" value="edit">
                                                     <button class="btn btn-primary btn-block mb-4 mr-2">修改信息</button>
                                                 </form>
-                                                
                                                 <form method="POST">
                                                     <input type="hidden" name="option" value="cancel">
                                                     <button class="btn btn-danger btn-block mb-4 mr-2">取消活动</button>
@@ -243,21 +262,6 @@
                                                 {% endif %}
                                             {% endif %}
                                             </div>
-
-                                            <!--  如果要上传照片，则展示下面的部分  -->
-                                            <div id="summaryphoto" class="collapse">
-                                                <form method="POST" enctype="multipart/form-data">
-                                                    <input type="hidden" name="option" value="submitphoto">
-                                                    <input type="hidden" name="aid" value={{aid}}>
-                                                    <p>上传活动照片(请上传长:宽>3:2的横长方形图片)</p>
-                                                    <label title="活动总结照片">
-                                                        <input type="file" accept="image/*" name="images" multiple>
-                                                    </label>
-                                                    <br/><br/>
-                                                    <button class="btn btn-primary btn-block mb-4 mr-2">确认上传</button>
-                                                </form>
-                                            </div>
-    
                                         </div>
         
                                     </div>
@@ -288,6 +292,7 @@
                         </div>
                         {% else %}
                         <div class="col-xl-4 col-lg-4 col-md-5 col-sm-12 layout-top-spacing">
+                            <div class="row">
                             <a href="/orginfo/{{org_name}}">
                                 <div class="statbox widget box box-shadow">
                                     <div class="widget-header">
@@ -308,6 +313,24 @@
                                     </div>
                                 </div>
                             </a>
+                            </div>
+                            <div class="row">
+                                <p></p>
+                            </div>
+                            {% if summary_photo_exists %}
+                            <div class="row">
+                                <div class="statbox widget box box-shadow">
+                                    <div class="widget-header">
+                                        <div class="row">
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                <h4>总结照片</h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <img src="{{summary_photo}}" height="100%" width="100%" alt="avatar">
+                                </div>
+                            {% endif %}
+                            </div>
                         </div>
                         {% endif %}
                     </div>
@@ -316,6 +339,19 @@
             </div>
         </div>
     </div>
+
+    <script type="text/javascript">
+    function showFilenameLocal(files){
+        var text = "";
+        for (i = 0; i < files.length; i++)
+        {
+        text += (" "+files[i].name);
+        }
+        if (text == "")
+            text = "请上传一张图片";
+        $("#upload_annouce_photo").html(text);
+    }
+    </script>
     <!--  END CONTENT AREA  -->
 
 

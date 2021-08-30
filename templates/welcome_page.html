@@ -162,21 +162,24 @@
                         <h3>活动一览</h3>
                         <ul id="Tab" class="nav nav-tabs nav-tabs-solid nav-justified">
                             <li class="nav-item">
-                                <a class="nav-link active" href="#recentactivity" data-toggle="tab">
+                                <!-- <a class="nav-link active" href="#recentactivity" data-toggle="tab">
                                     近期活动
-                                </a>
+                                </a> -->
+                                <b class="nav-link active" data-toggle="tab" role="tab" href="#recentactivity">近期活动</b>
                             </li>
                     
                             <li class="nav-item">
-                                <a class="nav-link" href="#news" data-toggle="tab">
+                                <!-- <a class="nav-link" href="#news" data-toggle="tab">
                                     最新发布
-                                </a>
+                                </a> -->
+                                <b class="nav-link" data-toggle="tab" role="tab" href="#news">最新发布</b>
                             </li>
 
                             <li class="nav-item">
-                                <a class="nav-link" href="#recentends" data-toggle="tab">
+                                <!-- <a class="nav-link" href="#recentends" data-toggle="tab">
                                     即将截止
-                                </a>
+                                </a> -->
+                                <b class="nav-link" data-toggle="tab" role="tab" href="#recentends">即将截止    </b>
                             </li>
                         </ul>
 
@@ -313,8 +316,25 @@
                                     <form method="POST">
                                         <!-- 模态框主体 -->
                                         <div class="modal-body">
-                                            <textarea id="wish" name="wish" class="form-control" rows="3"
+                                            <div class="form-group">
+                                            <textarea id="wish" name="wish" class="form-control" rows="4"
                                                 placeholder="填写你的心愿，你的心愿是匿名的哦！（请共同创建文明友善的发言环境，否则可能面临封号和处分等风险）"></textarea>
+                                            </div>
+                                            <div class="form-group">
+                                                <p>选择你的背景(非必选)</p>
+                                                <div class="radio">
+                                                    <div class="row">
+                                                    {% for pic in backgroundpics %}
+                                                    <div class="col-2 mb-5">
+                                                        <label>
+                                                        <input type="radio" name="backgroundcolor" value={{pic.color}}>
+                                                            <img src={{pic.src}} class="img-fluid">
+                                                        </label>
+                                                    </div>
+                                                    {% endfor %}
+                                                    </div>
+                                                </div>
+                                            </div>                                        
                                         </div>
                                
                                         <!-- 模态框底部 -->
@@ -325,15 +345,16 @@
                                 </div>
                             </div>
                         </div>
-                        <p>TIP:展示今日心愿</p>
-                        <div class="pre-scrollable bio-skill-box layout-top-spacing">
+                        <!-- 心愿墙 -->
+                        <div class="pre-scrollable bio-skill-box row layout-top-spacing">
                             {% if wishes|length == 0 %}
                             <p style="text-align: center;">暂时没有心愿！</p>
                             {% endif %}
                             {% for wish in wishes %}
-                            <div class="col-12" style="padding: 1%;">
-                                    <div class="d-flex b-skills"style="padding: 2%;" >
-                                        <p>{{wish.text}}</p>
+                            <div class="col-12" style="padding: 2%; margin: 0;">
+                                    <div class="d-flex b-skills"
+                                    style="margin: 0; padding: 4%; background-color:{{wish.background}};">
+                                        <p style="margin: 0;">{{wish.text}}</p>
                                     </div>
                             </div><br/>
                             {% endfor %}

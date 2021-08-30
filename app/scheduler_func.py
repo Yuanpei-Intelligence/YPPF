@@ -1,7 +1,3 @@
-from apscheduler.schedulers.background import BackgroundScheduler
-from django.dispatch.dispatcher import receiver
-from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
-
 from django.db.models import F
 from django.http import JsonResponse, HttpResponse, QueryDict  # Json响应
 from django.shortcuts import render, redirect  # 网页render & redirect
@@ -18,9 +14,7 @@ from app.notification_utils import bulk_notification_create
 from random import sample
 from numpy.random import choice
 
-# 定时任务生成器
-scheduler = BackgroundScheduler()
-scheduler.add_jobstore(DjangoJobStore(), "default")
+from app.scheduler import scheduler
 
 def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
     '''
