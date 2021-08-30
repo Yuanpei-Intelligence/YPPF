@@ -73,7 +73,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                 #修改申请状态
                 application.status=Reimbursement.ReimburseStatus.CANCELED
                 application.save()
-                context = succeed("成功取消“" +application.activity.title+ "”的经费申请!")
+                context = succeed("成功取消“" +application.related_activity.title+ "”的经费申请!")
                 context["application_id"] = application.id
                 return context
 
@@ -117,7 +117,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                                 return wrong("上传的材料只支持图片格式。")
                     # 至此可以新建申请, 创建一个空申请
                     application =Reimbursement.objects.create(
-                                activity=reimb_act, amount=reimb_YQP, pos=me.organization_id,message=message)
+                                related_activity=reimb_act, amount=reimb_YQP, pos=me.organization_id,message=message)
                     #保存报销材料到评论中，后续如果需要更新报销材料则在评论中更新
                     if len(images)>0:
                         text = "以下默认为初始的报销材料"
@@ -154,7 +154,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     application.amount=reimb_YQP
                     application.message=message
                     application.save()
-                    context = succeed(f'活动“{application.activity.title}”的经费申请已成功修改，请耐心等待{auditor_name}老师审批！' )
+                    context = succeed(f'活动“{application.related_activity.title}”的经费申请已成功修改，请耐心等待{auditor_name}老师审批！' )
                     context["application_id"] = application.id
                     return context
 
@@ -166,7 +166,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                 return wrong("访问者身份异常！")
             if not application.is_pending():
                 return wrong("无法操作, 该申请已经完成或被取消!")
-            act_title=application.activity.title
+            act_title=application.related_activity.title
             # 否则，应该直接完成状态修改
             if post_type == "refuse_submit":
                 #返还组织的元气值
