@@ -63,7 +63,6 @@
                     const ref = document.querySelector(`#style1`);
                     const fit = () => {
                         const bar = document.querySelector(`#custom-wishes`);
-                        console.log(ref.offsetHeight, bar.offsetTop, bar.parentElement.offsetTop)
                         bar.style.height = `${ref.offsetHeight - bar.offsetTop - bar.parentElement.offsetTop}px`;
                     }; // sorry I really don't feel like using bootstrap
                     new ResizeObserver(fit).observe(ref);
@@ -166,7 +165,8 @@
                     <!-- END MODAL -->
 
                     <!-- BEGIN WISHES -->
-                    <div class="bio-skill-box p-0" id="custom-wishes" style="overflow-y: scroll; overflow-x: visible;">
+                    <div class="bio-skill-box p-0" id="custom-wishes"
+                        style="min-height: 15vh; overflow-y: scroll; overflow-x: visible;">
                         {% if wishes|length == 0 %}
                         <p class="mx-auto" style="text-align: center;">暂时没有心愿！</p>
                         {% else %}
