@@ -659,7 +659,7 @@ class TransferRecord(models.Model):
         REFUND = (4, "已退回")
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
-    is_increase=models.IntegerField("标示报销时是否真正转账",default=0)#用于转账，如果为1的话，表示不是真的转账
+    is_increase=models.IntegerField("报销兑换",default=0,help_text="报销时转账并未实质发生，用此字段标识，0标识默认转账，1为报销兑换")
     def save(self, *args, **kwargs):
         self.amount = round(self.amount, 1)
         super(TransferRecord, self).save(*args, **kwargs)
