@@ -20,7 +20,8 @@ from app.models import (
     CommentPhoto,
     YQPointDistribute,
     Reimbursement,
-    Wishes
+    Wishes,
+    Weather
 )
 from django.db.models import Max
 import app.utils as utils
@@ -815,8 +816,8 @@ def homepage(request):
         photos = photo_display[1:]
 
     # 天气
-    weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
-    html_display['weather'] = json.loads(weather)
+    # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
+    html_display['weather'] = Weather.objects.get_activated().weather_json
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "元培生活")

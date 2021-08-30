@@ -1,6 +1,6 @@
 from django.db import models, transaction
 from django.db.models.fields import related
-from django_mysql.models import ListCharField
+from django_mysql.models import ListCharField, JSONField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -1016,3 +1016,20 @@ class Wishes(models.Model):
     text = models.TextField("心愿内容", default="", blank=True)
     time = models.DateTimeField("发布时间", auto_now_add=True)
     background = models.TextField("颜色编码", default="")
+
+
+class WeatherManager(models.Manager):
+    def get_activated(self):
+        # 预期只有一个status为True的实例
+        return self.get(status=True)
+
+
+class Weather(models.Model):
+    class Meta:
+        verbose_name = "实时天气"
+        verbose_name_plural = verbose_name
+    
+    modify_time = models.DateTimeField("上次修改时间", auto_now=True)
+    weather_json = JSONField("当前天气")
+    status = models.BooleanField("是否应用", default=False)
+    objects = WeatherManager()
