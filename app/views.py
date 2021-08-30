@@ -646,13 +646,14 @@ def orginfo(request, name=None):
     html_display["isboss"] = False
 
     # 组织成员list
-    positions = Position.objects.activated().filter(org=org).order_by("pos")  # 升序
+    positions = Position.objects.activated().filter(org=org,show_flag=True).order_by("pos")  # 升序
     member_list = []
     for p in positions:
         if p.person.person_id == user and p.pos == 0:
             html_display["isboss"] = True
         if p.show_post == True or p.pos == 0 or html_display["is_myself"]:
             member = {}
+            member['id'] = p.id
             member["person"] = p.person
             member["job"] = org.otype.get_name(p.pos)
             member["highest"] = True if p.pos == 0 else False
@@ -703,6 +704,12 @@ def orginfo(request, name=None):
             organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
             else False
     
+    # 补充作为组织成员，选择是否展示的按钮
+    show_flag_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
+    my_position = Position.objects.activated().filter(org=org, person=me).exclude(pos=0)
+    if len(my_position):
+        show_flag_change_button = True
+        my_position = my_position[0]
     
 
     return render(request, "orginfo.html", locals())
@@ -2565,6 +2572,20 @@ def subscribeActivities(request):
     subscribe_url = reverse("save_subscribe_status")
     return render(request, "organization_subscribe.html", locals())
 
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+def save_show_position_status(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    me = utils.get_person_or_org(request.user, user_type)
+    params = json.loads(request.body.decode("utf-8"))
+    
+    with transaction.atomic():
+        pos = Position.objects.select_for_update().get(id=params["id"])
+        pos.show_flag = params['status']
+        pos.save()
+    return JsonResponse({"success": True})
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
