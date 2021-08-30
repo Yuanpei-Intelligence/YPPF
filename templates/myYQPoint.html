@@ -14,32 +14,20 @@
         <div class="container">
             <div class="row layout-top-spacing">
 
-                <div class="col-lg-12 col-12 layout-top-spacing">
-                    <div class="bio layout-spacing ">
-                        <div class="widget-content widget-content-area">
-                            <h3>账户总览</h3>
-                            <div class="table-responsive">
-                                <table class="table table-bordered mb-4">
-                                    <thead>
-                                        <tr>
-                                            <th>可用余额</th>
-                                            <th>待收入</th>
-                                            <th>待支出</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            <td>{{quota_and_YQPoint}}</td>
-                                            <td bgcolor="E8FFF5">{{amount.recv}}</td>
-                                            <td bgcolor="FFD2D2">{{amount.send}}</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
+                <div class="col-lg-12 col-12 row layout-top-spacing">
+                    <div class="col-sm-0 col-xl-3 col-lg-2 col-md-2"></div>
+                    <div class="col-sm-12 col-xl-6 col-lg-8 col-md-8">
+                        <div class="card">
+                            <img class="card-img-top" src="/static/assets/img/YQPointCard.jpeg" alt="Card image" style="width:100%">
+                            <div class="card-body">
+                                <p class="card-text">当前元气值：{{me.YQPoint}}</p>
+                                <p class="card-text">待收入元气值：{{amount.recv}}</p>
+                                <p class="card-text">待支出元气值：{{amount.send}}</p>
                             </div>
                         </div>
                     </div>
+                    <div class="col-sm-0 col-xl-3 col-lg-2 col-md-2"></div>
                 </div>
-
 
                 <div class="col-lg-12 col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
