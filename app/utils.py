@@ -209,8 +209,8 @@ def check_ac_request(request):
 
 
 def url_check(arg_url):
-    # DEBUG 默认通过
-    return True
+    if settings.DEBUG:  # DEBUG默认通过
+        return True
     if arg_url is None:
         return True
     if re.match("^/[^/?]*/", arg_url):  # 相对地址
@@ -391,6 +391,7 @@ def get_captcha(request, username, valid_seconds=None, more_info=False):
     received_user = request.session.get("received_user", "")
     valid_from = request.session.get("captcha_create_time", "")
     if len(captcha) != 6 or username != received_user:
+        old = ""
         expired = True
     elif valid_seconds is not None:
         try:
