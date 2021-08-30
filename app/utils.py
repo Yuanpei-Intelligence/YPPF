@@ -672,3 +672,60 @@ def update_org_application(application, me, request):
                     return context
                 except:
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
+
+
+import threading
+import os
+# 线程锁，用于对文件写入的排他性
+lock = threading.RLock()
+# 文件操作体系
+log_root = "logstore"
+if not os.path.exists(log_root):
+    os.mkdir(log_root)
+log_root_path = os.path.join(os.getcwd(), log_root)
+log_user = "user_detail"
+if not os.path.exists(os.path.join(log_root_path, log_user)):
+    os.mkdir(os.path.join(log_root_path, log_user))
+log_user_path = os.path.join(log_root_path, log_user)
+
+
+# 通用日志写入程序 写入时间(datetime.now()),操作主体(Sid),操作说明(Str),写入函数(Str)
+# 参数说明：第一为Sid也是文件名，第二位消息，第三位来源的函数名（类别）
+# 如果是系统相关的 请写local_dict["system_log"]
+def operation_writer(user, message, source, status_code="OK"):
+    lock.acquire()
+    try:
+        timestamp = str(datetime.now())
+        source = str(source).ljust(30)
+        status = status_code.ljust(10)
+        message = f"{timestamp} {source}{status}: {message}\n"
+
+        with open(os.path.join(log_user_path, f"{str(user)}.log"), mode="a") as journal:
+            journal.write(message)
+
+        if status_code == "Error":
+            pass
+            # TODO 发送微信消息提醒运维成员
+            '''
+            send_wechat_message(
+                stu_list=['', '', ''],
+                starttime=datetime.now(),
+                room=Room.objects.get(Rid="B107A"),
+                message_type="violated",
+                major_student="地下室系统",
+                usage="发生Error错误",
+                announcement="",
+                num=1,
+                reason=message,
+                # credit=appoint.major_student.Scredit,
+            )
+            '''
+    except Exception as e:
+        # 最好是发送邮件通知存在问题
+        # 待补充
+        print(e)
+
+    lock.release()
+
+
+operation_writer(local_dict["system_log"], "系统启动", "util_底部")

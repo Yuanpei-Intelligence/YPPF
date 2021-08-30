@@ -401,7 +401,7 @@ class Course(models.Model):
 class ActivityManager(models.Manager):
     def activated(self):
         # 选择学年相同，并且学期相同或者覆盖的
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
+        return self.displayable().filter(year=int(local_dict["semester_data"]["year"])).filter(
             semester__contains=local_dict["semester_data"]["semester"]
         )
 
@@ -418,18 +418,14 @@ class ActivityManager(models.Manager):
         # 一周内结束的活动
         nowtime = datetime.now()
         mintime = nowtime-timedelta(days = 7)
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
-            semester__contains=local_dict["semester_data"]["semester"]
-        ).filter(end__gt = mintime).filter(status=Activity.Status.END)
+        return self.activated().filter(end__gt = mintime).filter(status=Activity.Status.END)
 
     def get_recent_activity(self):
         # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
         nowtime = datetime.now()
         mintime = nowtime-timedelta(days = 7)
         maxtime = nowtime+timedelta(days = 7)
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
-            semester__contains=local_dict["semester_data"]["semester"]
-        ).filter(start__gt = mintime).filter(start__lt = maxtime).filter(
+        return self.activated().filter(start__gt = mintime).filter(start__lt = maxtime).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -441,9 +437,7 @@ class ActivityManager(models.Manager):
     def get_newlyreleased_activity(self):
         # 最新一周内发布的活动，按发布的时间逆序
         nowtime = datetime.now()
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
-            semester__contains=local_dict["semester_data"]["semester"]
-        ).filter(publish_time__gt = nowtime-timedelta(days = 7)).filter(
+        return self.activated().filter(publish_time__gt = nowtime-timedelta(days = 7)).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
