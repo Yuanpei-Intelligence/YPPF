@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh">
+{% load static %}
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no">
+    <title> 注册成功 </title>
+    
+    <!-- BEGIN GLOBAL MANDATORY STYLES -->
+    <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet">
+    <link href={% static "bootstrap/css/bootstrap.min.css" %} rel="stylesheet" type="text/css" />
+    <link href={% static "assets/css/plugins.css" %} rel="stylesheet" type="text/css" />
+    <link href={% static "assets/css/authentication/form-2.css" %} rel="stylesheet" type="text/css" />
+    <!-- END GLOBAL MANDATORY STYLES -->
+    <link rel="stylesheet" type="text/css" href={% static "assets/css/forms/theme-checkbox-radio.css" %}>
+    <link rel="stylesheet" type="text/css" href={% static "assets/css/forms/switches.css" %}>
+</head>
+{% if alert %}
+<script>
+    alert('{{alert}}')
+</script>
+{% endif %}
+
+<body class="form no-image-content">
+    
+
+    <div class="form-container outer">
+        <div class="form-form">
+            <div class="form-form-wrap">
+                <div class="form-container">
+                    <div class="form-content" >
+                        <div class="user-profile layout-spacing" style="padding-bottom:10px">
+                            <br/>
+                            <h3>欢迎来到元培成长档案!</h3>
+                            <div class="row">
+                                <div class="col-4"></div>
+                                <div class="col-4" style="text-align: left;">
+                                    <img src={% static "assets/img/logo-color.png" %} class="img-fluid">
+                                </div>
+                                <div class="col-4"></div>
+                            </div>
+                            <p>在开始探索之前，请注意以下几项任务：</p>
+                            <div class="row">
+                                <div class="col-1 col-sm-2"></div>
+                                <div class="col-10 col-sm-8" style="text-align: left;">
+                                    <p>1.完成企业微信注册</p>
+                                    <p>2.首次登录成长档案请使用验证码登录</p>
+                                    <p>3.关注微信企业号，用微信便捷接收消息</p>
+                                    <p>4.如有需要，请进群交流您的意见或建议</p>
+                                    <br/>
+                                </div>
+                                <div class="col-1 col-sm-2"></div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-sm-1"></div>
+                                <div class="col-sm-10">
+                                    <div class="row">
+                                        <div class="col-5">
+                                
+                                            <img src="/static/assets/img/company.jpg" class="img-fluid">
+                                            <p style="text-align: center;">关注微信企业号</p>
+                                        </div>
+                                        <div class="col-2"></div>
+                                        <div class="col-5">
+                                            
+                                            <img src="/static/assets/img/communicate.jpg" class="img-fluid">
+                                            <p  style="text-align:center;">加入微信交流群</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-sm-1"></div>
+                            </div>
+                            <br/>
+                            <div class="row">
+                                <div class="col-sm-3"></div>
+                                <div class="col-sm-6">
+                                    <button class="btn btn-block btn-primary" id="index"
+                                    onclick="location='/index/'">
+                                    我已了解</button>
+                                </div>
+                                <div class="col-sm-3"></div>
+                            </div>
+                        </div>
+                    </div>                    
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+    <!-- BEGIN GLOBAL MANDATORY SCRIPTS -->
+    <script>
+        var countdown = 10;
+        var btn = document.getElementById('index');
+        function settime() {
+            if (countdown == 0) {
+                btn.removeAttribute("disabled");
+                btn.innerHTML="我已了解";
+            } else {
+                btn.setAttribute("disabled", true);
+                btn.innerHTML="我已了解(" + countdown + ")";
+                countdown--;
+                setTimeout("settime()",1000);
+            }
+        }
+        settime()
+    </script>
+    <script src={% static "assets/js/libs/jquery-3.1.1.min.js" %}></script>
+    <script src={% static "bootstrap/js/popper.min.js" %}></script>
+    <script src={% static "bootstrap/js/bootstrap.min.js" %}></script>
+    
+    <!-- END GLOBAL MANDATORY SCRIPTS -->
+</body>
+</html>

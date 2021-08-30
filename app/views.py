@@ -4,6 +4,7 @@ from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
 from app.models import (
     NaturalPerson,
+    Freshman,
     Position,
     Organization,
     OrganizationType,
@@ -29,6 +30,7 @@ from app.activity_utils import (
     create_activity,
     modify_activity,
     accept_activity,
+    reject_activity,
     applyActivity,
     cancel_activity,
     withdraw_activity,
@@ -39,7 +41,7 @@ from app.position_utils import(
     update_pos_application,
 )
 from app.reimbursement_utils import update_reimb_application
-from app.wechat_send import publish_notification, publish_notifications
+from app.wechat_send import publish_notification, publish_notifications, invite
 from app.notification_utils import notification_create, notification_status_change
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
@@ -56,7 +58,6 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
 
 import json
-from time import mktime
 from datetime import date, datetime, timedelta
 from urllib import parse, request as urllib2
 import re
@@ -67,7 +68,7 @@ import csv
 
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
-from .scheduler_func import scheduler
+from app.scheduler import scheduler
 
 # 注册启动以上schedule任务
 register_events(scheduler)
@@ -146,32 +147,7 @@ def index(request):
             auth.login(request, userinfo)
             request.session["username"] = username
             if arg_origin is not None:
-                if not check_cross_site(request, arg_origin):
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
-                    return redirect(
-                        "/welcome/?warn_code={}&warn_message={}".format(
-                            html_display["warn_code"], html_display["warn_message"]
-                        )
-                    )
-                if not arg_origin.startswith("http"):  # 非外部链接，合法性已经检查过
-                    return redirect(arg_origin)  # 不需要加密验证
-                d = datetime.utcnow()
-                t = mktime(datetime.timetuple(d))
-                timeStamp = str(int(t))
-                en_pw = hash_coder.encode(username + timeStamp)
-                try:
-                    userinfo = NaturalPerson.objects.get(person_id__username=username)
-                    name = userinfo.name
-                    return redirect(
-                        arg_origin
-                        + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}&name={name}"
-                    )
-                except:
-                    return redirect(
-                        arg_origin
-                        + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
-                    )
+                pass # 现在统一放到下面处理，这里只负责登录
             else:
                 # 先处理初次登录
                 valid, user_type, html_display = utils.check_user_type(request.user)
@@ -192,12 +168,11 @@ def index(request):
             html_display["warn_code"] = 1
             html_display["warn_message"] = local_dict["msg"]["406"]
 
-    # 非 post 过来的
+    # 所有跳转，现在不管是不是post了
     if arg_origin is not None:
         if request.user.is_authenticated:
 
             if not check_cross_site(request, arg_origin):
-                html_display = dict()
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                 return redirect(
@@ -205,17 +180,24 @@ def index(request):
                         html_display["warn_code"], html_display["warn_message"]
                     )
                 )
+            if not arg_origin.startswith("http"):  # 非外部链接，合法性已经检查过
+                return redirect(arg_origin)  # 不需要加密验证
 
-            d = datetime.utcnow()
-            t = mktime(datetime.timetuple(d))
-            timeStamp = str(int(t))
-            print("utc time: ", d)
-            print(timeStamp)
+            timeStamp = str(int(datetime.utcnow().timestamp())) # UTC 统一服务器
             username = request.session["username"]
             en_pw = hash_coder.encode(username + timeStamp)
-            return redirect(
-                arg_origin + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
-            )
+            try:
+                userinfo = NaturalPerson.objects.get(person_id__username=username)
+                name = userinfo.name
+                return redirect(
+                    arg_origin
+                    + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}&name={name}"
+                )
+            except:
+                return redirect(
+                    arg_origin
+                    + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
+                )
 
     return render(request, "index.html", locals())
 
@@ -921,7 +903,111 @@ def account_setting(request):
         return render(request, "org_account_setting.html", locals())
 
 
-def register(request):
+def freshman(request):
+    if request.user.is_authenticated:
+        return redirect("/welcome/")
+
+    if request.GET.get("success") is not None:
+        alert = request.GET.get("alert")
+        return render(request, "registerSuccess.html", locals())
+
+    # 选择生源地列表，前端使用量
+    address_set = set(Freshman.objects.all().values_list("place", flat=True))
+    address_set.discard("")
+    address_set.discard("其它")
+    address_list = sorted(address_set)
+    address_list.append("其它")
+    html_path = "freshman-top.html"
+    if request.method == "POST":
+        # 这些也是失败时的前端使用量
+        try:
+            sid = request.POST["sid"]
+            sname = request.POST["sname"]
+            gender = request.POST["gender"]
+            birthday = request.POST["birthday"] # 前端使用
+            birthplace = request.POST["birthplace"]
+            email = request.POST["email"]
+        except:
+            err_msg = "提交信息不足"
+            return render(request, html_path, locals())
+        try:
+            sid = str(sid)
+            freshman = Freshman.objects.get(sid=sid)
+        except:
+            err_msg = "不存在该学号信息，你真的是新生吗？"
+            return render(request, html_path, locals())
+        try:
+            exist = freshman.exists()
+            assert exist != "user", "用户仅部分注册，请联系管理员"
+            registered = freshman.status == Freshman.Status.REGISTERED
+            assert not (exist and not registered), "您尚未注册，但用户已存在，请联系管理员"
+            assert not (not exist and registered), "您已经注册，但用户不存在，请联系管理员"
+            if exist or registered:
+                err_msg = "您的账号已被注册过，请阅读使用说明！"
+                return redirect("/freshman/?success=1&alert=" + err_msg)
+        except Exception as e:
+            err_msg = str(e)
+            return render(request, html_path, locals())
+        try:
+            sname = str(sname)
+            gender = str(gender)
+            birthday_date = datetime.strptime(birthday, "%Y-%m-%d").date()
+            birthplace = str(birthplace)
+            email = str(email)
+        except:
+            err_msg = "错误的个人信息格式"
+            return render(request, html_path, locals())
+        try:
+            assert freshman.name == sname, "姓名不匹配"
+            assert freshman.gender == gender, "个人信息错误"
+            assert freshman.birthday == birthday_date, "个人信息错误"
+            if freshman.place != "":
+                assert freshman.place == birthplace, "生源地错误"
+            else:
+                assert "其它" == birthplace, "生源地错误"
+            assert "@" in email, "请使用合法的邮件地址"
+            assert gender in ["男", "女"], "性别数据异常，请联系管理员"
+        except Exception as e:
+            err_msg = str(e)
+            return render(request, html_path, locals())
+
+        np_gender = NaturalPerson.Gender.MALE if gender == "男" else\
+                    NaturalPerson.Gender.FEMALE
+
+        # 检查通过，这里假设user创建成功后自然人也能创建成功
+        current = "随机生成密码"
+        try:
+            with transaction.atomic():
+                password = hash_coder.encode(sname + str(random.random()))
+                current = "创建用户"
+                user = User.objects.create_user(username=sid, password=password)
+                current = "创建个人账号"
+                NaturalPerson.objects.create(
+                    person_id=user,
+                    stu_id_dbonly=sid,
+                    name=sname,
+                    gender=np_gender,
+                    stu_major="元培计划（待定）",
+                    stu_grade=freshman.grade,
+                    email=email,
+                    )
+                current = "更新注册状态"
+                Freshman.objects.filter(sid=sid).select_for_update().update(
+                    status = Freshman.Status.REGISTERED)
+        except:
+            err_msg = f"在{current}时意外发生了错误，请联系管理员"
+            return render(request, html_path, locals())
+        
+        # 发送企业微信邀请，不会报错
+        invite(sid, multithread=True)
+        
+        err_msg = "您的账号已成功注册，请尽快加入企业微信以接受后续通知！"
+        return redirect("/freshman/?success=1&alert=" + err_msg)
+
+    return render(request, html_path, locals())
+
+
+def auth_register(request):
     if request.user.is_superuser:
         if request.method == "POST" and request.POST:
             name = request.POST["name"]
@@ -1065,7 +1151,6 @@ def search(request):
         activities.sort(key=lambda activity: abs(now - activity.start))
         return None if len(activities) == 0 else activities[0:3]
 
-
     org_display_list = []
     for org in organization_list:
         try:
@@ -1118,11 +1203,13 @@ def test(request):
 def forget_password(request):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
+
         页面效果
         -------
         - 根据（邮箱）验证码完成登录，提交后跳转到修改密码界面
         - 本质是登录而不是修改密码
         - 如果改成支持验证码登录只需修改页面和跳转（记得修改函数和页面名）
+
         页面逻辑
         -------
         1. 发送验证码
@@ -1130,6 +1217,7 @@ def forget_password(request):
         2. 输入验证码
             2.5 保留表单信息
         3. 错误提醒和邮件发送提醒
+
         实现逻辑
         -------
         - 通过脚本使按钮提供不同的`send_captcha`值，区分按钮
@@ -1137,58 +1225,52 @@ def forget_password(request):
         - 通过`session`保证安全传输验证码和待验证用户
         - 成功发送/登录后才在`session`中记录信息
         - 页面模板中实现消息提醒
-            - `err_code`非零值代表错误，在页面中显示
-            - `err_code`=`0`或`4`是预设的提醒值，额外弹出提示框
-            - forget_password.html中可以进一步修改
+            - 消息提示现在与整体统一
+            - 添加`alert`表示需要提醒
+            - 添加`noshow`不在页面显示文字
         - 尝试发送验证码后总是弹出提示框，通知用户验证码的发送情况
+        
         注意事项
         -------
         - 尝试忘记密码的不一定是本人，一定要做好隐私和逻辑处理
             - 用户邮箱应当部分打码，避免向非本人提供隐私数据！
-        - 不发送消息时`err_code`应为`None`或不声明，不同于modpw
-        - `err_code`=`4`时弹出
         - 连接设置的timeout为6s
         - 如果引入企业微信验证，建议将send_captcha分为'qywx'和'email'
     """
+    if request.user.is_authenticated:
+        return redirect("/welcome/")
+
     if request.session.get("received_user"):
         username = request.session["received_user"]  # 自动填充，方便跳转后继续
     if request.method == "POST":
         username = request.POST["username"]
-        send_captcha = request.POST["send_captcha"] == "yes"
+        send_captcha = request.POST["send_captcha"]
         vertify_code = request.POST["vertify_code"]  # 用户输入的验证码
 
         user = User.objects.filter(username=username)
         if not user:
-            err_code = 1
-            err_message = "账号不存在"
+            display = wrong("账号不存在")
         elif len(user) != 1:
-            err_code = 1
-            err_message = "账号不唯一，请联系管理员"
+            display = wrong("用户名不唯一，请联系管理员")
         else:
-            user = User.objects.get(username=username)
+            user = user[0]
             try:
-                useroj = NaturalPerson.objects.get(person_id=user)  # 目前只支持自然人
+                person = NaturalPerson.objects.get(person_id=user)  # 目前只支持自然人
             except:
-                err_code = 1
-                err_message = "暂不支持组织账号忘记密码！"
+                display = wrong("暂不支持组织账号验证码登录！")
+                display["alert"] = True
                 return render(request, "forget_password.html", locals())
-            isFirst = useroj.first_time_login
-            if isFirst:
-                err_code = 2
-                err_message = "初次登录密码与账号相同！"
-            elif send_captcha:
-                email = useroj.email
+            if send_captcha in ["yes", "email"]:    # 单个按钮(yes)发送邮件
+                email = person.email
                 if not email or email.lower() == "none" or "@" not in email:
-                    err_code = 3
-                    err_message = (
-                            "您没有设置邮箱，请联系管理员" + "或发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"
+                    display = wrong(
+                            "您没有设置邮箱，请联系管理员"
+                            + "或发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"
                     )  # TODO:记得填
                 else:
-                    # randint包含端点，randrange不包含
-                    captcha = random.randrange(1000000)
-                    captcha = f"{captcha:06}"
+                    captcha = utils.get_captcha(request, username)
                     msg = (
-                            f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
+                            f"<h3><b>亲爱的{person.name}同学：</b></h3><br/>"
                             "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
                             f'<p style="color:orange">{captcha}'
                             '<span style="color:gray">(仅'
@@ -1218,34 +1300,31 @@ def forget_password(request):
                         response = requests.post(email_url, post_data, timeout=6)
                         response = response.json()
                         if response["status"] != 200:
-                            err_code = 4
-                            err_message = f"未能向{pre}@{suf}发送邮件"
+                            display = wrong(f"未能向{pre}@{suf}发送邮件")
                             print("向邮箱api发送失败，原因：", response["data"]["errMsg"])
                         else:
                             # 记录验证码发给谁 不使用username防止被修改
-                            request.session["received_user"] = username
-                            request.session["captcha"] = captcha
-                            err_code = 0
-                            err_message = f"验证码已发送至{pre}@{suf}"
+                            utils.set_captcha_session(request, username, captcha)
+                            display = succeed(f"验证码已发送至{pre}@{suf}")
+                            display["noshow"] = True
                     except:
-                        err_code = 4
-                        err_message = "邮件发送失败：超时"
+                        display = wrong("邮件发送失败：超时")
+                    finally:
+                        display["alert"] = True
             else:
-                captcha = request.session.get("captcha", "")
-                received_user = request.session.get("received_user", "")
-                if len(captcha) != 6 or username != received_user:
-                    err_code = 5
-                    err_message = "请先发送验证码"
-                elif vertify_code.upper() == captcha.upper():
+                captcha, expired, old = utils.get_captcha(request, username, more_info=True)
+                if not old:
+                    display = wrong("请先发送验证码")
+                elif expired:
+                    display = wrong("验证码已过期，请重新发送")
+                elif str(vertify_code).upper() == captcha.upper():
                     auth.login(request, user)
-                    request.session.pop("captcha")
-                    request.session.pop("received_user")  # 成功登录后不再保留
+                    utils.clear_captcha_session(request)
                     request.session["username"] = username
                     request.session["forgetpw"] = "yes"
                     return redirect(reverse("modpw"))
                 else:
-                    err_code = 6
-                    err_message = "验证码不正确"
+                    display = wrong("验证码错误")
     return render(request, "forget_password.html", locals())
 
 
@@ -1654,10 +1733,10 @@ def myYQPoint(request):
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "我的元气值")
-     # 补充一些呈现信息
-     # bar_display["title_name"] = "My YQPoint"
-     # bar_display["navbar_name"] = "我的元气值"  #
-     # bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
+    # 补充一些呈现信息
+    # bar_display["title_name"] = "My YQPoint"
+    # bar_display["navbar_name"] = "我的元气值"  #
+    # bar_display["help_message"] = local_dict["help_message"]["我的元气值"]
 
     return render(request, "myYQPoint.html", locals())
 
@@ -1768,11 +1847,22 @@ def viewActivity(request, aid=None):
     if ownership and need_checkin:
         aQRcode = get_activity_QRcode(activity)
 
-    # 活动图片！！
+    # 活动宣传图片 ( 一定存在 )
     photo = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
-    if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
-        photo.image = settings.MEDIA_URL + str(photo.image)
-    firstpic = photo.image
+    firstpic = str(photo.image)
+    if firstpic[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+        firstpic = settings.MEDIA_URL + firstpic
+
+    # 总结图片，不一定存在
+    summary_photo_exists = False
+    if activity.status == Activity.Status.END:
+        try:
+            summary_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
+            summary_photo_exists = True
+            summary_photo = settings.MEDIA_URL + str(summary_photo.image)
+        except Exception as e:
+            # print(e)
+            pass
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
@@ -1787,25 +1877,24 @@ def viewActivity(request, aid=None):
 
     html_display = dict()
     # 处理 post 请求
-    # try:
     option = request.POST.get("option")
     if option == "cancel":
-        # try:
-        assert activity.status != Activity.Status.END
-        assert activity.status != Activity.Status.CANCELED
-        with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=aid)
-            cancel_activity(request, activity)
-
-            return redirect(f"/viewActivity/{aid}")
-        """
-        except ActivityError as e:
+        try:
+            assert activity.status != Activity.Status.REJECT
+            assert activity.status != Activity.Status.ABORT
+            assert activity.status != Activity.Status.END
+            assert activity.status != Activity.Status.CANCELED
+            with transaction.atomic():
+                activity = Activity.objects.select_for_update().get(id=aid)
+                cancel_activity(request, activity)
+                return redirect(f"/viewActivity/{aid}")
+        except ActivityException as e:
             html_display["warn_code"] = 1
             html_display["warn_message"] = str(e)
             return render(request, "activity_info.html", locals())
         except:
             redirect("/welcome/")
-        """
+
 
     elif option == "edit":
         if (
@@ -1825,43 +1914,51 @@ def viewActivity(request, aid=None):
             return render(request, "activity_info.html", locals())
 
     elif option == "apply":
-        # try:
-        with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=int(aid))
-            applyActivity(request, activity)
-            return redirect(f"/viewActivity/{aid}")
-        """
-        except ActivityError as e:
+        try:
+            with transaction.atomic():
+                activity = Activity.objects.select_for_update().get(id=int(aid))
+                assert activity.status == Activity.Status.APPLYING
+                applyActivity(request, activity)
+                return redirect(f"/viewActivity/{aid}")
+        except ActivityException as e:
             html_display["warn_message"] = str(e)
         except:
             redirect('/welcome/')
-        """
+
         return render(request, "activity_info.html", locals())
 
 
     elif option == "quit":
-        # try:
-        with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=aid)
-            assert (
-                    activity.status == Activity.Status.APPLYING
-                    or activity.status == Activity.Status.WAITING
-            )
-            withdraw_activity(request, activity)
-            return redirect(f"/viewActivity/{aid}")
-        """
-        except ActivityError as e:
+        try:
+            with transaction.atomic():
+                activity = Activity.objects.select_for_update().get(id=aid)
+                assert (
+                        activity.status == Activity.Status.APPLYING
+                        or activity.status == Activity.Status.WAITING
+                )
+                withdraw_activity(request, activity)
+                return redirect(f"/viewActivity/{aid}")
+
+        except ActivityException as e:
             html_display["warn_message"] = str(e)
         except:
             return redirect('/welcome/')
-        """
+
 
         return render(request, "activity_info.html", locals())
 
     elif option == "payment":
-        return redirect("/modifyReimbursement/")
+        try:
+            assert activity.status == Activity.Status.END
+            re = Reimbursement.objects.get(related_activity=activity)
+            return redirect(f"/modifyReimbursement/?reimb_id={re.id}")
+        except Exception as e:
+            # print("Exception", e)
+            return redirect("/modifyReimbursement/")
 
     elif option == "submitphoto":
+        if not (ownership and activity.status == Activity.Status.END):
+            return redirect("/welcome/")
         try:
             summaryphotos = request.FILES.getlist('images')
         except:
@@ -1872,15 +1969,27 @@ def viewActivity(request, aid=None):
             html_display['warn_code'] = 1
             html_display['warn_message'] = "上传活动照片不能为空"
             return render(request, "activity_info.html", locals())
-        for photo in summaryphotos:
-            if utils.if_image(photo) == False:
-                html_display['warn_code'] = 1
-                html_display['warn_message'] = "上传的附件只支持图片格式"
-                return render(request, "activity_info.html", locals())
-            ActivityPhoto.objects.create(image = photo,activity = activity,time = datetime.now(),type = ActivityPhoto.PhotoType.SUMMARY)
+        photo = summaryphotos[0]
+        if utils.if_image(photo) == False:
+            html_display['warn_code'] = 1
+            html_display['warn_message'] = "上传的附件只支持图片格式"
+            return render(request, "activity_info.html", locals())
+        if summary_photo_exists:
+            old_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
+            old_photo.image = photo
+            old_photo.save()
+            summary_photo = settings.MEDIA_URL + str(old_photo.image)
+            html_display["warn_message"] = "成功替换活动照片"
+        else:
+            ActivityPhoto.objects.create(
+                image=photo, 
+                activity=activity, 
+                time=datetime.now(),
+                type = ActivityPhoto.PhotoType.SUMMARY
+            )
+            html_display["warn_message"] = "成功提交活动照片"
 
         html_display["warn_code"] = 2
-        html_display["warn_message"] = "成功提交活动照片"
         return render(request, "activity_info.html", locals())
 
     else:
@@ -2150,21 +2259,37 @@ def addActivity(request, aid=None):
     # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
     if request.method == "POST" and request.POST:
 
+        if not edit:
+            try:
+                with transaction.atomic():
+                    aid = create_activity(request)
+                    return redirect(f"/viewActivity/{aid}")
+            except:
+                return redirect("/welcome/")
+
+        # 仅这几个阶段可以修改
+        if (
+                activity.status != Activity.Status.REVIEWING and
+                activity.status != Activity.Status.APPLYING and 
+                activity.status != Activity.Status.WAITING
+        ):
+            return redirect("/welcome/")
+
         # 处理 comment
         if request.POST.get("comment_submit"):
             try:
                 # 创建活动只能在审核时添加评论
-                assert activity.status == Activity.Status.REVIEWING
-                context = addComment(request, activity, activity.organization_id.organization_id)
+                assert not activity.valid
+                context = addComment(request, activity, activity.examine_teacher.person_id)
                 # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
                 assert context["warn_code"] == 2
                 # 成功后重新加载界面
                 return redirect(f"/editActivity/{aid}")
-            except:
+            except Exception as e:
+                print(e)
                 return redirect("/welcome/")
 
-        if edit:
-            # try:
+        try:
             # 只能修改自己的活动
             with transaction.atomic():
                 activity = Activity.objects.select_for_update().get(id=aid)
@@ -2172,17 +2297,9 @@ def addActivity(request, aid=None):
                 assert activity.organization_id == org
                 modify_activity(request, activity)
             return redirect(f"/viewActivity/{activity.id}")
-            """
-            except:
-                return redirect("/welcome/")
-            """
-        else:
-            try:
-                aid = create_activity(request)
-                return redirect(f"/viewActivity/{aid}")
+        except:
+            return redirect("/welcome/")
 
-            except:
-                return redirect("/welcome/")
 
     # 处理 GET 请求
     elif request.method == "GET":
@@ -2193,23 +2310,40 @@ def addActivity(request, aid=None):
         else:
             try:
                 org = get_person_or_org(request.user, "Organization")
-                # 接受的状态为 审核中，申请中，等待中
-                if activity.status == Activity.Status.REVIEWING:
+
+
+                # 没过审，可以编辑评论区
+                if not activity.valid:
                     commentable = True
                     front_check = True
+                # 全可编辑
+                full_editable = False
+                accepted = False
+                if activity.status == Activity.Status.REVIEWING:
+                    full_editable = True
+                    accepted = True
+                # 部分可编辑
+                # 活动只能在开始 1 小时前修改
                 elif (
                         activity.status == Activity.Status.APPLYING
                         or activity.status == Activity.Status.WAITING
-                ):
+                ) and datetime.now() + timedelta(hours=1) < activity.start:
                     accepted = True
-                    # 活动只能在开始 1 小时前修改
-                    assert datetime.now() + timedelta(hours=1) < activity.start
                 else:
-                    raise Exception("不正常的活动状态")
+                    # 不是三个可以评论的状态
+                    commentable = front_check = False
             except Exception as e:
                 # print(e)
                 return redirect("/welcome/")
 
+
+            # 决定状态的变量
+            # None/edit/examine ( 组织申请活动/组织编辑/老师审查 )
+            # full_editable/accepted/None ( 组织编辑活动：除审查老师外全可修改/部分可修改/全部不可改 )
+            #        full_editable 为 true 时，accepted 也为 true
+            # commentable ( 是否可以评论 )
+
+            # 下面是前端展示的变量
             title = activity.title
             budget = activity.budget
             location = activity.location
@@ -2234,8 +2368,6 @@ def addActivity(request, aid=None):
                 no_limit = True
             examine_teacher = activity.examine_teacher.name
             status = activity.status
-            if status != Activity.Status.REVIEWING:
-                accepted = True
             avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
             need_checkin = activity.need_checkin
             comments = showComment(activity)
@@ -2268,8 +2400,17 @@ def examineActivity(request, aid):
 
     if request.method == "GET":
 
+        # 状态量，无可编辑量
         examine = True
+        commentable = not activity.valid
+        if (
+                activity.status != Activity.Status.REVIEWING and
+                activity.status != Activity.Status.APPLYING and
+                activity.status != Activity.Status.WAITING
+        ):
+            commentable = False
 
+        # 展示变量
         title = activity.title
         budget = activity.budget
         location = activity.location
@@ -2304,40 +2445,66 @@ def examineActivity(request, aid):
             examine_pic.image = settings.MEDIA_URL + str(examine_pic.image)
         intro_pic = examine_pic.image
 
-        if activity.status != Activity.Status.REVIEWING:
-            no_review = True
-        else:
-            commentable = True
+        need_checkin = activity.need_checkin
 
         bar_display = utils.get_sidebar_and_navbar(request.user)
         bar_display["title_name"] = "审查活动"
         bar_display["narbar_name"] = "审查活动"
         return render(request, "activity_add.html", locals())
 
-    elif request.method == "POST":
+    elif request.method == "POST" and request.POST:
+
+        # 创建活动只能在审核时添加评论
+        # assert activity.status == Activity.Status.REVIEWING
+        # 改成审核完之前可以评论
+        if (
+                activity.status != Activity.Status.REVIEWING and
+                activity.status != Activity.Status.APPLYING and
+                activity.status != Activity.Status.WAITING
+        ) or activity.valid:
+            return redirect("/welcome/")
+
+        # 活动开始前一个小时老师也不能再操作
 
         if request.POST.get("comment_submit"):
             try:
-                # 创建活动只能在审核时添加评论
-                assert activity.status == Activity.Status.REVIEWING
                 context = addComment(request, activity, activity.organization_id.organization_id)
                 # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
                 assert context["warn_code"] == 2
                 # 成功后重新加载界面
-                return redirect(f"/editActivity/{aid}")
-            except:
+                return redirect(f"/examineActivity/{aid}")
+            except Exception as e:
+                # print(e)
                 return redirect("/welcome/")
 
-        try:
-            with transaction.atomic():
-                activity = Activity.objects.select_for_update().get(
-                    id=int(aid)
-                )
-                assert activity.status == Activity.Status.REVIEWING
-                accept_activity(request, activity)
-            return redirect(f"/examineActivity/{aid}")
-        except:
-            return redirect("/welcome/")
+        if request.POST.get("review_accepted"):
+            try:
+                with transaction.atomic():
+                    activity = Activity.objects.select_for_update().get(
+                        id=int(aid)
+                    )
+                    accept_activity(request, activity)
+                return redirect(f"/examineActivity/{aid}")
+            except Exception as e:
+                # print(e)
+                return redirect("/welcome/")
+        else:
+            try:
+                with transaction.atomic():
+                    activity = Activity.objects.select_for_update().get(
+                        id=int(aid)
+                    )
+                    assert (
+                        activity.status == Activity.Status.REVIEWING or
+                        activity.status == Activity.Status.APPLYING or
+                        activity.status == Activity.Status.WAITING
+                    )
+                    reject_activity(request, activity)
+                return redirect(f"/examineActivity/{aid}")
+            except Exception as e:
+                print(e)
+                return redirect("/welcome/")
+
 
     else:
         return redirect("/welcome/")
@@ -2653,13 +2820,13 @@ def addComment(request, comment_base, receiver=None):
         'modifyposition': f'{sender_name}在人事变动申请留有新的评论',
         'neworganization': f'{sender_name}在新建组织中留有新的评论',
         'reimbursement': f'{sender_name}在经费申请中留有新的评论',
-        "activity": f"{sender_name}在活动申请中留有新的评论"
+        'activity': f"{sender_name}在活动申请中留有新的评论"
     }
     URL={
         'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
         'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
         'reimbursement': f'/modifyReimbursement/?reimb_id={comment_base.id}',
-        "activity": f"/examineActivity/{comment_base.id}"
+        'activity': f"/examineActivity/{comment_base.id}"
     }
     if user_type == "Organization":
         URL["activity"] = f"/editActivity/{comment_base.id}"
@@ -2692,12 +2859,19 @@ def addComment(request, comment_base, receiver=None):
             context["warn_code"] = 1
             context["warn_message"] = "评论失败，请联系管理员。"
             return context
+
         if len(text) > 0:
             content[typename] += f':{text}'
         else:
-            context[typename] += "。"
+            content[typename] += "。"
         if len(text) >= 32:
             text = text[:31] + "……"
+       
+        if user_type == "Organization":
+            URL["activity"] = f"/examineActivity/{comment_base.id}"
+        else:
+            URL["activity"] = f"/editActivity/{comment_base.id}"
+
         if receiver is not None:
             notification_create(
                 receiver,
@@ -3150,7 +3324,7 @@ def modeifyReimbursement(request):
                 #组织名字
                 org_name = application.pos.organization.oname
                 #活动标题
-                act_title = application.activity.title
+                act_title = application.related_activity.title
                 # 准备创建notification需要的构件：发送内容
                 content = {
                     'new_submit': f'{org_name}发起活动{act_title}的经费申请，请审核~',

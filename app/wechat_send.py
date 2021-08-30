@@ -1,3 +1,13 @@
+'''
+wechat_send.py
+
+集合了需要发送到微信的函数
+
+调用提示
+    base开头的函数是基础函数，通常作为定时任务，无返回值，但可能打印报错信息
+    其他函数可以假设是异步IO，参数符合条件时不抛出异常
+    由于异步假设，函数只返回尝试状态，即是否设置了定时任务，不保证成功发送
+'''
 import requests
 import json
 
@@ -32,7 +42,7 @@ RETRY = False
 
 if USE_SCHEDULER:
     try:
-        from app.scheduler_func import scheduler
+        from app.scheduler import scheduler
     except:
         from apscheduler.schedulers.background import BackgroundScheduler
         from django_apscheduler.jobstores import DjangoJobStore
@@ -47,6 +57,7 @@ THIS_URL = settings.LOGIN_URL  # 增加默认url前缀
 if THIS_URL[-1:] == "/" and THIS_URL[-2:] != "//":
     THIS_URL = THIS_URL[:-1]  # 去除尾部的/
 WECHAT_URL = local_dict["url"]["wechat_url"]
+INVITE_URL = WECHAT_URL + ('' if WECHAT_URL.endswith('/') else '/') + 'invite_user'
 wechat_coder = MySHA256Hasher(local_dict["hash"]["wechat"])
 
 # 一批发送的最大数量
@@ -233,7 +244,7 @@ def publish_notification(notification_or_id):
             )
         )
 
-    send_wechat(wechat_receivers, message, **kws)  # 不使用定时任务请改为这句
+    send_wechat(wechat_receivers, message, **kws)
     return True
 
 
@@ -365,7 +376,7 @@ def publish_notifications(
 
 
 def publish_activity(activity_or_id):
-    """根据活动或id（实际是主键）向所有订阅该组织信息的学生发送，可以只发给在校学生"""
+    """根据活动或id（实际是主键）向所有订阅该组织信息的在校学生发送"""
     try:
         if isinstance(activity_or_id, Activity):
             activity = activity_or_id
@@ -404,7 +415,7 @@ def publish_activity(activity_or_id):
                 f"活动时间：{start}-{finish}",
                 "活动内容：",
                 content,
-                "点击查看详情",
+                "查看详情",
             )
         )
         if url:
@@ -427,32 +438,72 @@ def publish_activity(activity_or_id):
         if url:
             message += f'\n\n<a href="{url}">阅读原文</a>'
         else:
-            message += f'\n\n<a href="{DEFAULT_URL}">点击查看详情</a>'
+            message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
     send_wechat(subscribers, message, **kws)
     return True
 
 
-def wechat_notify_activity(aid, msg, send_to, url=None):
-    activity = Activity.objects.get(id=aid)
-    targets = set()
-    if send_to == "participants" or send_to == "all":
-        participants = Participant.objects.filter(
-            activity_id=aid,
-            status__in=[
-                Participant.AttendStatus.APLLYSUCCESS,
-                Participant.AttendStatus.APPLYING,
-            ],
+def send_captcha(stu_id: str or int, captcha: str, url='/forgetpw/'):
+    users = (stu_id, )
+    kws = {"card": True}
+    if url and url[0] == "/":  # 相对路径变为绝对路径
+        url = THIS_URL + url
+    message = (
+                "YPPF登录验证\n"
+                "您的账号正在进行企业微信验证，本次请求的验证码为："
+                f"<div class=\"highlight\">{captcha}</div>"
+            )
+    if url:
+        kws["url"] = url
+        kws["btntxt"] = "登录"
+    send_wechat(users, message, **kws)
+
+
+def base_invite(stu_id:str or int, retry_times=None):
+    if retry_times is None:
+        retry_times = 1
+    try:
+        stu_id = str(stu_id)
+        retry_times = int(retry_times)
+    except:
+        print(f"发送邀请的参数异常：学号为{stu_id}，重试次数为{retry_times}")
+
+    post_data = {
+        "user": stu_id,
+        "secret": wechat_coder.encode(stu_id),
+    }
+    post_data = json.dumps(post_data)
+    for i in range(retry_times):
+        end = False
+        try:
+            errmsg = "连接api失败"
+            response = requests.post(INVITE_URL, post_data, timeout=TIMEOUT)
+            response = response.json()
+            if response["status"] == 200:  # 全部发送成功
+                return
+            elif response["data"].get("detail"):    # 发送失败
+                errmsg = response["data"]["detail"]
+            elif response["data"].get("errMsg"):    # 参数等其他传入格式问题
+                errmsg = response["data"]["errMsg"]
+                end = True
+            raise OSError("企业微信发送不完全成功")
+        except:
+            print(f"第{i+1}次向企业微信发送邀请失败：用户：{stu_id}，原因：{errmsg}")
+            if end:
+                return
+
+
+def invite(stu_id: str or int, retry_times=3, *, multithread=True):
+    args = (stu_id, )
+    kwargs = {'retry_times': retry_times}
+    if USE_MULTITHREAD and multithread:
+        # 多线程
+        scheduler.add_job(
+            base_invite,
+            "date",
+            args=args,
+            kwargs=kwargs,
+            next_run_time=datetime.now() + timedelta(seconds=5),
         )
-        participants = list(participants.values_list("person_id__username", flat=True))
-        targets |= set(participants)
-
-    if send_to == "subscribers" or send_to == "all":
-        org = activity.organization_id
-        subscribers = NaturalPerson.objects.activated().exclude(
-            id__in=org.unsubscribers.all()
-        )  # flat=True时必须只有一个键
-        subscribers = list(subscribers.values_list("person_id__username", flat=True))
-        targets |= set(subscribers)
-
-    send_wechat(targets, msg, card=int(len(msg) < 120), url=url, check_duplicate=True)
-
+    else:
+        base_invite(*args, **kwargs)  # 不使用定时任务请改为这句
