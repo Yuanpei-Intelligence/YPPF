@@ -1072,7 +1072,7 @@ def get_stu_img(request):
     stuId = request.GET.get("stuId")
     if stuId is not None:
         try:
-            stu = NaturalPerson.objects.get(person_id=stuId)
+            stu = NaturalPerson.objects.get(person_id__username=stuId)
             img_path = utils.get_user_ava(stu, "Person")
             return JsonResponse({"path": img_path}, status=200)
         except:
