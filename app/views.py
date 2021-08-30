@@ -797,6 +797,9 @@ def homepage(request):
 
     # 天气
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
+    if Weather.objects.filter(status = True).count == 0:
+        from app.scheduler_utils import get_weather
+        get_weather()
     html_display['weather'] = Weather.objects.get_activated().weather_json
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
@@ -1922,6 +1925,7 @@ def viewActivity(request, aid=None):
                 applyActivity(request, activity)
                 return redirect(f"/viewActivity/{aid}")
         except ActivityException as e:
+            html_display["warn_code"] = 1
             html_display["warn_message"] = str(e)
         except:
             redirect('/welcome/')

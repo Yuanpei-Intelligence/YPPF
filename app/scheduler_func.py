@@ -398,6 +398,16 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
 @register_job(scheduler, 'interval', id="get weather per 3 minutes", minutes=3)
 def get_weather():
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
-    current_weather = Weather.objects.get_activated()
-    current_weather.weather_json = json.loads(urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read())
-    current_weather.save()
+    try:
+        load_json = json.loads(urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html",timeout=5).read())
+        number = Weather.objects.filter(status = True).count()
+        if not number:
+            Weather.objects.create(weather_json=load_json,status= True)
+        current_weather = Weather.objects.get_activated()
+        current_weather.weather_json = load_json = json.loads(urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read())
+        current_weather.modify_time = datetime.now()
+        current_weather.save()
+    except:
+        # 相当于超时
+        # TODO: 增加天气超时的debug
+        print("任务超时")
