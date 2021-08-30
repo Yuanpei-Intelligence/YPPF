@@ -1810,7 +1810,7 @@ def viewActivity(request, aid=None):
                 activity = Activity.objects.select_for_update().get(id=aid)
                 cancel_activity(request, activity)
                 return redirect(f"/viewActivity/{aid}")
-        except ActivityError as e:
+        except ActivityException as e:
             html_display["warn_code"] = 1
             html_display["warn_message"] = str(e)
             return render(request, "activity_info.html", locals())
