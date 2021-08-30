@@ -1025,6 +1025,11 @@ class WeatherManager(models.Manager):
 
 
 class Weather(models.Model):
+    '''
+        目前用的数据库，没想到怎么用全局变量。
+        要应用天气，需要先在admin网页创建一个Weather类的实例
+    '''
+
     class Meta:
         verbose_name = "实时天气"
         verbose_name_plural = verbose_name
