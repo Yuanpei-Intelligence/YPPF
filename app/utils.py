@@ -209,8 +209,8 @@ def check_ac_request(request):
 
 
 def url_check(arg_url):
-    # DEBUG 默认通过
-    return True
+    if settings.DEBUG:  # DEBUG默认通过
+        return True
     if arg_url is None:
         return True
     if re.match("^/[^/?]*/", arg_url):  # 相对地址
@@ -376,6 +376,47 @@ def random_code_init():
     for i in range(0, 6):
         password = password + random.choice(b)
     return password
+
+
+def get_captcha(request, username, valid_seconds=None, more_info=False):
+    '''
+    noexcept
+    - username: 学号/组织号, 不一定对应request.user(此时应尚未登录)
+    - valid_seconds: float or None, None表示不设置有效期
+    ->captcha: str | (captcha, expired, old) if more_info
+    '''
+    expired = False
+    captcha = request.session.get("captcha", "")
+    old = captcha
+    received_user = request.session.get("received_user", "")
+    valid_from = request.session.get("captcha_create_time", "")
+    if len(captcha) != 6 or username != received_user:
+        old = ""
+        expired = True
+    elif valid_seconds is not None:
+        try:
+            valid_from = datetime.strptime(valid_from, "%Y-%m-%d %H:%M:%S")
+            assert datetime.utcnow() <= valid_from + timedelta(seconds=valid_seconds)
+        except:
+            expired = True
+    if expired:
+        # randint包含端点，randrange不包含
+        captcha = random.randrange(1000000)
+        captcha = f"{captcha:06}"
+    return (captcha, expired, old) if more_info else captcha
+
+def set_captcha_session(request, username, captcha):
+    '''noexcept'''
+    utcnow = datetime.utcnow()
+    request.session["received_user"] = username
+    request.session["captcha_create_time"] = utcnow.strftime("%Y-%m-%d %H:%M:%S")
+    request.session["captcha"] = captcha
+
+def clear_captcha_session(request):
+    '''noexcept'''
+    request.session.pop("captcha")
+    request.session.pop("captcha_create_time")  # 验证码只能登录一次
+    request.session.pop("received_user")        # 成功登录后不再保留
 
 
 def notifications_create(
