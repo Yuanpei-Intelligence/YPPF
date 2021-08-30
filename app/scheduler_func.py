@@ -1,3 +1,4 @@
+from threading import current_thread
 from django.db.models import F
 from django.http import JsonResponse, HttpResponse, QueryDict  # Json响应
 from django.shortcuts import render, redirect  # 网页render & redirect
@@ -5,7 +6,7 @@ from django.urls import reverse
 from datetime import datetime, timedelta, timezone, time, date
 from django.db import transaction  # 原子化更改数据库
 
-from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant, Notification
+from app.models import Organization, NaturalPerson, Weather, YQPointDistribute, TransferRecord, User, Activity, Participant, Notification
 from app.wechat_send import publish_notifications
 from app.forms import YQPointDistributionForm
 from boottest.hasher import MySHA256Hasher
@@ -14,7 +15,10 @@ from app.notification_utils import bulk_notification_create
 from random import sample
 from numpy.random import choice
 
-from app.scheduler import scheduler
+from app.scheduler import scheduler, register_job
+
+from urllib import parse, request as urllib2
+import json
 
 def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
     '''
@@ -391,4 +395,9 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
 
 
 
-
+@register_job(scheduler, 'interval', id="get weather per 3 minutes", minutes=3)
+def get_weather():
+    # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
+    current_weather = Weather.objects.get_activated()
+    current_weather.weather_json = json.loads(urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read())
+    current_weather.save()
