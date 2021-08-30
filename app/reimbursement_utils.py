@@ -54,7 +54,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
         if (user_type == "Person" and feasible_post.index(post_type)<=2 ) or (
                 user_type == "Organization" and feasible_post.index(post_type) >= 3):
             return wrong("您无权进行此操作，如有疑惑, 请联系管理员")
-        transaction_msg="报销扣除元气值"#TODO:报销信息的补充
+
         our_college=Organization.objects.get(oname="元培学院").organization_id
         if feasible_post.index(post_type) <= 2:  # 是组织的操作, 新建\修改\取消
 
@@ -119,6 +119,8 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                         for image in images:
                             if utils.if_image(image) == False:
                                 return wrong("上传的材料只支持图片格式。")
+
+                    transaction_msg = f'活动“{reimb_act.title}”的报销申请'  # TODO:报销信息的补充
                     record = TransferRecord.objects.create(
                         proposer=request.user,
                         recipient=our_college,
