@@ -40,10 +40,7 @@ from app.position_utils import(
 )
 from app.reimbursement_utils import update_reimb_application
 from app.wechat_send import publish_notification, publish_notifications
-<<<<<<< HEAD
-=======
 from app.notification_utils import notification_create, notification_status_change
->>>>>>> upstream/develop
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from django.shortcuts import render, redirect
