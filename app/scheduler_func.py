@@ -395,9 +395,10 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
 
 
 
-@register_job(scheduler, 'interval', id="get weather per 3 minutes", minutes=3)
+@register_job(scheduler, 'interval', id="get weather per 3 minutes", seconds=10)
 def get_weather():
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     current_weather = Weather.objects.get_activated()
     current_weather.weather_json = json.loads(urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read())
+    print(current_weather.weather_json)
     current_weather.save()
