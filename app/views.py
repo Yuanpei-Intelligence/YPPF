@@ -21,7 +21,6 @@ from app.models import (
     YQPointDistribute,
     Reimbursement,
     Wishes,
-    Weather
 )
 from django.db.models import Max
 import app.utils as utils
@@ -806,11 +805,12 @@ def homepage(request):
 
     # 天气
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
-    if Weather.objects.filter(status=True).count() == 0:
+    try:
+        with open("weather.json") as weather_json:
+            html_display['weather'] = json.loads(weather_json)
+    except:
         from app.scheduler_func import get_weather
-        get_weather()
-    html_display['weather'] = Weather.objects.get_activated().weather_json
-    print(html_display['weather'])
+        html_display['weather'] = get_weather()
     
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "元培生活")
