@@ -634,6 +634,8 @@ def orginfo(request, name=None):
             html_display["isboss"] = True
         if p.show_post == True or p.pos == 0 or html_display["is_myself"]:
             member = {}
+            member['show_flag'] = p.show_flag
+            member['id'] = p.id
             member["person"] = p.person
             member["job"] = org.otype.get_name(p.pos)
             member["highest"] = True if p.pos == 0 else False
@@ -684,6 +686,12 @@ def orginfo(request, name=None):
             organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
             else False
     
+    # 补充作为组织成员，选择是否展示的按钮
+    show_flag_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
+    my_position = Position.objects.activated().filter(org=org, person=me).exclude(pos=0)
+    if len(my_position):
+        show_flag_change_button = True
+        my_position = my_position[0]
     
 
     return render(request, "orginfo.html", locals())
@@ -2547,6 +2555,28 @@ def subscribeActivities(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+def save_show_position_status(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    me = utils.get_person_or_org(request.user, user_type)
+    params = json.loads(request.body.decode("utf-8"))
+    
+    with transaction.atomic():
+        try:
+            position = Position.objects.select_for_update().get(id=params["id"])
+        except:
+            return JsonResponse({"success":False})
+        if params["status"]:
+            position.show_flag = True
+        else:
+            if len(Position.objects.filter(pos=0, org=position.org)) == 1 and position.pos==0:    #非法前端量修改
+                return JsonResponse({"success":False})
+            position.show_flag = False
+        position.save()
+    return JsonResponse({"success": True})
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def save_subscribe_status(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -2799,6 +2829,7 @@ def notifications(request):
     undone_list = notification2Display(
         list(undone_set.union(undone_set).order_by("-start_time"))
     )
+    
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
@@ -3134,7 +3165,6 @@ def showPosition(request):
     shown_instances = shown_instances.order_by('-modify_time', '-time')
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="人事申请")
     return render(request, 'showPosition.html', locals())
-
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
