@@ -1784,6 +1784,7 @@ def viewActivity(request, aid=None):
     aprice = request.POST["aprice"]  # 活动价格
     capacity = request.POST["capacity"]  # 活动举办的容量
     """
+
     try:
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
@@ -1808,7 +1809,6 @@ def viewActivity(request, aid=None):
     html_display = dict()
 
     if request.method == "POST" and request.POST:
-
         option = request.POST.get("option")
         if option == "cancel":
             try:
@@ -1824,6 +1824,7 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
+                print("GOTCHA")
             except:
                 redirect("/welcome/")
 
@@ -2290,141 +2291,79 @@ def addActivity(request, aid=None):
                 # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
                 assert context["warn_code"] == 2
                 # 成功后重新加载界面
-                return redirect(f"/editActivity/{aid}")
+                html_display["warn_msg"] = "评论成功。"
+                html_display["warn_code"] = 2
+                # return redirect(f"/editActivity/{aid}")
             except Exception as e:
                 print(e)
                 return redirect("/welcome/")
-
-        try:
-            # 只能修改自己的活动
-            with transaction.atomic():
-                activity = Activity.objects.select_for_update().get(id=aid)
-                org = get_person_or_org(request.user, "Organization")
-                assert activity.organization_id == org
-                modify_activity(request, activity)
-            return redirect(f"/viewActivity/{activity.id}")
-        except:
-            return redirect("/welcome/")
-
-
-    # 处理 GET 请求
-    elif request.method == "GET":
-        # 下面的操作基本如无特殊说明，都是准备前端使用量
-        defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
-        html_display["applicant_name"] = me.oname
-        html_display["app_avatar_path"] = utils.get_user_ava(me, "Organization")
-        if not edit:
-            avialable_teachers = NaturalPerson.objects.teachers()
         else:
             try:
-                org = get_person_or_org(request.user, "Organization")
-
-
-                # 没过审，可以编辑评论区
-                if not activity.valid:
-                    commentable = True
-                    front_check = True
-                # 全可编辑
-                full_editable = False
-                accepted = False
-                if activity.status == Activity.Status.REVIEWING:
-                    full_editable = True
-                    accepted = True
-                # 部分可编辑
-                # 活动只能在开始 1 小时前修改
-                elif (
-                        activity.status == Activity.Status.APPLYING
-                        or activity.status == Activity.Status.WAITING
-                ) and datetime.now() + timedelta(hours=1) < activity.start:
-                    accepted = True
-                else:
-                    # 不是三个可以评论的状态
-                    commentable = front_check = False
-            except Exception as e:
-                # print(e)
+                # 只能修改自己的活动
+                with transaction.atomic():
+                    activity = Activity.objects.select_for_update().get(id=aid)
+                    org = get_person_or_org(request.user, "Organization")
+                    assert activity.organization_id == org
+                    modify_activity(request, activity)
+                html_display["warn_msg"] = "修改成功。"
+                html_display["warn_code"] = 2
+            except ActivityException as e:
+                html_display["warn_msg"] = str(e)
+                html_display["warn_code"] = 1
+                # return redirect(f"/viewActivity/{activity.id}")
+            except:
                 return redirect("/welcome/")
 
 
-            # 决定状态的变量
-            # None/edit/examine ( 组织申请活动/组织编辑/老师审查 )
-            # full_editable/accepted/None ( 组织编辑活动：除审查老师外全可修改/部分可修改/全部不可改 )
-            #        full_editable 为 true 时，accepted 也为 true
-            # commentable ( 是否可以评论 )
-
-            # 下面是前端展示的变量
-            title = activity.title
-            budget = activity.budget
-            location = activity.location
-            start = activity.start.strftime("%m/%d/%Y %H:%M %p")
-            end = activity.end.strftime("%m/%d/%Y %H:%M %p")
-            apply_end = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
-            apply_end_for_js = apply_end[:-2]
-            introduction = activity.introduction
-            url = activity.URL
-            endbefore = activity.endbefore
-            bidding = activity.bidding
-            amount = activity.YQPoint
-            signscheme = "先到先得"
-            if bidding:
-                signscheme = "投点参与"
-            capacity = activity.capacity
-            yq_source = "向学生收取"
-            if activity.source == Activity.YQPointSource.COLLEGE:
-                yq_source = "向学院申请"
-            no_limit = False
-            if capacity == 10000:
-                no_limit = True
-            examine_teacher = activity.examine_teacher.name
-            status = activity.status
-            avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
-            need_checkin = activity.need_checkin
-            comments = showComment(activity)
-
-
-        html_display["today"] = datetime.now().strftime("%Y-%m-%d")
-        if not edit:
-             bar_display = utils.get_sidebar_and_navbar(request.user, "新建活动")
-        else:
-             bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
-
-        return render(request, "activity_add.html", locals())
-
+    # 下面的操作基本如无特殊说明，都是准备前端使用量
+    defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
+    html_display["applicant_name"] = me.oname
+    html_display["app_avatar_path"] = utils.get_user_ava(me, "Organization")
+    if not edit:
+        avialable_teachers = NaturalPerson.objects.teachers()
     else:
-        return redirect("/welcome/")
+        try:
+            org = get_person_or_org(request.user, "Organization")
 
-@login_required(redirect_field_name="origin")
-def examineActivity(request, aid):
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    try:
-        assert valid
-        assert user_type == "Person"
-        me = utils.get_person_or_org(request.user)
-        activity = Activity.objects.get(id=int(aid))
-        assert activity.examine_teacher == me
-    except:
-        return redirect("/welcome/")
+            # 没过审，可以编辑评论区
+            if not activity.valid:
+                commentable = True
+                front_check = True
+            # 全可编辑
+            full_editable = False
+            accepted = False
+            if activity.status == Activity.Status.REVIEWING:
+                full_editable = True
+                accepted = True
+            # 部分可编辑
+            # 活动只能在开始 1 小时前修改
+            elif (
+                    activity.status == Activity.Status.APPLYING
+                    or activity.status == Activity.Status.WAITING
+            ) and datetime.now() + timedelta(hours=1) < activity.start:
+                accepted = True
+            else:
+                # 不是三个可以评论的状态
+                commentable = front_check = False
+        except Exception as e:
+            # print(e)
+            return redirect("/welcome/")
 
-    html_display["is_myself"] = True
 
-    if request.method == "GET":
+        # 决定状态的变量
+        # None/edit/examine ( 组织申请活动/组织编辑/老师审查 )
+        # full_editable/accepted/None ( 组织编辑活动：除审查老师外全可修改/部分可修改/全部不可改 )
+        #        full_editable 为 true 时，accepted 也为 true
+        # commentable ( 是否可以评论 )
 
-        # 状态量，无可编辑量
-        examine = True
-        commentable = not activity.valid
-        if (
-                activity.status != Activity.Status.REVIEWING and
-                activity.status != Activity.Status.APPLYING and
-                activity.status != Activity.Status.WAITING
-        ):
-            commentable = False
-
-        # 展示变量
+        # 下面是前端展示的变量
         title = activity.title
         budget = activity.budget
         location = activity.location
-        apply_end = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
         start = activity.start.strftime("%m/%d/%Y %H:%M %p")
         end = activity.end.strftime("%m/%d/%Y %H:%M %p")
+        apply_end = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
+        apply_end_for_js = apply_end[:-2]
         introduction = activity.introduction
         url = activity.URL
         endbefore = activity.endbefore
@@ -2441,30 +2380,36 @@ def examineActivity(request, aid):
         if capacity == 10000:
             no_limit = True
         examine_teacher = activity.examine_teacher.name
-        html_display["today"] = datetime.now().strftime("%Y-%m-%d")
-        html_display["app_avatar_path"] = utils.get_user_ava(activity.organization_id,"Organization")
-        html_display["applicant_name"] = activity.organization_id.oname
-        bar_display = utils.get_sidebar_and_navbar(request.user)
         status = activity.status
+        avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
+        need_checkin = activity.need_checkin
         comments = showComment(activity)
 
-        examine_pic = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
-        if str(examine_pic.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
-            examine_pic.image = settings.MEDIA_URL + str(examine_pic.image)
-        intro_pic = examine_pic.image
 
-        need_checkin = activity.need_checkin
+    html_display["today"] = datetime.now().strftime("%Y-%m-%d")
+    if not edit:
+         bar_display = utils.get_sidebar_and_navbar(request.user, "新建活动")
+    else:
+         bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
 
-        bar_display = utils.get_sidebar_and_navbar(request.user)
-        bar_display["title_name"] = "审查活动"
-        bar_display["narbar_name"] = "审查活动"
-        return render(request, "activity_add.html", locals())
+    return render(request, "activity_add.html", locals())
 
-    elif request.method == "POST" and request.POST:
+@login_required(redirect_field_name="origin")
+def examineActivity(request, aid):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    try:
+        assert valid
+        assert user_type == "Person"
+        me = utils.get_person_or_org(request.user)
+        activity = Activity.objects.get(id=int(aid))
+        assert activity.examine_teacher == me
+    except:
+        return redirect("/welcome/")
 
-        # 创建活动只能在审核时添加评论
-        # assert activity.status == Activity.Status.REVIEWING
-        # 改成审核完之前可以评论
+    html_display["is_myself"] = True
+
+    if request.method == "POST" and request.POST:
+
         if (
                 activity.status != Activity.Status.REVIEWING and
                 activity.status != Activity.Status.APPLYING and
@@ -2472,27 +2417,27 @@ def examineActivity(request, aid):
         ) or activity.valid:
             return redirect("/welcome/")
 
-        # 活动开始前一个小时老师也不能再操作
 
         if request.POST.get("comment_submit"):
             try:
                 context = addComment(request, activity, activity.organization_id.organization_id)
                 # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
                 assert context["warn_code"] == 2
-                # 成功后重新加载界面
-                return redirect(f"/examineActivity/{aid}")
+                html_display["warn_msg"] = "评论成功。"
+                html_display["warn_code"] = 2
             except Exception as e:
                 # print(e)
                 return redirect("/welcome/")
 
-        if request.POST.get("review_accepted"):
+        elif request.POST.get("review_accepted"):
             try:
                 with transaction.atomic():
                     activity = Activity.objects.select_for_update().get(
                         id=int(aid)
                     )
                     accept_activity(request, activity)
-                return redirect(f"/examineActivity/{aid}")
+                html_display["warn_msg"] = "活动已通过。"
+                html_display["warn_code"] = 2
             except Exception as e:
                 # print(e)
                 return redirect("/welcome/")
@@ -2502,20 +2447,65 @@ def examineActivity(request, aid):
                     activity = Activity.objects.select_for_update().get(
                         id=int(aid)
                     )
-                    assert (
-                        activity.status == Activity.Status.REVIEWING or
-                        activity.status == Activity.Status.APPLYING or
-                        activity.status == Activity.Status.WAITING
-                    )
                     reject_activity(request, activity)
-                return redirect(f"/examineActivity/{aid}")
+                html_display["warn_msg"] = "活动已被拒绝。"
+                html_display["warn_code"] = 2
             except Exception as e:
                 print(e)
                 return redirect("/welcome/")
 
 
-    else:
-        return redirect("/welcome/")
+    # 状态量，无可编辑量
+    examine = True
+    commentable = not activity.valid
+    if (
+            activity.status != Activity.Status.REVIEWING and
+            activity.status != Activity.Status.APPLYING and
+            activity.status != Activity.Status.WAITING
+    ):
+        commentable = False
+
+    # 展示变量
+    title = activity.title
+    budget = activity.budget
+    location = activity.location
+    apply_end = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
+    start = activity.start.strftime("%m/%d/%Y %H:%M %p")
+    end = activity.end.strftime("%m/%d/%Y %H:%M %p")
+    introduction = activity.introduction
+    url = activity.URL
+    endbefore = activity.endbefore
+    bidding = activity.bidding
+    amount = activity.YQPoint
+    signscheme = "先到先得"
+    if bidding:
+        signscheme = "投点参与"
+    capacity = activity.capacity
+    yq_source = "向学生收取"
+    if activity.source == Activity.YQPointSource.COLLEGE:
+        yq_source = "向学院申请"
+    no_limit = False
+    if capacity == 10000:
+        no_limit = True
+    examine_teacher = activity.examine_teacher.name
+    html_display["today"] = datetime.now().strftime("%Y-%m-%d")
+    html_display["app_avatar_path"] = utils.get_user_ava(activity.organization_id,"Organization")
+    html_display["applicant_name"] = activity.organization_id.oname
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    status = activity.status
+    comments = showComment(activity)
+
+    examine_pic = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
+    if str(examine_pic.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+        examine_pic.image = settings.MEDIA_URL + str(examine_pic.image)
+    intro_pic = examine_pic.image
+
+    need_checkin = activity.need_checkin
+
+    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display["title_name"] = "审查活动"
+    bar_display["narbar_name"] = "审查活动"
+    return render(request, "activity_add.html", locals())
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
