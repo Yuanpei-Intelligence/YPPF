@@ -209,8 +209,8 @@ def check_ac_request(request):
 
 
 def url_check(arg_url):
-    # DEBUG 默认通过
-    return True
+    if settings.DEBUG:  # DEBUG默认通过
+        return True
     if arg_url is None:
         return True
     if re.match("^/[^/?]*/", arg_url):  # 相对地址
@@ -376,6 +376,47 @@ def random_code_init():
     for i in range(0, 6):
         password = password + random.choice(b)
     return password
+
+
+def get_captcha(request, username, valid_seconds=None, more_info=False):
+    '''
+    noexcept
+    - username: 学号/组织号, 不一定对应request.user(此时应尚未登录)
+    - valid_seconds: float or None, None表示不设置有效期
+    ->captcha: str | (captcha, expired, old) if more_info
+    '''
+    expired = False
+    captcha = request.session.get("captcha", "")
+    old = captcha
+    received_user = request.session.get("received_user", "")
+    valid_from = request.session.get("captcha_create_time", "")
+    if len(captcha) != 6 or username != received_user:
+        old = ""
+        expired = True
+    elif valid_seconds is not None:
+        try:
+            valid_from = datetime.strptime(valid_from, "%Y-%m-%d %H:%M:%S")
+            assert datetime.utcnow() <= valid_from + timedelta(seconds=valid_seconds)
+        except:
+            expired = True
+    if expired:
+        # randint包含端点，randrange不包含
+        captcha = random.randrange(1000000)
+        captcha = f"{captcha:06}"
+    return (captcha, expired, old) if more_info else captcha
+
+def set_captcha_session(request, username, captcha):
+    '''noexcept'''
+    utcnow = datetime.utcnow()
+    request.session["received_user"] = username
+    request.session["captcha_create_time"] = utcnow.strftime("%Y-%m-%d %H:%M:%S")
+    request.session["captcha"] = captcha
+
+def clear_captcha_session(request):
+    '''noexcept'''
+    request.session.pop("captcha")
+    request.session.pop("captcha_create_time")  # 验证码只能登录一次
+    request.session.pop("received_user")        # 成功登录后不再保留
 
 
 def notifications_create(
@@ -631,3 +672,60 @@ def update_org_application(application, me, request):
                     return context
                 except:
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
+
+
+import threading
+import os
+# 线程锁，用于对文件写入的排他性
+lock = threading.RLock()
+# 文件操作体系
+log_root = "logstore"
+if not os.path.exists(log_root):
+    os.mkdir(log_root)
+log_root_path = os.path.join(os.getcwd(), log_root)
+log_user = "user_detail"
+if not os.path.exists(os.path.join(log_root_path, log_user)):
+    os.mkdir(os.path.join(log_root_path, log_user))
+log_user_path = os.path.join(log_root_path, log_user)
+
+
+# 通用日志写入程序 写入时间(datetime.now()),操作主体(Sid),操作说明(Str),写入函数(Str)
+# 参数说明：第一为Sid也是文件名，第二位消息，第三位来源的函数名（类别）
+# 如果是系统相关的 请写local_dict["system_log"]
+def operation_writer(user, message, source, status_code="OK"):
+    lock.acquire()
+    try:
+        timestamp = str(datetime.now())
+        source = str(source).ljust(30)
+        status = status_code.ljust(10)
+        message = f"{timestamp} {source}{status}: {message}\n"
+
+        with open(os.path.join(log_user_path, f"{str(user)}.log"), mode="a") as journal:
+            journal.write(message)
+
+        if status_code == "Error":
+            pass
+            # TODO 发送微信消息提醒运维成员
+            '''
+            send_wechat_message(
+                stu_list=['', '', ''],
+                starttime=datetime.now(),
+                room=Room.objects.get(Rid="B107A"),
+                message_type="violated",
+                major_student="地下室系统",
+                usage="发生Error错误",
+                announcement="",
+                num=1,
+                reason=message,
+                # credit=appoint.major_student.Scredit,
+            )
+            '''
+    except Exception as e:
+        # 最好是发送邮件通知存在问题
+        # 待补充
+        print(e)
+
+    lock.release()
+
+
+operation_writer(local_dict["system_log"], "系统启动", "util_底部")

@@ -4,7 +4,8 @@ from app.models import (
     Reimbursement,
     Activity,
     Comment,
-    CommentPhoto
+    CommentPhoto,
+    TransferRecord
 )
 import app.utils as utils
 from django.db import transaction
@@ -54,6 +55,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                 user_type == "Organization" and feasible_post.index(post_type) >= 3):
             return wrong("您无权进行此操作，如有疑惑, 请联系管理员")
 
+        our_college=Organization.objects.get(oname="元培学院").organization_id
         if feasible_post.index(post_type) <= 2:  # 是组织的操作, 新建\修改\取消
 
             # 访问者一定是组织
@@ -72,6 +74,8 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                 org.save()
                 #修改申请状态
                 application.status=Reimbursement.ReimburseStatus.CANCELED
+                application.record.status=TransferRecord.TransferStatus.SUSPENDED#已终止
+                application.record.save()
                 application.save()
                 context = succeed("成功取消“" +application.related_activity.title+ "”的经费申请!")
                 context["application_id"] = application.id
@@ -115,9 +119,19 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                         for image in images:
                             if utils.if_image(image) == False:
                                 return wrong("上传的材料只支持图片格式。")
+
+                    transaction_msg = f'活动“{reimb_act.title}”的报销申请'  # TODO:报销信息的补充
+                    record = TransferRecord.objects.create(
+                        proposer=request.user,
+                        recipient=our_college,
+                        amount=reimb_YQP,
+                        message=transaction_msg,
+                        is_increase=1
+                    )
                     # 至此可以新建申请, 创建一个空申请
                     application =Reimbursement.objects.create(
-                                related_activity=reimb_act, amount=reimb_YQP, pos=me.organization_id,message=message)
+                                related_activity=reimb_act, amount=reimb_YQP, pos=me.organization_id,
+                        message=message,record=record)
                     #保存报销材料到评论中，后续如果需要更新报销材料则在评论中更新
                     if len(images)>0:
                         text = "以下默认为初始的报销材料"
@@ -153,6 +167,8 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     #修改申请
                     application.amount=reimb_YQP
                     application.message=message
+                    application.record.amount = reimb_YQP  # 更改相应的转账的元气值
+                    application.record.save()
                     application.save()
                     context = succeed(f'活动“{application.related_activity.title}”的经费申请已成功修改，请耐心等待{auditor_name}老师审批！' )
                     context["application_id"] = application.id
@@ -174,6 +190,8 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                 org.save()
                 #修改申请状态
                 application.status=Reimbursement.ReimburseStatus.REFUSED
+                application.record.status = TransferRecord.TransferStatus.REFUSED  # 已拒绝
+                application.record.save()
                 application.save()
                 context = succeed(f'已成功拒绝活动“{act_title}”的经费申请！')
                 context["application_id"] = application.id
@@ -186,6 +204,8 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                 '''
                  # 修改申请的状态
                 application.status = Reimbursement.ReimburseStatus.CONFIRMED
+                application.record.status = TransferRecord.TransferStatus.ACCEPTED  # 已接受
+                application.record.save()
                 application.save()
                 context = succeed(f'活动“{act_title}”的经费申请已通过！')
                 context["application_id"] = application.id
