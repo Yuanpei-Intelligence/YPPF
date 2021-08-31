@@ -514,7 +514,7 @@ class Activity(CommentBase):
     (7) 增加活动管理的接口, activated, 筛选出这个学期的活动(见class [ActivityManager])
     """
 
-    title = models.CharField("活动名称", max_length=25)
+    title = models.CharField("活动名称", max_length=50)
     organization_id = models.ForeignKey(
         Organization,
         # to_field="organization_id", 删除掉to_field, 保持纯净对象操作
@@ -554,6 +554,8 @@ class Activity(CommentBase):
 
     location = models.CharField("活动地点", blank=True, max_length=200)
     introduction = models.TextField("活动简介", max_length=225, blank=True)
+    apply_reason = models.TextField("申请理由", max_length=225, blank=True)
+
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
     # url,活动二维码
@@ -963,7 +965,7 @@ class Reimbursement(CommentBase):
     message = models.TextField("备注信息", default="", blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
-    record=models.ForeignKey(TransferRecord,on_delete=models.CASCADE)#转账信息的记录
+    record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
         
