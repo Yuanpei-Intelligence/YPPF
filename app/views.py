@@ -20,7 +20,8 @@ from app.models import (
     CommentPhoto,
     YQPointDistribute,
     Reimbursement,
-    Wishes
+    Wishes,
+    Weather
 )
 from django.db.models import Max
 import app.utils as utils
@@ -58,7 +59,6 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
 
 import json
-from time import mktime
 from datetime import date, datetime, timedelta
 from urllib import parse, request as urllib2
 import re
@@ -148,32 +148,7 @@ def index(request):
             auth.login(request, userinfo)
             request.session["username"] = username
             if arg_origin is not None:
-                if not check_cross_site(request, arg_origin):
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
-                    return redirect(
-                        "/welcome/?warn_code={}&warn_message={}".format(
-                            html_display["warn_code"], html_display["warn_message"]
-                        )
-                    )
-                if not arg_origin.startswith("http"):  # 非外部链接，合法性已经检查过
-                    return redirect(arg_origin)  # 不需要加密验证
-                d = datetime.utcnow()
-                t = mktime(datetime.timetuple(d))
-                timeStamp = str(int(t))
-                en_pw = hash_coder.encode(username + timeStamp)
-                try:
-                    userinfo = NaturalPerson.objects.get(person_id__username=username)
-                    name = userinfo.name
-                    return redirect(
-                        arg_origin
-                        + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}&name={name}"
-                    )
-                except:
-                    return redirect(
-                        arg_origin
-                        + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
-                    )
+                pass # 现在统一放到下面处理，这里只负责登录
             else:
                 # 先处理初次登录
                 valid, user_type, html_display = utils.check_user_type(request.user)
@@ -194,12 +169,11 @@ def index(request):
             html_display["warn_code"] = 1
             html_display["warn_message"] = local_dict["msg"]["406"]
 
-    # 非 post 过来的
+    # 所有跳转，现在不管是不是post了
     if arg_origin is not None:
         if request.user.is_authenticated:
 
             if not check_cross_site(request, arg_origin):
-                html_display = dict()
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                 return redirect(
@@ -207,17 +181,24 @@ def index(request):
                         html_display["warn_code"], html_display["warn_message"]
                     )
                 )
+            if not arg_origin.startswith("http"):  # 非外部链接，合法性已经检查过
+                return redirect(arg_origin)  # 不需要加密验证
 
-            d = datetime.utcnow()
-            t = mktime(datetime.timetuple(d))
-            timeStamp = str(int(t))
-            print("utc time: ", d)
-            print(timeStamp)
+            timeStamp = str(int(datetime.utcnow().timestamp())) # UTC 统一服务器
             username = request.session["username"]
             en_pw = hash_coder.encode(username + timeStamp)
-            return redirect(
-                arg_origin + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
-            )
+            try:
+                userinfo = NaturalPerson.objects.get(person_id__username=username)
+                name = userinfo.name
+                return redirect(
+                    arg_origin
+                    + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}&name={name}"
+                )
+            except:
+                return redirect(
+                    arg_origin
+                    + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
+                )
 
     return render(request, "index.html", locals())
 
@@ -653,6 +634,8 @@ def orginfo(request, name=None):
             html_display["isboss"] = True
         if p.show_post == True or p.pos == 0 or html_display["is_myself"]:
             member = {}
+            member['show_flag'] = p.show_flag
+            member['id'] = p.id
             member["person"] = p.person
             member["job"] = org.otype.get_name(p.pos)
             member["highest"] = True if p.pos == 0 else False
@@ -703,6 +686,12 @@ def orginfo(request, name=None):
             organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
             else False
     
+    # 补充作为组织成员，选择是否展示的按钮
+    show_flag_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
+    my_position = Position.objects.activated().filter(org=org, person=me).exclude(pos=0)
+    if len(my_position):
+        show_flag_change_button = True
+        my_position = my_position[0]
     
 
     return render(request, "orginfo.html", locals())
@@ -815,8 +804,11 @@ def homepage(request):
         photos = photo_display[1:]
 
     # 天气
-    weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
-    html_display['weather'] = json.loads(weather)
+    # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
+    if Weather.objects.filter(status = True).count == 0:
+        from app.scheduler_utils import get_weather
+        get_weather()
+    html_display['weather'] = Weather.objects.get_activated().weather_json
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "元培生活")
@@ -1092,7 +1084,7 @@ def get_stu_img(request):
     stuId = request.GET.get("stuId")
     if stuId is not None:
         try:
-            stu = NaturalPerson.objects.get(person_id=stuId)
+            stu = NaturalPerson.objects.get(person_id__username=stuId)
             img_path = utils.get_user_ava(stu, "Person")
             return JsonResponse({"path": img_path}, status=200)
         except:
@@ -1223,11 +1215,13 @@ def test(request):
 def forget_password(request):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
+
         页面效果
         -------
         - 根据（邮箱）验证码完成登录，提交后跳转到修改密码界面
         - 本质是登录而不是修改密码
         - 如果改成支持验证码登录只需修改页面和跳转（记得修改函数和页面名）
+
         页面逻辑
         -------
         1. 发送验证码
@@ -1235,6 +1229,7 @@ def forget_password(request):
         2. 输入验证码
             2.5 保留表单信息
         3. 错误提醒和邮件发送提醒
+
         实现逻辑
         -------
         - 通过脚本使按钮提供不同的`send_captcha`值，区分按钮
@@ -1242,58 +1237,52 @@ def forget_password(request):
         - 通过`session`保证安全传输验证码和待验证用户
         - 成功发送/登录后才在`session`中记录信息
         - 页面模板中实现消息提醒
-            - `err_code`非零值代表错误，在页面中显示
-            - `err_code`=`0`或`4`是预设的提醒值，额外弹出提示框
-            - forget_password.html中可以进一步修改
+            - 消息提示现在与整体统一
+            - 添加`alert`表示需要提醒
+            - 添加`noshow`不在页面显示文字
         - 尝试发送验证码后总是弹出提示框，通知用户验证码的发送情况
+        
         注意事项
         -------
         - 尝试忘记密码的不一定是本人，一定要做好隐私和逻辑处理
             - 用户邮箱应当部分打码，避免向非本人提供隐私数据！
-        - 不发送消息时`err_code`应为`None`或不声明，不同于modpw
-        - `err_code`=`4`时弹出
         - 连接设置的timeout为6s
         - 如果引入企业微信验证，建议将send_captcha分为'qywx'和'email'
     """
+    if request.user.is_authenticated:
+        return redirect("/welcome/")
+
     if request.session.get("received_user"):
         username = request.session["received_user"]  # 自动填充，方便跳转后继续
     if request.method == "POST":
         username = request.POST["username"]
-        send_captcha = request.POST["send_captcha"] == "yes"
+        send_captcha = request.POST["send_captcha"]
         vertify_code = request.POST["vertify_code"]  # 用户输入的验证码
 
         user = User.objects.filter(username=username)
         if not user:
-            err_code = 1
-            err_message = "账号不存在"
+            display = wrong("账号不存在")
         elif len(user) != 1:
-            err_code = 1
-            err_message = "账号不唯一，请联系管理员"
+            display = wrong("用户名不唯一，请联系管理员")
         else:
-            user = User.objects.get(username=username)
+            user = user[0]
             try:
-                useroj = NaturalPerson.objects.get(person_id=user)  # 目前只支持自然人
+                person = NaturalPerson.objects.get(person_id=user)  # 目前只支持自然人
             except:
-                err_code = 1
-                err_message = "暂不支持组织账号忘记密码！"
+                display = wrong("暂不支持组织账号验证码登录！")
+                display["alert"] = True
                 return render(request, "forget_password.html", locals())
-            isFirst = useroj.first_time_login
-            if isFirst:
-                err_code = 2
-                err_message = "初次登录密码与账号相同！"
-            elif send_captcha:
-                email = useroj.email
+            if send_captcha in ["yes", "email"]:    # 单个按钮(yes)发送邮件
+                email = person.email
                 if not email or email.lower() == "none" or "@" not in email:
-                    err_code = 3
-                    err_message = (
-                            "您没有设置邮箱，请联系管理员" + "或发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"
+                    display = wrong(
+                            "您没有设置邮箱，请联系管理员"
+                            + "或发送姓名、学号和常用邮箱至gypjwb@pku.edu.cn进行修改"
                     )  # TODO:记得填
                 else:
-                    # randint包含端点，randrange不包含
-                    captcha = random.randrange(1000000)
-                    captcha = f"{captcha:06}"
+                    captcha = utils.get_captcha(request, username)
                     msg = (
-                            f"<h3><b>亲爱的{useroj.name}同学：</b></h3><br/>"
+                            f"<h3><b>亲爱的{person.name}同学：</b></h3><br/>"
                             "您好！您的账号正在进行邮箱验证，本次请求的验证码为：<br/>"
                             f'<p style="color:orange">{captcha}'
                             '<span style="color:gray">(仅'
@@ -1323,34 +1312,31 @@ def forget_password(request):
                         response = requests.post(email_url, post_data, timeout=6)
                         response = response.json()
                         if response["status"] != 200:
-                            err_code = 4
-                            err_message = f"未能向{pre}@{suf}发送邮件"
+                            display = wrong(f"未能向{pre}@{suf}发送邮件")
                             print("向邮箱api发送失败，原因：", response["data"]["errMsg"])
                         else:
                             # 记录验证码发给谁 不使用username防止被修改
-                            request.session["received_user"] = username
-                            request.session["captcha"] = captcha
-                            err_code = 0
-                            err_message = f"验证码已发送至{pre}@{suf}"
+                            utils.set_captcha_session(request, username, captcha)
+                            display = succeed(f"验证码已发送至{pre}@{suf}")
+                            display["noshow"] = True
                     except:
-                        err_code = 4
-                        err_message = "邮件发送失败：超时"
+                        display = wrong("邮件发送失败：超时")
+                    finally:
+                        display["alert"] = True
             else:
-                captcha = request.session.get("captcha", "")
-                received_user = request.session.get("received_user", "")
-                if len(captcha) != 6 or username != received_user:
-                    err_code = 5
-                    err_message = "请先发送验证码"
-                elif vertify_code.upper() == captcha.upper():
+                captcha, expired, old = utils.get_captcha(request, username, more_info=True)
+                if not old:
+                    display = wrong("请先发送验证码")
+                elif expired:
+                    display = wrong("验证码已过期，请重新发送")
+                elif str(vertify_code).upper() == captcha.upper():
                     auth.login(request, user)
-                    request.session.pop("captcha")
-                    request.session.pop("received_user")  # 成功登录后不再保留
+                    utils.clear_captcha_session(request)
                     request.session["username"] = username
                     request.session["forgetpw"] = "yes"
                     return redirect(reverse("modpw"))
                 else:
-                    err_code = 6
-                    err_message = "验证码不正确"
+                    display = wrong("验证码错误")
     return render(request, "forget_password.html", locals())
 
 
@@ -1947,6 +1933,7 @@ def viewActivity(request, aid=None):
                 applyActivity(request, activity)
                 return redirect(f"/viewActivity/{aid}")
         except ActivityException as e:
+            html_display["warn_code"] = 1
             html_display["warn_message"] = str(e)
         except:
             redirect('/welcome/')
@@ -2568,6 +2555,28 @@ def subscribeActivities(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+def save_show_position_status(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    me = utils.get_person_or_org(request.user, user_type)
+    params = json.loads(request.body.decode("utf-8"))
+    
+    with transaction.atomic():
+        try:
+            position = Position.objects.select_for_update().get(id=params["id"])
+        except:
+            return JsonResponse({"success":False})
+        if params["status"]:
+            position.show_flag = True
+        else:
+            if len(Position.objects.filter(pos=0, org=position.org)) == 1 and position.pos==0:    #非法前端量修改
+                return JsonResponse({"success":False})
+            position.show_flag = False
+        position.save()
+    return JsonResponse({"success": True})
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def save_subscribe_status(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -2820,6 +2829,7 @@ def notifications(request):
     undone_list = notification2Display(
         list(undone_set.union(undone_set).order_by("-start_time"))
     )
+    
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
@@ -3155,7 +3165,6 @@ def showPosition(request):
     shown_instances = shown_instances.order_by('-modify_time', '-time')
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="人事申请")
     return render(request, 'showPosition.html', locals())
-
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
