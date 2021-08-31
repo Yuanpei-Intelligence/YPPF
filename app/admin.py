@@ -10,7 +10,8 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             {
                 "classes": ("collapse",),
                 "fields": ("stu_grade", "stu_dorm", "stu_class", "stu_major",
-                "show_nickname", "show_gender", "show_email", "show_tel", "show_major", "show_dorm"),
+                "show_gender", "show_email", "show_tel", "show_major", "show_dorm"),
+                # "show_nickname"
             },
         ],
     )
