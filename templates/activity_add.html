@@ -60,9 +60,25 @@
                                         <div class="d-flex justify-content-between">
                                             <div >
                                                 {% if edit %}
-                                                <h4 onclick="javascript:window.location.href='/viewActivity/{{aid}}'">活动编辑 <span id="ret" class="badge badge-pill badge-success">{{status}}</span></h4>
+                                                <h4 onclick="javascript:window.location.href='/viewActivity/{{aid}}'">活动编辑 <span id="ret" class="badge badge-pill badge-success">{{status}}</span>
+                                                <a data-toggle="tooltip" data-placement="bottom" title="点击活动状态按钮可以返回活动详情页">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path
+                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                                </h4>
                                                 {% elif examine %}
-                                                <h4>活动审核 <span id="ret" class="badge badge-pill badge-success">{{status}}</span></h4>
+                                                <h4 onclick="javascript:window.location.href='/viewActivity/{{aid}}'">活动审核 <span id="ret" class="badge badge-pill badge-success">{{status}}</span>
+                                                <a data-toggle="tooltip" data-placement="bottom" title="点击活动状态按钮可以返回活动详情页">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path
+                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                                </h4>
                                                 {% else %}
                                                 <h4>活动新建</h4>
                                                 {% endif %}
@@ -135,8 +151,15 @@
                                                         <option value="{{avialable_teacher.name}}">{{avialable_teacher.name}}</option>
                                                     {% endfor %}
                                                 </select>
+
                                             </div>
                                             {% endif %}
+
+                                            <div class="form-group">
+                                                <textarea id="apply_reason" name="apply_reason" class="form-control" rows="3"
+                                                    placeholder="(必填) 活动申请理由" onclick="fill_value(this)" 
+                                                    required="required" maxlength=225></textarea>
+                                            </div>
 
                                             <div class="form-check"
                                                 style="align-content: center; vertical-align: middle;">
@@ -637,6 +660,7 @@
     {% endif %}
     // 宣传信息
     document.getElementById("aintro").placeholder = "{{introduction}}";
+    document.getElementById("apply_reason").placeholder = "{{apply_reason}}";
 
 
     // input 不再必须填写
@@ -645,6 +669,7 @@
         all_inputs[i].required="";
     }
     document.getElementById("aintro").required = "";
+    document.getElementById("apply_reason").required = "";
 
     
     // 点击自动填充可修改
@@ -672,6 +697,7 @@
             {% endif %}
             document.getElementById("title").disabled = true;
             document.getElementById("budget").disabled = true;
+            document.getElementById("apply_reason").disabled = true;
         {% endif %}
 
     {% else %}
@@ -684,6 +710,7 @@
             all_inputs[i].disabled = true;
         }
         document.getElementById("aintro").disabled = true;
+        document.getElementById("apply_reason").disabled = true;
         function fill_value(a) {
             console.log(a.value);
         }
