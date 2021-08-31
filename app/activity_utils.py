@@ -386,15 +386,15 @@ def modify_accepted_activity(request, activity):
         signup_end = act_start - timedelta(hours=prepare_time)
         assert now_time <= signup_end
         activity.apply_end = signup_end
-        to_subscribers.append("活动报名截止时间调整为" + str(signup_end))
-        to_participants.append("活动报名截止时间调整为" + str(signup_end))
+        to_subscribers.append(f"活动报名截止时间调整为{signup_end.strftime('%m/%d/%Y %H:%M %p')}")
+        to_participants.append(f"活动报名截止时间调整为{signup_end.strftime('%m/%d/%Y %H:%M %p')}")
     else:
         signup_end = activity.apply_end
         assert signup_end + timedelta(hours=1) < act_start
     
     if activity.start != act_start:
-        to_subscribers.append("活动开始时间调整为" + str(act_start))
-        to_participants.append("活动开始时间调整为" + str(act_start))
+        to_subscribers.append(f"活动开始时间调整为{act_start.strftime('%m/%d/%Y %H:%M %p')}")
+        to_participants.append(f"活动开始时间调整为{act_start.strftime('%m/%d/%Y %H:%M %p')}")
         activity.start = act_start
 
     if signup_end < now_time and activity.status == Activity.Status.WAITING:
@@ -406,7 +406,10 @@ def modify_accepted_activity(request, activity):
     else:
         capacity = int(request.POST["maxpeople"])
         assert capacity > 0
-        if capacity < len(Participant.objects.filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)):
+        if capacity < len(Participant.objects.filter(
+            activity_id=activity.id, 
+            status=Participant.AttendStatus.APLLYSUCCESS
+        )):
             raise ActivityException(f"当前成功报名人数已超过{capacity}人")
     activity.capacity = capacity
 

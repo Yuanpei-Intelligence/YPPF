@@ -514,7 +514,7 @@ class Activity(CommentBase):
     (7) 增加活动管理的接口, activated, 筛选出这个学期的活动(见class [ActivityManager])
     """
 
-    title = models.CharField("活动名称", max_length=25)
+    title = models.CharField("活动名称", max_length=50)
     organization_id = models.ForeignKey(
         Organization,
         # to_field="organization_id", 删除掉to_field, 保持纯净对象操作
