@@ -434,8 +434,10 @@ def modify_accepted_activity(request, activity):
         run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
 
 
-    notifyActivity(activity.id, "modification_sub_ex_par", "\n".join(to_subscribers))
-    notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
+    if len(to_subscribers) > 1:
+        notifyActivity(activity.id, "modification_sub_ex_par", "\n".join(to_subscribers))
+    if len(to_participants) > 1:   
+        notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
 
 
 
@@ -464,9 +466,6 @@ def accept_activity(request, activity):
     )
 
     if activity.status == Activity.Status.REVIEWING:
-
-        # 保证有时间来报名，不然前端提醒组织修改时间
-        assert datetime.now() < activity.apply_end
 
         activity.status = Activity.Status.APPLYING
 
@@ -533,7 +532,6 @@ def reject_activity(request, activity):
     if activity.status == Activity.Status.REVIEWING:
         activity.status = Activity.Status.REJECT
     else:
-
         # TODO
         # 前端得多一个判断，拒绝的时候啥时候都能拒绝
         # 接受也不是必须在报名截止前，改前端......
