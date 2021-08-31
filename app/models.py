@@ -1,6 +1,6 @@
 from django.db import models, transaction
 from django.db.models.fields import related
-from django_mysql.models import ListCharField
+from django_mysql.models import ListCharField, JSONField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -401,7 +401,7 @@ class Course(models.Model):
 class ActivityManager(models.Manager):
     def activated(self):
         # 选择学年相同，并且学期相同或者覆盖的
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
+        return self.displayable().filter(year=int(local_dict["semester_data"]["year"])).filter(
             semester__contains=local_dict["semester_data"]["semester"]
         )
 
@@ -418,18 +418,14 @@ class ActivityManager(models.Manager):
         # 一周内结束的活动
         nowtime = datetime.now()
         mintime = nowtime-timedelta(days = 7)
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
-            semester__contains=local_dict["semester_data"]["semester"]
-        ).filter(end__gt = mintime).filter(status=Activity.Status.END)
+        return self.activated().filter(end__gt = mintime).filter(status=Activity.Status.END)
 
     def get_recent_activity(self):
         # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
         nowtime = datetime.now()
         mintime = nowtime-timedelta(days = 7)
         maxtime = nowtime+timedelta(days = 7)
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
-            semester__contains=local_dict["semester_data"]["semester"]
-        ).filter(start__gt = mintime).filter(start__lt = maxtime).filter(
+        return self.activated().filter(start__gt = mintime).filter(start__lt = maxtime).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -441,9 +437,7 @@ class ActivityManager(models.Manager):
     def get_newlyreleased_activity(self):
         # 最新一周内发布的活动，按发布的时间逆序
         nowtime = datetime.now()
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
-            semester__contains=local_dict["semester_data"]["semester"]
-        ).filter(publish_time__gt = nowtime-timedelta(days = 7)).filter(
+        return self.activated().filter(publish_time__gt = nowtime-timedelta(days = 7)).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -1016,3 +1010,25 @@ class Wishes(models.Model):
     text = models.TextField("心愿内容", default="", blank=True)
     time = models.DateTimeField("发布时间", auto_now_add=True)
     background = models.TextField("颜色编码", default="")
+
+
+class WeatherManager(models.Manager):
+    def get_activated(self):
+        # 预期只有一个status为True的实例
+        return self.get(status=True)
+
+
+class Weather(models.Model):
+    '''
+        目前用的数据库，没想到怎么用全局变量。
+        要应用天气，需要先在admin网页创建一个Weather类的实例
+    '''
+
+    class Meta:
+        verbose_name = "实时天气"
+        verbose_name_plural = verbose_name
+    
+    modify_time = models.DateTimeField("上次修改时间", auto_now=True)
+    weather_json = JSONField("当前天气")
+    status = models.BooleanField("是否应用", default=False)
+    objects = WeatherManager()
