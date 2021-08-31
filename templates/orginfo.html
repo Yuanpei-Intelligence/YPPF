@@ -192,7 +192,7 @@
 
                             <div class="row">
                                 {% for member in member_list %}
-                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id={{member.id}}>
+                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id={{member.id}} {% if not member.show_flag %} hidden {% endif %}>
                                     <div class=" b-skills" style="padding: 5%;">
 
                                         <div class="d-flex justify-content-between">

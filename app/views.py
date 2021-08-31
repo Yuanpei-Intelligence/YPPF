@@ -646,13 +646,14 @@ def orginfo(request, name=None):
     html_display["isboss"] = False
 
     # 组织成员list
-    positions = Position.objects.activated().filter(org=org,show_flag=True).order_by("pos")  # 升序
+    positions = Position.objects.activated().filter(org=org).order_by("pos")  # 升序
     member_list = []
     for p in positions:
         if p.person.person_id == user and p.pos == 0:
             html_display["isboss"] = True
         if p.show_post == True or p.pos == 0 or html_display["is_myself"]:
             member = {}
+            member['show_flag'] = p.show_flag
             member['id'] = p.id
             member["person"] = p.person
             member["job"] = org.otype.get_name(p.pos)
@@ -2582,9 +2583,17 @@ def save_show_position_status(request):
     params = json.loads(request.body.decode("utf-8"))
     
     with transaction.atomic():
-        pos = Position.objects.select_for_update().get(id=params["id"])
-        pos.show_flag = params['status']
-        pos.save()
+        try:
+            position = Position.objects.select_for_update().get(id=params["id"])
+        except:
+            return JsonResponse({"success":False})
+        if params["status"]:
+            position.show_flag = True
+        else:
+            if len(Position.objects.filter(pos=0, org=position.org)) == 1 and position.pos==0:    #非法前端量修改
+                return JsonResponse({"success":False})
+            position.show_flag = False
+        position.save()
     return JsonResponse({"success": True})
 
 @login_required(redirect_field_name="origin")
