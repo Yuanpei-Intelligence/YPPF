@@ -406,8 +406,8 @@ def get_weather():
         load_json = json.loads(urllib2.urlopen(url, timeout=5).read()) # 这里面信息太多了，不太方便传到前端
         weather_dict = {
             "description": load_json["weather"][0]["description"],
-            "temp_min": str(round(float(load_json["main"]["temp_min"]) - 273.15)),
-            "temp_max": round(float(load_json["main"]["temp_max"]) - 273.15),
+            "temp": str(round(float(load_json["main"]["temp"]) - 273.15)),
+            "temp_feel": round(float(load_json["main"]["temp_feel"]) - 273.15),
             "icon": load_json["weather"][0]["icon"]
         }
         number = Weather.objects.filter(status=True).count()
