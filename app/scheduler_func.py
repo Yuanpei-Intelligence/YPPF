@@ -11,6 +11,7 @@ from app.wechat_send import publish_notifications
 from app.forms import YQPointDistributionForm
 from boottest.hasher import MySHA256Hasher
 from app.notification_utils import bulk_notification_create
+from boottest import local_dict
 
 from random import sample
 from numpy.random import choice
@@ -400,14 +401,14 @@ def get_weather():
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     try:
         city = "Beijing"
-        key = "6c28464592ba4c33efe18ce678f02638"
+        key = local_dict["weather_api_key"]
         lang = "zh_cn"
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={key}&lang={lang}"
         load_json = json.loads(urllib2.urlopen(url, timeout=5).read()) # 这里面信息太多了，不太方便传到前端
         weather_dict = {
             "description": load_json["weather"][0]["description"],
             "temp": str(round(float(load_json["main"]["temp"]) - 273.15)),
-            "temp_feel": round(float(load_json["main"]["temp_feel"]) - 273.15),
+            "temp_feel": str(round(float(load_json["main"]["feels_like"]) - 273.15)),
             "icon": load_json["weather"][0]["icon"]
         }
         number = Weather.objects.filter(status=True).count()
