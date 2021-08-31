@@ -549,12 +549,6 @@
     });
     {% endfor %}
 
-    {% if edit or examine %}
-    $("input[id='ret']").on("click", function () {
-        window.open('/viewActivity/{{aid}}')
-    });
-    {% endif %}
-
     function showFilenameLocal(files){
         var text = "";
         for (i = 0; i < files.length; i++)
