@@ -806,7 +806,7 @@ def homepage(request):
 
     # 天气
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
-    if Weather.objects.filter(status = True).count == 0:
+    if Weather.objects.filter(status=True).count() == 0:
         from app.scheduler_func import get_weather
         get_weather()
     html_display['weather'] = Weather.objects.get_activated().weather_json

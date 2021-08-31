@@ -395,19 +395,31 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
 
 
 
-@register_job(scheduler, 'interval', id="get weather per 3 minutes", minutes=3)
+@register_job(scheduler, 'interval', id="get weather per 3 minutes", seconds=100)
 def get_weather():
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     try:
-        load_json = json.loads(urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html",timeout=5).read())
-        number = Weather.objects.filter(status = True).count()
+        city = "Beijing"
+        key = "6c28464592ba4c33efe18ce678f02638"
+        lang = "zh_cn"
+        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={key}&lang={lang}"
+        load_json = json.loads(urllib2.urlopen(url, timeout=5).read()) # 这里面信息太多了，不太方便传到前端
+        weather_dict = {
+            "description": load_json["weather"][0]["description"],
+            "temp_min": str(round(float(load_json["main"]["temp_min"]) - 273.15)),
+            # "temp_max": round(float(load_json["main"]["temp_max"]) - 273.15),
+            "icon": load_json["weather"][0]["icon"]
+        }
+        weather_json = json.loads(str(weather_dict))
+        number = Weather.objects.filter(status=True).count()
         if not number:
-            Weather.objects.create(weather_json=load_json,status= True)
+            Weather.objects.create(weather_json=weather_json,status=True)
         current_weather = Weather.objects.get_activated()
-        current_weather.weather_json = load_json = json.loads(urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read())
+        current_weather.weather_json = json.loads(weather_dict)
         current_weather.modify_time = datetime.now()
         current_weather.save()
-    except:
+    except Exception as e:
+        print(e)
         # 相当于超时
         # TODO: 增加天气超时的debug
         print("任务超时")
