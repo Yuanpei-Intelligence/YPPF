@@ -29,17 +29,17 @@
                     <div class="carousel-inner">
                         <div class="carousel-item active">
                             {% if photo_display|length == 0 %}
-                            <img class="d-block w-100 slide-image" src={{homepagephoto}}>
+                            <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;" src={{homepagephoto}}>
                             {% else %}
                             <a href="/viewActivity/{{firstpic.activity_id}}">
-                                <img class="d-block w-100 slide-image" src={{firstpic.image}}>
+                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;" src={{firstpic.image}}>
                             </a>
                             {% endif %}
                         </div>
                         {% for photo in photos %}
                         <div class="carousel-item">
                             <a href="/viewActivity/{{photo.activity_id}}">
-                                <img class="d-block w-100 slide-image" src={{photo.image}}>
+                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;" src={{photo.image}}>
                             </a>
                         </div>
                         {% endfor %}
