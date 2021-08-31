@@ -20,7 +20,8 @@ from app.models import (
     CommentPhoto,
     YQPointDistribute,
     Reimbursement,
-    Wishes
+    Wishes,
+    Weather
 )
 from django.db.models import Max
 import app.utils as utils
@@ -633,6 +634,8 @@ def orginfo(request, name=None):
             html_display["isboss"] = True
         if p.show_post == True or p.pos == 0 or html_display["is_myself"]:
             member = {}
+            member['show_post'] = p.show_post
+            member['id'] = p.id
             member["person"] = p.person
             member["job"] = org.otype.get_name(p.pos)
             member["highest"] = True if p.pos == 0 else False
@@ -683,6 +686,13 @@ def orginfo(request, name=None):
             organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
             else False
     
+    # 补充作为组织成员，选择是否展示的按钮
+    show_post_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
+    if user_type == 'Person':
+        my_position = Position.objects.activated().filter(org=org, person=me).exclude(pos=0)
+        if len(my_position):
+            show_post_change_button = True
+            my_position = my_position[0]
     
 
     return render(request, "orginfo.html", locals())
@@ -795,8 +805,11 @@ def homepage(request):
         photos = photo_display[1:]
 
     # 天气
-    weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
-    html_display['weather'] = json.loads(weather)
+    # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
+    if Weather.objects.filter(status = True).count == 0:
+        from app.scheduler_utils import get_weather
+        get_weather()
+    html_display['weather'] = Weather.objects.get_activated().weather_json
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "元培生活")
@@ -1072,7 +1085,7 @@ def get_stu_img(request):
     stuId = request.GET.get("stuId")
     if stuId is not None:
         try:
-            stu = NaturalPerson.objects.get(person_id=stuId)
+            stu = NaturalPerson.objects.get(person_id__username=stuId)
             img_path = utils.get_user_ava(stu, "Person")
             return JsonResponse({"path": img_path}, status=200)
         except:
@@ -1921,6 +1934,7 @@ def viewActivity(request, aid=None):
                 applyActivity(request, activity)
                 return redirect(f"/viewActivity/{aid}")
         except ActivityException as e:
+            html_display["warn_code"] = 1
             html_display["warn_message"] = str(e)
         except:
             redirect('/welcome/')
@@ -2544,6 +2558,28 @@ def subscribeActivities(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+def save_show_position_status(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    me = utils.get_person_or_org(request.user, user_type)
+    params = json.loads(request.body.decode("utf-8"))
+    
+    with transaction.atomic():
+        try:
+            position = Position.objects.select_for_update().get(id=params["id"])
+        except:
+            return JsonResponse({"success":False})
+        if params["status"]:
+            position.show_post = True
+        else:
+            if len(Position.objects.filter(pos=0, org=position.org)) == 1 and position.pos==0:    #非法前端量修改
+                return JsonResponse({"success":False})
+            position.show_post = False
+        position.save()
+    return JsonResponse({"success": True})
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def save_subscribe_status(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -2796,6 +2832,7 @@ def notifications(request):
     undone_list = notification2Display(
         list(undone_set.union(undone_set).order_by("-start_time"))
     )
+    
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
@@ -3131,7 +3168,6 @@ def showPosition(request):
     shown_instances = shown_instances.order_by('-modify_time', '-time')
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="人事申请")
     return render(request, 'showPosition.html', locals())
-
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
