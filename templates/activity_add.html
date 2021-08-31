@@ -62,7 +62,8 @@
                                                 <h4>
                                                 <img src="{{ html_display.app_avatar_path }}" width="24" height="24" alt="avatar">                
                                                 <a href='/orginfo/{{html_display.applicant_name}}'>
-                                                    <u>{{html_display.applicant_name}}</u></a>
+                                                    <u>{{html_display.applicant_name}}</u>
+                                                </a>
                                                 </h4>
                                             </div>
                                         </div>
@@ -128,8 +129,10 @@
                                                     value="1" id="recorded"
                                                     name="recorded">
                                                 <label class="form-check-label" for="defaultCheck1">
-                                                    预报备 ( 此选项不可修改，擅自选择可能导致组织被取消 )
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="">
+
+                                                    是否已报备
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="此选项不可修改，擅自选择可能导致组织被取消">
+
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -360,7 +363,9 @@
                                             {% if not examine and not edit or full_editable %}
                                             <div class="form-group">
                                                 <label>
-                                                    上传活动预告图片
+
+                                                    活动预告图片
+
                                                     <a data-toggle="tooltip" data-placement="bottom" title="可以选择默认的图片；如果推送中包含图片的话，也可以选取推送中包含的图片；这一项在审核通过后不可修改">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
@@ -374,22 +379,14 @@
                                                            class="custom-file-input" id="images" name="images" 
                                                            accept="image/*">
                                                     <label id="upload_annouce_photo" name="upload_annouce_photo" class="custom-file-label" 
-                                                           for="customFile"> 请上传一张图片 </label>
+                                                           for="customFile"> 选择历史活动图片或海报或以下默认图片之一 </label>
 
                                                 </div>
                                                 
                                             </div>
 
                                             <div class="form-group">
-                                                <div class="row">
-                                                    <div class="col-4">
-                                                        <div>
-                                                        <p></p>
-                                                        也可以选择一张默认图片
-                                                        <p></p>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                
                                                 <div class="form-check">
                                                     <div class="row">
 
