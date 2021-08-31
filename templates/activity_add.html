@@ -62,7 +62,8 @@
                                                 <h4>
                                                 <img src="{{ html_display.app_avatar_path }}" width="24" height="24" alt="avatar">                
                                                 <a href='/orginfo/{{html_display.applicant_name}}'>
-                                                    <u>{{html_display.applicant_name}}</u></a>
+                                                    <u>{{html_display.applicant_name}}</u>
+                                                </a>
                                                 </h4>
                                             </div>
                                         </div>
@@ -73,7 +74,16 @@
                                     <div class="widget-content widget-content-area">
 
                                         <form role="form" method="POST" enctype="multipart/form-data" onsubmit="return check_inputs()">
-                                            <p>活动信息</p>
+                                            <p>
+                                                活动信息
+                                                <a data-toggle="tooltip" data-placement="bottom" title="填写活动的基本信息；注意：预算、名称在审核通过后不能修改">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path
+                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                            </p>
                                             <div class="form-group">
                                                 <input type="text" id="title" name="title" class="form-control"
                                                     aria-label="Default" placeholder="活动名称" required="required" onclick="fill_value(this)">
@@ -119,13 +129,29 @@
                                                     value="1" id="recorded"
                                                     name="recorded">
                                                 <label class="form-check-label" for="defaultCheck1">
-                                                    预报备 ( 此选项不可修改，擅自选择可能导致组织被取消 )
+                                                    是否已报备
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="此选项不可修改，擅自选择可能导致组织被取消">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                            <path
+                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                        </svg>
+                                                    </a>
                                                 </label>
 
                                             </div>
 
                                             <hr>
-                                            <p>报名信息</p>
+                                            <p>
+                                                报名信息
+                                                <a data-toggle="tooltip" data-placement="bottom" title="点击报名模式按钮以调整报名模式（如先到先得），点击元气值来源来选择不同的元气值来源（如向同学收取）。在活动通过审核之后，这两项不能修改。">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path
+                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                            </p>
                                             <div class="form-group">
                                                 <div class="input-group mb-3">
                                                     {% if not edit and not examine or full_editable %}
@@ -199,6 +225,13 @@
                                                                     name="unlimited_capacity">
                                                                 <label class="form-check-label" for="defaultCheck1">
                                                                     无人数限制
+                                                                    <a data-toggle="tooltip" data-placement="bottom" title="无报名人数上限，如面试报名、观赛报名等；可以通过更改人数限制的方式来截止报名">
+                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                                            <path
+                                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                                        </svg>
+                                                                    </a>
                                                                 </label>
 
                                                             </div>
@@ -211,7 +244,16 @@
                                             
 
                                             <div class="form-group">
-                                                <label for="aintro">报名截止于</label>
+                                                <label for="aintro">
+                                                    报名截止于
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="在短期内将要开展的活动可以将报名截止时间设定的晚一些，如活动开始前1小时在报名开始后；可以修改截止时间来延长报名">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                            <path
+                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                        </svg>
+                                                    </a>
+                                                </label>
                                                 {% if examine %}
                                                     <input name="examine_apply_end" class="form-control selectpicker" placeholder="{{apply_end}}" disabled>
                                                 {% else %}
@@ -243,6 +285,13 @@
                                                                         name="adjust_apply_ddl">
                                                                     <label class="form-check-label" for="defaultCheck1">
                                                                         调整报名时间
+                                                                        <a data-toggle="tooltip" data-placement="bottom" title="勾选此项才可以更改报名时间">
+                                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                                                class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                                                <path
+                                                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                                            </svg>
+                                                                        </a>
                                                                     </label>
 
                                                                 </div>
@@ -259,6 +308,13 @@
                                                     name="need_checkin">
                                                 <label class="form-check-label" for="defaultCheck1">
                                                     需要签到?
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="勾选此项将会自动生成签到二维码，签到二维码在活动开始的一段时间之前不会生效">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                            <path
+                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                        </svg>
+                                                    </a>
                                                 </label>
 
                                             </div>
@@ -283,7 +339,16 @@
                                                     placeholder="(必填)简介会随活动基本信息一同推送至订阅者的微信" onclick="fill_value(this)" required="required"></textarea>
                                             </div>
                                             <div class="form-group">
-                                                <label for="aintro">活动推送链接</label>
+                                                <label for="aintro">
+                                                    活动推送链接
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="获取链接的方式：在推送中，点击右上角在默认浏览器中打开，然后复制链接填在此处即可。这一项可以在任何时间修改">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                            <path
+                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                        </svg>
+                                                    </a>
+                                                </label>
                                                 {% if not examine %}
                                                 <input type="text" id="URL" name="URL" class="form-control"
                                                     placeholder="{{url}}">
@@ -295,28 +360,29 @@
 
                                             {% if not examine and not edit or full_editable %}
                                             <div class="form-group">
-                                                <label>上传活动预告图片</label><br/>
+                                                <label>
+                                                    活动预告图片
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="可以选择默认的图片；如果推送中包含图片的话，也可以选取推送中包含的图片；这一项在审核通过后不可修改">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                            <path
+                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                        </svg>
+                                                    </a>
+                                                </label><br/>
                                                 <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12">
                                                     <input onchange="showFilenameLocal(this.files)" type="file" 
                                                            class="custom-file-input" id="images" name="images" 
                                                            accept="image/*">
                                                     <label id="upload_annouce_photo" name="upload_annouce_photo" class="custom-file-label" 
-                                                           for="customFile"> 请上传一张图片 </label>
+                                                           for="customFile"> 选择历史活动图片或海报或以下默认图片之一 </label>
 
                                                 </div>
                                                 
                                             </div>
 
                                             <div class="form-group">
-                                                <div class="row">
-                                                    <div class="col-4">
-                                                        <div>
-                                                        <p></p>
-                                                        也可以选择一张默认图片
-                                                        <p></p>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                
                                                 <div class="form-check">
                                                     <div class="row">
 
