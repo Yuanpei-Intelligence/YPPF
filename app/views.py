@@ -2392,6 +2392,7 @@ def addActivity(request, aid=None):
         status = activity.status
         avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
         need_checkin = activity.need_checkin
+        apply_reason = activity.apply_reason
         comments = showComment(activity)
 
 
@@ -2510,6 +2511,7 @@ def examineActivity(request, aid):
     intro_pic = examine_pic.image
 
     need_checkin = activity.need_checkin
+    apply_reason = activity.apply_reason
 
     bar_display = utils.get_sidebar_and_navbar(request.user)
     bar_display["title_name"] = "审查活动"

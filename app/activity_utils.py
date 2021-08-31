@@ -113,6 +113,9 @@ def activity_base_check(request, edit=False):
 
     # examine_teacher 需要特殊检查
     context["examine_teacher"] = request.POST.get("examine_teacher")
+    # 申请理由
+    context["apply_reason"] = request.POST["apply_reason"]
+    assert len(context["apply_reason"]) > 0
 
     # 预报备
     context["recorded"] = False
@@ -223,6 +226,7 @@ def create_activity(request):
     activity.YQPoint = context["aprice"]
     activity.bidding = context["bidding"]
     activity.apply_end = context["signup_end"]
+    activity.apply_reason = context["apply_reason"]
     if context["from_college"]:
         activity.source = Activity.YQPointSource.COLLEGE
     activity.endbefore = context["endbefore"]
@@ -326,6 +330,7 @@ def modify_reviewing_activity(request, activity):
     activity.end = context["end"]
     activity.YQPoint = context["aprice"]
     activity.bidding = context["bidding"]
+    activity.apply_reason = context["apply_reason"]
     if context["from_college"]:
         activity.source = Activity.YQPointSource.COLLEGE
     if context.get("need_checkin"):
