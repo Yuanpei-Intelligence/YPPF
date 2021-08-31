@@ -1793,9 +1793,135 @@ def viewActivity(request, aid=None):
         if not (ownership or examine):
             assert activity.status != Activity.Status.REVIEWING
             assert activity.status != Activity.Status.ABORT
+            assert activity.status != Activity.Status.REJECT
     except Exception as e:
         # print(e)
         return redirect("/welcome/")
+
+    html_display = dict()
+
+    if request.method == "POST" and request.POST:
+
+        option = request.POST.get("option")
+        if option == "cancel":
+            try:
+                assert activity.status != Activity.Status.REJECT
+                assert activity.status != Activity.Status.ABORT
+                assert activity.status != Activity.Status.END
+                assert activity.status != Activity.Status.CANCELED
+                with transaction.atomic():
+                    activity = Activity.objects.select_for_update().get(id=aid)
+                    cancel_activity(request, activity)
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "成功取消活动。"
+            except ActivityException as e:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = str(e)
+            except:
+                redirect("/welcome/")
+
+        elif option == "edit":
+            if (
+                    activity.status == activity.Status.APPLYING
+                    or activity.status == activity.Status.REVIEWING
+            ):
+                return redirect(f"/editActivity/{aid}")
+            if activity.status == activity.Status.WAITING:
+                if activity.start + timedelta(hours=1) < datetime.now():
+                    return redirect(f"/editActivity/{aid}")
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = f"活动即将开始, 不能修改活动。"
+            else:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = f"活动状态为{activity.status}, 不能修改。"
+
+        elif option == "apply":
+            try:
+                with transaction.atomic():
+                    activity = Activity.objects.select_for_update().get(id=int(aid))
+                    assert activity.status == Activity.Status.APPLYING
+                    applyActivity(request, activity)
+                    if activity.bidding:
+                        html_display["warn_message"] = f"活动申请中，请等待报名结果。"
+                    else:
+                        html_display["warn_message"] = f"报名成功。"
+                    html_display["warn_code"] = 2
+            except ActivityException as e:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = str(e)
+            except:
+                redirect('/welcome/')
+
+
+        elif option == "quit":
+            try:
+                with transaction.atomic():
+                    activity = Activity.objects.select_for_update().get(id=aid)
+                    assert (
+                            activity.status == Activity.Status.APPLYING
+                            or activity.status == Activity.Status.WAITING
+                    )
+                    withdraw_activity(request, activity)
+                    if activity.bidding:
+                        html_display["warn_message"] = f"已取消申请。"
+                    else:
+                        html_display["warn_message"] = f"已取消报名。"
+                    html_display["warn_code"] = 2
+
+            except ActivityException as e:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = str(e)
+            except:
+                return redirect('/welcome/')
+
+        elif option == "payment":
+            try:
+                assert activity.status == Activity.Status.END
+                assert ownership
+                re = Reimbursement.objects.get(related_activity=activity)
+                return redirect(f"/modifyReimbursement/?reimb_id={re.id}")
+            except Exception as e:
+                # print("Exception", e)
+                return redirect("/modifyReimbursement/")
+
+        elif option == "submitphoto":
+            if not (ownership and activity.status == Activity.Status.END):
+                return redirect("/welcome/")
+
+            summary_photo_exists = False
+            if activity.status == Activity.Status.END:
+                try:
+                    summary_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
+                    summary_photo_exists = True
+                except:
+                    pass
+            try:
+                summaryphotos = request.FILES.getlist('images')
+                photo = summaryphotos[0]
+            except:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "上传活动照片不能为空"
+            if utils.if_image(photo) == False:
+                html_display['warn_code'] = 1
+                html_display['warn_message'] = "上传的附件只支持图片格式"
+            elif summary_photo_exists:
+                old_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
+                old_photo.image = photo
+                old_photo.save()
+                summary_photo = settings.MEDIA_URL + str(old_photo.image)
+                html_display["warn_message"] = "成功替换活动照片"
+            else:
+                ActivityPhoto.objects.create(
+                    image=photo, 
+                    activity=activity, 
+                    time=datetime.now(),
+                    type = ActivityPhoto.PhotoType.SUMMARY
+                )
+                html_display["warn_message"] = "成功提交活动照片"
+            html_display["warn_code"] = 2
+
+        else:
+            return redirect("/welcome")
 
 
     # 下面这些都是展示前端页面要用的
@@ -1875,139 +2001,7 @@ def viewActivity(request, aid=None):
     bar_display["title_name"] = "活动信息"
     bar_display["navbar_name"] = "活动信息"
 
-    # 处理 get 请求
-    if request.method == "GET":
-        return render(request, "activity_info.html", locals())
-
-    html_display = dict()
-    # 处理 post 请求
-    option = request.POST.get("option")
-    if option == "cancel":
-        try:
-            assert activity.status != Activity.Status.REJECT
-            assert activity.status != Activity.Status.ABORT
-            assert activity.status != Activity.Status.END
-            assert activity.status != Activity.Status.CANCELED
-            with transaction.atomic():
-                activity = Activity.objects.select_for_update().get(id=aid)
-                cancel_activity(request, activity)
-                return redirect(f"/viewActivity/{aid}")
-        except ActivityException as e:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = str(e)
-            return render(request, "activity_info.html", locals())
-        except:
-            redirect("/welcome/")
-
-
-    elif option == "edit":
-        if (
-                activity.status == activity.Status.APPLYING
-                or activity.status == activity.Status.REVIEWING
-        ):
-            return redirect(f"/editActivity/{aid}")
-        if activity.status == activity.Status.WAITING:
-            if activity.start + timedelta(hours=1) > datetime.now():
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = f"活动即将开始, 不能修改活动。"
-                return render(request, "activity_info.html", locals())
-            return redirect(f"/editActivity/{aid}")
-        else:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = f"活动状态为{activity.status}, 不能修改。"
-            return render(request, "activity_info.html", locals())
-
-    elif option == "apply":
-        try:
-            with transaction.atomic():
-                activity = Activity.objects.select_for_update().get(id=int(aid))
-                assert activity.status == Activity.Status.APPLYING
-                applyActivity(request, activity)
-                return redirect(f"/viewActivity/{aid}")
-        except ActivityException as e:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = str(e)
-        except:
-            redirect('/welcome/')
-
-        return render(request, "activity_info.html", locals())
-
-
-    elif option == "quit":
-        try:
-            with transaction.atomic():
-                activity = Activity.objects.select_for_update().get(id=aid)
-                assert (
-                        activity.status == Activity.Status.APPLYING
-                        or activity.status == Activity.Status.WAITING
-                )
-                withdraw_activity(request, activity)
-                return redirect(f"/viewActivity/{aid}")
-
-        except ActivityException as e:
-            html_display["warn_message"] = str(e)
-        except:
-            return redirect('/welcome/')
-
-
-        return render(request, "activity_info.html", locals())
-
-    elif option == "payment":
-        try:
-            assert activity.status == Activity.Status.END
-            re = Reimbursement.objects.get(related_activity=activity)
-            return redirect(f"/modifyReimbursement/?reimb_id={re.id}")
-        except Exception as e:
-            # print("Exception", e)
-            return redirect("/modifyReimbursement/")
-
-    elif option == "submitphoto":
-        if not (ownership and activity.status == Activity.Status.END):
-            return redirect("/welcome/")
-        try:
-            summaryphotos = request.FILES.getlist('images')
-        except:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "非法的图片上传，请联系管理员"
-            return render(request, "activity_info.html", locals())
-        if len(summaryphotos) == 0 :
-            html_display['warn_code'] = 1
-            html_display['warn_message'] = "上传活动照片不能为空"
-            return render(request, "activity_info.html", locals())
-        photo = summaryphotos[0]
-        if utils.if_image(photo) == False:
-            html_display['warn_code'] = 1
-            html_display['warn_message'] = "上传的附件只支持图片格式"
-            return render(request, "activity_info.html", locals())
-        if summary_photo_exists:
-            old_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
-            old_photo.image = photo
-            old_photo.save()
-            summary_photo = settings.MEDIA_URL + str(old_photo.image)
-            html_display["warn_message"] = "成功替换活动照片"
-        else:
-            ActivityPhoto.objects.create(
-                image=photo, 
-                activity=activity, 
-                time=datetime.now(),
-                type = ActivityPhoto.PhotoType.SUMMARY
-            )
-            html_display["warn_message"] = "成功提交活动照片"
-
-        html_display["warn_code"] = 2
-        return render(request, "activity_info.html", locals())
-
-    else:
-        html_display["warn_code"] = 1
-        html_display["warn_message"] = "非法的 POST 请求。如果您不是故意操作，请联系管理员汇报此 Bug."
-        return render(request, "activity_info.html", locals())
-
-    """
-    except:
-        html_display["warn_code"] = 1
-        html_display["warn_message"] = "非法预期的错误。请联系管理员汇报此 Bug."
-        return render(request, "activity_info.html", locals())
-    """
+    return render(request, "activity_info.html", locals())
 
 
 # 通过GET获得活动信息表下载链接
