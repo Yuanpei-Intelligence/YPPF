@@ -84,10 +84,17 @@
                                                 </a>
                                             </p>
                                             <div class="form-group">
+                                                {% if examine %}
+                                                活动名称
+                                                {% endif %}
                                                 <input type="text" id="title" name="title" class="form-control"
-                                                    aria-label="Default" placeholder="活动名称" required="required" onclick="fill_value(this)">
+                                                    aria-label="Default" placeholder="活动名称" required="required" 
+                                                    maxlength=50 onclick="fill_value(this)">
                                             </div>
                                             <div class="form-group">
+                                                {% if examine %}
+                                                活动地点
+                                                {% endif %}
                                                 <input type="text" id="location" name="location" class="form-control"
                                                     aria-label="Default" placeholder="活动地点" required="required" onclick="fill_value(this)">
                                             </div>
@@ -128,7 +135,7 @@
                                                     value="1" id="recorded"
                                                     name="recorded">
                                                 <label class="form-check-label" for="defaultCheck1">
-                                                    预报备 ( 此选项不可修改，擅自选择可能导致组织被取消 )
+                                                    预报备 ( 此选项不可修改，擅自选择可能导致组织被取缔 )
                                                     <a data-toggle="tooltip" data-placement="bottom" title="">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
@@ -335,7 +342,8 @@
                                             <div class="form-group">
                                                 <label for="aintro">活动简介</label>
                                                 <textarea id="aintro" name="introduction" class="form-control" rows="3"
-                                                    placeholder="(必填)简介会随活动基本信息一同推送至订阅者的微信" onclick="fill_value(this)" required="required"></textarea>
+                                                    placeholder="(必填)简介会随活动基本信息一同推送至订阅者的微信" onclick="fill_value(this)" 
+                                                    required="required" maxlength=225></textarea>
                                             </div>
                                             <div class="form-group">
                                                 <label for="aintro">
@@ -656,8 +664,9 @@
         var all_inputs = document.getElementsByTagName("input");
         // 最后两项是 hidden input
         for(var i = 0; i < all_inputs.length; i++){
-            if (all_inputs[i].type != "hidden")
-                all_inputs[i].disabled = true;
+            if (all_inputs[i].type == "hidden" ||  all_inputs[i].type == "file" || all_inputs[i].name == "Query")
+                continue;
+            all_inputs[i].disabled = true;
         }
         document.getElementById("aintro").disabled = true;
         function fill_value(a) {
@@ -775,7 +784,7 @@
         var option = document.getElementById("signscheme").value;
         if (option == "") {
             document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "尚未选择报名方式。";
+            document.getElementById("warn_msg").innerHTML = "尚未选择报名模式。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
@@ -805,6 +814,9 @@
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
+        {% endif %}
+        // 不能少于当前人数
+        {% if edit %}
         {% endif %}
 
         /* 检查图片 */
@@ -844,11 +856,13 @@
     }
     {% if examine %}
     function check_examine() {
+        // 不要求活动报名时间截止
+        return true;
         var applyEnd = new Date("{{apply_end}}")
         var now = new Date()
         if (applyEnd < now) {
             document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "活动报名截止时间已过，请通知组织负责人修改。";
+            document.getElementById("warn_msg").innerHTML = "活动报名截止时间已过，请通知组织修改。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
