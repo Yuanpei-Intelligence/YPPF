@@ -27,8 +27,10 @@ class FreshmanAdmin(admin.ModelAdmin):
         "name",
         "place",
         "grade",
+        "status",
     ]
-    search_fields = ("sid", "name", "place")
+    search_fields = ("sid", "name")
+    list_filter = ("status", "grade", "place")
 
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ["oname"]
@@ -52,3 +54,4 @@ admin.site.register(TransferRecord)
 admin.site.register(YQPointDistribute)
 admin.site.register(Notification)
 admin.site.register(Help)
+admin.site.register(Weather)

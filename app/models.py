@@ -1,6 +1,6 @@
 from django.db import models, transaction
 from django.db.models.fields import related
-from django_mysql.models import ListCharField
+from django_mysql.models import ListCharField, JSONField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -34,7 +34,7 @@ class NaturalPerson(models.Model):
     
     # 不要在任何地方使用此字段，建议先删除unique进行迁移，然后循环调用save
     stu_id_dbonly = models.CharField("学号——仅数据库", max_length=150,
-                                     blank=True, unique=True)
+                                    blank=True)
 
     name = models.CharField("姓名", max_length=10)
     nickname = models.CharField("昵称", max_length=20, null=True, blank=True)
@@ -401,7 +401,7 @@ class Course(models.Model):
 class ActivityManager(models.Manager):
     def activated(self):
         # 选择学年相同，并且学期相同或者覆盖的
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
+        return self.displayable().filter(year=int(local_dict["semester_data"]["year"])).filter(
             semester__contains=local_dict["semester_data"]["semester"]
         )
 
@@ -418,18 +418,14 @@ class ActivityManager(models.Manager):
         # 一周内结束的活动
         nowtime = datetime.now()
         mintime = nowtime-timedelta(days = 7)
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
-            semester__contains=local_dict["semester_data"]["semester"]
-        ).filter(end__gt = mintime).filter(status=Activity.Status.END)
+        return self.activated().filter(end__gt = mintime).filter(status=Activity.Status.END)
 
     def get_recent_activity(self):
         # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
         nowtime = datetime.now()
         mintime = nowtime-timedelta(days = 7)
         maxtime = nowtime+timedelta(days = 7)
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
-            semester__contains=local_dict["semester_data"]["semester"]
-        ).filter(start__gt = mintime).filter(start__lt = maxtime).filter(
+        return self.activated().filter(start__gt = mintime).filter(start__lt = maxtime).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -441,9 +437,7 @@ class ActivityManager(models.Manager):
     def get_newlyreleased_activity(self):
         # 最新一周内发布的活动，按发布的时间逆序
         nowtime = datetime.now()
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
-            semester__contains=local_dict["semester_data"]["semester"]
-        ).filter(publish_time__gt = nowtime-timedelta(days = 7)).filter(
+        return self.activated().filter(publish_time__gt = nowtime-timedelta(days = 7)).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -659,7 +653,7 @@ class TransferRecord(models.Model):
         REFUND = (4, "已退回")
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
-
+    is_increase=models.IntegerField("报销兑换",default=0,help_text="报销时转账并未实质发生，用此字段标识，0标识默认转账，1为报销兑换")
     def save(self, *args, **kwargs):
         self.amount = round(self.amount, 1)
         super(TransferRecord, self).save(*args, **kwargs)
@@ -969,7 +963,7 @@ class Reimbursement(CommentBase):
     message = models.TextField("备注信息", default="", blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
-
+    record=models.ForeignKey(TransferRecord,on_delete=models.CASCADE)#转账信息的记录
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
         
@@ -1016,3 +1010,25 @@ class Wishes(models.Model):
     text = models.TextField("心愿内容", default="", blank=True)
     time = models.DateTimeField("发布时间", auto_now_add=True)
     background = models.TextField("颜色编码", default="")
+
+
+class WeatherManager(models.Manager):
+    def get_activated(self):
+        # 预期只有一个status为True的实例
+        return self.get(status=True)
+
+
+class Weather(models.Model):
+    '''
+        目前用的数据库，没想到怎么用全局变量。
+        要应用天气，需要先在admin网页创建一个Weather类的实例
+    '''
+
+    class Meta:
+        verbose_name = "实时天气"
+        verbose_name_plural = verbose_name
+    
+    modify_time = models.DateTimeField("上次修改时间", auto_now=True)
+    weather_json = JSONField("当前天气")
+    status = models.BooleanField("是否应用", default=False)
+    objects = WeatherManager()
