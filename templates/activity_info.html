@@ -262,6 +262,77 @@
             </div>
         </div>
 
+
+
+
+
+                        {% if ownership and need_checkin and status == "报名中" %}
+                        <div class="col-xl-4 col-lg-4 col-md-5 col-sm-12 layout-top-spacing">
+                            <div class="container">
+                                <div class="row col-lg-12 col-md-12 mb-5 p-0">
+                                <div class="statbox widget box box-shadow">
+                                    <div class="widget-header">
+                                        <div class="row">
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                <h4>签到二维码</h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="widget-content widget-content-area">
+                                        <img class="d-block w-100" id="qrcode" src="{{aQRcode}}" alt="Third slide">
+                                    </div>
+                                </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% else %}
+                        <div class="col-xl-4 col-lg-4 col-md-5 col-sm-12 layout-top-spacing">
+                            <div class="row">
+                            <a href="/orginfo/{{org_name}}">
+                                <div class="statbox widget box box-shadow">
+                                    <div class="widget-header">
+                                        <div class="row">
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                <h4>组织者</h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="widget-content widget-content-area">
+                                        <div class="media">
+                                            <div class="media-body">
+                                                <h4>{{org_name}} - {{org_type}}</h4>
+                                                <p>{{org.introduction}}</p>      
+                                            </div>
+                                            <img src="{{org_avatar_path}}" height="60px" width="60px" alt="avatar">
+                                        </div>
+                                    </div>
+                                </div>
+                            </a>
+                            </div>
+                            <div class="row">
+                                <p></p>
+                            </div>
+                            {% if summary_photo_exists %}
+                            <div class="row">
+                                <div class="statbox widget box box-shadow">
+                                    <div class="widget-header">
+                                        <div class="row">
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                <h4>总结照片</h4>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <img src="{{summary_photo}}" height="100%" width="100%" alt="avatar">
+                                </div>
+                            {% endif %}
+                            </div>
+                        </div>
+                        {% endif %}
+
+
+
+
+
     </div>
     <!--  END ACTIVITY INFORMATION  -->
 </div>
