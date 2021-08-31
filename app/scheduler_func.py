@@ -414,9 +414,12 @@ def get_weather():
         }
         with open("weather.json", "w") as weather_json:
             json.dump(weather_dict, weather_json)
+    except KeyError as e:
+        print(str(e))
+        print("在get_weather中出错，原因可能是local_dict中缺少weather_api_key")
+        return None
     except Exception as e:
         # 相当于超时
-        print(str(e))
         # TODO: 增加天气超时的debug
         print("任务超时")
         return None
