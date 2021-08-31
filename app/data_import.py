@@ -265,15 +265,19 @@ def load_stu_info(request):
         name = stu_dict["姓名"]
         gender = Char2Gender[stu_dict["性别"]]
         stu_major = stu_dict["专业"]
+        if not stu_major or stu_major == "None":
+            stu_major = "元培计划（待定）"
         stu_grade = "20" + sid[:2]
         stu_class = stu_dict["班级"]
         email = stu_dict["邮箱"]
-        if email == "None":
+        if not email or email == "None":
             if sid[0] == "2":
                 email = sid + "@stu.pku.edu.cn"
             else:
                 email = sid + "@pku.edu.cn"
         tel = stu_dict["手机号"]
+        if not tel or tel == "None":
+            tel = None
 
         user = User.objects.create_user(username=username, password=password)
         # 这一步的PBKDF2加密算法太慢了
