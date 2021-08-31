@@ -634,7 +634,7 @@ def orginfo(request, name=None):
             html_display["isboss"] = True
         if p.show_post == True or p.pos == 0 or html_display["is_myself"]:
             member = {}
-            member['show_flag'] = p.show_flag
+            member['show_post'] = p.show_post
             member['id'] = p.id
             member["person"] = p.person
             member["job"] = org.otype.get_name(p.pos)
@@ -687,11 +687,12 @@ def orginfo(request, name=None):
             else False
     
     # 补充作为组织成员，选择是否展示的按钮
-    show_flag_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
-    my_position = Position.objects.activated().filter(org=org, person=me).exclude(pos=0)
-    if len(my_position):
-        show_flag_change_button = True
-        my_position = my_position[0]
+    show_post_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
+    if user_type == 'Person':
+        my_position = Position.objects.activated().filter(org=org, person=me).exclude(pos=0)
+        if len(my_position):
+            show_post_change_button = True
+            my_position = my_position[0]
     
 
     return render(request, "orginfo.html", locals())
@@ -2567,11 +2568,11 @@ def save_show_position_status(request):
         except:
             return JsonResponse({"success":False})
         if params["status"]:
-            position.show_flag = True
+            position.show_post = True
         else:
             if len(Position.objects.filter(pos=0, org=position.org)) == 1 and position.pos==0:    #非法前端量修改
                 return JsonResponse({"success":False})
-            position.show_flag = False
+            position.show_post = False
         position.save()
     return JsonResponse({"success": True})
 

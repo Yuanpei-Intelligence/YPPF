@@ -373,7 +373,6 @@ class Position(models.Model):
     '''
     objects = PositionManager()
 
-    show_flag = models.BooleanField("是否对外展示",default=True)
     def get_pos_number(self): #返回对应的pos number 并作超出处理
         return min(len(self.org.otype.job_name_list), self.pos)
 

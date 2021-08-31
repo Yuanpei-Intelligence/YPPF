@@ -77,6 +77,23 @@
                                 {% endif %}
                             </div>
                             {% endif %}
+                                {% if show_post_change_button %}
+                            <div class="custom-control custom-switch">
+                                {% if my_position.show_post %}
+                                <input type="checkbox" class="custom-control-input" id="button"
+                                    onclick="change_position_show.call(this);this.blur();" checked>
+                                <label class="custom-control-label" for="button">
+                                    <font color="5F747B" id="show_post">展示我的职位</font>
+                                </label>
+                                {% else %}
+                                <input type="checkbox" class="custom-control-input" id="button"
+                                    onclick="change_position_show.call(this);this.blur();">
+                                <label class="custom-control-label" for="button">
+                                    <font color="E1E1E1" id="show_post">隐藏我的职位</font>
+                                </label>
+                                {% endif %}
+                            </div>
+                            {% endif %}
                         </div>
 
                         <div class="user-info-list">
@@ -168,31 +185,13 @@
                             <h3 class="col mb-0">成员档案</h3>
                         </div>
                         <hr>
-                        <div class ="col mb-0">
-                            {% if show_flag_change_button %}
-                        <div class="custom-control custom-switch">
-                            {% if my_position.show_flag %}
-                            <input type="checkbox" class="custom-control-input" id="button"
-                                onclick="change_position_show.call(this);this.blur();" checked>
-                            <label class="custom-control-label" for="button">
-                                <font color="5F747B" id="show_flag">展示我的职位</font>
-                            </label>
-                            {% else %}
-                            <input type="checkbox" class="custom-control-input" id="button"
-                                onclick="change_position_show.call(this);this.blur();">
-                            <label class="custom-control-label" for="button">
-                                <font color="E1E1E1" id="show_flag">隐藏我的职位</font>
-                            </label>
-                            {% endif %}
-                        </div>
-                        {% endif %}
-                        </div>
+                        
 
                         <div class="bio-skill-box">
 
                             <div class="row">
                                 {% for member in member_list %}
-                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id={{member.id}} {% if not member.show_flag %} hidden {% endif %}>
+                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id={{member.id}} {% if not member.show_post %} hidden {% endif %}>
                                     <div class=" b-skills" style="padding: 5%;">
 
                                         <div class="d-flex justify-content-between">
@@ -551,8 +550,8 @@
         if (!this.checked) {
             const success = await save_show_position_status.call(this, false);
             if (success) {
-                document.getElementById(`show_flag`).color = "E1E1E1";
-                document.getElementById(`show_flag`).innerHTML = "隐藏我的职位";
+                document.getElementById(`show_post`).color = "E1E1E1";
+                document.getElementById(`show_post`).innerHTML = "隐藏我的职位";
                 document.getElementById('{{my_position.id}}').hidden = true;
             }
             else {
@@ -562,8 +561,8 @@
         } else {
             const success = await save_show_position_status.call(this, true);
             if (success) {
-                document.getElementById(`show_flag`).color = "5F747B";
-                document.getElementById(`show_flag`).innerHTML = "展示我的职位";
+                document.getElementById(`show_post`).color = "5F747B";
+                document.getElementById(`show_post`).innerHTML = "展示我的职位";
                 document.getElementById('{{my_position.id}}').hidden = false;
             }
             else this.checked = false;
