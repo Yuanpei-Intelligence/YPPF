@@ -395,7 +395,7 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
 
 
 
-@register_job(scheduler, 'interval', id="get weather per 3 minutes", seconds=5)
+@register_job(scheduler, 'interval', id="get weather per hour", hours=1)
 def get_weather():
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     try:
