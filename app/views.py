@@ -2374,6 +2374,8 @@ def addActivity(request, aid=None):
 
 
         html_display["today"] = datetime.now().strftime("%Y-%m-%d")
+        html_display["app_avatar_path"] = utils.get_user_ava(me.id,"Organization")
+        html_display["applicant_name"] = me.oname
         if not edit:
              bar_display = utils.get_sidebar_and_navbar(request.user, "新建活动")
         else:
