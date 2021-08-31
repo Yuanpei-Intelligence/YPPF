@@ -35,8 +35,17 @@
     <div id="content" class="main-content">
         <div class="container">
             <div class="container">
-                
+
+                {% if html_display.warn_code == 2 %}
+                <div class="alert alert-success  text-center" id="success_msg" >{{ html_display.warn_msg }}</div>
+                {% endif %}
+                {% if html_display.warn_code == 1 %}
+                <div class="alert alert-warning  text-center" id="warn_msg" >{{ html_display.warn_msg }}</div>
+                {% else %}
                 <div class="alert alert-warning  text-center" id="warn_msg" style="display: none;">test</div>
+                {% endif %}
+
+
                 <div class="row layout-top-spacing">
                     {% if bar_display.help_paragraphs %}
                         {% include 'help_with_table.html' %}
@@ -51,9 +60,9 @@
                                         <div class="d-flex justify-content-between">
                                             <div >
                                                 {% if edit %}
-                                                <h4>活动编辑 <span class="badge badge-pill badge-success">{{status}}</span></h4>
+                                                <h4 onclick="javascript:window.location.href='/viewActivity/{{aid}}'">活动编辑 <span id="ret" class="badge badge-pill badge-success">{{status}}</span></h4>
                                                 {% elif examine %}
-                                                <h4>活动审核 <span class="badge badge-pill badge-success">{{status}}</span></h4>
+                                                <h4>活动审核 <span id="ret" class="badge badge-pill badge-success">{{status}}</span></h4>
                                                 {% else %}
                                                 <h4>活动新建</h4>
                                                 {% endif %}
@@ -522,6 +531,12 @@
     });
     {% endfor %}
 
+    {% if edit or examine %}
+    $("input[id='ret']").on("click", function () {
+        window.open('/viewActivity/{{aid}}')
+    });
+    {% endif %}
+
     function showFilenameLocal(files){
         var text = "";
         for (i = 0; i < files.length; i++)
@@ -701,6 +716,9 @@
         end = new Date(end);
         // 结束要比开始晚
         if (start > end) {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "结束时间不能早于开始时间。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -711,6 +729,9 @@
         var in_month = new Date();
         in_month = new Date(in_month.setDate(in_month.getDate() + 30));
         if (in_month < start) {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "活动应在一个月之内申请，晚些再创建吧。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -731,6 +752,9 @@
         else
             window.location.href = "/welcome/"
         if (applyEnd < now) {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "没有足够的准备时间（报名截止时间早于当前时间）。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -753,6 +777,9 @@
                 window.location.href = "/welcome/"
             if (applyEnd < now) {
                 // 相当于提前截止报名，在这改太麻烦了，在 viewActivity 界面留一个 button吧
+                {% if html_display.warn_code == 2 %}
+                document.getElementById("success_msg").style.display = "none";
+                {% endif %}
                 document.getElementById("warn_msg").style.display = "";
                 document.getElementById("warn_msg").innerHTML = "报名截止时间早于当前时间。若想提前截止报名，请返回活动详情界面操作。";
                 document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -762,6 +789,9 @@
             // 如果是已截止，也不需要提醒，重新开放就是了
         }
         if (before_start < applyEnd) {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "活动报名应在活动开始前一小时截止。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -769,18 +799,17 @@
         }
         {% endif %}
 
+
+        /* 非 edit 情况下 */
+        {% if not edit %}
         /* 选择了审核老师 */
-        {% if not examine %}
         if (document.getElementById("examine_teacher").value == "") {
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "尚未选择审核老师。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
-        {% endif %}
-
-        /* 非 edit 情况下，检查选择了报名方式 */
-        {% if not edit %}
+        /* 检查选择了报名方式 */
         var option = document.getElementById("signscheme").value;
         if (option == "") {
             document.getElementById("warn_msg").style.display = "";
@@ -825,6 +854,8 @@
             if (!(document.getElementById("picture1").checked ||
                 document.getElementById("picture2").checked ||
                 document.getElementById("picture3").checked ||
+                document.getElementById("picture4").checked ||
+                document.getElementById("picture5").checked ||
                 document.getElementById("images").files.length > 0)
             ) {
                 document.getElementById("warn_msg").style.display = "";

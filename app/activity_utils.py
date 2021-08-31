@@ -36,6 +36,7 @@ from django.core.files import File
 from django.core.files.base import ContentFile
 import io
 import base64
+from django.db.models import Sum
 
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 
@@ -413,6 +414,11 @@ def modify_accepted_activity(request, activity):
             raise ActivityException(f"当前成功报名人数已超过{capacity}人")
     activity.capacity = capacity
 
+    if request.POST.get("need_checkin"):
+        activity.need_checkin = True
+    else:
+        activity.need_checkin = False
+
     act_end = datetime.strptime(request.POST["actend"], "%m/%d/%Y %H:%M %p")
     if act_end.hour == 12:
         act_end -= timedelta(hours=12)
@@ -535,14 +541,14 @@ def reject_activity(request, activity):
     if activity.status == Activity.Status.REVIEWING:
         activity.status = Activity.Status.REJECT
     else:
-        # TODO
-        # 前端得多一个判断，拒绝的时候啥时候都能拒绝
-        # 接受也不是必须在报名截止前，改前端......
-        notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
-        activity.status = Activity.Status.CANCELED
-        participants = Participant.objects.filter(
+        Notification.objects.filter(
+            relate_instance=activity
+            ).update(status=Notification.Status.DELETE)
+        Participant.objects.filter(
                 activity_id=activity
             ).update(status=Participant.AttendStatus.APLLYFAILED)
+        notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
+        activity.status = Activity.Status.CANCELED
         scheduler.remove_job(f"activity_{activity.id}_remind")
         scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
         scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
@@ -690,7 +696,6 @@ def cancel_activity(request, activity):
                 organization_id=request.user
             )
     assert activity.organization_id == org
-    YP = Organization.objects.select_for_update().get(oname="元培学院")
 
 
     if activity.status != Activity.Status.REVIEWING and activity.YQPoint > 0:
@@ -698,35 +703,50 @@ def cancel_activity(request, activity):
             if org.YQPoint < activity.YQPoint:
                 raise ActivityException("没有足够的元气值退还给学院，不能取消。")
             org.YQPoint -= activity.YQPoint
+            # 这里加个悲观锁能提高性能吗 ？
+            YP = Organization.objects.select_for_update().get(oname="元培学院")
             YP.YQPoint += activity.YQPoint
-            record = TransferRecord.objects.select_for_update().get(
+            YP.save()
+            # activity 上了悲观锁，这里不用锁，如果锁了整个 record 表全锁住
+            record = TransferRecord.objects.get(
                 proposer=YP, status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity
             )
             record.status = TransferRecord.TransferStatus.REFUND
             record.save()
         else:
-            records = TransferRecord.objects.select_for_update().filter(
+            # 同理，这里也不用上锁
+            records = TransferRecord.objects.filter(
                 status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity
             )
-            total_amount = 0
+            total_amount = records.aggregate(nums=Sum('amount'))["nums"]
+            if total_amount > org.YQPoint:
+                raise ActivityException("没有足够的元气值退还给同学，不能取消。")
+            totalQuota = records.filter(message="quota").aggregate(nums=Sum('amount'))["nums"]
+            YP = Organization.objects.select_for_update().get(oname="元培学院")
+            YP.YQPoint += activity.YQPoint
+            YP.save()
             for record in records:
-                payer = record.proposer
-                total_amount += record.amount
+                payer = NaturalPerson.objects.select_for_update().get(person_id=record.proposer)
                 if record.message == "quota":
                     payer.quota += record.amount
                     YP.YQPoint += record.amount
                 else:
                     payer.YQPoint += record.amount
+                payer.save()
                 record.status = TransferRecord.TransferStatus.REFUND
                 record.save()
 
-            if total_amount > org.YQPoint:
-                raise ActivityException("没有足够的元气值退还给同学，不能取消。")
             org.YQPoint -= total_amount
 
 
     activity.status = Activity.Status.CANCELED
     notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
+    notification = Notification.objects.get(
+        relate_instance=activity, 
+        typename=Notification.Type.NEEDDO
+    )
+    notification.status = Notification.Status.DELETE
+    notification.save()
 
     participants = Participant.objects.filter(
             activity_id=activity
@@ -737,7 +757,6 @@ def cancel_activity(request, activity):
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
 
-    YP.save()
     org.save()
     activity.save()
 
