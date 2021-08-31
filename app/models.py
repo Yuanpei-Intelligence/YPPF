@@ -963,7 +963,7 @@ class Reimbursement(CommentBase):
     message = models.TextField("备注信息", default="", blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
-    record=models.ForeignKey(TransferRecord,on_delete=models.CASCADE)#转账信息的记录
+    record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
         
