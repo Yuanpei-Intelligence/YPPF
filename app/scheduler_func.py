@@ -6,7 +6,7 @@ from django.urls import reverse
 from datetime import datetime, timedelta, timezone, time, date
 from django.db import transaction  # 原子化更改数据库
 
-from app.models import Organization, NaturalPerson, Weather, YQPointDistribute, TransferRecord, User, Activity, Participant, Notification
+from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant, Notification
 from app.wechat_send import publish_notifications
 from app.forms import YQPointDistributionForm
 from boottest.hasher import MySHA256Hasher
@@ -406,19 +406,19 @@ def get_weather():
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={key}&lang={lang}"
         load_json = json.loads(urllib2.urlopen(url, timeout=5).read()) # 这里面信息太多了，不太方便传到前端
         weather_dict = {
+            "modify_time": datetime.now().__str__(),
             "description": load_json["weather"][0]["description"],
             "temp": str(round(float(load_json["main"]["temp"]) - 273.15)),
             "temp_feel": str(round(float(load_json["main"]["feels_like"]) - 273.15)),
             "icon": load_json["weather"][0]["icon"]
         }
-        number = Weather.objects.filter(status=True).count()
-        if not number:
-            Weather.objects.create(weather_json=weather_dict,status=True)
-        current_weather = Weather.objects.get_activated()
-        current_weather.weather_json = weather_dict
-        current_weather.modify_time = datetime.now()
-        current_weather.save()
+        with open("weather.json", "w") as weather_json:
+            json.dump(weather_dict, weather_json)
     except Exception as e:
         # 相当于超时
+        print(str(e))
         # TODO: 增加天气超时的debug
         print("任务超时")
+        return None
+    else:
+        return weather_dict

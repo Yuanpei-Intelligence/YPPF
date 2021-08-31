@@ -728,4 +728,4 @@ def operation_writer(user, message, source, status_code="OK"):
     lock.release()
 
 
-# operation_writer(local_dict["system_log"], "系统启动", "util_底部")
+operation_writer(local_dict["system_log"], "系统启动", "util_底部")
