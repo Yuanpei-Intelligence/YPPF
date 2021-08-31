@@ -26,7 +26,14 @@ from app.models import (
 from django.db.models import Max
 import app.utils as utils
 from app.forms import UserForm
-from app.utils import url_check, check_cross_site, get_person_or_org, update_org_application, wrong, succeed
+from app.utils import (
+    url_check, 
+    check_cross_site, 
+    get_person_or_org, 
+    update_org_application, 
+    wrong, 
+    succeed,
+)
 from app.activity_utils import (
     create_activity,
     modify_activity,
@@ -2304,6 +2311,8 @@ def addActivity(request, aid=None):
     elif request.method == "GET":
         # 下面的操作基本如无特殊说明，都是准备前端使用量
         defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
+        html_display["applicant_name"] = me.oname
+        html_display["app_avatar_path"] = utils.get_user_ava(me, "Organization")
         if not edit:
             avialable_teachers = NaturalPerson.objects.teachers()
         else:
