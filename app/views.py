@@ -3203,6 +3203,40 @@ def showReimbursement(request):
     bar_display = utils.get_sidebar_and_navbar(request.user, "报销信息")
     return render(request, "reimbursement_show.html", locals())
 
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+def showActivity(request):
+    """
+    活动信息的聚合界面
+    只有老师和组织才能看到，老师看到检查者是自己的，组织看到发起方是自己的
+    """
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = utils.get_person_or_org(request.user)  # 获取自身
+    is_teacher = False
+    if user_type == "Person":
+        try:
+            person = utils.get_person_or_org(request.user, user_type)
+            if person.identity == NaturalPerson.Identity.TEACHER :
+                is_teacher = True
+        except:
+            pass
+        if not is_teacher:
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "个人账号不能进入活动审核页面！"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
+    if is_teacher:
+        shown_instances = Activity.objects.activated().filter(examine_teacher = me.id)
+    else:
+        shown_instances = Activity.objects.activated().filter(organization_id = me.id)
+    shown_instances = shown_instances.order_by("-modify_time", "-time")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "活动审核")
+    return render(request, "activity_show.html", locals())
+
 
 # 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
 # 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
