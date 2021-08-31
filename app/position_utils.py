@@ -92,6 +92,8 @@ def update_pos_application(application, me, user_type, applied_org, info):
                 elif apply_type == "退出组织":
                     if not Position.objects.activated().filter(person=me, org=applied_org).exists():
                         return wrong("退出组织出错！")
+                    if len(Position.objects.activated().filter(person=me, org=applied_org, pos=0)) == 1:
+                        return wrong("作为组织唯一的老大，你不能退出！")
                     # 退出组织不应该有apply_pos
                     apply_pos = None
                 elif apply_type == "修改职位":
