@@ -810,7 +810,7 @@ def homepage(request):
         from app.scheduler_func import get_weather
         get_weather()
     html_display['weather'] = Weather.objects.get_activated().weather_json
-
+    
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "元培生活")
     # bar_display["title_name"] = "Welcome Page"
