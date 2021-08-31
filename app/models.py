@@ -84,7 +84,7 @@ class NaturalPerson(models.Model):
 
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
-    show_nickname = models.BooleanField(default=False)
+    # show_nickname = models.BooleanField(default=False)
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
