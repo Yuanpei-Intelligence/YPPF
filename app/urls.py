@@ -48,6 +48,7 @@ urlpatterns = [
     path("examineActivity/<str:aid>", views.examineActivity, name="examineActivity"),
     path("subscribeActivities/", views.subscribeActivities, name="subscribeActivities"),
     path("save_subscribe_status", views.save_subscribe_status, name="save_subscribe_status"),
+    path("save_show_position_status", views.save_show_position_status, name="save_show_position_status"),
     path("notifications/", views.notifications, name="notifications"),
     path("YQPoint_Distributions/", scheduler_func.YQPoint_Distributions, name="YQPoint_Distributions"),
     # path("YQPoint_Distribution/<int:dis_id>", scheduler_func.YQPoint_Distribution, name="YQPoint_Distributions"),
