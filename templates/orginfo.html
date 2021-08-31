@@ -295,41 +295,40 @@
                                                                     -->
 
                                                                 {% if rec.act.status == "审核中" %}
-                                                                <span class="badge badge-pill badge-warning">
-                                                                    {{ rec.act.status }}
-                                                                </span>
+                                                                    <span class="badge badge-pill badge-warning">
+                                                                        {{ rec.act.status }}
+                                                                    </span>
                                                                 {% else %}
-                                                                {% if user_type == "Organization" %}
-                                                                {% if rec.act.status == "等待中" %}
-                                                                <span class="badge badge-pill badge-info">
-                                                                    {{ rec.act.status }}
-                                                                </span>
-                                                                {% else %}
-                                                                <span class="badge badge-pill badge-success">
-                                                                    {{ rec.act.status }}
-                                                                </span>
-                                                                {% endif %}
-                                                                {% else %}
+                                                                    {% if user_type == "Organization" %}
+                                                                        {% if rec.act.status == "等待中" %}
+                                                                            <span class="badge badge-pill badge-info">
+                                                                                {{ rec.act.status }}
+                                                                            </span>
+                                                                        {% else %}
+                                                                            <span class="badge badge-pill badge-success">
+                                                                                {{ rec.act.status }}
+                                                                            </span>
+                                                                        {% endif %}
+                                                                    {% else %}
 
-                                                                {% if rec.status == "无记录" %}
-                                                                {% if rec.act.status == "报名中" %}
-                                                                <span
-                                                                    class="badge badge-pill badge-secondary">未报名</span>
-                                                                {% else %}
-                                                                <span class="badge badge-pill badge-danger">报名截止</span>
-                                                                {% endif %}
-                                                                {% elif rec.status == "申请失败" or rec.status == "未参与" or
-                                                                rec.status == "取消" %}
-                                                                <span class="badge badge-pill badge-primary">
-                                                                    {{ rec.status }}
-                                                                </span>
-                                                                {% else %}
-                                                                <span class="badge badge-pill badge-primary">
-                                                                    {{ rec.status }}
-                                                                </span>
-                                                                {% endif %}
+                                                                        {% if rec.status == "无记录" %}
+                                                                            {% if rec.act.status == "报名中" %}
+                                                                                <span class="badge badge-pill badge-secondary">未报名</span>
+                                                                            {% else %}
+                                                                                <span class="badge badge-pill badge-danger">报名截止</span>
+                                                                            {% endif %}
+                                                                        {% elif rec.status == "申请失败" or rec.status == "未参与" or
+                                                                        rec.status == "取消" %}
+                                                                            <span class="badge badge-pill badge-primary">
+                                                                                {{ rec.status }}
+                                                                            </span>
+                                                                        {% else %}
+                                                                            <span class="badge badge-pill badge-primary">
+                                                                                {{ rec.status }}
+                                                                            </span>
+                                                                        {% endif %}
 
-                                                                {% endif %}
+                                                                    {% endif %}
                                                                 {% endif %}
 
                                                                 {{rec.act.title}}
