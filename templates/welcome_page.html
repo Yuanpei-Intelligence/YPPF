@@ -64,6 +64,16 @@
                 <!-- BEGIN HEIGHT CONSTRAIN -->
                 <script type="text/javascript">
                     const ref = document.querySelector(`#style1`);
+                    const photos = ref.querySelectorAll(`img`);
+                    /* ---------------- fit wallpaper according to screen height ---------------- */
+                    window.addEventListener(`load`, resize);
+                    window.addEventListener(`resize`, resize);
+                    function resize() {
+                        photos.forEach(
+                            (photo) => (photo.style.height = this.innerWidth <= 767 ? `30vh` : `50vh`)
+                        );
+                    }
+                    /* ---------------------- constrain height of wishwall ---------------------- */
                     const fit = () => {
                         const bar = document.querySelector(`#custom-wishes`);
                         bar.style.height = `${ref.offsetHeight - bar.offsetTop - bar.parentElement.offsetTop}px`;
