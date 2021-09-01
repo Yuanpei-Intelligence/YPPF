@@ -162,6 +162,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         bar_display["profile_name"] = "个人主页"
         bar_display["profile_url"] = "/stuinfo/"
         bar_display["name"] = me.name
+        bar_display["person_type"] = me.identity
 
         # 个人需要地下室跳转
         bar_display["underground_url"] = local_dict["url"]["base_url"]
