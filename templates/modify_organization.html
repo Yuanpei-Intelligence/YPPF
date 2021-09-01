@@ -82,7 +82,7 @@
                                                         <label>组织图标</label>
                                                         <br>
                                                         {% if allow_form_edit %}
-                                                        <input type="file" id="preavatar" class="dropify" name="avatar"
+                                                        <input type="file" id="preavatar" class="dropify" name="avatar" accept="image/*"
                                                            data-default-file="{{org_avatar_path}}"
                                                            data-max-file-size="512K"/>
                                                         {%else%}
@@ -94,7 +94,7 @@
                                                 <br>
                                                 <div class="row">
                                                     <div class="upload m-auto">
-                                                        <input type="file" id="avatar" class="dropify" name="avatar" 
+                                                        <input type="file" id="avatar" class="dropify" name="avatar" accept="image/*"
                                                             data-default-file="{{former_img}}" data-max-file-size="512K" />
                                                     </div>
                                                 </div>

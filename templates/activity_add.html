@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% load static %}
 
@@ -131,11 +131,11 @@
                                                 <label>活动时间</label>
                                                 <div class="row">
                                                     <div class="col">
-                                                        <input type="datetime" class="form-control" id="datetimepicker3"
+                                                        <input type="datetime-local" class="form-control" id="datetimepicker3"
                                                             name="actstart" placeholder="开始时间" required="required" onclick="fill_value(this)"/>
                                                     </div>
                                                     <div class="col">
-                                                        <input type="text" class="form-control" id="datetimepicker4"
+                                                        <input type="datetime-local" class="form-control" id="datetimepicker4"
                                                             name="actend" placeholder="结束时间" required="required" onclick="fill_value(this)"/>
                                                     </div>
                                                 </div>
@@ -162,8 +162,10 @@
                                                     value="1" id="recorded"
                                                     name="recorded">
                                                 <label class="form-check-label" for="defaultCheck1">
+
                                                     是否已报备
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="此选项不可修改，擅自选择可能导致组织被取消">
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="已报备活动指学期初已上报学院且获准的活动, 擅自勾选可能导致组织被禁止登录!">
+
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -390,7 +392,7 @@
                                             <div class="form-group">
                                                 <label for="aintro">
                                                     活动推送链接
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="获取链接的方式：在推送中，点击右上角在默认浏览器中打开，然后复制链接填在此处即可。这一项可以在任何时间修改">
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="获取链接的方式：在推送中，点击右上角在默认浏览器中打开，然后复制链接填在此处即可。注意，如果是外网链接，请使用以http或https开头的绝对地址。这一项可以在任何时间修改。">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -399,7 +401,7 @@
                                                     </a>
                                                 </label>
                                                 {% if not examine %}
-                                                <input type="text" id="URL" name="URL" class="form-control"
+                                                <input type="url" id="URL" name="URL" class="form-control"
                                                     placeholder="{{url}}">
                                                 {% else %}
                                                 <a href="{{url}}"> {{url}} </a>
