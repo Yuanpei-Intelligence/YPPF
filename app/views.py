@@ -1336,9 +1336,11 @@ def forget_password(request):
             elif send_captcha in ["wechat"]:    # 发送企业微信消息
                 username = person.person_id.username
                 captcha = utils.get_captcha(request, username)
-                send_wechat_captcha(username)
+                send_wechat_captcha(username, captcha)
                 display = succeed(f"验证码已发送至企业微信")
                 display["noshow"] = True
+                display["alert"] = True
+                utils.set_captcha_session(request, username, captcha)
                 display.setdefault("colddown", 60)
             else:
                 captcha, expired, old = utils.get_captcha(request, username, more_info=True)
@@ -1354,7 +1356,7 @@ def forget_password(request):
                     return redirect(reverse("modpw"))
                 else:
                     display = wrong("验证码错误")
-                display.setdefault("colddown", 5)
+                display.setdefault("colddown", 30)
     return render(request, "forget_password.html", locals())
 
 

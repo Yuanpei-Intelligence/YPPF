@@ -1,4 +1,6 @@
 //added by pht
+var info = document.getElementById("send_info");
+var drop_list = document.getElementById("send_list");
 var wechat = document.getElementById("send_wechat");
 var email = document.getElementById("send_email");
 var submit = document.getElementById("submit_btn");
@@ -8,14 +10,20 @@ var countdown = 60;
 
 function settime() {
 	if (countdown == 0) {
+		info.removeAttribute("disabled");
+		info.innerHTML = "发送到";
+		drop_list.removeAttribute("disabled");
 		wechat.removeAttribute("disabled");
-		wechat.innerHTML = "发送微信";
+		wechat.innerHTML = "企业微信";
 		email.removeAttribute("disabled");
-		email.innerHTML = "发送邮件";
+		email.innerHTML = "个人邮箱";
 		countdown = 60;
 	} else {
+		info.setAttribute("disabled", true);
+		info.innerHTML = "重新发送";
+		drop_list.setAttribute("disabled", true);
 		wechat.setAttribute("disabled", true);
-		wechat.innerHTML = "重新发送(" + countdown + ")";
+		wechat.innerHTML = "(" + countdown + ")";
 		email.setAttribute("disabled", true);
 		email.innerHTML = "重新发送(" + countdown + ")";
 		countdown--;
