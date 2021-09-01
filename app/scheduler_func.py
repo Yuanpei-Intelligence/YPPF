@@ -6,11 +6,12 @@ from django.urls import reverse
 from datetime import datetime, timedelta, timezone, time, date
 from django.db import transaction  # 原子化更改数据库
 
-from app.models import Organization, NaturalPerson, Weather, YQPointDistribute, TransferRecord, User, Activity, Participant, Notification
+from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant, Notification
 from app.wechat_send import publish_notifications
 from app.forms import YQPointDistributionForm
 from boottest.hasher import MySHA256Hasher
 from app.notification_utils import bulk_notification_create
+from boottest import local_dict
 
 from random import sample
 from numpy.random import choice
@@ -222,7 +223,7 @@ def changeActivityStatus(aid, cur_status, to_status):
 
             activity.status = to_status
     
-            if activity.status == Activity.Status.WAITING:
+            if to_status == Activity.Status.WAITING:
                 if activity.bidding:
                     """
                     投点时使用
@@ -231,16 +232,21 @@ def changeActivityStatus(aid, cur_status, to_status):
                     else:
                         weighted_draw_lots(activity)
                     """
-                draw_lots(activity)
+                    draw_lots(activity)
 
 
             # 活动变更为进行中时，修改参与人参与状态
-            elif activity.status == Activity.Status.PROGRESSING:
+            elif to_status == Activity.Status.PROGRESSING:
                 if activity.need_checkin:
-                    Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS).update(status=Participant.AttendStatus.UNATTENDED)
+                    Participant.objects.filter(
+                        activity_id=aid, 
+                        status=Participant.AttendStatus.APLLYSUCCESS
+                    ).update(status=Participant.AttendStatus.UNATTENDED)
                 else:
-                    Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS).update(status=Participant.AttendStatus.ATTENDED)
-
+                    Participant.objects.filter(
+                        activity_id=aid, 
+                        status=Participant.AttendStatus.APLLYSUCCESS
+                    ).update(status=Participant.AttendStatus.ATTENDED)
 
             # 结束，计算积分    
             else:
@@ -277,10 +283,16 @@ def draw_lots(activity):
     leftQuota = activity.capacity - engaged
 
     if l <= leftQuota:
-        Participant.objects.filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING).update(status=Participant.AttendStatus.APLLYSUCCESS)
+        Participant.objects.filter(
+            activity_id=activity.id, 
+            status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYFAILED]
+        ).update(status=Participant.AttendStatus.APLLYSUCCESS)
     else:
         lucky_ones = sample(range(l), leftQuota)
-        for i, participant in enumerate(Participant.objects.select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)):
+        for i, participant in enumerate(Participant.objects.select_for_update().filter(
+            activity_id=activity.id, 
+            status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYFAILED]
+        )):
             if i in lucky_ones:
                 participant.status = Participant.AttendStatus.APLLYSUCCESS
             else:
@@ -331,7 +343,7 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
         activity = Activity.objects.get(id=aid)
         if msg_type == "newActivity":
             msg = f"您关注的组织{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
-            msg += f"开始时间: {activity.start}\n"
+            msg += f"开始时间: {activity.start.strftime('%y-%m-%d %H:%M')}\n"
             msg += f"活动地点: {activity.location}\n"
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
@@ -339,7 +351,7 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
             receivers = [subscriber.person_id for subscriber in subscribers]
         elif msg_type == "remind":
             msg = f"您参与的活动 <{activity.title}> 即将开始。\n"
-            msg += f"开始时间: {activity.start}\n"
+            msg += f"开始时间: {activity.start.strftime('%y-%m-%d %H:%M')}\n"
             msg += f"活动地点: {activity.location}\n"
             participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
             receivers = [participant.person_id.person_id for participant in participants]
@@ -362,7 +374,8 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
             )
-            receivers =  set(subscribers) - set([participant.person_id for participant in participants])
+            receivers =  list(set(subscribers) - set([participant.person_id for participant in participants]))
+            receivers = [receiver.person_id for receiver in receivers]
         # 应该用不到了，调用的时候分别发给 par 和 sub
         # 主要发给两类用户的信息往往是不一样的
         elif msg_type == 'modification_all':
@@ -374,6 +387,7 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
                 id__in=activity.organization_id.unsubscribers.all()
             )
             receivers = set([participant.person_id for participant in participants]) | set(subscribers)
+            receivers = [receiver.person_id for receiver in receivers]
         else:
             raise ValueError
         success, _ = bulk_notification_create(
@@ -395,19 +409,32 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
 
 
 
-@register_job(scheduler, 'interval', id="get weather per 3 minutes", minutes=3)
+@register_job(scheduler, 'interval', id="get weather per hour", hours=1)
 def get_weather():
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     try:
-        load_json = json.loads(urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html",timeout=5).read())
-        number = Weather.objects.filter(status = True).count()
-        if not number:
-            Weather.objects.create(weather_json=load_json,status= True)
-        current_weather = Weather.objects.get_activated()
-        current_weather.weather_json = load_json = json.loads(urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read())
-        current_weather.modify_time = datetime.now()
-        current_weather.save()
-    except:
+        city = "Beijing"
+        key = local_dict["weather_api_key"]
+        lang = "zh_cn"
+        url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={key}&lang={lang}"
+        load_json = json.loads(urllib2.urlopen(url, timeout=5).read()) # 这里面信息太多了，不太方便传到前端
+        weather_dict = {
+            "modify_time": datetime.now().__str__(),
+            "description": load_json["weather"][0]["description"],
+            "temp": str(round(float(load_json["main"]["temp"]) - 273.15)),
+            "temp_feel": str(round(float(load_json["main"]["feels_like"]) - 273.15)),
+            "icon": load_json["weather"][0]["icon"]
+        }
+        with open("weather.json", "w") as weather_json:
+            json.dump(weather_dict, weather_json)
+    except KeyError as e:
+        print(str(e))
+        print("在get_weather中出错，原因可能是local_dict中缺少weather_api_key")
+        return None
+    except Exception as e:
         # 相当于超时
         # TODO: 增加天气超时的debug
         print("任务超时")
+        return None
+    else:
+        return weather_dict
