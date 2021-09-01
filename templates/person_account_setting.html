@@ -92,7 +92,7 @@
                                                             <label class="form-check-label" for="show_gender">对外展示</label>
                                                         </div>
                                                         <label for="fullName">我的电话</label>
-                                                        <input type="text" class="form-control" id="tel"
+                                                        <input type="tel" class="form-control" id="tel"
                                                         name="tel" placeholder="{{userinfo.telephone}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
                                                         <div class="form-check mb-4">
                                                             {% if useroj.show_tel %}
@@ -134,7 +134,7 @@
                                                             name="class" value="{{userinfo.stu_class}}">
                                                         -->
                                                         <label for="profession">我的邮箱</label>
-                                                        <input type="text" class="form-control" id="email" 
+                                                        <input type="email" class="form-control" id="email" 
                                                             name="email" placeholder="{{userinfo.email}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
                                                             <div class="form-check mb-4">
                                                                 {% if useroj.show_email %}

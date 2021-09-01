@@ -17,7 +17,7 @@
 
 {% block mainpage %}
 
-{% with title='活动审核' link='/viewActivity/' new_link='' query_field='aid' new_btn_name='' btn_name='详情' empty_info='没有相关活动哦～' %}
+{% with title='活动管理' link='/viewActivity/' new_link='' query_field='aid' new_btn_name='' btn_name='详情' empty_info='没有相关活动哦～' %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -26,9 +26,7 @@
     {% elif html_display.warn_code == 2 %}
     <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
     {% endif %}
-    <div class="container">
-        <div class="container">
-
+    <div class="container"> 
 
             <div class="row layout-top-spacing">
                 {% if bar_display.help_paragraphs %}
@@ -46,6 +44,17 @@
                                 </br>
                             </div>
 
+                            {% if user_type == "Organization" %}
+                            <div class="col-lg-12">
+                                <br />
+                                <br />
+                                <a href="/addActivity/" class="btn btn-info" tabindex="1"
+                                    role="button" style="position:absolute;right:30px;top:4px;">
+                                    发起活动
+                                </a>
+                            </div>
+                            {% endif %}
+                            
                             <hr style="filter:alpha(opacity=100,finishopacity=0,style=3);" width="80%" color="#0000FF" size="3">
 
                             <div id="myTabContent" class="tab-content">
@@ -75,14 +84,17 @@
                                                         </div>
                                                         {% if status is not None %}
                                                         <div>
-                                                            {% if '审核' in status %}
-                                                            <h4 class="text-warning">审核中</h4>
-                                                            {% elif '撤销' in status or '未' in status %}
-                                                            <h4 class="text-danger">{{status}}</h4>
+                                                            {% if status == 'Reviewing' %}
+                                                                <h5 class="text-warning">审核中</h5>
+                                                            {% elif status == 'Reject' %}
+                                                                <h5 class="text-danger">未过审</h5>
+                                                            {% elif status == 'Abort' %}
+                                                                <h5 class="text-muted">已撤销</h5>
                                                             {% elif status == '预报备' %}
-                                                            <h4 class="text-info">预报备</h4>
+                                                                <h5 class="text-info">预报备</h5>
                                                             {% else %}
-                                                            <h4 class="text-success">已通过</h4>
+                                                                <h5 class="text-success">已通过</h5>
+
                                                             {% endif %}
                                                         </div>
                                                         {% endif %}
@@ -149,7 +161,7 @@
 
             </div>
 
-        </div>
+        
     </div>
 </div>
 <!--  END CONTENT AREA  -->
