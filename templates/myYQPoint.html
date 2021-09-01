@@ -12,22 +12,40 @@
         <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
         {% endif %}
         <div class="container">
-            <div class="row layout-top-spacing">
+            <div class="layout-top-spacing">
 
-                <div class="col-lg-12 col-12 row layout-top-spacing">
-                    <div class="col-sm-0 col-xl-3 col-lg-2 col-md-2"></div>
-                    <div class="col-sm-12 col-xl-6 col-lg-8 col-md-8">
-                        <div class="card">
+                <div class="row">
+                    <div class="col-0 col-xl-2 col-lg-2 col-md-2"></div>
+                    <div class="col-12 col-xl-8 col-lg-8 col-md-8 layout-top-spacing">
+                        <div class="card mx-auto">
                             <img class="card-img-top" src="/static/assets/img/YQPointCard.jpeg" alt="Card image" style="width:100%">
                             <div class="card-body">
-                                <p class="card-text">当前元气值：{{me.YQPoint}}</p>
-                                <p class="card-text">待收入元气值：{{amount.recv}}</p>
-                                <p class="card-text">待支出元气值：{{amount.send}}</p>
+                                {% if user_type == "Person" %}
+                                <span>当前元气值：{{me.YQPoint}}</span>
+                                {% else %}
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="">
+                                            <span class="float-left" >当前元气值：</span>
+                                            <span class="float-right" >{{me.YQPoint}}</span>
+                                            <br/>
+                                        </div>
+                                        <div class="">
+                                            <span class="float-left" >待收入元气值：</span>
+                                            <span class="float-right" >{{amount.recv}}</span>
+                                            <br/>
+                                        </div>
+                                        <div class="">
+                                            <span class="float-left" >待支出元气值：</span>
+                                            <span class="float-right" >{{amount.send}}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
-                    </div>
-                    <div class="col-sm-0 col-xl-3 col-lg-2 col-md-2"></div>
-                </div>
+                     </div>
+                 </div>
 
                 <div class="col-lg-12 col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
