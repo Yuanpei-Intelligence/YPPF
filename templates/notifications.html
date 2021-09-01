@@ -2,7 +2,7 @@
 
 {% block add_css_file %}
 <!-- 和搜索页面相同，在需要引入“使用帮助”的页面，也要在add_css_file中添加以下style -->
-<style class="text/css" xmlns:text-decoration="http://www.w3.org/1999/xhtml">
+<style class="text/css">
     [data-toggle="collapse"] .fa:before {
         font-family: 'Font Awesome 5 Free';  
         content: "\f068";
@@ -76,11 +76,7 @@
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <h5>
-                                                                {%if note.URL %}
                                                                 <a href={{note.URL}}><u>{{note.title}}</u></a><br />
-                                                                {%else%}
-                                                                <u style="text-decoration: none">{{note.title}}</u><br />
-                                                                {% endif %}
                                                             </h5>
                                                         </div>
                                                         <div>
@@ -101,17 +97,12 @@
                                                             {% endif %}
                                                         </div>
                                                     </div>
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-calendar-o"></i>收信时间：{{note.start_time}}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
+                                                    
+                                                    <p style="color: rgb(66, 67, 68);"><i
                                                                     class="fa fa-address-book"></i>{{note.sender}}</p>
-                                                        </div>
-                                                    </div>
-
+                                                        
+                                                    <p style="color: rgb(66, 67, 68);"><i
+                                                                    class="fa fa-calendar-o"></i>收信时间：{{note.start_time}}</p>
                                                     <p style="color: rgb(66, 67, 68);"><i class="fa fa-envelope-o"></i>{{note.content}}</p>
                                                 </div>
                                             </div>
