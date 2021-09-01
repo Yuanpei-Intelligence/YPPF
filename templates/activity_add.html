@@ -100,11 +100,11 @@
                                             <div class="form-group">
                                                 <div class="row">
                                                     <div class="col">
-                                                        <input type="datetime" class="form-control" id="datetimepicker3"
+                                                        <input type="datetime-local" class="form-control" id="datetimepicker3"
                                                             name="actstart" placeholder="开始时间" required="required" onclick="fill_value(this)"/>
                                                     </div>
                                                     <div class="col">
-                                                        <input type="text" class="form-control" id="datetimepicker4"
+                                                        <input type="datetime-local" class="form-control" id="datetimepicker4"
                                                             name="actend" placeholder="结束时间" required="required" onclick="fill_value(this)"/>
                                                     </div>
                                                 </div>
@@ -349,7 +349,7 @@
                                                     </a>
                                                 </label>
                                                 {% if not examine %}
-                                                <input type="text" id="URL" name="URL" class="form-control"
+                                                <input type="url" id="URL" name="URL" class="form-control"
                                                     placeholder="{{url}}">
                                                 {% else %}
                                                 <a href="{{url}}"> {{url}} </a>
