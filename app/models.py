@@ -1,6 +1,6 @@
 from django.db import models, transaction
 from django.db.models.fields import related
-from django_mysql.models import ListCharField, JSONField
+from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -13,9 +13,8 @@ class NaturalPersonManager(models.Manager):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
 
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
-        datas = NaturalPerson.objects.activated()
-        year = datetime.now().strftime("%Y")
-        datas.objects.filter(stu_grade=str(int(year) - 4)).update(GraduateStatus=1)
+        year = int(datetime.now().strftime("%Y")) - 4
+        self.activated().filter(stu_grade=str(year)).update(GraduateStatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
@@ -413,6 +412,12 @@ class ActivityManager(models.Manager):
             # Activity.Status.CANCELED,
             Activity.Status.ABORT
         ])
+    
+    def all_activated(self):
+        # 选择学年相同，并且学期相同或者覆盖的，保持任何状态的活动都可见
+        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
+            semester__contains=local_dict["semester_data"]["semester"]
+        )
 
     def get_newlyended_activity(self):
         # 一周内结束的活动
@@ -963,7 +968,7 @@ class Reimbursement(CommentBase):
     )
     amount = models.FloatField("报销金额", default=0)
     message = models.TextField("备注信息", default="", blank=True)
-    pos = models.ForeignKey(User, on_delete=models.CASCADE)
+    pos = models.ForeignKey(User, on_delete=models.CASCADE)#报销的组织
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
     record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
     def __str__(self):

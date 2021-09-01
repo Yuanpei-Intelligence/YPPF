@@ -1,5 +1,3 @@
-from threading import local
-from django.db.models.fields.related import ManyToManyField
 from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
 from app.models import (
@@ -22,7 +20,6 @@ from app.models import (
     Reimbursement,
     Wishes,
 )
-from django.db.models import Max
 import app.utils as utils
 from app.forms import UserForm
 from app.utils import (
@@ -48,7 +45,12 @@ from app.position_utils import(
     update_pos_application,
 )
 from app.reimbursement_utils import update_reimb_application
-from app.wechat_send import publish_notification, publish_notifications, invite
+from app.wechat_send import(
+    publish_notification,
+    publish_notifications,
+    send_wechat_captcha,
+    invite,
+)
 from app.notification_utils import notification_create, notification_status_change
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
@@ -67,7 +69,6 @@ from django.views.decorators.http import require_POST, require_GET
 import json
 from datetime import date, datetime, timedelta
 from urllib import parse, request as urllib2
-import re
 import random
 import requests  # 发送验证码
 import io
@@ -398,10 +399,10 @@ def stuinfo(request, name=None):
             ~Q(status=Activity.Status.CANCELED),
         )
         activities_start = [
-            activity.start.strftime("%m月%d日 %H:%M") for activity in activities
+            activity.start.strftime("%y-%m-%d %H:%M") for activity in activities
         ]
         activities_end = [
-            activity.end.strftime("%m月%d日 %H:%M") for activity in activities
+            activity.end.strftime("%y-%m-%d %H:%M") for activity in activities
         ]
         if user_type == "Person":
             activities_me = Participant.objects.filter(person_id=person.id).values(
@@ -521,6 +522,31 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         if org.first_time_login:
             return redirect("/modpw/")
         return redirect("/orginfo/")
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+def user_login_org(request, org):
+    user = request.user
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    try:
+        me = NaturalPerson.objects.activated().get(person_id=user)
+    except:  # 找不到合法的用户
+        return wrong("您没有权限访问该网址！请用对应组织账号登陆。")
+    #是组织一把手
+    try:
+        position = Position.objects.activated().filter(org=org, person=me)
+        assert len(position) == 1
+        position = position[0]
+        assert position.pos == 0
+    except:
+        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该组织账户的权限!"
+        return redirect(urls)
+    # 到这里,是本人组织并且有权限登录
+    auth.logout(request)
+    auth.login(request, org.organization_id)  # 切换到组织账号
+    return succeed("成功切换到组织账号处理该事务，建议事务处理完成后退出组织账号。")
+
 
 
 @login_required(redirect_field_name="origin")
@@ -1166,7 +1192,9 @@ def search(request):
 
     now = datetime.now()
     def get_recent_activity(org):
-        activities = Activity.objects.activated().filter(Q(organization_id=org.id) & ~Q(status=Activity.Status.CANCELED))
+        activities = Activity.objects.activated().filter(Q(organization_id=org.id)
+                                                         & ~Q(status=Activity.Status.CANCELED)
+                                                         & ~Q(status=Activity.Status.REJECT))
         activities = list(activities)
         activities.sort(key=lambda activity: abs(now - activity.start))
         return None if len(activities) == 0 else activities[0:3]
@@ -1198,7 +1226,9 @@ def search(request):
 
     # 搜索活动
     activity_list = Activity.objects.filter(
-        Q(title__icontains=query) | Q(organization_id__oname__icontains=query)
+        Q(title__icontains=query) | Q(organization_id__oname__icontains=query)& ~Q(status=Activity.Status.CANCELED)
+                                                         & ~Q(status=Activity.Status.REJECT)
+        &~Q(status=Activity.Status.REVIEWING)&~Q(status=Activity.Status.ABORT)
     )
 
     # 活动要呈现的内容
@@ -1331,6 +1361,16 @@ def forget_password(request):
                         display = wrong("邮件发送失败：超时")
                     finally:
                         display["alert"] = True
+                        display.setdefault("colddown", 60)
+            elif send_captcha in ["wechat"]:    # 发送企业微信消息
+                username = person.person_id.username
+                captcha = utils.get_captcha(request, username)
+                send_wechat_captcha(username, captcha)
+                display = succeed(f"验证码已发送至企业微信")
+                display["noshow"] = True
+                display["alert"] = True
+                utils.set_captcha_session(request, username, captcha)
+                display.setdefault("colddown", 60)
             else:
                 captcha, expired, old = utils.get_captcha(request, username, more_info=True)
                 if not old:
@@ -1345,6 +1385,7 @@ def forget_password(request):
                     return redirect(reverse("modpw"))
                 else:
                     display = wrong("验证码错误")
+                display.setdefault("colddown", 30)
     return render(request, "forget_password.html", locals())
 
 
@@ -1626,9 +1667,9 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
         lis[-1]["id"] = record.id
 
         # 时间
-        lis[-1]["start_time"] = record.start_time.strftime("%m/%d %H:%M")
+        lis[-1]["start_time"] = record.start_time.strftime("%y-%m-%d %H:%M")
         if record.finish_time is not None:
-            lis[-1]["finish_time"] = record.finish_time.strftime("%m/%d %H:%M")
+            lis[-1]["finish_time"] = record.finish_time.strftime("%y-%m-%d %H:%M")
 
         # 对象
         # 如果是给出列表，那么对象就是接收者
@@ -1946,11 +1987,11 @@ def viewActivity(request, aid=None):
     org_name = org.oname
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
-    start_time = activity.start.strftime("%m/%d/%Y %H:%M %p")
-    end_time = activity.end.strftime("%m/%d/%Y %H:%M %p")
+    start_time = activity.start.strftime("%y-%m-%d %H:%M")
+    end_time = activity.end.strftime("%y-%m-%d %H:%M")
     start_THEDAY = activity.start.day # 前端使用量
     prepare_times = Activity.EndBeforeHours.prepare_times
-    apply_deadline = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
+    apply_deadline = activity.apply_end.strftime("%y-%m-%d %H:%M")
     introduction = activity.introduction
     show_url = True # 前端使用量
     aURL = activity.URL
@@ -2257,13 +2298,27 @@ def addActivity(request, aid=None):
     try:
         valid, user_type, html_display = utils.check_user_type(request.user)
         assert valid
-        assert user_type == "Organization"
         me = utils.get_person_or_org(request.user, user_type)
         if aid is None:
+            assert user_type == "Organization"
             edit = False
         else:
             aid = int(aid)
             activity = Activity.objects.get(id=aid)
+            if user_type == "Person":
+                html_display=user_login_org(request,activity.organization_id)
+                if html_display['warn_code']==1:
+                    return redirect(
+                        "/welcome/"
+                        + "?warn_code={}&warn_message={}".format(
+                            html_display["warn_code"], html_display["warn_message"]
+                        )
+                    )
+                else:#成功以组织账号登陆
+                    #防止后边有使用，因此需要赋值
+                    user_type="Organization"
+                    request.user=activity.organization_id.organization_id#组织对应user
+                    me = activity.organization_id#组织
             assert activity.organization_id == me
             edit = True
         html_display["is_myself"] = True
@@ -2323,7 +2378,6 @@ def addActivity(request, aid=None):
             except:
                 return redirect("/welcome/")
 
-
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
     html_display["applicant_name"] = me.oname
@@ -2358,7 +2412,6 @@ def addActivity(request, aid=None):
             # print(e)
             return redirect("/welcome/")
 
-
         # 决定状态的变量
         # None/edit/examine ( 组织申请活动/组织编辑/老师审查 )
         # full_editable/accepted/None ( 组织编辑活动：除审查老师外全可修改/部分可修改/全部不可改 )
@@ -2369,10 +2422,9 @@ def addActivity(request, aid=None):
         title = activity.title
         budget = activity.budget
         location = activity.location
-        start = activity.start.strftime("%m/%d/%Y %H:%M %p")
-        end = activity.end.strftime("%m/%d/%Y %H:%M %p")
-        apply_end = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
-        apply_end_for_js = apply_end[:-2]
+        start = activity.start.strftime("%y-%m-%d %H:%M")
+        end = activity.end.strftime("%y-%m-%d %H:%M")
+        apply_end = activity.apply_end.strftime("%y-%m-%d %H:%M")
         introduction = activity.introduction
         url = activity.URL
         endbefore = activity.endbefore
@@ -2394,7 +2446,6 @@ def addActivity(request, aid=None):
         need_checkin = activity.need_checkin
         apply_reason = activity.apply_reason
         comments = showComment(activity)
-
 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     if not edit:
@@ -2479,9 +2530,9 @@ def examineActivity(request, aid):
     title = activity.title
     budget = activity.budget
     location = activity.location
-    apply_end = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
-    start = activity.start.strftime("%m/%d/%Y %H:%M %p")
-    end = activity.end.strftime("%m/%d/%Y %H:%M %p")
+    apply_end = activity.apply_end.strftime("%y-%m-%d %H:%M")
+    start = activity.start.strftime("%y-%m-%d %H:%M")
+    end = activity.end.strftime("%y-%m-%d %H:%M")
     introduction = activity.introduction
     url = activity.URL
     endbefore = activity.endbefore
@@ -2754,9 +2805,9 @@ def notification2Display(notification_list):
         lis[-1]["id"] = notification.id
 
         # 时间
-        lis[-1]["start_time"] = notification.start_time.strftime("%m/%d %H:%M")
+        lis[-1]["start_time"] = notification.start_time.strftime("%y-%m-%d %H:%M")
         if notification.finish_time is not None:
-            lis[-1]["finish_time"] = notification.finish_time.strftime("%m/%d %H:%M")
+            lis[-1]["finish_time"] = notification.finish_time.strftime("%y-%m-%d %H:%M")
 
         # 留言
         lis[-1]["content"] = notification.content
@@ -2992,9 +3043,31 @@ def modifyPosition(request):
             application = ModifyPosition.objects.get(id = position_id)
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被申请组织之一
-            assert (application.org == me) or (application.person == me) 
+            if user_type == "Person" and application.person != me:
+                html_display=user_login_org(request,application.org)
+                if html_display['warn_code']==1:
+                    return redirect(
+                        "/welcome/"
+                        + "?warn_code={}&warn_message={}".format(
+                            html_display["warn_code"], html_display["warn_message"]
+                        )
+                    )
+                else:
+                    #防止后边有使用，因此需要赋值
+                    user_type="Organization"
+                    request.user=application.org.organization_id
+                    me = application.org
+            assert (application.org == me) or (application.person == me)
+
         except: #恶意跳转
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "您没有权限访问该网址！"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         is_new_application = False # 前端使用量, 表示是老申请还是新的
         applied_org = application.org
 
@@ -3006,7 +3079,14 @@ def modifyPosition(request):
 
         except:
             # 非法的名字, 出现恶意修改参数的情况
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入人事申请页面"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         
         # 查找已经存在的审核中的申请
         try:
@@ -3215,7 +3295,9 @@ def showActivity(request):
             pass
         if not is_teacher:
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "个人账号不能进入活动审核页面！"
+
+            html_display["warn_code"] = "学生账号不能进入活动审核页面！"
+
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
@@ -3223,9 +3305,10 @@ def showActivity(request):
                 )
             )
     if is_teacher:
-        shown_instances = Activity.objects.activated().filter(examine_teacher = me.id)
+        shown_instances = Activity.objects.all_activated().filter(examine_teacher = me.id)
     else:
-        shown_instances = Activity.objects.activated().filter(organization_id = me.id)
+        shown_instances = Activity.objects.all_activated().filter(organization_id = me.id)
+
     shown_instances = shown_instances.order_by("-modify_time", "-time")
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动审核")
     return render(request, "activity_show.html", locals())
@@ -3283,7 +3366,7 @@ def make_relevant_notification(application, info):
             content = f'{apply_person.name}取消了组织{application.oname}的申请。'
         elif post_type == 'accept_submit':
             content = f'恭喜，您申请的组织：{application.oname}，审核已通过！组织编号为{new_org.organization_id.username}, \
-                初始密码为{new_org.organization_id.password}，请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；(2)从登录页面用组织编号或组织名称以及密码登录。'
+                初始密码为{utils.random_code_init(new_org.organization_id.id)}，请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；(2)从登录页面用组织编号或组织名称以及密码登录。'
         elif post_type == 'refuse_submit':
             content = f'抱歉，您申请的组织：{application.oname}，审核未通过！。'
         else:
@@ -3324,7 +3407,7 @@ def make_relevant_notification(application, info):
 # 新建+修改+取消+审核 报销信息
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-def modeifyReimbursement(request):
+def modifyReimbursement(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
 
@@ -3343,11 +3426,32 @@ def modeifyReimbursement(request):
     if reimb_id is not None:  # 如果存在对应报销
         try:  # 尝试获取已经新建的Reimbursement
             application = Reimbursement.objects.get(id=reimb_id)
+            if user_type == "Person" and auditor!=request.user:
+                html_display=user_login_org(request,application.pos.organization)
+                if html_display['warn_code']==1:
+                    return redirect(
+                        "/welcome/"
+                        + "?warn_code={}&warn_message={}".format(
+                            html_display["warn_code"], html_display["warn_message"]
+                        )
+                    )
+                else:#成功
+                    user_type="Organization"
+                    request.user=application.pos
+                    me = application.pos.organization
+
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被审核老师之一
             assert (application.pos==request.user) or (auditor==request.user)
         except:  # 恶意跳转
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "您没有权限访问该网址！"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         is_new_application = False  # 前端使用量, 表示是老申请还是新的
 
     else:  # 如果不存在id, 默认应该传入活动信息
@@ -3355,7 +3459,14 @@ def modeifyReimbursement(request):
         try:
             assert user_type == "Organization"
         except:  # 恶意跳转
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "您没有权限访问该网址！"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         is_new_application = True  # 新的申请
 
          # 这种写法是为了方便随时取消某个条件
@@ -3527,7 +3638,14 @@ def modifyOrganization(request):
             # 至少应该是申请人或者审核老师
             assert (application.pos == request.user) or (application.otype.incharge == me)
         except: #恶意跳转
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "您没有权限访问该网址！"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         is_new_application = False # 前端使用量, 表示是老申请还是新的
 
     else:   
