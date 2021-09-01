@@ -2990,7 +2990,14 @@ def modifyPosition(request):
             # 至少应该是申请人或者被申请组织之一
             assert (application.org == me) or (application.person == me) 
         except: #恶意跳转
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "您没有权限访问该网址！"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         is_new_application = False # 前端使用量, 表示是老申请还是新的
         applied_org = application.org
 
@@ -3002,7 +3009,14 @@ def modifyPosition(request):
 
         except:
             # 非法的名字, 出现恶意修改参数的情况
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入人事申请页面"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         
         # 查找已经存在的审核中的申请
         try:
@@ -3343,7 +3357,14 @@ def modeifyReimbursement(request):
             # 至少应该是申请人或者被审核老师之一
             assert (application.pos==request.user) or (auditor==request.user)
         except:  # 恶意跳转
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "您没有权限访问该网址！"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         is_new_application = False  # 前端使用量, 表示是老申请还是新的
 
     else:  # 如果不存在id, 默认应该传入活动信息
@@ -3351,7 +3372,14 @@ def modeifyReimbursement(request):
         try:
             assert user_type == "Organization"
         except:  # 恶意跳转
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "您没有权限访问该网址！"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         is_new_application = True  # 新的申请
 
          # 这种写法是为了方便随时取消某个条件
@@ -3523,7 +3551,14 @@ def modifyOrganization(request):
             # 至少应该是申请人或者审核老师
             assert (application.pos == request.user) or (application.otype.incharge == me)
         except: #恶意跳转
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "您没有权限访问该网址！"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         is_new_application = False # 前端使用量, 表示是老申请还是新的
 
     else:   
