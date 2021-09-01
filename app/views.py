@@ -21,7 +21,6 @@ from app.models import (
     YQPointDistribute,
     Reimbursement,
     Wishes,
-    Weather
 )
 from django.db.models import Max
 import app.utils as utils
@@ -813,11 +812,13 @@ def homepage(request):
 
     # 天气
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
-    if Weather.objects.filter(status = True).count == 0:
-        from app.scheduler_utils import get_weather
-        get_weather()
-    html_display['weather'] = Weather.objects.get_activated().weather_json
-
+    try:
+        with open("weather.json") as weather_json:
+            html_display['weather'] = json.loads(weather_json)
+    except:
+        from app.scheduler_func import get_weather
+        html_display['weather'] = get_weather()
+    
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "元培生活")
     # bar_display["title_name"] = "Welcome Page"
@@ -3195,6 +3196,40 @@ def showReimbursement(request):
     shown_instances = shown_instances.order_by("-modify_time", "-time")
     bar_display = utils.get_sidebar_and_navbar(request.user, "报销信息")
     return render(request, "reimbursement_show.html", locals())
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+def showActivity(request):
+    """
+    活动信息的聚合界面
+    只有老师和组织才能看到，老师看到检查者是自己的，组织看到发起方是自己的
+    """
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = utils.get_person_or_org(request.user)  # 获取自身
+    is_teacher = False
+    if user_type == "Person":
+        try:
+            person = utils.get_person_or_org(request.user, user_type)
+            if person.identity == NaturalPerson.Identity.TEACHER :
+                is_teacher = True
+        except:
+            pass
+        if not is_teacher:
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "个人账号不能进入活动审核页面！"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
+    if is_teacher:
+        shown_instances = Activity.objects.activated().filter(examine_teacher = me.id)
+    else:
+        shown_instances = Activity.objects.activated().filter(organization_id = me.id)
+    shown_instances = shown_instances.order_by("-modify_time", "-time")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "活动审核")
+    return render(request, "activity_show.html", locals())
 
 
 # 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
