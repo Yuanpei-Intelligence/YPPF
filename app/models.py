@@ -591,7 +591,7 @@ class Activity(CommentBase):
     URL = models.URLField("活动相关(推送)网址", default="", blank=True)
 
     def __str__(self):
-        return f"活动：{self.title}"
+        return str(self.title)
 
     class Status(models.TextChoices):
         REVIEWING = "审核中"

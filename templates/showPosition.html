@@ -1,18 +1,7 @@
 {% extends "base.html" %}
 
 {% block add_css_file %}
-<!-- 和搜索页面相同，在需要引入“使用帮助”的页面，也要在add_css_file中添加以下style -->
-<style class="text/css">
-    [data-toggle="collapse"] .fa:before {
-        font-family: 'Font Awesome 5 Free';  
-        content: "\f068";
-        float: right; 
-    }
 
-    [data-toggle="collapse"].collapsed .fa:before {
-        content: "\f067"; 
-    }
-</style>
 {% endblock %}
 
 {% block mainpage %}
@@ -26,7 +15,6 @@
     {% elif html_display.warn_code == 2 %}
     <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
     {% endif %}
-    <div class="container">
         <div class="container">
 
 
@@ -83,15 +71,15 @@
                                                         {% if status is not None %}
                                                         <div>
                                                             {% if '拒绝' in status or '未' in status or '不' in status %}
-                                                            <h4 class="text-danger">{{status}}</h4>
+                                                            <h5 class="text-danger">{{status}}</h5>
                                                             {% elif '通过' in status or '接受' in status %}
-                                                            <h4 class="text-success">已通过</h4>
+                                                            <h5 class="text-success">已通过</h5>
                                                             {% elif '修改' in status %}
-                                                            <h4 class="text-warning">待修改</h4>
+                                                            <h5 class="text-warning">待修改</h5>
                                                             {% elif '取消' in status %}
-                                                            <h4 class="text-muted">{{status}}</h4>
+                                                            <h5 class="text-muted">{{status}}</h5>
                                                             {% else %}
-                                                            <h4 class="text-info">审核中</h4>
+                                                            <h5 class="text-info">审核中</h5>
                                                             {% endif %}
                                                         </div>
                                                         {% endif %}
@@ -157,7 +145,7 @@
             </div>
 
         </div>
-    </div>
+    
 </div>
 <!--  END CONTENT AREA  -->
 
