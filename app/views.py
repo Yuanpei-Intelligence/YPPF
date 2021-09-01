@@ -45,7 +45,12 @@ from app.position_utils import(
     update_pos_application,
 )
 from app.reimbursement_utils import update_reimb_application
-from app.wechat_send import publish_notification, publish_notifications, invite
+from app.wechat_send import(
+    publish_notification,
+    publish_notifications,
+    send_wechat_captcha,
+    invite,
+)
 from app.notification_utils import notification_create, notification_status_change
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
@@ -1356,6 +1361,16 @@ def forget_password(request):
                         display = wrong("邮件发送失败：超时")
                     finally:
                         display["alert"] = True
+                        display.setdefault("colddown", 60)
+            elif send_captcha in ["wechat"]:    # 发送企业微信消息
+                username = person.person_id.username
+                captcha = utils.get_captcha(request, username)
+                send_wechat_captcha(username, captcha)
+                display = succeed(f"验证码已发送至企业微信")
+                display["noshow"] = True
+                display["alert"] = True
+                utils.set_captcha_session(request, username, captcha)
+                display.setdefault("colddown", 60)
             else:
                 captcha, expired, old = utils.get_captcha(request, username, more_info=True)
                 if not old:
@@ -1370,6 +1385,7 @@ def forget_password(request):
                     return redirect(reverse("modpw"))
                 else:
                     display = wrong("验证码错误")
+                display.setdefault("colddown", 30)
     return render(request, "forget_password.html", locals())
 
 
@@ -3279,7 +3295,9 @@ def showActivity(request):
             pass
         if not is_teacher:
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "个人账号不能进入活动审核页面！"
+
+            html_display["warn_code"] = "学生账号不能进入活动审核页面！"
+
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
@@ -3287,9 +3305,10 @@ def showActivity(request):
                 )
             )
     if is_teacher:
-        shown_instances = Activity.objects.activated().filter(examine_teacher = me.id)
+        shown_instances = Activity.objects.all_activated().filter(examine_teacher = me.id)
     else:
-        shown_instances = Activity.objects.activated().filter(organization_id = me.id)
+        shown_instances = Activity.objects.all_activated().filter(organization_id = me.id)
+
     shown_instances = shown_instances.order_by("-modify_time", "-time")
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动审核")
     return render(request, "activity_show.html", locals())
