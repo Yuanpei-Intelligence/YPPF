@@ -182,12 +182,7 @@
                             </button>
                             {% endif %}
                             {% if person %}
-                            {% if pStatus == "无记录" and status == "报名中" and bidding == True %}
-                            <button class="btn btn-primary btn-block mb-4 mr-2" data-toggle="collapse"
-                                data-target="#bidding">
-                                立即报名
-                            </button>
-                            {% elif pStatus == "无记录" and status == "报名中" and bidding == False %}
+                            {% if pStatus == "无记录" and status == "报名中" %}
                             <form method="POST">
                                 <input type="hidden" name="option" value="apply">
                                 <input type="hidden" name="aid" value={{aid}}>
