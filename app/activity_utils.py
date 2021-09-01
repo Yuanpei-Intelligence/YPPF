@@ -50,7 +50,7 @@ def get_activity_QRcode(activity):
             f"{activity.id}?auth={auth_code}"
         )
 
-    qr=qrcode.QRCode(version = 2,error_correction = qrcode.constants.ERROR_CORRECT_L,box_size=10,border=10,)
+    qr=qrcode.QRCode(version = 2,error_correction = qrcode.constants.ERROR_CORRECT_L,box_size=5,border=5)
     qr.add_data(url)
     qr.make(fit=True)
     img = qr.make_image()
@@ -114,8 +114,9 @@ def activity_base_check(request, edit=False):
     # examine_teacher 需要特殊检查
     context["examine_teacher"] = request.POST.get("examine_teacher")
     # 申请理由
-    context["apply_reason"] = request.POST["apply_reason"]
-    assert len(context["apply_reason"]) > 0
+    context["apply_reason"] = request.POST.get("apply_reason", "")
+    if context["from_college"]:
+        assert len(context["apply_reason"]) > 0
 
     # 预报备
     context["recorded"] = False
@@ -724,6 +725,8 @@ def cancel_activity(request, activity):
                 status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity
             )
             total_amount = records.aggregate(nums=Sum('amount'))["nums"]
+            if total_amount is None:
+                total_amount = 0.0
             if total_amount > org.YQPoint:
                 raise ActivityException("没有足够的元气值退还给同学，不能取消。")
             totalQuota = records.filter(message="quota").aggregate(nums=Sum('amount'))["nums"]
