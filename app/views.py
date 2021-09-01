@@ -523,6 +523,31 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
             return redirect("/modpw/")
         return redirect("/orginfo/")
 
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+def user_login_org(request, org):
+    user = request.user
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    try:
+        me = NaturalPerson.objects.activated().get(person_id=user)
+    except:  # 找不到合法的用户
+        return wrong("您没有权限访问该网址！请用对应组织账号登陆。")
+    #是组织一把手
+    try:
+        position = Position.objects.activated().filter(org=org, person=me)
+        assert len(position) == 1
+        position = position[0]
+        assert position.pos == 0
+    except:
+        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该组织账户的权限!"
+        return redirect(urls)
+    # 到这里,是本人组织并且有权限登录
+    auth.logout(request)
+    auth.login(request, org.organization_id)  # 切换到组织账号
+    return succeed("成功切换到组织账号处理该事务，建议事务处理完成后退出组织账号。")
+
+
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
@@ -1167,7 +1192,9 @@ def search(request):
 
     now = datetime.now()
     def get_recent_activity(org):
-        activities = Activity.objects.activated().filter(Q(organization_id=org.id) & ~Q(status=Activity.Status.CANCELED))
+        activities = Activity.objects.activated().filter(Q(organization_id=org.id)
+                                                         & ~Q(status=Activity.Status.CANCELED)
+                                                         & ~Q(status=Activity.Status.REJECT))
         activities = list(activities)
         activities.sort(key=lambda activity: abs(now - activity.start))
         return None if len(activities) == 0 else activities[0:3]
@@ -1199,7 +1226,9 @@ def search(request):
 
     # 搜索活动
     activity_list = Activity.objects.filter(
-        Q(title__icontains=query) | Q(organization_id__oname__icontains=query)
+        Q(title__icontains=query) | Q(organization_id__oname__icontains=query)& ~Q(status=Activity.Status.CANCELED)
+                                                         & ~Q(status=Activity.Status.REJECT)
+        &~Q(status=Activity.Status.REVIEWING)&~Q(status=Activity.Status.ABORT)
     )
 
     # 活动要呈现的内容
@@ -2269,13 +2298,27 @@ def addActivity(request, aid=None):
     try:
         valid, user_type, html_display = utils.check_user_type(request.user)
         assert valid
-        assert user_type == "Organization"
         me = utils.get_person_or_org(request.user, user_type)
         if aid is None:
+            assert user_type == "Organization"
             edit = False
         else:
             aid = int(aid)
             activity = Activity.objects.get(id=aid)
+            if user_type == "Person":
+                html_display=user_login_org(request,activity.organization_id)
+                if html_display['warn_code']==1:
+                    return redirect(
+                        "/welcome/"
+                        + "?warn_code={}&warn_message={}".format(
+                            html_display["warn_code"], html_display["warn_message"]
+                        )
+                    )
+                else:#成功以组织账号登陆
+                    #防止后边有使用，因此需要赋值
+                    user_type="Organization"
+                    request.user=activity.organization_id.organization_id#组织对应user
+                    me = activity.organization_id#组织
             assert activity.organization_id == me
             edit = True
         html_display["is_myself"] = True
@@ -3000,9 +3043,31 @@ def modifyPosition(request):
             application = ModifyPosition.objects.get(id = position_id)
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被申请组织之一
-            assert (application.org == me) or (application.person == me) 
+            if user_type == "Person" and application.person != me:
+                html_display=user_login_org(request,application.org)
+                if html_display['warn_code']==1:
+                    return redirect(
+                        "/welcome/"
+                        + "?warn_code={}&warn_message={}".format(
+                            html_display["warn_code"], html_display["warn_message"]
+                        )
+                    )
+                else:
+                    #防止后边有使用，因此需要赋值
+                    user_type="Organization"
+                    request.user=application.org.organization_id
+                    me = application.org
+            assert (application.org == me) or (application.person == me)
+
         except: #恶意跳转
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "您没有权限访问该网址！"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         is_new_application = False # 前端使用量, 表示是老申请还是新的
         applied_org = application.org
 
@@ -3014,7 +3079,14 @@ def modifyPosition(request):
 
         except:
             # 非法的名字, 出现恶意修改参数的情况
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入人事申请页面"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         
         # 查找已经存在的审核中的申请
         try:
@@ -3294,7 +3366,7 @@ def make_relevant_notification(application, info):
             content = f'{apply_person.name}取消了组织{application.oname}的申请。'
         elif post_type == 'accept_submit':
             content = f'恭喜，您申请的组织：{application.oname}，审核已通过！组织编号为{new_org.organization_id.username}, \
-                初始密码为{new_org.organization_id.password}，请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；(2)从登录页面用组织编号或组织名称以及密码登录。'
+                初始密码为{utils.random_code_init(new_org.organization_id.id)}，请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；(2)从登录页面用组织编号或组织名称以及密码登录。'
         elif post_type == 'refuse_submit':
             content = f'抱歉，您申请的组织：{application.oname}，审核未通过！。'
         else:
@@ -3335,7 +3407,7 @@ def make_relevant_notification(application, info):
 # 新建+修改+取消+审核 报销信息
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-def modeifyReimbursement(request):
+def modifyReimbursement(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
 
@@ -3354,11 +3426,32 @@ def modeifyReimbursement(request):
     if reimb_id is not None:  # 如果存在对应报销
         try:  # 尝试获取已经新建的Reimbursement
             application = Reimbursement.objects.get(id=reimb_id)
+            if user_type == "Person" and auditor!=request.user:
+                html_display=user_login_org(request,application.pos.organization)
+                if html_display['warn_code']==1:
+                    return redirect(
+                        "/welcome/"
+                        + "?warn_code={}&warn_message={}".format(
+                            html_display["warn_code"], html_display["warn_message"]
+                        )
+                    )
+                else:#成功
+                    user_type="Organization"
+                    request.user=application.pos
+                    me = application.pos.organization
+
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被审核老师之一
             assert (application.pos==request.user) or (auditor==request.user)
         except:  # 恶意跳转
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "您没有权限访问该网址！"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         is_new_application = False  # 前端使用量, 表示是老申请还是新的
 
     else:  # 如果不存在id, 默认应该传入活动信息
@@ -3366,7 +3459,14 @@ def modeifyReimbursement(request):
         try:
             assert user_type == "Organization"
         except:  # 恶意跳转
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "您没有权限访问该网址！"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         is_new_application = True  # 新的申请
 
          # 这种写法是为了方便随时取消某个条件
@@ -3538,7 +3638,14 @@ def modifyOrganization(request):
             # 至少应该是申请人或者审核老师
             assert (application.pos == request.user) or (application.otype.incharge == me)
         except: #恶意跳转
-            return redirect("/welcome/")
+            html_display["warn_code"] = 1
+            html_display["warn_code"] = "您没有权限访问该网址！"
+            return redirect(
+                "/welcome/"
+                + "?warn_code={}&warn_message={}".format(
+                    html_display["warn_code"], html_display["warn_message"]
+                )
+            )
         is_new_application = False # 前端使用量, 表示是老申请还是新的
 
     else:   
