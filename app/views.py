@@ -1370,7 +1370,7 @@ def modpw(request):
     if request.method == "POST" and request.POST:
         oldpassword = request.POST["pw"]
         newpw = request.POST["new"]
-        strict_check = False
+        strict_check = True
 
         if oldpassword == newpw and strict_check and not (forgetpw or isFirst):
             err_code = 1
