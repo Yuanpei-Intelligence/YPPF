@@ -90,16 +90,20 @@
                 <div class="widget-content widget-content-area mb-2 mx-0">
                     <h5>实时天气</h5>
                     <div class="pl-0 pt-1 pb-3 d-flex justify-content-between">
-                        <span>
-                            {{ html_display.weather.weatherinfo.weather }}
-                            {{ html_display.weather.weatherinfo.temp1 }}-{{ html_display.weather.weatherinfo.temp2 }}
+                        <span >
+                            地区：北京 天气：{{ html_display.weather.description }} <br />
+                            气温：{{ html_display.weather.temp }} &#8451
+                            体感温度：{{ html_display.weather.temp_feel }} &#8451
                         </span>
                         <div>
-                            <img
+                            <!-- <img
                                 src="http://www.weather.com.cn/m/i/weatherpic/29x20/{{ html_display.weather.weatherinfo.img1 }}">
                             <img
-                                src="http://www.weather.com.cn/m/i/weatherpic/29x20/{{ html_display.weather.weatherinfo.img2 }}">
+                                src="http://www.weather.com.cn/m/i/weatherpic/29x20/{{ html_display.weather.weatherinfo.img2 }}"> -->
+                            <img src="http://openweathermap.org/img/wn/{{html_display.weather.icon}}@2x.png" 
+                                alt="it supposed to be a weather icon" style="width: 50px; height: 50px;">
                         </div>
+                        
                     </div>
                 </div>
                 <!-- END RT WEATHER -->
