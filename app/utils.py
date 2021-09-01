@@ -545,8 +545,9 @@ def get_unreimb_activity(org):
     return activities
 def accept_modifyorg_submit(application): #同意申请，假设都是合法操作
     # 新建一系列东西
-    user = User.objects.create(username=find_max_oname(),\
-        password=random_code_init())
+    user = User.objects.create(username=find_max_oname())
+    user.set_password(random_code_init())
+    user.save()
     org = Organization.objects.create(organization_id=user, oname=application.oname, \
         otype=application.otype, YQPoint=0.0, introduction=application.introduction, avatar=application.avatar)
     charger = get_person_or_org(application.pos)
