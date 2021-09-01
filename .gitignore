@@ -41,7 +41,7 @@ Thumbs.db
 .vscode/
 .idea/
 local_json*.json
-weather.json
+weather*.json
 migrations/
 test_data/
 comment/
