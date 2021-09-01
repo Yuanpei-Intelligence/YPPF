@@ -624,9 +624,11 @@ def update_org_application(application, me, request):
                         otype=OrganizationType.objects.get(otype_name=info.get('otype')),
                         pos=me.person_id,
                         introduction=info.get('introduction'),
-                        avatar=info.get('avatar', None),
                         application=info.get('application')
                     )
+                    if context["avatar"] is not None:
+                        application.avatar = context['avatar'];
+                        application.save()
                     context = succeed("成功地发起"+info.get("oname")+"的申请！")
                     context['application_id'] = application.id
                     return context
@@ -644,8 +646,10 @@ def update_org_application(application, me, request):
                         oname=info.get('oname'),
                         otype=OrganizationType.objects.get(otype_name=info.get('otype')),
                         introduction=info.get('introduction'),
-                        avatar=info.get('avatar', None),
                         application=info.get('application'))
+                    if context["avatar"] is not None:
+                        application.avatar = context['avatar'];
+                        application.save()
                     context = succeed("成功修改新建组织" + info.get('oname') + "的申请!")
                     context["application_id"] = application.id
                     return context
