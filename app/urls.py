@@ -44,6 +44,7 @@ urlpatterns = [
     path("getActivityInfo/", views.getActivityInfo, name="getActivityInfo"),
     path("checkinActivity/<str:aid>", views.checkinActivity, name="checkinActivity"),
     path("addActivity/", views.addActivity, name="addActivity"),
+    path("showActivity/",views.showActivity,name="showActivity"),
     path("editActivity/<str:aid>", views.addActivity, name="editActivity"),
     path("examineActivity/<str:aid>", views.examineActivity, name="examineActivity"),
     path("subscribeActivities/", views.subscribeActivities, name="subscribeActivities"),

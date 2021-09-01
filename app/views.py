@@ -3223,7 +3223,9 @@ def showActivity(request):
             pass
         if not is_teacher:
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "个人账号不能进入活动审核页面！"
+
+            html_display["warn_code"] = "学生账号不能进入活动审核页面！"
+
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
@@ -3231,9 +3233,10 @@ def showActivity(request):
                 )
             )
     if is_teacher:
-        shown_instances = Activity.objects.activated().filter(examine_teacher = me.id)
+        shown_instances = Activity.objects.all_activated().filter(examine_teacher = me.id)
     else:
-        shown_instances = Activity.objects.activated().filter(organization_id = me.id)
+        shown_instances = Activity.objects.all_activated().filter(organization_id = me.id)
+
     shown_instances = shown_instances.order_by("-modify_time", "-time")
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动审核")
     return render(request, "activity_show.html", locals())
