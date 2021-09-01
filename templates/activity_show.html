@@ -75,14 +75,16 @@
                                                         </div>
                                                         {% if status is not None %}
                                                         <div>
-                                                            {% if '审核' in status %}
-                                                            <h4 class="text-warning">审核中</h4>
-                                                            {% elif '撤销' in status or '未' in status %}
-                                                            <h4 class="text-danger">{{status}}</h4>
+                                                            {% if status == 'Reviewing' %}
+                                                                <h4 class="text-warning">审核中</h4>
+                                                            {% elif status == 'Reject' %}
+                                                                <h4 class="text-danger">未过审</h4>
+                                                            {% elif status == 'Abort' %}
+                                                                <h4 class="text-muted">已撤销</h4>
                                                             {% elif status == '预报备' %}
-                                                            <h4 class="text-info">预报备</h4>
+                                                                <h4 class="text-info">预报备</h4>
                                                             {% else %}
-                                                            <h4 class="text-success">已通过</h4>
+                                                                <h4 class="text-success">已通过</h4>
                                                             {% endif %}
                                                         </div>
                                                         {% endif %}
