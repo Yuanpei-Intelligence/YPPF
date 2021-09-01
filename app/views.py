@@ -2282,9 +2282,9 @@ def addActivity(request, aid=None):
     try:
         valid, user_type, html_display = utils.check_user_type(request.user)
         assert valid
-        assert user_type == "Organization"
         me = utils.get_person_or_org(request.user, user_type)
         if aid is None:
+            assert user_type == "Organization"
             edit = False
         else:
             aid = int(aid)
@@ -3369,7 +3369,7 @@ def make_relevant_notification(application, info):
 # 新建+修改+取消+审核 报销信息
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-def modeifyReimbursement(request):
+def modifyReimbursement(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
 
