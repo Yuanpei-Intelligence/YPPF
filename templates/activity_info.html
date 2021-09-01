@@ -185,7 +185,6 @@
                             {% if pStatus == "无记录" and status == "报名中" %}
                             <form method="POST">
                                 <input type="hidden" name="option" value="apply">
-                                <input type="hidden" name="aid" value={{aid}}>
                                 <button class="btn btn-primary btn-block mb-4 mr-2">立即报名</button>
                             </form>
                             {% elif pStatus == "无记录" and status != "审核中" %}
