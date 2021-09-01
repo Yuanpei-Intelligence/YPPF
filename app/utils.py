@@ -370,9 +370,10 @@ def if_image(image):
 
 
 # 用于新建组织时，生成6位随机密码
-def random_code_init():
+def random_code_init(seed):
     b = string.digits + string.ascii_letters  # 构建密码池
     password = ""
+    random.seed(seed)
     for i in range(0, 6):
         password = password + random.choice(b)
     return password
@@ -547,7 +548,8 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
     # 新建一系列东西
     username = find_max_oname()
     user = User.objects.create(username=username)
-    user.set_password(username)
+    password=random_code_init(user.id)
+    user.set_password(password)
     user.save()
     org = Organization.objects.create(organization_id=user, oname=application.oname, \
         otype=application.otype, YQPoint=0.0, introduction=application.introduction, avatar=application.avatar)
