@@ -2289,6 +2289,20 @@ def addActivity(request, aid=None):
         else:
             aid = int(aid)
             activity = Activity.objects.get(id=aid)
+            if user_type == "Person":
+                html_display=user_login_org(request,activity.organization_id)
+                if html_display['warn_code']==1:
+                    return redirect(
+                        "/welcome/"
+                        + "?warn_code={}&warn_message={}".format(
+                            html_display["warn_code"], html_display["warn_message"]
+                        )
+                    )
+                else:#成功以组织账号登陆
+                    #防止后边有使用，因此需要赋值
+                    user_type="Organization"
+                    request.user=activity.organization_id.organization_id#组织对应user
+                    me = activity.organization_id#组织
             assert activity.organization_id == me
             edit = True
         html_display["is_myself"] = True
@@ -3015,13 +3029,18 @@ def modifyPosition(request):
             # 至少应该是申请人或者被申请组织之一
             if user_type == "Person" and application.person != me:
                 html_display=user_login_org(request,application.org)
-                if html_display['warn_code']==2:
+                if html_display['warn_code']==1:
                     return redirect(
                         "/welcome/"
                         + "?warn_code={}&warn_message={}".format(
                             html_display["warn_code"], html_display["warn_message"]
                         )
                     )
+                else:
+                    #防止后边有使用，因此需要赋值
+                    user_type="Organization"
+                    request.user=application.org.organization_id
+                    me = application.org
             assert (application.org == me) or (application.person == me)
 
         except: #恶意跳转
@@ -3390,13 +3409,18 @@ def modifyReimbursement(request):
             application = Reimbursement.objects.get(id=reimb_id)
             if user_type == "Person" and auditor!=request.user:
                 html_display=user_login_org(request,application.pos.organization)
-                if html_display['warn_code']==2:
+                if html_display['warn_code']==1:
                     return redirect(
                         "/welcome/"
                         + "?warn_code={}&warn_message={}".format(
                             html_display["warn_code"], html_display["warn_message"]
                         )
                     )
+                else:#成功
+                    user_type="Organization"
+                    request.user=application.pos
+                    me = application.pos.organization
+
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被审核老师之一
             assert (application.pos==request.user) or (auditor==request.user)
