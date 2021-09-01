@@ -489,8 +489,8 @@ def check_account_setting(request,user_type):
 
         show_dict = dict()
 
-        show_dict['show_nickname'] = request.POST.get(
-            'show_nickname') == 'on'
+        # show_dict['show_nickname'] = request.POST.get(
+        #     'show_nickname') == 'on'
         show_dict['show_gender'] = request.POST.get('show_gender') == 'on'
         show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
         show_dict['show_email'] = request.POST.get('show_email') == 'on'
