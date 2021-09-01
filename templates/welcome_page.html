@@ -387,6 +387,7 @@
                                 {% endif %}
                                 <div class="row w-100 m-0">
                                     {% for rec in signup_list %}
+                                        {%with rec.act as act%}
                                     <div class="col-sm-6 col-12">
                                         <a href="/viewActivity/{{ act.id }}">
                                             <div class="d-flex b-skills">
@@ -433,7 +434,7 @@
                                             </div>
                                         </a>
                                     </div>
-
+                                    {%endwith%}
                                     {% endfor %}
                                 </div>
                             </div>
