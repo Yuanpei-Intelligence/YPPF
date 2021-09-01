@@ -396,7 +396,7 @@ def get_captcha(request, username, valid_seconds=None, more_info=False):
         expired = True
     elif valid_seconds is not None:
         try:
-            valid_from = datetime.strptime(valid_from, "%Y-%m-%d %H:%M:%S")
+            valid_from = datetime.strptime(valid_from, "%Y-%m-%dT%H:%M")
             assert datetime.utcnow() <= valid_from + timedelta(seconds=valid_seconds)
         except:
             expired = True
@@ -490,8 +490,8 @@ def check_account_setting(request,user_type):
 
         show_dict = dict()
 
-        show_dict['show_nickname'] = request.POST.get(
-            'show_nickname') == 'on'
+        # show_dict['show_nickname'] = request.POST.get(
+        #     'show_nickname') == 'on'
         show_dict['show_gender'] = request.POST.get('show_gender') == 'on'
         show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
         show_dict['show_email'] = request.POST.get('show_email') == 'on'

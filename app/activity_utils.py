@@ -36,6 +36,7 @@ from django.core.files import File
 from django.core.files.base import ContentFile
 import io
 import base64
+from django.db.models import Sum
 
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 
@@ -49,7 +50,7 @@ def get_activity_QRcode(activity):
             f"{activity.id}?auth={auth_code}"
         )
 
-    qr=qrcode.QRCode(version = 2,error_correction = qrcode.constants.ERROR_CORRECT_L,box_size=10,border=10,)
+    qr=qrcode.QRCode(version = 2,error_correction = qrcode.constants.ERROR_CORRECT_L,box_size=5,border=5)
     qr.add_data(url)
     qr.make(fit=True)
     img = qr.make_image()
@@ -112,6 +113,10 @@ def activity_base_check(request, edit=False):
 
     # examine_teacher 需要特殊检查
     context["examine_teacher"] = request.POST.get("examine_teacher")
+    # 申请理由
+    context["apply_reason"] = request.POST.get("apply_reason", "")
+    if context["from_college"]:
+        assert len(context["apply_reason"]) > 0
 
     # 预报备
     context["recorded"] = False
@@ -119,23 +124,14 @@ def activity_base_check(request, edit=False):
         context["recorded"] = True
 
     # 时间
-    act_start = datetime.strptime(request.POST["actstart"], "%m/%d/%Y %H:%M %p")  # 活动报名时间
-    act_end = datetime.strptime(request.POST["actend"], "%m/%d/%Y %H:%M %p")  # 活动报名结束时间
-    # python datetime 不考虑 AM, PM, 且小时从 0 开始算
-    if act_start.hour == 12:
-        act_start -= timedelta(hours=12)
-    if act_end.hour == 12:
-        act_end -= timedelta(hours=12)
-    if request.POST["actstart"][-2:] == "PM":
-        act_start += timedelta(hours=12)
-    if request.POST["actend"][-2:] == "PM":
-        act_end += timedelta(hours=12)
-    now_time = datetime.now()
+    act_start = datetime.strptime(request.POST["actstart"], "%Y-%m-%dT%H:%M")  # 活动报名时间
+    act_end = datetime.strptime(request.POST["actend"], "%Y-%m-%dT%H:%M")  # 活动报名结束时间
     context["start"] = act_start
     context["end"] = act_end
     assert check_ac_time(act_start, act_end)
 
     # create 或者调整报名时间，都是要确保活动不要立刻截止报名
+    now_time = datetime.now()
     if not edit or request.POST.get("adjust_apply_ddl"):
         prepare_scheme = int(request.POST["prepare_scheme"])
         prepare_times = Activity.EndBeforeHours.prepare_times
@@ -222,6 +218,7 @@ def create_activity(request):
     activity.YQPoint = context["aprice"]
     activity.bidding = context["bidding"]
     activity.apply_end = context["signup_end"]
+    activity.apply_reason = context["apply_reason"]
     if context["from_college"]:
         activity.source = Activity.YQPointSource.COLLEGE
     activity.endbefore = context["endbefore"]
@@ -325,6 +322,7 @@ def modify_reviewing_activity(request, activity):
     activity.end = context["end"]
     activity.YQPoint = context["aprice"]
     activity.bidding = context["bidding"]
+    activity.apply_reason = context["apply_reason"]
     if context["from_college"]:
         activity.source = Activity.YQPointSource.COLLEGE
     if context.get("need_checkin"):
@@ -370,15 +368,10 @@ def modify_accepted_activity(request, activity):
             activity.YQPoint = aprice
 
     # 时间改变
-    act_start = datetime.strptime(request.POST["actstart"], "%m/%d/%Y %H:%M %p")
+    act_start = datetime.strptime(request.POST["actstart"], "%Y-%m-%dT%H:%M")
     now_time = datetime.now()
-    # python datetime 不考虑 AM, PM, 且小时从 0 开始算
-    if act_start.hour == 12:
-        act_start -= timedelta(hours=12)
-    if request.POST["actstart"][-2:] == "PM":
-        act_start += timedelta(hours=12)
-
     assert now_time < act_start
+
     if request.POST.get("adjust_apply_ddl"):
         prepare_scheme = int(request.POST["prepare_scheme"])
         prepare_times = Activity.EndBeforeHours.prepare_times
@@ -386,15 +379,15 @@ def modify_accepted_activity(request, activity):
         signup_end = act_start - timedelta(hours=prepare_time)
         assert now_time <= signup_end
         activity.apply_end = signup_end
-        to_subscribers.append("活动报名截止时间调整为" + str(signup_end))
-        to_participants.append("活动报名截止时间调整为" + str(signup_end))
+        to_subscribers.append(f"活动报名截止时间调整为{signup_end.strftime('%y-%m-%d %H:%M')}")
+        to_participants.append(f"活动报名截止时间调整为{signup_end.strftime('%y-%m-%d %H:%M')}")
     else:
         signup_end = activity.apply_end
         assert signup_end + timedelta(hours=1) < act_start
     
     if activity.start != act_start:
-        to_subscribers.append("活动开始时间调整为" + str(act_start))
-        to_participants.append("活动开始时间调整为" + str(act_start))
+        to_subscribers.append(f"活动开始时间调整为{act_start.strftime('%y-%m-%d %H:%M')}")
+        to_participants.append(f"活动开始时间调整为{act_start.strftime('%y-%m-%d %H:%M')}")
         activity.start = act_start
 
     if signup_end < now_time and activity.status == Activity.Status.WAITING:
@@ -406,16 +399,19 @@ def modify_accepted_activity(request, activity):
     else:
         capacity = int(request.POST["maxpeople"])
         assert capacity > 0
-        if capacity < len(Participant.objects.filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)):
+        if capacity < len(Participant.objects.filter(
+            activity_id=activity.id, 
+            status=Participant.AttendStatus.APLLYSUCCESS
+        )):
             raise ActivityException(f"当前成功报名人数已超过{capacity}人")
     activity.capacity = capacity
 
-    act_end = datetime.strptime(request.POST["actend"], "%m/%d/%Y %H:%M %p")
-    if act_end.hour == 12:
-        act_end -= timedelta(hours=12)
-    if request.POST["actend"][-2:] == "PM":
-        act_end += timedelta(hours=12)
-    activity.end = act_end
+    if request.POST.get("need_checkin"):
+        activity.need_checkin = True
+    else:
+        activity.need_checkin = False
+
+    activity.end = datetime.strptime(request.POST["actend"], "%Y-%m-%dT%H:%M")
     assert activity.start < activity.end
     activity.URL = request.POST["URL"]
     activity.introduction = request.POST["introduction"]
@@ -434,8 +430,10 @@ def modify_accepted_activity(request, activity):
         run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
 
 
-    notifyActivity(activity.id, "modification_sub_ex_par", "\n".join(to_subscribers))
-    notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
+    if len(to_subscribers) > 1:
+        notifyActivity(activity.id, "modification_sub_ex_par", "\n".join(to_subscribers))
+    if len(to_participants) > 1:   
+        notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
 
 
 
@@ -464,9 +462,6 @@ def accept_activity(request, activity):
     )
 
     if activity.status == Activity.Status.REVIEWING:
-
-        # 保证有时间来报名，不然前端提醒组织修改时间
-        assert datetime.now() < activity.apply_end
 
         activity.status = Activity.Status.APPLYING
 
@@ -533,15 +528,14 @@ def reject_activity(request, activity):
     if activity.status == Activity.Status.REVIEWING:
         activity.status = Activity.Status.REJECT
     else:
-
-        # TODO
-        # 前端得多一个判断，拒绝的时候啥时候都能拒绝
-        # 接受也不是必须在报名截止前，改前端......
-        notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
-        activity.status = Activity.Status.CANCELED
-        participants = Participant.objects.filter(
+        Notification.objects.filter(
+            relate_instance=activity
+            ).update(status=Notification.Status.DELETE)
+        Participant.objects.filter(
                 activity_id=activity
             ).update(status=Participant.AttendStatus.APLLYFAILED)
+        notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
+        activity.status = Activity.Status.CANCELED
         scheduler.remove_job(f"activity_{activity.id}_remind")
         scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
         scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
@@ -689,7 +683,6 @@ def cancel_activity(request, activity):
                 organization_id=request.user
             )
     assert activity.organization_id == org
-    YP = Organization.objects.select_for_update().get(oname="元培学院")
 
 
     if activity.status != Activity.Status.REVIEWING and activity.YQPoint > 0:
@@ -697,35 +690,52 @@ def cancel_activity(request, activity):
             if org.YQPoint < activity.YQPoint:
                 raise ActivityException("没有足够的元气值退还给学院，不能取消。")
             org.YQPoint -= activity.YQPoint
+            # 这里加个悲观锁能提高性能吗 ？
+            YP = Organization.objects.select_for_update().get(oname="元培学院")
             YP.YQPoint += activity.YQPoint
-            record = TransferRecord.objects.select_for_update().get(
+            YP.save()
+            # activity 上了悲观锁，这里不用锁，如果锁了整个 record 表全锁住
+            record = TransferRecord.objects.get(
                 proposer=YP, status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity
             )
             record.status = TransferRecord.TransferStatus.REFUND
             record.save()
         else:
-            records = TransferRecord.objects.select_for_update().filter(
+            # 同理，这里也不用上锁
+            records = TransferRecord.objects.filter(
                 status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity
             )
-            total_amount = 0
+            total_amount = records.aggregate(nums=Sum('amount'))["nums"]
+            if total_amount is None:
+                total_amount = 0.0
+            if total_amount > org.YQPoint:
+                raise ActivityException("没有足够的元气值退还给同学，不能取消。")
+            totalQuota = records.filter(message="quota").aggregate(nums=Sum('amount'))["nums"]
+            YP = Organization.objects.select_for_update().get(oname="元培学院")
+            YP.YQPoint += activity.YQPoint
+            YP.save()
             for record in records:
-                payer = record.proposer
-                total_amount += record.amount
+                payer = NaturalPerson.objects.select_for_update().get(person_id=record.proposer)
                 if record.message == "quota":
                     payer.quota += record.amount
                     YP.YQPoint += record.amount
                 else:
                     payer.YQPoint += record.amount
+                payer.save()
                 record.status = TransferRecord.TransferStatus.REFUND
                 record.save()
 
-            if total_amount > org.YQPoint:
-                raise ActivityException("没有足够的元气值退还给同学，不能取消。")
             org.YQPoint -= total_amount
 
 
     activity.status = Activity.Status.CANCELED
     notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
+    notification = Notification.objects.get(
+        relate_instance=activity, 
+        typename=Notification.Type.NEEDDO
+    )
+    notification.status = Notification.Status.DELETE
+    notification.save()
 
     participants = Participant.objects.filter(
             activity_id=activity
@@ -736,7 +746,6 @@ def cancel_activity(request, activity):
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
 
-    YP.save()
     org.save()
     activity.save()
 
