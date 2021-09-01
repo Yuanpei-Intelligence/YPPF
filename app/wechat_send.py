@@ -355,6 +355,7 @@ def publish_notifications(
         else:
             message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
 
+
     # 获取接收者列表，组织的接收者为其负责人，去重
     receiver_ids = notifications.values_list("receiver_id", flat=True)
     person_receivers = NaturalPerson.objects.filter(person_id__in=receiver_ids)
@@ -362,7 +363,11 @@ def publish_notifications(
         person_receivers.values_list("person_id__username", flat=True)
     )
     receiver_set = set(wechat_receivers)
+    #事实上该逻辑支持群发给多个组织的多个负责人
     org_receivers = Organization.objects.filter(organization_id__in=receiver_ids)
+    #为不破坏上述注释中陈述的逻辑，只在单独发给组织账号的消息中加入后缀。群发给不同组织的消息（虽然现在没人用这个功能）则不加
+    if len(org_receivers)==1:
+        message +=f'转发自组织{org_receivers[0].oname}的消息，请点击并切换到该组织账号处理。'
     for org in org_receivers:
         managers = org.position_set.filter(pos=0).values_list(
             "person__person_id__username", flat=True
