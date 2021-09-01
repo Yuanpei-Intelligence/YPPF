@@ -3347,7 +3347,7 @@ def make_relevant_notification(application, info):
             content = f'{apply_person.name}取消了组织{application.oname}的申请。'
         elif post_type == 'accept_submit':
             content = f'恭喜，您申请的组织：{application.oname}，审核已通过！组织编号为{new_org.organization_id.username}, \
-                初始密码为{new_org.organization_id.password}，请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；(2)从登录页面用组织编号或组织名称以及密码登录。'
+                初始密码为{new_org.organization_id.username}，请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；(2)从登录页面用组织编号或组织名称以及密码登录。'
         elif post_type == 'refuse_submit':
             content = f'抱歉，您申请的组织：{application.oname}，审核未通过！。'
         else:
