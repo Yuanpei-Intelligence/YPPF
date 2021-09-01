@@ -440,7 +440,7 @@ def publish_activity(activity_or_id):
     return True
 
 
-def send_captcha(stu_id: str or int, captcha: str, url='/forgetpw/'):
+def send_wechat_captcha(stu_id: str or int, captcha: str, url='/forgetpw/'):
     users = (stu_id, )
     kws = {"card": True}
     if url and url[0] == "/":  # 相对路径变为绝对路径
