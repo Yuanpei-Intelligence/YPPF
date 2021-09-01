@@ -110,27 +110,25 @@
                                                 </a>
                                             </p>
                                             <div class="form-group">
-                                                {% if examine %}
-                                                活动名称
-                                                {% endif %}
+                                                <label>活动名称</label>
                                                 <input type="text" id="title" name="title" class="form-control"
-                                                    aria-label="Default" placeholder="活动名称" required="required" 
+                                                    aria-label="Default" placeholder="求文案大大整点活" required="required" 
                                                     maxlength=50 onclick="fill_value(this)">
                                             </div>
                                             <div class="form-group">
-                                                {% if examine %}
-                                                活动地点
-                                                {% endif %}
+                                                <label>活动地点</label>
                                                 <input type="text" id="location" name="location" class="form-control"
-                                                    aria-label="Default" placeholder="活动地点" required="required" onclick="fill_value(this)">
+                                                    aria-label="Default" placeholder="求文案大大整点活" required="required" onclick="fill_value(this)">
                                             </div>
                                             <div class="form-group">
+                                                <label>活动预算</label>
                                                 <input type="number" id="budget" name="budget" class="form-control"
-                                                    aria-label="Default" placeholder="活动预算" required="required" 
+                                                    aria-label="Default" placeholder="预算对报销和审批都很重要，请慎重填写" required="required" 
                                                     step="0.1" min="0" onclick="fill_value(this)">
                                             </div>
 
                                             <div class="form-group">
+                                                <label>活动时间</label>
                                                 <div class="row">
                                                     <div class="col">
                                                         <input type="datetime" class="form-control" id="datetimepicker3"
@@ -146,6 +144,7 @@
                                             <!-- TOCHECK: edit 的时候填值，并且 disable 掉 -->
                                             {% if not examine %}
                                             <div class="form-group">
+                                                <label>审核老师</label>
                                                 <select id="examine_teacher" name="examine_teacher" class="form-control selectpicker" >
                                                     <option value="" selected disabled>选择审核老师</option>
                                                     {% for avialable_teacher in avialable_teachers %}
@@ -156,11 +155,6 @@
                                             </div>
                                             {% endif %}
 
-                                            <div class="form-group">
-                                                <textarea id="apply_reason" name="apply_reason" class="form-control" rows="3"
-                                                    placeholder="(必填) 活动申请理由" onclick="fill_value(this)" 
-                                                    required="required" maxlength=225></textarea>
-                                            </div>
 
                                             <div class="form-check"
                                                 style="align-content: center; vertical-align: middle;">
@@ -237,6 +231,12 @@
                                                         </button>
                                                     </div>
                                                     {% endif %}
+                                                    <div class="input-group-prepend">
+                                                        <button class="btn btn-outline-primary"
+                                                            type="button"
+                                                            aria-expanded="false">元气值数量
+                                                        </button>
+                                                    </div>
 
                                                     <!-- TOCHECK: 如果是 applying 记得设成 disable -->
                                                     <input type="number" class="form-control"
@@ -247,7 +247,16 @@
                                                 </div>
                                             </div>
 
+                                            <div class="form-group" id="reason_block" style="display: none">
+                                                <label>元气值申请理由 ( 必填 )</label>
+                                                <textarea id="apply_reason" name="apply_reason" class="form-control" rows="3"
+                                                    placeholder="辛苦文案大大......" onclick="fill_value(this)" maxlength=225></textarea>
+                                            </div>
+
                                             <div class="form-group">
+                                                <label>
+                                                参与人数限制
+                                                </label>
                                                 <div class="row">
                                                     <div class="col">
                                                         <input type="number" id="maxpeople" name="maxpeople"
@@ -577,13 +586,17 @@
             {% if not edit %}
             document.getElementById("aprice").placeholder = "参与活动元气值价格";
             {% endif %}
-            document.getElementById("from_college").value = "0"
+            document.getElementById("from_college").value = "0";
+            document.getElementById("reason_block").style.display = "none";
+            document.getElementById("apply_reason").required = "";
         } else {
             document.getElementById("aprice").value = "";
             {% if not edit %}
             document.getElementById("aprice").placeholder = "向学院申请的元气值数量";
             {% endif %}
-            document.getElementById("from_college").value = "1"
+            document.getElementById("from_college").value = "1";
+            document.getElementById("reason_block").style.display = "";
+            document.getElementById("apply_reason").required = "required";
         }
     }
 </script>
@@ -649,7 +662,9 @@
     {% endif %}
     // 宣传信息
     document.getElementById("aintro").placeholder = "{{introduction}}";
+    {% if yq_source == "向学院申请" %}
     document.getElementById("apply_reason").placeholder = "{{apply_reason}}";
+    {% endif %}
 
 
     // input 不再必须填写
@@ -677,6 +692,7 @@
             {% endif %}
             {% if yq_source == "向学院申请" %}
             document.getElementById("from_college").value = "1";
+            document.getElementById("reason_block").style.display = "";
             {% else %}
             document.getElementById("from_college").value = "0";
             {% endif %}
