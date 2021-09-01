@@ -1,5 +1,3 @@
-from threading import local
-from django.db.models.fields.related import ManyToManyField
 from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
 from app.models import (
@@ -23,7 +21,6 @@ from app.models import (
     Wishes,
     Weather
 )
-from django.db.models import Max
 import app.utils as utils
 from app.forms import UserForm
 from app.utils import url_check, check_cross_site, get_person_or_org, update_org_application, wrong, succeed
@@ -61,7 +58,6 @@ from django.views.decorators.http import require_POST, require_GET
 import json
 from datetime import date, datetime, timedelta
 from urllib import parse, request as urllib2
-import re
 import random
 import requests  # 发送验证码
 import io
@@ -392,10 +388,10 @@ def stuinfo(request, name=None):
             ~Q(status=Activity.Status.CANCELED),
         )
         activities_start = [
-            activity.start.strftime("%m月%d日 %H:%M") for activity in activities
+            activity.start.strftime("%y-%m-%d %H:%M") for activity in activities
         ]
         activities_end = [
-            activity.end.strftime("%m月%d日 %H:%M") for activity in activities
+            activity.end.strftime("%y-%m-%d %H:%M") for activity in activities
         ]
         if user_type == "Person":
             activities_me = Participant.objects.filter(person_id=person.id).values(
@@ -1619,9 +1615,9 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
         lis[-1]["id"] = record.id
 
         # 时间
-        lis[-1]["start_time"] = record.start_time.strftime("%m/%d %H:%M")
+        lis[-1]["start_time"] = record.start_time.strftime("%y-%m-%d %H:%M")
         if record.finish_time is not None:
-            lis[-1]["finish_time"] = record.finish_time.strftime("%m/%d %H:%M")
+            lis[-1]["finish_time"] = record.finish_time.strftime("%y-%m-%d %H:%M")
 
         # 对象
         # 如果是给出列表，那么对象就是接收者
@@ -1812,11 +1808,11 @@ def viewActivity(request, aid=None):
     org_name = org.oname
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
-    start_time = activity.start.strftime("%m/%d/%Y %H:%M %p")
-    end_time = activity.end.strftime("%m/%d/%Y %H:%M %p")
+    start_time = activity.start.strftime("%y-%m-%d %H:%M %p")
+    end_time = activity.end.strftime("%y-%m-%d %H:%M %p")
     start_THEDAY = activity.start.day # 前端使用量
     prepare_times = Activity.EndBeforeHours.prepare_times
-    apply_deadline = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
+    apply_deadline = activity.apply_end.strftime("%y-%m-%d %H:%M %p")
     introduction = activity.introduction
     show_url = True # 前端使用量
     aURL = activity.URL
@@ -2361,9 +2357,9 @@ def addActivity(request, aid=None):
             title = activity.title
             budget = activity.budget
             location = activity.location
-            start = activity.start.strftime("%m/%d/%Y %H:%M %p")
-            end = activity.end.strftime("%m/%d/%Y %H:%M %p")
-            apply_end = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
+            start = activity.start.strftime("%y-%m-%d %H:%M %p")
+            end = activity.end.strftime("%y-%m-%d %H:%M %p")
+            apply_end = activity.apply_end.strftime("%y-%m-%d %H:%M %p")
             apply_end_for_js = apply_end[:-2]
             introduction = activity.introduction
             url = activity.URL
@@ -2387,7 +2383,7 @@ def addActivity(request, aid=None):
             comments = showComment(activity)
 
 
-        html_display["today"] = datetime.now().strftime("%Y-%m-%d")
+        html_display["today"] = datetime.now().strftime("%y-%m-%d")
         if not edit:
              bar_display = utils.get_sidebar_and_navbar(request.user, "新建活动")
         else:
@@ -2759,9 +2755,9 @@ def notification2Display(notification_list):
         lis[-1]["id"] = notification.id
 
         # 时间
-        lis[-1]["start_time"] = notification.start_time.strftime("%m/%d %H:%M")
+        lis[-1]["start_time"] = notification.start_time.strftime("%y-%m-%d %H:%M")
         if notification.finish_time is not None:
-            lis[-1]["finish_time"] = notification.finish_time.strftime("%m/%d %H:%M")
+            lis[-1]["finish_time"] = notification.finish_time.strftime("%y-%m-%d %H:%M")
 
         # 留言
         lis[-1]["content"] = notification.content

@@ -119,23 +119,14 @@ def activity_base_check(request, edit=False):
         context["recorded"] = True
 
     # 时间
-    act_start = datetime.strptime(request.POST["actstart"], "%m/%d/%Y %H:%M %p")  # 活动报名时间
-    act_end = datetime.strptime(request.POST["actend"], "%m/%d/%Y %H:%M %p")  # 活动报名结束时间
-    # python datetime 不考虑 AM, PM, 且小时从 0 开始算
-    if act_start.hour == 12:
-        act_start -= timedelta(hours=12)
-    if act_end.hour == 12:
-        act_end -= timedelta(hours=12)
-    if request.POST["actstart"][-2:] == "PM":
-        act_start += timedelta(hours=12)
-    if request.POST["actend"][-2:] == "PM":
-        act_end += timedelta(hours=12)
-    now_time = datetime.now()
+    act_start = datetime.strptime(request.POST["actstart"], "%Y-%m-%dT%H:%M")  # 活动报名时间
+    act_end = datetime.strptime(request.POST["actend"], "%Y-%m-%dT%H:%M")  # 活动报名结束时间
     context["start"] = act_start
     context["end"] = act_end
     assert check_ac_time(act_start, act_end)
 
     # create 或者调整报名时间，都是要确保活动不要立刻截止报名
+    now_time = datetime.now()
     if not edit or request.POST.get("adjust_apply_ddl"):
         prepare_scheme = int(request.POST["prepare_scheme"])
         prepare_times = Activity.EndBeforeHours.prepare_times
@@ -370,15 +361,10 @@ def modify_accepted_activity(request, activity):
             activity.YQPoint = aprice
 
     # 时间改变
-    act_start = datetime.strptime(request.POST["actstart"], "%m/%d/%Y %H:%M %p")
+    act_start = datetime.strptime(request.POST["actstart"], "%Y-%m-%dT%H:%M")
     now_time = datetime.now()
-    # python datetime 不考虑 AM, PM, 且小时从 0 开始算
-    if act_start.hour == 12:
-        act_start -= timedelta(hours=12)
-    if request.POST["actstart"][-2:] == "PM":
-        act_start += timedelta(hours=12)
-
     assert now_time < act_start
+
     if request.POST.get("adjust_apply_ddl"):
         prepare_scheme = int(request.POST["prepare_scheme"])
         prepare_times = Activity.EndBeforeHours.prepare_times
@@ -410,12 +396,7 @@ def modify_accepted_activity(request, activity):
             raise ActivityException(f"当前成功报名人数已超过{capacity}人")
     activity.capacity = capacity
 
-    act_end = datetime.strptime(request.POST["actend"], "%m/%d/%Y %H:%M %p")
-    if act_end.hour == 12:
-        act_end -= timedelta(hours=12)
-    if request.POST["actend"][-2:] == "PM":
-        act_end += timedelta(hours=12)
-    activity.end = act_end
+    activity.end = datetime.strptime(request.POST["actend"], "%Y-%m-%dT%H:%M")
     assert activity.start < activity.end
     activity.URL = request.POST["URL"]
     activity.introduction = request.POST["introduction"]
