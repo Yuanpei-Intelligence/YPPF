@@ -84,7 +84,7 @@ class NaturalPerson(models.Model):
 
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
-    show_nickname = models.BooleanField(default=False)
+    # show_nickname = models.BooleanField(default=False)
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
@@ -514,7 +514,7 @@ class Activity(CommentBase):
     (7) 增加活动管理的接口, activated, 筛选出这个学期的活动(见class [ActivityManager])
     """
 
-    title = models.CharField("活动名称", max_length=25)
+    title = models.CharField("活动名称", max_length=50)
     organization_id = models.ForeignKey(
         Organization,
         # to_field="organization_id", 删除掉to_field, 保持纯净对象操作
@@ -554,6 +554,8 @@ class Activity(CommentBase):
 
     location = models.CharField("活动地点", blank=True, max_length=200)
     introduction = models.TextField("活动简介", max_length=225, blank=True)
+    apply_reason = models.TextField("申请理由", max_length=225, blank=True)
+
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
 
     # url,活动二维码
@@ -963,7 +965,7 @@ class Reimbursement(CommentBase):
     message = models.TextField("备注信息", default="", blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
-    record=models.ForeignKey(TransferRecord,on_delete=models.CASCADE)#转账信息的记录
+    record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
         
@@ -1010,25 +1012,3 @@ class Wishes(models.Model):
     text = models.TextField("心愿内容", default="", blank=True)
     time = models.DateTimeField("发布时间", auto_now_add=True)
     background = models.TextField("颜色编码", default="")
-
-
-class WeatherManager(models.Manager):
-    def get_activated(self):
-        # 预期只有一个status为True的实例
-        return self.get(status=True)
-
-
-class Weather(models.Model):
-    '''
-        目前用的数据库，没想到怎么用全局变量。
-        要应用天气，需要先在admin网页创建一个Weather类的实例
-    '''
-
-    class Meta:
-        verbose_name = "实时天气"
-        verbose_name_plural = verbose_name
-    
-    modify_time = models.DateTimeField("上次修改时间", auto_now=True)
-    weather_json = JSONField("当前天气")
-    status = models.BooleanField("是否应用", default=False)
-    objects = WeatherManager()
