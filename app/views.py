@@ -518,6 +518,31 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
             return redirect("/modpw/")
         return redirect("/orginfo/")
 
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+def user_login_org(request, org):
+    user = request.user
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    try:
+        me = NaturalPerson.objects.activated().get(person_id=user)
+    except:  # 找不到合法的用户
+        return wrong("您没有权限访问该网址！请用对应组织账号登陆。")
+    #是组织一把手
+    try:
+        position = Position.objects.activated().filter(org=org, person=me)
+        assert len(position) == 1
+        position = position[0]
+        assert position.pos == 0
+    except:
+        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该组织账户的权限!"
+        return redirect(urls)
+    # 到这里,是本人组织并且有权限登录
+    auth.logout(request)
+    auth.login(request, org.organization_id)  # 切换到组织账号
+    return succeed("成功切换到组织账号处理该事务，建议事务处理完成后退出组织账号。")
+
+
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
@@ -2988,7 +3013,17 @@ def modifyPosition(request):
             application = ModifyPosition.objects.get(id = position_id)
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被申请组织之一
-            assert (application.org == me) or (application.person == me) 
+            if user_type == "Person" and application.person != me:
+                html_display=user_login_org(request,application.org)
+                if html_display['warn_code']==2:
+                    return redirect(
+                        "/welcome/"
+                        + "?warn_code={}&warn_message={}".format(
+                            html_display["warn_code"], html_display["warn_message"]
+                        )
+                    )
+            assert (application.org == me) or (application.person == me)
+
         except: #恶意跳转
             html_display["warn_code"] = 1
             html_display["warn_code"] = "您没有权限访问该网址！"
@@ -3353,6 +3388,15 @@ def modeifyReimbursement(request):
     if reimb_id is not None:  # 如果存在对应报销
         try:  # 尝试获取已经新建的Reimbursement
             application = Reimbursement.objects.get(id=reimb_id)
+            if user_type == "Person" and auditor!=request.user:
+                html_display=user_login_org(request,application.pos.organization)
+                if html_display['warn_code']==2:
+                    return redirect(
+                        "/welcome/"
+                        + "?warn_code={}&warn_message={}".format(
+                            html_display["warn_code"], html_display["warn_message"]
+                        )
+                    )
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被审核老师之一
             assert (application.pos==request.user) or (auditor==request.user)
