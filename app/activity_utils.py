@@ -406,7 +406,7 @@ def modify_accepted_activity(request, activity):
             raise ActivityException(f"当前成功报名人数已超过{capacity}人")
     activity.capacity = capacity
 
-     if request.POST.get("need_checkin"):
+    if request.POST.get("need_checkin"):
         activity.need_checkin = True
     else:
         activity.need_checkin = False
