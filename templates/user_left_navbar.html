@@ -105,6 +105,7 @@
                 </a>
             </li>
 
+            {% if bar_display.person_type == 0 %}
             <li class="menu">
                 <a href="/showActivity/" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
@@ -125,6 +126,7 @@
                     </div>
                 </a>
             </li>
+            {% endif %}
             
             <li class="menu">
                 <a href="/showPosition/" aria-expanded="false" class="dropdown-toggle">
