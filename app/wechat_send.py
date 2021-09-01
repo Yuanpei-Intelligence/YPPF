@@ -394,10 +394,7 @@ def publish_activity(activity_or_id):
     subscribers = list(subscribers.values_list("person_id__username", flat=True))
     num = len(subscribers)
     start, finish = activity.start, activity.finish
-    if start.year == datetime.now().year and finish.year == datetime.now().year:
-        timeformat = "%m月%d日 %H:%M"  # 一般不显示年和秒
-    else:
-        timeformat = "%Y年%m月%d日 %H:%M"  # 显示具体年份
+    timeformat = "%y-%m-%d %H:%M"  # 显示具体年份
     start = start.strftime(timeformat)
     finish = finish.strftime(timeformat)
     content = (

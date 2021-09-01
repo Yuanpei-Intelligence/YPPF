@@ -1,5 +1,3 @@
-from threading import local
-from django.db.models.fields.related import ManyToManyField
 from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
 from app.models import (
@@ -22,7 +20,6 @@ from app.models import (
     Reimbursement,
     Wishes,
 )
-from django.db.models import Max
 import app.utils as utils
 from app.forms import UserForm
 from app.utils import (
@@ -67,7 +64,6 @@ from django.views.decorators.http import require_POST, require_GET
 import json
 from datetime import date, datetime, timedelta
 from urllib import parse, request as urllib2
-import re
 import random
 import requests  # 发送验证码
 import io
@@ -398,10 +394,10 @@ def stuinfo(request, name=None):
             ~Q(status=Activity.Status.CANCELED),
         )
         activities_start = [
-            activity.start.strftime("%m月%d日 %H:%M") for activity in activities
+            activity.start.strftime("%y-%m-%d %H:%M") for activity in activities
         ]
         activities_end = [
-            activity.end.strftime("%m月%d日 %H:%M") for activity in activities
+            activity.end.strftime("%y-%m-%d %H:%M") for activity in activities
         ]
         if user_type == "Person":
             activities_me = Participant.objects.filter(person_id=person.id).values(
@@ -1630,9 +1626,9 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
         lis[-1]["id"] = record.id
 
         # 时间
-        lis[-1]["start_time"] = record.start_time.strftime("%m/%d %H:%M")
+        lis[-1]["start_time"] = record.start_time.strftime("%y-%m-%d %H:%M")
         if record.finish_time is not None:
-            lis[-1]["finish_time"] = record.finish_time.strftime("%m/%d %H:%M")
+            lis[-1]["finish_time"] = record.finish_time.strftime("%y-%m-%d %H:%M")
 
         # 对象
         # 如果是给出列表，那么对象就是接收者
@@ -1950,11 +1946,11 @@ def viewActivity(request, aid=None):
     org_name = org.oname
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
-    start_time = activity.start.strftime("%m/%d/%Y %H:%M %p")
-    end_time = activity.end.strftime("%m/%d/%Y %H:%M %p")
+    start_time = activity.start.strftime("%y-%m-%d %H:%M")
+    end_time = activity.end.strftime("%y-%m-%d %H:%M")
     start_THEDAY = activity.start.day # 前端使用量
     prepare_times = Activity.EndBeforeHours.prepare_times
-    apply_deadline = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
+    apply_deadline = activity.apply_end.strftime("%y-%m-%d %H:%M")
     introduction = activity.introduction
     show_url = True # 前端使用量
     aURL = activity.URL
@@ -2327,7 +2323,6 @@ def addActivity(request, aid=None):
             except:
                 return redirect("/welcome/")
 
-
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
     html_display["applicant_name"] = me.oname
@@ -2362,7 +2357,6 @@ def addActivity(request, aid=None):
             # print(e)
             return redirect("/welcome/")
 
-
         # 决定状态的变量
         # None/edit/examine ( 组织申请活动/组织编辑/老师审查 )
         # full_editable/accepted/None ( 组织编辑活动：除审查老师外全可修改/部分可修改/全部不可改 )
@@ -2373,10 +2367,9 @@ def addActivity(request, aid=None):
         title = activity.title
         budget = activity.budget
         location = activity.location
-        start = activity.start.strftime("%m/%d/%Y %H:%M %p")
-        end = activity.end.strftime("%m/%d/%Y %H:%M %p")
-        apply_end = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
-        apply_end_for_js = apply_end[:-2]
+        start = activity.start.strftime("%y-%m-%d %H:%M")
+        end = activity.end.strftime("%y-%m-%d %H:%M")
+        apply_end = activity.apply_end.strftime("%y-%m-%d %H:%M")
         introduction = activity.introduction
         url = activity.URL
         endbefore = activity.endbefore
@@ -2398,7 +2391,6 @@ def addActivity(request, aid=None):
         need_checkin = activity.need_checkin
         apply_reason = activity.apply_reason
         comments = showComment(activity)
-
 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     if not edit:
@@ -2483,9 +2475,9 @@ def examineActivity(request, aid):
     title = activity.title
     budget = activity.budget
     location = activity.location
-    apply_end = activity.apply_end.strftime("%m/%d/%Y %H:%M %p")
-    start = activity.start.strftime("%m/%d/%Y %H:%M %p")
-    end = activity.end.strftime("%m/%d/%Y %H:%M %p")
+    apply_end = activity.apply_end.strftime("%y-%m-%d %H:%M")
+    start = activity.start.strftime("%y-%m-%d %H:%M")
+    end = activity.end.strftime("%y-%m-%d %H:%M")
     introduction = activity.introduction
     url = activity.URL
     endbefore = activity.endbefore
@@ -2758,9 +2750,9 @@ def notification2Display(notification_list):
         lis[-1]["id"] = notification.id
 
         # 时间
-        lis[-1]["start_time"] = notification.start_time.strftime("%m/%d %H:%M")
+        lis[-1]["start_time"] = notification.start_time.strftime("%y-%m-%d %H:%M")
         if notification.finish_time is not None:
-            lis[-1]["finish_time"] = notification.finish_time.strftime("%m/%d %H:%M")
+            lis[-1]["finish_time"] = notification.finish_time.strftime("%y-%m-%d %H:%M")
 
         # 留言
         lis[-1]["content"] = notification.content

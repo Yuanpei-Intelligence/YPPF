@@ -1,6 +1,6 @@
 from django.db import models, transaction
 from django.db.models.fields import related
-from django_mysql.models import ListCharField, JSONField
+from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from django.dispatch import receiver
@@ -13,9 +13,8 @@ class NaturalPersonManager(models.Manager):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
 
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
-        datas = NaturalPerson.objects.activated()
-        year = datetime.now().strftime("%Y")
-        datas.objects.filter(stu_grade=str(int(year) - 4)).update(GraduateStatus=1)
+        year = int(datetime.now().strftime("%Y")) - 4
+        self.activated().filter(stu_grade=str(year)).update(GraduateStatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass

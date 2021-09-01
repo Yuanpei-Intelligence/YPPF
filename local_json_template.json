@@ -19,8 +19,15 @@
         "404": "用户不存在，请在元培学院官方公众号后台留言注册！",
         "406": "密码错误！请重新输入!"
     },
-    "system_log": "$LOG_NAME$.log",
-    "weather_api_key": "6c28464592ba4c33efe18ce678f02638",
+    "system_log": "$LOG_NAME$",
+    "weather_api_key": "$API_KEY$",
+    "default_weather": {
+        "modify_time": "2021-09-01 10:59:07.389086",
+        "description": "\u6674",
+        "temp": "26",
+        "temp_feel": "26",
+        "icon": "01d"
+    },
     "thresholds": {
         "activity_budget": 500,
         "注释": "下面这些都可以不写",
