@@ -355,6 +355,7 @@ def publish_notifications(
         else:
             message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
 
+
     # 获取接收者列表，组织的接收者为其负责人，去重
     receiver_ids = notifications.values_list("receiver_id", flat=True)
     person_receivers = NaturalPerson.objects.filter(person_id__in=receiver_ids)

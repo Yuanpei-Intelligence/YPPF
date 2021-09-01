@@ -1166,7 +1166,9 @@ def search(request):
 
     now = datetime.now()
     def get_recent_activity(org):
-        activities = Activity.objects.activated().filter(Q(organization_id=org.id) & ~Q(status=Activity.Status.CANCELED))
+        activities = Activity.objects.activated().filter(Q(organization_id=org.id)
+                                                         & ~Q(status=Activity.Status.CANCELED)
+                                                         & ~Q(status=Activity.Status.REJECT))
         activities = list(activities)
         activities.sort(key=lambda activity: abs(now - activity.start))
         return None if len(activities) == 0 else activities[0:3]
@@ -1198,7 +1200,9 @@ def search(request):
 
     # 搜索活动
     activity_list = Activity.objects.filter(
-        Q(title__icontains=query) | Q(organization_id__oname__icontains=query)
+        Q(title__icontains=query) | Q(organization_id__oname__icontains=query)& ~Q(status=Activity.Status.CANCELED)
+                                                         & ~Q(status=Activity.Status.REJECT)
+        &~Q(status=Activity.Status.REVIEWING)&~Q(status=Activity.Status.ABORT)
     )
 
     # 活动要呈现的内容
