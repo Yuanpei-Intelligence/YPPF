@@ -50,7 +50,7 @@ def get_activity_QRcode(activity):
             f"{activity.id}?auth={auth_code}"
         )
 
-    qr=qrcode.QRCode(version = 2,error_correction = qrcode.constants.ERROR_CORRECT_L,box_size=10,border=10,)
+    qr=qrcode.QRCode(version = 2,error_correction = qrcode.constants.ERROR_CORRECT_L,box_size=5,border=5)
     qr.add_data(url)
     qr.make(fit=True)
     img = qr.make_image()
