@@ -76,11 +76,8 @@
                             <polyline points="22,6 12,13 2,6"></polyline>
 
                         </svg>
-                        {% if bar_display.mail_num %}
                         <span class="badge "
-                            style="background-color: black;color: currentColor;">{{bar_display.mail_num}}</span>
-                        {% endif %}
-
+                            style="background-color: black;color: currentColor;" id="mail_num" {% if not bar_display.mail_num %} hidden {%endif %}>{{bar_display.mail_num}}</span>
                     </a>
                 </li>
                 <!--
