@@ -1477,18 +1477,29 @@ def transaction_page(request, rid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-
+    html_display['warn_code'] = 0
 
     try:
         user = User.objects.get(id=rid)
         recipient = utils.get_person_or_org(user)
-        assert hasattr(recipient, "organization_id")
-        assert user_type == "Organization"
-        assert user != recipient
+
     except:
-        return redirect("/welcome/")
-
-
+        return redirect(
+            "/welcome/?warn_code=1&warn_message=该用户不存在，无法实现转账!")
+    if not hasattr(recipient, "organization_id") or user_type != "Organization":
+        html_display = wrong("目前只支持组织向组织转账！")
+    if request.user == user:
+        html_display=wrong("不能向自己转账！")
+    if html_display['warn_code']==1:
+        if hasattr(recipient, "organization_id"):
+            return redirect(
+                "/orginfo/{name}?warn_code=1&warn_message={message}".format(name=recipient.oname,
+                                                                                      message=html_display[
+                                                                                          'warn_message']))
+        else:
+            return  redirect(
+                "/stuinfo/{name}?warn_code=1&warn_message={message}".format(name=recipient.name,
+                                                                            message=html_display['warn_message']))
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # 如果希望前移，请联系YHT
     bar_display = utils.get_sidebar_and_navbar(request.user)
