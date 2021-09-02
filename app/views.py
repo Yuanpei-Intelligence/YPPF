@@ -839,7 +839,7 @@ def homepage(request):
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     try:
         with open("weather.json") as weather_json:
-            html_display['weather'] = json.loads(weather_json)
+            html_display['weather'] = json.load(weather_json)
     except:
         from app.scheduler_func import get_weather
         html_display['weather'] = get_weather()
