@@ -2796,7 +2796,18 @@ def notifications(request):
 
     if request.method == "POST":  # 发生了通知处理的事件
         post_args = json.loads(request.body.decode("utf-8"))
-        notification_id = int(post_args['id'])
+        try:
+            notification_id = int(post_args['id'])
+        except:
+            html_display["warn_code"] = 1  # 失败
+            html_display["warn_message"] = "请不要恶意发送post请求！"
+            return JsonResponse({"success":False})
+        try:
+            Notification.objects.activated().get(id=notification_id, receiver=request.user)
+        except:
+            html_display["warn_code"] = 1  # 失败
+            html_display["warn_message"] = "请不要恶意发送post请求！！"
+            return JsonResponse({"success":False})
         if "cancel" in post_args['function']:
             try:
                 notification_status_change(notification_id, Notification.Status.DELETE)
