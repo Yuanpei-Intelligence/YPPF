@@ -548,30 +548,6 @@ def user_login_org(request, org):
     return succeed("成功切换到组织账号处理该事务，建议事务处理完成后退出组织账号。")
 
 
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-def user_login_org(request, org):
-    user = request.user
-    valid, user_type, html_display = utils.check_user_type(request.user)
-
-    try:
-        me = NaturalPerson.objects.activated().get(person_id=user)
-    except:  # 找不到合法的用户
-        return wrong("您没有权限访问该网址！请用对应组织账号登陆。")
-    #是组织一把手
-    try:
-        position = Position.objects.activated().filter(org=org, person=me)
-        assert len(position) == 1
-        position = position[0]
-        assert position.pos == 0
-    except:
-        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该组织账户的权限!"
-        return redirect(urls)
-    # 到这里,是本人组织并且有权限登录
-    auth.logout(request)
-    auth.login(request, org.organization_id)  # 切换到组织账号
-    return succeed("成功切换到组织账号处理该事务，建议事务处理完成后退出组织账号。")
-
 
 
 @login_required(redirect_field_name="origin")
