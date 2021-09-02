@@ -56,7 +56,7 @@
                                     <div class="bio-skill-box">
                                         <div class="row">
                                             {% for note in undone_list %}
-                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="undone={{note.id}}" {% if not note.status == "待处理" %} hidden {%endif%}>
 
                                                 <div class=" b-skills">
 
@@ -73,13 +73,11 @@
                                                         </div>
                                                         <div>
                                                             {% if note.type == "知晓类" %}
-                                                            <form method="POST">
-                                                                <h5>
-                                                                    <button class="btn btn-primary" type="submit"
-                                                                        name='post_button' value="{{note.id}}"
-                                                                        onclick="window.location='/notifications/'">知道啦</button>
-                                                                </h5>
-                                                            </form>
+                                                            <h5>
+                                                                <button class="btn btn-primary" type="submit"
+                                                                    name='post_button' value="{{note.id}}"
+                                                                    onclick="read.call(this);this.blur();" id={{note.id}}>知道啦</button>
+                                                            </h5>
                                                             {% else %}
                                                             <h5>
                                                                 <a href="#" class="btn btn-primary" tabindex="-1"
@@ -115,7 +113,7 @@
                                     <div class="bio-skill-box">
                                         <div class="row">
                                             {% for note in done_list %}
-                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="done={{note.id}}" {% if not note.status == "已处理" %} hidden {%endif%}>
 
                                                 <div class=" b-skills">
 
@@ -128,47 +126,42 @@
                                                         <div>
                                                             {% if note.type == "知晓类" %}
                                                             <div class="btn-group">
-                                                                <form method="POST">
-                                                                    <div style="margin-left: 8px; ">
-                                                                        <div class="btn-group">
-                                                                            <button type="button"
-                                                                                class="btn btn-light dropdown-toggle dropdown-toggle-split"
-                                                                                data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
-                                                                                操作
-                                                                            </button>
-                                                                            <div class="dropdown-menu">
-                                                                                <button class="dropdown-item"
-                                                                                    type="submit" name='post_button'
-                                                                                    value="{{note.id}}"
-                                                                                >标记为未读</button>
-                                                                                <button class="dropdown-item"
-                                                                                    type="submit" name='post_button'
-                                                                                    value="{{note.id}}+cancel"
-                                                                                    onclick="return confirm('你确定要删除这条消息?')">删除</button>
-                                                                            </div>
+                                                                <div style="margin-left: 8px; ">
+                                                                    <div class="btn-group">
+                                                                        <button type="button"
+                                                                            class="btn btn-light dropdown-toggle dropdown-toggle-split"
+                                                                            data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                                                            操作
+                                                                        </button>
+                                                                        <div class="dropdown-menu">
+                                                                            <button class="dropdown-item"
+                                                                                type="submit" name='post_button'
+                                                                                value="{{note.id}}" id={{note.id}} onclick="unread.call(this);this.blur();"
+                                                                            >标记为未读</button>
+                                                                            <button class="dropdown-item"
+                                                                                type="submit" name='post_button' id={{note.id}}
+                                                                                value="{{note.id}}+cancel" onclick="confirm('你确定要删除这条消息?');cancel.call(this);this.blur();">删除</button>
                                                                         </div>
                                                                     </div>
-                                                                </form>
+                                                                </div>
                                                             </div>
                                                             {% else %}
                                                             <div class="btn-group">
-                                                                <form method="POST">
-                                                                    <div style="margin-left: 8px; ">
-                                                                        <div class="btn-group">
-                                                                            <button type="button"
-                                                                                class="btn btn-light dropdown-toggle dropdown-toggle-split"
-                                                                                data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
-                                                                                操作
-                                                                            </button>
-                                                                            <div class="dropdown-menu">
-                                                                                <button class="dropdown-item"
-                                                                                    type="submit" name='post_button'
-                                                                                    value="{{note.id}}+cancel"
-                                                                                    onclick="return confirm('你确定要删除这条消息?')">删除</button>
-                                                                            </div>
+                                                                <div style="margin-left: 8px; ">
+                                                                    <div class="btn-group">
+                                                                        <button type="button"
+                                                                            class="btn btn-light dropdown-toggle dropdown-toggle-split"
+                                                                            data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                                                            操作
+                                                                        </button>
+                                                                        <div class="dropdown-menu">
+                                                                            <button class="dropdown-item"
+                                                                                type="submit" name='post_button' id={{note.id}}
+                                                                                value="{{note.id}}+cancel"
+                                                                                onclick="confirm('你确定要删除这条消息?');cancel.call(this);this.blur();">删除</button>
                                                                         </div>
                                                                     </div>
-                                                                </form>
+                                                                </div>
                                                             </div>
                                                             {% endif %}
                                                         </div>
@@ -243,5 +236,43 @@
 
         }
     })
+    async function read() {
+        const success = await save_read.call(this,"read");
+        if (success) {
+            document.getElementById("undone="+String(this.id)).hidden = true;
+            document.getElementById("done="+String(this.id)).hidden = false;
+            document.getElementById("mail_num").innerHTML = String(Number(document.getElementById("mail_num").innerHTML) - 1);
+            if(Number(document.getElementById("mail_num").innerHTML) == 0){
+                document.getElementById("mail_num").hidden = true;
+            }
+        }
+    }
+    async function unread() {
+        const success = await save_read.call(this,"read");
+        if (success) {
+            document.getElementById("done="+String(this.id)).hidden = true;
+            document.getElementById("undone="+String(this.id)).hidden = false;
+            document.getElementById("mail_num").innerHTML = String(Number(document.getElementById("mail_num").innerHTML) + 1);
+            if(Number(document.getElementById("mail_num").innerHTML) == 1){
+                document.getElementById("mail_num").hidden = false;
+            }
+        }
+    }
+    async function cancel() {
+        const success = await save_read.call(this,"cancel");
+        if (success) {
+            document.getElementById("done="+String(this.id)).hidden = true;
+        }
+    }
+    async function save_read(func) {
+        const { success } = await fetch(`/notifications/`, {
+            headers: { "Content-Type": `text/plain` },
+            method: `POST`,
+            body: JSON.stringify({ id: this.id, function: func}),
+        })
+            .then((res) => res.json())
+            .catch(() => { success: false });
+        return success;
+    }
 </script>
 {% endblock %}
