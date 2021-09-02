@@ -2778,35 +2778,41 @@ def notifications(request):
             html_display["warn_message"] = "非预期的GET参数"
 
     if request.method == "POST":  # 发生了通知处理的事件
-        post_args = request.POST.get("post_button")
-        if "cancel" in post_args:
-            notification_id = int(post_args.split("+")[0])
-            notification_status_change(notification_id, Notification.Status.DELETE)
-            html_display["warn_code"] = 2  # success
-            html_display["warn_message"] = "您已成功删除一条通知！"
+        post_args = json.loads(request.body.decode("utf-8"))
+        notification_id = int(post_args['id'])
+        if "cancel" in post_args['function']:
+            try:
+                notification_status_change(notification_id, Notification.Status.DELETE)
+                html_display["warn_code"] = 2  # success
+                html_display["warn_message"] = "您已成功删除一条通知！"
+                return JsonResponse({"success":True})
+            except:
+                html_display["warn_code"] = 1  # 失败
+                html_display["warn_message"] = "删除通知的过程出现错误！请联系管理员。"
+                return JsonResponse({"success":False})
         else:
-            notification_id = post_args
-            context = notification_status_change(notification_id)
-            html_display["warn_code"] = context["warn_code"]
-            html_display["warn_message"] = context["warn_message"]
+            try:
+                context = notification_status_change(notification_id)
+                html_display["warn_code"] = context["warn_code"]
+                html_display["warn_message"] = context["warn_message"]
+                return JsonResponse({"success":True})
+            except:
+                html_display["warn_code"] = 1  # 失败
+                html_display["warn_message"] = "修改通知状态的过程出现错误！请联系管理员。"
+                return JsonResponse({"success":False})
+
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-
-    done_set = Notification.objects.activated().filter(
-        receiver=request.user, status=Notification.Status.DONE
-    )
-
-    undone_set = Notification.objects.activated().filter(
-        receiver=request.user, status=Notification.Status.UNDONE
-    )
+    
+    notification_set = Notification.objects.activated().filter(receiver=request.user)
 
     done_list = notification2Display(
-        list(done_set.union(done_set).order_by("-finish_time"))
+        list(notification_set.union(notification_set).order_by("-finish_time"))
     )
+
     undone_list = notification2Display(
-        list(undone_set.union(undone_set).order_by("-start_time"))
+        list(notification_set.union(notification_set).order_by("-start_time"))
     )
-    
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
