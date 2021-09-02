@@ -45,7 +45,7 @@
                                     <!--  BEGIN HEADER AREA  -->
                                     <div class="widget-header">
                                         <div class="d-flex justify-content-between">
-                                            <div >
+                                            <div>
                                                 {% if edit %}
                                                 <h4 onclick="javascript:window.location.href='/viewActivity/{{aid}}'">活动编辑 <span id="ret" class="badge badge-pill badge-success">{{status}}</span>
                                                 <a data-toggle="tooltip" data-placement="bottom" title="点击活动状态按钮可以返回活动详情页">
@@ -118,11 +118,11 @@
                                                 <label>活动时间</label>
                                                 <div class="row">
                                                     <div class="col">
-                                                        <input type="datetime-local" class="form-control" id="datetimepicker3"
+                                                        <input type="text" class="form-control datetimepicker" id="datetimepicker3"
                                                             name="actstart" placeholder="开始时间" required="required" onclick="fill_value(this)"/>
                                                     </div>
                                                     <div class="col">
-                                                        <input type="datetime-local" class="form-control" id="datetimepicker4"
+                                                        <input type="text" class="form-control datetimepicker" id="datetimepicker4"
                                                             name="actend" placeholder="结束时间" required="required" onclick="fill_value(this)"/>
                                                     </div>
                                                 </div>
@@ -149,10 +149,8 @@
                                                     value="1" id="recorded"
                                                     name="recorded">
                                                 <label class="form-check-label" for="defaultCheck1">
-
                                                     是否已报备
                                                     <a data-toggle="tooltip" data-placement="bottom" title="已报备活动指学期初已上报学院且获准的活动, 擅自勾选可能导致组织被禁止登录!">
-
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -593,21 +591,10 @@
 <!-- 选择时间 -->
 <script type="text/javascript">
     $(function () {
-        $("#datetimepicker1").datetimepicker({
-            //format: "LT"
-            sideBySide: true,
-        });
-        $("#datetimepicker2").datetimepicker({
-            //format: "LT"
-            sideBySide: true
-        });
-        $("#datetimepicker3").datetimepicker({
-            //format: "LT"
-            sideBySide: true
-        });
-        $("#datetimepicker4").datetimepicker({
-            //format: "LT"
-            sideBySide: true
+        $(".datetimepicker").datetimepicker({
+            format: "yyyy-mm-dd hh:ii",
+            todayBtn: true,
+            todayHighlight: true,
         });
     });
 </script>
