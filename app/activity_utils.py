@@ -124,8 +124,8 @@ def activity_base_check(request, edit=False):
         context["recorded"] = True
 
     # 时间
-    act_start = datetime.strptime(request.POST["actstart"], "%Y-%m-%dT%H:%M")  # 活动报名时间
-    act_end = datetime.strptime(request.POST["actend"], "%Y-%m-%dT%H:%M")  # 活动报名结束时间
+    act_start = datetime.strptime(request.POST["actstart"], "%Y-%m-%d %H:%M")  # 活动报名时间
+    act_end = datetime.strptime(request.POST["actend"], "%Y-%m-%d %H:%M")  # 活动报名结束时间
     context["start"] = act_start
     context["end"] = act_end
     assert check_ac_time(act_start, act_end)
@@ -368,7 +368,7 @@ def modify_accepted_activity(request, activity):
             activity.YQPoint = aprice
 
     # 时间改变
-    act_start = datetime.strptime(request.POST["actstart"], "%Y-%m-%dT%H:%M")
+    act_start = datetime.strptime(request.POST["actstart"], "%Y-%m-%d %H:%M")
     now_time = datetime.now()
     assert now_time < act_start
 
@@ -411,7 +411,7 @@ def modify_accepted_activity(request, activity):
     else:
         activity.need_checkin = False
 
-    activity.end = datetime.strptime(request.POST["actend"], "%Y-%m-%dT%H:%M")
+    activity.end = datetime.strptime(request.POST["actend"], "%Y-%m-%d %H:%M")
     assert activity.start < activity.end
     activity.URL = request.POST["URL"]
     activity.introduction = request.POST["introduction"]
