@@ -445,14 +445,14 @@ def publish_activity(activity_or_id):
     return True
 
 
-def send_captcha(stu_id: str or int, captcha: str, url='/forgetpw/'):
+def send_wechat_captcha(stu_id: str or int, captcha: str, url='/forgetpw/'):
     users = (stu_id, )
     kws = {"card": True}
     if url and url[0] == "/":  # 相对路径变为绝对路径
         url = THIS_URL + url
     message = (
                 "YPPF登录验证\n"
-                "您的账号正在进行企业微信验证，本次请求的验证码为："
+                "您的账号正在进行企业微信验证\n本次请求的验证码为："
                 f"<div class=\"highlight\">{captcha}</div>"
             )
     if url:

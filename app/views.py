@@ -45,7 +45,12 @@ from app.position_utils import(
     update_pos_application,
 )
 from app.reimbursement_utils import update_reimb_application
-from app.wechat_send import publish_notification, publish_notifications, invite
+from app.wechat_send import(
+    publish_notification,
+    publish_notifications,
+    send_wechat_captcha,
+    invite,
+)
 from app.notification_utils import notification_create, notification_status_change
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
@@ -516,7 +521,32 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         auth.login(request, org.organization_id)  # 切换到组织账号
         if org.first_time_login:
             return redirect("/modpw/")
-        return redirect("/orginfo/")
+        return redirect("/orginfo/?warn_code=2&warn_message=成功切换到"+str(org)+"的账号!")
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+def user_login_org(request, org):
+    user = request.user
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    try:
+        me = NaturalPerson.objects.activated().get(person_id=user)
+    except:  # 找不到合法的用户
+        return wrong("您没有权限访问该网址！请用对应组织账号登陆。")
+    #是组织一把手
+    try:
+        position = Position.objects.activated().filter(org=org, person=me)
+        assert len(position) == 1
+        position = position[0]
+        assert position.pos == 0
+    except:
+        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该组织账户的权限!"
+        return redirect(urls)
+    # 到这里,是本人组织并且有权限登录
+    auth.logout(request)
+    auth.login(request, org.organization_id)  # 切换到组织账号
+    return succeed("成功切换到组织账号处理该事务，建议事务处理完成后退出组织账号。")
+
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
@@ -1356,6 +1386,16 @@ def forget_password(request):
                         display = wrong("邮件发送失败：超时")
                     finally:
                         display["alert"] = True
+                        display.setdefault("colddown", 60)
+            elif send_captcha in ["wechat"]:    # 发送企业微信消息
+                username = person.person_id.username
+                captcha = utils.get_captcha(request, username)
+                send_wechat_captcha(username, captcha)
+                display = succeed(f"验证码已发送至企业微信")
+                display["noshow"] = True
+                display["alert"] = True
+                utils.set_captcha_session(request, username, captcha)
+                display.setdefault("colddown", 60)
             else:
                 captcha, expired, old = utils.get_captcha(request, username, more_info=True)
                 if not old:
@@ -1370,6 +1410,7 @@ def forget_password(request):
                     return redirect(reverse("modpw"))
                 else:
                     display = wrong("验证码错误")
+                display.setdefault("colddown", 30)
     return render(request, "forget_password.html", locals())
 
 
@@ -2433,7 +2474,7 @@ def addActivity(request, aid=None):
 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     if not edit:
-         bar_display = utils.get_sidebar_and_navbar(request.user, "新建活动")
+         bar_display = utils.get_sidebar_and_navbar(request.user, "活动发起")
     else:
          bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
 
@@ -2555,7 +2596,7 @@ def examineActivity(request, aid):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-def subscribeActivities(request):
+def subscribeOrganization(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
     me = utils.get_person_or_org(request.user, user_type)
@@ -2706,77 +2747,7 @@ def apply_position(request, oid=None):
     return redirect("/notifications/")
 
 
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-def personnel_mobilization(request):
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    if user_type != "Organization":
-        return redirect("/index/")
 
-    me = utils.get_person_or_org(request.user, user_type)
-    html_display = {"is_myself": True}
-
-    if request.method == "GET":  # 展示页面
-        pending_status = Q(apply_status=Position.ApplyStatus.PENDING)
-        issued_status = Q(apply_status=Position.ApplyStatus.PASS) | Q(
-            apply_status=Position.ApplyStatus.REJECT
-        )
-
-        pending_list = me.position_set.filter(pending_status)
-        for record in pending_list:
-            record.job_name = me.otype.get_name(record.apply_pos)
-
-        issued_list = me.position_set.filter(issued_status)
-        for record in issued_list:
-            record.job_name = me.otype.get_name(record.pos)
-
-        # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-        bar_display = utils.get_sidebar_and_navbar(request.user)
-        bar_display["title_name"] = "人事变动"
-        bar_display["navbar_name"] = "人事变动"
-
-        return render(request, "personnel_mobilization.html", locals())
-
-    elif request.method == "POST":  # 审核申请
-        params = json.loads(request.POST.get("confirm", None))
-        if params is None:
-            redirect(f"/orginfo/{me.oname}")
-
-        with transaction.atomic():
-            application = Position.objects.select_for_update().get(id=params["id"])
-            apply_status = params["apply_status"]
-            if apply_status == "PASS":
-                if application.apply_type == Position.ApplyType.JOIN:
-                    application.status = Position.Status.INSERVICE
-                    application.pos = application.apply_pos
-                elif application.apply_type == Position.ApplyType.WITHDRAW:
-                    application.status = Position.Status.DEPART
-                elif application.apply_type == Position.AppltType.TRANSFER:
-                    application.pos = application.apply_pos
-                application.apply_status = Position.ApplyStatus.PASS
-            elif apply_status == "REJECT":
-                application.apply_status = Position.ApplyStatus.REJECT
-            application.save()
-
-        notification_create(
-            application.person.person_id,
-            me.organization_id,
-            Notification.Type.NEEDREAD,
-            Notification.Title.POSITION_INFORM,
-            f"{application.apply_type}申请{application.apply_status}",
-            publish_to_wechat=True,  # 不要复制这个参数，先去看函数说明
-        )
-
-        # 查找已处理的该条人事对应的通知信息
-        done_notification = Notification.objects.activated().get(
-            typename=Notification.Type.NEEDDO,
-            sender=application.person.person_id,
-            receiver=me.organization_id,
-        )
-
-        notification_status_change(done_notification.id)
-
-        return redirect("/personnelMobilization/")
 
 
 def notification2Display(notification_list):
@@ -3279,7 +3250,9 @@ def showActivity(request):
             pass
         if not is_teacher:
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "个人账号不能进入活动审核页面！"
+
+            html_display["warn_code"] = "学生账号不能进入活动管理页面！"
+
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
@@ -3287,11 +3260,12 @@ def showActivity(request):
                 )
             )
     if is_teacher:
-        shown_instances = Activity.objects.activated().filter(examine_teacher = me.id)
+        shown_instances = Activity.objects.all_activated().filter(examine_teacher = me.id)
     else:
-        shown_instances = Activity.objects.activated().filter(organization_id = me.id)
+        shown_instances = Activity.objects.all_activated().filter(organization_id = me.id)
+
     shown_instances = shown_instances.order_by("-modify_time", "-time")
-    bar_display = utils.get_sidebar_and_navbar(request.user, "活动审核")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "活动管理")
     return render(request, "activity_show.html", locals())
 
 

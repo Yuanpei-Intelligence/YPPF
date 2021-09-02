@@ -86,15 +86,15 @@
             {% if status is not None %}
             <div>
                 {% if '拒绝' in status or '未' in status or '不' in status %}
-                <h4 class="text-danger">{{status}}</h4>
+                <h5 class="text-danger">{{status}}</h5>
                 {% elif '通过' in status or '接受' in status %}
-                <h4 class="text-success">已通过</h4>
+                <h5 class="text-success">已通过</h5>
                 {% elif '修改' in status %}
-                <h4 class="text-warning">待修改</h4>
+                <h5 class="text-warning">待修改</h5>
                 {% elif '取消' in status %}
-                <h4 class="text-muted">{{status}}</h4>
+                <h5 class="text-muted">{{status}}</h5>
                 {% else %}
-                <h4 class="text-info">审核中</h4>
+                <h5 class="text-info">审核中</h5>
                 {% endif %}
             </div>
             {% endif %}
