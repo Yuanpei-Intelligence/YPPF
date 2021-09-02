@@ -1,12 +1,23 @@
 {% extends "base.html" %}
 
 {% block add_css_file %}
+<style class="text/css">
+    [data-toggle="collapse"] .fa:before {
+        font-family: 'Font Awesome 5 Free';
+        content: "\f068";
+        float: right;
+    }
 
+    [data-toggle="collapse"].collapsed .fa:before {
+        content: "\f067";
+    }
+</style>
 {% endblock %}
+
 
 {% block mainpage %}
 
-{% with title='人事申请' link='/modifyPosition/' new_link='' query_field='pos_id' new_btn_name='新建申请' btn_name='详情' empty_info='列表空空如也！点击按钮进行人事变动申请吧~' %}
+{% with title='活动管理' link='/viewActivity/' new_link='' query_field='aid' new_btn_name='' btn_name='详情' empty_info='没有相关活动哦～' %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -15,9 +26,7 @@
     {% elif html_display.warn_code == 2 %}
     <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
     {% endif %}
-        <div class="container">
-
-
+    <div class="container"> 
 
             <div class="row layout-top-spacing">
                 {% if bar_display.help_paragraphs %}
@@ -28,41 +37,46 @@
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
                             <h3>{{title}}</h3>
-                            
-                            <!-- <div class="col-lg-12">
+                            <div class="col-12">
+                                <p>欢迎来到你的{{title}}列表！这里汇集了你在<strong>Yuanpei Profile</strong>中需要审核的所有活动~</p>
+                                <p>这些事务依据更新的时间和状态由近到远呈现，提供了具体的更新时间和其他信息。</p>
+                                <p>您可以点击<u>标题链接</u>查看老师留言、追加评论、取消正在审核的申请或查看已完成事务详情。尽情体验吧！</p>
+                                </br>
+                            </div>
+
+                            {% if user_type == "Organization" %}
+                            <div class="col-lg-12">
                                 <br />
                                 <br />
-                                <a href="{{link}}{{new_link}}" class="btn btn-info" tabindex="1" role="button"
-                                    style="position:absolute;right:30px;top:4px;">
-                                    {{new_btn_name}}
+                                <a href="/addActivity/" class="btn btn-info" tabindex="1"
+                                    role="button" style="position:absolute;right:30px;top:4px;">
+                                    发起活动
                                 </a>
-                            </div> 
-                            <hr style="filter:alpha(opacity=100,finishopacity=0,style=3);" width="80%" color="#0000FF"
-                                size="3">
-                        -->
+                            </div>
+                            {% endif %}
+                            
+                            <hr style="filter:alpha(opacity=100,finishopacity=0,style=3);" width="80%" color="#0000FF" size="3">
+
                             <div id="myTabContent" class="tab-content">
+                                <div class="tab-pane fade in active show" id="home">
                                     {% if not shown_instances %}
                                     <br />
                                     <p></p>
                                     <p style="text-align: center;">{{empty_info}}</p>
                                     <br />
                                     {% else %}
-                                    <div class="bio-skill-box" style="padding-top: 3px;">
+                                    <div class="bio-skill-box">
                                         <div class="row">
 
-
-                                            {% for instance in shown_instances %}
+                                        {% for instance in shown_instances %}
                                             {% with instance.get_instance.get_status_display as status %}
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
 
                                                 <div class=" b-skills">
-
-
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <h5>
-                                                                <a
-                                                                    href="{{link}}{% if query_field %}?{{query_field}}={{instance.id}}{% endif %}">
+                                                                <a href="{{link}}{% if query_field %}{{instance.id}}{% endif %}">
                                                                     <u>{{instance.get_instance}}</u>
                                                                 </a>
                                                                 <br />
@@ -70,21 +84,23 @@
                                                         </div>
                                                         {% if status is not None %}
                                                         <div>
-                                                            {% if '拒绝' in status or '未' in status or '不' in status %}
-                                                            <h5 class="text-danger">{{status}}</h5>
-                                                            {% elif '通过' in status or '接受' in status %}
-                                                            <h5 class="text-success">已通过</h5>
-                                                            {% elif '修改' in status %}
-                                                            <h5 class="text-warning">待修改</h5>
-                                                            {% elif '取消' in status %}
-                                                            <h5 class="text-muted">{{status}}</h5>
+                                                            {% if status == 'Reviewing' %}
+                                                                <h5 class="text-warning">审核中</h5>
+                                                            {% elif status == 'Reject' %}
+                                                                <h5 class="text-danger">未过审</h5>
+                                                            {% elif status == 'Abort' %}
+                                                                <h5 class="text-muted">已撤销</h5>
+                                                            {% elif status == '预报备' %}
+                                                                <h5 class="text-info">预报备</h5>
                                                             {% else %}
-                                                            <h5 class="text-info">审核中</h5>
+                                                                <h5 class="text-success">已通过</h5>
+
                                                             {% endif %}
                                                         </div>
                                                         {% endif %}
                                                     </div>
                                                     <div class="d-flex justify-content-between">
+                                                        {% if instance.extra_display %}
                                                         <div>
                                                             {% for display in instance.extra_display %}
                                                             {% if display|length == 2 or display|length == 3 %}
@@ -95,6 +111,7 @@
                                                             {% endif %}
                                                             {% endfor %}
                                                         </div>
+                                                        {% endif %}
                                                         {% if instance.get_poster_name %}
                                                         <div>
                                                             <p style="color: rgb(66, 67, 68);">
@@ -117,9 +134,9 @@
                                                         </div>
                                                         <div>
                                                             <h5>
-                                                                <a href="#" class="btn btn-primary my-3 my-sm-2"
-                                                                    tabindex="-1" role="button"
-                                                                    onclick="window.location='{{link}}{% if query_field %}?{{query_field}}={{instance.id}}{% endif %}'">
+                                                                <a href="#" class="btn btn-primary my-3 my-sm-2" tabindex="-1"
+                                                                    role="button"
+                                                                    onclick="window.location='{{link}}{% if query_field %}{{instance.id}}{% endif %}'">
                                                                     {{btn_name}}
                                                                 </a>
                                                             </h5>
@@ -128,13 +145,13 @@
                                                 </div>
                                             </div>
                                             {% endwith %}
-                                            {% endfor %}
+                                        {% endfor %}
                                         </div>
 
                                     </div>
 
                                     {% endif %}
-                                
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -144,8 +161,8 @@
 
             </div>
 
-        </div>
-    
+        
+    </div>
 </div>
 <!--  END CONTENT AREA  -->
 

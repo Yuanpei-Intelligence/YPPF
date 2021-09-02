@@ -20,7 +20,6 @@
         <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
         <!--  END CUSTOM STYLE FILE  -->
         
-        <div class="container">
             <div class="container">
                 {% if html_display.warn_code == 2 %}
                 <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
@@ -82,7 +81,7 @@
                                                         <label>组织图标</label>
                                                         <br>
                                                         {% if allow_form_edit %}
-                                                        <input type="file" id="preavatar" class="dropify" name="avatar"
+                                                        <input type="file" id="preavatar" class="dropify" name="avatar" accept="image/*"
                                                            data-default-file="{{org_avatar_path}}"
                                                            data-max-file-size="512K"/>
                                                         {%else%}
@@ -94,7 +93,7 @@
                                                 <br>
                                                 <div class="row">
                                                     <div class="upload m-auto">
-                                                        <input type="file" id="avatar" class="dropify" name="avatar" 
+                                                        <input type="file" id="avatar" class="dropify" name="avatar" accept="image/*"
                                                             data-default-file="{{former_img}}" data-max-file-size="512K" />
                                                     </div>
                                                 </div>
@@ -188,7 +187,7 @@
                 </div>
 
             </div>
-        </div>
+        
     </div>
     <!--  END CONTENT AREA  -->
 
@@ -196,5 +195,6 @@
 {% endblock %}
 
 {% block add_js_file %}
-
+    <script src={% static "plugins/dropify/dropify.min.js" %}></script>
+    <script src={% static "assets/js/users/account-settings.js" %}></script>
 {% endblock %}

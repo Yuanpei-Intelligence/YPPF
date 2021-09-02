@@ -29,17 +29,20 @@
                     <div class="carousel-inner">
                         <div class="carousel-item active">
                             {% if photo_display|length == 0 %}
-                            <img class="d-block w-100 slide-image" src={{homepagephoto}}>
+                            <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
+                                src={{homepagephoto}}>
                             {% else %}
                             <a href="/viewActivity/{{firstpic.activity_id}}">
-                                <img class="d-block w-100 slide-image" src={{firstpic.image}}>
+                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
+                                    src={{firstpic.image}}>
                             </a>
                             {% endif %}
                         </div>
                         {% for photo in photos %}
                         <div class="carousel-item">
                             <a href="/viewActivity/{{photo.activity_id}}">
-                                <img class="d-block w-100 slide-image" src={{photo.image}}>
+                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
+                                    src={{photo.image}}>
                             </a>
                         </div>
                         {% endfor %}
@@ -61,6 +64,16 @@
                 <!-- BEGIN HEIGHT CONSTRAIN -->
                 <script type="text/javascript">
                     const ref = document.querySelector(`#style1`);
+                    const photos = ref.querySelectorAll(`img`);
+                    /* ---------------- fit wallpaper according to screen height ---------------- */
+                    window.addEventListener(`load`, resize);
+                    window.addEventListener(`resize`, resize);
+                    function resize() {
+                        photos.forEach(
+                            (photo) => (photo.style.height = this.innerWidth <= 767 ? `30vh` : `50vh`)
+                        );
+                    }
+                    /* ---------------------- constrain height of wishwall ---------------------- */
                     const fit = () => {
                         const bar = document.querySelector(`#custom-wishes`);
                         bar.style.height = `${ref.offsetHeight - bar.offsetTop - bar.parentElement.offsetTop}px`;
@@ -90,7 +103,11 @@
                 <div class="widget-content widget-content-area mb-2 mx-0">
                     <h5>实时天气</h5>
                     <div class="pl-0 pt-1 pb-3 d-flex justify-content-between">
+<<<<<<< HEAD
                         <span >
+=======
+                        <span>
+>>>>>>> c22892798983ccc1b62940a3236e24598e821f63
                             地区：北京 天气：{{ html_display.weather.description }} <br />
                             气温：{{ html_display.weather.temp }} &#8451
                             体感温度：{{ html_display.weather.temp_feel }} &#8451
@@ -100,10 +117,17 @@
                                 src="http://www.weather.com.cn/m/i/weatherpic/29x20/{{ html_display.weather.weatherinfo.img1 }}">
                             <img
                                 src="http://www.weather.com.cn/m/i/weatherpic/29x20/{{ html_display.weather.weatherinfo.img2 }}"> -->
+<<<<<<< HEAD
                             <img src="http://openweathermap.org/img/wn/{{html_display.weather.icon}}@2x.png" 
                                 alt="it supposed to be a weather icon" style="width: 50px; height: 50px;">
                         </div>
                         
+=======
+                            <img src="http://openweathermap.org/img/wn/{{html_display.weather.icon}}@2x.png"
+                                alt="it supposed to be a weather icon" style="width: 50px; height: 50px;">
+                        </div>
+
+>>>>>>> c22892798983ccc1b62940a3236e24598e821f63
                     </div>
                 </div>
                 <!-- END RT WEATHER -->
@@ -112,7 +136,9 @@
                 <div class="widget-content widget-content-area mt-2 mx-0 bio">
                     <div class="d-flex justify-content-between">
                         <h5>心愿墙</h5>
-                        <a href="#myModal" class="mb-2 edit-profile" data-toggle="modal">
+                        <!-- <a href="#myModal" class="mb-2 edit-profile" data-toggle="modal"> -->
+                        <a onclick="alert(`心愿墙暂未启用，敬请期待！`);" class="mb-2 edit-profile" data-toggle="modal"
+                            style="color: gainsboro;">
                             <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                                 class="feather feather-edit-3">
@@ -326,7 +352,7 @@
                                 {% endif %}
                                 <div class="row w-100 m-0">
                                     {% for act in newlyreleased_list %}
-                                    <div class="col-sm-6 col-12">
+                                     <div class="col-12 col-xl-6 col-lg-6 mb-xl-5 mb-5 ">
                                         <a href="/viewActivity/{{ act.id }}">
                                             <div class="d-flex b-skills">
                                                 <div class="text-nowrap mw-100">
@@ -385,7 +411,8 @@
                                 {% endif %}
                                 <div class="row w-100 m-0">
                                     {% for rec in signup_list %}
-                                    <div class="col-sm-6 col-12">
+                                        {%with rec.act as act%}
+                                     <div class="col-12 col-xl-6 col-lg-6 mb-xl-5 mb-5 ">
                                         <a href="/viewActivity/{{ act.id }}">
                                             <div class="d-flex b-skills">
                                                 <div class="text-nowrap mw-100">
@@ -431,7 +458,7 @@
                                             </div>
                                         </a>
                                     </div>
-
+                                    {%endwith%}
                                     {% endfor %}
                                 </div>
                             </div>
