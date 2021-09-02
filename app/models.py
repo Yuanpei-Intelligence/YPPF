@@ -412,6 +412,12 @@ class ActivityManager(models.Manager):
             # Activity.Status.CANCELED,
             Activity.Status.ABORT
         ])
+    
+    def all_activated(self):
+        # 选择学年相同，并且学期相同或者覆盖的，保持任何状态的活动都可见
+        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
+            semester__contains=local_dict["semester_data"]["semester"]
+        )
 
     def get_newlyended_activity(self):
         # 一周内结束的活动
@@ -585,7 +591,7 @@ class Activity(CommentBase):
     URL = models.URLField("活动相关(推送)网址", default="", blank=True)
 
     def __str__(self):
-        return f"活动：{self.title}"
+        return str(self.title)
 
     class Status(models.TextChoices):
         REVIEWING = "审核中"
