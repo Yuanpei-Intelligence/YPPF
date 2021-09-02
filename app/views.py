@@ -3162,7 +3162,10 @@ def modifyPosition(request):
         apply_type_list[application.apply_type]['selected'] = True
         if application.pos is not None:
             position_name_list[application.pos]['selected'] = True
-        
+        #未通过时，不能修改，但是需要呈现变量。
+        if application.status != ModifyPosition.Status.PENDING:  # 未通过
+            apply_type_list[application.apply_type]['disabled'] = False
+            position_name_list[application.pos]["disabled"] = False
 
     
 
