@@ -77,7 +77,14 @@
 
                         </svg>
                         <span class="badge "
-                            style="background-color: black;color: currentColor;" id="mail_num" {% if not bar_display.mail_num %} hidden {%endif %}>{{bar_display.mail_num}}</span>
+                            style="background-color: black;color: currentColor;padding-top:0px;{% if bar_display.mail_num >= 10 %} padding-left:{% if bar_display.mail_num >= 100 %}4{% else %}1{% endif %}px;{% endif %}">
+                            {% if bar_display.mail_num >= 100 %}
+                            ...
+                            {% else %}
+                            {{bar_display.mail_num}}
+                            {% endif %}
+                            </span>
+                        {% endif %}
                     </a>
                 </li>
                 <!--
