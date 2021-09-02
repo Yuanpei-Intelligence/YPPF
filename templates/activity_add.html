@@ -1,4 +1,4 @@
-﻿{% extends "base.html" %}
+{% extends "base.html" %}
 
 {% load static %}
 
@@ -7,21 +7,9 @@
 <link href={% static "datetimepicker/css/bootstrap-datetimepicker.css" %} rel="stylesheet" type="text/css" />
 <link href={% static "datetimepicker/css/bootstrap-datetimepicker.min.css" %} rel="stylesheet" type="text/css" />
 
-<!-- 以下style和折叠密切相关 -->
-<style class="text/css">
-    [data-toggle="collapse"] .fa:before {
-        font-family: 'Font Awesome 5 Free';  
-        content: "\f068";
-        float: right; 
-    }
-
-    [data-toggle="collapse"].collapsed .fa:before {
-        content: "\f067"; 
-    }
-</style>
 
 <style class="text/css">
-    .collapse h5{
+    h5{
         font-family: 'Nunito', sans-serif;
         font-size: 1rem;
         font-weight: bold;
@@ -34,9 +22,17 @@
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
         <div class="container">
-            <div class="container">
-                
+            
+                {% if html_display.warn_code == 2 %}
+                <div class="alert alert-success  text-center" id="success_msg" >{{ html_display.warn_msg }}</div>
+                {% endif %}
+                {% if html_display.warn_code == 1 %}
+                <div class="alert alert-warning  text-center" id="warn_msg" >{{ html_display.warn_msg }}</div>
+                {% else %}
                 <div class="alert alert-warning  text-center" id="warn_msg" style="display: none;">test</div>
+                {% endif %}
+
+
                 <div class="row layout-top-spacing">
                     {% if bar_display.help_paragraphs %}
                         {% include 'help_with_table.html' %}
@@ -51,18 +47,35 @@
                                         <div class="d-flex justify-content-between">
                                             <div >
                                                 {% if edit %}
-                                                <h4>活动编辑 <span class="badge badge-pill badge-success">{{status}}</span></h4>
+                                                <h4 onclick="javascript:window.location.href='/viewActivity/{{aid}}'">活动编辑 <span id="ret" class="badge badge-pill badge-success">{{status}}</span>
+                                                <a data-toggle="tooltip" data-placement="bottom" title="点击活动状态按钮可以返回活动详情页">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path
+                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                                </h4>
                                                 {% elif examine %}
-                                                <h4>活动审核 <span class="badge badge-pill badge-success">{{status}}</span></h4>
+                                                <h4 onclick="javascript:window.location.href='/viewActivity/{{aid}}'">活动管理 <span id="ret" class="badge badge-pill badge-success">{{status}}</span>
+                                                <a data-toggle="tooltip" data-placement="bottom" title="点击活动状态按钮可以返回活动详情页">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path
+                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                                </h4>
                                                 {% else %}
-                                                <h4>活动新建</h4>
+                                                <h4>活动发起</h4>
                                                 {% endif %}
                                             </div>
                                             <div >
                                                 <h4>
                                                 <img src="{{ html_display.app_avatar_path }}" width="24" height="24" alt="avatar">                
                                                 <a href='/orginfo/{{html_display.applicant_name}}'>
-                                                    <u>{{html_display.applicant_name}}</u></a>
+                                                    <u>{{html_display.applicant_name}}</u>
+                                                </a>
                                                 </h4>
                                             </div>
                                         </div>
@@ -84,27 +97,32 @@
                                                 </a>
                                             </p>
                                             <div class="form-group">
+                                                <label>活动名称</label>
                                                 <input type="text" id="title" name="title" class="form-control"
-                                                    aria-label="Default" placeholder="活动名称" required="required" onclick="fill_value(this)">
+                                                    aria-label="Default" placeholder="求文案大大整点活" required="required" 
+                                                    maxlength=50 onclick="fill_value(this)">
                                             </div>
                                             <div class="form-group">
+                                                <label>活动地点</label>
                                                 <input type="text" id="location" name="location" class="form-control"
-                                                    aria-label="Default" placeholder="活动地点" required="required" onclick="fill_value(this)">
+                                                    aria-label="Default" placeholder="求文案大大整点活" required="required" onclick="fill_value(this)">
                                             </div>
                                             <div class="form-group">
+                                                <label>活动预算</label>
                                                 <input type="number" id="budget" name="budget" class="form-control"
-                                                    aria-label="Default" placeholder="活动预算" required="required" 
+                                                    aria-label="Default" placeholder="预算对报销和审批都很重要，请慎重填写" required="required" 
                                                     step="0.1" min="0" onclick="fill_value(this)">
                                             </div>
 
                                             <div class="form-group">
+                                                <label>活动时间</label>
                                                 <div class="row">
                                                     <div class="col">
-                                                        <input type="datetime" class="form-control" id="datetimepicker3"
+                                                        <input type="datetime-local" class="form-control" id="datetimepicker3"
                                                             name="actstart" placeholder="开始时间" required="required" onclick="fill_value(this)"/>
                                                     </div>
                                                     <div class="col">
-                                                        <input type="text" class="form-control" id="datetimepicker4"
+                                                        <input type="datetime-local" class="form-control" id="datetimepicker4"
                                                             name="actend" placeholder="结束时间" required="required" onclick="fill_value(this)"/>
                                                     </div>
                                                 </div>
@@ -113,14 +131,17 @@
                                             <!-- TOCHECK: edit 的时候填值，并且 disable 掉 -->
                                             {% if not examine %}
                                             <div class="form-group">
+                                                <label>审核老师</label>
                                                 <select id="examine_teacher" name="examine_teacher" class="form-control selectpicker" >
                                                     <option value="" selected disabled>选择审核老师</option>
                                                     {% for avialable_teacher in avialable_teachers %}
                                                         <option value="{{avialable_teacher.name}}">{{avialable_teacher.name}}</option>
                                                     {% endfor %}
                                                 </select>
+
                                             </div>
                                             {% endif %}
+
 
                                             <div class="form-check"
                                                 style="align-content: center; vertical-align: middle;">
@@ -128,8 +149,10 @@
                                                     value="1" id="recorded"
                                                     name="recorded">
                                                 <label class="form-check-label" for="defaultCheck1">
-                                                    预报备 ( 此选项不可修改，擅自选择可能导致组织被取消 )
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="">
+
+                                                    是否已报备
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="已报备活动指学期初已上报学院且获准的活动, 擅自勾选可能导致组织被禁止登录!">
+
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -197,6 +220,12 @@
                                                         </button>
                                                     </div>
                                                     {% endif %}
+                                                    <div class="input-group-prepend">
+                                                        <button class="btn btn-outline-primary"
+                                                            type="button"
+                                                            aria-expanded="false">元气值数量
+                                                        </button>
+                                                    </div>
 
                                                     <!-- TOCHECK: 如果是 applying 记得设成 disable -->
                                                     <input type="number" class="form-control"
@@ -207,7 +236,16 @@
                                                 </div>
                                             </div>
 
+                                            <div class="form-group" id="reason_block" style="display: none">
+                                                <label>元气值申请理由 ( 必填 )</label>
+                                                <textarea id="apply_reason" name="apply_reason" class="form-control" rows="3"
+                                                    placeholder="辛苦文案大大......" onclick="fill_value(this)" maxlength=225></textarea>
+                                            </div>
+
                                             <div class="form-group">
+                                                <label>
+                                                参与人数限制
+                                                </label>
                                                 <div class="row">
                                                     <div class="col">
                                                         <input type="number" id="maxpeople" name="maxpeople"
@@ -335,12 +373,13 @@
                                             <div class="form-group">
                                                 <label for="aintro">活动简介</label>
                                                 <textarea id="aintro" name="introduction" class="form-control" rows="3"
-                                                    placeholder="(必填)简介会随活动基本信息一同推送至订阅者的微信" onclick="fill_value(this)" required="required"></textarea>
+                                                    placeholder="(必填)简介会随活动基本信息一同推送至订阅者的微信" onclick="fill_value(this)" 
+                                                    required="required" maxlength=225></textarea>
                                             </div>
                                             <div class="form-group">
                                                 <label for="aintro">
                                                     活动推送链接
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="获取链接的方式：在推送中，点击右上角在默认浏览器中打开，然后复制链接填在此处即可。这一项可以在任何时间修改">
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="获取链接的方式：在推送中，点击右上角在默认浏览器中打开，然后复制链接填在此处即可。注意，如果是外网链接，请使用以http或https开头的绝对地址。这一项可以在任何时间修改。">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -349,7 +388,7 @@
                                                     </a>
                                                 </label>
                                                 {% if not examine %}
-                                                <input type="text" id="URL" name="URL" class="form-control"
+                                                <input type="url" id="URL" name="URL" class="form-control"
                                                     placeholder="{{url}}">
                                                 {% else %}
                                                 <a href="{{url}}"> {{url}} </a>
@@ -360,7 +399,9 @@
                                             {% if not examine and not edit or full_editable %}
                                             <div class="form-group">
                                                 <label>
-                                                    上传活动预告图片
+
+                                                    活动预告图片
+
                                                     <a data-toggle="tooltip" data-placement="bottom" title="可以选择默认的图片；如果推送中包含图片的话，也可以选取推送中包含的图片；这一项在审核通过后不可修改">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
@@ -374,22 +415,14 @@
                                                            class="custom-file-input" id="images" name="images" 
                                                            accept="image/*">
                                                     <label id="upload_annouce_photo" name="upload_annouce_photo" class="custom-file-label" 
-                                                           for="customFile"> 请上传一张图片 </label>
+                                                           for="customFile"> 选择历史活动图片或海报或以下默认图片之一 </label>
 
                                                 </div>
                                                 
                                             </div>
 
                                             <div class="form-group">
-                                                <div class="row">
-                                                    <div class="col-4">
-                                                        <div>
-                                                        <p></p>
-                                                        也可以选择一张默认图片
-                                                        <p></p>
-                                                        </div>
-                                                    </div>
-                                                </div>
+                                                
                                                 <div class="form-check">
                                                     <div class="row">
 
@@ -468,7 +501,7 @@
                     </div>
                 </div>
 
-            </div>
+            
         </div>
     </div>
     <!--  END CONTENT AREA  -->
@@ -542,13 +575,17 @@
             {% if not edit %}
             document.getElementById("aprice").placeholder = "参与活动元气值价格";
             {% endif %}
-            document.getElementById("from_college").value = "0"
+            document.getElementById("from_college").value = "0";
+            document.getElementById("reason_block").style.display = "none";
+            document.getElementById("apply_reason").required = "";
         } else {
             document.getElementById("aprice").value = "";
             {% if not edit %}
             document.getElementById("aprice").placeholder = "向学院申请的元气值数量";
             {% endif %}
-            document.getElementById("from_college").value = "1"
+            document.getElementById("from_college").value = "1";
+            document.getElementById("reason_block").style.display = "";
+            document.getElementById("apply_reason").required = "required";
         }
     }
 </script>
@@ -614,6 +651,9 @@
     {% endif %}
     // 宣传信息
     document.getElementById("aintro").placeholder = "{{introduction}}";
+    {% if yq_source == "向学院申请" %}
+    document.getElementById("apply_reason").placeholder = "{{apply_reason}}";
+    {% endif %}
 
 
     // input 不再必须填写
@@ -622,6 +662,7 @@
         all_inputs[i].required="";
     }
     document.getElementById("aintro").required = "";
+    document.getElementById("apply_reason").required = "";
 
     
     // 点击自动填充可修改
@@ -640,6 +681,7 @@
             {% endif %}
             {% if yq_source == "向学院申请" %}
             document.getElementById("from_college").value = "1";
+            document.getElementById("reason_block").style.display = "";
             {% else %}
             document.getElementById("from_college").value = "0";
             {% endif %}
@@ -649,6 +691,7 @@
             {% endif %}
             document.getElementById("title").disabled = true;
             document.getElementById("budget").disabled = true;
+            document.getElementById("apply_reason").disabled = true;
         {% endif %}
 
     {% else %}
@@ -656,10 +699,12 @@
         var all_inputs = document.getElementsByTagName("input");
         // 最后两项是 hidden input
         for(var i = 0; i < all_inputs.length; i++){
-            if (all_inputs[i].type != "hidden")
-                all_inputs[i].disabled = true;
+            if (all_inputs[i].type == "hidden" ||  all_inputs[i].type == "file" || all_inputs[i].name == "Query")
+                continue;
+            all_inputs[i].disabled = true;
         }
         document.getElementById("aintro").disabled = true;
+        document.getElementById("apply_reason").disabled = true;
         function fill_value(a) {
             console.log(a.value);
         }
@@ -692,6 +737,9 @@
         end = new Date(end);
         // 结束要比开始晚
         if (start > end) {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "结束时间不能早于开始时间。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -702,6 +750,9 @@
         var in_month = new Date();
         in_month = new Date(in_month.setDate(in_month.getDate() + 30));
         if (in_month < start) {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "活动应在一个月之内申请，晚些再创建吧。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -722,6 +773,9 @@
         else
             window.location.href = "/welcome/"
         if (applyEnd < now) {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "没有足够的准备时间（报名截止时间早于当前时间）。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -744,6 +798,9 @@
                 window.location.href = "/welcome/"
             if (applyEnd < now) {
                 // 相当于提前截止报名，在这改太麻烦了，在 viewActivity 界面留一个 button吧
+                {% if html_display.warn_code == 2 %}
+                document.getElementById("success_msg").style.display = "none";
+                {% endif %}
                 document.getElementById("warn_msg").style.display = "";
                 document.getElementById("warn_msg").innerHTML = "报名截止时间早于当前时间。若想提前截止报名，请返回活动详情界面操作。";
                 document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -753,6 +810,9 @@
             // 如果是已截止，也不需要提醒，重新开放就是了
         }
         if (before_start < applyEnd) {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "活动报名应在活动开始前一小时截止。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -760,22 +820,21 @@
         }
         {% endif %}
 
+
+        /* 非 edit 情况下 */
+        {% if not edit %}
         /* 选择了审核老师 */
-        {% if not examine %}
         if (document.getElementById("examine_teacher").value == "") {
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "尚未选择审核老师。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
-        {% endif %}
-
-        /* 非 edit 情况下，检查选择了报名方式 */
-        {% if not edit %}
+        /* 检查选择了报名方式 */
         var option = document.getElementById("signscheme").value;
         if (option == "") {
             document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "尚未选择报名方式。";
+            document.getElementById("warn_msg").innerHTML = "尚未选择报名模式。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
@@ -806,6 +865,9 @@
             return false;
         }
         {% endif %}
+        // 不能少于当前人数
+        {% if edit %}
+        {% endif %}
 
         /* 检查图片 */
         {% if not examine and not accepted %}
@@ -813,6 +875,8 @@
             if (!(document.getElementById("picture1").checked ||
                 document.getElementById("picture2").checked ||
                 document.getElementById("picture3").checked ||
+                document.getElementById("picture4").checked ||
+                document.getElementById("picture5").checked ||
                 document.getElementById("images").files.length > 0)
             ) {
                 document.getElementById("warn_msg").style.display = "";
@@ -838,17 +902,21 @@
         }
         if (document.getElementById("aintro").value == "")
             document.getElementById("aintro").value = document.getElementById("aintro").placeholder;
+        if (document.getElementById("apply_reason").value == "")
+            document.getElementById("apply_reason").value = document.getElementById("apply_reason").placeholder;
         {% endif %}
 
         return true;
     }
     {% if examine %}
     function check_examine() {
+        // 不要求活动报名时间截止
+        return true;
         var applyEnd = new Date("{{apply_end}}")
         var now = new Date()
         if (applyEnd < now) {
             document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "活动报名截止时间已过，请通知组织负责人修改。";
+            document.getElementById("warn_msg").innerHTML = "活动报名截止时间已过，请通知组织修改。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }

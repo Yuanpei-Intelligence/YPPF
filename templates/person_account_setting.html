@@ -57,6 +57,7 @@
                                             <div class="form mt-4">
                                                 <div class="form-group">
                                                     <div class="form-check">
+                                                        <!--
                                                         <label for="fullName">我的昵称</label>
                                                         <input type="text" class="form-control" id="nickname"
                                                         name="nickname" placeholder="{{userinfo.nickname}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
@@ -67,7 +68,7 @@
                                                             <input type="checkbox" class="form-check-input" id="show_nickname" name='show_nickname'>
                                                             {% endif %}
                                                             <label class="form-check-label" for="show_nickname">对外展示</label>
-                                                        </div>
+                                                        </div>-->
                                                         <label class="dob-input">我的性别</label>
                                                         <div class="d-sm-flex d-block">
                                                             <div class="form-group mr-1">
@@ -91,7 +92,7 @@
                                                             <label class="form-check-label" for="show_gender">对外展示</label>
                                                         </div>
                                                         <label for="fullName">我的电话</label>
-                                                        <input type="text" class="form-control" id="tel"
+                                                        <input type="tel" class="form-control" id="tel"
                                                         name="tel" placeholder="{{userinfo.telephone}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
                                                         <div class="form-check mb-4">
                                                             {% if useroj.show_tel %}
@@ -133,7 +134,7 @@
                                                             name="class" value="{{userinfo.stu_class}}">
                                                         -->
                                                         <label for="profession">我的邮箱</label>
-                                                        <input type="text" class="form-control" id="email" 
+                                                        <input type="email" class="form-control" id="email" 
                                                             name="email" placeholder="{{userinfo.email}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
                                                             <div class="form-check mb-4">
                                                                 {% if useroj.show_email %}
