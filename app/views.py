@@ -79,8 +79,8 @@ from django_apscheduler.jobstores import DjangoJobStore, register_events, regist
 from app.scheduler import scheduler
 
 # 注册启动以上schedule任务
-register_events(scheduler)
-scheduler.start()
+# register_events(scheduler)
+# scheduler.start()
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
@@ -399,10 +399,10 @@ def stuinfo(request, name=None):
             ~Q(status=Activity.Status.CANCELED),
         )
         activities_start = [
-            activity.start.strftime("%y-%m-%d %H:%M") for activity in activities
+            activity.start.strftime("%Y-%m-%d %H:%M") for activity in activities
         ]
         activities_end = [
-            activity.end.strftime("%y-%m-%d %H:%M") for activity in activities
+            activity.end.strftime("%Y-%m-%d %H:%M") for activity in activities
         ]
         if user_type == "Person":
             activities_me = Participant.objects.filter(person_id=person.id).values(
@@ -1684,9 +1684,9 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
         lis[-1]["id"] = record.id
 
         # 时间
-        lis[-1]["start_time"] = record.start_time.strftime("%y-%m-%d %H:%M")
+        lis[-1]["start_time"] = record.start_time.strftime("%Y-%m-%d %H:%M")
         if record.finish_time is not None:
-            lis[-1]["finish_time"] = record.finish_time.strftime("%y-%m-%d %H:%M")
+            lis[-1]["finish_time"] = record.finish_time.strftime("%Y-%m-%d %H:%M")
 
         # 对象
         # 如果是给出列表，那么对象就是接收者
@@ -2004,11 +2004,11 @@ def viewActivity(request, aid=None):
     org_name = org.oname
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
-    start_time = activity.start.strftime("%y-%m-%d %H:%M")
-    end_time = activity.end.strftime("%y-%m-%d %H:%M")
+    start_time = activity.start.strftime("%Y-%m-%d %H:%M")
+    end_time = activity.end.strftime("%Y-%m-%d %H:%M")
     start_THEDAY = activity.start.day # 前端使用量
     prepare_times = Activity.EndBeforeHours.prepare_times
-    apply_deadline = activity.apply_end.strftime("%y-%m-%d %H:%M")
+    apply_deadline = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     introduction = activity.introduction
     show_url = True # 前端使用量
     aURL = activity.URL
@@ -2340,7 +2340,7 @@ def addActivity(request, aid=None):
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
-        # print(e)
+        print(e)
         return redirect("/welcome/")
 
     # 处理 POST 请求
@@ -2352,7 +2352,8 @@ def addActivity(request, aid=None):
                 with transaction.atomic():
                     aid = create_activity(request)
                     return redirect(f"/viewActivity/{aid}")
-            except:
+            except Exception as e:
+                print(e)
                 return redirect("/welcome/")
 
         # 仅这几个阶段可以修改
@@ -2392,7 +2393,8 @@ def addActivity(request, aid=None):
                 html_display["warn_msg"] = str(e)
                 html_display["warn_code"] = 1
                 # return redirect(f"/viewActivity/{activity.id}")
-            except:
+            except Exception as e:
+                print(e)
                 return redirect("/welcome/")
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
@@ -2426,7 +2428,7 @@ def addActivity(request, aid=None):
                 # 不是三个可以评论的状态
                 commentable = front_check = False
         except Exception as e:
-            # print(e)
+            print(e)
             return redirect("/welcome/")
 
         # 决定状态的变量
@@ -2439,9 +2441,9 @@ def addActivity(request, aid=None):
         title = activity.title
         budget = activity.budget
         location = activity.location
-        start = activity.start.strftime("%y-%m-%d %H:%M")
-        end = activity.end.strftime("%y-%m-%d %H:%M")
-        apply_end = activity.apply_end.strftime("%y-%m-%d %H:%M")
+        start = activity.start.strftime("%Y-%m-%d %H:%M")
+        end = activity.end.strftime("%Y-%m-%d %H:%M")
+        apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
         introduction = activity.introduction
         url = activity.URL
         endbefore = activity.endbefore
@@ -2547,9 +2549,9 @@ def examineActivity(request, aid):
     title = activity.title
     budget = activity.budget
     location = activity.location
-    apply_end = activity.apply_end.strftime("%y-%m-%d %H:%M")
-    start = activity.start.strftime("%y-%m-%d %H:%M")
-    end = activity.end.strftime("%y-%m-%d %H:%M")
+    apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
+    start = activity.start.strftime("%Y-%m-%d %H:%M")
+    end = activity.end.strftime("%Y-%m-%d %H:%M")
     introduction = activity.introduction
     url = activity.URL
     endbefore = activity.endbefore
@@ -2752,9 +2754,9 @@ def notification2Display(notification_list):
         lis[-1]["id"] = notification.id
 
         # 时间
-        lis[-1]["start_time"] = notification.start_time.strftime("%y-%m-%d %H:%M")
+        lis[-1]["start_time"] = notification.start_time.strftime("%Y-%m-%d %H:%M")
         if notification.finish_time is not None:
-            lis[-1]["finish_time"] = notification.finish_time.strftime("%y-%m-%d %H:%M")
+            lis[-1]["finish_time"] = notification.finish_time.strftime("%Y-%m-%d %H:%M")
 
         # 留言
         lis[-1]["content"] = notification.content
