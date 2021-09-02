@@ -223,7 +223,7 @@ def changeActivityStatus(aid, cur_status, to_status):
 
             activity.status = to_status
     
-            if activity.status == Activity.Status.WAITING:
+            if to_status == Activity.Status.WAITING:
                 if activity.bidding:
                     """
                     投点时使用
@@ -232,16 +232,21 @@ def changeActivityStatus(aid, cur_status, to_status):
                     else:
                         weighted_draw_lots(activity)
                     """
-                draw_lots(activity)
+                    draw_lots(activity)
 
 
             # 活动变更为进行中时，修改参与人参与状态
-            elif activity.status == Activity.Status.PROGRESSING:
+            elif to_status == Activity.Status.PROGRESSING:
                 if activity.need_checkin:
-                    Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS).update(status=Participant.AttendStatus.UNATTENDED)
+                    Participant.objects.filter(
+                        activity_id=aid, 
+                        status=Participant.AttendStatus.APLLYSUCCESS
+                    ).update(status=Participant.AttendStatus.UNATTENDED)
                 else:
-                    Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS).update(status=Participant.AttendStatus.ATTENDED)
-
+                    Participant.objects.filter(
+                        activity_id=aid, 
+                        status=Participant.AttendStatus.APLLYSUCCESS
+                    ).update(status=Participant.AttendStatus.ATTENDED)
 
             # 结束，计算积分    
             else:
@@ -278,10 +283,16 @@ def draw_lots(activity):
     leftQuota = activity.capacity - engaged
 
     if l <= leftQuota:
-        Participant.objects.filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING).update(status=Participant.AttendStatus.APLLYSUCCESS)
+        Participant.objects.filter(
+            activity_id=activity.id, 
+            status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYFAILED]
+        ).update(status=Participant.AttendStatus.APLLYSUCCESS)
     else:
         lucky_ones = sample(range(l), leftQuota)
-        for i, participant in enumerate(Participant.objects.select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)):
+        for i, participant in enumerate(Participant.objects.select_for_update().filter(
+            activity_id=activity.id, 
+            status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYFAILED]
+        )):
             if i in lucky_ones:
                 participant.status = Participant.AttendStatus.APLLYSUCCESS
             else:
@@ -332,7 +343,7 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
         activity = Activity.objects.get(id=aid)
         if msg_type == "newActivity":
             msg = f"您关注的组织{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
-            msg += f"开始时间: {activity.start}\n"
+            msg += f"开始时间: {activity.start.strftime('%y-%m-%d %H:%M')}\n"
             msg += f"活动地点: {activity.location}\n"
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
@@ -340,7 +351,7 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
             receivers = [subscriber.person_id for subscriber in subscribers]
         elif msg_type == "remind":
             msg = f"您参与的活动 <{activity.title}> 即将开始。\n"
-            msg += f"开始时间: {activity.start}\n"
+            msg += f"开始时间: {activity.start.strftime('%y-%m-%d %H:%M')}\n"
             msg += f"活动地点: {activity.location}\n"
             participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
             receivers = [participant.person_id.person_id for participant in participants]
@@ -363,7 +374,8 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
             )
-            receivers =  set(subscribers) - set([participant.person_id for participant in participants])
+            receivers =  list(set(subscribers) - set([participant.person_id for participant in participants]))
+            receivers = [receiver.person_id for receiver in receivers]
         # 应该用不到了，调用的时候分别发给 par 和 sub
         # 主要发给两类用户的信息往往是不一样的
         elif msg_type == 'modification_all':
@@ -375,6 +387,7 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
                 id__in=activity.organization_id.unsubscribers.all()
             )
             receivers = set([participant.person_id for participant in participants]) | set(subscribers)
+            receivers = [receiver.person_id for receiver in receivers]
         else:
             raise ValueError
         success, _ = bulk_notification_create(
@@ -395,6 +408,11 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
         pass
 
 
+
+try:
+    default_weather = local_dict['default_weather']
+except:
+    default_weather = None
 
 @register_job(scheduler, 'interval', id="get weather per hour", hours=1)
 def get_weather():
@@ -422,6 +440,6 @@ def get_weather():
         # 相当于超时
         # TODO: 增加天气超时的debug
         print("任务超时")
-        return None
+        return default_weather
     else:
         return weather_dict
