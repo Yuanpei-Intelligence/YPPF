@@ -73,7 +73,6 @@ def update_pos_application(application, me, user_type, applied_org, info):
 
             else:
                 # 无论是新建还是修改, 都应该根据申请类别、申请职务和申请理由进行审核
-
                 # 申请理由
                 apply_reason = info.get("apply_reason")
                 if apply_reason is None or apply_reason == "":
@@ -110,10 +109,14 @@ def update_pos_application(application, me, user_type, applied_org, info):
 
                 # 如果是新建申请, 则应该意味着me+applied_org的pending申请目前不存在
                 if post_type == "new_submit":
+                    if len(ModifyPosition.objects.filter(
+                        person=me, status=ModifyPosition.Status.PENDING
+                    ))>=3:
+                        return wrong("审核中的人事变动申请的数目不能超过三个！")
                     if ModifyPosition.objects.filter(
                         person=me, org=applied_org, status=ModifyPosition.Status.PENDING
                     ).exists():
-                        return wrong()
+                        return wrong("向该组织的申请已存在，请不要重复申请！")
                     # 至此可以新建申请, 创建一个空申请
                     application = ModifyPosition.objects.create(
                         typename="ModifyPosition", pos=apply_pos, person=me, org=applied_org, apply_type=apply_type, reason=apply_reason)
