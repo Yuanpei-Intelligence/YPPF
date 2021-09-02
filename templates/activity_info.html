@@ -187,7 +187,7 @@
                                 <!--                            begin person view                            -->
                                 <!-- ----------------------------------------------------------------------- -->
 
-                                {% if pStatus == "无记录" and status == "报名中" and bidding == True %}
+                                {% if pStatus == "无记录" and status == "报名中" %}
                                 <form method="POST">
                                     <input type="hidden" name="option" value="apply">
                                     <button class="btn btn-primary btn-block mb-4 mr-2">立即报名</button>
@@ -312,7 +312,7 @@
             </div>
             <!--  END INTRODUCTION  -->
 
-            {% if ownership and need_checkin and status == "报名中" %}
+            {% if ownership and need_checkin %}
             <!--  BEGIN QR CODE  -->
             <div class="container w-100 px-0 layout-top-spacing">
                 <div class="statbox widget box box-shadow">
@@ -352,6 +352,7 @@
         $("#upload_annouce_photo").html(text);
     }
 </script>
+
 <!--  END CONTENT AREA  -->
 
 {% endblock %}
