@@ -418,7 +418,7 @@ except:
 def get_weather():
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     try:
-        city = "Beijing"
+        city = "Haidian"
         key = local_dict["weather_api_key"]
         lang = "zh_cn"
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={key}&lang={lang}"
