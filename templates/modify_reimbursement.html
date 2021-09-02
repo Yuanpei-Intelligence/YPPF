@@ -82,14 +82,21 @@
                                         {%if  is_new_application %}
                                         <div class="form-group">
                                             <label>报销活动</label>
-                                            <select name="activity_id" class="form-control">
-                                                {% for activity in activities.all%}
-                                                <option value={{activity.id}}
-                                                >{{activity.title}}({{activity.start.month}}月{{activity.start.day}}日
-                                                    活动预算:{{activity.budget}})
-                                                </option>
-                                                {%endfor%}
+                                             {%if activities.len > 0%}
+                                                <select name="activity_id" class="form-control">
+
+                                                        {% for activity in activities.all%}
+                                                        <option value={{activity.id}}
+                                                        >{{activity.title}}({{activity.start.month}}月{{activity.start.day}}日
+                                                            活动预算:{{activity.budget}})
+                                                        </option>
+                                                        {%endfor%}
+                                                </select>
+                                            {%else%}
+                                            <select  class="form-control">
+                                                <option>当前无活动可报销</option>
                                             </select>
+                                            {%endif%}
                                         </div>
                                         {%endif%}
 
