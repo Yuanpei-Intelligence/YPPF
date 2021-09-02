@@ -387,8 +387,8 @@
                                             <a class="row m-0" href="/viewActivity/{{ a.id }}">
                                                 <h5
                                                     style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                    <span class="text-{{ activity_c }} mr-1">
-                                                        [{{ a.status }}]
+                                                    <span class="badge badge-pill badge-{{ activity_c }} mr-1">
+                                                        {{ a.status }}
                                                     </span>
                                                     <u>{{ a.title }}</u>
                                                 </h5>
@@ -406,8 +406,10 @@
                                                 {{ a.introduction }}
                                                 {% endif %}
                                             </p>
-                                            <p class="col-5 text-{{ attend_c }} float-right pr-2">
-                                                {{ status }}
+                                            <p class="col-5 float-right pr-2">
+                                                <span class="badge badge-pill badge-{{ attend_c }}">
+                                                    {{ status }}
+                                                </span>
                                             </p>
                                         </div>
                                     </div>
