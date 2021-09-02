@@ -409,6 +409,11 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
 
 
 
+try:
+    default_weather = local_dict['default_weather']
+except:
+    default_weather = None
+
 @register_job(scheduler, 'interval', id="get weather per hour", hours=1)
 def get_weather():
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
@@ -435,6 +440,6 @@ def get_weather():
         # 相当于超时
         # TODO: 增加天气超时的debug
         print("任务超时")
-        return None
+        return default_weather
     else:
         return weather_dict

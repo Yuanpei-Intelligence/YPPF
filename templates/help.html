@@ -1,6 +1,17 @@
 <!-- 此界面的折叠来自于search.html中的style，在其他需要添加的页面需要在add_css_file的block添加所需的style
     具体请参看search.html -->
-<div class="col-lg-12 col-12 layout-top-spacing">
+    <style class="text/css">
+        [data-toggle="collapse"] .fa:before {
+            font-family: 'Font Awesome 5 Free';  
+            content: "\f068";
+            float: right; 
+        }
+    
+        [data-toggle="collapse"].collapsed .fa:before {
+            content: "\f067"; 
+        }
+    </style>
+    <div class="col-lg-12 col-12 layout-top-spacing">
     <div class="bio layout-spacing ">
         <div class="widget-content widget-content-area">
             <div data-toggle="collapse" href="#help-content" role="button"
