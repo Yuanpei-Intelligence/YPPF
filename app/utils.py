@@ -397,7 +397,7 @@ def get_captcha(request, username, valid_seconds=None, more_info=False):
         expired = True
     elif valid_seconds is not None:
         try:
-            valid_from = datetime.strptime(valid_from, "%Y-%m-%dT%H:%M")
+            valid_from = datetime.strptime(valid_from, "%Y-%m-%d %H:%M")
             assert datetime.utcnow() <= valid_from + timedelta(seconds=valid_seconds)
         except:
             expired = True
@@ -477,7 +477,6 @@ def check_account_setting(request,user_type):
         html_display['warn_code'] = 0
         html_display['warn_message'] = ""
 
-        attr_dict['nickname'] = request.POST['nickname']
         attr_dict['biography'] = request.POST["aboutBio"]
         attr_dict['telephone'] = request.POST["tel"]
         attr_dict['email'] = request.POST["email"]
@@ -500,9 +499,10 @@ def check_account_setting(request,user_type):
         show_dict['show_dorm'] = request.POST.get('show_dorm') == 'on'
 
         # 合法性检查
-        if len(attr_dict['nickname']) > 20:
+        """if len(attr_dict['nickname']) > 20:
             html_display['warn_code'] = 1
-            html_display['warn_message'] += "输入的昵称过长，不能超过20个字符哦！"
+            html_display['warn_message'] += "输入的昵称过长，不能超过20个字符哦！" 
+        """
 
         if len(attr_dict['biography']) > 1024:
             html_display['warn_code'] = 1
@@ -544,6 +544,7 @@ def get_unreimb_activity(org):
             .filter(organization_id=org)  # 本部门组织的
             .filter(status=Activity.Status.END)  # 已结束的
             .exclude(id__in=reimbursed_act_ids))  # 还没有报销的
+    activities.len=len(activities)
     return activities
 def accept_modifyorg_submit(application): #同意申请，假设都是合法操作
     # 新建一系列东西

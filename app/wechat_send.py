@@ -200,6 +200,9 @@ def publish_notification(notification_or_id):
         print(f"未找到id为{notification_or_id}的通知")
         return False
     sender = get_person_or_org(notification.sender)  # 也可能是组织
+    url = notification.URL
+    if url and url[0] == "/":  # 相对路径变为绝对路径
+        url = THIS_URL + url
 
     if len(notification.content) < 120:  # 卡片类型消息最多显示256字节
         kws = {"card": True}  # 因留白等原因，内容120字左右就超出了
@@ -209,12 +212,11 @@ def publish_notification(notification_or_id):
                 f"发送者：{str(sender)}",
                 "通知内容：",
                 notification.content,
-                "查看详情",
             )
         )
-        if notification.URL:
-            kws["url"] = notification.URL
-            kws["btntxt"] = "阅读原文"
+        if url:
+            kws["url"] = url
+            kws["btntxt"] = "查看详情"
     else:  # 超出卡片字数范围的消息使用文本格式发送
         kws = {"card": False}
         message = "\n".join(
@@ -227,10 +229,7 @@ def publish_notification(notification_or_id):
                 notification.content,
             )
         )
-        if notification.URL:
-            url = notification.URL
-            if url[0] == "/":  # 相对路径变为绝对路径
-                url = THIS_URL + url
+        if url:
             message += f'\n\n<a href="{url}">阅读原文</a>'
         else:
             message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
@@ -238,6 +237,8 @@ def publish_notification(notification_or_id):
     if isinstance(receiver, NaturalPerson):
         wechat_receivers = [notification.receiver.username]  # user.username是id
     else:  # 组织
+        # 转发组织消息给其负责人
+        message += f'\n消息来源：{str(receiver)}，请切换到该组织账号进行操作。'
         wechat_receivers = list(
             receiver.position_set.filter(pos=0).values_list(
                 "person__person_id__username", flat=True
@@ -332,12 +333,11 @@ def publish_notifications(
                 f"发送者：{str(sender)}",
                 "通知内容：",
                 content,
-                "查看详情",
             )
         )
         if url:
             kws["url"] = url
-            kws["btntxt"] = "阅读原文"
+            kws["btntxt"] = "查看详情"
     else:  # 超出卡片字数范围的消息使用文本格式发送
         kws = {"card": False}
         message = "\n".join(
@@ -365,9 +365,6 @@ def publish_notifications(
     receiver_set = set(wechat_receivers)
     #事实上该逻辑支持群发给多个组织的多个负责人
     org_receivers = Organization.objects.filter(organization_id__in=receiver_ids)
-    #为不破坏上述注释中陈述的逻辑，只在单独发给组织账号的消息中加入后缀。群发给不同组织的消息（虽然现在没人用这个功能）则不加
-    if len(org_receivers)==1:
-        message +=f'转发自组织{org_receivers[0].oname}的消息，请点击并切换到该组织账号处理。'
     for org in org_receivers:
         managers = org.position_set.filter(pos=0).values_list(
             "person__person_id__username", flat=True
