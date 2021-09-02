@@ -46,6 +46,7 @@ migrations/
 test_data/
 comment/
 avatar/
+wallpaper/
 # Python #
 __pycache__/
 *.py[cod]

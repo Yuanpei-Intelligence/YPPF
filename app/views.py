@@ -549,6 +549,7 @@ def user_login_org(request, org):
 
 
 
+
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 def orginfo(request, name=None):
@@ -918,10 +919,11 @@ def account_setting(request):
         userinfo = info.values()[0]
 
         useroj = Organization.objects.get(organization_id=user)
-
+        former_wallpaper = utils.get_user_wallpaper(me, "Organization")
         if request.method == "POST" and request.POST:
 
             ava = request.FILES.get("avatar")
+            wallpaper=request.FILES.get("wallpaper")
             # 合法性检查
             attr_dict, show_dict, html_display = utils.check_account_setting(request, user_type)
             attr_check_list = [attr for attr in attr_dict.keys()]
@@ -929,6 +931,7 @@ def account_setting(request):
                 return render(request, "person_account_setting.html", locals())
 
             expr = bool(ava)
+
             expr += bool(sum(
                 [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_check_list]))
 
@@ -939,6 +942,9 @@ def account_setting(request):
                 pass
             else:
                 useroj.avatar = ava
+            expr += bool(wallpaper)
+            if wallpaper is not None:
+                useroj.wallpaper = wallpaper
             useroj.save()
             avatar_path = settings.MEDIA_URL + str(ava)
             if expr >= 1:
@@ -1471,18 +1477,29 @@ def transaction_page(request, rid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-
+    html_display['warn_code'] = 0
 
     try:
         user = User.objects.get(id=rid)
         recipient = utils.get_person_or_org(user)
-        assert hasattr(recipient, "organization_id")
-        assert user_type == "Organization"
-        assert user != recipient
+
     except:
-        return redirect("/welcome/")
-
-
+        return redirect(
+            "/welcome/?warn_code=1&warn_message=该用户不存在，无法实现转账!")
+    if not hasattr(recipient, "organization_id") or user_type != "Organization":
+        html_display = wrong("目前只支持组织向组织转账！")
+    if request.user == user:
+        html_display=wrong("不能向自己转账！")
+    if html_display['warn_code']==1:
+        if hasattr(recipient, "organization_id"):
+            return redirect(
+                "/orginfo/{name}?warn_code=1&warn_message={message}".format(name=recipient.oname,
+                                                                                      message=html_display[
+                                                                                          'warn_message']))
+        else:
+            return  redirect(
+                "/stuinfo/{name}?warn_code=1&warn_message={message}".format(name=recipient.name,
+                                                                            message=html_display['warn_message']))
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # 如果希望前移，请联系YHT
     bar_display = utils.get_sidebar_and_navbar(request.user)
@@ -3145,7 +3162,10 @@ def modifyPosition(request):
         apply_type_list[application.apply_type]['selected'] = True
         if application.pos is not None:
             position_name_list[application.pos]['selected'] = True
-        
+        #未通过时，不能修改，但是需要呈现变量。
+        if application.status != ModifyPosition.Status.PENDING:  # 未通过
+            apply_type_list[application.apply_type]['disabled'] = False
+            position_name_list[application.pos]["disabled"] = False
 
     
 
