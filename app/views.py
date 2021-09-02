@@ -943,10 +943,11 @@ def account_setting(request):
         userinfo = info.values()[0]
 
         useroj = Organization.objects.get(organization_id=user)
-
+        former_wallpaper = utils.get_user_wallpaper(me, "Organization")
         if request.method == "POST" and request.POST:
 
             ava = request.FILES.get("avatar")
+            wallpaper=request.FILES.get("wallpaper")
             # 合法性检查
             attr_dict, show_dict, html_display = utils.check_account_setting(request, user_type)
             attr_check_list = [attr for attr in attr_dict.keys()]
@@ -954,6 +955,7 @@ def account_setting(request):
                 return render(request, "person_account_setting.html", locals())
 
             expr = bool(ava)
+
             expr += bool(sum(
                 [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_check_list]))
 
@@ -964,6 +966,9 @@ def account_setting(request):
                 pass
             else:
                 useroj.avatar = ava
+            expr += bool(wallpaper)
+            if wallpaper is not None:
+                useroj.wallpaper = wallpaper
             useroj.save()
             avatar_path = settings.MEDIA_URL + str(ava)
             if expr >= 1:
