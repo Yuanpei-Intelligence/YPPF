@@ -840,7 +840,7 @@ def homepage(request):
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     try:
         with open("weather.json") as weather_json:
-            html_display['weather'] = json.loads(weather_json)
+            html_display['weather'] = json.load(weather_json)
     except:
         from app.scheduler_func import get_weather
         html_display['weather'] = get_weather()
@@ -1423,7 +1423,7 @@ def modpw(request):
     if request.method == "POST" and request.POST:
         oldpassword = request.POST["pw"]
         newpw = request.POST["new"]
-        strict_check = False
+        strict_check = True
 
         if oldpassword == newpw and strict_check and not (forgetpw or isFirst):
             err_code = 1
@@ -2581,9 +2581,9 @@ def examineActivity(request, aid):
     need_checkin = activity.need_checkin
     apply_reason = activity.apply_reason
 
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "审查活动"
-    bar_display["narbar_name"] = "审查活动"
+    bar_display = utils.get_sidebar_and_navbar(request.user, "活动审核")
+    # bar_display["title_name"] = "审查活动"
+    # bar_display["narbar_name"] = "审查活动"
     return render(request, "activity_add.html", locals())
 
 @login_required(redirect_field_name="origin")
