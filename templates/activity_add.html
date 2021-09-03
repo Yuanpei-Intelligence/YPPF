@@ -735,12 +735,12 @@
         start = new Date(start);
         end = new Date(end);
         // 结束要比开始晚
-        if (start > end) {
+        if (start >= end) {
             {% if html_display.warn_code == 2 %}
             document.getElementById("success_msg").style.display = "none";
             {% endif %}
             document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "结束时间不能早于开始时间。";
+            document.getElementById("warn_msg").innerHTML = "结束时间应晚于开始时间。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
@@ -783,7 +783,7 @@
         {% else %}
         var before_start = new Date(start);
         before_start = new Date(before_start.setHours(before_start.getHours()-1));
-        var applyEnd = new Date("{{apply_end_for_js}}");
+        var applyEnd = new Date("{{apply_end}}");
         if (document.getElementById("adjust_apply_ddl").checked) {
             if (prepare_option == "0")
                 applyEnd = new Date(start.setHours(start.getHours()-1));
