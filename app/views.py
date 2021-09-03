@@ -866,7 +866,7 @@ def account_setting(request):
 
     # 补充网页呈现所需信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "账户设置")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "信息与隐私")
     # bar_display["title_name"] = "Account Setting"
     # bar_display["navbar_name"] = "账户设置"
     # bar_display["help_message"] = local_dict["help_message"]["账户设置"]
