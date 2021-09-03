@@ -2456,7 +2456,7 @@ def addActivity(request, aid=None):
         amount = activity.YQPoint
         signscheme = "先到先得"
         if bidding:
-            signscheme = "投点参与"
+            signscheme = "抽签模式"
         capacity = activity.capacity
         yq_source = "向学生收取"
         if activity.source == Activity.YQPointSource.COLLEGE:
