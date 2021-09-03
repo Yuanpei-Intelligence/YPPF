@@ -1132,7 +1132,7 @@ def get_stu_img(request):
     if stuId is not None:
         try:
             stu = NaturalPerson.objects.get(person_id__username=stuId)
-            img_path = utils.get_user_ava(stu, "Person")
+            img_path = stu.get_user_ava()
             return JsonResponse({"path": img_path}, status=200)
         except:
             return JsonResponse({"message": "Image not found!"}, status=404)
@@ -1222,16 +1222,17 @@ def search(request):
             {
                 "oname": org.oname,
                 "otype": org.otype,
-                "pos0": [
-                    w["person__name"]
-                    for w in list(
-                        org.position_set.activated()
-                            .filter(pos=0)
-                            .values("person__name")
-                    )
-                ],
+                "pos0": org.position_set.activated().filter(pos=0),  #TODO:直接查到一个NaturalPerson的Query_set
+                # [
+                #     w["person__name"]
+                #     for w in list(
+                #         org.position_set.activated()
+                #             .filter(pos=0)
+                #             .values("person__name")
+                #     )
+                # ],
                 "activities": get_recent_activity(org),
-                "get_avatar_path": org.get_avatar_path()
+                "get_user_ava": org.get_user_ava()
             }
         )
 
@@ -2010,7 +2011,7 @@ def viewActivity(request, aid=None):
     # 下面这些都是展示前端页面要用的
     title = activity.title
     org_name = org.oname
-    org_avatar_path = utils.get_user_ava(org, "Organization")
+    org_avatar_path = org.get_user_ava()
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
     start_time = activity.start.strftime("%Y-%m-%d %H:%M")
     end_time = activity.end.strftime("%Y-%m-%d %H:%M")
@@ -2323,7 +2324,7 @@ def addActivity(request, aid=None):
     try:
         valid, user_type, html_display = utils.check_user_type(request.user)
         assert valid
-        me = utils.get_person_or_org(request.user, user_type)
+        me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为组织账户
         if aid is None:
             assert user_type == "Organization"
             edit = False
@@ -2408,7 +2409,7 @@ def addActivity(request, aid=None):
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
     html_display["applicant_name"] = me.oname
-    html_display["app_avatar_path"] = utils.get_user_ava(me, "Organization")
+    html_display["app_avatar_path"] = me.get_user_ava() 
     if not edit:
         avialable_teachers = NaturalPerson.objects.teachers()
     else:
@@ -2584,7 +2585,8 @@ def examineActivity(request, aid):
         no_limit = True
     examine_teacher = activity.examine_teacher.name
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
-    html_display["app_avatar_path"] = utils.get_user_ava(activity.organization_id,"Organization")
+    # html_display["app_avatar_path"] = utils.get_user_ava(activity.organization_id,"Organization")h
+    html_display["app_avatar_path"] = activity.organization_id.get_user_ava()
     html_display["applicant_name"] = activity.organization_id.oname
     bar_display = utils.get_sidebar_and_navbar(request.user)
     status = activity.status
@@ -2958,11 +2960,11 @@ def showComment(commentbase):
     for comment in comments:
         commentator = get_person_or_org(comment.commentator)
         if comment.commentator.username[:2] == "zz":
-            comment.ava = utils.get_user_ava(commentator, "Organization")
+            comment.ava = commentator.get_user_ava()
             comment.URL = "/orginfo/{name}".format(name=commentator.oname)
             comment.commentator_name = commentator.oname
         else:
-            comment.ava = utils.get_user_ava(commentator, "Person")
+            comment.ava = commentator.get_user_ava()
             comment.URL = "/stuinfo/{name}".format(name=commentator.name)
             comment.commentator_name = commentator.name
         comment.len = len(comment.comment_photos.all())
@@ -3172,8 +3174,8 @@ def modifyPosition(request):
     comments = showComment(application) if application is not None else None
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
     apply_person = me if is_new_application else application.person
-    app_avatar_path = utils.get_user_ava(apply_person, "Person")
-    org_avatar_path = utils.get_user_ava(applied_org, "Organization")
+    app_avatar_path = apply_person.get_user_ava()
+    org_avatar_path = applied_org.get_user_ava()
     # 获取个人与组织[在当前学年]的关系
     current_pos_list = Position.objects.current().filter(person=apply_person, org=applied_org)
     # 应当假设只有至多一个类型
@@ -3536,7 +3538,7 @@ def modifyReimbursement(request):
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
     apply_person = me if is_new_application else utils.get_person_or_org(application.pos)
     #申请人头像
-    app_avatar_path = utils.get_user_ava(apply_person,"Organization")
+    app_avatar_path = apply_person.get_user_ava()
 
     # 未报销活动
     activities = utils.get_unreimb_activity(apply_person)
@@ -3725,13 +3727,14 @@ def modifyOrganization(request):
     
     # 评论区
     commentable = allow_comment
-    comments = showComment(application) if application is not None else None
+    # comments = showComment(application) if application is not None else None
+    comments = showComment(application)
     # 用于前端展示
     apply_person = me if is_new_application else NaturalPerson.objects.get(person_id=application.pos)
-    app_avatar_path = utils.get_user_ava(apply_person,"Person")
+    app_avatar_path = apply_person.get_user_ava()
     org_avatar_path = utils.get_user_ava(application, "Organization")
     org_types = OrganizationType.objects.order_by("-otype_id").all()  # 当前组织类型，前端展示需要
-    former_img = utils.get_user_ava(None, "Organization")
+    former_img = Organization().get_user_ava()
     if not is_new_application:
         org_type_list[application.otype]['selected'] = True
 
