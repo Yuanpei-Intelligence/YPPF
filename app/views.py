@@ -73,6 +73,7 @@ import random
 import requests  # 发送验证码
 import io
 import csv
+import os
 
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
@@ -2469,6 +2470,13 @@ def addActivity(request, aid=None):
         need_checkin = activity.need_checkin
         apply_reason = activity.apply_reason
         comments = showComment(activity)
+        photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
+        uploaded_photo = False
+        if str(photo).startswith("activity"):
+            uploaded_photo = True
+            photo = os.path.basename(photo)
+        else:
+            photo_id = "picture" + os.path.basename(photo).split(".")[0]
 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     if not edit:
