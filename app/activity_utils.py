@@ -169,7 +169,7 @@ def activity_base_check(request, edit=False):
     announcephoto = request.FILES.getlist("images")
     if len(announcephoto) > 0:
         pic = announcephoto[0]
-        if if_image(pic) == False:
+        if if_image(pic)!=2:
             raise ActivityException("上传的附件只支持图片格式。")
     else:
         if request.POST.get("picture1"):
