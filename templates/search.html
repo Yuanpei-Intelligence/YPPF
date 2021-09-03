@@ -86,7 +86,8 @@
                                                 <!-- 说明此时要展示姓名，关联链接 -->
                                                 <td style="min-width: 80px;">
                                                     <u>
-                                                        <a href="/stuinfo/{{ person.name }}+{{ person.person_id.id }}">
+                                                        <a href="/stuinfo/{{ person.name }}+{{ person.person_id.id }}"></a>
+                                                            <img src="{{ person.get_avatar_path }}" alt="大头照" style="height: 20px; width: 20px;">
                                                             {{ attribute }}
                                                         </a>
                                                     </u>
@@ -171,7 +172,12 @@
                                             {% for orgn in org_display_list %}
                                             <tr class="w-100">
                                                 <td style="min-width: 100px;">
-                                                    <u><a href="/orginfo/{{ orgn.oname }}">{{ orgn.oname }}</a></u>
+                                                    <u>
+                                                        <a href="/orginfo/{{ orgn.oname }}">
+                                                            <img src="{{ orgn.get_avatar_path }}" alt="大头照" style="width: 20px; height: 20px;">
+                                                            {{ orgn.oname }}
+                                                        </a>
+                                                    </u>
                                                 </td>
                                                 <td style="min-width: 100px;">
                                                     {{ orgn.otype }}
