@@ -343,7 +343,7 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
         activity = Activity.objects.get(id=aid)
         if msg_type == "newActivity":
             msg = f"您关注的组织{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
-            msg += f"开始时间: {activity.start.strftime('%y-%m-%d %H:%M')}\n"
+            msg += f"开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}\n"
             msg += f"活动地点: {activity.location}\n"
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
@@ -351,7 +351,7 @@ def notifyActivity(aid:int, msg_type:str, msg=""):
             receivers = [subscriber.person_id for subscriber in subscribers]
         elif msg_type == "remind":
             msg = f"您参与的活动 <{activity.title}> 即将开始。\n"
-            msg += f"开始时间: {activity.start.strftime('%y-%m-%d %H:%M')}\n"
+            msg += f"开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}\n"
             msg += f"活动地点: {activity.location}\n"
             participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
             receivers = [participant.person_id.person_id for participant in participants]
