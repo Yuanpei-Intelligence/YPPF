@@ -593,6 +593,10 @@ def applyActivity(request, activity):
             assert amount == int(amount * 10) / 10
         """
         amount = float(activity.YQPoint)
+
+        if not payer.YQPoint + payer.quota >= amount:
+            raise ActivityException(f"没有足够的元气值。您当前的元气值数量为 {payer.YQPoint + payer.quota}")
+
         if activity.bidding:
             activity.current_participants += 1
         else:
@@ -601,21 +605,16 @@ def applyActivity(request, activity):
             else:
                 raise ActivityException("活动已报满，请稍后再试。")
 
-
-
-        # 这里 assert 对吗
-        if not payer.YQPoint + payer.quota >= amount:
-            raise ActivityException("没有足够的元气值。")
-
         use_quota = amount
         if payer.quota >= amount:
             payer.quota -= amount
+            amount = 0
         else:
             use_quota = payer.quota
             amount -= payer.quota
             payer.quota = 0
             payer.YQPoint -= amount
-        YP.YQPoint -= amount
+        YP.YQPoint -= use_quota
         # 用配额的部分
         if use_quota > 0:
             record = TransferRecord.objects.create(
@@ -623,7 +622,7 @@ def applyActivity(request, activity):
             )
             record.amount = use_quota
             record.message = "quota"
-            organization.YQPoint += amount
+            organization.YQPoint += use_quota
             record.status = TransferRecord.TransferStatus.ACCEPTED
             record.time = str(datetime.now())
             record.corres_act = activity
