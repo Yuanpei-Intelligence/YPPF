@@ -1227,7 +1227,8 @@ def search(request):
                             .values("person__name")
                     )
                 ],
-                "activities": get_recent_activity(org)
+                "activities": get_recent_activity(org),
+                "get_avatar_path": org.get_avatar_path()
             }
         )
 

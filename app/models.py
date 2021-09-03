@@ -98,6 +98,15 @@ class NaturalPerson(models.Model):
     def __str__(self):
         return str(self.name)
 
+    def get_avatar_path(self):
+        try:
+            avatar = self.avatar
+        except:
+            avatar = ""
+        if not avatar:
+            avatar = "avatar/person_default.jpg"
+        return settings.MEDIA_URL + str(avatar)
+
     def show_info(self):
         """
             返回值为一个列表，在search.html中使用，按照如下顺序呈现：
@@ -246,6 +255,15 @@ class Organization(models.Model):
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
         super().save(*args, **kwargs)
+
+    def get_avatar_path(self):
+        try:
+            avatar = self.avatar
+        except:
+            avatar = ""
+        if not avatar:
+            avatar = "avatar/org_default.png"
+        return settings.MEDIA_URL + str(avatar)
 
 
 class PositionManager(models.Manager):
