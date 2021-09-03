@@ -46,7 +46,7 @@ class NaturalPerson(models.Model):
         "性别", choices=Gender.choices, null=True, blank=True
     )
 
-    birthday = models.DateField("生日")
+    birthday = models.DateField("生日", null=True, blank=True)
     email = models.EmailField("邮箱", null=True, blank=True)
     telephone = models.CharField("电话", max_length=20, null=True, blank=True)
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
