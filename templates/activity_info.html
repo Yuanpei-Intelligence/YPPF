@@ -176,10 +176,13 @@
                             <div>
 
                                 {% if examine %}
-                                <button class="btn btn-primary btn-block mb-4 mr-2" data-toggle="collapse"
-                                    data-target="#extend-area" onclick="location='/examineActivity/{{aid}}'">
-                                    审批活动
-                                </button>
+                                    {%if status == "审核中" or not activity.valid%}
+                                    <button class="btn btn-primary btn-block mb-4 mr-2" data-toggle="collapse"
+                                        data-target="#extend-area" onclick="location='/examineActivity/{{aid}}'">
+                                        审批活动
+                                    </button>
+                                    {% endif %}
+
                                 {% endif %}
 
                                 {% if person %}

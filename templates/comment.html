@@ -56,8 +56,8 @@ img {
                 
                     <div class="custom-file" lang="zh">
                         <input onchange="showFilename(this.files)" type="file" 
-                               class="custom-file-input" id="customFile" name="comment_images" 
-                               accept="image/*"  multiple>
+                               class="custom-file-input" id="customFile" name="comment_images"
+                               accept="image/*"  multiple/>
                         <label id="uploadfile" class="custom-file-label" 
                                for="customFile">相关图片</label>
                     </div>
@@ -117,12 +117,14 @@ function showFilename(files){
             var name = images[i].name.toLowerCase();
             var format = name.substring(name.lastIndexOf('.') + 1);
             var flag = false;
+            var fileMaxSize = 3072
             for (var j = 0; j < formats.length; j++) {
                 if (formats[j] == format) {
                     flag = true;
                     break;
                 }
             }
+
             if (!flag) {
                 document.getElementById("warn_msg").style.display = "";
                 document.getElementById("warn_msg").innerHTML = "仅支持图片类型文件。";
