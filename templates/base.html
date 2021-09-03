@@ -76,7 +76,7 @@
                             <polyline points="22,6 12,13 2,6"></polyline>
 
                         </svg>
-                        <span class="badge "
+                        <span class="badge " id="mail_num" {% if not bar_display.mail_num %} hidden {% endif %}
                             style="background-color: black;color: currentColor;padding-top:0px;{% if bar_display.mail_num >= 10 %} padding-left:{% if bar_display.mail_num >= 100 %}4{% else %}1{% endif %}px;{% endif %}">
                             {% if bar_display.mail_num >= 100 %}
                             ...
