@@ -101,7 +101,6 @@ function showFilename(files){
     content: "上传";}
 </style>
 <script type="text/javascript">
-    {% if front_check %}
     function check_comment_inputs() {
         var images = document.getElementById("customFile").files;
         var comments = document.getElementById("comment").value;
@@ -124,7 +123,13 @@ function showFilename(files){
                     break;
                 }
             }
-
+            //检查图片大小
+            if ((images[i].size/1024)>fileMaxSize){
+                    document.getElementById("warn_msg").style.display = "";
+                    document.getElementById("warn_msg").innerHTML = "图片大小不应该超过3M";
+                    document.body.scrollTop = document.documentElement.scrollTop = 0;
+                    return false
+                }
             if (!flag) {
                 document.getElementById("warn_msg").style.display = "";
                 document.getElementById("warn_msg").innerHTML = "仅支持图片类型文件。";
@@ -134,10 +139,5 @@ function showFilename(files){
         }
         return true;
     }
-    {% else %}
-    function check_comment_inputs() {
-        return true;
-    }
-    {% endif %}
 </script>
 {%endblock%}
