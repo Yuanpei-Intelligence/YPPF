@@ -70,20 +70,20 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                             class="feather feather-mail">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z">
-                            </path>
-
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                             <polyline points="22,6 12,13 2,6"></polyline>
-
                         </svg>
-                        <span class="badge "
-                            style="background-color: black;color: currentColor;padding-top:0px;{% if bar_display.mail_num >= 10 %} padding-left:{% if bar_display.mail_num >= 100 %}4{% else %}1{% endif %}px;{% endif %}">
-                            {% if bar_display.mail_num >= 100 %}
-                            ...
-                            {% else %}
-                            {{bar_display.mail_num}}
-                            {% endif %}
-                        </span>
+
+                        {% if bar_display.mail_num > 0 %}
+                        {% if bar_display.mail_num < 10 %}
+                        <span class="bg-danger text-light" style="all: initial; position: absolute; left: 13px; top: 7px; font-size: 11px; border-radius: 8px; width: 16px; text-align: center;">{{ bar_display.mail_num }}</span>
+                        {% elif bar_display.mail_num < 100 %}
+                        <span class="bg-danger text-light" style="all: initial; position: absolute; left: 11px; top: 7px; font-size: 11px; border-radius: 8px; width: 22px; text-align: center;">{{ bar_display.mail_num }}</span>
+                        {% else %}
+                        <span class="bg-danger text-light" style="all: initial; position: absolute; left: 9px; top: 7px; font-size: 11px; border-radius: 8px; width: 28px; text-align: center;">99+</span>
+                        {% endif %}
+                        {% endif %}
+
                     </a>
                 </li>
                 <!--
@@ -151,7 +151,7 @@
                         </div>
                     </div>
                 </li>
-            -->
+                -->
                 <li class="nav-item dropdown notification-dropdown">
                     <a href="/welcome/" class="nav-link dropdown-toggle" id="notificationDropdown" aria-haspopup="true"
                         aria-expanded="false">
