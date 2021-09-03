@@ -169,7 +169,7 @@ def activity_base_check(request, edit=False):
     announcephoto = request.FILES.getlist("images")
     if len(announcephoto) > 0:
         pic = announcephoto[0]
-        if if_image(pic) == False:
+        if if_image(pic)!=2:
             raise ActivityException("上传的附件只支持图片格式。")
     else:
         if request.POST.get("picture1"):
@@ -478,7 +478,7 @@ def accept_activity(request, activity):
 
 
     # 向学院申请元气值时，审批通过后转账
-    if activity.source == Activity.YQPointSource.COLLEGE:
+    if activity.source == Activity.YQPointSource.COLLEGE and activity.YQPoint > 0:
         organization_id = activity.organization_id_id
         organization = Organization.objects.select_for_update().get(id=organization_id)
         YP = Organization.objects.select_for_update().get(oname="元培学院")
@@ -490,7 +490,6 @@ def accept_activity(request, activity):
         )
         record.amount = amount
         record.message = f"From College"
-        organization.YQPoint += float(amount)
         record.status = TransferRecord.TransferStatus.ACCEPTED
         record.time = str(datetime.now())
         record.corres_act = activity

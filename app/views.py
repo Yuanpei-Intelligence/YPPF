@@ -73,6 +73,7 @@ import random
 import requests  # 发送验证码
 import io
 import csv
+import os
 
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
@@ -1981,7 +1982,7 @@ def viewActivity(request, aid=None):
             except:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "上传活动照片不能为空"
-            if utils.if_image(photo) == False:
+            if utils.if_image(photo) !=2:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "上传的附件只支持图片格式"
             elif summary_photo_exists:
@@ -2470,6 +2471,13 @@ def addActivity(request, aid=None):
         need_checkin = activity.need_checkin
         apply_reason = activity.apply_reason
         comments = showComment(activity)
+        photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
+        uploaded_photo = False
+        if str(photo).startswith("activity"):
+            uploaded_photo = True
+            photo = os.path.basename(photo)
+        else:
+            photo_id = "picture" + os.path.basename(photo).split(".")[0]
 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     if not edit:
@@ -2894,7 +2902,7 @@ def addComment(request, comment_base, receiver=None):
             return context
         if len(comment_images) > 0:
             for comment_image in comment_images:
-                if utils.if_image(comment_image) == False:
+                if utils.if_image(comment_image)!=2:
                     context["warn_code"] = 1
                     context["warn_message"] = "评论中上传的附件只支持图片格式。"
                     return context
@@ -3259,7 +3267,7 @@ def showActivity(request):
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
-    is_teacher = False
+    is_teacher = False #该变量同时用于前端
     if user_type == "Person":
         try:
             person = utils.get_person_or_org(request.user, user_type)
