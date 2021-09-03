@@ -187,9 +187,15 @@
 
                     <!--  BEGIN MEMBERS -->
                     <div class="widget-content widget-content-area my-3">
-
-                        <div class="row">
-                            <h3 class="col mb-0">成员档案</h3>
+                        <div class="d-flex justify-content-between">
+                            <div class="row">
+                                <h3 class="col mb-0">成员档案</h3>
+                            </div>
+                            {% if html_display.is_myself %}
+                            <button class="btn btn-success btn-primary mb-4 mr-2" id="export_excel" type="button">
+                                    下载成员信息
+                            </button>
+                            {%endif%}
                         </div>
                         <hr>
                         
@@ -596,4 +602,30 @@
         return success;
     }
 </script>
+<script>
+    $("#export_excel").click(function () {
+     const req = new XMLHttpRequest();
+     var url='/orginfo/'+"{{org.oname}}"
+     req.open('POST', url, true);
+     req.responseType = 'blob';
+     req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
+     req.send("export_excel="+"download"); //输入参数
+    req.onload = function() {
+       const data = req.response;
+       const a = document.createElement('a');
+       const blob = new Blob([data]);
+       const blobUrl = window.URL.createObjectURL(blob);
+       download(blobUrl) ;
+     };
+   });
+   function download(blobUrl) {
+     const a = document.createElement('a');
+     a.style.display = 'none';
+     a.download = "{{org.oname}}"+'成员信息.xls';
+     a.href = blobUrl;
+     a.click();
+     document.body.removeChild(a);
+    }
+</script>
+
 {% endblock %}

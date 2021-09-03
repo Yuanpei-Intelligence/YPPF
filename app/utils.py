@@ -10,6 +10,8 @@ from app.models import (
     Help,
     Reimbursement,
     ModifyPosition,
+    Participant,
+    OrganizationType
 )
 from django.contrib.auth.models import User
 from django.dispatch.dispatcher import receiver
@@ -23,8 +25,9 @@ import re
 import imghdr
 import string
 import random
-
-
+import xlwt
+from io import BytesIO
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 def check_user_access(redirect_url="/logout/"):
     """
     Decorator for views that checks that the user is valid, redirecting
@@ -737,5 +740,72 @@ def operation_writer(user, message, source, status_code="OK"):
 
     lock.release()
 
+
+# 导出Excel文件
+def export_activity_signin(activity):
+
+  # 设置HTTPResponse的类型
+  response = HttpResponse(content_type='application/vnd.ms-excel')
+  response['Content-Disposition'] = f'attachment;filename={activity.title}({activity.start.month}月{activity.start.day}日).xls'
+  participants=Participant.objects.filter(activity_id=activity.id ).filter(status=Participant.AttendStatus.ATTENDED)
+  """导出excel表"""
+  if len(participants)>0:
+    # 创建工作簿
+    ws = xlwt.Workbook(encoding='utf-8')
+    # 添加第一页数据表
+    w = ws.add_sheet('sheet1') # 新建sheet（sheet的名称为"sheet1"）
+    # 写入表头
+    w.write(0, 0, u'姓名')
+    w.write(0, 1, u'学号')
+    # 写入数据
+    excel_row = 1
+    for participant in participants:
+      name = participant.person_id.name
+      Sno = participant.person_id.person_id.username
+      # 写入每一行对应的数据
+      w.write(excel_row, 0, name)
+      w.write(excel_row, 1, Sno)
+      excel_row += 1
+    # 写出到IO
+    output = BytesIO()
+    ws.save(output)
+    # 重新定位到开始
+    output.seek(0)
+    response.write(output.getvalue())
+  return response
+# 导出组织成员信息Excel文件
+def export_orgpos_info(org):
+    # 设置HTTPResponse的类型
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = f'attachment;filename=组织{org.oname}成员信息.xls'
+    participants = Position.objects.filter(org=org).filter(status=Position.Status.INSERVICE)
+    """导出excel表"""
+    if len(participants) > 0:
+        # 创建工作簿
+        ws = xlwt.Workbook(encoding='utf-8')
+        # 添加第一页数据表
+        w = ws.add_sheet('sheet1')  # 新建sheet（sheet的名称为"sheet1"）
+        # 写入表头
+        w.write(0, 0, u'姓名')
+        w.write(0, 1, u'学号')
+        w.write(0, 2, u'职位')
+        # 写入数据
+        excel_row = 1
+        for participant in participants:
+            name = participant.person.name
+            Sno = participant.person.person_id.username
+            pos=org.otype.job_name_list[participant.pos]
+            # 写入每一行对应的数据
+            w.write(excel_row, 0, name)
+            w.write(excel_row, 1, Sno)
+            w.write(excel_row, 2, pos)
+            excel_row += 1
+        # 写出到IO
+        output = BytesIO()
+        ws.save(output)
+        # 重新定位到开始
+        output.seek(0)
+        response.write(output.getvalue())
+    return response
 
 operation_writer(local_dict["system_log"], "系统启动", "util_底部")
