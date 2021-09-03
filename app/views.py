@@ -69,19 +69,14 @@ from django.views.decorators.http import require_POST, require_GET
 import json
 from datetime import date, datetime, timedelta
 from urllib import parse, request as urllib2
+import qrcode
 import random
 import requests  # 发送验证码
 import io
 import csv
 import os
 
-# 定时任务注册
-from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
-from app.scheduler import scheduler
-
-# 注册启动以上schedule任务
-# register_events(scheduler)
-# scheduler.start()
+# 定时任务不在views直接调用
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
