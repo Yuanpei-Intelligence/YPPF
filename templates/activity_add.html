@@ -740,7 +740,7 @@
             document.getElementById("success_msg").style.display = "none";
             {% endif %}
             document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "结束时间不能早于开始时间。";
+            document.getElementById("warn_msg").innerHTML = "结束时间应晚于开始时间。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }

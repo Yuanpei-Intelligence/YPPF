@@ -308,7 +308,6 @@ def modify_reviewing_activity(request, activity):
     if context.get("adjust_apply") is not None:
         # 注意这里是不调整
         assert context["adjust_apply"] == False
-        print(activity.apply_end)
         assert activity.apply_end <= context["start"] - timedelta(hours=1)
     else:
         activity.apply_end = context["signup_end"]
