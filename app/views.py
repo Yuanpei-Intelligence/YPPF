@@ -2004,8 +2004,9 @@ def viewActivity(request, aid=None):
     org_name = org.oname
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
-    start_time = activity.start.strftime("%Y-%m-%d %H:%M")
-    end_time = activity.end.strftime("%Y-%m-%d %H:%M")
+    start_month = activity.start.month
+    start_date = activity.start.day
+    duration = activity.end - activity.start
     start_THEDAY = activity.start.day # 前端使用量
     prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.apply_end.strftime("%Y-%m-%d %H:%M")
