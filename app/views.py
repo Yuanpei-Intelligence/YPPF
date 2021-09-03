@@ -754,7 +754,8 @@ def homepage(request):
     if is_person:
         with transaction.atomic():
             np = NaturalPerson.objects.select_for_update().get(person_id=request.user)
-            if np.last_time_login is None or np.last_time_login.date != nowtime.date:
+            if np.last_time_login is None or np.last_time_login.date() != nowtime.date():
+                print("date:", np.last_time_login.date(), nowtime.date())
                 np.last_time_login = nowtime
                 np.bonusPoint += 0.5
                 np.save()
@@ -2048,6 +2049,11 @@ def viewActivity(request, aid=None):
 
     # 签到
     need_checkin = activity.need_checkin
+    show_QRcode = activity.need_checkin and activity.status in [
+        Activity.Status.APPLYING,
+        Activity.Status.WAITING,
+        Activity.Status.PROGRESSING
+    ]
 
     if ownership and need_checkin:
         aQRcode = get_activity_QRcode(activity)
@@ -2211,6 +2217,7 @@ def checkinActivity(request, aid=None):
         activity = Activity.objects.get(id=int(aid))
         varifier = request.GET["auth"]
         assert varifier == hash_coder.encode(aid)
+        assert activity.status == Activity.Status.PROGRESSING
     except:
         return redirect("/welcome/")
     try:
