@@ -69,6 +69,7 @@ from django.views.decorators.http import require_POST, require_GET
 import json
 from datetime import date, datetime, timedelta
 from urllib import parse, request as urllib2
+import qrcode
 import random
 import requests  # 发送验证码
 import io
