@@ -308,7 +308,7 @@ def modify_reviewing_activity(request, activity):
     if context.get("adjust_apply") is not None:
         # 注意这里是不调整
         assert context["adjust_apply"] == False
-        assert activity.apply_end < context["start"] - timedelta(hours=1)
+        assert activity.apply_end <= context["start"] - timedelta(hours=1)
     else:
         activity.apply_end = context["signup_end"]
 
@@ -379,15 +379,15 @@ def modify_accepted_activity(request, activity):
         signup_end = act_start - timedelta(hours=prepare_time)
         assert now_time <= signup_end
         activity.apply_end = signup_end
-        to_subscribers.append(f"活动报名截止时间调整为{signup_end.strftime('%y-%m-%d %H:%M')}")
-        to_participants.append(f"活动报名截止时间调整为{signup_end.strftime('%y-%m-%d %H:%M')}")
+        to_subscribers.append(f"活动报名截止时间调整为{signup_end.strftime('%Y-%m-%d %H:%M')}")
+        to_participants.append(f"活动报名截止时间调整为{signup_end.strftime('%Y-%m-%d %H:%M')}")
     else:
         signup_end = activity.apply_end
         assert signup_end + timedelta(hours=1) < act_start
     
     if activity.start != act_start:
-        to_subscribers.append(f"活动开始时间调整为{act_start.strftime('%y-%m-%d %H:%M')}")
-        to_participants.append(f"活动开始时间调整为{act_start.strftime('%y-%m-%d %H:%M')}")
+        to_subscribers.append(f"活动开始时间调整为{act_start.strftime('%Y-%m-%d %H:%M')}")
+        to_participants.append(f"活动开始时间调整为{act_start.strftime('%Y-%m-%d %H:%M')}")
         activity.start = act_start
 
     if signup_end < now_time and activity.status == Activity.Status.WAITING:

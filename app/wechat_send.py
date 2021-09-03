@@ -395,7 +395,7 @@ def publish_activity(activity_or_id):
     subscribers = list(subscribers.values_list("person_id__username", flat=True))
     num = len(subscribers)
     start, finish = activity.start, activity.finish
-    timeformat = "%y-%m-%d %H:%M"  # 显示具体年份
+    timeformat = "%Y-%m-%d %H:%M"  # 显示具体年份
     start = start.strftime(timeformat)
     finish = finish.strftime(timeformat)
     content = (
