@@ -91,6 +91,18 @@
                                                             {% endif %}
                                                             <label class="form-check-label" for="show_gender">对外展示</label>
                                                         </div>
+
+                                                        <label for="birthday">我的生日</label>
+                                                        <input type="date" class="form-control" name="birthday" id="birthday"/>
+                                                        <div class="form-check mb-4">
+                                                            {% if useroj.show_birthday %}
+                                                            <input type="checkbox" class="form-check-input" id="show_birthday" name="show_birthday" checked>
+                                                            {% else %}
+                                                            <input type="checkbox" class="form-check-input" id="show_birthday" name="show_birthday">
+                                                            {% endif %}
+                                                            <label class="form-check-label" for="show_birthday">对外展示</label>
+                                                        </div>
+
                                                         <label for="fullName">我的电话</label>
                                                         <input type="tel" class="form-control" id="tel"
                                                         name="tel" placeholder="{{userinfo.telephone}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
@@ -103,6 +115,7 @@
                                                             <label class="form-check-label" for="show_tel">对外展示</label>
                                                             
                                                         </div>
+
                                                         <label for="profession">我的专业</label>
                                                         <input type="text" class="form-control" id="major"
                                                             name="major" placeholder="{{userinfo.stu_major}}" onclick="if(this.placeholder != ''){this.value=this.placeholder;}">
