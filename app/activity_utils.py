@@ -423,7 +423,6 @@ def modify_accepted_activity(request, activity):
             run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
     scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
         run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
-
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
         run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
