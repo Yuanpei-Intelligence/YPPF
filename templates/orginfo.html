@@ -327,7 +327,7 @@
                                                                     {% if user_type == "Organization" %}
                                                                         {% if rec.act.status == "等待中" %}
                                                                             <span class="badge badge-pill badge-info">
-                                                                                {{ rec.act.status }}
+                                                                                等待开始
                                                                             </span>
                                                                         {% else %}
                                                                             <span class="badge badge-pill badge-success">
@@ -338,12 +338,12 @@
 
                                                                         {% if rec.status == "无记录" %}
                                                                             {% if rec.act.status == "报名中" %}
-                                                                                <span class="badge badge-pill badge-secondary">未报名</span>
+                                                                                <span class="badge badge-pill badge-secondary">报名中</span>
                                                                             {% else %}
-                                                                                <span class="badge badge-pill badge-danger">报名截止</span>
+                                                                                <span class="badge badge-pill badge-info">报名截止</span>
                                                                             {% endif %}
                                                                         {% elif rec.status == "申请失败" or rec.status == "未参与" or rec.status == "取消" %}
-                                                                            <span class="badge badge-pill badge-primary">
+                                                                            <span class="badge badge-pill badge-warning">
                                                                                 {{ rec.status }}
                                                                             </span>
                                                                         {% else %}
