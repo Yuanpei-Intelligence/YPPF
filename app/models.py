@@ -877,6 +877,15 @@ class ModifyOrganization(CommentBase):
         if self.introduction and self.introduction != '这里暂时没有介绍哦~':
             display.append(('组织介绍', self.introduction))
         return display
+
+    def get_user_ava(self):
+        try:
+            avatar = self.avatar
+        except:
+            avatar = ""
+        if not avatar:
+            avatar = "avatar/person_default.jpg"
+        return settings.MEDIA_URL + str(avatar)
         
     def is_pending(self):   #表示是不是pending状态
             return self.status == ModifyOrganization.Status.PENDING
