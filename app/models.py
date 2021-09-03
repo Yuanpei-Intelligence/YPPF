@@ -98,7 +98,7 @@ class NaturalPerson(models.Model):
     def __str__(self):
         return str(self.name)
 
-    def get_avatar_path(self):
+    def get_user_ava(self):
         try:
             avatar = self.avatar
         except:
@@ -256,7 +256,7 @@ class Organization(models.Model):
         self.YQPoint = round(self.YQPoint, 1)
         super().save(*args, **kwargs)
 
-    def get_avatar_path(self):
+    def get_user_ava(self):
         try:
             avatar = self.avatar
         except:
