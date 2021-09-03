@@ -322,7 +322,8 @@ def stuinfo(request, name=None):
             id__in=person_owned_poss.values("org")
         )  # ta管理的组织
         person_owned_orgs_ava = [
-            utils.get_user_ava(org, "organization") for org in person_owned_orgs
+            # utils.get_user_ava(org, "organization") for org in person_owned_orgs
+            org.get_user_ava() for org in person_owned_orgs
         ]
         person_owned_orgs_pos = [
             person_owned_poss.get(org=org).pos for org in person_owned_orgs
@@ -342,7 +343,7 @@ def stuinfo(request, name=None):
             id__in=person_joined_poss.values("org")
         )  # ta属于的组织
         person_joined_orgs_ava = [
-            utils.get_user_ava(org, "organization") for org in person_joined_orgs
+            org.get_user_ava() for org in person_joined_orgs
         ]
         person_joined_orgs_pos = [
             person_joined_poss.get(org=org).pos for org in person_joined_orgs
@@ -372,7 +373,8 @@ def stuinfo(request, name=None):
             id__in=person_hidden_poss.values("org")
         )  # ta隐藏的组织
         person_hidden_orgs_ava = [
-            utils.get_user_ava(org, "organization") for org in person_hidden_orgs
+            # utils.get_user_ava(org, "organization") for org in person_hidden_orgs
+            org.get_user_ava() for org in person_hidden_orgs
         ]
         person_hidden_orgs_pos = [
             person_hidden_poss.get(org=org).pos for org in person_hidden_orgs
@@ -474,7 +476,7 @@ def stuinfo(request, name=None):
 
         context["title"] = "我" if is_myself else "Ta"
 
-        context["avatar_path"] = utils.get_user_ava(person, "Person")
+        context["avatar_path"] = person.get_user_ava()
         context["wallpaper_path"] = utils.get_user_wallpaper(person, "Person")
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
@@ -594,7 +596,7 @@ def orginfo(request, name=None):
 
     organization_name = name
     organization_type_name = org.otype.otype_name
-    org_avatar_path = utils.get_user_ava(org, "Organization")
+    org_avatar_path = org.get_user_ava()
     wallpaper_path = utils.get_user_wallpaper(org, "Organization")
     # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
