@@ -13,28 +13,97 @@
     <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
     {% endif %}
 
-    <!--  BEGIN PHOTO SECTION  -->
-    <div class="d-flex m-0 p-0 overflow-hidden" style="height: 35vh">
-        <div class="d-flex w-100 align-self-center">
-            {% if summary_photo_exists %}
-            <img class="w-100" src={{ summary_photo }} alt="summary photo">
-            {% else %}
-            <img class="w-100" src={{ firstpic }} alt="first photo">
-            {% endif %}
+    <!--  BEGIN UPPER SECTION  -->
+    <div class="d-flex m-0 p-0 overflow-hidden" id="bg">
+
+        <!--  BEGIN BLURRED BG  -->
+        {% if summary_photo_exists %}
+        <div class="w-100" style="background-image: url({{ summary_photo }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
+        {% else %}
+        <div class="w-100" style="background-image: url({{ firstpic }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
+        {% endif %}
+            <div class="w-100 h-100 m-0 p-0">
+                <div class="row w-100 m-0" style="height: 20%;"></div>
+                <div class="row w-100 m-0" style="height: 30%; background: -webkit-linear-gradient(top, #ffffff00 0%, #ffffffaa 100%);"></div>
+                <div class="row w-100 m-0" style="height: 50%; background-color: #ffffff;"></div>
+            </div>
         </div>
-        <div class="row m-0 w-100 position-absolute" style="height: 35vh;">
-            <div class="w-100 h-100 m-0 p-0 position-absolute">
-                <div class="row w-100 m-0" style="height: 60%"></div>
-                <div class="row w-100 m-0"
-                    style="height: 40%; background: -webkit-linear-gradient(top, #00000000 0%, #000000dd 100%);">
+        <!--  END BLURRED BG  -->
+
+        <!--  BEGIN FRONT SCENE  -->
+        <div style="position: absolute; width: 100%; height: 50vh; top: -8px;">  <!--  hide the top corner  -->
+            <!--  BEGIN PHOTO  -->
+            <div style="width: 66%; height: 80%; padding-left: 80px; padding-right: 80px; margin: auto;">
+                {% if summary_photo_exists %}
+                <img style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px; box-shadow: 1px 1px 16px 2px rgba(0, 0, 0, 0.12);" src={{ summary_photo }}></img>
+                {% else %}
+                <img style="width: 100%; height: 100%; object-fit: cover; border-radius: 8px; box-shadow: 1px 1px 16px 2px rgba(0, 0, 0, 0.12);" src={{ firstpic }}></img>
+                {% endif %}
+
+                <!--  BEGIN CALENDAR  -->
+                <div style="position: absolute; left: 17%; top: 80%;">
+                    <div style="position: absolute; left: 0px; top: -70px; width: 70px; height: 70px; border-radius: 8px; overflow: hidden; box-shadow: 1px 1px 16px 2px rgba(0, 0, 0, 0.12);">
+                        <!-- -------------------------------- MONTH -------------------------------- -->
+                        <div class="d-flex" style="position: absolute; left: 0%; top: 0%; width: 100%; height: 30%; background-color: var(--danger)">
+                            <div class="flex" style="width: 100%; margin: auto; text-align: center;">
+                                <b class="text-light" style="font-size: 15px;">{{ start_month }}月</b>
+                            </div>
+                        </div>
+                        <!-- --------------------------------- DAY --------------------------------- -->
+                        <div class="d-flex" style="position: absolute; left: 0%; top: 30%; width: 100%; height: 70%; background-color: var(--white)">
+                            <div class="flex" style="width: 100%; margin: auto; text-align: center;">
+                                {% if start_date < 10 %}
+                                <b class="text-dark" style="font-size: 30px;">{{ start_date }}日</b>
+                                {% else %}
+                                <b class="text-dark" style="font-size: 25px;">{{ start_date }}日</b>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!--  END CALENDAR  -->
+
+            </div>
+            <!--  END PHOTO  -->
+
+            <!--  BEGIN HEADING  -->
+            <div style="width: 66%; height: max-content; margin: auto; margin-top: 10px;">
+                <b class="text-danger">{{ activity.start }} - {{ activity.end }}</b>
+                <div class="d-flex justify-content-start">
+                    <h2 class="flex text-dark">{{ title }}</h2>
+                    <div class="flex my-auto ml-1">
+                        {% if status == "审核中" %}
+                        <span class="badge badge-pill badge-warning">审核中</span>
+                        {% elif status == "等待中" %}
+                        <span class="badge badge-pill badge-info">等待中</span>
+                        {% elif status == "已取消" or status == "已结束" %}
+                        <span class="badge badge-pill badge-danger">{{ status }}</span>
+                        {% else %}
+                        <span class="badge badge-pill badge-success">{{ status }}</span>
+                        {% endif %}
+                    </div>
                 </div>
             </div>
+            <!--  END HEADING  -->
 
+            <!-- ------------------------------ div line ------------------------------- -->
+            <div id="div-line" style="width: 69%; height: 2px; margin: auto; margin-top: 5px; background-color:rgba(0, 0, 0, 0.2)"></div>
+
+            <!-- -------------------------- constrain height --------------------------- -->
+            <script type="text/javascript">
+                const bg = document.querySelector(`#bg`);
+                const div = document.querySelector(`#div-line`);
+                const fit = () =>  (bg.style.height = `${div.offsetTop - 7}px`);
+                window.addEventListener(`load`, fit);
+                window.addEventListener(`resize`, fit);
+            </script>
         </div>
+        <!--  END FRONT SCENE  -->
+
     </div>
-    <!--  END PHOTO SECTION  -->
-    <div class="container">
-    <div class="row w-100 m-0">
+    <!--  END UPPER SECTION  -->
+
+    <div class="row m-0 mx-auto" style="width: 70%;">
 
         <div class="col-md-9 col-sm-12 px-1 layout-top-spacing">
 
@@ -45,7 +114,7 @@
                     <div class="widget-header">
                         <div class="row">
                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                <h4>活动信息</h4>
+                                <h4>详细信息</h4>
                             </div>
                         </div>
                     </div>
@@ -55,39 +124,16 @@
                         <!--  活动信息  -->
                         <div class="code-section-container show-code mt-0">
 
-                            <h1>
-                                {{ title }}
-                                {% if status == "审核中" %}
-                                <span class="badge badge-pill badge-warning">审核中</span>
-                                {% elif status == "等待中" %}
-                                <span class="badge badge-pill badge-info">等待中</span>
-                                {% elif status == "已取消" or status == "已结束" %}
-                                <span class="badge badge-pill badge-danger">{{ status }}</span>
-                                {% else %}
-                                <span class="badge badge-pill badge-success">{{ status }}</span>
-                                {% endif %}
-                            </h1>
-
-                            <h5 class="mb-5">
-                                <u>
-                                    <a href="/orginfo/{{ org_name }}">
-                                        {{ org_name }} - {{ org_type }}
-                                    </a>
-                                </u>
-                            </h5>
-
                             <div class="media-body">
                                 <p class="meta-time">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round" class="feather feather-calendar">
-                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor"
+                                        stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+                                        class="css-i6dzq1">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
                                     </svg>
                                     <span class="ml-3">
-                                        {{ start_time }} - {{ end_time }}
+                                        {{ duration }}
                                     </span>
                                 </p>
 
@@ -129,12 +175,7 @@
                                 </p>
 
                                 <p>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round">
-                                        <line x1="12" y1="1" x2="12" y2="23" />
-                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                                    </svg>
+                                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><circle cx="12" cy="12" r="10"></circle><rect x="9" y="9" width="6" height="6"></rect></svg>
                                     <span class="ml-3">
                                         {{ price }}&nbsp;元气值
                                     </span>
@@ -346,7 +387,6 @@
         <!--  END RELAVENT INFORMATION  -->
 
     </div>
-</div>
 </div>
 
 <script type="text/javascript">
