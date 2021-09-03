@@ -46,7 +46,7 @@ class NaturalPerson(models.Model):
         "性别", choices=Gender.choices, null=True, blank=True
     )
 
-    
+    birthday = models.DateField("生日")
     email = models.EmailField("邮箱", null=True, blank=True)
     telephone = models.CharField("电话", max_length=20, null=True, blank=True)
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
@@ -84,6 +84,7 @@ class NaturalPerson(models.Model):
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
     # show_nickname = models.BooleanField(default=False)
+    show_birthday = models.BooleanField(default=False)
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
