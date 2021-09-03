@@ -99,6 +99,15 @@ class NaturalPerson(models.Model):
     def __str__(self):
         return str(self.name)
 
+    def get_user_ava(self):
+        try:
+            avatar = self.avatar
+        except:
+            avatar = ""
+        if not avatar:
+            avatar = "avatar/person_default.jpg"
+        return settings.MEDIA_URL + str(avatar)
+
     def show_info(self):
         """
             返回值为一个列表，在search.html中使用，按照如下顺序呈现：
@@ -247,6 +256,15 @@ class Organization(models.Model):
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
         super().save(*args, **kwargs)
+
+    def get_user_ava(self):
+        try:
+            avatar = self.avatar
+        except:
+            avatar = ""
+        if not avatar:
+            avatar = "avatar/org_default.png"
+        return settings.MEDIA_URL + str(avatar)
 
 
 class PositionManager(models.Manager):
@@ -860,6 +878,15 @@ class ModifyOrganization(CommentBase):
         if self.introduction and self.introduction != '这里暂时没有介绍哦~':
             display.append(('组织介绍', self.introduction))
         return display
+
+    def get_user_ava(self):
+        try:
+            avatar = self.avatar
+        except:
+            avatar = ""
+        if not avatar:
+            avatar = "avatar/person_default.jpg"
+        return settings.MEDIA_URL + str(avatar)
         
     def is_pending(self):   #表示是不是pending状态
             return self.status == ModifyOrganization.Status.PENDING
