@@ -56,8 +56,8 @@ img {
                 
                     <div class="custom-file" lang="zh">
                         <input onchange="showFilename(this.files)" type="file" 
-                               class="custom-file-input" id="customFile" name="comment_images" 
-                               accept="image/*"  multiple>
+                               class="custom-file-input" id="customFile" name="comment_images"
+                               accept="image/*"  multiple/>
                         <label id="uploadfile" class="custom-file-label" 
                                for="customFile">相关图片</label>
                     </div>
@@ -101,7 +101,6 @@ function showFilename(files){
     content: "上传";}
 </style>
 <script type="text/javascript">
-    {% if front_check %}
     function check_comment_inputs() {
         var images = document.getElementById("customFile").files;
         var comments = document.getElementById("comment").value;
@@ -117,12 +116,20 @@ function showFilename(files){
             var name = images[i].name.toLowerCase();
             var format = name.substring(name.lastIndexOf('.') + 1);
             var flag = false;
+            var fileMaxSize = 3072
             for (var j = 0; j < formats.length; j++) {
                 if (formats[j] == format) {
                     flag = true;
                     break;
                 }
             }
+            //检查图片大小
+            if ((images[i].size/1024)>fileMaxSize){
+                    document.getElementById("warn_msg").style.display = "";
+                    document.getElementById("warn_msg").innerHTML = "图片大小不应该超过3M";
+                    document.body.scrollTop = document.documentElement.scrollTop = 0;
+                    return false
+                }
             if (!flag) {
                 document.getElementById("warn_msg").style.display = "";
                 document.getElementById("warn_msg").innerHTML = "仅支持图片类型文件。";
@@ -132,10 +139,5 @@ function showFilename(files){
         }
         return true;
     }
-    {% else %}
-    function check_comment_inputs() {
-        return true;
-    }
-    {% endif %}
 </script>
 {%endblock%}

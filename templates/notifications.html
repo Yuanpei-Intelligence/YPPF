@@ -226,6 +226,7 @@
 </script>
 
 <script>
+    var mail_num = Number("{{bar_display.mail_num}}");
     $('.table').bootstrapTable({
         onLoadSuccess: function () {
             $('.table tr td').each(function () {
@@ -242,9 +243,6 @@
             document.getElementById("undone="+String(this.id)).hidden = true;
             document.getElementById("done="+String(this.id)).hidden = false;
             document.getElementById("mail_num").innerHTML = String(Number(document.getElementById("mail_num").innerHTML) - 1);
-            if(Number(document.getElementById("mail_num").innerHTML) == 0){
-                document.getElementById("mail_num").hidden = true;
-            }
         }
     }
     async function unread() {
@@ -253,9 +251,6 @@
             document.getElementById("done="+String(this.id)).hidden = true;
             document.getElementById("undone="+String(this.id)).hidden = false;
             document.getElementById("mail_num").innerHTML = String(Number(document.getElementById("mail_num").innerHTML) + 1);
-            if(Number(document.getElementById("mail_num").innerHTML) == 1){
-                document.getElementById("mail_num").hidden = false;
-            }
         }
     }
     async function cancel() {
