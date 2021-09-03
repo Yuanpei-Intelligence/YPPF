@@ -597,6 +597,12 @@ def orginfo(request, name=None):
     wallpaper_path = utils.get_user_wallpaper(org, "Organization")
     # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
 
+    if request.method == "POST" :
+        if request.POST.get("export_excel") is not None and html_display["is_myself"]:
+            html_display["warn_code"] = 2
+            html_display["warn_message"] = "下载成功!"
+            return utils.export_orgpos_info(org)
+
     # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
         Activity.objects.activated()
@@ -1998,7 +2004,8 @@ def viewActivity(request, aid=None):
                 )
                 html_display["warn_message"] = "成功提交活动照片"
             html_display["warn_code"] = 2
-
+        elif option == "download":
+            return utils.export_activity_signin(activity)
         else:
             return redirect("/welcome")
 
@@ -2220,7 +2227,7 @@ def checkinActivity(request, aid=None):
     try:
         with transaction.atomic():
             participant = Participant.objects.select_for_update().get(
-                activity_id=int(aid), person_id=np, 
+                activity_id=int(aid), person_id=np,
                 status=Participant.AttendStatus.UNATTENDED
             )
             participant.status = Participant.AttendStatus.ATTENDED
