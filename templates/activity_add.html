@@ -597,19 +597,19 @@
 <script type="text/javascript">
     $(function () {
         $("#datetimepicker1").datetimepicker({
-            format: "yyyy-mm-dd hh:ii",
+            format: "YYYY-MM-DD HH:mm",
             sideBySide: true,
         });
         $("#datetimepicker2").datetimepicker({
-            format: "yyyy-mm-dd hh:ii",
+            format: "YYYY-MM-DD HH:mm",
             sideBySide: true
         });
         $("#datetimepicker3").datetimepicker({
-            format: "yyyy-mm-dd hh:ii",
+            format: "YYYY-MM-DD HH:mm",
             sideBySide: true
         });
         $("#datetimepicker4").datetimepicker({
-            format: "yyyy-mm-dd hh:ii",
+            format: "YYYY-MM-DD HH:mm",
             sideBySide: true
         });
     });
@@ -656,6 +656,7 @@
     document.getElementById("aintro").placeholder = "{{introduction}}";
     {% if yq_source == "向学院申请" %}
     document.getElementById("apply_reason").placeholder = "{{apply_reason}}";
+    document.getElementById("reason_block").style.display = "";
     {% endif %}
 
 
@@ -666,6 +667,15 @@
     }
     document.getElementById("aintro").required = "";
     document.getElementById("apply_reason").required = "";
+
+    /* 填充旧图片 */
+    {% if full_editable %}
+        {% if uploaded_photo %}
+        document.getElementById("upload_annouce_photo").innerHTML = "{{photo}}";
+        {% else %}
+        document.getElementById("{{photo_id}}").checked = true;
+        {% endif %}
+    {% endif %}
 
     
     // 点击自动填充可修改
@@ -867,9 +877,6 @@
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
-        {% endif %}
-        // 不能少于当前人数
-        {% if edit %}
         {% endif %}
 
         /* 检查图片 */
