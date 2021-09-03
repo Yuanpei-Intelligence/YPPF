@@ -1214,15 +1214,13 @@ def search(request):
 
     org_display_list = []
     for org in organization_list:
-        try:
-            recent_activity = Activity.objects.filter(organization_id=org).order_by("-start")[0]
-        except:
-            recent_activity = {"title": "暂无", "id": "#"}
         org_display_list.append(
             {
                 "oname": org.oname,
                 "otype": org.otype,
-                "pos0": org.position_set.activated().filter(pos=0),  #TODO:直接查到一个NaturalPerson的Query_set
+                "pos0": NaturalPerson.objects.activated().filter(
+                    id__in=Position.objects.activated().filter(pos=0, org=org).values("person")
+                ),  #TODO:直接查到一个NaturalPerson的Query_set
                 # [
                 #     w["person__name"]
                 #     for w in list(
