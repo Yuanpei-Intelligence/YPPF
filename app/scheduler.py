@@ -5,3 +5,4 @@ from django_apscheduler.jobstores import DjangoJobStore, register_events, regist
 # 定时任务生成器
 scheduler = BackgroundScheduler()
 scheduler.add_jobstore(DjangoJobStore(), "default")
+scheduler.start()
