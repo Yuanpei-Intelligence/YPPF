@@ -117,7 +117,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     images = request.FILES.getlist('images')
                     if len(images) > 0:
                         for image in images:
-                            if utils.if_image(image) == False:
+                            if utils.if_image(image) !=2:
                                 return wrong("上传的材料只支持图片格式。")
 
                     transaction_msg = f'活动“{reimb_act.title}”的报销申请'  # TODO:报销信息的补充
