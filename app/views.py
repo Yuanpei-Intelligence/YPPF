@@ -79,8 +79,8 @@ from django_apscheduler.jobstores import DjangoJobStore, register_events, regist
 from app.scheduler import scheduler
 
 # 注册启动以上schedule任务
-register_events(scheduler)
-scheduler.start()
+# register_events(scheduler)
+# scheduler.start()
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
@@ -399,10 +399,10 @@ def stuinfo(request, name=None):
             ~Q(status=Activity.Status.CANCELED),
         )
         activities_start = [
-            activity.start.strftime("%y-%m-%d %H:%M") for activity in activities
+            activity.start.strftime("%Y-%m-%d %H:%M") for activity in activities
         ]
         activities_end = [
-            activity.end.strftime("%y-%m-%d %H:%M") for activity in activities
+            activity.end.strftime("%Y-%m-%d %H:%M") for activity in activities
         ]
         if user_type == "Person":
             activities_me = Participant.objects.filter(person_id=person.id).values(
@@ -815,6 +815,10 @@ def homepage(request):
         "#B6E3E9","#B5EAD7","#E2F0CB"
     ]
     backgroundpics = [{"src":"/static/assets/img/backgroundpics/"+str(i+1)+".png","color": colors[i] } for i in range(6)]
+    paths = [
+        "notifications","stuinfo","orginfo","user_account_setting"
+    ]
+    guidepics = ["/static/assets/img/guidepics/"+paths[i]+".jpeg" for i in range(4)]
 
     """ 
         取出过去一周的所有活动，filter出上传了照片的活动，从每个活动的照片中随机选择一张
@@ -1684,9 +1688,9 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
         lis[-1]["id"] = record.id
 
         # 时间
-        lis[-1]["start_time"] = record.start_time.strftime("%y-%m-%d %H:%M")
+        lis[-1]["start_time"] = record.start_time.strftime("%Y-%m-%d %H:%M")
         if record.finish_time is not None:
-            lis[-1]["finish_time"] = record.finish_time.strftime("%y-%m-%d %H:%M")
+            lis[-1]["finish_time"] = record.finish_time.strftime("%Y-%m-%d %H:%M")
 
         # 对象
         # 如果是给出列表，那么对象就是接收者
@@ -2004,11 +2008,11 @@ def viewActivity(request, aid=None):
     org_name = org.oname
     org_avatar_path = utils.get_user_ava(org, "Organization")
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
-    start_time = activity.start.strftime("%y-%m-%d %H:%M")
-    end_time = activity.end.strftime("%y-%m-%d %H:%M")
+    start_time = activity.start.strftime("%Y-%m-%d %H:%M")
+    end_time = activity.end.strftime("%Y-%m-%d %H:%M")
     start_THEDAY = activity.start.day # 前端使用量
     prepare_times = Activity.EndBeforeHours.prepare_times
-    apply_deadline = activity.apply_end.strftime("%y-%m-%d %H:%M")
+    apply_deadline = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     introduction = activity.introduction
     show_url = True # 前端使用量
     aURL = activity.URL
@@ -2340,7 +2344,7 @@ def addActivity(request, aid=None):
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
-        # print(e)
+        print(e)
         return redirect("/welcome/")
 
     # 处理 POST 请求
@@ -2352,7 +2356,8 @@ def addActivity(request, aid=None):
                 with transaction.atomic():
                     aid = create_activity(request)
                     return redirect(f"/viewActivity/{aid}")
-            except:
+            except Exception as e:
+                print(e)
                 return redirect("/welcome/")
 
         # 仅这几个阶段可以修改
@@ -2392,7 +2397,8 @@ def addActivity(request, aid=None):
                 html_display["warn_msg"] = str(e)
                 html_display["warn_code"] = 1
                 # return redirect(f"/viewActivity/{activity.id}")
-            except:
+            except Exception as e:
+                print(e)
                 return redirect("/welcome/")
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
@@ -2426,7 +2432,7 @@ def addActivity(request, aid=None):
                 # 不是三个可以评论的状态
                 commentable = front_check = False
         except Exception as e:
-            # print(e)
+            print(e)
             return redirect("/welcome/")
 
         # 决定状态的变量
@@ -2439,9 +2445,9 @@ def addActivity(request, aid=None):
         title = activity.title
         budget = activity.budget
         location = activity.location
-        start = activity.start.strftime("%y-%m-%d %H:%M")
-        end = activity.end.strftime("%y-%m-%d %H:%M")
-        apply_end = activity.apply_end.strftime("%y-%m-%d %H:%M")
+        start = activity.start.strftime("%Y-%m-%d %H:%M")
+        end = activity.end.strftime("%Y-%m-%d %H:%M")
+        apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
         introduction = activity.introduction
         url = activity.URL
         endbefore = activity.endbefore
@@ -2547,9 +2553,9 @@ def examineActivity(request, aid):
     title = activity.title
     budget = activity.budget
     location = activity.location
-    apply_end = activity.apply_end.strftime("%y-%m-%d %H:%M")
-    start = activity.start.strftime("%y-%m-%d %H:%M")
-    end = activity.end.strftime("%y-%m-%d %H:%M")
+    apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
+    start = activity.start.strftime("%Y-%m-%d %H:%M")
+    end = activity.end.strftime("%Y-%m-%d %H:%M")
     introduction = activity.introduction
     url = activity.URL
     endbefore = activity.endbefore
@@ -2752,9 +2758,9 @@ def notification2Display(notification_list):
         lis[-1]["id"] = notification.id
 
         # 时间
-        lis[-1]["start_time"] = notification.start_time.strftime("%y-%m-%d %H:%M")
+        lis[-1]["start_time"] = notification.start_time.strftime("%Y-%m-%d %H:%M")
         if notification.finish_time is not None:
-            lis[-1]["finish_time"] = notification.finish_time.strftime("%y-%m-%d %H:%M")
+            lis[-1]["finish_time"] = notification.finish_time.strftime("%Y-%m-%d %H:%M")
 
         # 留言
         lis[-1]["content"] = notification.content
@@ -2795,35 +2801,52 @@ def notifications(request):
             html_display["warn_message"] = "非预期的GET参数"
 
     if request.method == "POST":  # 发生了通知处理的事件
-        post_args = request.POST.get("post_button")
-        if "cancel" in post_args:
-            notification_id = int(post_args.split("+")[0])
-            notification_status_change(notification_id, Notification.Status.DELETE)
-            html_display["warn_code"] = 2  # success
-            html_display["warn_message"] = "您已成功删除一条通知！"
+        post_args = json.loads(request.body.decode("utf-8"))
+        try:
+            notification_id = int(post_args['id'])
+        except:
+            html_display["warn_code"] = 1  # 失败
+            html_display["warn_message"] = "请不要恶意发送post请求！"
+            return JsonResponse({"success":False})
+        try:
+            Notification.objects.activated().get(id=notification_id, receiver=request.user)
+        except:
+            html_display["warn_code"] = 1  # 失败
+            html_display["warn_message"] = "请不要恶意发送post请求！！"
+            return JsonResponse({"success":False})
+        if "cancel" in post_args['function']:
+            try:
+                notification_status_change(notification_id, Notification.Status.DELETE)
+                html_display["warn_code"] = 2  # success
+                html_display["warn_message"] = "您已成功删除一条通知！"
+                return JsonResponse({"success":True})
+            except:
+                html_display["warn_code"] = 1  # 失败
+                html_display["warn_message"] = "删除通知的过程出现错误！请联系管理员。"
+                return JsonResponse({"success":False})
         else:
-            notification_id = post_args
-            context = notification_status_change(notification_id)
-            html_display["warn_code"] = context["warn_code"]
-            html_display["warn_message"] = context["warn_message"]
+            try:
+                context = notification_status_change(notification_id)
+                html_display["warn_code"] = context["warn_code"]
+                html_display["warn_message"] = context["warn_message"]
+                return JsonResponse({"success":True})
+            except:
+                html_display["warn_code"] = 1  # 失败
+                html_display["warn_message"] = "修改通知状态的过程出现错误！请联系管理员。"
+                return JsonResponse({"success":False})
+
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-
-    done_set = Notification.objects.activated().filter(
-        receiver=request.user, status=Notification.Status.DONE
-    )
-
-    undone_set = Notification.objects.activated().filter(
-        receiver=request.user, status=Notification.Status.UNDONE
-    )
+    
+    notification_set = Notification.objects.activated().filter(receiver=request.user)
 
     done_list = notification2Display(
-        list(done_set.union(done_set).order_by("-finish_time"))
+        list(notification_set.union(notification_set).order_by("-finish_time"))
     )
+
     undone_list = notification2Display(
-        list(undone_set.union(undone_set).order_by("-start_time"))
+        list(notification_set.union(notification_set).order_by("-start_time"))
     )
-    
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
