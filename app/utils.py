@@ -742,42 +742,57 @@ def operation_writer(user, message, source, status_code="OK"):
 
 
 # 导出Excel文件
-def export_activity_signin(activity):
+def export_activity(activity,inf_type):
 
-  # 设置HTTPResponse的类型
-  response = HttpResponse(content_type='application/vnd.ms-excel')
-  if activity is None:
-      return response
-  response['Content-Disposition'] = f'attachment;filename={activity.title}({activity.start.month}月{activity.start.day}日).xls'
-  participants=Participant.objects.filter(activity_id=activity.id ).filter(status=Participant.AttendStatus.ATTENDED)
-  """导出excel表"""
-  if len(participants)>0:
-    # 创建工作簿
-    ws = xlwt.Workbook(encoding='utf-8')
-    # 添加第一页数据表
-    w = ws.add_sheet('sheet1') # 新建sheet（sheet的名称为"sheet1"）
-    # 写入表头
-    w.write(0, 0, u'姓名')
-    w.write(0, 1, u'学号')
-    w.write(0, 2, u'年级/班级')
-    # 写入数据
-    excel_row = 1
-    for participant in participants:
-      name = participant.person_id.name
-      Sno = participant.person_id.person_id.username
-      grade=str(participant.person_id.stu_grade)+'级'+str(participant.person_id.stu_class)+'班'
-      # 写入每一行对应的数据
-      w.write(excel_row, 0, name)
-      w.write(excel_row, 1, Sno)
-      w.write(excel_row, 2, grade)
-      excel_row += 1
-    # 写出到IO
-    output = BytesIO()
-    ws.save(output)
-    # 重新定位到开始
-    output.seek(0)
-    response.write(output.getvalue())
-  return response
+    # 设置HTTPResponse的类型
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    if activity is None:
+        return response
+    response['Content-Disposition'] = f'attachment;filename={activity.title}.xls'
+    if inf_type == "sign":#签到信息
+        participants = Participant.objects.filter(activity_id=activity.id).filter(
+            status=Participant.AttendStatus.ATTENDED)
+    elif inf_type == "enroll":#报名信息
+        participants = Participant.objects.filter(activity_id=activity.id).exclude(
+            status=Participant.AttendStatus.CANCELED)
+    else:
+        return response
+        """导出excel表"""
+    if len(participants) > 0:
+        # 创建工作簿
+        ws = xlwt.Workbook(encoding='utf-8')
+        # 添加第一页数据表
+        w = ws.add_sheet('sheet1')  # 新建sheet（sheet的名称为"sheet1"）
+        # 写入表头
+        w.write(0, 0, u'姓名')
+        w.write(0, 1, u'学号')
+        w.write(0, 2, u'年级/班级')
+        if inf_type == "enroll":
+            w.write(0, 3, u'报名状态')
+            w.write(0, 4, u'注：报名状态为“已参与”时表示报名成功并成功签到，“未参与”表示报名成功但未签到，'
+                          u'"已报名"表示报名成功，“申请失败“表示在抽签模式中落选，”申请中“则表示抽签尚未开始。')
+        # 写入数据
+        excel_row = 1
+        for participant in participants:
+            name = participant.person_id.name
+            Sno = participant.person_id.person_id.username
+            grade = str(participant.person_id.stu_grade) + '级' + str(participant.person_id.stu_class) + '班'
+            if inf_type == "enroll":
+                status=participant.status
+                w.write(excel_row, 3, status)
+            # 写入每一行对应的数据
+            w.write(excel_row, 0, name)
+            w.write(excel_row, 1, Sno)
+            w.write(excel_row, 2, grade)
+            excel_row += 1
+        # 写出到IO
+        output = BytesIO()
+        ws.save(output)
+        # 重新定位到开始
+        output.seek(0)
+        response.write(output.getvalue())
+    return response
+
 # 导出组织成员信息Excel文件
 def export_orgpos_info(org):
     # 设置HTTPResponse的类型
