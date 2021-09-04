@@ -604,6 +604,34 @@ def orginfo(request, name=None):
             html_display["warn_code"] = 2
             html_display["warn_message"] = "下载成功!"
             return utils.export_orgpos_info(org)
+        elif request.POST.get("question") is not None:
+            if user_type != "Person":
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "不支持组织向组织提问!"
+            else:
+                hide_name_flag = (request.POST.get('show_name') is not None)
+                question = request.POST.get("question")
+                if len(question) == 0:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "请填写问题内容!"
+                else:
+                    try:
+                        notification_create(
+                            org.organization_id,
+                            request.user,
+                            Notification.Type.NEEDREAD,
+                            "来自" + ("匿名者" if hide_name_flag == True else me.name) + "的提问",
+                            str(question),
+                            is_question=True,
+                            hide_sender_name=hide_name_flag,
+                            publish_to_wechat=False # 先为默认false，后续请修改 TODO
+                        )
+                        html_display["warn_code"] = 2
+                        html_display["warn_message"] = "提问发送成功!"
+                    except:
+                        html_display["warn_code"] = 1
+                        html_display["warn_message"] = "提问发送失败!请联系管理员!"
+            return redirect(f"/orginfo/{organization_name}?warn_code="+str(html_display["warn_code"])+"&warn_message="+str(html_display["warn_message"]))
 
     # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
@@ -735,7 +763,6 @@ def orginfo(request, name=None):
             show_post_change_button = True
             my_position = my_position[0]
     
-
     return render(request, "orginfo.html", locals())
 
 
@@ -2802,6 +2829,9 @@ def notification2Display(notification_list):
             lis[-1]["sender"] = NaturalPerson.objects.get(
                 person_id__username=notification.sender.username
             ).name
+        if notification.hide_sender_name == True:
+            lis[-1]['sender'] = "匿名"
+        lis[-1]['is_question'] = notification.is_question
     return lis
 
 
@@ -2824,39 +2854,49 @@ def notifications(request):
             html_display["warn_message"] = "非预期的GET参数"
 
     if request.method == "POST":  # 发生了通知处理的事件
-        post_args = json.loads(request.body.decode("utf-8"))
-        try:
-            notification_id = int(post_args['id'])
-        except:
-            html_display["warn_code"] = 1  # 失败
-            html_display["warn_message"] = "请不要恶意发送post请求！"
-            return JsonResponse({"success":False})
-        try:
-            Notification.objects.activated().get(id=notification_id, receiver=request.user)
-        except:
-            html_display["warn_code"] = 1  # 失败
-            html_display["warn_message"] = "请不要恶意发送post请求！！"
-            return JsonResponse({"success":False})
-        if "cancel" in post_args['function']:
-            try:
-                notification_status_change(notification_id, Notification.Status.DELETE)
-                html_display["warn_code"] = 2  # success
-                html_display["warn_message"] = "您已成功删除一条通知！"
-                return JsonResponse({"success":True})
-            except:
-                html_display["warn_code"] = 1  # 失败
-                html_display["warn_message"] = "删除通知的过程出现错误！请联系管理员。"
-                return JsonResponse({"success":False})
+        print(json.loads(request.body.decode("utf-8")))
+        if request.POST.get("anwser") is not None:
+            anwser = request.POST.get("anwser")
+            if len(anwser) == 0:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "请填写回答再提交！"
+            else:
+                pass
+
         else:
+            post_args = json.loads(request.body.decode("utf-8"))
             try:
-                context = notification_status_change(notification_id)
-                html_display["warn_code"] = context["warn_code"]
-                html_display["warn_message"] = context["warn_message"]
-                return JsonResponse({"success":True})
+                notification_id = int(post_args['id'])
             except:
                 html_display["warn_code"] = 1  # 失败
-                html_display["warn_message"] = "修改通知状态的过程出现错误！请联系管理员。"
+                html_display["warn_message"] = "请不要恶意发送post请求！"
                 return JsonResponse({"success":False})
+            try:
+                Notification.objects.activated().get(id=notification_id, receiver=request.user)
+            except:
+                html_display["warn_code"] = 1  # 失败
+                html_display["warn_message"] = "请不要恶意发送post请求！！"
+                return JsonResponse({"success":False})
+            if "cancel" in post_args['function']:
+                try:
+                    notification_status_change(notification_id, Notification.Status.DELETE)
+                    html_display["warn_code"] = 2  # success
+                    html_display["warn_message"] = "您已成功删除一条通知！"
+                    return JsonResponse({"success":True})
+                except:
+                    html_display["warn_code"] = 1  # 失败
+                    html_display["warn_message"] = "删除通知的过程出现错误！请联系管理员。"
+                    return JsonResponse({"success":False})
+            else:
+                try:
+                    context = notification_status_change(notification_id)
+                    html_display["warn_code"] = context["warn_code"]
+                    html_display["warn_message"] = context["warn_message"]
+                    return JsonResponse({"success":True})
+                except:
+                    html_display["warn_code"] = 1  # 失败
+                    html_display["warn_message"] = "修改通知状态的过程出现错误！请联系管理员。"
+                    return JsonResponse({"success":False})
 
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True

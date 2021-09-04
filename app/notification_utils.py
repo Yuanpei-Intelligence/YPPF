@@ -93,6 +93,8 @@ def notification_create(
         URL=None,
         relate_TransferRecord=None,
         relate_instance=None,
+        is_question=False,
+        hide_sender_name=False,
         *,
         publish_to_wechat=False,
 ):
@@ -122,6 +124,8 @@ def notification_create(
         URL=URL,
         relate_TransferRecord=relate_TransferRecord,
         relate_instance=relate_instance,
+        is_question=is_question,
+        hide_sender_name=hide_sender_name,
     )
     if publish_to_wechat == True:
         publish_notification(notification)

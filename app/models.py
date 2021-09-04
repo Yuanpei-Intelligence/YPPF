@@ -773,7 +773,8 @@ class Notification(models.Model):
         TRANSFER_FEEDBACK = "转账回执"
         NEW_ORGANIZATION = "新建团队通知"
 
-
+    is_question = models.BooleanField("是否为提问",default=False)
+    hide_sender_name = models.BooleanField("是否匿名",default=True)
     status = models.SmallIntegerField(choices=Status.choices, default=1)
     title = models.CharField("通知标题", blank=True, null=True, max_length=10)
     content = models.CharField("通知内容", max_length=225, blank=True)

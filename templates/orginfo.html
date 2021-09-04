@@ -160,8 +160,47 @@
                                     </li>
                                     {% endif %}
                                     {% endif %}
+                                    <li class="contacts-block__item">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                            fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                            stroke-linejoin="round">
+                                            <circle cx="12" cy="12" r="10" />
+                                            <line x1="12" y1="18" x2="12" y2="6" />
+                                            <line x1="6" y1="12" x2="18" y2="12" />
+                                        </svg>
+                                        <a href="#myModal" data-toggle="modal">提问</a>
+                                    </li>
+                                    <!-- BEGIN MODAL-->
+                                    <div class="modal fade" id="myModal">
+                                        <div class="modal-dialog">
+                                            <div class="modal-content">
+                                                <!-- 模态框头部 -->
+                                                <div class="modal-header">
+                                                    <h4 class="modal-title">提问</h4>
+                                                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                                </div>
 
-                                    
+                                                <form method="POST">
+                                                    <!-- 模态框主体 -->
+                                                    <div class="modal-body">
+                                                        <div class="form-group">
+                                                            <textarea id="question" name="question" class="form-control" rows="4"
+                                                                placeholder="填写你想向组织提问的问题！"></textarea>
+                                                        </div>
+                                                        <div class="form-check mb-4">
+                                                            <input type="checkbox" class="form-check-input" id="show_name" name="show_name">
+                                                            <label class="form-check-label" for="show_tel">是否匿名？</label>
+                                                        </div>
+                                                    </div>
+                                                    <!-- 模态框底部 -->
+                                                    <div class="modal-footer">
+                                                        <button type="submit" class="btn btn-primary">提交</button>
+                                                    </div>
+                                                </form>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!-- END MODAL -->
                                 </ul>
                             </div>
                         </div>
@@ -627,5 +666,31 @@
      document.body.removeChild(a);
     }
 </script>
+<script type="text/javascript">
+    function getValue(){
+       var result = prompt("请填写问题 : ", "question");
 
+    }
+</script>
+<script>
+    async function getQuestion() {
+        question = prompt("请输入问题 : ", "不要超过30个字哦");
+        if(question != null){
+            const success = await save_question.call(question);
+            if (success) {
+                alert("已成功发送问题!");
+            }
+        }
+    }
+    async function save_question(question) {
+        const { success } = await fetch(`/orginfo/`, {
+            headers: { "Content-Type": `text/plain` },
+            method: `POST`,
+            body: JSON.stringify({ id: question}),
+        })
+            .then((res) => res.json())
+            .catch(() => { success: false });
+        return success;
+    }
+</script>
 {% endblock %}
