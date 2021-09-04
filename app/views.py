@@ -839,7 +839,7 @@ def homepage(request):
         if len(summaryphotos)>0:
             photo_display.append(summaryphotos[0]) # 朴素的随机
     for photo in photo_display:
-        if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+        if str(photo.image) and str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
     
     if len(photo_display)==0: # 这个分类是为了前端显示的便利，就不采用append了
