@@ -109,13 +109,13 @@
                                             <div class="form-group">
                                                 <label>活动地点</label>
                                                 <input type="text" id="location" name="location" class="form-control"
-                                                    aria-label="Default" placeholder="求文案大大整点活" required="required" onclick="fill_value(this)">
+                                                    aria-label="Default" placeholder="求文案大大整点活" required="required" maxlength=200 onclick="fill_value(this)">
                                             </div>
                                             <div class="form-group">
                                                 <label>活动预算</label>
                                                 <input type="number" id="budget" name="budget" class="form-control"
                                                     aria-label="Default" placeholder="预算对报销和审批都很重要，请慎重填写" required="required" 
-                                                    step="0.1" min="0" onclick="fill_value(this)">
+                                                    step="0.1" min="0" max="100000" onclick="fill_value(this)">
                                             </div>
 
                                             <div class="form-group">
@@ -597,19 +597,19 @@
 <script type="text/javascript">
     $(function () {
         $("#datetimepicker1").datetimepicker({
-            format: "yyyy-mm-dd hh:ii",
+            format: "YYYY-MM-DD HH:mm",
             sideBySide: true,
         });
         $("#datetimepicker2").datetimepicker({
-            format: "yyyy-mm-dd hh:ii",
+            format: "YYYY-MM-DD HH:mm",
             sideBySide: true
         });
         $("#datetimepicker3").datetimepicker({
-            format: "yyyy-mm-dd hh:ii",
+            format: "YYYY-MM-DD HH:mm",
             sideBySide: true
         });
         $("#datetimepicker4").datetimepicker({
-            format: "yyyy-mm-dd hh:ii",
+            format: "YYYY-MM-DD HH:mm",
             sideBySide: true
         });
     });
@@ -656,6 +656,7 @@
     document.getElementById("aintro").placeholder = "{{introduction}}";
     {% if yq_source == "向学院申请" %}
     document.getElementById("apply_reason").placeholder = "{{apply_reason}}";
+    document.getElementById("reason_block").style.display = "";
     {% endif %}
 
 
@@ -666,6 +667,15 @@
     }
     document.getElementById("aintro").required = "";
     document.getElementById("apply_reason").required = "";
+
+    /* 填充旧图片 */
+    {% if full_editable %}
+        {% if uploaded_photo %}
+        document.getElementById("upload_annouce_photo").innerHTML = "{{photo}}";
+        {% else %}
+        document.getElementById("{{photo_id}}").checked = true;
+        {% endif %}
+    {% endif %}
 
     
     // 点击自动填充可修改
@@ -739,12 +749,12 @@
         start = new Date(start);
         end = new Date(end);
         // 结束要比开始晚
-        if (start > end) {
+        if (start >= end) {
             {% if html_display.warn_code == 2 %}
             document.getElementById("success_msg").style.display = "none";
             {% endif %}
             document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "结束时间不能早于开始时间。";
+            document.getElementById("warn_msg").innerHTML = "结束时间要晚于开始时间。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
@@ -752,7 +762,7 @@
         {% if not accepted %}
         var in_month = new Date();
         in_month = new Date(in_month.setDate(in_month.getDate() + 30));
-        if (in_month < start) {
+        if (in_month <= start) {
             {% if html_display.warn_code == 2 %}
             document.getElementById("success_msg").style.display = "none";
             {% endif %}
@@ -867,9 +877,6 @@
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
-        {% endif %}
-        // 不能少于当前人数
-        {% if edit %}
         {% endif %}
 
         /* 检查图片 */

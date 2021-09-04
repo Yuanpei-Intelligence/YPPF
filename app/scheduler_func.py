@@ -16,7 +16,8 @@ from boottest import local_dict
 from random import sample
 from numpy.random import choice
 
-from app.scheduler import scheduler, register_job
+from app.scheduler import scheduler
+# register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
 
 from urllib import parse, request as urllib2
 import json
@@ -414,11 +415,11 @@ try:
 except:
     default_weather = None
 
-@register_job(scheduler, 'interval', id="get weather per hour", hours=1)
+@scheduler.scheduled_job('interval', id="get weather per hour", hours=1)
 def get_weather():
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     try:
-        city = "Beijing"
+        city = "Haidian"
         key = local_dict["weather_api_key"]
         lang = "zh_cn"
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={key}&lang={lang}"
