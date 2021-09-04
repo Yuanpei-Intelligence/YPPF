@@ -2966,7 +2966,12 @@ def addComment(request, comment_base, receiver=None):
 
 
 def showComment(commentbase):
-    comments = commentbase.comments.order_by("time")
+    if commentbase is None:
+        return None
+    try:
+        comments = commentbase.comments.order_by("time")
+    except:
+        return None
     for comment in comments:
         commentator = get_person_or_org(comment.commentator)
         if comment.commentator.username[:2] == "zz":
@@ -3737,8 +3742,7 @@ def modifyOrganization(request):
     
     # 评论区
     commentable = allow_comment
-    # comments = showComment(application) if application is not None else None
-    comments = showComment(application)
+    comments = showComment(application) if application is not None else None
     # 用于前端展示
     apply_person = me if is_new_application else NaturalPerson.objects.get(person_id=application.pos)
     app_avatar_path = apply_person.get_user_ava()
