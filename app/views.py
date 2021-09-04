@@ -2361,6 +2361,8 @@ def addActivity(request, aid=None):
                 with transaction.atomic():
                     aid = create_activity(request)
                     return redirect(f"/viewActivity/{aid}")
+            except ActivityException as e:
+                return redirect(str(e))
             except Exception as e:
                 print(e)
                 return redirect("/welcome/")

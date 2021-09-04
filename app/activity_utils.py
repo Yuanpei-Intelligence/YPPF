@@ -197,6 +197,18 @@ def create_activity(request):
 
     context = activity_base_check(request)
 
+    # 查找是否有类似活动存在
+    old_ones = Activity.objects.filter(
+        title=context["title"],
+        start=context["start"],
+        introduction=context["introduction"],
+        location=context["location"]
+    )
+    if len(old_ones) > 0:
+        # 这写法一点也不优雅.....
+        redirect_url = f"/viewActivity/{old_ones.first().id}"
+        raise ActivityException(redirect_url)
+
     # 审批老师存在
     examine_teacher = NaturalPerson.objects.get(name=context["examine_teacher"])
     assert examine_teacher.identity == NaturalPerson.Identity.TEACHER
