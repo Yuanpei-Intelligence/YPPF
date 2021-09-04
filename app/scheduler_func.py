@@ -441,7 +441,7 @@ def get_weather():
     else:
         return weather_dict
 
-"""
+
 
 print("———————————————— Scheduler:   Debug ————————————————")
 print("before loading scheduler from app.scheduler in scheduler_func.py")
@@ -455,4 +455,3 @@ scheduler.add_job(get_weather, 'interval', id="get weather per hour", hours=1, r
 print("finishing loading get_weather function")
 print("finish scheduler_func")
 print("———————————————— End     :   Debug ————————————————")
-"""
