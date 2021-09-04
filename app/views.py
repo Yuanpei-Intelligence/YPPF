@@ -508,7 +508,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         try:
             org = Organization.objects.get(oname=name)
         except:  # 找不到对应组织
-            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=找不到对应组织,请联系管理员!"
+            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=找不到对应团队,请联系管理员!"
             return redirect(urls)
         try:
             position = Position.objects.activated().filter(org=org, person=me)
@@ -516,7 +516,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
             position = position[0]
             assert position.pos == 0
         except:
-            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该组织账户的权限!"
+            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团队账户的权限!"
             return redirect(urls)
         # 到这里,是本人组织并且有权限登录
         auth.logout(request)
@@ -534,7 +534,7 @@ def user_login_org(request, org):
     try:
         me = NaturalPerson.objects.activated().get(person_id=user)
     except:  # 找不到合法的用户
-        return wrong("您没有权限访问该网址！请用对应组织账号登陆。")
+        return wrong("您没有权限访问该网址！请用对应团队账号登陆。")
     #是组织一把手
     try:
         position = Position.objects.activated().filter(org=org, person=me)
@@ -542,12 +542,12 @@ def user_login_org(request, org):
         position = position[0]
         assert position.pos == 0
     except:
-        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该组织账户的权限!"
+        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团队账户的权限!"
         return redirect(urls)
     # 到这里,是本人组织并且有权限登录
     auth.logout(request)
     auth.login(request, org.organization_id)  # 切换到组织账号
-    return succeed("成功切换到组织账号处理该事务，建议事务处理完成后退出组织账号。")
+    return succeed("成功切换到团队账号处理该事务，建议事务处理完成后退出团队账号。")
 
 
 
@@ -598,6 +598,12 @@ def orginfo(request, name=None):
     org_avatar_path = org.get_user_ava()
     wallpaper_path = utils.get_user_wallpaper(org, "Organization")
     # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
+
+    if request.method == "POST" :
+        if request.POST.get("export_excel") is not None and html_display["is_myself"]:
+            html_display["warn_code"] = 2
+            html_display["warn_message"] = "下载成功!"
+            return utils.export_orgpos_info(org)
 
     # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
@@ -691,7 +697,7 @@ def orginfo(request, name=None):
     modpw_status = request.GET.get("modinfo", None)
     if modpw_status is not None and modpw_status == "success":
         html_display["warn_code"] = 2
-        html_display["warn_message"] = "修改组织信息成功!"
+        html_display["warn_message"] = "修改团队信息成功!"
 
     # 补充左边栏信息
 
@@ -707,8 +713,8 @@ def orginfo(request, name=None):
     # 补充一些呈现信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "组织主页"
-    bar_display["navbar_name"] = "组织主页"
+    bar_display["title_name"] = "团队主页"
+    bar_display["navbar_name"] = "团队主页"
 
     # 转账后跳转
     origin = request.get_full_path()
@@ -761,7 +767,6 @@ def homepage(request):
         with transaction.atomic():
             np = NaturalPerson.objects.select_for_update().get(person_id=request.user)
             if np.last_time_login is None or np.last_time_login.date() != nowtime.date():
-                print("date:", np.last_time_login.date(), nowtime.date())
                 np.last_time_login = nowtime
                 np.bonusPoint += 0.5
                 np.save()
@@ -2001,7 +2006,8 @@ def viewActivity(request, aid=None):
                 )
                 html_display["warn_message"] = "成功提交活动照片"
             html_display["warn_code"] = 2
-
+        elif option == "download":
+            return utils.export_activity_signin(activity)
         else:
             return redirect("/welcome")
 
@@ -2229,7 +2235,7 @@ def checkinActivity(request, aid=None):
     try:
         with transaction.atomic():
             participant = Participant.objects.select_for_update().get(
-                activity_id=int(aid), person_id=np, 
+                activity_id=int(aid), person_id=np,
                 status=Participant.AttendStatus.UNATTENDED
             )
             participant.status = Participant.AttendStatus.ATTENDED
