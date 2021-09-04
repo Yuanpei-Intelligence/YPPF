@@ -480,7 +480,7 @@ def stuinfo(request, name=None):
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
         bar_display = utils.get_sidebar_and_navbar(
-            request.user, navbar_name="个人主页", title_name=("个人主页 | " + name)
+            request.user, navbar_name="个人主页", title_name=(name + " | 元培成长档案")
             )
         origin = request.get_full_path()
 
@@ -714,7 +714,7 @@ def orginfo(request, name=None):
 
     # 补充一些呈现信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="团队主页", title_name="团队主页 | " + org.oname)
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="团队主页", title_name=org.oname + " | 元培成长档案")
     
     # 转账后跳转
     origin = request.get_full_path()

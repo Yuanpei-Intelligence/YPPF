@@ -179,9 +179,20 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
 
     bar_display["navbar_name"] = navbar_name
     # title_name默认与navbar_name相同
-    bar_display["title_name"] = title_name if title_name else navbar_name
+    bar_display["title_name"] = title_name if title_name else (navbar_name + " | 元培成长档案")
 
-    if navbar_name != "":
+    if navbar_name == "我的元气值":
+        try:
+            bar_display["help_message"] = local_dict["help_message"].get(
+                (navbar_name + user_type.lower()),  ""
+            )
+        except:
+            bar_display["help_message"] = ""
+        try:
+            bar_display["help_paragraphs"] = Help.objects.get(title=navbar_name).content
+        except:
+            bar_display["help_paragraphs"] = ""
+    elif navbar_name != "":
         try:
             bar_display["help_message"] = local_dict["help_message"].get(
                 navbar_name, ""
