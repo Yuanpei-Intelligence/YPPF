@@ -12,6 +12,17 @@
     {% elif html_display.warn_code == 2 %}
     <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
     {% endif %}
+    
+        <div class="alert alert-primary alert-dismissible show" role="alert"
+            style="margin-bottom: 0;">
+            <p style="margin-bottom: 0;">
+                <strong>关于分享：</strong>如果你在使用手机浏览器，选择将其在微信/朋友圈中打开即可将本页分享给微信好友们
+            </p>
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    
 
     <!--  BEGIN PHOTO SECTION  -->
     <div class="d-flex m-0 p-0 overflow-hidden" style="height: 35vh">
