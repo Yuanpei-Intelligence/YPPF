@@ -387,7 +387,7 @@
    function download(blobUrl) {
      const a = document.createElement('a');
      a.style.display = 'none';
-     var name="{{activity.title}}({{activity.start.month}}月{{activity.start.day}}日).xls"
+     var name="{{activity.title}}({{activity.start.month}}月{{activity.start.day}}日)签到信息统计.xls"
      a.download = name;
      a.href = blobUrl;
      a.click();
