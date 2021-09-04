@@ -479,7 +479,9 @@ def stuinfo(request, name=None):
         context["wallpaper_path"] = utils.get_user_wallpaper(person, "Person")
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
-        bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="个人主页")
+        bar_display = utils.get_sidebar_and_navbar(
+            request.user, navbar_name="个人主页", title_name=(name + " | 元培成长档案")
+            )
         origin = request.get_full_path()
 
         return render(request, "stuinfo.html", locals())
@@ -713,9 +715,6 @@ def orginfo(request, name=None):
     # 补充一些呈现信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user,"团队主页")
-    # bar_display["title_name"] = "团队主页"
-    # bar_display["navbar_name"] = "团队主页"
-
     # 转账后跳转
     origin = request.get_full_path()
 
@@ -2010,7 +2009,9 @@ def viewActivity(request, aid=None):
                 )
                 html_display["warn_message"] = "成功提交活动照片"
             html_display["warn_code"] = 2
-        elif option == "download":
+        elif option == "download":#下载活动签到信息
+            if not ownership:
+                return redirect("/welcome/")
             return utils.export_activity_signin(activity)
         else:
             return redirect("/welcome")
@@ -2093,10 +2094,10 @@ def viewActivity(request, aid=None):
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
-    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="活动信息", title_name=(title + " | 元培成长档案"))
     # 补充一些呈现信息
-    bar_display["title_name"] = "活动信息"
-    bar_display["navbar_name"] = "活动信息"
+    # bar_display["title_name"] = "活动信息"
+    # bar_display["navbar_name"] = "活动信息"
 
     return render(request, "activity_info.html", locals())
 
@@ -3278,7 +3279,7 @@ def showReimbursement(request):
     else:
         shown_instances = Reimbursement.objects.filter(pos=request.user)
     shown_instances = shown_instances.order_by("-modify_time", "-time")
-    bar_display = utils.get_sidebar_and_navbar(request.user, "报销信息")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "活动结项")
     return render(request, "reimbursement_show.html", locals())
 
 @login_required(redirect_field_name="origin")
@@ -3301,7 +3302,7 @@ def showActivity(request):
         if not is_teacher:
             html_display["warn_code"] = 1
 
-            html_display["warn_code"] = "学生账号不能进入活动管理页面！"
+            html_display["warn_code"] = "学生账号不能进入活动立项页面！"
 
             return redirect(
                 "/welcome/"
@@ -3315,7 +3316,7 @@ def showActivity(request):
         shown_instances = Activity.objects.all_activated().filter(organization_id = me.id)
 
     shown_instances = shown_instances.order_by("-modify_time", "-time")
-    bar_display = utils.get_sidebar_and_navbar(request.user, "活动管理")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "活动立项")
     return render(request, "activity_show.html", locals())
 
 
