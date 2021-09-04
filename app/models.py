@@ -99,6 +99,15 @@ class NaturalPerson(models.Model):
     def __str__(self):
         return str(self.name)
 
+    def get_user_ava(self):
+        try:
+            avatar = self.avatar
+        except:
+            avatar = ""
+        if not avatar:
+            avatar = "avatar/person_default.jpg"
+        return settings.MEDIA_URL + str(avatar)
+
     def show_info(self):
         """
             返回值为一个列表，在search.html中使用，按照如下顺序呈现：
@@ -247,6 +256,15 @@ class Organization(models.Model):
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
         super().save(*args, **kwargs)
+
+    def get_user_ava(self):
+        try:
+            avatar = self.avatar
+        except:
+            avatar = ""
+        if not avatar:
+            avatar = "avatar/org_default.png"
+        return settings.MEDIA_URL + str(avatar)
 
 
 class PositionManager(models.Manager):
@@ -661,7 +679,9 @@ class TransferRecord(models.Model):
         REFUND = (4, "已退回")
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
-    is_increase=models.IntegerField("报销兑换",default=0,help_text="报销时转账并未实质发生，用此字段标识，0标识默认转账，1为报销兑换")
+    is_increase=models.IntegerField("报销兑换", default=0,
+        help_text="报销时转账并未实质发生，用此字段标识，0标识默认转账，1为报销兑换")
+    
     def save(self, *args, **kwargs):
         self.amount = round(self.amount, 1)
         super(TransferRecord, self).save(*args, **kwargs)
@@ -761,7 +781,8 @@ class Notification(models.Model):
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
     typename = models.SmallIntegerField(choices=Type.choices, default=0)
     URL = models.URLField("相关网址", null=True, blank=True)
-    bulk_identifier = models.CharField("批量信息标识", max_length=64, default="")
+    bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
+                                        db_index=True)
     relate_TransferRecord = models.ForeignKey(
         TransferRecord,
         related_name="transfer_notification",
@@ -860,9 +881,19 @@ class ModifyOrganization(CommentBase):
         if self.introduction and self.introduction != '这里暂时没有介绍哦~':
             display.append(('组织介绍', self.introduction))
         return display
+
+    def get_user_ava(self):
+        try:
+            avatar = self.avatar
+        except:
+            avatar = ""
+        if not avatar:
+            avatar = "avatar/person_default.jpg"
+        return settings.MEDIA_URL + str(avatar)
         
     def is_pending(self):   #表示是不是pending状态
             return self.status == ModifyOrganization.Status.PENDING
+
 
 class ModifyPosition(CommentBase):
     class Meta:
@@ -945,6 +976,7 @@ class ModifyPosition(CommentBase):
     def save(self, *args, **kwargs):
         self.typename = "modifyposition"
         super().save(*args, **kwargs)
+
 
 class Reimbursement(CommentBase):
     class Meta:
