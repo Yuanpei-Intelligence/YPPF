@@ -51,7 +51,11 @@ from app.wechat_send import(
     send_wechat_captcha,
     invite,
 )
-from app.notification_utils import notification_create, notification_status_change
+from app.notification_utils import(
+    notification_create,
+    bulk_notification_create,
+    notification_status_change,
+)
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from django.shortcuts import render, redirect
