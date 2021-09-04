@@ -3063,7 +3063,7 @@ def modifyPosition(request):
 
         except: #恶意跳转
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "您没有权限访问该网址！"
+            html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
@@ -3450,7 +3450,7 @@ def modifyReimbursement(request):
             assert (application.pos==request.user) or (auditor==request.user)
         except:  # 恶意跳转
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "您没有权限访问该网址！"
+            html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
@@ -3465,7 +3465,7 @@ def modifyReimbursement(request):
             assert user_type == "Organization"
         except:  # 恶意跳转
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "您没有权限访问该网址！"
+            html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
@@ -3644,7 +3644,7 @@ def modifyOrganization(request):
             assert (application.pos == request.user) or (application.otype.incharge == me)
         except: #恶意跳转
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "您没有权限访问该网址！"
+            html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
@@ -3866,5 +3866,4 @@ def send_message_check(me, request):
     except:
         return wrong("发送微信的过程出现错误！请联系管理员！")
     
-    return succeed(f"成功将创建知晓类消息，发送给所有的{receiver_type}了!")
-        
+    return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了!")
