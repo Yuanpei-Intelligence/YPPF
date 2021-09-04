@@ -96,6 +96,19 @@ class NaturalPerson(models.Model):
         "Organization", related_name="unsubscribers", db_index=True
     )
 
+    class ReceiveLevel(models.IntegerChoices):
+        # DEBUG = (-1000, '全部')
+        MORE = (0, '更多')
+        LESS = (500, '更少')
+        # FATAL_ONLY = (1000, '仅重要')
+        # NONE = (1001, '不接收')
+    
+    wechat_receive_level = models.IntegerField(
+        '微信接收等级',
+        choices=ReceiveLevel.choices, default=0,
+        help_text='允许微信接收的最低消息等级，更低等级的通知类消息将被屏蔽'
+        )
+
     def __str__(self):
         return str(self.name)
 

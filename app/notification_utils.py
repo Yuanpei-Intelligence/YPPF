@@ -95,6 +95,7 @@ def notification_create(
         relate_instance=None,
         *,
         publish_to_wechat=False,
+        publish_kws=None,
 ):
     """
     对于一个需要创建通知的事件，请调用该函数创建通知！
@@ -124,7 +125,9 @@ def notification_create(
         relate_instance=relate_instance,
     )
     if publish_to_wechat == True:
-        publish_notification(notification)
+        if not publish_kws:
+            publish_kws = {}
+        publish_notification(notification, **publish_kws)
     return notification
 
 def bulk_notification_create(
@@ -138,6 +141,7 @@ def bulk_notification_create(
         relate_instance=None,
         *,
         publish_to_wechat=False,
+        publish_kws=None,
 ):
     bulk_identifier = hasher.encode(str(datetime.now()) + str(random()))
     try:
@@ -165,7 +169,9 @@ def bulk_notification_create(
         success = False
     if success and publish_to_wechat:
         filter_kws = {"bulk_identifier": bulk_identifier}
-        success = publish_notifications(filter_kws=filter_kws)
+        if not publish_kws:
+            publish_kws = {}
+        success = publish_notifications(filter_kws=filter_kws, **publish_kws)
     return success, bulk_identifier
 
 
