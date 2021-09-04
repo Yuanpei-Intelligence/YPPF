@@ -838,15 +838,18 @@ def homepage(request):
         summaryphotos = act.photos.filter(type = ActivityPhoto.PhotoType.SUMMARY)
         if len(summaryphotos)>0:
             photo_display.append(summaryphotos[0]) # 朴素的随机
+    photo_display = photo_display[:4]
     for photo in photo_display:
         if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
     
+    """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
     if len(photo_display)==0: # 这个分类是为了前端显示的便利，就不采用append了
         homepagephoto = "/static/assets/img/taskboard.jpg"
     else:
         firstpic = photo_display[0]
         photos = photo_display[1:]
+    """
 
     # 天气
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
