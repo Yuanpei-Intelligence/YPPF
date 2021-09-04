@@ -241,6 +241,10 @@
 
                                 <!-- ------------------------- begin summary photo ------------------------- -->
                                 {% if status == "已结束" %}
+                                <form method="POST">
+                                    <input type="hidden" name="option" value="payment">
+                                    <button class="btn btn-primary btn-block mb-4 mr-2">申请报销</button>
+                                </form>
                                 <button class="btn btn-success btn-block mb-4 mr-2" data-toggle="collapse"
                                     data-target="#summaryphoto">
                                     上传总结照片
@@ -260,10 +264,6 @@
                                         <input type="hidden" name="option" value="submitphoto">
                                         <button type="submit" class="btn btn-primary btn-block mb-4 mr-2">确认上传</button>
                                     </div>
-                                </form>
-                                <form method="POST">
-                                    <input type="hidden" name="option" value="payment">
-                                    <button class="btn btn-primary btn-block mb-4 mr-2">申请报销</button>
                                 </form>
                                 <button class="btn btn-success btn-block mb-4 mr-2" id="export_excel" type="button">
                                     下载签到信息
