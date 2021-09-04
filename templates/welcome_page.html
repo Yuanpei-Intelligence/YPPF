@@ -26,6 +26,9 @@
                         {% for path in paths %}
                         <li data-target="#style1"></li>
                         {% endfor %}
+                        {% for photo in photo_display %}
+                        <li data-target="#style1"></li>
+                        {% endfor %}
                     </ol>
                     <div class="carousel-inner">
                         <div class="carousel-item active">
@@ -37,6 +40,14 @@
                             <a href="/{{path}}">
                                 <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
                                     src="/static/assets/img/guidepics/{{path}}.jpeg">
+                            </a>
+                        </div>
+                        {% endfor %}
+                        {% for photo in photo_display %}
+                        <div class="carousel-item">
+                            <a href="/viewActivity/{{photo.activity_id}}">
+                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
+                                    src={{photo.image}}>
                             </a>
                         </div>
                         {% endfor %}
@@ -474,7 +485,7 @@
                                                     <p
                                                         style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                         <i class="fa fa-clock" style="width: 20px;"></i>
-                                                        <span class="ml-1">{{ act.start }}&nbsp;活动开始</span>
+                                                        <span class="ml-1">{{ rec.deadline }}&nbsp;截止报名，还有 {{rec.tobestart}} 小时</span>
                                                     </p>
                                                 </div>
                                             </div>
