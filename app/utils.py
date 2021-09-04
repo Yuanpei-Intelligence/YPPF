@@ -489,6 +489,7 @@ def check_account_setting(request,user_type):
         attr_dict['stu_dorm'] = request.POST['dorm']
         attr_dict['ava'] = request.FILES.get("avatar")
         attr_dict['gender'] = request.POST['gender']
+        attr_dict['birthday'] = request.POST['birthday']
         attr_dict['wallpaper'] = request.FILES.get("wallpaper")
 
         show_dict = dict()
@@ -496,6 +497,7 @@ def check_account_setting(request,user_type):
         # show_dict['show_nickname'] = request.POST.get(
         #     'show_nickname') == 'on'
         show_dict['show_gender'] = request.POST.get('show_gender') == 'on'
+        show_dict['show_birthday'] = request.POST.get('show_birthday') == 'on'
         show_dict['show_tel'] = request.POST.get('show_tel') == 'on'
         show_dict['show_email'] = request.POST.get('show_email') == 'on'
         show_dict['show_major'] = request.POST.get('show_major') == 'on'
