@@ -2002,10 +2002,10 @@ def viewActivity(request, aid=None):
                 )
                 html_display["warn_message"] = "成功提交活动照片"
             html_display["warn_code"] = 2
-        elif option == "download":#下载活动签到信息
+        elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
             if not ownership:
                 return redirect("/welcome/")
-            return utils.export_activity_signin(activity)
+            return utils.export_activity(activity,option)
         else:
             return redirect("/welcome")
 
@@ -2082,7 +2082,6 @@ def viewActivity(request, aid=None):
             summary_photo_exists = True
             summary_photo = settings.MEDIA_URL + str(summary_photo.image)
         except Exception as e:
-            # print(e)
             pass
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
