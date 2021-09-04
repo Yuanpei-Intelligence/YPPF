@@ -421,35 +421,6 @@ def clear_captcha_session(request):
     request.session.pop("received_user")        # 成功登录后不再保留
 
 
-def notifications_create(
-    receivers,
-    sender,
-    typename,
-    title,
-    content,
-    URL=None,
-    relate_TransferRecord=None,
-    *,
-    publish_to_wechat=False,
-):
-    """
-        批量创建通知
-    """
-    notifications = [
-        Notification(
-            receiver=receiver,
-            sender=sender,
-            typename=typename,
-            title=title,
-            content=content,
-            URL=URL,
-            relate_TransferRecord=relate_TransferRecord,
-        )
-        for receiver in receivers
-    ]
-    Notification.objects.bulk_create(notifications)
-
-
 def set_nperson_quota_to(quota):
     """
         后台设定所有自然人的元气值为一特定值，这个值就是每月的限额
@@ -460,14 +431,18 @@ def set_nperson_quota_to(quota):
     notification_content = f"学院已经将大家的元气值配额重新设定为{quota},祝您使用愉快！"
     title = Notification.Title.VERIFY_INFORM
     YPcollege = Organization.objects.get(oname="元培学院")
-    notifications_create(
+
+    # 函数内导入是为了防止破坏utils的最高优先级，如果以后确定不会循环引用也可提到外面
+    # 目前不发送到微信哦
+    from notification_utils import bulk_notification_create
+    success, _ = bulk_notification_create(
         activated_npeople,
         YPcollege,
         Notification.Type.NEEDREAD,
         title,
         notification_content,
     )
-    return
+    return success
 
 def check_account_setting(request,user_type):
     if user_type == 'Person':
