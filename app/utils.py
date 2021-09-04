@@ -757,14 +757,17 @@ def export_activity_signin(activity):
     # 写入表头
     w.write(0, 0, u'姓名')
     w.write(0, 1, u'学号')
+    w.write(0, 2, u'年级/班级')
     # 写入数据
     excel_row = 1
     for participant in participants:
       name = participant.person_id.name
       Sno = participant.person_id.person_id.username
+      grade=str(participant.person_id.stu_grade)+'级'+str(participant.person_id.stu_class)+'班'
       # 写入每一行对应的数据
       w.write(excel_row, 0, name)
       w.write(excel_row, 1, Sno)
+      w.write(excel_row, 2, grade)
       excel_row += 1
     # 写出到IO
     output = BytesIO()
