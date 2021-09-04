@@ -1,3 +1,13 @@
+import json
+from datetime import date, datetime, timedelta
+from urllib import parse, request as urllib2
+import qrcode
+import random
+import requests  # 发送验证码
+import io
+import csv
+import os
+
 from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
 from app.models import (
@@ -51,7 +61,11 @@ from app.wechat_send import(
     send_wechat_captcha,
     invite,
 )
-from app.notification_utils import notification_create, notification_status_change
+from app.notification_utils import(
+    notification_create,
+    bulk_notification_create,
+    notification_status_change,
+)
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from django.shortcuts import render, redirect
@@ -65,16 +79,6 @@ from django.db.models import Q
 from django.conf import settings
 from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
-
-import json
-from datetime import date, datetime, timedelta
-from urllib import parse, request as urllib2
-import qrcode
-import random
-import requests  # 发送验证码
-import io
-import csv
-import os
 
 # 定时任务不在views直接调用
 
@@ -420,18 +424,18 @@ def stuinfo(request, name=None):
         participate_status_list = participants.values("status")
         participate_status_list = [info["status"] for info in participate_status_list]
         status_color = {
-            Activity.Status.REVIEWING: "primary",
-            Activity.Status.CANCELED: "secondary",
-            Activity.Status.APPLYING: "info",
-            Activity.Status.WAITING: "warning",
+            Activity.Status.REVIEWING: "warning",
+            Activity.Status.CANCELED: "danger",
+            Activity.Status.APPLYING: "success",
+            Activity.Status.WAITING: "info",
             Activity.Status.PROGRESSING: "success",
             Activity.Status.END: "danger",
             Participant.AttendStatus.APPLYING: "primary",
-            Participant.AttendStatus.APLLYFAILED: "danger",
-            Participant.AttendStatus.APLLYSUCCESS: "info",
-            Participant.AttendStatus.ATTENDED: "success",
+            Participant.AttendStatus.APLLYFAILED: "warning",
+            Participant.AttendStatus.APLLYSUCCESS: "primary",
+            Participant.AttendStatus.ATTENDED: "primary",
             Participant.AttendStatus.UNATTENDED: "warning",
-            Participant.AttendStatus.CANCELED: "secondary",
+            Participant.AttendStatus.CANCELED: "warning",
         }
         activity_color_list = [status_color[activity.status] for activity in activities]
         attend_color_list = [status_color[status] for status in participate_status_list]
@@ -475,7 +479,9 @@ def stuinfo(request, name=None):
         context["wallpaper_path"] = utils.get_user_wallpaper(person, "Person")
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
-        bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="个人主页")
+        bar_display = utils.get_sidebar_and_navbar(
+            request.user, navbar_name="个人主页", title_name = person.name
+            )
         origin = request.get_full_path()
 
         return render(request, "stuinfo.html", locals())
@@ -708,10 +714,7 @@ def orginfo(request, name=None):
 
     # 补充一些呈现信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "团队主页"
-    bar_display["navbar_name"] = "团队主页"
-
+    bar_display = utils.get_sidebar_and_navbar(request.user,navbar_name = "团队主页", title_name = org.oname)
     # 转账后跳转
     origin = request.get_full_path()
 
@@ -789,6 +792,7 @@ def homepage(request):
         dictmp = {}
         dictmp["deadline"] = deadline
         dictmp["act"] = act
+        dictmp["tobestart"] = int((deadline.__sub__(nowtime).total_seconds())/360)/10
         signup_list.append(dictmp)
     signup_list.sort(key=lambda x:x["deadline"])
     signup_list=signup_list[:10]
@@ -834,15 +838,18 @@ def homepage(request):
         summaryphotos = act.photos.filter(type = ActivityPhoto.PhotoType.SUMMARY)
         if len(summaryphotos)>0:
             photo_display.append(summaryphotos[0]) # 朴素的随机
+    photo_display = photo_display[:4]
     for photo in photo_display:
         if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
     
+    """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
     if len(photo_display)==0: # 这个分类是为了前端显示的便利，就不采用append了
         homepagephoto = "/static/assets/img/taskboard.jpg"
     else:
         firstpic = photo_display[0]
         photos = photo_display[1:]
+    """
 
     # 天气
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
@@ -1239,7 +1246,7 @@ def search(request):
     organization_field = ["组织名称", "组织类型", "负责人", "近期活动"]
 
     # 搜索活动
-    activity_list = Activity.objects.filter(
+    activity_list = Activity.objects.activated().filter(
         Q(title__icontains=query) | Q(organization_id__oname__icontains=query)& ~Q(status=Activity.Status.CANCELED)
                                                          & ~Q(status=Activity.Status.REJECT)
         &~Q(status=Activity.Status.REVIEWING)&~Q(status=Activity.Status.ABORT)
@@ -2086,10 +2093,10 @@ def viewActivity(request, aid=None):
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
-    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="活动信息", title_name=title)
     # 补充一些呈现信息
-    bar_display["title_name"] = "活动信息"
-    bar_display["navbar_name"] = "活动信息"
+    # bar_display["title_name"] = "活动信息"
+    # bar_display["navbar_name"] = "活动信息"
 
     return render(request, "activity_info.html", locals())
 
@@ -3834,42 +3841,28 @@ def send_message_check(me, request):
     content = content
     typename = Notification.Type.NEEDREAD
     URL = url
-    if receiver_type == "订阅用户":
-        try:
-            for receiver in NaturalPerson.objects.exclude(id__in=me.unsubscribers.all()):
-                not_list.append(
-                Notification(
-                    receiver=receiver.person_id,
-                    sender=sender,
-                    status=status,
-                    title=title,
-                    content=content,
-                    URL=URL,
-                    typename=typename,
-                )
-            )
-            created_not = Notification.objects.bulk_create(not_list)
-        except:
-            return wrong("创建通知的时候出现错误！请联系管理员！")
-    else:   # 检查过逻辑了，不可能是其他的
-        try:
-            for receiver in NaturalPerson.objects.filter(id__in=me.position_set.values_list('person_id', flat=True)):
-                not_list.append(
-                Notification(
-                    receiver=receiver.person_id,
-                    sender=sender,
-                    status=status,
-                    title=title,
-                    content=content,
-                    URL=URL,
-                    typename=typename,
-                )
-            )
-            created_not = Notification.objects.bulk_create(not_list)
-        except:
-            return wrong("创建通知的时候出现错误！请联系管理员！")
     try:
-        publish_notifications(created_not)
+        if receiver_type == "订阅用户":
+            receivers = NaturalPerson.objects.exclude(id__in=me.unsubscribers.all())
+            receivers = [receiver.person_id for receiver in receivers]
+        else:   # 检查过逻辑了，不可能是其他的
+            receivers = NaturalPerson.objects.filter(
+                id__in=me.position_set.values_list('person_id', flat=True))
+            receivers = [receiver.person_id for receiver in receivers]
+        # 创建通知
+        success, bulk_identifier = bulk_notification_create(
+                receivers=receivers,
+                sender=sender,
+                typename=typename,
+                title=title,
+                content=content,
+                URL=URL,
+            )
+        assert success
+    except:
+        return wrong("创建通知的时候出现错误！请联系管理员！")
+    try:
+        assert publish_notifications(filter_kws={'bulk_identifier': bulk_identifier})
     except:
         return wrong("发送微信的过程出现错误！请联系管理员！")
     

@@ -172,6 +172,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         my_org_id_list = Position.objects.activated().filter(person=me).filter(pos=0)
         bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的组织
         bar_display["my_org_len"] = len(bar_display["my_org_list"])
+        
 
     else:
         bar_display["profile_name"] = "团队主页"
@@ -179,9 +180,18 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
 
     bar_display["navbar_name"] = navbar_name
     # title_name默认与navbar_name相同
-    bar_display["title_name"] = title_name if title_name else navbar_name
 
-    if navbar_name != "":
+    bar_display["title_name"] = title_name if title_name else navbar_name
+    
+    if navbar_name == "我的元气值":
+        bar_display["help_message"] = local_dict["help_message"].get(
+            (navbar_name + user_type.lower()),  ""
+        )
+        try:
+            bar_display["help_paragraphs"] = Help.objects.get(title=navbar_name).content
+        except:
+            bar_display["help_paragraphs"] = ""
+    elif navbar_name != "":
         try:
             bar_display["help_message"] = local_dict["help_message"].get(
                 navbar_name, ""
@@ -422,35 +432,6 @@ def clear_captcha_session(request):
     request.session.pop("received_user")        # 成功登录后不再保留
 
 
-def notifications_create(
-    receivers,
-    sender,
-    typename,
-    title,
-    content,
-    URL=None,
-    relate_TransferRecord=None,
-    *,
-    publish_to_wechat=False,
-):
-    """
-        批量创建通知
-    """
-    notifications = [
-        Notification(
-            receiver=receiver,
-            sender=sender,
-            typename=typename,
-            title=title,
-            content=content,
-            URL=URL,
-            relate_TransferRecord=relate_TransferRecord,
-        )
-        for receiver in receivers
-    ]
-    Notification.objects.bulk_create(notifications)
-
-
 def set_nperson_quota_to(quota):
     """
         后台设定所有自然人的元气值为一特定值，这个值就是每月的限额
@@ -461,14 +442,18 @@ def set_nperson_quota_to(quota):
     notification_content = f"学院已经将大家的元气值配额重新设定为{quota},祝您使用愉快！"
     title = Notification.Title.VERIFY_INFORM
     YPcollege = Organization.objects.get(oname="元培学院")
-    notifications_create(
+
+    # 函数内导入是为了防止破坏utils的最高优先级，如果以后确定不会循环引用也可提到外面
+    # 目前不发送到微信哦
+    from notification_utils import bulk_notification_create
+    success, _ = bulk_notification_create(
         activated_npeople,
         YPcollege,
         Notification.Type.NEEDREAD,
         title,
         notification_content,
     )
-    return
+    return success
 
 def check_account_setting(request,user_type):
     if user_type == 'Person':
@@ -792,7 +777,6 @@ def export_activity(activity,inf_type):
         output.seek(0)
         response.write(output.getvalue())
     return response
-
 # 导出组织成员信息Excel文件
 def export_orgpos_info(org):
     # 设置HTTPResponse的类型

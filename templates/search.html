@@ -86,7 +86,7 @@
                                                 <!-- 说明此时要展示姓名，关联链接 -->
                                                 <td style="min-width: 80px;">
                                                     <u>
-                                                        <a href="/stuinfo/{{ person.name }}+{{ person.person_id.id }}"></a>
+                                                        <a href="/stuinfo/{{ person.name }}+{{ person.person_id.id }}">
                                                             <img src="{{ person.get_user_ava }}" alt="大头照" style="height: 20px; width: 20px;">
                                                             {{ attribute }}
                                                         </a>
@@ -273,7 +273,15 @@
                                                 </td>
 
                                                 <td style="min-width: 60px;">
-                                                    {{ act.status }}
+                                                    {% if act.status == "等待中" %}
+                                                        <span id="ret" class="badge badge-pill badge-info">等待开始</span>
+                                                    {% elif act.status == "审核中" %}
+                                                        <span id="ret" class="badge badge-pill badge-warning">审核中</span>
+                                                    {% elif act.status == "报名中" or act.status == "进行中" %}
+                                                        <span id="ret" class="badge badge-pill badge-success">{{act.status}}</span>
+                                                    {% else %}
+                                                        <span id="ret" class="badge badge-pill badge-danger">{{act.status}}</span>
+                                                    {% endif %}
                                                 </td>
                                             </tr>
                                             {% endfor %}

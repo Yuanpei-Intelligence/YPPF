@@ -1,3 +1,4 @@
+import os   # apscheduler 0.3以上版本要求先导入os 请勿删除
 from apscheduler.schedulers.background import BackgroundScheduler
 from django.dispatch.dispatcher import receiver
 from django_apscheduler.jobstores import DjangoJobStore
