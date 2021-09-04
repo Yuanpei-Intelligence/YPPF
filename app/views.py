@@ -424,18 +424,18 @@ def stuinfo(request, name=None):
         participate_status_list = participants.values("status")
         participate_status_list = [info["status"] for info in participate_status_list]
         status_color = {
-            Activity.Status.REVIEWING: "primary",
-            Activity.Status.CANCELED: "secondary",
-            Activity.Status.APPLYING: "info",
-            Activity.Status.WAITING: "warning",
+            Activity.Status.REVIEWING: "warning",
+            Activity.Status.CANCELED: "danger",
+            Activity.Status.APPLYING: "success",
+            Activity.Status.WAITING: "info",
             Activity.Status.PROGRESSING: "success",
             Activity.Status.END: "danger",
             Participant.AttendStatus.APPLYING: "primary",
-            Participant.AttendStatus.APLLYFAILED: "danger",
-            Participant.AttendStatus.APLLYSUCCESS: "info",
-            Participant.AttendStatus.ATTENDED: "success",
+            Participant.AttendStatus.APLLYFAILED: "warning",
+            Participant.AttendStatus.APLLYSUCCESS: "primary",
+            Participant.AttendStatus.ATTENDED: "primary",
             Participant.AttendStatus.UNATTENDED: "warning",
-            Participant.AttendStatus.CANCELED: "secondary",
+            Participant.AttendStatus.CANCELED: "warning",
         }
         activity_color_list = [status_color[activity.status] for activity in activities]
         attend_color_list = [status_color[status] for status in participate_status_list]
