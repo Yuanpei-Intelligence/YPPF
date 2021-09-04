@@ -42,7 +42,13 @@
             "注释2":"可以防止给开发组之外的同学发，null是不限制接受范围而不是全限制",
             "receivers": ["$STUID1$", "$STUID2$"] ,
             "blacklist": [],
-            "use_scheduler": true
+            "use_scheduler": true,
+            "unblock_apps": ["promote"],
+            "app2url": {
+                "default": "",
+                "message": "",
+                "promote": ""
+            }
         }
     },
     "semester_data":{
