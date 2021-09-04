@@ -144,11 +144,32 @@
                                                        class="custom-file-input" id="customFile" name="images"
                                                        accept="image/*" multiple>
                                                 <label id="uploadfile" class="custom-file-label"
-                                                       for="customFile">上传图片</label>
+                                                       for="customFile">上传报销材料图片</label>
                                             </div>
                                         </div>
                                         {%endif%}
+                                        <br>
+                                        <label>活动总结图片</label>
+                                        <br>
+                                        {%if application.summary_image is not None%}
+                                        <img  src="/media/{{application.summary_image}}" >
+                                        {%endif%}
+                                        {%if allow_form_edit %}
+                                        <div class="form-group">
+                                            <div class="custom-file" lang="zh">
 
+                                                <input onchange="showsummaryFilename(this.files)" type="file"
+                                                       class="custom-file-input" id="summary" name="summaryimage"
+                                                       accept="image/*" >
+                                                <label id="summaryfile" class="custom-file-label"
+                                                       for="customFile"
+                                                >{%if application.summary_image is not None%}更新活动总结图片{%else%}上传一张活动总结图片{%endif%}</label>
+
+                                            </div>
+                                        </div>
+                                        {%endif%}
+                                        <br>
+                                        <br>
                                         <div class="form-group">
                                             <label for="aintro">报销说明</label>
                                             {%if not is_new_application%}
@@ -163,6 +184,7 @@
                                             ></textarea>
                                             {%endif%}
                                         </div>
+
                                         <br>
                                         <br>
                                         <hr>
@@ -245,9 +267,14 @@ function showFilename(files){
     }
     $("#uploadfile").html(text);
 }
-
-
-
+function showsummaryFilename(files){
+    var text = "";
+    for (i = 0; i < files.length; i++)
+    {
+    text += (" "+files[i].name);
+    }
+    $("#summaryfile").html(text);
+}
 </script>
 {%endblock%}
 {% block add_css_file %}

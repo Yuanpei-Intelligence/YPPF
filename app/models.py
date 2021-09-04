@@ -96,6 +96,19 @@ class NaturalPerson(models.Model):
         "Organization", related_name="unsubscribers", db_index=True
     )
 
+    class ReceiveLevel(models.IntegerChoices):
+        # DEBUG = (-1000, '全部')
+        MORE = (0, '更多')
+        LESS = (500, '更少')
+        # FATAL_ONLY = (1000, '仅重要')
+        # NONE = (1001, '不接收')
+    
+    wechat_receive_level = models.IntegerField(
+        '微信接收等级',
+        choices=ReceiveLevel.choices, default=0,
+        help_text='允许微信接收的最低消息等级，更低等级的通知类消息将被屏蔽'
+        )
+
     def __str__(self):
         return str(self.name)
 
@@ -535,7 +548,7 @@ class Activity(CommentBase):
     (4) 增加活动状态类, 恢复之前的活动状态记录方式, 通过定时任务来改变 #TODO
     (5) 除了定价方式[bidding]之外的量都可以改变, 其中[capicity]不能低于目前已经报名人数, 活动的开始时间不能早于当前时间+1h
     (6) 修改活动时间同步导致报名时间的修改, 当然也需要考虑EndBefore的修改; 这部分修改通过定时任务的时间体现, 详情请见地下室schedule任务的新建和取消
-    (7) 增加活动管理的接口, activated, 筛选出这个学期的活动(见class [ActivityManager])
+    (7) 增加活动立项的接口, activated, 筛选出这个学期的活动(见class [ActivityManager])
     """
 
     title = models.CharField("活动名称", max_length=50)
@@ -1004,6 +1017,8 @@ class Reimbursement(CommentBase):
     pos = models.ForeignKey(User, on_delete=models.CASCADE)#报销的组织
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
     record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
+    summary_image=models.ImageField(upload_to=f"activity/photo/%Y/%m/",
+                                    verbose_name="活动总结图片",null=True, blank=True)
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
         
