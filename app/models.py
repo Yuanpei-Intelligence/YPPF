@@ -769,7 +769,7 @@ class Notification(models.Model):
         VERIFY_INFORM = "审核信息通知"
         POSITION_INFORM = "人事变动通知"
         TRANSFER_FEEDBACK = "转账回执"
-        NEW_ORGANIZATION = "新建组织通知"
+        NEW_ORGANIZATION = "新建团队通知"
 
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
@@ -860,7 +860,7 @@ class ModifyOrganization(CommentBase):
     def __str__(self):
         # YWolfeee: 不认为应该把类型放在如此重要的位置
         # return f'{self.oname}{self.otype.otype_name}'
-        return f'新建组织{self.oname}的申请'
+        return f'新建团队{self.oname}的申请'
 
     def save(self, *args, **kwargs):
         self.typename = "neworganization"
@@ -876,7 +876,7 @@ class ModifyOrganization(CommentBase):
     def extra_display(self):
         display = []
         if self.introduction and self.introduction != '这里暂时没有介绍哦~':
-            display.append(('组织介绍', self.introduction))
+            display.append(('团队介绍', self.introduction))
         return display
 
     def get_user_ava(self):
