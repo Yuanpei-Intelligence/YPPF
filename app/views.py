@@ -793,6 +793,7 @@ def homepage(request):
         dictmp = {}
         dictmp["deadline"] = deadline
         dictmp["act"] = act
+        dictmp["tobestart"] = int((deadline.__sub__(nowtime).total_seconds())/360)/10
         signup_list.append(dictmp)
     signup_list.sort(key=lambda x:x["deadline"])
     signup_list=signup_list[:10]
