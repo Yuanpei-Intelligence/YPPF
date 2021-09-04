@@ -238,7 +238,11 @@
                                 <!-- -------------------------- end check status --------------------------- -->
 
                                 {% elif ownership %}
-
+                                {% if status == "进行中" or status == "报名中" or status == "等待中" or status == "已结束" %}
+                                <button class="btn btn-primary btn-block mb-4 mr-2" id="export_enroll_excel" type="button">
+                                    下载报名信息
+                                </button>
+                                {% endif %}
                                 <!-- ------------------------- begin summary photo ------------------------- -->
                                 {% if status == "已结束" %}
                                 <form method="POST">
@@ -265,9 +269,6 @@
                                         <button type="submit" class="btn btn-primary btn-block mb-4 mr-2">确认上传</button>
                                     </div>
                                 </form>
-                                <button class="btn btn-primary btn-block mb-4 mr-2" id="export_enroll_excel" type="button">
-                                    下载报名信息
-                                </button>
                                 <button class="btn btn-primary btn-block mb-4 mr-2" id="export_sign_excel" type="button">
                                     下载签到信息
                                 </button>
