@@ -238,7 +238,7 @@ def publish_notification(notification_or_id):
         wechat_receivers = [notification.receiver.username]  # user.username是id
     else:  # 组织
         # 转发组织消息给其负责人
-        message += f'\n消息来源：{str(receiver)}，请切换到该组织账号进行操作。'
+        message += f'\n消息来源：{str(receiver)}，请切换到该团队账号进行操作。'
         wechat_receivers = list(
             receiver.position_set.filter(pos=0).values_list(
                 "person__person_id__username", flat=True

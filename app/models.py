@@ -679,7 +679,9 @@ class TransferRecord(models.Model):
         REFUND = (4, "已退回")
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
-    is_increase=models.IntegerField("报销兑换",default=0,help_text="报销时转账并未实质发生，用此字段标识，0标识默认转账，1为报销兑换")
+    is_increase=models.IntegerField("报销兑换", default=0,
+        help_text="报销时转账并未实质发生，用此字段标识，0标识默认转账，1为报销兑换")
+    
     def save(self, *args, **kwargs):
         self.amount = round(self.amount, 1)
         super(TransferRecord, self).save(*args, **kwargs)
@@ -769,7 +771,7 @@ class Notification(models.Model):
         VERIFY_INFORM = "审核信息通知"
         POSITION_INFORM = "人事变动通知"
         TRANSFER_FEEDBACK = "转账回执"
-        NEW_ORGANIZATION = "新建组织通知"
+        NEW_ORGANIZATION = "新建团队通知"
 
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
@@ -779,7 +781,8 @@ class Notification(models.Model):
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
     typename = models.SmallIntegerField(choices=Type.choices, default=0)
     URL = models.URLField("相关网址", null=True, blank=True)
-    bulk_identifier = models.CharField("批量信息标识", max_length=64, default="")
+    bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
+                                        db_index=True)
     relate_TransferRecord = models.ForeignKey(
         TransferRecord,
         related_name="transfer_notification",
@@ -860,7 +863,7 @@ class ModifyOrganization(CommentBase):
     def __str__(self):
         # YWolfeee: 不认为应该把类型放在如此重要的位置
         # return f'{self.oname}{self.otype.otype_name}'
-        return f'新建组织{self.oname}的申请'
+        return f'新建团队{self.oname}的申请'
 
     def save(self, *args, **kwargs):
         self.typename = "neworganization"
@@ -876,7 +879,7 @@ class ModifyOrganization(CommentBase):
     def extra_display(self):
         display = []
         if self.introduction and self.introduction != '这里暂时没有介绍哦~':
-            display.append(('组织介绍', self.introduction))
+            display.append(('团队介绍', self.introduction))
         return display
 
     def get_user_ava(self):
@@ -890,6 +893,7 @@ class ModifyOrganization(CommentBase):
         
     def is_pending(self):   #表示是不是pending状态
             return self.status == ModifyOrganization.Status.PENDING
+
 
 class ModifyPosition(CommentBase):
     class Meta:
@@ -972,6 +976,7 @@ class ModifyPosition(CommentBase):
     def save(self, *args, **kwargs):
         self.typename = "modifyposition"
         super().save(*args, **kwargs)
+
 
 class Reimbursement(CommentBase):
     class Meta:
