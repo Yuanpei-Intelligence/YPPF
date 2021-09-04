@@ -1,3 +1,13 @@
+import json
+from datetime import date, datetime, timedelta
+from urllib import parse, request as urllib2
+import qrcode
+import random
+import requests  # 发送验证码
+import io
+import csv
+import os
+
 from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
 from app.models import (
@@ -69,16 +79,6 @@ from django.db.models import Q
 from django.conf import settings
 from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
-
-import json
-from datetime import date, datetime, timedelta
-from urllib import parse, request as urllib2
-import qrcode
-import random
-import requests  # 发送验证码
-import io
-import csv
-import os
 
 # 定时任务不在views直接调用
 
@@ -480,7 +480,7 @@ def stuinfo(request, name=None):
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
         bar_display = utils.get_sidebar_and_navbar(
-            request.user, navbar_name="个人主页", title_name=(name + " | 元培成长档案")
+            request.user, navbar_name="个人主页", title_name = person.name
             )
         origin = request.get_full_path()
 
@@ -714,7 +714,7 @@ def orginfo(request, name=None):
 
     # 补充一些呈现信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user,"团队主页")
+    bar_display = utils.get_sidebar_and_navbar(request.user,navbar_name = "团队主页", title_name = org.oname)
     # 转账后跳转
     origin = request.get_full_path()
 
@@ -2094,7 +2094,7 @@ def viewActivity(request, aid=None):
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="活动信息", title_name=(title + " | 元培成长档案"))
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="活动信息", title_name=title)
     # 补充一些呈现信息
     # bar_display["title_name"] = "活动信息"
     # bar_display["navbar_name"] = "活动信息"
