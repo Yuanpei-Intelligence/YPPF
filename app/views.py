@@ -2002,7 +2002,9 @@ def viewActivity(request, aid=None):
                 )
                 html_display["warn_message"] = "成功提交活动照片"
             html_display["warn_code"] = 2
-        elif option == "download":
+        elif option == "download":#下载活动签到信息
+            if not ownership:
+                return redirect("/welcome/")
             return utils.export_activity_signin(activity)
         else:
             return redirect("/welcome")
@@ -3270,7 +3272,7 @@ def showReimbursement(request):
     else:
         shown_instances = Reimbursement.objects.filter(pos=request.user)
     shown_instances = shown_instances.order_by("-modify_time", "-time")
-    bar_display = utils.get_sidebar_and_navbar(request.user, "报销信息")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "活动结项")
     return render(request, "reimbursement_show.html", locals())
 
 @login_required(redirect_field_name="origin")
@@ -3293,7 +3295,7 @@ def showActivity(request):
         if not is_teacher:
             html_display["warn_code"] = 1
 
-            html_display["warn_code"] = "学生账号不能进入活动管理页面！"
+            html_display["warn_code"] = "学生账号不能进入活动立项页面！"
 
             return redirect(
                 "/welcome/"
@@ -3307,7 +3309,7 @@ def showActivity(request):
         shown_instances = Activity.objects.all_activated().filter(organization_id = me.id)
 
     shown_instances = shown_instances.order_by("-modify_time", "-time")
-    bar_display = utils.get_sidebar_and_navbar(request.user, "活动管理")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "活动立项")
     return render(request, "activity_show.html", locals())
 
 
