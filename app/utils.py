@@ -9,13 +9,14 @@ from app.models import (
     Activity,
     Help,
     Reimbursement,
-    ModifyPosition,
+    Participant,
 )
 from django.contrib.auth.models import User
 from django.dispatch.dispatcher import receiver
 from django.contrib import auth
 from django.shortcuts import redirect
 from django.conf import settings
+from django.http import HttpResponse
 from boottest import local_dict
 from datetime import datetime, timedelta
 from functools import wraps
@@ -23,8 +24,8 @@ import re
 import imghdr
 import string
 import random
-
-
+import xlwt
+from io import BytesIO
 def check_user_access(redirect_url="/logout/"):
     """
     Decorator for views that checks that the user is valid, redirecting
@@ -173,7 +174,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         bar_display["my_org_len"] = len(bar_display["my_org_list"])
 
     else:
-        bar_display["profile_name"] = "组织主页"
+        bar_display["profile_name"] = "团队主页"
         bar_display["profile_url"] = "/orginfo/"
 
     bar_display["navbar_name"] = navbar_name
@@ -254,9 +255,9 @@ def check_neworg_request(request, org=None):
     context["warn_code"] = 0
     oname = str(request.POST["oname"])
     if len(oname) >= 32:
-        return wrong("组织的名字不能超过32字")
+        return wrong("团队的名字不能超过32字")
     if oname == "":
-        return wrong("组织的名字不能为空")
+        return wrong("团队的名字不能为空")
     if org is not None and oname == org.oname:
         if (
             len(
@@ -270,7 +271,7 @@ def check_neworg_request(request, org=None):
             or len(Organization.objects.filter(oname=oname)) != 0
         ):
             context["warn_code"] = 1
-            context["warn_message"] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
+            context["warn_message"] = "团队的名字不能与正在申请的或者已存在的团队的名字重复"
             return context
     else:
         if (
@@ -285,7 +286,7 @@ def check_neworg_request(request, org=None):
             or len(Organization.objects.filter(oname=oname)) != 0
         ):
             context["warn_code"] = 1
-            context["warn_message"] = "组织的名字不能与正在申请的或者已存在的组织的名字重复"
+            context["warn_message"] = "团队的名字不能与正在申请的或者已存在的团队的名字重复"
             return context
 
     try:
@@ -301,7 +302,7 @@ def check_neworg_request(request, org=None):
     if context["avatar"] is not None:
         if if_image(context["avatar"]) == 1:
             context["warn_code"] = 1
-            context["warn_message"] = "组织的头像应当为图片格式！"
+            context["warn_message"] = "团队的头像应当为图片格式！"
             return context
 
     context["oname"] = oname  # 组织名字
@@ -329,11 +330,11 @@ def check_newpos_request(request,prepos=None):
     context['apply_type'] = str(request.POST.get('apply_type',"加入组织"))
     if len(oname) >= 32:
         context['warn_code'] = 1
-        context['warn_msg'] = "组织的名字不能超过32字节"
+        context['warn_msg'] = "团队的名字不能超过32字节"
         return context
     if oname=="":
         context['warn_code'] = 1
-        context['warn_msg'] = "组织的名字不能为空"
+        context['warn_msg'] = "团队的名字不能为空"
         return context
     
     context['oname'] = oname  # 组织名字
@@ -590,7 +591,7 @@ def update_org_application(application, me, request):
                     return wrong("该申请已经完成或被取消!")
                 # 接下来可以进行取消操作
                 ModifyOrganization.objects.filter(id=application.id).update(status=ModifyOrganization.Status.CANCELED)
-                context = succeed("成功取消组织" + application.oname + "的申请!")
+                context = succeed("成功取消团队" + application.oname + "的申请!")
                 context["application_id"] = application.id
                 return context
             else:
@@ -632,7 +633,7 @@ def update_org_application(application, me, request):
                     if context["avatar"] is not None:
                         application.avatar = context['avatar'];
                         application.save()
-                    context = succeed("成功修改新建组织" + info.get('oname') + "的申请!")
+                    context = succeed("成功修改新建团队" + info.get('oname') + "的申请!")
                     context["application_id"] = application.id
                     return context
         else: # 是老师审核的操作, 通过\拒绝
@@ -714,5 +715,75 @@ def operation_writer(user, message, source, status_code="OK"):
 
     lock.release()
 
+
+# 导出Excel文件
+def export_activity_signin(activity):
+
+  # 设置HTTPResponse的类型
+  response = HttpResponse(content_type='application/vnd.ms-excel')
+  response['Content-Disposition'] = f'attachment;filename={activity.title}({activity.start.month}月{activity.start.day}日).xls'
+  participants=Participant.objects.filter(activity_id=activity.id ).filter(status=Participant.AttendStatus.ATTENDED)
+  """导出excel表"""
+  if len(participants)>0:
+    # 创建工作簿
+    ws = xlwt.Workbook(encoding='utf-8')
+    # 添加第一页数据表
+    w = ws.add_sheet('sheet1') # 新建sheet（sheet的名称为"sheet1"）
+    # 写入表头
+    w.write(0, 0, u'姓名')
+    w.write(0, 1, u'学号')
+    w.write(0, 2, u'年级/班级')
+    # 写入数据
+    excel_row = 1
+    for participant in participants:
+      name = participant.person_id.name
+      Sno = participant.person_id.person_id.username
+      grade=str(participant.person_id.stu_grade)+'级'+str(participant.person_id.stu_class)+'班'
+      # 写入每一行对应的数据
+      w.write(excel_row, 0, name)
+      w.write(excel_row, 1, Sno)
+      w.write(excel_row, 2, grade)
+      excel_row += 1
+    # 写出到IO
+    output = BytesIO()
+    ws.save(output)
+    # 重新定位到开始
+    output.seek(0)
+    response.write(output.getvalue())
+  return response
+# 导出组织成员信息Excel文件
+def export_orgpos_info(org):
+    # 设置HTTPResponse的类型
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = f'attachment;filename=团队{org.oname}成员信息.xls'
+    participants = Position.objects.filter(org=org).filter(status=Position.Status.INSERVICE)
+    """导出excel表"""
+    if len(participants) > 0:
+        # 创建工作簿
+        ws = xlwt.Workbook(encoding='utf-8')
+        # 添加第一页数据表
+        w = ws.add_sheet('sheet1')  # 新建sheet（sheet的名称为"sheet1"）
+        # 写入表头
+        w.write(0, 0, u'姓名')
+        w.write(0, 1, u'学号')
+        w.write(0, 2, u'职位')
+        # 写入数据
+        excel_row = 1
+        for participant in participants:
+            name = participant.person.name
+            Sno = participant.person.person_id.username
+            pos=org.otype.job_name_list[participant.pos]
+            # 写入每一行对应的数据
+            w.write(excel_row, 0, name)
+            w.write(excel_row, 1, Sno)
+            w.write(excel_row, 2, pos)
+            excel_row += 1
+        # 写出到IO
+        output = BytesIO()
+        ws.save(output)
+        # 重新定位到开始
+        output.seek(0)
+        response.write(output.getvalue())
+    return response
 
 operation_writer(local_dict["system_log"], "系统启动", "util_底部")
