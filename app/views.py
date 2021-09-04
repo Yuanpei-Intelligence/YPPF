@@ -479,7 +479,9 @@ def stuinfo(request, name=None):
         context["wallpaper_path"] = utils.get_user_wallpaper(person, "Person")
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
-        bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="个人主页")
+        bar_display = utils.get_sidebar_and_navbar(
+            request.user, navbar_name="个人主页", title_name=("个人主页 | " + name)
+            )
         origin = request.get_full_path()
 
         return render(request, "stuinfo.html", locals())
@@ -712,10 +714,8 @@ def orginfo(request, name=None):
 
     # 补充一些呈现信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "团队主页"
-    bar_display["navbar_name"] = "团队主页"
-
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="团队主页", title_name="团队主页 | " + org.oname)
+    
     # 转账后跳转
     origin = request.get_full_path()
 
