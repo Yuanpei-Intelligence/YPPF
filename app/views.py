@@ -1246,7 +1246,7 @@ def search(request):
     organization_field = ["组织名称", "组织类型", "负责人", "近期活动"]
 
     # 搜索活动
-    activity_list = Activity.objects.filter(
+    activity_list = Activity.objects.activated().filter(
         Q(title__icontains=query) | Q(organization_id__oname__icontains=query)& ~Q(status=Activity.Status.CANCELED)
                                                          & ~Q(status=Activity.Status.REJECT)
         &~Q(status=Activity.Status.REVIEWING)&~Q(status=Activity.Status.ABORT)
