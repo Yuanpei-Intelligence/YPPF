@@ -424,18 +424,18 @@ def stuinfo(request, name=None):
         participate_status_list = participants.values("status")
         participate_status_list = [info["status"] for info in participate_status_list]
         status_color = {
-            Activity.Status.REVIEWING: "primary",
-            Activity.Status.CANCELED: "secondary",
-            Activity.Status.APPLYING: "info",
-            Activity.Status.WAITING: "warning",
+            Activity.Status.REVIEWING: "warning",
+            Activity.Status.CANCELED: "danger",
+            Activity.Status.APPLYING: "success",
+            Activity.Status.WAITING: "info",
             Activity.Status.PROGRESSING: "success",
             Activity.Status.END: "danger",
             Participant.AttendStatus.APPLYING: "primary",
-            Participant.AttendStatus.APLLYFAILED: "danger",
-            Participant.AttendStatus.APLLYSUCCESS: "info",
-            Participant.AttendStatus.ATTENDED: "success",
+            Participant.AttendStatus.APLLYFAILED: "warning",
+            Participant.AttendStatus.APLLYSUCCESS: "primary",
+            Participant.AttendStatus.ATTENDED: "primary",
             Participant.AttendStatus.UNATTENDED: "warning",
-            Participant.AttendStatus.CANCELED: "secondary",
+            Participant.AttendStatus.CANCELED: "warning",
         }
         activity_color_list = [status_color[activity.status] for activity in activities]
         attend_color_list = [status_color[status] for status in participate_status_list]
@@ -714,8 +714,7 @@ def orginfo(request, name=None):
 
     # 补充一些呈现信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="团队主页", title_name=org.oname + " | 元培成长档案")
-    
+    bar_display = utils.get_sidebar_and_navbar(request.user,"团队主页")
     # 转账后跳转
     origin = request.get_full_path()
 
@@ -793,6 +792,7 @@ def homepage(request):
         dictmp = {}
         dictmp["deadline"] = deadline
         dictmp["act"] = act
+        dictmp["tobestart"] = int((deadline.__sub__(nowtime).total_seconds())/360)/10
         signup_list.append(dictmp)
     signup_list.sort(key=lambda x:x["deadline"])
     signup_list=signup_list[:10]
@@ -838,15 +838,18 @@ def homepage(request):
         summaryphotos = act.photos.filter(type = ActivityPhoto.PhotoType.SUMMARY)
         if len(summaryphotos)>0:
             photo_display.append(summaryphotos[0]) # 朴素的随机
+    photo_display = photo_display[:4]
     for photo in photo_display:
         if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
     
+    """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
     if len(photo_display)==0: # 这个分类是为了前端显示的便利，就不采用append了
         homepagephoto = "/static/assets/img/taskboard.jpg"
     else:
         firstpic = photo_display[0]
         photos = photo_display[1:]
+    """
 
     # 天气
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
@@ -1243,7 +1246,7 @@ def search(request):
     organization_field = ["组织名称", "组织类型", "负责人", "近期活动"]
 
     # 搜索活动
-    activity_list = Activity.objects.filter(
+    activity_list = Activity.objects.activated().filter(
         Q(title__icontains=query) | Q(organization_id__oname__icontains=query)& ~Q(status=Activity.Status.CANCELED)
                                                          & ~Q(status=Activity.Status.REJECT)
         &~Q(status=Activity.Status.REVIEWING)&~Q(status=Activity.Status.ABORT)

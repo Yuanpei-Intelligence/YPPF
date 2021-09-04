@@ -172,14 +172,21 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         my_org_id_list = Position.objects.activated().filter(person=me).filter(pos=0)
         bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的组织
         bar_display["my_org_len"] = len(bar_display["my_org_list"])
+        
+        username = me.name
 
     else:
         bar_display["profile_name"] = "团队主页"
         bar_display["profile_url"] = "/orginfo/"
+        username = me.oname
 
     bar_display["navbar_name"] = navbar_name
     # title_name默认与navbar_name相同
-    bar_display["title_name"] = title_name if title_name else (navbar_name + " | 元培成长档案")
+
+    bar_display["title_name"] = title_name if title_name else navbar_name
+    
+    if bar_display["title_name"] == "个人主页" or bar_display["title_name"] == "团队主页":
+        bar_display["title_name"] = username
 
     if navbar_name == "我的元气值":
         bar_display["help_message"] = local_dict["help_message"].get(
