@@ -36,7 +36,8 @@ from django.core.files.base import ContentFile
 import io
 import base64
 from django.db.models import Sum
-from app.scheduler_func import scheduler, changeActivityStatus, notifyActivity
+from app.scheduler import scheduler
+from app.scheduler_func import changeActivityStatus, notifyActivity
 
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 
