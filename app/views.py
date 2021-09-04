@@ -69,19 +69,14 @@ from django.views.decorators.http import require_POST, require_GET
 import json
 from datetime import date, datetime, timedelta
 from urllib import parse, request as urllib2
+import qrcode
 import random
 import requests  # 发送验证码
 import io
 import csv
 import os
 
-# 定时任务注册
-from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
-from app.scheduler import scheduler
-
-# 注册启动以上schedule任务
-# register_events(scheduler)
-# scheduler.start()
+# 定时任务不在views直接调用
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
@@ -761,7 +756,8 @@ def homepage(request):
     if is_person:
         with transaction.atomic():
             np = NaturalPerson.objects.select_for_update().get(person_id=request.user)
-            if np.last_time_login is None or np.last_time_login.date != nowtime.date:
+            if np.last_time_login is None or np.last_time_login.date() != nowtime.date():
+                print("date:", np.last_time_login.date(), nowtime.date())
                 np.last_time_login = nowtime
                 np.bonusPoint += 0.5
                 np.save()
@@ -2055,6 +2051,11 @@ def viewActivity(request, aid=None):
 
     # 签到
     need_checkin = activity.need_checkin
+    show_QRcode = activity.need_checkin and activity.status in [
+        Activity.Status.APPLYING,
+        Activity.Status.WAITING,
+        Activity.Status.PROGRESSING
+    ]
 
     if ownership and need_checkin:
         aQRcode = get_activity_QRcode(activity)
@@ -2218,6 +2219,7 @@ def checkinActivity(request, aid=None):
         activity = Activity.objects.get(id=int(aid))
         varifier = request.GET["auth"]
         assert varifier == hash_coder.encode(aid)
+        assert activity.status == Activity.Status.PROGRESSING
     except:
         return redirect("/welcome/")
     try:
@@ -2458,7 +2460,7 @@ def addActivity(request, aid=None):
         amount = activity.YQPoint
         signscheme = "先到先得"
         if bidding:
-            signscheme = "投点参与"
+            signscheme = "抽签模式"
         capacity = activity.capacity
         yq_source = "向学生收取"
         if activity.source == Activity.YQPointSource.COLLEGE:

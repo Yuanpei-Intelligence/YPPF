@@ -183,8 +183,8 @@
                                     </button>
                                     {%elif activity.valid%}
                                     <button class="btn btn-primary btn-block mb-4 mr-2" data-toggle="collapse"
-                                        data-target="#extend-area" disabled>
-                                        已经审核
+                                        data-target="#extend-area">
+                                        审核记录
                                     </button>
                                     {% endif %}
 
@@ -320,7 +320,7 @@
             </div>
             <!--  END INTRODUCTION  -->
 
-            {% if ownership and need_checkin %}
+            {% if ownership and show_QRcode %}
             <!--  BEGIN QR CODE  -->
             <div class="container w-100 px-0 layout-top-spacing">
                 <div class="statbox widget box box-shadow">
