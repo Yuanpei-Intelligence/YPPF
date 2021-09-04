@@ -3827,42 +3827,28 @@ def send_message_check(me, request):
     content = content
     typename = Notification.Type.NEEDREAD
     URL = url
-    if receiver_type == "订阅用户":
-        try:
-            for receiver in NaturalPerson.objects.exclude(id__in=me.unsubscribers.all()):
-                not_list.append(
-                Notification(
-                    receiver=receiver.person_id,
-                    sender=sender,
-                    status=status,
-                    title=title,
-                    content=content,
-                    URL=URL,
-                    typename=typename,
-                )
-            )
-            created_not = Notification.objects.bulk_create(not_list)
-        except:
-            return wrong("创建通知的时候出现错误！请联系管理员！")
-    else:   # 检查过逻辑了，不可能是其他的
-        try:
-            for receiver in NaturalPerson.objects.filter(id__in=me.position_set.values_list('person_id', flat=True)):
-                not_list.append(
-                Notification(
-                    receiver=receiver.person_id,
-                    sender=sender,
-                    status=status,
-                    title=title,
-                    content=content,
-                    URL=URL,
-                    typename=typename,
-                )
-            )
-            created_not = Notification.objects.bulk_create(not_list)
-        except:
-            return wrong("创建通知的时候出现错误！请联系管理员！")
     try:
-        publish_notifications(created_not)
+        if receiver_type == "订阅用户":
+            receivers = NaturalPerson.objects.exclude(id__in=me.unsubscribers.all())
+            receivers = [receiver.person_id for receiver in receivers]
+        else:   # 检查过逻辑了，不可能是其他的
+            receivers = NaturalPerson.objects.filter(
+                id__in=me.position_set.values_list('person_id', flat=True))
+            receivers = [receiver.person_id for receiver in receivers]
+        # 创建通知
+        success, bulk_identifier = bulk_notification_create(
+                receivers=receivers,
+                sender=sender,
+                typename=typename,
+                title=title,
+                content=content,
+                URL=URL,
+            )
+        assert success
+    except:
+        return wrong("创建通知的时候出现错误！请联系管理员！")
+    try:
+        assert publish_notifications(filter_kws={'bulk_identifier': bulk_identifier})
     except:
         return wrong("发送微信的过程出现错误！请联系管理员！")
     
