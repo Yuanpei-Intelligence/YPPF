@@ -9,7 +9,11 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 """
 from datetime import datetime, timedelta
 from app.utils import get_person_or_org, if_image
-from app.notification_utils import notification_create, bulk_notification_create
+from app.notification_utils import(
+    notification_create,
+    bulk_notification_create,
+    notification_status_change,
+)
 from app.models import (
     NaturalPerson,
     Position,
@@ -36,7 +40,8 @@ from django.core.files.base import ContentFile
 import io
 import base64
 from django.db.models import Sum
-from app.scheduler_func import scheduler, changeActivityStatus, notifyActivity
+from app.scheduler import scheduler
+from app.scheduler_func import changeActivityStatus, notifyActivity
 
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 
@@ -301,9 +306,8 @@ def modify_reviewing_activity(request, activity):
         # TODO
         # 修改审核记录，通知老师 
 
-        notification = Notification.objects.select_for_update().get(relate_instance=activity, status=Notification.Status.UNDONE)
-        notification.status = Notification.Status.DELETE
-        notification.save()
+        notification = Notification.objects.get(relate_instance=activity, status=Notification.Status.UNDONE)
+        notification_status_change(notification, Notification.Status.DELETE)
 
         notification_create(
             receiver=examine_teacher.person_id,
@@ -454,13 +458,12 @@ def accept_activity(request, activity):
     activity.valid = True
 
     # 通知
-    notification = Notification.objects.select_for_update().get(
+    notification = Notification.objects.get(
         relate_instance=activity, 
         status=Notification.Status.UNDONE,
         title=Notification.Title.VERIFY_INFORM
     )
-    notification.status = Notification.Status.DONE
-    notification.save()
+    notification_status_change(notification, Notification.Status.DONE)
 
     notification_create(
         receiver=activity.organization_id.organization_id,
@@ -517,13 +520,12 @@ def reject_activity(request, activity):
     activity.valid = True
 
     # 通知
-    notification = Notification.objects.select_for_update().get(
+    notification = Notification.objects.get(
         relate_instance=activity, 
         status=Notification.Status.UNDONE,
         title=Notification.Title.VERIFY_INFORM
     )
-    notification.status = Notification.Status.DONE
-    notification.save()
+    notification_status_change(notification, Notification.Status.DONE)
 
     notification_create(
         receiver=activity.organization_id.organization_id,
@@ -674,12 +676,11 @@ def cancel_activity(request, activity):
         activity.status = Activity.Status.ABORT
         activity.save()
         # 修改老师的通知
-        notification = Notification.objects.select_for_update().get(
+        notification = Notification.objects.get(
             relate_instance=activity, 
             status=Notification.Status.UNDONE
         )
-        notification.status = Notification.Status.DELETE
-        notification.save()
+        notification_status_change(notification, Notification.Status.DELETE)
         return
 
     if activity.status == Activity.Status.PROGRESSING:
@@ -740,11 +741,10 @@ def cancel_activity(request, activity):
     activity.status = Activity.Status.CANCELED
     notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
     notification = Notification.objects.get(
-        relate_instance=activity, 
+        relate_instance=activity,
         typename=Notification.Type.NEEDDO
     )
-    notification.status = Notification.Status.DELETE
-    notification.save()
+    notification_status_change(notification, Notification.Status.DELETE)
 
     participants = Participant.objects.filter(
             activity_id=activity
