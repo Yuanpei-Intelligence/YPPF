@@ -18,6 +18,7 @@ from numpy.random import choice
 
 from app.scheduler import scheduler
 # register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
+# 但好像非服务器版本有问题??
 
 from urllib import parse, request as urllib2
 import json
@@ -415,7 +416,7 @@ try:
 except:
     default_weather = None
 
-@scheduler.scheduled_job('interval', id="get weather per hour", hours=1)
+# @scheduler.scheduled_job('interval', id="get weather per hour", hours=1)
 def get_weather():
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     try:
@@ -444,3 +445,5 @@ def get_weather():
         return default_weather
     else:
         return weather_dict
+
+scheduler.add_job('interval', id="get weather per hour", hours=1, replace_existing=True)
