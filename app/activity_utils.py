@@ -7,7 +7,6 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 文件中参数存在 activity 的函数需要在 transaction.atomic() 块中进行。
 如果存在预期异常，抛出 ActivityException，否则抛出其他异常
 """
-from app.scheduler_func import scheduler, changeActivityStatus, notifyActivity
 from datetime import datetime, timedelta
 from app.utils import get_person_or_org, if_image
 from app.notification_utils import notification_create, bulk_notification_create
@@ -37,6 +36,7 @@ from django.core.files.base import ContentFile
 import io
 import base64
 from django.db.models import Sum
+from app.scheduler_func import scheduler, changeActivityStatus, notifyActivity
 
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 
