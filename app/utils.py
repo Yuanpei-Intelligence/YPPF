@@ -746,6 +746,8 @@ def export_activity_signin(activity):
 
   # 设置HTTPResponse的类型
   response = HttpResponse(content_type='application/vnd.ms-excel')
+  if activity is None:
+      return response
   response['Content-Disposition'] = f'attachment;filename={activity.title}({activity.start.month}月{activity.start.day}日).xls'
   participants=Participant.objects.filter(activity_id=activity.id ).filter(status=Participant.AttendStatus.ATTENDED)
   """导出excel表"""
@@ -780,6 +782,8 @@ def export_activity_signin(activity):
 def export_orgpos_info(org):
     # 设置HTTPResponse的类型
     response = HttpResponse(content_type='application/vnd.ms-excel')
+    if org is None:
+        return response
     response['Content-Disposition'] = f'attachment;filename=团队{org.oname}成员信息.xls'
     participants = Position.objects.filter(org=org).filter(status=Position.Status.INSERVICE)
     """导出excel表"""
