@@ -96,6 +96,19 @@ class NaturalPerson(models.Model):
         "Organization", related_name="unsubscribers", db_index=True
     )
 
+    class ReceiveLevel(models.IntegerChoices):
+        # DEBUG = (-1000, '全部')
+        MORE = (0, '更多')
+        LESS = (500, '更少')
+        # FATAL_ONLY = (1000, '仅重要')
+        # NONE = (1001, '不接收')
+    
+    wechat_receive_level = models.IntegerField(
+        '微信接收等级',
+        choices=ReceiveLevel.choices, default=0,
+        help_text='允许微信接收的最低消息等级，更低等级的通知类消息将被屏蔽'
+        )
+
     def __str__(self):
         return str(self.name)
 
@@ -679,7 +692,9 @@ class TransferRecord(models.Model):
         REFUND = (4, "已退回")
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
-    is_increase=models.IntegerField("报销兑换",default=0,help_text="报销时转账并未实质发生，用此字段标识，0标识默认转账，1为报销兑换")
+    is_increase=models.IntegerField("报销兑换", default=0,
+        help_text="报销时转账并未实质发生，用此字段标识，0标识默认转账，1为报销兑换")
+    
     def save(self, *args, **kwargs):
         self.amount = round(self.amount, 1)
         super(TransferRecord, self).save(*args, **kwargs)
@@ -779,7 +794,8 @@ class Notification(models.Model):
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
     typename = models.SmallIntegerField(choices=Type.choices, default=0)
     URL = models.URLField("相关网址", null=True, blank=True)
-    bulk_identifier = models.CharField("批量信息标识", max_length=64, default="")
+    bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
+                                        db_index=True)
     relate_TransferRecord = models.ForeignKey(
         TransferRecord,
         related_name="transfer_notification",
@@ -891,6 +907,7 @@ class ModifyOrganization(CommentBase):
     def is_pending(self):   #表示是不是pending状态
             return self.status == ModifyOrganization.Status.PENDING
 
+
 class ModifyPosition(CommentBase):
     class Meta:
         verbose_name = "人事申请详情"
@@ -972,6 +989,7 @@ class ModifyPosition(CommentBase):
     def save(self, *args, **kwargs):
         self.typename = "modifyposition"
         super().save(*args, **kwargs)
+
 
 class Reimbursement(CommentBase):
     class Meta:
