@@ -2962,7 +2962,12 @@ def addComment(request, comment_base, receiver=None):
 
 
 def showComment(commentbase):
-    comments = commentbase.comments.order_by("time")
+    if commentbase is None:
+        return None
+    try:
+        comments = commentbase.comments.order_by("time")
+    except:
+        return None
     for comment in comments:
         commentator = get_person_or_org(comment.commentator)
         if comment.commentator.username[:2] == "zz":
