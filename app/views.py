@@ -3737,8 +3737,7 @@ def modifyOrganization(request):
     
     # 评论区
     commentable = allow_comment
-    # comments = showComment(application) if application is not None else None
-    comments = showComment(application)
+    comments = showComment(application) if application is not None else None
     # 用于前端展示
     apply_person = me if is_new_application else NaturalPerson.objects.get(person_id=application.pos)
     app_avatar_path = apply_person.get_user_ava()
