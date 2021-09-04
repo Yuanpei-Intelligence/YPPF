@@ -2014,7 +2014,6 @@ def viewActivity(request, aid=None):
     start_month = activity.start.month
     start_date = activity.start.day
     duration = activity.end - activity.start
-    start_THEDAY = activity.start.day # 前端使用量
     prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     introduction = activity.introduction
@@ -2081,6 +2080,12 @@ def viewActivity(request, aid=None):
         except Exception as e:
             # print(e)
             pass
+    
+    # 参与者
+    participants = Participant.objects.filter(Q(activity_id=activity),
+        Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APLLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED))
+    participants = participants.values("person_id")
+    participants_ava = [utils.get_user_ava(participant, "Person") for participant in participants]
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
