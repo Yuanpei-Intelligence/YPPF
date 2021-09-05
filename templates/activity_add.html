@@ -154,7 +154,7 @@
                                                     name="recorded">
                                                 <label class="form-check-label" for="defaultCheck1">
                                                     是否已报备
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="已报备活动指学期初已上报学院且获准的活动, 擅自勾选可能导致组织被禁止登录!">
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="已报备活动指学期初已上报学院且获准的活动, 擅自勾选可能导致组织被禁止登录！此外，预报备活动不允许向学院申请元气值。">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -537,6 +537,16 @@
             // document.getElementById("maxpeople").placeholder = "";
         }
     });
+    $("input[name='recorded']").on("change", function () {
+        //输出选中状态
+        if (false === $(this).prop("checked")) {
+            document.getElementById("college").style.display = "";
+        } else {
+            document.getElementById("yq_source").innerHTML = "向学生收取";
+            document.getElementById("college").style.display = "none";
+            document.getElementById("from_college").value = "0"
+        }
+    });
 
     {% for pic in defaultpics %}
     $("input[name='{{pic.id}}']").on("change", function () {
@@ -562,19 +572,14 @@
     function shows(a) {
         $("#pricebutton").text(a);
         if ("先到先得" === a) {
-            document.getElementById("aprice").value = "";
-            // document.getElementById("aprice").placeholder = "参与活动元气值价格";
             document.getElementById("signscheme").value = "0"
         } else {
-            document.getElementById("aprice").value = "";
-            // document.getElementById("aprice").placeholder = "元气值投点最低额度";
             document.getElementById("signscheme").value = "1"
         }
     }
     function another_shows(a) {
         $("#yq_source").text(a);
         if ("向学生收取" === a) {
-            document.getElementById("aprice").value = "";
             {% if not edit %}
             document.getElementById("aprice").placeholder = "参与活动元气值价格";
             {% endif %}
@@ -582,7 +587,6 @@
             document.getElementById("reason_block").style.display = "none";
             document.getElementById("apply_reason").required = "";
         } else {
-            document.getElementById("aprice").value = "";
             {% if not edit %}
             document.getElementById("aprice").placeholder = "向学院申请的元气值数量";
             {% endif %}
@@ -655,7 +659,7 @@
     document.getElementById("need_checkin").checked = true;
     {% endif %}
     // 宣传信息
-    document.getElementById("aintro").placeholder = "{{introduction}}";
+    //document.getElementById("aintro").placeholder = "{{introduction}}";
     {% if yq_source == "向学院申请" %}
     document.getElementById("apply_reason").placeholder = "{{apply_reason}}";
     document.getElementById("reason_block").style.display = "";

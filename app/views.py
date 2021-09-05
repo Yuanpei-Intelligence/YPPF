@@ -29,6 +29,7 @@ from app.utils import (
     update_org_application, 
     wrong, 
     succeed,
+    escape_for_templates,
 )
 from app.activity_utils import (
     create_activity,
@@ -85,6 +86,8 @@ import os
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
+
+YQPoint_oname = local_dict["org"]["f1"]
 
 
 @register.filter
@@ -1551,7 +1554,7 @@ def transaction_page(request, rid=None):
                 )
 
                 # 接下来确定金额
-                if payer.oname != "元培学院" and payer.YQPoint < amount:
+                if payer.oname != YQPoint_oname and payer.YQPoint < amount:
                     html_display["warn_code"] = 1
                     html_display["warn_message"] = (
                             "现存元气值余额为"
@@ -1567,6 +1570,7 @@ def transaction_page(request, rid=None):
                         recipient=user,
                         amount=amount,
                         message=transaction_msg,
+                        rtype=TransferRecord.TransferType.TRANSACTION
                     )
                     record.save()
                     payer.save()
@@ -1720,11 +1724,15 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
         lis[-1]["message"] = record.message
         lis[-1]["if_act_url"] = False
         if record.corres_act is not None:
-            lis[-1]["message"] = "活动" + record.corres_act.title + "积分"
+            lis[-1]["message"] = "报名活动" + record.corres_act.title
             # TODO 这里还需要补充一个活动跳转链接
 
         # 状态
-        lis[-1]["status"] = record.get_status_display()
+        if record.status == TransferRecord.TransferStatus.PENDING:
+            # PENDING 就不对个人可见了，个人看到的就是元气值已经转过去了
+            lis[-1]["status"] = "已接收"
+        else:
+            lis[-1]["status"] = record.get_status_display()
 
     # 对外展示为 1/10
     """
@@ -1781,14 +1789,8 @@ def myYQPoint(request):
         status__in=[
             TransferRecord.TransferStatus.ACCEPTED,
             TransferRecord.TransferStatus.REFUSED,
-        ],
-    )
-
-    issued_recv_set = TransferRecord.objects.filter(
-        recipient=request.user,
-        status__in=[
-            TransferRecord.TransferStatus.ACCEPTED,
-            TransferRecord.TransferStatus.REFUSED,
+            # PENDING 目前只用于个人报名预报备活动时使用
+            TransferRecord.TransferStatus.PENDING,
         ],
     )
 
@@ -1808,10 +1810,6 @@ def myYQPoint(request):
 
     to_list, amount = record2Display(to_set, request.user)
     issued_list, _ = record2Display(issued_set, request.user)
-    if user_type == "Person":
-        quota_and_YQPoint = me.YQPoint + me.quota
-    else:
-        quota_and_YQPoint = me.YQPoint
 
     show_table = {
         "obj": "对象",
@@ -1895,6 +1893,7 @@ def viewActivity(request, aid=None):
                 assert activity.status != Activity.Status.ABORT
                 assert activity.status != Activity.Status.END
                 assert activity.status != Activity.Status.CANCELED
+                assert ownership
                 with transaction.atomic():
                     activity = Activity.objects.select_for_update().get(id=aid)
                     cancel_activity(request, activity)
@@ -2465,7 +2464,7 @@ def addActivity(request, aid=None):
         start = activity.start.strftime("%Y-%m-%d %H:%M")
         end = activity.end.strftime("%Y-%m-%d %H:%M")
         apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
-        introduction = activity.introduction
+        introduction = escape_for_templates(activity.introduction)
         url = activity.URL
         endbefore = activity.endbefore
         bidding = activity.bidding
@@ -2580,7 +2579,9 @@ def examineActivity(request, aid):
     apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     start = activity.start.strftime("%Y-%m-%d %H:%M")
     end = activity.end.strftime("%Y-%m-%d %H:%M")
-    introduction = activity.introduction
+    print(activity.introduction)
+    introduction = escape_for_templates(activity.introduction)
+
     url = activity.URL
     endbefore = activity.endbefore
     bidding = activity.bidding
