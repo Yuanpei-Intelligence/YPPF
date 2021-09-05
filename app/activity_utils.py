@@ -223,21 +223,21 @@ def create_activity(request):
     # 检查完毕，创建活动
     org = get_person_or_org(request.user, "Organization")
     activity = Activity.objects.create(
-                    title=context["title"], organization_id=org,
-                    examine_teacher=examine_teacher
+                    title=context["title"], 
+                    organization_id=org,
+                    examine_teacher=examine_teacher,
+                    introduction=context["introduction"],
+                    location=context["location"],
+                    capacity=context["capacity"],
+                    URL=context["url"],
+                    budget=context["budget"],
+                    start=context["start"],
+                    end=context["end"],
+                    YQPoint=context["aprice"],
+                    bidding=context["bidding"],
+                    apply_end=context["signup_end"],
+                    apply_reason=context["apply_reason"],
                 )
-    activity.title = context["title"]
-    activity.introduction = context["introduction"]
-    activity.location = context["location"]
-    activity.capacity = context["capacity"]
-    activity.URL = context["url"]
-    activity.budget = context["budget"]
-    activity.start = context["start"]
-    activity.end = context["end"]
-    activity.YQPoint = context["aprice"]
-    activity.bidding = context["bidding"]
-    activity.apply_end = context["signup_end"]
-    activity.apply_reason = context["apply_reason"]
     if context["from_college"]:
         activity.source = Activity.YQPointSource.COLLEGE
     activity.endbefore = context["endbefore"]
@@ -374,7 +374,7 @@ def modify_accepted_activity(request, activity):
     to_participants = [f"您参与的活动{activity.title}发生变化"]
     to_subscribers = [f"您关注的活动{activity.title}发生变化"]
     if activity.location != request.POST["location"]:
-        to_participants.append("活动地点修改为" + activity.location)
+        to_participants.append("活动地点修改为" + request.POST["location"])
         activity.location = request.POST["location"]
 
     # 不是学院来源时，价格可能会变
