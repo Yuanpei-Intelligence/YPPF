@@ -345,11 +345,11 @@ def load_help(request):
         context = {"message": "没有找到help.csv,请确认该文件已经在test_data中。"}
         return render(request, "debugging.html", context)
     # helps = [Help(title=title, content=content) for title, content in help_dict.items()]
-    helps = []
     for _, help_dict in help_df.iterrows():
         content = help_dict["content"]
         title = help_dict["title"]
-        helps.append(Help(title=title, content=content))
-    Help.objects.bulk_create(helps)
+        new_help, mid = Help.objects.get_or_create(title=title)
+        new_help.content = content
+        new_help.save()
     context = {"message": "成功导入帮助信息！"}
     return render(request, "debugging.html", context)
