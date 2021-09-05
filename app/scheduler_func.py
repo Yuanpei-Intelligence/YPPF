@@ -441,7 +441,6 @@ def get_weather():
     else:
         return weather_dict
 
-
 print("———————————————— Scheduler:   Debug ————————————————")
 print("before loading scheduler from app.scheduler in scheduler_func.py")
 from app.scheduler import scheduler
