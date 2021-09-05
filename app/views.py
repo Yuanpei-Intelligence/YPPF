@@ -510,7 +510,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         try:
             org = Organization.objects.get(oname=name)
         except:  # 找不到对应组织
-            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=找不到对应团队,请联系管理员!"
+            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=找不到对应团体,请联系管理员!"
             return redirect(urls)
         try:
             position = Position.objects.activated().filter(org=org, person=me)
@@ -518,7 +518,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
             position = position[0]
             assert position.pos == 0
         except:
-            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团队账户的权限!"
+            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团体账户的权限!"
             return redirect(urls)
         # 到这里,是本人组织并且有权限登录
         auth.logout(request)
@@ -536,7 +536,7 @@ def user_login_org(request, org):
     try:
         me = NaturalPerson.objects.activated().get(person_id=user)
     except:  # 找不到合法的用户
-        return wrong("您没有权限访问该网址！请用对应团队账号登陆。")
+        return wrong("您没有权限访问该网址！请用对应团体账号登陆。")
     #是组织一把手
     try:
         position = Position.objects.activated().filter(org=org, person=me)
@@ -544,12 +544,12 @@ def user_login_org(request, org):
         position = position[0]
         assert position.pos == 0
     except:
-        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团队账户的权限!"
+        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团体账户的权限!"
         return redirect(urls)
     # 到这里,是本人组织并且有权限登录
     auth.logout(request)
     auth.login(request, org.organization_id)  # 切换到组织账号
-    return succeed("成功切换到团队账号处理该事务，建议事务处理完成后退出团队账号。")
+    return succeed("成功切换到团体账号处理该事务，建议事务处理完成后退出团体账号。")
 
 
 
@@ -699,7 +699,7 @@ def orginfo(request, name=None):
     modpw_status = request.GET.get("modinfo", None)
     if modpw_status is not None and modpw_status == "success":
         html_display["warn_code"] = 2
-        html_display["warn_message"] = "修改团队信息成功!"
+        html_display["warn_message"] = "修改团体信息成功!"
 
     # 补充左边栏信息
 
@@ -714,7 +714,7 @@ def orginfo(request, name=None):
 
     # 补充一些呈现信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user,navbar_name = "团队主页", title_name = org.oname)
+    bar_display = utils.get_sidebar_and_navbar(request.user,navbar_name = "团体主页", title_name = org.oname)
     # 转账后跳转
     origin = request.get_full_path()
 
@@ -1083,28 +1083,40 @@ def auth_register(request):
             email = request.POST["email"]
             password2 = request.POST["password2"]
             stu_grade = request.POST["syear"]
-            # gender = request.POST['sgender']
+            gender = request.POST['sgender']
             if password != password2:
-                render(request, "index.html")
+                return render(request, "index.html")
             else:
+                if gender not in ['男', '女']:
+                    return render(request, "auth_register_boxed.html")
                 # user with same sno
                 same_user = NaturalPerson.objects.filter(person_id=sno)
                 if same_user:
-                    render(request, "auth_register_boxed.html")
+                    return render(request, "auth_register_boxed.html")
                 same_email = NaturalPerson.objects.filter(email=email)
                 if same_email:
-                    render(request, "auth_register_boxed.html")
+                    return render(request, "auth_register_boxed.html")
 
                 # OK!
-                user = User.objects.create(username=sno)
-                user.set_password(password)
-                user.save()
+                try:
+                    user = User.objects.create_user(username=sno, password=password)
+                except:
+                    # 存在用户
+                    return HttpResponseRedirect("/admin/")
 
-                new_user = NaturalPerson.objects.create(person_id=user)
-                new_user.name = name
-                new_user.email = email
-                new_user.stu_grade = stu_grade
-                new_user.save()
+                try:
+                    new_user = NaturalPerson.objects.create(
+                        person_id=user,
+                        stu_id_dbonly=sno,
+                        name = name,
+                        email = email,
+                        stu_grade = stu_grade,
+                        gender = NaturalPerson.Gender.MALE if gender == '男'\
+                            else NaturalPerson.Gender.FEMALE,
+                    )
+                except:
+                    # 创建失败，把创建的用户删掉
+                    return HttpResponseRedirect("/admin/")
                 return HttpResponseRedirect("/index/")
         return render(request, "auth_register_boxed.html")
     else:
@@ -2009,10 +2021,10 @@ def viewActivity(request, aid=None):
                 )
                 html_display["warn_message"] = "成功提交活动照片"
             html_display["warn_code"] = 2
-        elif option == "download":#下载活动签到信息
+        elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
             if not ownership:
                 return redirect("/welcome/")
-            return utils.export_activity_signin(activity)
+            return utils.export_activity(activity,option)
         else:
             return redirect("/welcome")
 
@@ -2089,7 +2101,6 @@ def viewActivity(request, aid=None):
             summary_photo_exists = True
             summary_photo = settings.MEDIA_URL + str(summary_photo.image)
         except Exception as e:
-            # print(e)
             pass
     
     # 参与者
@@ -2903,7 +2914,7 @@ def addComment(request, comment_base, receiver=None):
     context = dict()
     typename = comment_base.typename
     content = {
-        'modifyposition': f'{sender_name}在人事变动申请留有新的评论',
+        'modifyposition': f'{sender_name}在成员变动申请留有新的评论',
         'neworganization': f'{sender_name}在新建组织中留有新的评论',
         'reimbursement': f'{sender_name}在经费申请中留有新的评论',
         'activity': f"{sender_name}在活动申请中留有新的评论"
@@ -3030,7 +3041,7 @@ def showNewOrganization(request):
     return render(request, "neworganization_show.html", locals())
 
 
-# YWolfeee: 重构人事申请页面 Aug 24 12:30 UTC-8
+# YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 def modifyPosition(request):
@@ -3069,7 +3080,7 @@ def modifyPosition(request):
 
         except: #恶意跳转
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "您没有权限访问该网址！"
+            html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
@@ -3088,7 +3099,7 @@ def modifyPosition(request):
         except:
             # 非法的名字, 出现恶意修改参数的情况
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入人事申请页面"
+            html_display["warn_code"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入成员申请页面"
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
@@ -3131,7 +3142,7 @@ def modifyPosition(request):
                 make_relevant_notification(application, request.POST)    
 
             elif context["warn_code"] != 1: # 没有返回操作提示
-                raise NotImplementedError("处理人事申请中出现未预见状态，请联系管理员处理！")   
+                raise NotImplementedError("处理成员申请中出现未预见状态，请联系管理员处理！")   
             
 
         else:   # 如果是新增评论
@@ -3230,7 +3241,7 @@ def modifyPosition(request):
 
     
 
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="人事申请详情")
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="成员申请详情")
     return render(request, "modify_position.html", locals())
 
 
@@ -3238,19 +3249,19 @@ def modifyPosition(request):
 @utils.check_user_access(redirect_url="/logout/")
 def showPosition(request):
     '''
-    人事的聚合界面
+    成员的聚合界面
     '''
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)
 
-    # 查看人事聚合页面：拉取个人或组织相关的申请
+    # 查看成员聚合页面：拉取个人或组织相关的申请
     if user_type == "Person":
         shown_instances = ModifyPosition.objects.filter(person=me)
     else:
         shown_instances = ModifyPosition.objects.filter(org=me)
 
     shown_instances = shown_instances.order_by('-modify_time', '-time')
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="人事申请")
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="成员申请")
     return render(request, 'showPosition.html', locals())
 
 @login_required(redirect_field_name="origin")
@@ -3353,15 +3364,15 @@ def make_relevant_notification(application, info):
     # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
     if application_type == ModifyPosition:
         if post_type == 'new_submit':
-            content = f'{application.person.name}发起组织人事变动申请，职位申请：{position_name}，请审核~'
+            content = f'{application.person.name}发起组织成员变动申请，职位申请：{position_name}，请审核~'
         elif post_type == 'modify_submit':
-            content = f'{application.person.name}修改了人事申请信息，请审核~'
+            content = f'{application.person.name}修改了成员申请信息，请审核~'
         elif post_type == 'cancel_submit':
-            content = f'{application.person.name}取消了人事申请信息。'
+            content = f'{application.person.name}取消了成员申请信息。'
         elif post_type == 'accept_submit':
-            content = f'恭喜，您申请的人事变动：{application.org.oname}，审核已通过！申请职位：{position_name}。'
+            content = f'恭喜，您申请的成员变动：{application.org.oname}，审核已通过！申请职位：{position_name}。'
         elif post_type == 'refuse_submit':
-            content = f'抱歉，您申请的人事变动：{application.org.oname}，审核未通过！申请职位：{position_name}。'
+            content = f'抱歉，您申请的成员变动：{application.org.oname}，审核未通过！申请职位：{position_name}。'
         else:
             raise NotImplementedError
         applyer_id = application.person.person_id
@@ -3408,7 +3419,7 @@ def make_relevant_notification(application, info):
     )
 
     # 对于处理类通知的完成(done)，修改状态
-    # 这里的逻辑保证：所有的处理类通知的生命周期必须从“人事发起”开始，从“取消”“通过”“拒绝”结束。
+    # 这里的逻辑保证：所有的处理类通知的生命周期必须从“成员发起”开始，从“取消”“通过”“拒绝”结束。
     if feasible_post.index(post_type) >= 2:
         notification_status_change(
             application.relate_notifications.get(status=Notification.Status.UNDONE).id
@@ -3456,7 +3467,7 @@ def modifyReimbursement(request):
             assert (application.pos==request.user) or (auditor==request.user)
         except:  # 恶意跳转
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "您没有权限访问该网址！"
+            html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
@@ -3471,7 +3482,7 @@ def modifyReimbursement(request):
             assert user_type == "Organization"
         except:  # 恶意跳转
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "您没有权限访问该网址！"
+            html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
@@ -3611,7 +3622,7 @@ def make_notification(application, request,content,receiver):
         publish_to_wechat=publish_to_wechat
     )
     # 对于处理类通知的完成(done)，修改状态
-    # 这里的逻辑保证：所有的处理类通知的生命周期必须从“人事发起”开始，从“取消”“通过”“拒绝”结束。
+    # 这里的逻辑保证：所有的处理类通知的生命周期必须从“成员发起”开始，从“取消”“通过”“拒绝”结束。
     if feasible_post.index(post_type) >= 2:
         notification_status_change(
             application.relate_notifications.get(status=Notification.Status.UNDONE).id,
@@ -3650,7 +3661,7 @@ def modifyOrganization(request):
             assert (application.pos == request.user) or (application.otype.incharge == me)
         except: #恶意跳转
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "您没有权限访问该网址！"
+            html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
@@ -3765,7 +3776,7 @@ def modifyOrganization(request):
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="组织申请详情")
     return render(request, "modify_organization.html", locals())
 
-# YWolfeee: 重构人事申请页面 Aug 24 12:30 UTC-8
+# YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 def sendMessage(request):
@@ -3847,6 +3858,13 @@ def send_message_check(me, request):
     content = content
     typename = Notification.Type.NEEDREAD
     URL = url
+    before_time=datetime.now()-timedelta(minutes=1)
+    after_time=datetime.now()+timedelta(minutes=1)
+    recent_notifi=Notification.objects.filter(sender=sender,title=title).filter(Q(start_time__gte=before_time)
+                                                                                &Q(start_time__lte=after_time))
+    if len(recent_notifi)>0:
+        return wrong("您1min前发送过相同的通知，请不要短时间内重复发送相同的通知！")
+
     try:
         if receiver_type == "订阅用户":
             receivers = NaturalPerson.objects.exclude(id__in=me.unsubscribers.all())
@@ -3855,6 +3873,7 @@ def send_message_check(me, request):
             receivers = NaturalPerson.objects.filter(
                 id__in=me.position_set.values_list('person_id', flat=True))
             receivers = [receiver.person_id for receiver in receivers]
+
         # 创建通知
         success, bulk_identifier = bulk_notification_create(
                 receivers=receivers,
@@ -3872,5 +3891,4 @@ def send_message_check(me, request):
     except:
         return wrong("发送微信的过程出现错误！请联系管理员！")
     
-    return succeed(f"成功将创建知晓类消息，发送给所有的{receiver_type}了!")
-        
+    return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了!")

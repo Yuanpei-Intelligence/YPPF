@@ -343,7 +343,7 @@ class Position(models.Model):
         - show_post: 是否公开职务
         - in_year: 学年
         - in_semester: 学期
-    人事变动申请相关：
+    成员变动申请相关：
         - apply_type: 申请类型
         - apply_status: 申请状态
         - apply_pos: 申请职务等级
@@ -383,7 +383,7 @@ class Position(models.Model):
     )
 
     '''
-    class ApplyType(models.TextChoices):  # 人事变动申请类型
+    class ApplyType(models.TextChoices):  # 成员变动申请类型
         JOIN = "加入组织"
         WITHDRAW = "退出组织"
         TRANSFER = "修改职位"
@@ -391,7 +391,7 @@ class Position(models.Model):
     apply_type = models.CharField(
         "申请类型", choices=ApplyType.choices, max_length=32, default=ApplyType.NONE
     )
-    class ApplyStatus(models.TextChoices):  # 人事变动申请状态
+    class ApplyStatus(models.TextChoices):  # 成员变动申请状态
         PENDING = "等待中"
         PASS = "已通过"
         REJECT = "未通过"
@@ -782,9 +782,9 @@ class Notification(models.Model):
         TRANSFER_CONFIRM = "转账确认通知"
         ACTIVITY_INFORM = "活动状态通知"
         VERIFY_INFORM = "审核信息通知"
-        POSITION_INFORM = "人事变动通知"
+        POSITION_INFORM = "成员变动通知"
         TRANSFER_FEEDBACK = "转账回执"
-        NEW_ORGANIZATION = "新建团队通知"
+        NEW_ORGANIZATION = "新建团体通知"
 
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
@@ -876,7 +876,7 @@ class ModifyOrganization(CommentBase):
     def __str__(self):
         # YWolfeee: 不认为应该把类型放在如此重要的位置
         # return f'{self.oname}{self.otype.otype_name}'
-        return f'新建团队{self.oname}的申请'
+        return f'新建团体{self.oname}的申请'
 
     def save(self, *args, **kwargs):
         self.typename = "neworganization"
@@ -892,7 +892,7 @@ class ModifyOrganization(CommentBase):
     def extra_display(self):
         display = []
         if self.introduction and self.introduction != '这里暂时没有介绍哦~':
-            display.append(('团队介绍', self.introduction))
+            display.append(('团体介绍', self.introduction))
         return display
 
     def get_user_ava(self):
@@ -910,13 +910,13 @@ class ModifyOrganization(CommentBase):
 
 class ModifyPosition(CommentBase):
     class Meta:
-        verbose_name = "人事申请详情"
+        verbose_name = "成员申请详情"
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
     # 我认为应该不去挂载这个外键，因为有可能没有，这样子逻辑会显得很复杂
     # 只有在修改被通过的一瞬间才修改Pisition类
-    # 只有在创建的一瞬间对比Pisition检查状态是否合法（如时候是修改人事）
+    # 只有在创建的一瞬间对比Pisition检查状态是否合法（如时候是修改成员）
     #position = models.ForeignKey(
     #    to=Position, related_name="new_position", on_delete=models.CASCADE
     #)
@@ -939,7 +939,7 @@ class ModifyPosition(CommentBase):
         "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
     )
 
-    class Status(models.IntegerChoices):  # 表示申请人事的请求的状态
+    class Status(models.IntegerChoices):  # 表示申请成员的请求的状态
         PENDING = (0, "审核中")
         CONFIRMED = (1, "已通过")  
         CANCELED = (2, "已取消")  
@@ -948,9 +948,9 @@ class ModifyPosition(CommentBase):
     status = models.SmallIntegerField(choices=Status.choices, default=0)
     
     def __str__(self):
-        return f'{self.org.oname}人事申请'
+        return f'{self.org.oname}成员申请'
 
-    class ApplyType(models.TextChoices):  # 人事变动申请类型
+    class ApplyType(models.TextChoices):  # 成员变动申请类型
         JOIN = "加入组织"
         TRANSFER = "修改职位"
         WITHDRAW = "退出组织"
