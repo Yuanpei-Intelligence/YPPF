@@ -126,7 +126,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                         recipient=our_college,
                         amount=reimb_YQP,
                         message=transaction_msg,
-                        is_increase=1
+                        rtype=1
                     )
                     # 至此可以新建申请, 创建一个空申请
                     application =Reimbursement.objects.create(

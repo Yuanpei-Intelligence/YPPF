@@ -26,6 +26,10 @@ import string
 import random
 import xlwt
 from io import BytesIO
+
+
+YQPoint_oname = local_dict["org"]["f1"]
+
 def check_user_access(redirect_url="/logout/"):
     """
     Decorator for views that checks that the user is valid, redirecting
@@ -428,10 +432,14 @@ def set_nperson_quota_to(quota):
         给所有用户发送通知
     """
     activated_npeople = NaturalPerson.objects.activated()
+
+
     activated_npeople.update(quota=quota)
     notification_content = f"学院已经将大家的元气值配额重新设定为{quota},祝您使用愉快！"
     title = Notification.Title.VERIFY_INFORM
-    YPcollege = Organization.objects.get(oname="元培学院")
+    YPcollege = Organization.objects.get(oname=YQPoint_oname)
+
+    bonusPoint=F('bonusPoint') + hours
 
     # 函数内导入是为了防止破坏utils的最高优先级，如果以后确定不会循环引用也可提到外面
     # 目前不发送到微信哦
@@ -787,3 +795,6 @@ def export_orgpos_info(org):
     return response
 
 operation_writer(local_dict["system_log"], "系统启动", "util_底部")
+
+def escape_for_templates(text:str):
+    return text.strip().replace("\n", " ")

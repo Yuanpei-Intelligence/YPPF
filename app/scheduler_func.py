@@ -22,6 +22,44 @@ from app.scheduler import scheduler
 from urllib import parse, request as urllib2
 import json
 
+YQPoint_oname = local_dict["org"]["f1"]
+
+
+# 学院每月下发元气值
+@scheduler.scheduled_job('interval', id="distributeY QPoint per month", days=30)
+def distribute_YQPoint_per_month():
+    with transaction.atomic():
+        recipients = NaturalPerson.objects.activated().select_for_update()
+        YP = Organization.objects.get(oname=YQPoint_oname)
+        trans_time = datetime.now()
+        transfer_list = [TransferRecord(
+                proposer=YP.organization_id,
+                recipient=recipient.person_id,
+                amount=(30 + max(0, (30 - recipient.YQPoint))),
+                start_time=trans_time,
+                finish_time=trans_time,
+                message=f"元气值每月发放。",
+                status=TransferRecord.TransferStatus.ACCEPTED,
+                rtype=TransferRecord.TransferType.BONUS
+        ) for recipient in recipients]
+        notification_lists = [
+            Notification(
+                receiver=recipient.person_id,
+                sender=YP.organization_id,
+                typename=Notification.Type.NEEDREAD,
+                title=Notification.Title.YQ_DISTRIBUTION,
+                content=f"{YP}向您发放了本月元气值{30 + max(0, (30 - recipient.YQPoint))}点，请查收！",
+            ) for recipient in recipients
+        ]
+        TransferRecord.objects.bulk_create(transfer_list)
+        Notification.objects.bulk_create(notification_lists)
+        for recipient in recipients:
+            amount = 30 + max(0, (30 - recipient.YQPoint))
+            recipient.YQPoint += amount
+            recipient.YQPoint += recipient.YQPoint_Bonus 
+            recipient.YQPoint_Bonus = 0
+            recipient.save()
+
 def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
     '''
         内容：
@@ -54,7 +92,8 @@ def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
             start_time=trans_time,
             finish_time=trans_time,
             message=trans_msg,
-            status=TransferRecord.TransferStatus.ACCEPTED
+            status=TransferRecord.TransferStatus.ACCEPTED,
+            rtype=TransferRecord.TransferType.BONUS
     ) for recipient in recipients]
     TransferRecord.objects.bulk_create(transfer_list)
     
@@ -72,9 +111,9 @@ def distribute_YQPoint(distributer):
     per_to_dis = NaturalPerson.objects.activated().filter(
         YQPoint__lte=distributer.per_max_dis_YQP)
     org_to_dis = Organization.objects.activated().filter(
-        YQPoint__lte=distributer.org_max_dis_YQP).exclude(oname="元培学院")
+        YQPoint__lte=distributer.org_max_dis_YQP).exclude(oname=YQPoint_oname)
     # 由学院账号给大家发放
-    YPcollege = Organization.objects.get(oname="元培学院")
+    YPcollege = Organization.objects.get(oname=YQPoint_oname)
 
     distribute_YQPoint_to_users(proposer=YPcollege, recipients=per_to_dis, YQPoints=distributer.per_YQP, trans_time=trans_time)
     distribute_YQPoint_to_users(proposer=YPcollege, recipients=org_to_dis, YQPoints=distributer.org_YQP, trans_time=trans_time)
@@ -248,7 +287,28 @@ def changeActivityStatus(aid, cur_status, to_status):
                         activity_id=aid, 
                         status=Participant.AttendStatus.APLLYSUCCESS
                     ).update(status=Participant.AttendStatus.ATTENDED)
-
+                if not activity.valid:
+                    # 活动开始后，未审核自动通过
+                    activity.valid = True
+                    records = TransferRecord.objects.filter(
+                        status=TransferRecord.TransferStatus.PENDING, 
+                        corres_act=activity,
+                    )
+                    total_amount = records.aggregate(nums=Sum('amount'))["nums"]
+                    if total_amount is None:
+                        total_amount = 0.0
+                    if total_amount > 0:
+                        organization_id = activity.organization_id_id
+                        organization = Organization.objects.select_for_update().get(id=organization_id)
+                        organization.YQPoint += total_amount
+                        organization.save()
+                        YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
+                        YP.YQPoint -= total_amount
+                        YP.save()
+                    records.update(
+                        status=TransferRecord.TransferStatus.ACCEPTED,
+                        time=str(datetime.now())
+                    )
             # 结束，计算积分    
             else:
                 hours = (activity.end - activity.start).seconds / 3600
