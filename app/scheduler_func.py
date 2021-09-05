@@ -8,7 +8,7 @@ from django.db import transaction  # 原子化更改数据库
 
 from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant, \
     Notification
-from app.wechat_send import publish_notifications
+from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
 from app.forms import YQPointDistributionForm
 from boottest.hasher import MySHA256Hasher
 from app.notification_utils import bulk_notification_create
@@ -20,6 +20,42 @@ from numpy.random import choice
 from urllib import parse, request as urllib2
 import json
 
+YQPoint_oname = local_dict["YQPoint_soucre_oname"]
+
+
+# 学院每月下发元气值
+def distribute_YQPoint_per_month():
+    with transaction.atomic():
+        recipients = NaturalPerson.objects.activated().select_for_update()
+        YP = Organization.objects.get(oname=YQPoint_oname)
+        trans_time = datetime.now()
+        transfer_list = [TransferRecord(
+                proposer=YP.organization_id,
+                recipient=recipient.person_id,
+                amount=(30 + max(0, (30 - recipient.YQPoint))),
+                start_time=trans_time,
+                finish_time=trans_time,
+                message=f"元气值每月发放。",
+                status=TransferRecord.TransferStatus.ACCEPTED,
+                rtype=TransferRecord.TransferType.BONUS
+        ) for recipient in recipients]
+        notification_lists = [
+            Notification(
+                receiver=recipient.person_id,
+                sender=YP.organization_id,
+                typename=Notification.Type.NEEDREAD,
+                title=Notification.Title.YQ_DISTRIBUTION,
+                content=f"{YP}向您发放了本月元气值{30 + max(0, (30 - recipient.YQPoint))}点，请查收！",
+            ) for recipient in recipients
+        ]
+        TransferRecord.objects.bulk_create(transfer_list)
+        Notification.objects.bulk_create(notification_lists)
+        for recipient in recipients:
+            amount = 30 + max(0, (30 - recipient.YQPoint))
+            recipient.YQPoint += amount
+            recipient.YQPoint += recipient.YQPoint_Bonus 
+            recipient.YQPoint_Bonus = 0
+            recipient.save()
 
 def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
     '''
@@ -69,9 +105,9 @@ def distribute_YQPoint(distributer):
     per_to_dis = NaturalPerson.objects.activated().filter(
         YQPoint__lte=distributer.per_max_dis_YQP)
     org_to_dis = Organization.objects.activated().filter(
-        YQPoint__lte=distributer.org_max_dis_YQP).exclude(oname="元培学院")
+        YQPoint__lte=distributer.org_max_dis_YQP).exclude(oname=YQPoint_oname)
     # 由学院账号给大家发放
-    YPcollege = Organization.objects.get(oname="元培学院")
+    YPcollege = Organization.objects.get(oname=YQPoint_oname)
 
     distribute_YQPoint_to_users(proposer=YPcollege, recipients=per_to_dis, YQPoints=distributer.per_YQP,
                                 trans_time=trans_time)
@@ -243,8 +279,29 @@ def changeActivityStatus(aid, cur_status, to_status):
                         activity_id=aid,
                         status=Participant.AttendStatus.APLLYSUCCESS
                     ).update(status=Participant.AttendStatus.ATTENDED)
-
-            # 结束，计算积分
+                if not activity.valid:
+                    # 活动开始后，未审核自动通过
+                    activity.valid = True
+                    records = TransferRecord.objects.filter(
+                        status=TransferRecord.TransferStatus.PENDING, 
+                        corres_act=activity,
+                    )
+                    total_amount = records.aggregate(nums=Sum('amount'))["nums"]
+                    if total_amount is None:
+                        total_amount = 0.0
+                    if total_amount > 0:
+                        organization_id = activity.organization_id_id
+                        organization = Organization.objects.select_for_update().get(id=organization_id)
+                        organization.YQPoint += total_amount
+                        organization.save()
+                        YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
+                        YP.YQPoint -= total_amount
+                        YP.save()
+                    records.update(
+                        status=TransferRecord.TransferStatus.ACCEPTED,
+                        time=str(datetime.now())
+                    )
+            # 结束，计算积分    
             else:
                 hours = (activity.end - activity.start).seconds / 3600
                 participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.ATTENDED)
@@ -346,23 +403,27 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
                 id__in=activity.organization_id.unsubscribers.all()
             )
             receivers = [subscriber.person_id for subscriber in subscribers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER}  
         elif msg_type == "remind":
             msg = f"您参与的活动 <{activity.title}> 即将开始。\n"
             msg += f"开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}\n"
             msg += f"活动地点: {activity.location}\n"
             participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
             receivers = [participant.person_id.person_id for participant in participants]
+            publish_kws = {"app": WechatApp.TO_PARTICIPANT}  
         elif msg_type == 'modification_sub':
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
             )
             receivers = [subscriber.person_id for subscriber in subscribers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         elif msg_type == 'modification_par':
             participants = Participant.objects.filter(
                 activity_id=aid,
                 status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
             )
             receivers = [participant.person_id.person_id for participant in participants]
+            publish_kws = {"app": WechatApp.TO_PARTICIPANT}  
         elif msg_type == "modification_sub_ex_par":
             participants = Participant.objects.filter(
                 activity_id=aid,
@@ -373,6 +434,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             )
             receivers = list(set(subscribers) - set([participant.person_id for participant in participants]))
             receivers = [receiver.person_id for receiver in receivers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         # 应该用不到了，调用的时候分别发给 par 和 sub
         # 主要发给两类用户的信息往往是不一样的
         elif msg_type == 'modification_all':
@@ -385,6 +447,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             )
             receivers = set([participant.person_id for participant in participants]) | set(subscribers)
             receivers = [receiver.person_id for receiver in receivers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         else:
             raise ValueError
         success, _ = bulk_notification_create(
@@ -395,7 +458,8 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             content=msg,
             URL=f"/viewActivity/{aid}",
             relate_instance=activity,
-            publish_to_wechat=True
+            publish_to_wechat=True,
+            publish_kws=publish_kws,
         )
         assert success
 

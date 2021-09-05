@@ -57,8 +57,8 @@ class NaturalPerson(models.Model):
     objects = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
 
-    YQPoint = models.FloatField("现存元气值", default=0)
-    quota = models.FloatField("元气值配额", default=0)
+    YQPoint_Bonus = models.FloatField("待发放元气值", default=0)
+    YQPoint = models.FloatField("元气值余额", default=0)
     bonusPoint = models.FloatField("积分", default=0)
 
     class Identity(models.IntegerChoices):
@@ -685,15 +685,26 @@ class TransferRecord(models.Model):
     )
 
     class TransferStatus(models.IntegerChoices):
+        """
+        对于活动来说：
+        REFUND 由 ACCEPTED 而来
+        SUSPENDED 由 PENDING 而来
+        """
         ACCEPTED = (0, "已接收")
         WAITING = (1, "待确认")
         REFUSED = (2, "已拒绝")
         SUSPENDED = (3, "已终止")
         REFUND = (4, "已退回")
+        PENDING = (5, "待审核")
+
+    class TransferType(models.IntegerChoices):
+        ACTIVITY = (0, "组织活动入账") # 包括像学院申请元气值的部分
+        REIMURSEMENT = (1, "报销兑换") # 元气值湮灭
+        BONUS = (2, "学院发放") # 学院发放的奖励
+        TRANSACTION = (3, "组织间转账")
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
-    is_increase=models.IntegerField("报销兑换", default=0,
-        help_text="报销时转账并未实质发生，用此字段标识，0标识默认转账，1为报销兑换")
+    rtype = models.SmallIntegerField(choices=TransferType.choices, default=0)
     
     def save(self, *args, **kwargs):
         self.amount = round(self.amount, 1)
@@ -784,7 +795,8 @@ class Notification(models.Model):
         VERIFY_INFORM = "审核信息通知"
         POSITION_INFORM = "成员变动通知"
         TRANSFER_FEEDBACK = "转账回执"
-        NEW_ORGANIZATION = "新建团体通知"
+        NEW_ORGANIZATION = "新建团队通知"
+        YQ_DISTRIBUTION = "元气值发放通知"
 
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
