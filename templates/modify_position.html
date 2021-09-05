@@ -35,7 +35,7 @@
                                                     <br>
                                                     <br>
                                                     <div align="center">
-                                                    <h3>人事申请 {% if not is_new_application %}
+                                                    <h3>成员申请 {% if not is_new_application %}
                                                             {% with application.get_status_display as status %}
                                                             {%if status == "审核中"%}
                                                             <span class="badge badge-primary">{{status}}</span>
@@ -75,7 +75,7 @@
                                     <div class="widget-content widget-content-area">
                                         <form role="form" method="POST" enctype="multipart/form-data">
                                             <div class="form-group">
-                                                <label for="aintro">人事变动类型</label>
+                                                <label for="aintro">成员变动类型</label>
                                                 <select class="form-control selectpicker" data-live-search = "true" id="apply_type" name="apply_type" onchange = "type_change()" {%if not allow_form_edit %} readonly="readonly"{%endif%}>
                                                     {% for key, value in apply_type_list.items %}
                                                     {% if not value.disabled %}
@@ -119,15 +119,15 @@
                                                     <div align="center">
                                                         
                                                                 <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
-                                                            value="modify_submit" name="post_type">修改申请</button>
+                                                            value="modify_submit" name="post_type" onclick="return confirm('确认提交成员变动申请？')">修改申请</button>
                                                             
                                                                 <button type="submit" class="btn btn-lg mb-4 mr-2"
-                                                            value="cancel_submit" name="post_type">取消申请</button>
+                                                            value="cancel_submit" name="post_type" onclick="return confirm('确认取消成员变动申请？')">取消申请</button>
                                                             
                                                     </div>
                                                 {%else%}
                                                 <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
-                                                        value="new_submit" name="post_type">
+                                                        value="new_submit" name="post_type" onclick="return confirm('确认提交成员申请？')">
                                                     提交申请
                                                 </button>
                                                 {% endif %}
@@ -136,11 +136,11 @@
                                                     <table>
                                                         <tr>
                                                             <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
-                                                        value="accept_submit" name="post_type">通过申请</button>
+                                                        value="accept_submit" name="post_type" onclick="return confirm('确认通过成员变动申请？')">通过申请</button>
                                                         </tr>
                                                         <tr>
                                                             <button type="submit" class="btn btn-lg mb-4 mr-2"
-                                                        value="refuse_submit" name="post_type">拒绝申请</button>
+                                                        value="refuse_submit" name="post_type" onclick="return confirm('确认拒绝成员变动申请？')">拒绝申请</button>
                                                         </tr>
                                                     </table>
                                                 </div>
