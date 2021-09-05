@@ -21,7 +21,7 @@ from numpy.random import choice
 from urllib import parse, request as urllib2
 import json
 
-YQPoint_oname = local_dict["org"]["f1"]
+YQPoint_oname = local_dict["YQPoint_soucre_oname"]
 
 
 # 学院每月下发元气值

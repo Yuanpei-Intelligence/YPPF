@@ -28,7 +28,7 @@ import xlwt
 from io import BytesIO
 
 
-YQPoint_oname = local_dict["org"]["f1"]
+YQPoint_oname = local_dict["YQPoint_soucre_oname"]
 
 def check_user_access(redirect_url="/logout/"):
     """

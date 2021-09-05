@@ -26,6 +26,10 @@
     {% elif html_display.warn_code == 2 %}
     <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
     {% endif %}
+    {% if YQPoint_Source_Org %}
+    <div class="alert alert-warning  text-center">元培元气值中心仅负责元气值发放，请使用其他账号发布活动。</div>
+    {% endif %}
+
     <div class="container"> 
 
             <div class="row layout-top-spacing">
@@ -49,7 +53,7 @@
                                 <br />
                                 <br />
                                 <a href="/addActivity/" class="btn btn-info" tabindex="1"
-                                    role="button" style="position:absolute;right:30px;top:4px;">
+                                    role="button" style="position:absolute;right:30px;top:4px;" id="add_activity">
                                     发起活动
                                 </a>
                                 <hr style="filter:alpha(opacity=100,finishopacity=0,style=3);" width="80%" color="#0000FF" size="3">
@@ -166,6 +170,11 @@
         
     </div>
 </div>
+{% if YQPoint_Source_Org %}
+<script type="text/javascript">
+    document.getElementById("add_activity").style.display = "none";
+</script>
+{% endif %}
 <!--  END CONTENT AREA  -->
 
 {% endwith %}

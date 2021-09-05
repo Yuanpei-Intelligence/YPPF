@@ -87,7 +87,7 @@ email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
-YQPoint_oname = local_dict["org"]["f1"]
+YQPoint_oname = local_dict["YQPoint_soucre_oname"]
 
 
 @register.filter
@@ -2346,6 +2346,8 @@ def addActivity(request, aid=None):
         me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为组织账户
         if aid is None:
             assert user_type == "Organization"
+            if me.oname == YQPoint_oname:
+                return redirect("/showActivity")
             edit = False
         else:
             aid = int(aid)
@@ -3324,6 +3326,11 @@ def showActivity(request):
 
     shown_instances = shown_instances.order_by("-modify_time", "-time")
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动立项")
+
+    # 前端不允许元气值中心创建活动
+    if user_type == "Organization" and me.oname == YQPoint_oname:
+        YQPoint_Source_Org = True
+
     return render(request, "activity_show.html", locals())
 
 
