@@ -153,8 +153,8 @@
                                                     value="1" id="recorded"
                                                     name="recorded">
                                                 <label class="form-check-label" for="defaultCheck1">
-                                                    是否已报备
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="已报备活动指学期初已上报学院且获准的活动, 擅自勾选可能导致组织被禁止登录！此外，预报备活动不允许向学院申请元气值。">
+                                                    已审核
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="已审核活动指学期初已上报学院且获准的活动, 擅自勾选可能导致组织被禁止登录！如果向学院申请元气值，需要二次审核，故不要勾选此选项。">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -450,9 +450,13 @@
                                                 <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" disabled>
                                                     活动{{status}}
                                                 </button>
+                                                {% elif edit %}
+                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认修改活动？')">
+                                                    确认修改
+                                                </button>
                                                 {% else %}
                                                 <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认提交活动申请？')">
-                                                    提交
+                                                    发起活动
                                                 </button>
                                                 {% endif %}
                                             {% endif %}
@@ -626,6 +630,13 @@
 <!-- 请求为 edit 或 examine 时执行的脚本， -->
 {% if edit or examine %}
 <script type="text/javascript">
+
+    /* 提示上传预算信息 */
+    if (document.referrer.endsWith("/addActivity/")) {
+        document.getElementById("warn_msg").style.display = "";
+        document.getElementById("warn_msg").innerHTML = "活动发起成功，请在评论区上传预算明细。";
+    }
+
     /* 将 palceholder 全部换为旧值，很长很啰嗦 */
     // 但是 Django 是做的文本替换，又必须全写出来......
     // 活动信息

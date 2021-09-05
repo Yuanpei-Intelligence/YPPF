@@ -2380,7 +2380,7 @@ def addActivity(request, aid=None):
             try:
                 with transaction.atomic():
                     aid = create_activity(request)
-                    return redirect(f"/viewActivity/{aid}")
+                    return redirect(f"/editActivity/{aid}")
             except ActivityException as e:
                 return redirect(str(e))
             except Exception as e:
@@ -2569,7 +2569,7 @@ def examineActivity(request, aid):
                 html_display["warn_msg"] = "活动已被拒绝。"
                 html_display["warn_code"] = 2
             except Exception as e:
-                print(e)
+                # print(e)
                 return redirect("/welcome/")
 
 
