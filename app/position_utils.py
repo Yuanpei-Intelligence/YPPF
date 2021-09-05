@@ -25,7 +25,7 @@ def succeed(message):
     context["warn_message"] = message
     return context
 
-# 修改人事申请状态的操作函数, application为修改的对象，可以为None
+# 修改成员申请状态的操作函数, application为修改的对象，可以为None
 # me为操作者
 # info为前端POST字典
 # 返回值为context, warn_code = 1表示失败, 2表示成功; 错误信息在context["warn_message"]
@@ -112,7 +112,7 @@ def update_pos_application(application, me, user_type, applied_org, info):
                     if len(ModifyPosition.objects.filter(
                         person=me, status=ModifyPosition.Status.PENDING
                     ))>=3:
-                        return wrong("审核中的人事变动申请的数目不能超过三个！")
+                        return wrong("审核中的成员变动申请的数目不能超过三个！")
                     if ModifyPosition.objects.filter(
                         person=me, org=applied_org, status=ModifyPosition.Status.PENDING
                     ).exists():
