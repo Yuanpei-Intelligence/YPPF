@@ -44,7 +44,7 @@ from app.scheduler import scheduler
 from app.scheduler_func import changeActivityStatus, notifyActivity
 
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
-YQPoint_oname = local_dict["org"]["f1"]
+YQPoint_oname = local_dict["YQPoint_soucre_oname"]
 
 def get_activity_QRcode(activity):
 
