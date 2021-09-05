@@ -2095,8 +2095,7 @@ def viewActivity(request, aid=None):
     # 参与者
     participants = Participant.objects.filter(Q(activity_id=activity),
         Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APLLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED))
-    participants = participants.values("person_id")
-    participants_ava = [utils.get_user_ava(participant, "Person") for participant in participants]
+    participants_ava = [utils.get_user_ava(participant, "Person") for participant in participants.values("person_id")] or None
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
