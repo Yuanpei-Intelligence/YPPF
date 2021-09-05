@@ -348,7 +348,7 @@
                                                                             {% else %}
                                                                                 <span class="badge badge-pill badge-info">报名截止</span>
                                                                             {% endif %}
-                                                                        {% elif rec.status == "申请失败" or rec.status == "未参与" or rec.status == "取消" %}
+                                                                        {% elif rec.status == "申请失败" or rec.status == "未参与" or rec.status == "放弃" %}
                                                                             <span class="badge badge-pill badge-warning">
                                                                                 {{ rec.status }}
                                                                             </span>
