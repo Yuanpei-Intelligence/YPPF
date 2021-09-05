@@ -154,7 +154,7 @@
                                                     name="recorded">
                                                 <label class="form-check-label" for="defaultCheck1">
                                                     已审核
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="已审核活动指学期初已上报学院且获准的活动, 擅自勾选可能导致组织被禁止登录！如果向学院申请元气值，需要二次审核，故不要勾选此选项。">
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="已审核活动指学期初已上报学院且获准的活动, 擅自勾选可能导致团体被禁止登录！如果向学院申请元气值，需要二次审核，故不要勾选此选项。">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -633,8 +633,8 @@
 
     /* 提示上传预算信息 */
     if (document.referrer.endsWith("/addActivity/")) {
-        document.getElementById("warn_msg").style.display = "";
-        document.getElementById("warn_msg").innerHTML = "活动发起成功，请在评论区上传预算明细。";
+        document.getElementById("success_msg").style.display = "";
+        document.getElementById("success_msg").innerHTML = "活动发起成功，请在评论区上传预算明细。";
     }
 
     /* 将 palceholder 全部换为旧值，很长很啰嗦 */
@@ -944,7 +944,7 @@
         var now = new Date()
         if (applyEnd < now) {
             document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "活动报名截止时间已过，请通知组织修改。";
+            document.getElementById("warn_msg").innerHTML = "活动报名截止时间已过，请通知团体修改。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
