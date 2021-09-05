@@ -301,6 +301,14 @@ def stuinfo(request, name=None):
         html_display["is_myself"] = is_myself  # 存入显示
         inform_share, alert_message = utils.get_inform_share(me=person, is_myself=is_myself)
 
+        # 处理更改数据库中inform_share的post
+        if request.method == "POST" and request.POST:
+            option = request.POST.get("option", "")
+            assert option == "cancelInformShare" and html_display["is_myself"]
+            person.inform_share = False
+            person.save()
+
+
         # ----------------------------------- 组织卡片 ----------------------------------- #
 
         person_poss = Position.objects.activated().filter(Q(person=person))
@@ -608,6 +616,10 @@ def orginfo(request, name=None):
             html_display["warn_code"] = 2
             html_display["warn_message"] = "下载成功!"
             return utils.export_orgpos_info(org)
+        elif request.POST.get("option", "") == "cancelInformShare" and html_display["is_myself"]:
+            me.inform_share = False
+            me.save()
+            
 
     # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
@@ -2016,6 +2028,9 @@ def viewActivity(request, aid=None):
             if not ownership:
                 return redirect("/welcome/")
             return utils.export_activity_signin(activity)
+        elif option == "cancelInformShare":
+            me.inform_share = False
+            me.save()
         else:
             return redirect("/welcome")
 
