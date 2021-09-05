@@ -1,0 +1,111 @@
+
+{% extends "base.html" %}
+
+{% load static %}
+
+
+{% block mainpage %}
+<style>
+    select[readonly] {
+  background: #eee; /*Simular campo inativo - Sugestão @GabrielRodrigues*/
+  pointer-events: none;
+  touch-action: none;
+}
+</style>
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+        <!--  BEGIN CUSTOM STYLE FILE  -->
+        <div class="container">
+            <div class="container">
+                {% if html_display.warn_code == 2 %}
+                <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+                {% elif html_display.warn_code == 1%}
+                <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+                {% endif %}
+                <div class="row layout-top-spacing">
+
+                    <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+                        <div class="row">
+                            <div class="col-md-12 mb-4">
+                                <div class="statbox widget box box-shadow">
+
+                                    <!--  BEGIN HEADER AREA  -->
+                                    <div class="widget-header">
+                                        <div class="row">
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                    <br>
+                                                    <br>
+                                                    <div align="center">
+                                                    <h3>信息发送中心</h3>
+                                                    </div>
+                                                    <br>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!--  BEGIN CONTENT AREA  -->
+                                    <div class="widget-content widget-content-area">
+                                        <form role="form" method="POST" enctype="multipart/form-data">
+
+                                            <div class="form-group" id="receiver_group">
+                                                <label for="aintro">发送对象</label>
+                                                <select class="form-control selectpicker" data-live-search = "true" id="receiver_type" name="receiver_type" >
+                                                    {% for key,value in receiver_type_list.items %}
+                                                    {% if not value.disabled %}
+                                                    <option value="{{value.display}}" {% if value.selected %} selected {% endif %} >
+                                                        {{value.display}}
+                                                    </option>
+                                                    {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="aintro">通知标题</label>
+                                                <input name="title" class="form-control" placeholder=
+                                                        "请输入通知的标题~最多不要超过10个字！" value={{title}}>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="aintro">通知内容</label>
+                                                <textarea name="content" class="form-control" rows="7" placeholder=
+                                                        "请在这里写下通知内容~不能为空哦，最长可以输225个字！">{{content}}</textarea>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="aintro">相关链接
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="获取链接的方式：在推送中，点击右上角在默认浏览器中打开，然后复制链接填在此处即可。注意，如果是外网链接，请使用以http或https开头的绝对地址。">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                            <path
+                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                        </svg>
+                                                    </a></label>
+                                                <input name="url" class="form-control" placeholder=
+                                                        "此处填写网址链接，注意，如果是外网链接，请使用以http或https开头的绝对地址。" value={{url}} >
+                                            </div>
+
+                                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
+                                                    value="new_submit" name="post_type" onclick="return confirm('确认发送信息？(注：由于需要发消息，响应时间较久，点击确定后请耐心等待，不要重复点击提交！)')">
+                                                发送信息
+                                            </button>
+                                            
+                                        </form>
+                                        <br>
+                                        <hr>
+                                    {% include 'comment.html' %}
+                                    </div>
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+    <!--  END CONTENT AREA  -->
+
+
+{% endblock %}
+

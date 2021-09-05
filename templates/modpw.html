@@ -1,22 +1,15 @@
-<!DOCTYPE html>
-<html lang="en">
+{% extends "base.html" %}
 {% load static %}
 
-<head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no">
-    <title> 修改密码 | 元培成长档案 </title>
+{% block add_css_file %}
+<link href={% static "assets/css/authentication/form-2.css" %} rel="stylesheet" type="text/css" />
+<!-- END GLOBAL MANDATORY STYLES -->
+<link rel="stylesheet" type="text/css" href={% static "assets/css/forms/theme-checkbox-radio.css" %}>
+<link rel="stylesheet" type="text/css" href={% static "assets/css/forms/switches.css" %}>
+{% endblock %}
 
-    <!-- BEGIN GLOBAL MANDATORY STYLES -->
-    <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet">
-    <link href={% static "bootstrap/css/bootstrap.min.css" %} rel="stylesheet" type="text/css" />
-    <link href={% static "assets/css/plugins.css" rel="stylesheet" %} type="text/css" />
-    <link href={% static "assets/css/authentication/form-2.css" %} rel="stylesheet" type="text/css" />
-    <!-- END GLOBAL MANDATORY STYLES -->
-    <link rel="stylesheet" type="text/css" href={% static "assets/css/forms/theme-checkbox-radio.css" %}>
-    <link rel="stylesheet" type="text/css" href={% static "assets/css/forms/switches.css" %}>
-</head>
+{% block mainpage %}
+<div id="content" class="main-content" >
 {% if isFirst %}
 {% if err_code == 0 %}
 <script>
@@ -25,16 +18,15 @@
 {% endif %}
 {% endif %}
 
-<body class="form no-image-content">
-
 
     <div class="form-container outer">
+        <center>
         <div class="form-form">
             <div class="form-form-wrap">
                 <div class="form-container">
                     <div class="form-content">
                         <div class="d-flex user-meta">
-                            <img src={{avatar_path}} class="usr-profile" alt="avatar">
+                            <img src={{bar_display.avatar_path}} class="usr-profile" alt="avatar">
                             <div class="">
                                 <p class="">修改密码</p>
                             </div>
@@ -45,8 +37,8 @@
 
                                 <div id="pw-field" class="field-wrapper input mb-2">
                                     <div class="d-flex justify-content-between">
-                                        <label>{% if forgetpw %}新密码{% else %}原密码{% endif %}</label><!--modified by pht-->
-                                        <a href="/logout/" class="forgot-pass-link">Logout</a>
+                                        <label>{% if forgetpw or isFirst %}新密码{% else %}原密码{% endif %}</label><!--modified by pht-->
+                                        <a href="/logout/" class="forgot-pass-link">注销</a>
                                     </div>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
                                         fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
@@ -70,7 +62,7 @@
                                 <div class="form">
                                     <div id="new-field" class="field-wrapper input mb-2">
                                         <div class="d-flex justify-content-between">
-                                            <label for="new">{% if forgetpw %}重复输入新密码{% else %}新密码{% endif %}</label><!--modified by pht-->
+                                            <label for="new">{% if forgetpw or isFirst %}重复输入新密码{% else %}新密码{% endif %}</label><!--modified by pht-->
                                         </div>
                                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                             viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -93,7 +85,7 @@
                                     <div class="d-sm-flex justify-content-between">
                                         <div class="field-wrapper">
                                             <button type="submit" class="btn btn-primary" value=""
-                                                id="change_pw">Change</button>
+                                                id="change_pw">提交</button>
                                             <!--modified by wxy-->
                                         </div>
 
@@ -110,19 +102,16 @@
                 </div>
             </div>
         </div>
+        </center>
     </div>
+</div>
 
+{% endblock %}
 
-    <!-- BEGIN GLOBAL MANDATORY SCRIPTS -->
-    <script src={% static "assets/js/libs/jquery-3.1.1.min.js" %}></script>
-    <script src={% static "bootstrap/js/popper.min.js" %}></script>
-    <script src={% static "bootstrap/js/bootstrap.min.js" %}></script>
-
+{% block add_js_file %}
     <!-- END GLOBAL MANDATORY SCRIPTS -->
     <script src={% static "assets/js/authentication/form-2.js" %}></script>
 
     <!--added by wxy-->
 
-</body>
-
-</html>
+{% endblock %}

@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 {% load static %}
 
 <head>
     <meta charset="utf-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no">
-    <title>{{html_display.title_name}}</title>
+    <title>{{bar_display.title_name}} | 元培成长档案</title>
 
     <!-- BEGIN GLOBAL MANDATORY STYLES -->
     <!-- Favicons -->
@@ -20,8 +20,7 @@
     <link href={% static "assets/css/users/user-profile.css" %} rel="stylesheet" type="text/css" />
     <!--  END CUSTOM STYLE FILE  -->
 
-    <link rel="stylesheet" href="https://cdn.staticfile.org/font-awesome/4.7.0/css/font-awesome.css">
-
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
     {% block add_css_file %}
 
     {% endblock %}
@@ -41,7 +40,7 @@
                     </a>
                 </li>
                 <li class="nav-item theme-text">
-                    <a href="/welcome/" class="nav-link"> Yuanpei Profile </a>
+                    <a href="/welcome/" class="nav-link"> 元培生活 </a>
                 </li>
             </ul>
 
@@ -49,92 +48,64 @@
                 <li class="nav-item align-self-center search-animated">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                         stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                        class="feather feather-search toggle-search">
+                        class="feather feather-search toggle-search"
+                        onclick="if($('.form-control').val() != ''){$('#search-form').submit();}">
                         <circle cx="11" cy="11" r="8"></circle>
                         <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
                     </svg>
                     <form class="form-inline search-full form-inline search" role="search" method="GET"
-                        action="/search/">
+                        action="/search/" id="search-form">
                         <div class="search-bar">
                             <input type="text" class="form-control search-form-control  ml-lg-auto"
-                                placeholder="搜索活动/组织/个人[姓名/组织名/昵称/专业]" name="Query">
+                                placeholder="搜索活动/团体/个人[姓名/团体名/昵称/专业]" name="Query">
                         </div>
                     </form>
                 </li>
             </ul>
-
             <ul class="navbar-item flex-row ml-md-auto">
                 <li class="nav-item dropdown message-dropdown">
-                    <a href="javascript:void(0);" class="nav-link dropdown-toggle" id="messageDropdown"
-                        data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                    <a href="javascript:void(0);" onclick="window.location='/notifications/'"
+                        class="nav-link dropdown-toggle" id="messageDropdown" data-toggle="dropdown"
+                        aria-haspopup="true" aria-expanded="false">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                             class="feather feather-mail">
-                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z">
-                            </path>
-
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
                             <polyline points="22,6 12,13 2,6"></polyline>
-
                         </svg>
-                        <span class="badge " style="background-color: black;color: currentColor;">3</span>
 
+                        <span class="bg-danger text-light" id="mail_num" style="all: initial; position: absolute; top: 7px; font-size: 11px; border-radius: 8px; text-align: center; display: none;">{{ bar_display.mail_num }}</span>
+                        <span class="bg-danger text-light" id="mail_num_" style="all: initial; position: absolute; left: 9px; top: 7px; font-size: 11px; border-radius: 8px; width: 28px; text-align: center; display: none;">99+</span>
+
+                        <script type="text/javascript">
+                        const span = document.querySelector(`span#mail_num`);
+                        const span_ = document.querySelector(`span#mail_num_`);
+
+                        const observer = new MutationObserver(setNum);
+                        observer.observe(span, { attributes: false, childList: true, subtree: true });
+
+                        window.addEventListener(`load`, setNum);
+
+                        function setNum() {
+                            span.style.display = `block`;
+                            span_.style.display = `none`;
+
+                            const num = Number(span.textContent);
+                            if (num === 0) span.style.display = `none`;
+                            else if (num < 10) {
+                                span.style.width = `16px`;
+                                span.style.left=  `13px`;
+                            } else if (num < 100) {
+                                span.style.width = `22px`;
+                                span.style.left=  `11px`;
+                            } else {
+                                span.style.display = `none`;
+                                span_.style.display = `block`;
+                            }
+                        }
+                        </script>
 
                     </a>
-                    <div class="dropdown-menu p-0 position-absolute" aria-labelledby="messageDropdown">
-                        <div class="">
-                            <a class="dropdown-item">
-                                <div class="">
-
-                                    <div class="media">
-                                        <div class="user-img">
-                                            <img class="usr-img rounded-circle" src={% static "assets/img/profile-11.jpeg.jpg" %} alt="profile">
-                                        </div>
-                                        <div class="media-body">
-                                            <div class="">
-                                                <h5 class="usr-name">学姐</h5>
-                                                <p class="msg-title">ACCOUNT UPDATE</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </a>
-                            <a class="dropdown-item">
-                                <div class="">
-
-                                    <div class="media">
-                                        <div class="user-img">
-                                            <img class="usr-img rounded-circle" src={% static "assets/img/profile-16.jpeg.jpg" %} alt="profile">
-                                        </div>
-                                        <div class="media-body">
-                                            <div class="">
-                                                <h5 class="usr-name">学姐</h5>
-                                                <p class="msg-title">ACCOUNT UPDATE</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </a>
-                            <a class="dropdown-item">
-                                <div class="">
-
-                                    <div class="media">
-                                        <div class="user-img">
-                                            <img class="usr-img rounded-circle" src={% static "assets/img/profile-34.jpeg.jpg" %} alt="profile">
-                                        </div>
-                                        <div class="media-body">
-                                            <div class="">
-                                                <h5 class="usr-name">学长</h5>
-                                                <p class="msg-title">ACCOUNT UPDATE</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                </div>
-                            </a>
-                        </div>
-                    </div>
                 </li>
                 <!--
                 <li class="nav-item dropdown notification-dropdown">
@@ -150,7 +121,6 @@
                     </a>
                     <div class="dropdown-menu position-absolute" aria-labelledby="notificationDropdown">
                         <div class="notification-scroll">
-
                             <div class="dropdown-item">
                                 <div class="media">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -166,7 +136,6 @@
                                     </div>
                                 </div>
                             </div>
-
                             <div class="dropdown-item">
                                 <div class="media">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -184,7 +153,6 @@
                                     </div>
                                 </div>
                             </div>
-
                             <div class="dropdown-item">
                                 <div class="media">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -204,39 +172,50 @@
                         </div>
                     </div>
                 </li>
-            -->
+                -->
                 <li class="nav-item dropdown notification-dropdown">
-                    <a href="{{html_display.profile_url}}" class="nav-link dropdown-toggle" id="notificationDropdown"
-                        aria-haspopup="true" aria-expanded="false">
+                    <a href="/welcome/" class="nav-link dropdown-toggle" id="notificationDropdown" aria-haspopup="true"
+                        aria-expanded="false">
+
 
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            class="feather feather-home">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-                            <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                            class="feather feather-activity">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
                         </svg>
                     </a>
                 </li>
-
                 <li class="nav-item dropdown user-profile-dropdown">
                     <a href="javascript:void(0);" class="nav-link dropdown-toggle user" id="userProfileDropdown"
                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
-                        <img src={{html_display.avatar_path}} alt="avatar">
+                        <img src={{bar_display.avatar_path}} alt="avatar">
                     </a>
                     <div class="dropdown-menu position-absolute" aria-labelledby="userProfileDropdown">
                         <div class="">
                             <!--
                             <div class="dropdown-item">
-                                <a class="" href="{{html_display.profile_url}}"><svg xmlns="http://www.w3.org/2000/svg"
+                                <a class="" href="{{bar_display.profile_url}}"><svg xmlns="http://www.w3.org/2000/svg"
                                         width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                                         class="feather feather-user">
                                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                                         <circle cx="12" cy="7" r="4"></circle>
                                     </svg>
-                                    {{html_display.profile_name}}</a>
+                                    {{bar_display.profile_name}}</a>
                             </div>
                             -->
+                            <div class="dropdown-item">
+                                <a href="{{bar_display.profile_url}}">
+
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
+                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                        stroke-linejoin="round" class="feather feather-home">
+                                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                                    </svg>
+                                    我的主页
+                                </a>
+                            </div>
                             <div class="dropdown-item">
                                 <a class="" href="/myYQPoint/">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"
@@ -283,7 +262,7 @@
                                         <polyline points="16 17 21 12 16 7"></polyline>
                                         <line x1="21" y1="12" x2="9" y2="12"></line>
                                     </svg>
-                                    登出账户</a>
+                                    登出</a>
                             </div>
                         </div>
                     </div>
@@ -298,8 +277,8 @@
     <!--  BEGIN NAVBAR  -->
     <div class="sub-header-container">
         <header class="header navbar navbar-expand-sm expand-header">
-            <a href="javascript:void(0);" class="sidebarCollapse" data-placement="bottom"><svg
-                    xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+            <a href="javascript:void(0);" class="sidebarCollapse" data-placement="bottom">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                     stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                     class="feather feather-menu">
                     <line x1="3" y1="12" x2="21" y2="12"></line>
@@ -311,19 +290,49 @@
                 <li>
                     <div class="page-header">
                         <div class="page-title">
-                            <h3>{{html_display.narbar_name}}</h3>
+                            <h3>{{bar_display.navbar_name}}&nbsp</h3>
                         </div>
                     </div>
                 </li>
+                {% if bar_display.help_message %}
+                <li>
+                    <div class="page-header">
+                        <div class="page-title">
+                            <h3>
+                                <a data-toggle="tooltip" data-placement="bottom" title="{{bar_display.help_message}}">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                        <path
+                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                    </svg>
+                                </a>
+                            </h3>
+                        </div>
+                    </div>
+                </li>
+                {% endif %}
             </ul>
         </header>
     </div>
     <!--  END NAVBAR  -->
 
+    <!--  BEGIN MAIN CONTAINER  -->
+    <div class="main-container" id="container">
 
-    {% block mainpage %}
+        <div class="overlay"></div>
+        <div class="search-overlay"></div>
 
-    {% endblock %}
+        {% if bar_display.user_type == "Person" %}
+        {% include 'user_left_navbar.html' %}
+        {% elif bar_display.user_type == "Organization" %}
+        {% include 'org_left_navbar.html' %}
+        {% endif %}
+
+        {% block mainpage %}
+
+        {% endblock %}
+    </div>
+    <!-- END MAIN CONTAINER -->
 
     <footer>
         <div class="footer-wrapper">
@@ -355,7 +364,11 @@
             App.init();
         });
     </script>
-    <script src="assets/js/custom.js"></script>
+
+    <script>
+        $(function () { $("[data-toggle='tooltip']").tooltip(); });
+    </script>
+    <script src={% static "assets/js/custom.js" %}></script>
     <!-- END GLOBAL MANDATORY SCRIPTS -->
     {% endblock %}
 

@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 {% load static %}
 <head>
     <meta charset="utf-8">
@@ -45,7 +45,7 @@
                                 <div id="email-field" class="field-wrapper input">
                                     <label for="email">电子邮件</label>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-at-sign register"><circle cx="12" cy="12" r="4"></circle><path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-3.92 7.94"></path></svg>
-                                    <input id="email" name="email" type="text" value="" class="form-control" placeholder="请输入常用电邮">
+                                    <input id="email" name="email" type="email" value="" class="form-control" placeholder="请输入常用电邮">
                                 </div>
 
                                 <div id="syear-field" class="field-wrapper input">
@@ -108,12 +108,12 @@
 
     
     <!-- BEGIN GLOBAL MANDATORY SCRIPTS -->
-    <script src="assets/js/libs/jquery-3.1.1.min.js"></script>
-    <script src="bootstrap/js/popper.min.js"></script>
-    <script src="bootstrap/js/bootstrap.min.js"></script>
+    <script src={% static "assets/js/libs/jquery-3.1.1.min.js" %}></script>
+    <script src={% static "bootstrap/js/popper.min.js" %}></script>
+    <script src={% static "bootstrap/js/bootstrap.min.js" %}></script>
     
     <!-- END GLOBAL MANDATORY SCRIPTS -->
-    <script src="assets/js/authentication/form-2.js"></script>
+    <script src={% static "assets/js/authentication/form-2.js" %}></script>
 
 </body>
 </html>

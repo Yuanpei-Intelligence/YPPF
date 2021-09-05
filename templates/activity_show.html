@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block add_css_file %}
+<style class="text/css">
+    [data-toggle="collapse"] .fa:before {
+        font-family: 'Font Awesome 5 Free';
+        content: "\f068";
+        float: right;
+    }
+
+    [data-toggle="collapse"].collapsed .fa:before {
+        content: "\f067";
+    }
+</style>
+{% endblock %}
+
+
+{% block mainpage %}
+
+{% with title='活动立项' link='/viewActivity/' audit_link='/examineActivity/' new_link='' query_field='aid' new_btn_name='' btn_name='详情' empty_info='没有相关活动哦～' %}
+
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    {% if html_display.warn_code == 1 %}
+    <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+    {% elif html_display.warn_code == 2 %}
+    <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
+    {% endif %}
+    <div class="container"> 
+
+            <div class="row layout-top-spacing">
+                {% if bar_display.help_paragraphs %}
+                    {% include 'help.html' %}
+                {% endif %}
+
+                <div class="col-lg-12 col-12 layout-top-spacing">
+                    <div class="bio layout-spacing ">
+                        <div class="widget-content widget-content-area">
+                            <h3>{{title}}</h3>
+                            <!-- <div class="col-12">
+                                <p>欢迎来到你的{{title}}列表！这里汇集了你在<strong>Yuanpei Profile</strong>中需要审核的所有活动~</p>
+                                <p>这些事务依据更新的时间和状态由近到远呈现，提供了具体的更新时间和其他信息。</p>
+                                <p>您可以点击<u>标题链接</u>查看老师留言、追加评论、取消正在审核的申请或查看已完成事务详情。尽情体验吧！</p>
+                                </br>
+                            </div> -->
+
+                            {% if user_type == "Organization" %}
+                            <div class="col-lg-12">
+                                <br />
+                                <br />
+                                <a href="/addActivity/" class="btn btn-info" tabindex="1"
+                                    role="button" style="position:absolute;right:30px;top:4px;">
+                                    发起活动
+                                </a>
+                                <hr style="filter:alpha(opacity=100,finishopacity=0,style=3);" width="80%" color="#0000FF" size="3">
+                            </div>
+                            {% endif %}
+                            
+                            
+
+                            <div id="myTabContent" class="tab-content">
+                                <div class="tab-pane fade in active show" id="home">
+                                    {% if not shown_instances %}
+                                    <br />
+                                    <p></p>
+                                    <p style="text-align: center;">{{empty_info}}</p>
+                                    <br />
+                                    {% else %}
+                                    <div class="bio-skill-box">
+                                        <div class="row">
+
+                                        {% for instance in shown_instances %}
+                                            {% with instance.get_instance.get_status_display as status %}
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+
+                                                <div class=" b-skills">
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h5>
+                                                                <a href="{%if is_teacher%}{{audit_link}}{%else%}{{link}}{% endif %}{% if query_field %}{{instance.id}}{% endif %}">
+                                                                    <u>{{instance.get_instance}}</u>
+                                                                </a>
+                                                                <br />
+                                                            </h5>
+                                                        </div>
+                                                        {% if status is not None %}
+                                                        <div>
+                                                            {% if status == 'Reviewing' %}
+                                                                <h5 class="text-warning">审核中</h5>
+                                                            {% elif status == 'Reject' %}
+                                                                <h5 class="text-danger">未过审</h5>
+                                                            {% elif status == 'Abort' %}
+                                                                <h5 class="text-muted">已撤销</h5>
+                                                            {% elif status == 'Canceled' %}
+                                                                <h5 class="text-muted">已取消</h5>
+                                                            {% elif instance.recorded and not instance.valid %}
+                                                                <h5 class="text-info">预报备+审核中</h5>
+                                                            {% else %}
+                                                                <h5 class="text-success">已通过</h5>
+
+                                                            {% endif %}
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        {% if instance.extra_display %}
+                                                        <div>
+                                                            {% for display in instance.extra_display %}
+                                                            {% if display|length == 2 or display|length == 3 %}
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-{{display.2|default:'envelope-o'}}"></i>
+                                                                {{display.0}}：{{display.1}}
+                                                            </p>
+                                                            {% endif %}
+                                                            {% endfor %}
+                                                        </div>
+                                                        {% endif %}
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            {%if is_teacher%}
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                 <i class="fa fa-address-book"></i>
+                                                                 {{instance.organization_id.oname}}
+                                                            </p>
+                                                            {% endif %}
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-calendar-plus-o"></i>
+                                                                创建时间：{{instance.time|date:'m/d H:i'}}
+                                                            </p>
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-calendar-o"></i>
+                                                                上次修改：{{instance.modify_time|date:'m/d H:i'}}
+                                                            </p>
+                                                        </div>
+                                                        <div>
+                                                            <h5>
+                                                                <a href="#" class="btn btn-primary my-3 my-sm-2" tabindex="-1"
+                                                                    role="button"
+                                                                    onclick="window.location='{%if is_teacher %}{{audit_link}}{%else%}{{link}}{% endif %}{% if query_field %}{{instance.id}}{% endif %}'">
+                                                                    {{btn_name}}
+                                                                </a>
+                                                            </h5>
+                                                        </div>
+
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            {% endwith %}
+                                        {% endfor %}
+                                        </div>
+
+                                    </div>
+
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+
+            </div>
+
+        
+    </div>
+</div>
+<!--  END CONTENT AREA  -->
+
+{% endwith %}
+
+{% endblock %}

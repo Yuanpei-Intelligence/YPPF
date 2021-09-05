@@ -1,5 +1,5 @@
 ﻿<!DOCTYPE html>
-<html lang="en">
+<html lang="zh">
 {% load static %}
 
 <head>
@@ -7,6 +7,9 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, shrink-to-fit=no">
     <title>登录页面 | 元培成长档案</title>
+
+    <link type="image/x-icon" href="{% static '/assets/img/yp_favicon.png' %}" rel="icon">
+    
 
     <!-- BEGIN GLOBAL MANDATORY STYLES -->
     <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet">
@@ -23,10 +26,17 @@
 
 
     <div class="form-container ">
-        <div class="form-form">
-            <div class="form-form-wrap">
+        <div class="form-form" style="background-image: url(/static/assets/img/YPIC_blur.png);  background-repeat: no-repeat; background-position: center;">
+            <div style="backdrop-filter: blur(10px) grayscale(100%);">
+            <div class="form-form-wrap" >
                 <div class="form-container">
                     <div class="form-content">
+
+                        {% if html_display.warn_code == 1 %}
+                            <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+                        {% elif html_display.warn_code == 2 %}
+                            <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+                        {% endif %}
 
                         <h1 class="" align="center">
                             <a href="#"><span class="brand-name"> Yuanpei Profile</span></a>
@@ -48,7 +58,7 @@
                                         <circle cx="12" cy="7" r="4"></circle>
                                     </svg>
                                     <input id="username" name="username" type="text" class="form-control"
-                                        placeholder="学号/组织号/组织名">
+                                        placeholder="学号/团体号/团体名">
                                 </div>
 
                                 <div id="password-field" class="field-wrapper input mb-2">
@@ -74,6 +84,11 @@
                                 <div class="d-flex justify-content-between "
                                     style="display:block;margin:0 auto;align-items:center;">
                                     <div class="field-wrapper">
+                                        <a class = "btn btn-outline-primary" href="/freshman/">新生注册</a>
+                                    </div>   
+                                    <div class="field-wrapper">
+                                        <div class="btn-group">
+                                        <a class = "btn btn-outline-primary" href="/forgetpw/">验证码</a>
                                         <!--
                                         <p class="d-inline-block">Show Password</p>
                                         <label class="switch s-primary">
@@ -81,12 +96,14 @@
                                             <span class="slider round"></span>
                                         </label>
                                         -->
-                                        <button type="submit" class="btn btn-primary" value="">Sign In</button>
+                                        <button type="submit" class="btn btn-primary" value="">登录</button>
+                                        </div>
                                     </div>
+                                    <!--
                                     <div class="field-wrapper text-center" style="vertical-align: middle;">
-                                        <a href="/forgetpw/" >Forget
-                                            Password?</a>
+                                        <a href="/forgetpw/" >忘记密码?</a>
                                     </div>
+                                    -->
                                 </div>
 
                                 <!--
@@ -104,25 +121,40 @@
                             </div>
 
                         </form>
-                        {% if invalid == True %}
-                        <div class="alert alert-warning  text-center">{{message}}</div>
-                        {% endif %}
-                        {% if modpw_status == 'yes' %}
-                        <div class="alert alert-success  text-center"> 修改密码成功！</div>
-                        {% endif %}
                         <p class="terms-conditions" align='center'>© Yuanpei Intelligence Campus <a href="">All Rights
-                                Reserved </a>.
+                                Reserved</a>.
                             <a href="/index/">Yuanpei Profile</a> is a product of Yuanpei College.
                         </p>
 
                     </div>
                 </div>
             </div>
+            </div>
         </div>
 
         <div class="form-image">
             <div class="l-image">
-                <img style="width: 100%;" src={% static "/assets/img/yuanpeibg.png" %}>
+                <div id="style1" class="carousel slide style-custom-1" data-ride="carousel">
+                    <div class="carousel-inner">
+                       <div class="carousel-item active">
+                            <img src="/static/assets/img/ypbg1-square.jpeg">
+                        </div>
+                        <div class="carousel-item ">
+                            <img src="/static/assets/img/ypbg2-square.jpeg">
+                        </div>
+                        <div class="carousel-item">
+                            <img src="/static/assets/img/ypbg3-square.jpeg">
+                        </div>
+                   </div>
+                    <a class="carousel-control-prev" href="#style1" role="button" data-slide="prev">
+                           <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                           <span class="sr-only">Previous</span>
+                   </a>
+                   <a class="carousel-control-next" href="#style1" role="button" data-slide="next">
+                           <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                           <span class="sr-only">Next</span>
+                   </a> 
+               </div>
             </div>
         </div>
 

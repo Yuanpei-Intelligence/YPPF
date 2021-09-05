@@ -1,6 +1,6 @@
 from django.urls import path, re_path
 from django.conf.urls.static import static
-from . import views, data_import
+from . import views, data_import, scheduler_func
 from django.conf import settings
 
 urlpatterns = [
@@ -16,7 +16,8 @@ urlpatterns = [
         name="request_login_org",
     ),
     path("welcome/", views.homepage, name="welcome"),
-    path("register/", views.register, name="register"),
+    path("freshman/", views.freshman, name="freshman"),
+    path("register/", views.auth_register, name="register"),
     path("login/", views.index, name="index"),
     path("logout/", views.logout, name="logout"),
     # path("org/",views.org, name="org"),
@@ -24,28 +25,42 @@ urlpatterns = [
     path("modpw/", views.modpw, name="modpw"),
     path("test/", views.test, name="test"),
     path("loaddata/", data_import.load_stu_info, name="load_data"),
+    path("loadfreshman/", data_import.load_freshman_info, name="load_freshman"),
     path("loadorgdata/", data_import.load_org_info, name="load_org_data"),
+    path("loadtransferinfo/",data_import.load_transfer_info,name="loadtransferinfo"),
+    path("loadactivity/",data_import.load_activity_info,name="loadactivity"),
+    path("loadnotification/",data_import.load_notification_info,name="loadnotification"),
+    path("loadhelp/", data_import.load_help, name="load_help"),
     path("user_account_setting/", views.account_setting, name="user_account_setting"),
     path("search/", views.search, name="search"),
     path("minilogin", views.miniLogin, name="minilogin"),
     # re_path("^org([0-9]{2})",views.org_spec,name="org_spec"),
     path("getStuImg", views.get_stu_img, name="get_stu_img"),
     path("transPage/<str:rid>", views.transaction_page, name="transPage"),
-    path("startTrans/", views.start_transaction, name="startTrans"),
-    #path("confirmTrans/", views.confirm_transaction, name="confirmTrans"),
-    #path(
-    #    "confirmTrans/<int:tid>/<int:reject>",
-    #    views.confirm_transaction,
-    #    name="confirmTrans",
-    #),
-    path("engage", views.engage_activity, name="engage"),
+    path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"),
+    path("applyActivity/<str:aid>", views.applyActivity, name="applyActivity"),
     path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
-    path("showActivities/", views.showActivities, name="showActivities"),
-    path("viewActivities/", views.viewActivities, name="viewActivities"),
-    path("addActivities/", views.addActivities, name="addActivities"),
-    path("subscribeActivities/", views.subscribeActivities, name="subscribeActivities"),
+    path("viewActivity/<str:aid>", views.viewActivity, name="viewActivity"),
+    path("getActivityInfo/", views.getActivityInfo, name="getActivityInfo"),
+    path("checkinActivity/<str:aid>", views.checkinActivity, name="checkinActivity"),
+    path("addActivity/", views.addActivity, name="addActivity"),
+    path("showActivity/",views.showActivity,name="showActivity"),
+    path("editActivity/<str:aid>", views.addActivity, name="editActivity"),
+    path("examineActivity/<str:aid>", views.examineActivity, name="examineActivity"),
+    path("subscribeOrganization/", views.subscribeOrganization, name="subscribeOrganization"),
     path("save_subscribe_status", views.save_subscribe_status, name="save_subscribe_status"),
+    path("save_show_position_status", views.save_show_position_status, name="save_show_position_status"),
+    path("notifications/", views.notifications, name="notifications"),
+    path("YQPoint_Distributions/", scheduler_func.YQPoint_Distributions, name="YQPoint_Distributions"),
+    # path("YQPoint_Distribution/<int:dis_id>", scheduler_func.YQPoint_Distribution, name="YQPoint_Distributions"),
+    # path("new_YQP_distribution", scheduler_func.new_YQP_distribute, name="new_YQP_distribution"),
+    path("showReimbursement/",views.showReimbursement,name="showReimbursement"),
+    path("showNewOrganization/", views.showNewOrganization, name="showNewOrganization"),
+    path("modifyReimbursement/",views.modifyReimbursement,name="modifyReimbursement"),
+    path('showPosition/', views.showPosition, name="showPosition"),
+    path("modifyPosition/",views.modifyPosition, name="modifyPosition"),
+    path("modifyOrganization/", views.modifyOrganization, name="modifyOrganization"),
+    path("sendMessage/", views.sendMessage, name="sendMessage"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
-

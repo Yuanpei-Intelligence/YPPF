@@ -3,7 +3,7 @@
 {% block add_css_file %}
 <style class="text/css">
     [data-toggle="collapse"] .fa:before {
-        font-family: 'FontAwesome';
+        font-family: 'Font Awesome 5 Free';
         content: "\f068";
         float: right;
     }
@@ -15,69 +15,26 @@
 {% endblock %}
 
 {% block mainpage %}
-<!--  BEGIN MAIN CONTAINER  
-
-<style type='text/css'>
-    .table th,
-    .table td {
-        text-align: center;
-        vertical-align: middle !important;
-    }
-
-    table {
-        width: 100px;
-        table-layout: fixed;
-        /* 只有定义了表格的布局算法为fixed，下面td的定义才能起作用。 */
-    }
-
-    td {
-        width: 100%;
-        word-break: keep-all;
-        /* 不换行 */
-        white-space: nowrap;
-        /* 不换行 */
-        overflow: hidden;
-        /* 内容超出宽度时隐藏超出部分的内容 */
-        text-overflow: ellipsis;
-        /* 当对象内文本溢出时显示省略标记(...) ；需与overflow:hidden;一起使用*/
-        -o-text-overflow: ellipsis;
-        -icab-text-overflow: ellipsis;
-        -khtml-text-overflow: ellipsis;
-        -moz-text-overflow: ellipsis;
-        -webkit-text-overflow: ellipsis;
-    }
-
-    .table {
-        table-layout: fixed;
-    }
-</style>
--->
-<div class="main-container" id="container">
-
-    <div class="overlay"></div>
-    <div class="search-overlay"></div>
-
-    {% include 'user_left_narbar.html' %}
 
     <!--  BEGIN CONTENT AREA  -->
     <div id="content" class="main-content">
-        <div class="container">
             <div class="container">
-
-
-
+                
                 <div class="row layout-top-spacing">
+                    {% if bar_display.help_paragraphs %}
+                        {% include 'help_with_table.html' %}
+                    {% endif %}
                     {% for otype in otype_list %}
-                    <div id="tableDropdown{{otype}}" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+                    <div id="tableDropdown{{otype.otype_id}}" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
                         <div class="statbox widget box box-shadow">
                             <div class="widget-header">
                                 <div class="row">
                                     <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                        <div data-toggle="collapse" href="#orgsearch{{otype}}" role="button"
+                                        <div data-toggle="collapse" href="#orgsearch{{otype.otype_id}}" role="button"
                                             aria-expanded="false" aria-controls="collapseExample">
                                             <div class="d-flex justify-content-between">
                                                 <div>
-                                                    <h4>{{otype}}</h4>
+                                                    <h4>{{otype.otype_name}}</h4>
                                                 </div>
                                                 <div style="display:flex;
                                             justify-content: center;
@@ -89,16 +46,18 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="collapse show" id="orgsearch{{otype}}">
+                            <div class="collapse show" id="orgsearch{{otype.otype_id}}">
                                 <div class="widget-content widget-content-area">
+                                    {% if otype.allow_unsubscribe %}
                                     <div>
-                                        <button type="button" class="btn btn-outline-primary" id="{{otype}}"
+                                        <button type="button" class="btn btn-outline-primary" id="{{otype.otype_id}}"
                                             onclick="turn_on_all.call(this);this.blur();">全部开启</button>
                                         &nbsp;
-                                        <button type="button" class="btn btn-outline-primary" id="{{otype}}"
+                                        <button type="button" class="btn btn-outline-primary" id="{{otype.otype_id}}"
                                             onclick="turn_off_all.call(this);this.blur();">全部关闭</button>
                                         </br></br>
                                     </div>
+                                    {% endif %}
                                     <div class="table-responsive">
                                         <table class="table table-bordered mb-4">
                                             <thead>
@@ -110,37 +69,37 @@
                                             </thead>
                                             <tbody>
                                                 {% for org in org_list%}
-                                                {% if org.otype.otype_name == otype %}
+                                                {% if org.otype.otype_name == otype.otype_name %}
                                                 <tr>
                                                     <td><u><a href="/orginfo/{{org.oname}}">{{org.oname}}</a></u></td>
                                                     <!--<td>
                                                         {{org.otype.otype_name}}
                                                     </td>-->
                                                     {%if org.organization_id.username in subscribe_list%}
-                                                    <td bgColor="F3FDFF" , id="td{{org.organization_id.username}}_{{otype}}">
+                                                    <td bgColor="F3FDFF" , id="td{{org.organization_id.username}}_{{otype.otype_id}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
-                                                                id="{{org.organization_id.username}}_{{otype}}"
-                                                                onclick="change_status.call(this);this.blur();" checked>
+                                                                id="{{org.organization_id.username}}_{{otype.otype_id}}"
+                                                                onclick="change_status.call(this);this.blur();" checked {% if not otype.allow_unsubscribe %} disabled {% endif %}>
                                                             <label class="custom-control-label"
-                                                                for="{{org.organization_id.username}}_{{otype}}"
-                                                                id="checkbox2{{org.organization_id.username}}_{{otype}}">
+                                                                for="{{org.organization_id.username}}_{{otype.otype_id}}"
+                                                                id="checkbox2{{org.organization_id.username}}_{{otype.otype_id}}">
                                                                 <font color="5F747B"
-                                                                    id="font{{org.organization_id.username}}_{{otype}}">已订阅</font>
+                                                                    id="font{{org.organization_id.username}}_{{otype.otype_id}}">已订阅</font>
                                                             </label>
                                                         </div>
                                                     </td>
                                                     {%else%}
-                                                    <td bgColor="FFFFFF" , id="td{{org.organization_id.username}}_{{otype}}">
+                                                    <td bgColor="FFFFFF" , id="td{{org.organization_id.username}}_{{otype.otype_id}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
-                                                                id="{{org.organization_id.username}}_{{otype}}"
+                                                                id="{{org.organization_id.username}}_{{otype.otype_id}}"
                                                                 onclick="change_status.call(this);this.blur();">
                                                             <label class="custom-control-label"
-                                                                for="{{org.organization_id.username}}_{{otype}}"
-                                                                id="checkbox2{{org.organization_id.username}}_{{otype}}">
+                                                                for="{{org.organization_id.username}}_{{otype.otype_id}}"
+                                                                id="checkbox2{{org.organization_id.username}}_{{otype.otype_id}}">
                                                                 <font color="E1E1E1"
-                                                                    id="font{{org.organization_id.username}}_{{otype}}">未订阅</font>
+                                                                    id="font{{org.organization_id.username}}_{{otype.otype_id}}">未订阅</font>
                                                             </label>
                                                         </div>
                                                     </td>
@@ -164,12 +123,10 @@
                 </div>
 
             </div>
-        </div>
+        
 
     </div>
     <!--  END CONTENT AREA  -->
-</div>
-<!-- END MAIN CONTAINER -->
 
 {% endblock %}
 
@@ -264,6 +221,9 @@
             .then((res) => res.json())
             .catch(() => { success: false });
         return success;
+    }
+    function disable(id){
+        document.getElementById(id).disabled = 'disabled'
     }
 </script>
 {% endblock %}

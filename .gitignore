@@ -40,9 +40,18 @@ Thumbs.db
 # IDE configs #
 .vscode/
 .idea/
-local_json.json
+local_json*.json
+weather*.json
 migrations/
 test_data/
+comment/
+avatar/
+wallpaper/
+activity/
+* old.*
+*_old.*
+*fake.*
+
 # Python #
 __pycache__/
 *.py[cod]
