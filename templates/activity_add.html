@@ -833,7 +833,7 @@
                 document.getElementById("success_msg").style.display = "none";
                 {% endif %}
                 document.getElementById("warn_msg").style.display = "";
-                document.getElementById("warn_msg").innerHTML = "报名截止时间早于当前时间。若想提前截止报名，请返回活动详情界面操作。";
+                document.getElementById("warn_msg").innerHTML = "修改失败：修改后的报名截止时间早于当前时间。如果是因为希望提前举办活动，请同时修改报名截止时间，谢谢！。";
                 document.body.scrollTop = document.documentElement.scrollTop = 0;
                 return false;
             } 
