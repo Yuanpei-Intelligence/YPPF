@@ -2584,7 +2584,6 @@ def examineActivity(request, aid):
     apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     start = activity.start.strftime("%Y-%m-%d %H:%M")
     end = activity.end.strftime("%Y-%m-%d %H:%M")
-    print(activity.introduction)
     introduction = escape_for_templates(activity.introduction)
 
     url = activity.URL
