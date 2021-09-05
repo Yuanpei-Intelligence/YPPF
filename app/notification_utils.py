@@ -99,8 +99,8 @@ def notification_create(
 ):
     """
     对于一个需要创建通知的事件，请调用该函数创建通知！
-        receiver: org 或 nat_person，使用object.get获取的 user 对象
-        sender: org 或 nat_person，使用object.get获取的 user 对象
+        receiver: user, 对于org 或 nat_person，使用object.get获取的 user 对象
+        sender: user, 对于org 或 nat_person，使用object.get获取的 user 对象
         type: 知晓类 或 处理类
         title: 请在数据表中查找相应事件类型，若找不到，直接创建一个新的choice
         content: 输入通知的内容
@@ -110,6 +110,8 @@ def notification_create(
         publish_to_wechat: bool 仅关键字参数
         - 不要在循环中重复调用以发送，你可能需要看`bulk_notification_create`
         - 在线程锁或原子锁内时，也不要发送
+        publish_kws: dict 仅关键字参数
+        - 发送给微信的额外参数，主要是应用和发送等级，参考publish_notification即可
 
     现在，你应该在不急于等待的时候显式调用publish_notification(s)这两个函数，
         具体选择哪个取决于你创建的通知是一批类似通知还是单个通知
@@ -143,6 +145,24 @@ def bulk_notification_create(
         publish_to_wechat=False,
         publish_kws=None,
 ):
+    """
+    对于一个需要创建通知的事件，请调用该函数创建通知！
+        receiver: Iter[user], 对于org 或 nat_person，请自行循环生成
+        sender: user, 对于org 或 nat_person，使用object.get获取的 user 对象
+        type: 知晓类 或 处理类
+        title: 请在数据表中查找相应事件类型，若找不到，直接创建一个新的choice
+        content: 输入通知的内容
+        URL: 需要跳转到处理事务的页面
+
+    注意事项：
+        publish_to_wechat: bool 仅关键字参数
+        - 在线程锁或原子锁内时，不要发送
+        publish_kws: dict 仅关键字参数
+        - 发送给微信的额外参数，主要是应用和发送等级，参考publish_notifications即可
+
+    现在，你应该在不急于等待的时候显式调用publish_notification(s)这两个函数，
+        具体选择哪个取决于你创建的通知是一批类似通知还是单个通知
+    """
     bulk_identifier = hasher.encode(str(datetime.now()) + str(random()))
     try:
         notifications = [
