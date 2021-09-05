@@ -469,6 +469,7 @@ def check_account_setting(request,user_type):
         html_display['warn_code'] = 0
         html_display['warn_message'] = ""
 
+        attr_dict['nickname'] = request.POST["nickname"]
         attr_dict['biography'] = request.POST["aboutBio"]
         attr_dict['telephone'] = request.POST["tel"]
         attr_dict['email'] = request.POST["email"]
@@ -483,8 +484,7 @@ def check_account_setting(request,user_type):
 
         show_dict = dict()
 
-        # show_dict['show_nickname'] = request.POST.get(
-        #     'show_nickname') == 'on'
+        show_dict['show_nickname'] = request.POST.get('show_nickname') == 'on'
         show_dict['show_gender'] = request.POST.get('show_gender') == 'on'
         show_dict['show_birthday'] = request.POST.get('show_birthday') == 'on'
         show_dict['show_tel'] = request.POST.get('show_tel') == 'on'

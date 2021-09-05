@@ -1203,12 +1203,16 @@ def search(request):
         | (  # (Q(nickname__icontains=query) & Q(show_nickname=True)) |
                 Q(stu_major__icontains=query) & Q(show_major=True)
         )
+        | (
+            Q(nickname__icontains=query) & Q(show_nickname=True)
+        )
     )
 
     # 接下来准备呈现的内容
     # 首先是准备搜索个人信息的部分
     people_field = [
         "姓名",
+        "昵称",
         "年级",
         "班级",
         # "昵称",
@@ -2584,7 +2588,7 @@ def examineActivity(request, aid):
                         id=int(aid)
                     )
                     accept_activity(request, activity)
-                html_display["warn_msg"] = "活动已通过。"
+                html_display["warn_msg"] = "活动已通过审核。"
                 html_display["warn_code"] = 2
             except Exception as e:
                 # print(e)
