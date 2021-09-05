@@ -33,13 +33,13 @@
                     <div class="carousel-inner">
                         <div class="carousel-item active">
                             <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
-                                    src="/static/assets/img/guidepics/default.jpeg">
+                                    src={% static "assets/img/guidepics/default.jpeg" %}>
                         </div>
                         {% for path in paths %}
                         <div class="carousel-item">
                             <a href="/{{path}}">
                                 <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
-                                    src="/static/assets/img/guidepics/{{path}}.jpeg">
+                                    src={% static "assets/img/guidepics/{{path}}.jpeg" %}>
                             </a>
                         </div>
                         {% endfor %}
@@ -320,13 +320,13 @@
 
                         <div id="recentactivity" class="tab-pane fade">
 
-                            <div class="pre-scrollable bio-skill-box layout-top-spacing">
+                            <div class="bio-skill-box layout-top-spacing" style="max-height: 75vh; overflow: scroll;">
                                 {% if recentactivity_list|length == 0 %}
                                 <p style="text-align: center;">没有前后一周内开始的活动！</p>
                                 {% endif %}
                                 <div class="row w-100 m-0">
                                     {% for act in recentactivity_list %}
-                                    <div class="col-12 col-xl-6 col-lg-6 mb-xl-5 mb-5 ">
+                                    <div class="col-xm-12 col-md-6 mb-xl-5 mb-5 ">
                                         <a href="/viewActivity/{{ act.id }}">
                                             <div class="d-flex b-skills">
                                                 <div class="text-nowrap mw-100">
@@ -379,13 +379,13 @@
                         </div>
 
                         <div id="news" class="tab-pane active">
-                            <div class="pre-scrollable bio-skill-box layout-top-spacing">
+                            <div class="bio-skill-box layout-top-spacing" style="max-height: 75vh; overflow: scroll;">
                                 {% if newlyreleased_list|length == 0 %}
                                 <p style="text-align: center;">没有一周内发布的活动！</p>
                                 {% endif %}
                                 <div class="row w-100 m-0">
                                     {% for act in newlyreleased_list %}
-                                     <div class="col-12 col-xl-6 col-lg-6 mb-xl-5 mb-5 ">
+                                    <div class="col-xm-12 col-md-6 mb-xl-5 mb-5 ">
                                         <a href="/viewActivity/{{ act.id }}">
                                             <div class="d-flex b-skills">
                                                 <div class="text-nowrap mw-100">
@@ -438,15 +438,15 @@
                         </div>
 
                         <div id="recentends" class="tab-pane fade">
-                            <div class="pre-scrollable bio-skill-box layout-top-spacing">
+                            <div class="bio-skill-box layout-top-spacing" style="max-height: 75vh; overflow: scroll;">
                                 {% if signup_list|length == 0 %}
                                 <p style="text-align: center;">没有即将截止报名的活动！</p>
                                 {% endif %}
                                 <div class="row w-100 m-0">
                                     {% for rec in signup_list %}
                                         {%with rec.act as act%}
-                                     <div class="col-12 col-xl-6 col-lg-6 mb-xl-5 mb-5 ">
-                                        <a href="/viewActivity/{{ act.id }}">
+                                        <div class="col-xm-12 col-md-6 mb-xl-5 mb-5 ">
+                                            <a href="/viewActivity/{{ act.id }}">
                                             <div class="d-flex b-skills">
                                                 <div class="text-nowrap mw-100">
                                                     <div class="d-flex justify-content-between">
