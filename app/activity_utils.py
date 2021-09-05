@@ -562,18 +562,6 @@ def reject_activity(request, activity):
     )
     notification_status_change(notification, Notification.Status.DONE)
 
-    notification_create(
-        receiver=activity.organization_id.organization_id,
-        sender=request.user,
-        typename=Notification.Type.NEEDREAD,
-        title=Notification.Title.ACTIVITY_INFORM,
-        content=f"您的活动{activity.title}被拒绝。",
-        URL=f"/viewActivity/{activity.id}",
-        relate_instance=activity,
-        publish_to_wechat=True,
-        publish_kws={"app":WechatApp.AUDIT},
-    )
-
     if activity.status == Activity.Status.REVIEWING:
         activity.status = Activity.Status.REJECT
     else:
@@ -603,6 +591,19 @@ def reject_activity(request, activity):
             status=TransferRecord.TransferStatus.SUSPENDED,
             finish_time=datetime.now()
         )
+
+    notification = notification_create(
+        receiver=activity.organization_id.organization_id,
+        sender=request.user,
+        typename=Notification.Type.NEEDREAD,
+        title=Notification.Title.ACTIVITY_INFORM,
+        content=f"您的活动{activity.title}被拒绝。",
+        URL=f"/viewActivity/{activity.id}",
+        relate_instance=activity,
+        publish_to_wechat=True,
+        publish_kws={"app":WechatApp.AUDIT},
+    )
+
 
     activity.save()
 
