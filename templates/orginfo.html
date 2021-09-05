@@ -344,7 +344,7 @@
                                                                             {% else %}
                                                                                 <span class="badge badge-pill badge-info">报名截止</span>
                                                                             {% endif %}
-                                                                        {% elif rec.status == "申请失败" or rec.status == "未参与" or rec.status == "放弃" %}
+                                                                        {% elif rec.status == "申请失败" or rec.status == "未签到" or rec.status == "放弃" %}
                                                                             <span class="badge badge-pill badge-warning">
                                                                                 {{ rec.status }}
                                                                             </span>
@@ -455,9 +455,9 @@
 
                                                                 {% if user_type == "Person" and rec.status == "已参与" %}
                                                                 <span class="badge badge-pill badge-primary">已参与</span>
-                                                                {% elif user_type == "Person" and rec.status == "未参与" %}
+                                                                {% elif user_type == "Person" and rec.status == "未签到" %}
                                                                 <span
-                                                                    class="badge badge-pill badge-secondary">未参与</span>
+                                                                    class="badge badge-pill badge-secondary">未签到</span>
                                                                 {% else %}
                                                                 <span class="badge badge-pill badge-danger">
                                                                     {{ rec.act.status }}

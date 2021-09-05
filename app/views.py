@@ -2118,9 +2118,9 @@ def viewActivity(request, aid=None):
         except Exception as e:
             pass
     
-    # 参与者
+    # 参与者, 无论报名是否通过
     participants = Participant.objects.filter(Q(activity_id=activity),
-        Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APLLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED))
+        Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APLLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED) | Q(status=Participant.AttendStatus.UNATTENDED))
     #participants_ava = [utils.get_user_ava(participant, "Person") for participant in participants.values("person_id")] or None
     people_list = NaturalPerson.objects.activated().filter(id__in = participants.values("person_id"))
 
