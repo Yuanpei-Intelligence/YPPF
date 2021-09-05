@@ -61,6 +61,8 @@ from app.wechat_send import(
     publish_notifications,
     send_wechat_captcha,
     invite,
+    WechatApp,
+    WechatMessageLevel,
 )
 from app.notification_utils import(
     notification_create,
@@ -1560,6 +1562,7 @@ def transaction_page(request, rid=None):
 
         # 到这里, 参数的合法性检查完成了, 接下来应该是检查发起人的账户, 够钱就转
         try:
+            notification = None
             with transaction.atomic():
                 # 首先锁定用户
                 payer = (
@@ -1591,16 +1594,23 @@ def transaction_page(request, rid=None):
                     payer.save()
                     warn_message = "成功发起向" + name + "的转账! 元气值将在对方确认后到账。"
 
-                    notification_create(
+                    content_msg = transaction_msg if transaction_msg else f'转账金额：{amount}'
+                    notification = notification_create(
                         receiver=user,
                         sender=request.user,
                         typename=Notification.Type.NEEDDO,
                         title=Notification.Title.TRANSFER_CONFIRM,
-                        content=transaction_msg,
+                        content=content_msg,
                         URL="/myYQPoint/",
                         relate_TransferRecord=record,
                     )
-                    return redirect("/myYQPoint/")
+            if notification is not None:
+                publish_notification(
+                    notification,
+                    app=WechatApp.TRANSFER,
+                    level=WechatMessageLevel.IMPORTANT,
+                )
+            return redirect("/myYQPoint/")
 
         except Exception as e:
             # print(e)
@@ -1620,6 +1630,7 @@ def transaction_page(request, rid=None):
 def confirm_transaction(request, tid=None, reject=None):
     context = dict()
     context["warn_code"] = 1  # 先假设有问题
+    new_notification = None
     with transaction.atomic():
         try:
             record = TransferRecord.objects.select_for_update().get(
@@ -1668,7 +1679,7 @@ def confirm_transaction(request, tid=None, reject=None):
             payer.YQPoint += record.amount
             payer.save()
             context["warn_message"] = "拒绝转账成功!"
-            notification_create(
+            new_notification = notification_create(
                 receiver=record.proposer,
                 sender=record.recipient,
                 typename=Notification.Type.NEEDREAD,
@@ -1682,7 +1693,7 @@ def confirm_transaction(request, tid=None, reject=None):
             recipient.YQPoint += record.amount
             recipient.save()
             context["warn_message"] = "交易成功!"
-            notification_create(
+            new_notification = notification_create(
                 receiver=record.proposer,
                 sender=record.recipient,
                 typename=Notification.Type.NEEDREAD,
@@ -1691,6 +1702,7 @@ def confirm_transaction(request, tid=None, reject=None):
                 URL="/myYQPoint/",
             )
             notification_status_change(record.transfer_notification.get().id)
+        publish_notification(new_notification, app=WechatApp.TRANSFER)
         record.finish_time = datetime.now()  # 交易完成时间
         record.save()
         context["warn_code"] = 2
@@ -2780,6 +2792,7 @@ def apply_position(request, oid=None):
         contents[0],
         "/personnelMobilization/",
         publish_to_wechat=True,  # 不要复制这个参数，先去看函数说明
+        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
     )
     notification_create(
         org.organization_id,
@@ -2789,6 +2802,7 @@ def apply_position(request, oid=None):
         contents[1],
         "/personnelMobilization/",
         publish_to_wechat=True,  # 不要复制这个参数，先去看函数说明
+        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.IMPORTANT},
     )
     return redirect("/notifications/")
 
@@ -2981,6 +2995,8 @@ def addComment(request, comment_base, receiver=None):
                 Notification.Title.VERIFY_INFORM,
                 content[typename],
                 URL[typename],
+                publish_to_wechat=True,
+                publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
             )
         context["new_comment"] = new_comment
         context["warn_code"] = 2
@@ -3413,6 +3429,10 @@ def make_relevant_notification(application, info):
     title = Notification.Title.VERIFY_INFORM if post_type != 'accept_submit' else not_type
     relate_instance = application if post_type == 'new_submit' else None
     publish_to_wechat = True
+    publish_kws = {'app': WechatApp.AUDIT}
+    publish_kws['level'] = (WechatMessageLevel.IMPORTANT
+                            if post_type != 'cancel_submit'
+                            else WechatMessageLevel.INFO)
     # TODO cancel是否要发送notification？是否发送微信？
 
     # 正式创建notification
@@ -3424,7 +3444,8 @@ def make_relevant_notification(application, info):
         content=content,
         URL=URL,
         relate_instance=relate_instance,
-        publish_to_wechat=publish_to_wechat
+        publish_to_wechat=publish_to_wechat,
+        publish_kws=publish_kws,
     )
 
     # 对于处理类通知的完成(done)，修改状态
@@ -3617,6 +3638,10 @@ def make_notification(application, request,content,receiver):
 
     relate_instance = application if post_type == 'new_submit' else None
     publish_to_wechat = True
+    publish_kws = {'app': WechatApp.AUDIT}
+    publish_kws['level'] = (WechatMessageLevel.IMPORTANT
+                            if post_type != 'cancel_submit'
+                            else WechatMessageLevel.INFO)
     # TODO cancel是否要发送notification？是否发送微信？
 
     # 正式创建notification
@@ -3628,7 +3653,8 @@ def make_notification(application, request,content,receiver):
         content=content[post_type],
         URL=URL[application.typename],
         relate_instance=relate_instance,
-        publish_to_wechat=publish_to_wechat
+        publish_to_wechat=publish_to_wechat,
+        publish_kws=publish_kws,
     )
     # 对于处理类通知的完成(done)，修改状态
     # 这里的逻辑保证：所有的处理类通知的生命周期必须从“成员发起”开始，从“取消”“通过”“拒绝”结束。
@@ -3891,12 +3917,19 @@ def send_message_check(me, request):
                 title=title,
                 content=content,
                 URL=URL,
+                publish_to_wechat=False,
             )
         assert success
     except:
         return wrong("创建通知的时候出现错误！请联系管理员！")
     try:
-        assert publish_notifications(filter_kws={'bulk_identifier': bulk_identifier})
+        wechat_kws = {}
+        if receiver_type == "订阅用户":
+            wechat_kws['app'] = WechatApp.TO_SUBSCRIBER
+        else:   # 组织成员
+            wechat_kws['app'] = WechatApp.TO_MEMBER
+        wechat_kws['filter_kws'] = {'bulk_identifier': bulk_identifier}
+        assert publish_notifications(**wechat_kws)
     except:
         return wrong("发送微信的过程出现错误！请联系管理员！")
     
