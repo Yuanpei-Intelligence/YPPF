@@ -256,6 +256,11 @@
         })
             .then((res) => res.json())
             .catch(() => { success: false });
+        if (success) {
+            alert('成功修改微信通知设置！');
+        } else {
+            alert('微信通知设置修改失败！');
+        }
         return success;
     }
     async function save_all(status){
