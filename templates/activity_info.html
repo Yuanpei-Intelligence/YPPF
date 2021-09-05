@@ -381,18 +381,20 @@
                 </div>
                 <!--  END ACTIVITY INFORMATION  -->
 
-                <!--  BEGIN ORGANIZATION  -->
+                <!--  BEGIN ORGANIZAOR & PARTICIPANTS  -->
                 <div class="statbox widget box box-shadow layout-top-spacing">
 
                     <div class="widget-header">
                         <div class="row">
                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                <h4 style="padding-left: 12px;">组织者</h4>
+                                <h4 style="padding-left: 12px;">人员信息</h4>
                             </div>
                         </div>
                     </div>
 
                     <div class="widget-content widget-content-area">
+
+                        <h5>组织者</h5>
                         <div class="d-flex justify-content-start">
                             <div style="width: max-content; border-radius: 25px; overflow: hidden;">
                                 <img src="{{ org_avatar_path }}" class="flex" alt="organization avatar" height="50px" width="50px">
@@ -405,23 +407,13 @@
                                 <p class="mb-0" style="color: gray;">{{ org.introduction }}</p>
                             </span>
                         </div>
-                    </div>
 
-                </div>
-                <!--  END ORGANIZATION  -->
+                        <div class="mb-4"></div>
 
-                <!--  BEGIN PARTICIPANTS  -->
-                <div class="statbox widget box box-shadow layout-top-spacing">
-
-                    <div class="widget-header">
-                        <div class="row">
-                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                <h4 style="padding-left: 12px;">参与者</h4>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="widget-content widget-content-area">
+                        <h5>参与者</h5>
+                        {% if participants_ava is None %}
+                        <div style="text-align: center;">还没有参与者哦～</div>
+                        {% else %}
                         <div class="row" style="margin-left: -4px;">
                             {% for ava in participants_ava %}
                             <span class="col-0 m-1" style="border-radius: 8px; overflow: hidden;">
@@ -429,10 +421,12 @@
                             </span>
                             {% endfor %}
                         </div>
+                        {% endif %}
+    
                     </div>
 
                 </div>
-                <!--  END PARTICIPANTS  -->
+                <!--  END ORGANIZAOR & PARTICIPANTS  -->
 
             </div>
 
