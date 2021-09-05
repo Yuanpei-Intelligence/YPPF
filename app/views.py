@@ -3841,6 +3841,13 @@ def send_message_check(me, request):
     content = content
     typename = Notification.Type.NEEDREAD
     URL = url
+    before_time=datetime.now()-timedelta(minutes=1)
+    after_time=datetime.now()+timedelta(minutes=1)
+    recent_notifi=Notification.objects.filter(sender=sender,title=title).filter(Q(start_time__gte=before_time)
+                                                                                &Q(start_time__lte=after_time))
+    if len(recent_notifi)>0:
+        return wrong("您1min前发送过相同的通知，请不要短时间内重复发送相同的通知！")
+
     try:
         if receiver_type == "订阅用户":
             receivers = NaturalPerson.objects.exclude(id__in=me.unsubscribers.all())
@@ -3849,6 +3856,7 @@ def send_message_check(me, request):
             receivers = NaturalPerson.objects.filter(
                 id__in=me.position_set.values_list('person_id', flat=True))
             receivers = [receiver.person_id for receiver in receivers]
+
         # 创建通知
         success, bulk_identifier = bulk_notification_create(
                 receivers=receivers,
