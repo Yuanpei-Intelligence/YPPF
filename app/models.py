@@ -725,7 +725,7 @@ class Participant(models.Model):
         APLLYFAILED = "申请失败"
         APLLYSUCCESS = "已报名"
         ATTENDED = "已参与"
-        UNATTENDED = "未参与"
+        UNATTENDED = "未签到"
         CANCELED = "放弃"
 
     status = models.CharField(
