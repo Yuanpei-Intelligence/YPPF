@@ -1086,28 +1086,40 @@ def auth_register(request):
             email = request.POST["email"]
             password2 = request.POST["password2"]
             stu_grade = request.POST["syear"]
-            # gender = request.POST['sgender']
+            gender = request.POST['sgender']
             if password != password2:
-                render(request, "index.html")
+                return render(request, "index.html")
             else:
+                if gender not in ['男', '女']:
+                    return render(request, "auth_register_boxed.html")
                 # user with same sno
                 same_user = NaturalPerson.objects.filter(person_id=sno)
                 if same_user:
-                    render(request, "auth_register_boxed.html")
+                    return render(request, "auth_register_boxed.html")
                 same_email = NaturalPerson.objects.filter(email=email)
                 if same_email:
-                    render(request, "auth_register_boxed.html")
+                    return render(request, "auth_register_boxed.html")
 
                 # OK!
-                user = User.objects.create(username=sno)
-                user.set_password(password)
-                user.save()
+                try:
+                    user = User.objects.create_user(username=sno, password=password)
+                except:
+                    # 存在用户
+                    return HttpResponseRedirect("/admin/")
 
-                new_user = NaturalPerson.objects.create(person_id=user)
-                new_user.name = name
-                new_user.email = email
-                new_user.stu_grade = stu_grade
-                new_user.save()
+                try:
+                    new_user = NaturalPerson.objects.create(
+                        person_id=user,
+                        stu_id_dbonly=sno,
+                        name = name,
+                        email = email,
+                        stu_grade = stu_grade,
+                        gender = NaturalPerson.Gender.MALE if gender == '男'\
+                            else NaturalPerson.Gender.FEMALE,
+                    )
+                except:
+                    # 创建失败，把创建的用户删掉
+                    return HttpResponseRedirect("/admin/")
                 return HttpResponseRedirect("/index/")
         return render(request, "auth_register_boxed.html")
     else:
