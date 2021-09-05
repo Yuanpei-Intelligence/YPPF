@@ -33,13 +33,13 @@
                     <div class="carousel-inner">
                         <div class="carousel-item active">
                             <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
-                                    src="/static/assets/img/guidepics/default.jpeg">
+                                    src={% static "assets/img/guidepics/default.jpeg" %}>
                         </div>
                         {% for path in paths %}
                         <div class="carousel-item">
                             <a href="/{{path}}">
                                 <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
-                                    src="/static/assets/img/guidepics/{{path}}.jpeg">
+                                    src={% static "assets/img/guidepics/{{path}}.jpeg" %}>
                             </a>
                         </div>
                         {% endfor %}

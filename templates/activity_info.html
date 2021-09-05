@@ -327,10 +327,14 @@
                                 {% endif %}
 
                                 {% if ownership %}
-
+                                    {% if status == "进行中" or status == "报名中" or status == "等待中" or status == "已结束" %}
+                                        <button class="btn btn-primary btn-block mb-2" id="export_enroll_excel" type="button">
+                                            下载报名信息
+                                        </button>
+                                    {% endif %}
                                     <!-- ---------------------------- begin summary ---------------------------- -->
                                     {% if status == "已结束" %}
-                                    <button class="btn btn-success btn-block mb-2" data-toggle="collapse"
+                                    <button class="btn btn-primary btn-block mb-2" data-toggle="collapse"
                                         data-target="#summaryphoto">
                                         上传/更新总结照片
                                     </button>
@@ -350,7 +354,7 @@
                                             <button type="submit" class="btn btn-primary btn-block mb-2">确认上传</button>
                                         </div>
                                     </form>
-                                    <button class="btn btn-success btn-block mb-2" id="export_excel" type="button">
+                                    <button class="btn btn-primary btn-block mb-2" id="export_sign_excel" type="button">
                                         下载签到信息
                                     </button>
                                     <form method="POST">
@@ -391,6 +395,7 @@
                             </div>
                         </div>
                     </div>
+
 
                     <div class="widget-content widget-content-area">
 
@@ -502,25 +507,51 @@
 {% endblock %}
 {% block add_js_file %}
 <script>
-    $("#export_excel").click(function () {
+    $("#export_sign_excel").click(function () {
      const req = new XMLHttpRequest();
      var url='/viewActivity/'+"{{aid}}"
      req.open('POST', url, true);
      req.responseType = 'blob';
      req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
-     req.send("option="+"download"); //输入参数
+     req.send("option="+"sign"); //输入参数
     req.onload = function() {
        const data = req.response;
        const a = document.createElement('a');
        const blob = new Blob([data]);
        const blobUrl = window.URL.createObjectURL(blob);
-       download(blobUrl) ;
+       downloadsign(blobUrl) ;
      };
    });
-   function download(blobUrl) {
+   function downloadsign(blobUrl) {
      const a = document.createElement('a');
      a.style.display = 'none';
      var name="{{activity.title}}({{activity.start.month}}月{{activity.start.day}}日)签到信息统计.xls"
+     a.download = name;
+     a.href = blobUrl;
+     a.click();
+     document.body.removeChild(a);
+    }
+</script>
+<script>
+    $("#export_enroll_excel").click(function () {
+     const req = new XMLHttpRequest();
+     var url='/viewActivity/'+"{{aid}}"
+     req.open('POST', url, true);
+     req.responseType = 'blob';
+     req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
+     req.send("option="+"enroll"); //输入参数
+    req.onload = function() {
+       const data = req.response;
+       const a = document.createElement('a');
+       const blob = new Blob([data]);
+       const blobUrl = window.URL.createObjectURL(blob);
+       downloadenroll(blobUrl) ;
+     };
+   });
+   function downloadenroll(blobUrl) {
+     const a = document.createElement('a');
+     a.style.display = 'none';
+     var name="{{activity.title}}({{activity.start.month}}月{{activity.start.day}}日)报名信息统计.xls"
      a.download = name;
      a.href = blobUrl;
      a.click();
