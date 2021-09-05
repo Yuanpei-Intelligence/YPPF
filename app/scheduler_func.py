@@ -16,8 +16,6 @@ from boottest import local_dict
 from random import sample
 from numpy.random import choice
 
-from app.scheduler import scheduler
-# register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
 
 from urllib import parse, request as urllib2
 import json
@@ -415,7 +413,7 @@ try:
 except:
     default_weather = None
 
-@scheduler.scheduled_job('interval', id="get weather per hour", hours=1)
+# @scheduler.scheduled_job('interval', id="get weather per hour", hours=1)
 def get_weather():
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     try:
@@ -444,3 +442,15 @@ def get_weather():
         return default_weather
     else:
         return weather_dict
+
+print("———————————————— Scheduler:   Debug ————————————————")
+print("before loading scheduler from app.scheduler in scheduler_func.py")
+from app.scheduler import scheduler
+# register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
+# 但好像非服务器版本有问题??
+
+scheduler.add_job(get_weather, 'interval', id="get weather per hour", hours=1, replace_existing=True)
+
+print("finishing loading get_weather function")
+print("finish scheduler_func")
+print("———————————————— End     :   Debug ————————————————")
