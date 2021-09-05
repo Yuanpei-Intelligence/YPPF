@@ -544,10 +544,11 @@
         } else {
             document.getElementById("yq_source").innerHTML = "向学生收取";
             document.getElementById("college").style.display = "none";
-            document.getElementById("from_college").value = "0"
+            document.getElementById("from_college").value = "0";
+            document.getElementById("reason_block").style.display = "none";
+            document.getElementById("apply_reason").required = "";
         }
     });
-
     {% for pic in defaultpics %}
     $("input[name='{{pic.id}}']").on("change", function () {
         //输出选中状态
