@@ -2022,9 +2022,9 @@ def viewActivity(request, aid=None):
     org_name = org.oname
     org_avatar_path = org.get_user_ava()
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
-    start_time = activity.start.strftime("%Y-%m-%d %H:%M")
-    end_time = activity.end.strftime("%Y-%m-%d %H:%M")
-    start_THEDAY = activity.start.day # 前端使用量
+    start_month = activity.start.month
+    start_date = activity.start.day
+    duration = activity.end - activity.start
     prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     introduction = activity.introduction
@@ -2091,6 +2091,11 @@ def viewActivity(request, aid=None):
         except Exception as e:
             # print(e)
             pass
+    
+    # 参与者
+    participants = Participant.objects.filter(Q(activity_id=activity),
+        Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APLLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED))
+    participants_ava = [utils.get_user_ava(participant, "Person") for participant in participants.values("person_id")] or None
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
