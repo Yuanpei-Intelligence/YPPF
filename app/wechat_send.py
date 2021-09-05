@@ -136,6 +136,7 @@ class WechatApp:
     PROMOTION = 'promote'       # 推广消息当然是推广
     TERMINATE = 'message'       # 终止应该发给内部成员
     AUDIT = 'message'           # 审核是重要通知
+    TRANSFER = 'message'        # 转账需要通知
     # 固有应用名
     _PROMOTE = 'promote'
     _MESSAGE = 'message'
