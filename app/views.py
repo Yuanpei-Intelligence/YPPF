@@ -510,7 +510,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         try:
             org = Organization.objects.get(oname=name)
         except:  # 找不到对应组织
-            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=找不到对应团队,请联系管理员!"
+            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=找不到对应团体,请联系管理员!"
             return redirect(urls)
         try:
             position = Position.objects.activated().filter(org=org, person=me)
@@ -518,7 +518,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
             position = position[0]
             assert position.pos == 0
         except:
-            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团队账户的权限!"
+            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团体账户的权限!"
             return redirect(urls)
         # 到这里,是本人组织并且有权限登录
         auth.logout(request)
@@ -536,7 +536,7 @@ def user_login_org(request, org):
     try:
         me = NaturalPerson.objects.activated().get(person_id=user)
     except:  # 找不到合法的用户
-        return wrong("您没有权限访问该网址！请用对应团队账号登陆。")
+        return wrong("您没有权限访问该网址！请用对应团体账号登陆。")
     #是组织一把手
     try:
         position = Position.objects.activated().filter(org=org, person=me)
@@ -544,12 +544,12 @@ def user_login_org(request, org):
         position = position[0]
         assert position.pos == 0
     except:
-        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团队账户的权限!"
+        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团体账户的权限!"
         return redirect(urls)
     # 到这里,是本人组织并且有权限登录
     auth.logout(request)
     auth.login(request, org.organization_id)  # 切换到组织账号
-    return succeed("成功切换到团队账号处理该事务，建议事务处理完成后退出团队账号。")
+    return succeed("成功切换到团体账号处理该事务，建议事务处理完成后退出团体账号。")
 
 
 
@@ -699,7 +699,7 @@ def orginfo(request, name=None):
     modpw_status = request.GET.get("modinfo", None)
     if modpw_status is not None and modpw_status == "success":
         html_display["warn_code"] = 2
-        html_display["warn_message"] = "修改团队信息成功!"
+        html_display["warn_message"] = "修改团体信息成功!"
 
     # 补充左边栏信息
 
@@ -714,7 +714,7 @@ def orginfo(request, name=None):
 
     # 补充一些呈现信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user,navbar_name = "团队主页", title_name = org.oname)
+    bar_display = utils.get_sidebar_and_navbar(request.user,navbar_name = "团体主页", title_name = org.oname)
     # 转账后跳转
     origin = request.get_full_path()
 
