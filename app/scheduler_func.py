@@ -8,12 +8,11 @@ from django.db import transaction  # 原子化更改数据库
 
 from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant, \
     Notification
-from app.wechat_send import publish_notifications
+from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
 from app.forms import YQPointDistributionForm
 from boottest.hasher import MySHA256Hasher
 from app.notification_utils import bulk_notification_create
 from boottest import local_dict
-from app.scheduler import scheduler
 
 from random import sample
 from numpy.random import choice
@@ -404,23 +403,27 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
                 id__in=activity.organization_id.unsubscribers.all()
             )
             receivers = [subscriber.person_id for subscriber in subscribers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER}  
         elif msg_type == "remind":
             msg = f"您参与的活动 <{activity.title}> 即将开始。\n"
             msg += f"开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}\n"
             msg += f"活动地点: {activity.location}\n"
             participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
             receivers = [participant.person_id.person_id for participant in participants]
+            publish_kws = {"app": WechatApp.TO_PARTICIPANT}  
         elif msg_type == 'modification_sub':
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
             )
             receivers = [subscriber.person_id for subscriber in subscribers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         elif msg_type == 'modification_par':
             participants = Participant.objects.filter(
                 activity_id=aid,
                 status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
             )
             receivers = [participant.person_id.person_id for participant in participants]
+            publish_kws = {"app": WechatApp.TO_PARTICIPANT}  
         elif msg_type == "modification_sub_ex_par":
             participants = Participant.objects.filter(
                 activity_id=aid,
@@ -431,6 +434,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             )
             receivers = list(set(subscribers) - set([participant.person_id for participant in participants]))
             receivers = [receiver.person_id for receiver in receivers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         # 应该用不到了，调用的时候分别发给 par 和 sub
         # 主要发给两类用户的信息往往是不一样的
         elif msg_type == 'modification_all':
@@ -443,6 +447,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             )
             receivers = set([participant.person_id for participant in participants]) | set(subscribers)
             receivers = [receiver.person_id for receiver in receivers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         else:
             raise ValueError
         success, _ = bulk_notification_create(
@@ -453,7 +458,8 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             content=msg,
             URL=f"/viewActivity/{aid}",
             relate_instance=activity,
-            publish_to_wechat=True
+            publish_to_wechat=True,
+            publish_kws=publish_kws,
         )
         assert success
 
