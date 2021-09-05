@@ -760,8 +760,8 @@ def export_activity(activity,inf_type):
         w.write(0, 2, u'年级/班级')
         if inf_type == "enroll":
             w.write(0, 3, u'报名状态')
-            w.write(0, 4, u'注：报名状态为“已参与”时表示报名成功并成功签到，“未参与”表示报名成功但未签到，'
-                          u'"已报名"表示报名成功，“申请失败“表示在抽签模式中落选，”申请中“则表示抽签尚未开始。')
+            w.write(0, 4, u'注：报名状态为“已参与”时表示报名成功并成功签到，“未签到”表示报名成功但未签到，'
+                          u'"已报名"表示报名成功，“申请失败“表示在抽签模式中落选，“申请中”则表示抽签尚未开始。')
         # 写入数据
         excel_row = 1
         for participant in participants:
