@@ -25,7 +25,6 @@ YQPoint_oname = local_dict["YQPoint_soucre_oname"]
 
 
 # 学院每月下发元气值
-@scheduler.scheduled_job('interval', id="distributeY QPoint per month", days=30)
 def distribute_YQPoint_per_month():
     with transaction.atomic():
         recipients = NaturalPerson.objects.activated().select_for_update()
