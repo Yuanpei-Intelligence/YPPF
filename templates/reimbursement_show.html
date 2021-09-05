@@ -17,7 +17,7 @@
 
 {% block mainpage %}
 
-{% with title='报销信息' link='/modifyReimbursement/' new_link='' query_field='reimb_id' new_btn_name='新建报销' btn_name='详情' empty_info='列表空空如也！点击按钮开始报销吧~' %}
+{% with title='结项信息' link='/modifyReimbursement/' new_link='' query_field='reimb_id' new_btn_name='新的结项' btn_name='详情' empty_info='列表空空如也！点击按钮开始报销吧~' %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -39,12 +39,12 @@
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
                             <h3>{{title}}</h3>
-                            <div class="col-12">
+                            <!-- <div class="col-12">
                                 <p>欢迎来到你的{{title}}列表！这里汇集了你在<strong>Yuanpei Profile</strong>中创建的所有{{title}}~</p>
                                 <p>这些事务依据更新的时间和状态由近到远呈现，提供了具体的更新时间和其他信息。</p>
                                 <p>您可以点击<u>标题链接</u>查看老师留言、追加评论、取消正在审核的申请或查看已完成事务详情。尽情体验吧！</p>
                                 </br>
-                            </div>
+                            </div> -->
                             <div class="col-lg-12">
                                 <br />
                                 <br />

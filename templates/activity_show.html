@@ -17,7 +17,7 @@
 
 {% block mainpage %}
 
-{% with title='活动管理' link='/viewActivity/' new_link='' query_field='aid' new_btn_name='' btn_name='详情' empty_info='没有相关活动哦～' %}
+{% with title='活动立项' link='/viewActivity/' audit_link='/examineActivity/' new_link='' query_field='aid' new_btn_name='' btn_name='详情' empty_info='没有相关活动哦～' %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -77,7 +77,7 @@
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <h5>
-                                                                <a href="{{link}}{% if query_field %}{{instance.id}}{% endif %}">
+                                                                <a href="{%if is_teacher%}{{audit_link}}{%else%}{{link}}{% endif %}{% if query_field %}{{instance.id}}{% endif %}">
                                                                     <u>{{instance.get_instance}}</u>
                                                                 </a>
                                                                 <br />
@@ -91,8 +91,10 @@
                                                                 <h5 class="text-danger">未过审</h5>
                                                             {% elif status == 'Abort' %}
                                                                 <h5 class="text-muted">已撤销</h5>
-                                                            {% elif status == '预报备' %}
-                                                                <h5 class="text-info">预报备</h5>
+                                                            {% elif status == 'Canceled' %}
+                                                                <h5 class="text-muted">已取消</h5>
+                                                            {% elif instance.recorded and not instance.valid %}
+                                                                <h5 class="text-info">预报备+审核中</h5>
                                                             {% else %}
                                                                 <h5 class="text-success">已通过</h5>
 
@@ -113,17 +115,15 @@
                                                             {% endfor %}
                                                         </div>
                                                         {% endif %}
-                                                        {% if instance.get_poster_name %}
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);">
-                                                                <i class="fa fa-address-book"></i>
-                                                                {{instance.get_poster_name}}
-                                                            </p>
-                                                        </div>
-                                                        {% endif %}
                                                     </div>
                                                     <div class="d-flex justify-content-between">
                                                         <div>
+                                                            {%if is_teacher%}
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                 <i class="fa fa-address-book"></i>
+                                                                 {{instance.organization_id.oname}}
+                                                            </p>
+                                                            {% endif %}
                                                             <p style="color: rgb(66, 67, 68);">
                                                                 <i class="fa fa-calendar-plus-o"></i>
                                                                 创建时间：{{instance.time|date:'m/d H:i'}}
@@ -137,11 +137,12 @@
                                                             <h5>
                                                                 <a href="#" class="btn btn-primary my-3 my-sm-2" tabindex="-1"
                                                                     role="button"
-                                                                    onclick="window.location='{{link}}{% if query_field %}{{instance.id}}{% endif %}'">
+                                                                    onclick="window.location='{%if is_teacher %}{{audit_link}}{%else%}{{link}}{% endif %}{% if query_field %}{{instance.id}}{% endif %}'">
                                                                     {{btn_name}}
                                                                 </a>
                                                             </h5>
                                                         </div>
+
                                                     </div>
                                                 </div>
                                             </div>

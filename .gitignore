@@ -47,6 +47,11 @@ test_data/
 comment/
 avatar/
 wallpaper/
+activity/
+* old.*
+*_old.*
+*fake.*
+
 # Python #
 __pycache__/
 *.py[cod]

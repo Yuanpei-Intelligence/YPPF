@@ -5,11 +5,12 @@ from app.models import (
     Activity,
     Comment,
     CommentPhoto,
-    TransferRecord
+    TransferRecord,
+    ActivityPhoto
 )
 import app.utils as utils
 from django.db import transaction
-
+from datetime import datetime
 
 # 在错误的情况下返回的字典,message为错误信息
 def wrong(message="检测到恶意的申请操作. 如有疑惑，请联系管理员!"):
@@ -98,6 +99,12 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                         return wrong("元气值最高精度为0.1，请重新输入！")
                 except:
                     return wrong("元气值为空或输入有误，请输入非负数。")
+                #活动总结图片
+                summary_image= request.FILES.get('summaryimage')
+                if summary_image is not None:
+                    #合法性检查
+                    if utils.if_image(summary_image)!=2:
+                        return wrong("上传的活动总结材料只支持图片格式！")
 
                 # 如果是新建申请,
                 if post_type == "new_submit":
@@ -111,14 +118,16 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                         reimb_act = Activity.objects.get(id=reimb_act_id)
                         if reimb_act not in activities:  # 防止篡改POST导致伪造别人的报销活动
                             return wrong("找不到该活动，请检查报销的活动的合法性！")
+                        if reimb_act.budget*1.5<reimb_YQP:
+                            return wrong("报销的元气值不能超过活动预算的1.5倍！")
                     except:
                         return wrong("找不到该活动，请检查报销的活动的合法性！")
                     #报销材料
                     images = request.FILES.getlist('images')
                     if len(images) > 0:
                         for image in images:
-                            if utils.if_image(image) == False:
-                                return wrong("上传的材料只支持图片格式。")
+                            if utils.if_image(image) !=2:
+                                return wrong("上传的报销材料只支持图片格式！")
 
                     transaction_msg = f'活动“{reimb_act.title}”的报销申请'  # TODO:报销信息的补充
                     record = TransferRecord.objects.create(
@@ -132,6 +141,12 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     application =Reimbursement.objects.create(
                                 related_activity=reimb_act, amount=reimb_YQP, pos=me.organization_id,
                         message=message,record=record)
+
+                    #保存活动总结图片
+                    if summary_image is not None:
+                        application.summary_image=summary_image
+                        application.save()
+
                     #保存报销材料到评论中，后续如果需要更新报销材料则在评论中更新
                     if len(images)>0:
                         text = "以下默认为初始的报销材料"
@@ -154,7 +169,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     if not application.is_pending():
                         return wrong("不可以修改状态不为申请中的申请!")
                     # 修改申请的状态应该有所变化
-                    if application.amount == reimb_YQP and  application.message == message:
+                    if application.amount == reimb_YQP and application.message == message and summary_image is None:
                         return wrong("没有检测到修改!")
                     #元气值合法性检查
 
@@ -169,6 +184,9 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     application.message=message
                     application.record.amount = reimb_YQP  # 更改相应的转账的元气值
                     application.record.save()
+                    # 保存活动总结图片
+                    if summary_image is not None:
+                        application.summary_image = summary_image
                     application.save()
                     context = succeed(f'活动“{application.related_activity.title}”的经费申请已成功修改，请耐心等待{auditor_name}老师审批！' )
                     context["application_id"] = application.id
@@ -206,6 +224,12 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                 application.status = Reimbursement.ReimburseStatus.CONFIRMED
                 application.record.status = TransferRecord.TransferStatus.ACCEPTED  # 已接受
                 application.record.save()
+                ActivityPhoto.objects.create(
+                    image=application.summary_image,
+                    activity=application.related_activity,
+                    time=datetime.now(),
+                    type=ActivityPhoto.PhotoType.SUMMARY
+                )
                 application.save()
                 context = succeed(f'活动“{act_title}”的经费申请已通过！')
                 context["application_id"] = application.id

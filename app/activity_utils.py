@@ -7,10 +7,13 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 文件中参数存在 activity 的函数需要在 transaction.atomic() 块中进行。
 如果存在预期异常，抛出 ActivityException，否则抛出其他异常
 """
-from app.scheduler_func import scheduler, changeActivityStatus, notifyActivity
 from datetime import datetime, timedelta
 from app.utils import get_person_or_org, if_image
-from app.notification_utils import notification_create, bulk_notification_create
+from app.notification_utils import(
+    notification_create,
+    bulk_notification_create,
+    notification_status_change,
+)
 from app.models import (
     NaturalPerson,
     Position,
@@ -37,6 +40,8 @@ from django.core.files.base import ContentFile
 import io
 import base64
 from django.db.models import Sum
+from app.scheduler import scheduler
+from app.scheduler_func import changeActivityStatus, notifyActivity
 
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 
@@ -169,7 +174,7 @@ def activity_base_check(request, edit=False):
     announcephoto = request.FILES.getlist("images")
     if len(announcephoto) > 0:
         pic = announcephoto[0]
-        if if_image(pic) == False:
+        if if_image(pic)!=2:
             raise ActivityException("上传的附件只支持图片格式。")
     else:
         if request.POST.get("picture1"):
@@ -289,9 +294,8 @@ def modify_reviewing_activity(request, activity):
         # TODO
         # 修改审核记录，通知老师 
 
-        notification = Notification.objects.select_for_update().get(relate_instance=activity, status=Notification.Status.UNDONE)
-        notification.status = Notification.Status.DELETE
-        notification.save()
+        notification = Notification.objects.get(relate_instance=activity, status=Notification.Status.UNDONE)
+        notification_status_change(notification, Notification.Status.DELETE)
 
         notification_create(
             receiver=examine_teacher.person_id,
@@ -423,7 +427,6 @@ def modify_accepted_activity(request, activity):
             run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
     scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
         run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
-
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
         run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
@@ -443,13 +446,12 @@ def accept_activity(request, activity):
     activity.valid = True
 
     # 通知
-    notification = Notification.objects.select_for_update().get(
+    notification = Notification.objects.get(
         relate_instance=activity, 
         status=Notification.Status.UNDONE,
         title=Notification.Title.VERIFY_INFORM
     )
-    notification.status = Notification.Status.DONE
-    notification.save()
+    notification_status_change(notification, Notification.Status.DONE)
 
     notification_create(
         receiver=activity.organization_id.organization_id,
@@ -478,7 +480,7 @@ def accept_activity(request, activity):
 
 
     # 向学院申请元气值时，审批通过后转账
-    if activity.source == Activity.YQPointSource.COLLEGE:
+    if activity.source == Activity.YQPointSource.COLLEGE and activity.YQPoint > 0:
         organization_id = activity.organization_id_id
         organization = Organization.objects.select_for_update().get(id=organization_id)
         YP = Organization.objects.select_for_update().get(oname="元培学院")
@@ -490,7 +492,6 @@ def accept_activity(request, activity):
         )
         record.amount = amount
         record.message = f"From College"
-        organization.YQPoint += float(amount)
         record.status = TransferRecord.TransferStatus.ACCEPTED
         record.time = str(datetime.now())
         record.corres_act = activity
@@ -507,13 +508,12 @@ def reject_activity(request, activity):
     activity.valid = True
 
     # 通知
-    notification = Notification.objects.select_for_update().get(
+    notification = Notification.objects.get(
         relate_instance=activity, 
         status=Notification.Status.UNDONE,
         title=Notification.Title.VERIFY_INFORM
     )
-    notification.status = Notification.Status.DONE
-    notification.save()
+    notification_status_change(notification, Notification.Status.DONE)
 
     notification_create(
         receiver=activity.organization_id.organization_id,
@@ -595,6 +595,10 @@ def applyActivity(request, activity):
             assert amount == int(amount * 10) / 10
         """
         amount = float(activity.YQPoint)
+
+        if not payer.YQPoint + payer.quota >= amount:
+            raise ActivityException(f"没有足够的元气值。您当前的元气值数量为 {payer.YQPoint + payer.quota}")
+
         if activity.bidding:
             activity.current_participants += 1
         else:
@@ -603,21 +607,16 @@ def applyActivity(request, activity):
             else:
                 raise ActivityException("活动已报满，请稍后再试。")
 
-
-
-        # 这里 assert 对吗
-        if not payer.YQPoint + payer.quota >= amount:
-            raise ActivityException("没有足够的元气值。")
-
         use_quota = amount
         if payer.quota >= amount:
             payer.quota -= amount
+            amount = 0
         else:
             use_quota = payer.quota
             amount -= payer.quota
             payer.quota = 0
             payer.YQPoint -= amount
-        YP.YQPoint -= amount
+        YP.YQPoint -= use_quota
         # 用配额的部分
         if use_quota > 0:
             record = TransferRecord.objects.create(
@@ -625,7 +624,7 @@ def applyActivity(request, activity):
             )
             record.amount = use_quota
             record.message = "quota"
-            organization.YQPoint += amount
+            organization.YQPoint += use_quota
             record.status = TransferRecord.TransferStatus.ACCEPTED
             record.time = str(datetime.now())
             record.corres_act = activity
@@ -665,12 +664,11 @@ def cancel_activity(request, activity):
         activity.status = Activity.Status.ABORT
         activity.save()
         # 修改老师的通知
-        notification = Notification.objects.select_for_update().get(
+        notification = Notification.objects.get(
             relate_instance=activity, 
             status=Notification.Status.UNDONE
         )
-        notification.status = Notification.Status.DELETE
-        notification.save()
+        notification_status_change(notification, Notification.Status.DELETE)
         return
 
     if activity.status == Activity.Status.PROGRESSING:
@@ -731,11 +729,10 @@ def cancel_activity(request, activity):
     activity.status = Activity.Status.CANCELED
     notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
     notification = Notification.objects.get(
-        relate_instance=activity, 
+        relate_instance=activity,
         typename=Notification.Type.NEEDDO
     )
-    notification.status = Notification.Status.DELETE
-    notification.save()
+    notification_status_change(notification, Notification.Status.DELETE)
 
     participants = Participant.objects.filter(
             activity_id=activity
