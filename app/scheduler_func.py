@@ -12,6 +12,7 @@ from app.forms import YQPointDistributionForm
 from boottest.hasher import MySHA256Hasher
 from app.notification_utils import bulk_notification_create
 from boottest import local_dict
+from app.scheduler import scheduler
 
 from random import sample
 from numpy.random import choice

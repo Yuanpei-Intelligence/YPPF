@@ -449,8 +449,6 @@ def set_nperson_quota_to(quota):
     title = Notification.Title.VERIFY_INFORM
     YPcollege = Organization.objects.get(oname=YQPoint_oname)
 
-    bonusPoint=F('bonusPoint') + hours
-
     # 函数内导入是为了防止破坏utils的最高优先级，如果以后确定不会循环引用也可提到外面
     # 目前不发送到微信哦
     from notification_utils import bulk_notification_create
