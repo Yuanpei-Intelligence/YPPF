@@ -42,6 +42,7 @@ import base64
 from django.db.models import Sum
 from app.scheduler import scheduler
 from app.scheduler_func import changeActivityStatus, notifyActivity
+from django.db.models import F
 
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 YQPoint_oname = local_dict["YQPoint_soucre_oname"]
@@ -537,7 +538,7 @@ def accept_activity(request, activity):
             YP.save()
             records.update(
                 status=TransferRecord.TransferStatus.ACCEPTED,
-                time=datetime.now()
+                finish_time=datetime.now()
             )
 
     activity.save()
@@ -587,13 +588,14 @@ def reject_activity(request, activity):
             status=TransferRecord.TransferStatus.PENDING, 
             corres_act=activity,
         )
+        person_list = [record.proposer.id for record in records]
+        payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
         for record in records:
-            payer = NaturalPerson.objects.select_for_update().get(person_id=record.proposer)
-            payer.YQPoint += record.amount
-            payer.save()
-            record.status = TransferRecord.TransferStatus.SUSPENDED
-            record.save()
-
+            NaturalPerson.objects.filter(person_id=record.proposer).update(YQPoint=F("YQPoint") + record.amount)
+        records.update(
+            status=TransferRecord.TransferStatus.SUSPENDED,
+            finish_time=datetime.now()
+        )
 
     activity.save()
 
@@ -757,10 +759,10 @@ def cancel_activity(request, activity):
                 YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
                 YP.YQPoint += total_amount
                 YP.save()
+                person_list = [record.proposer.id for record in records]
+                payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
                 for record in records:
-                    payer = NaturalPerson.objects.select_for_update().get(person_id=record.proposer)
-                    payer.YQPoint += record.amount
-                    payer.save()
+                    NaturalPerson.objects.filter(person_id=record.proposer).update(YQPoint=F("YQPoint") + record.amount)
                 records.update(
                     status=TransferRecord.TransferStatus.REFUND,
                     finish_time=datetime.now()
@@ -771,10 +773,10 @@ def cancel_activity(request, activity):
                 status=TransferRecord.TransferStatus.PENDING, 
                 corres_act=activity,
             )
+            person_list = [record.proposer.id for record in records]
+            payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
             for record in records:
-                payer = NaturalPerson.objects.select_for_update().get(person_id=record.proposer)
-                payer.YQPoint += record.amount
-                payer.save()
+                NaturalPerson.objects.filter(person_id=record.proposer).update(YQPoint=F("YQPoint") + record.amount)
             records.update(
                 status=TransferRecord.TransferStatus.SUSPENDED,
                 finish_time=datetime.now()
