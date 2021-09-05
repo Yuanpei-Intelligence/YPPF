@@ -2656,6 +2656,8 @@ def examineActivity(request, aid):
 @utils.check_user_access(redirect_url="/logout/")
 def subscribeOrganization(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
+    if user_type != 'Person':
+        return redirect('/welcome/?warn_code=1&warn_message=组织账号不支持订阅！')
 
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
@@ -2709,6 +2711,8 @@ def save_show_position_status(request):
 @utils.check_user_access(redirect_url="/logout/")
 def save_subscribe_status(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
+    if user_type != 'Person':
+        return JsonResponse({"success":False})
 
     me = utils.get_person_or_org(request.user, user_type)
     params = json.loads(request.body.decode("utf-8"))
@@ -2745,6 +2749,17 @@ def save_subscribe_status(request):
                     return JsonResponse({"success":False})
                 for org in org_list:
                     me.unsubscribe_list.add(org)
+        elif "level" in params.keys():
+            try:
+                level = params['level']
+                assert level in ['less', 'more']
+            except:
+                return JsonResponse({"success":False})
+            me.wechat_receive_level = (
+                NaturalPerson.ReceiveLevel.MORE
+                if level == 'more' else
+                NaturalPerson.ReceiveLevel.LESS
+            )
         me.save()
 
     return JsonResponse({"success": True})

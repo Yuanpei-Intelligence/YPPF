@@ -24,6 +24,42 @@
                     {% if bar_display.help_paragraphs %}
                         {% include 'help_with_table.html' %}
                     {% endif %}
+                    <div id="tableDropdownWechat" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+                        <div class="statbox widget box box-shadow">
+                            <div class="widget-header">
+                                <div class="row">
+                                    <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                        <div data-toggle="collapse" href="#wechat_receive_level" role="button"
+                                            aria-expanded="true" aria-controls="collapseExample">
+                                            <div class="d-flex justify-content-between">
+                                                <div>
+                                                    <h4>微信通知</h4>
+                                                </div>
+                                                <div style="display:flex;
+                                            justify-content: center;
+                                            align-items: center;">
+                                                    <i class="fa" aria-hidden="true"></i>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="collapse show" id="wechat_receive_level">
+                                <div class="widget-content widget-content-area">
+                                    <div>
+                                        <p>仅影响系统消息和内部通知，不影响订阅消息</p>
+                                        <button type="button" class="btn btn-outline-primary" 
+                                            onclick="save_wechat_receive_level('more');this.blur();">接收全部消息</button>
+                                        &nbsp;
+                                        <button type="button" class="btn btn-outline-primary" 
+                                            onclick="save_wechat_receive_level('less');this.blur();">屏蔽普通通知</button>
+                                        <br>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     {% for otype in otype_list %}
                     <div id="tableDropdown{{otype.otype_id}}" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
                         <div class="statbox widget box box-shadow">
@@ -210,6 +246,21 @@
         })
             .then((res) => res.json())
             .catch(() => { success: false });
+        return success;
+    }
+    async function save_wechat_receive_level(level){
+        const { success } = await fetch(`/save_subscribe_status`, {
+            headers: { "Content-Type": `text/plain` },
+            method: `POST`,
+            body: JSON.stringify({ level }),
+        })
+            .then((res) => res.json())
+            .catch(() => { success: false });
+        if (success) {
+            alert('成功修改微信通知设置！');
+        } else {
+            alert('微信通知设置修改失败！');
+        }
         return success;
     }
     async function save_all(status){
