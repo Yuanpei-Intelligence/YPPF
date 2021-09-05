@@ -60,10 +60,10 @@ def distribute_YQPoint_per_month():
 def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
     '''
         内容：
-        由proposer账户(默认为一个组织账户)，向每一个在recipients中的账户中发起数额为YQPoints的转账
+        由proposer账户(默认为一个团体账户)，向每一个在recipients中的账户中发起数额为YQPoints的转账
         并且自动生成默认为ACCEPTED的转账记录以便查阅
-        这里的recipients期待为一个Queryset，要么全为自然人，要么全为组织
-        proposer默认为一个组织账户
+        这里的recipients期待为一个Queryset，要么全为自然人，要么全为团体
+        proposer默认为一个团体账户
     '''
     try:
         assert proposer.YQPoint >= recipients.count() * YQPoints
@@ -71,7 +71,7 @@ def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
         # 说明此时proposer账户的元气值不足
         print(f"由{proposer}向自然人{recipients[:3]}...等{recipients.count()}个用户发放元气值失败，原因可能是{proposer}的元气值剩余不足")
     try:
-        is_nperson = isinstance(recipients[0], NaturalPerson)  # 不为自然人则为组织
+        is_nperson = isinstance(recipients[0], NaturalPerson)  # 不为自然人则为团体
     except:
         print("没有转账对象！")
         return
@@ -101,7 +101,7 @@ def distribute_YQPoint(distributer):
     '''
     trans_time = distributer.start_time
 
-    # 没有问题，找到要发放元气值的人和组织
+    # 没有问题，找到要发放元气值的人和团体
     per_to_dis = NaturalPerson.objects.activated().filter(
         YQPoint__lte=distributer.per_max_dis_YQP)
     org_to_dis = Organization.objects.activated().filter(
@@ -115,7 +115,7 @@ def distribute_YQPoint(distributer):
                                 trans_time=trans_time)
     end_time = datetime.now()
 
-    debug_msg = f"已向{per_to_dis.count()}个自然人和{org_to_dis.count()}个组织转账，用时{(end_time - trans_time).seconds}s,{(end_time - trans_time).microseconds}microsecond\n"
+    debug_msg = f"已向{per_to_dis.count()}个自然人和{org_to_dis.count()}个团体转账，用时{(end_time - trans_time).seconds}s,{(end_time - trans_time).microseconds}microsecond\n"
     print(debug_msg)
 
 
@@ -396,7 +396,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
     try:
         activity = Activity.objects.get(id=aid)
         if msg_type == "newActivity":
-            msg = f"您关注的组织{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
+            msg = f"您关注的团体{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
             msg += f"开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}\n"
             msg += f"活动地点: {activity.location}\n"
             subscribers = NaturalPerson.objects.activated().exclude(
@@ -505,15 +505,18 @@ def get_weather():
     else:
         return weather_dict
 
-print("———————————————— Scheduler:   Debug ————————————————")
-print("before loading scheduler from app.scheduler in scheduler_func.py")
+def start_weather_routine():
+    print("———————————————— Scheduler:   Debug ————————————————")
+    print("before loading scheduler from app.scheduler in scheduler_func.py")
+
+    # register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
+    # 但好像非服务器版本有问题??
+    print("finish import scheduler from app.scheduler")
+    scheduler.add_job(get_weather, 'interval', id="get weather per 5 minute", minutes=5, replace_existing=True)
+
+    print("finishing loading get_weather function")
+    print("finish scheduler_func")
+    print("———————————————— End     :   Debug ————————————————")
+
+
 from app.scheduler import scheduler
-
-# register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
-# 但好像非服务器版本有问题??
-
-scheduler.add_job(get_weather, 'interval', id="get weather per hour", hours=1, replace_existing=True)
-
-print("finishing loading get_weather function")
-print("finish scheduler_func")
-print("———————————————— End     :   Debug ————————————————")

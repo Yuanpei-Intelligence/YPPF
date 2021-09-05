@@ -117,7 +117,7 @@ def get_user_left_navbar(person, is_myself, html_display):
     html_display["underground_url"] = local_dict["url"]["base_url"]
 
     my_org_id_list = Position.objects.activated().filter(person=person).filter(pos=0)
-    html_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的组织
+    html_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的团体
     html_display["my_org_len"] = len(html_display["my_org_list"])
     return html_display
 
@@ -136,7 +136,7 @@ def get_org_left_navbar(org, is_myself, html_display):
 
 
 # YWolfeee Aug 16
-# 修改left siderbar的逻辑，统一所有个人和所有组织的左边栏，不随界面而改变
+# 修改left siderbar的逻辑，统一所有个人和所有团体的左边栏，不随界面而改变
 # 这个函数负责统一get sidebar和navbar的内容，解决了信箱条数显示的问题
 # user对象是request.user对象直接转移
 # 内容存储在bar_display中
@@ -172,9 +172,9 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         # 个人需要地下室跳转
         bar_display["underground_url"] = local_dict["url"]["base_url"]
 
-        # 个人所管理的组织列表
+        # 个人所管理的团体列表
         my_org_id_list = Position.objects.activated().filter(person=me).filter(pos=0)
-        bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的组织
+        bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的团体
         bar_display["my_org_len"] = len(bar_display["my_org_list"])
         
 
@@ -319,10 +319,10 @@ def check_neworg_request(request, org=None):
             context["warn_message"] = "团体的头像应当为图片格式！"
             return context
 
-    context["oname"] = oname  # 组织名字
-    # 组织类型，必须有
+    context["oname"] = oname  # 团体名字
+    # 团体类型，必须有
     context["pos"] = request.user  # 负责人，必须有滴
-    context["introduction"] = str(request.POST.get("introduction", ""))  # 组织介绍，可能为空
+    context["introduction"] = str(request.POST.get("introduction", ""))  # 团体介绍，可能为空
 
     context["application"] = str(request.POST.get("application", ""))  # 申请理由
 
@@ -341,7 +341,7 @@ def check_newpos_request(request,prepos=None):
     else:
         oname = prepos.position.org.oname
     context['apply_pos'] = int(request.POST.get('apply_pos',10))
-    context['apply_type'] = str(request.POST.get('apply_type',"加入组织"))
+    context['apply_type'] = str(request.POST.get('apply_type',"加入团体"))
     if len(oname) >= 32:
         context['warn_code'] = 1
         context['warn_msg'] = "团体的名字不能超过32字节"
@@ -351,7 +351,7 @@ def check_newpos_request(request,prepos=None):
         context['warn_msg'] = "团体的名字不能为空"
         return context
     
-    context['oname'] = oname  # 组织名字
+    context['oname'] = oname  # 团体名字
 
     context["application"] = str(request.POST.get("application", ""))  # 申请理由
 
@@ -361,7 +361,7 @@ def check_newpos_request(request,prepos=None):
     return context
 
 
-# 查询组织代号的最大值+1 用于modifyOrganization()函数，新建组织
+# 查询团体代号的最大值+1 用于modifyOrganization()函数，新建团体
 def find_max_oname():
     organizations = Organization.objects.filter(
         organization_id__username__startswith="zz"
@@ -385,7 +385,7 @@ def if_image(image):
     return 1  # 不是图片
 
 
-# 用于新建组织时，生成6位随机密码
+# 用于新建团体时，生成6位随机密码
 def random_code_init(seed):
     b = string.digits + string.ascii_letters  # 构建密码池
     password = ""
@@ -398,7 +398,7 @@ def random_code_init(seed):
 def get_captcha(request, username, valid_seconds=None, more_info=False):
     '''
     noexcept
-    - username: 学号/组织号, 不一定对应request.user(此时应尚未登录)
+    - username: 学号/团体号, 不一定对应request.user(此时应尚未登录)
     - valid_seconds: float or None, None表示不设置有效期
     ->captcha: str | (captcha, expired, old) if more_info
     '''
@@ -535,7 +535,7 @@ def get_unreimb_activity(org):
     )
     activities = (
         Activity.objects.activated()  # 本学期的
-            .filter(organization_id=org)  # 本部门组织的
+            .filter(organization_id=org)  # 本部门团体的
             .filter(status=Activity.Status.END)  # 已结束的
             .exclude(id__in=reimbursed_act_ids))  # 还没有报销的
     activities.len=len(activities)
@@ -783,7 +783,7 @@ def export_activity(activity,inf_type):
         output.seek(0)
         response.write(output.getvalue())
     return response
-# 导出组织成员信息Excel文件
+# 导出团体成员信息Excel文件
 def export_orgpos_info(org):
     # 设置HTTPResponse的类型
     response = HttpResponse(content_type='application/vnd.ms-excel')
