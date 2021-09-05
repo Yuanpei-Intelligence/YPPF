@@ -135,7 +135,9 @@ class WechatDefault:
     '''定义微信发送的默认行为'''
     def get_level(typename, instance=None):
         if typename == 'notification':
-            if instance.typename == Notification.Type.NEEDDO:
+            if( instance is not None and
+                instance.typename == Notification.Type.NEEDDO):
+                # 处理类通知默认等级较高
                 return WechatMessageLevel.IMPORTANT
             return WechatMessageLevel.INFO
         else:
@@ -145,12 +147,12 @@ class WechatDefault:
         if typename == 'activity':
             return WechatApp._PROMOTE
         elif typename == 'notification':
+            if( instance is not None and
+                instance.title == Notification.Title.ACTIVITY_INFORM):
+                return WechatApp._PROMOTE
             return WechatApp._MESSAGE
         else:
             return WechatApp.NORMAL
-
-WechatMessageLevel.DEFAULT = WechatDefault
-WechatApp.DEFAULT = WechatDefault
 
 
 def app2absolute_url(app):
@@ -273,7 +275,7 @@ def send_wechat(
 
 
 def publish_notification(notification_or_id,
-                        app=WechatApp.DEFAULT, level=WechatMessageLevel.DEFAULT):
+                        app=None, level=None):
     """
     根据单个通知或id（实际是主键）向通知的receiver发送
     别创建了好多通知然后循环调用这个，批量发送用publish_notifications
@@ -288,7 +290,7 @@ def publish_notification(notification_or_id,
     except:
         print(f"未找到id为{notification_or_id}的通知")
         return False
-    if app == WechatApp.DEFAULT:
+    if app is None or app == WechatApp.DEFAULT:
         app = WechatDefault.get_app('notification', notification)
     check_block = app not in UNBLOCK_APPS
     sender = get_person_or_org(notification.sender)  # 也可能是组织
@@ -326,7 +328,8 @@ def publish_notification(notification_or_id,
         else:
             message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
     receiver = get_person_or_org(notification.receiver)
-    if check_block and level == WechatMessageLevel.DEFAULT: # 获得默认行为的消息等级
+    if check_block and (level is None or level == WechatMessageLevel.DEFAULT):
+        # 考虑屏蔽时，获得默认行为的消息等级
         level = WechatDefault.get_level('notification', notification)
     if isinstance(receiver, NaturalPerson):
         # 如果该应用检查是否拒收，小于接受者的最低接收等级时被拒收
@@ -352,7 +355,7 @@ def publish_notification(notification_or_id,
 
 def publish_notifications(
     notifications_or_ids=None, filter_kws=None, exclude_kws=None,
-    app=WechatApp.DEFAULT, level=WechatMessageLevel.DEFAULT,
+    app=None, level=None,
     *, check=True
 ):
     """
@@ -462,10 +465,10 @@ def publish_notifications(
             message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
 
     # 获得发送应用和消息发送等级
-    if app == WechatApp.DEFAULT:
+    if app is None or app == WechatApp.DEFAULT:
         app = WechatDefault.get_app('notification', latest_notification)
     check_block = app not in UNBLOCK_APPS
-    if check_block and level == WechatMessageLevel.DEFAULT: 
+    if check_block and (level is None or level == WechatMessageLevel.DEFAULT): 
         level = WechatDefault.get_level('notification', latest_notification)
 
     # 获取接收者列表，组织的接收者为其负责人，去重
@@ -492,7 +495,7 @@ def publish_notifications(
     if not wechat_receivers:    # 可能都不接收此等级的消息
         return True
 
-    send_wechat(wechat_receivers, message, **kws)
+    send_wechat(wechat_receivers, message, app, **kws)
     return True
 
 
