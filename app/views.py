@@ -3061,7 +3061,7 @@ def modifyPosition(request):
 
         except: #恶意跳转
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "您没有权限访问该网址！"
+            html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
