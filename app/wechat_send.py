@@ -57,8 +57,24 @@ THIS_URL = settings.LOGIN_URL  # 增加默认url前缀
 if THIS_URL[-1:] == "/" and THIS_URL[-2:] != "//":
     THIS_URL = THIS_URL[:-1]  # 去除尾部的/
 WECHAT_URL = local_dict["url"]["wechat_url"]
-INVITE_URL = WECHAT_URL + ('' if WECHAT_URL.endswith('/') else '/') + 'invite_user'
+if WECHAT_URL[-1:] == "/" and WECHAT_URL[-2:] != "//":
+    WECHAT_URL = WECHAT_URL[:-1]  # 去除尾部的/
+INVITE_URL = WECHAT_URL + '/invite_user'
 wechat_coder = MySHA256Hasher(local_dict["hash"]["wechat"])
+
+# 发送应用设置
+UNBLOCK_APPS = set()    # 不要求接收等级的应用
+try:
+    UNBLOCK_APPS = set(local_dict["config"]["wechat_send"]["unblock_apps"])
+except:
+    pass
+APP2URL = {}    # 应用名到域名的转换，可以是相对地址，也可以是绝对地址
+try:
+    APP2URL = dict(local_dict["config"]["wechat_send"]["app2url"])
+    APP2URL.setdefault('default', '')
+except:
+    APP2URL = {'default': ''}
+
 
 # 一批发送的最大数量
 SEND_LIMIT = 500  # 上限1000
@@ -85,9 +101,78 @@ try:
 except:
     pass
 
+class WechatMessageLevel:
+    '''
+    永远开放：DEFAULT INFO IMPORTANT
+    常规上限是1000
+    '''
+    DEFAULT = None
+    DEBUG = -1000
+    # ERROR = -100
+    INFO = 0
+    # NORMAL = 200
+    IMPORTANT = 500
+    # FATAL = 1000
+    # NOREJECT = 1001
 
-def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=True):
+class WechatApp:
+    '''
+    永远开放：DEFAULT NORMAL _*
+    注意DEFAULT是指本系统设定的默认窗口
+    NORMAL则是发送系统的默认窗口
+    '''
+    DEFAULT = None
+    NORMAL = 'default'
+    PROMOTION = 'promote'
+    SUBSCRIBER = 'promote'
+    PARTICIPANT = 'promote'
+    STATUS_CHANGE = 'message'
+    AUDIT = 'message'
+    _PROMOTE = 'promote'
+    _MESSAGE = 'message'
+
+class WechatDefault:
+    '''定义微信发送的默认行为'''
+    def get_level(typename, instance=None):
+        if typename == 'notification':
+            if( instance is not None and
+                instance.typename == Notification.Type.NEEDDO):
+                # 处理类通知默认等级较高
+                return WechatMessageLevel.IMPORTANT
+            return WechatMessageLevel.INFO
+        else:
+            return WechatMessageLevel.INFO
+
+    def get_app(typename, instance=None):
+        if typename == 'activity':
+            return WechatApp._PROMOTE
+        elif typename == 'notification':
+            if( instance is not None and
+                instance.title == Notification.Title.ACTIVITY_INFORM):
+                return WechatApp._PROMOTE
+            return WechatApp._MESSAGE
+        else:
+            return WechatApp.NORMAL
+
+
+def app2absolute_url(app):
+    '''default必须被定义 这里放宽了'''
+    url = APP2URL.get(app)
+    if url is None:
+        url = APP2URL.get('default', '')
+    if not url.startswith('http'):
+        if not url:
+            url = WECHAT_URL
+        else:
+            url = WECHAT_URL + '/' + url.lstrip('/')
+    return url
+
+
+def base_send_wechat(users, message, app='default',
+                     card=True, url=None, btntxt=None, default=True):
     """底层实现发送到微信，是为了方便设置定时任务"""
+    post_url = app2absolute_url(app)
+
     if RECEIVER_SET is not None:
         users = list((set(users) & RECEIVER_SET) - BLACKLIST_SET)
     else:
@@ -124,17 +209,17 @@ def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=T
     try:
         failed = users
         errmsg = "连接api失败"
-        response = requests.post(WECHAT_URL, post_data, timeout=TIMEOUT)
+        response = requests.post(post_url, post_data, timeout=TIMEOUT)
         response = response.json()
-        if response["status"] == 200:  # 全部发送成功
+        if response["status"] == 200:           # 全部发送成功
             return
-        elif response["data"].get("detail"):  # 部分发送失败
+        elif response["data"].get("detail"):    # 部分发送失败
             errinfos = response["data"]["detail"]
             failed = [x[0] for x in errinfos]
-            errmsg = errinfos[0][1]  # 失败原因基本相同，取一个即可
+            errmsg = errinfos[0][1]             # 失败原因基本相同，取一个即可
         elif response["data"].get("errMsg"):
-            errmsg = response["data"]["errMsg"]  # 参数等其他传入格式问题
-        # users = failed                                    # 如果允许重发，则向失败用户重发
+            errmsg = response["data"]["errMsg"] # 参数等其他传入格式问题
+        # users = failed                        # 如果允许重发，则向失败用户重发
         raise OSError("企业微信发送不完全成功")
     except:
         # print(f"第{i+1}次尝试")
@@ -144,6 +229,7 @@ def base_send_wechat(users, message, card=True, url=None, btntxt=None, default=T
 def send_wechat(
     users,
     message,
+    app='default',
     card=True,
     url=None,
     btntxt=None,
@@ -159,10 +245,12 @@ def send_wechat(
     --------
     - users: 随机访问容器，如果检查重复，则可以是任何可迭代对象
     - message: 一段文字，第一个\n被视为标题和内容的分隔符
+    - app: 标识应用名的字符串，可以直接使用WechatApp的宏
     - card: 发送文本卡片，建议message长度小于120时开启
     - url: 文本卡片的链接
     - btntxt: 文本卡片的提示短语，不超过4个字
     - default: 填充默认值
+    - 仅关键字参数
     - multithread: 不堵塞线程
     - check_duplicate: 检查重复值
     """
@@ -171,7 +259,7 @@ def send_wechat(
     total_ct = len(users)
     for i in range(0, total_ct, SEND_BATCH):
         userids = users[i : i + SEND_BATCH]  # 一次最多接受1000个
-        args = (userids, message)
+        args = (userids, message, app)
         kws = {"card": card, "url": url, "btntxt": btntxt, "default": default}
         if USE_MULTITHREAD and multithread:
             # 多线程
@@ -186,10 +274,13 @@ def send_wechat(
             base_send_wechat(*args, **kws)  # 不使用定时任务请改为这句
 
 
-def publish_notification(notification_or_id):
+def publish_notification(notification_or_id,
+                        app=None, level=None):
     """
     根据单个通知或id（实际是主键）向通知的receiver发送
     别创建了好多通知然后循环调用这个，批量发送用publish_notifications
+    - app: str | WechatApp宏, 确定发送的应用 请推广类消息务必注意
+    - level: int | WechatMessageLevel宏, 用于筛选用户 推广类消息可以不填
     """
     try:
         if isinstance(notification_or_id, Notification):
@@ -199,6 +290,9 @@ def publish_notification(notification_or_id):
     except:
         print(f"未找到id为{notification_or_id}的通知")
         return False
+    if app is None or app == WechatApp.DEFAULT:
+        app = WechatDefault.get_app('notification', notification)
+    check_block = app not in UNBLOCK_APPS
     sender = get_person_or_org(notification.sender)  # 也可能是组织
     url = notification.URL
     if url and url[0] == "/":  # 相对路径变为绝对路径
@@ -234,23 +328,35 @@ def publish_notification(notification_or_id):
         else:
             message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
     receiver = get_person_or_org(notification.receiver)
+    if check_block and (level is None or level == WechatMessageLevel.DEFAULT):
+        # 考虑屏蔽时，获得默认行为的消息等级
+        level = WechatDefault.get_level('notification', notification)
     if isinstance(receiver, NaturalPerson):
+        # 如果该应用检查是否拒收，小于接受者的最低接收等级时被拒收
+        if check_block and level < receiver.wechat_receive_level:
+            return True
         wechat_receivers = [notification.receiver.username]  # user.username是id
     else:  # 组织
         # 转发组织消息给其负责人
         message += f'\n消息来源：{str(receiver)}，请切换到该团队账号进行操作。'
-        wechat_receivers = list(
-            receiver.position_set.filter(pos=0).values_list(
-                "person__person_id__username", flat=True
-            )
-        )
+        wechat_receivers = receiver.position_set.filter(pos=0)
+        if check_block:
+            wechat_receivers = wechat_receivers.filter(
+                person__wechat_receive_level__lte=level)    # 不小于接收等级
+        if not wechat_receivers:    # 没有人接收
+            return True
+        wechat_receivers = list(wechat_receivers.values_list(
+            "person__person_id__username", flat=True
+            ))
 
-    send_wechat(wechat_receivers, message, **kws)
+    send_wechat(wechat_receivers, message, app, **kws)
     return True
 
 
 def publish_notifications(
-    notifications_or_ids=None, filter_kws=None, exclude_kws=None, *, check=True
+    notifications_or_ids=None, filter_kws=None, exclude_kws=None,
+    app=None, level=None,
+    *, check=True
 ):
     """
     批量发送通知，选取筛选后范围内所有与最新通知发送者等相同、且内容结尾一致的通知
@@ -263,6 +369,9 @@ def publish_notifications(
     - filter_kws: dict | None, 这些参数将被直接传递给filter函数
     - exclude_kws: dict | None, 这些参数将被直接传递给exclude函数
     - 以上参数不能都为空
+    
+    - app: str | WechatApp宏, 确定发送的应用 请推广类消息务必注意
+    - level: int | WechatMessageLevel宏, 用于筛选用户 推广类消息可以不填
 
     Keyword-Only
     ------------
@@ -355,30 +464,44 @@ def publish_notifications(
         else:
             message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
 
+    # 获得发送应用和消息发送等级
+    if app is None or app == WechatApp.DEFAULT:
+        app = WechatDefault.get_app('notification', latest_notification)
+    check_block = app not in UNBLOCK_APPS
+    if check_block and (level is None or level == WechatMessageLevel.DEFAULT): 
+        level = WechatDefault.get_level('notification', latest_notification)
 
     # 获取接收者列表，组织的接收者为其负责人，去重
     receiver_ids = notifications.values_list("receiver_id", flat=True)
     person_receivers = NaturalPerson.objects.filter(person_id__in=receiver_ids)
+    # 如果检查是否屏蔽，仅发送给最小接收等级不大于发送等级的人
+    if check_block:
+        person_receivers = person_receivers.filter(wechat_receive_level__lte=level)
     wechat_receivers = list(
         person_receivers.values_list("person_id__username", flat=True)
     )
     receiver_set = set(wechat_receivers)
-    #事实上该逻辑支持群发给多个组织的多个负责人
+
+    # 接下来是发送给组织的部分
     org_receivers = Organization.objects.filter(organization_id__in=receiver_ids)
     for org in org_receivers:
-        managers = org.position_set.filter(pos=0).values_list(
-            "person__person_id__username", flat=True
-        )
+        managers = org.position_set.filter(pos=0)
+        if check_block:    # 屏蔽时，不小于接收等级
+            managers = managers.filter(person__wechat_receive_level__lte=level)
+        managers = managers.values_list("person__person_id__username", flat=True)
         managers = [manager for manager in managers if not manager in receiver_set]
         wechat_receivers.extend(managers)
         receiver_set.update(managers)
+    if not wechat_receivers:    # 可能都不接收此等级的消息
+        return True
 
-    send_wechat(wechat_receivers, message, **kws)
+    send_wechat(wechat_receivers, message, app, **kws)
     return True
 
 
 def publish_activity(activity_or_id):
     """根据活动或id（实际是主键）向所有订阅该组织信息的在校学生发送"""
+    raise NotImplementedError('该函数已废弃')
     try:
         if isinstance(activity_or_id, Activity):
             activity = activity_or_id

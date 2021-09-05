@@ -176,6 +176,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         my_org_id_list = Position.objects.activated().filter(person=me).filter(pos=0)
         bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的组织
         bar_display["my_org_len"] = len(bar_display["my_org_list"])
+        
 
     else:
         bar_display["profile_name"] = "团队主页"
@@ -183,9 +184,18 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
 
     bar_display["navbar_name"] = navbar_name
     # title_name默认与navbar_name相同
-    bar_display["title_name"] = title_name if title_name else navbar_name
 
-    if navbar_name != "":
+    bar_display["title_name"] = title_name if title_name else navbar_name
+    
+    if navbar_name == "我的元气值":
+        bar_display["help_message"] = local_dict["help_message"].get(
+            (navbar_name + user_type.lower()),  ""
+        )
+        try:
+            bar_display["help_paragraphs"] = Help.objects.get(title=navbar_name).content
+        except:
+            bar_display["help_paragraphs"] = ""
+    elif navbar_name != "":
         try:
             bar_display["help_message"] = local_dict["help_message"].get(
                 navbar_name, ""
@@ -729,6 +739,8 @@ def export_activity_signin(activity):
 
   # 设置HTTPResponse的类型
   response = HttpResponse(content_type='application/vnd.ms-excel')
+  if activity is None:
+      return response
   response['Content-Disposition'] = f'attachment;filename={activity.title}({activity.start.month}月{activity.start.day}日).xls'
   participants=Participant.objects.filter(activity_id=activity.id ).filter(status=Participant.AttendStatus.ATTENDED)
   """导出excel表"""
@@ -763,6 +775,8 @@ def export_activity_signin(activity):
 def export_orgpos_info(org):
     # 设置HTTPResponse的类型
     response = HttpResponse(content_type='application/vnd.ms-excel')
+    if org is None:
+        return response
     response['Content-Disposition'] = f'attachment;filename=团队{org.oname}成员信息.xls'
     participants = Position.objects.filter(org=org).filter(status=Position.Status.INSERVICE)
     """导出excel表"""
