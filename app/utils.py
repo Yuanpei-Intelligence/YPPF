@@ -133,11 +133,13 @@ def get_org_left_navbar(org, is_myself, html_display):
 
 # 检验是否要展示如何分享信息的帮助，预期只在stuinfo, orginfo, viewActivity使用
 def get_inform_share(me, is_myself=True):
+    alert_message = ""
     if is_myself and me.inform_share:
-        me.inform_share = False
-        me.save()
-        return True
-    return False
+        alert_message = "【关于分享】:如果你在使用手机浏览器，选择将其在微信/朋友圈中打开即可将本页分享给微信好友们"
+        # me.inform_share = False
+        # me.save()
+        return True, alert_message
+    return False, alert_message
 
 
 # YWolfeee Aug 16

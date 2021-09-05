@@ -299,7 +299,7 @@ def stuinfo(request, name=None):
 
         is_myself = user_type == "Person" and person.person_id == user  # 用一个字段储存是否是自己
         html_display["is_myself"] = is_myself  # 存入显示
-        inform_share = utils.get_inform_share(me=person, is_myself=is_myself)
+        inform_share, alert_message = utils.get_inform_share(me=person, is_myself=is_myself)
 
         # ----------------------------------- 组织卡片 ----------------------------------- #
 
@@ -595,7 +595,7 @@ def orginfo(request, name=None):
 
     # 判断是否为组织账户本身在登录
     html_display["is_myself"] = me == org
-    inform_share = utils.get_inform_share(me=me, is_myself=html_display["is_myself"])
+    inform_share, alert_message = utils.get_inform_share(me=me, is_myself=html_display["is_myself"])
 
     organization_name = name
     organization_type_name = org.otype.otype_name
@@ -1891,7 +1891,7 @@ def viewActivity(request, aid=None):
         return redirect("/welcome/")
 
     html_display = dict()
-    inform_share = utils.get_inform_share(me)
+    inform_share, alert_message = utils.get_inform_share(me)
 
     if request.method == "POST" and request.POST:
         option = request.POST.get("option")
