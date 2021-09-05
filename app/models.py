@@ -83,7 +83,7 @@ class NaturalPerson(models.Model):
 
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
-    # show_nickname = models.BooleanField(default=False)
+    show_nickname = models.BooleanField(default=False)
     show_birthday = models.BooleanField(default=False)
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
@@ -130,7 +130,10 @@ class NaturalPerson(models.Model):
             班级和年级现在好像也可以为None
         """
         gender = ["男", "女"]
-        info = [self.name, self.stu_grade, self.stu_class]
+        info = [self.name]
+        info.append(self.nickname if (self.show_nickname) else "未公开")
+        
+        info += [self.stu_grade, self.stu_class]
         # info.append(self.nickname if (self.show_nickname) else unpublished)
         # info.append(
         #    unpublished if ((not self.show_gender) or (self.gender == None)) else gender[self.gender])
@@ -442,7 +445,8 @@ class ActivityManager(models.Manager):
         return self.exclude(status__in=[
             Activity.Status.REVIEWING,
             # Activity.Status.CANCELED,
-            Activity.Status.ABORT
+            Activity.Status.ABORT,
+            Activity.Status.REJECT
         ])
     
     def all_activated(self):
