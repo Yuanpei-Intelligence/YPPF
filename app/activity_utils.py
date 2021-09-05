@@ -14,6 +14,7 @@ from app.notification_utils import(
     bulk_notification_create,
     notification_status_change,
 )
+from app.wechat_send import WechatApp
 from app.models import (
     NaturalPerson,
     Position,
@@ -272,6 +273,8 @@ def create_activity(request):
         content="您有一个活动待审批",
         URL=f"/examineActivity/{activity.id}",
         relate_instance=activity,
+        publish_to_wechat=True,
+        publish_kws={"app":WechatApp.AUDIT},
     )
 
     return activity.id
@@ -478,6 +481,8 @@ def accept_activity(request, activity):
         content=f"您的活动{activity.title}已通过审批。",
         URL=f"/viewActivity/{activity.id}",
         relate_instance=activity,
+        publish_to_wechat=True,
+        publish_kws={"app":WechatApp.AUDIT},
     )
 
     if activity.status == Activity.Status.REVIEWING:
@@ -565,6 +570,8 @@ def reject_activity(request, activity):
         content=f"您的活动{activity.title}被拒绝。",
         URL=f"/viewActivity/{activity.id}",
         relate_instance=activity,
+        publish_to_wechat=True,
+        publish_kws={"app":WechatApp.AUDIT},
     )
 
     if activity.status == Activity.Status.REVIEWING:
