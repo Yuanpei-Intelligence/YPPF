@@ -569,7 +569,7 @@ def succeed(message="检测到恶意的申请操作. 如有疑惑，请联系管
     return context
 
 
-# 修改人事申请状态的操作函数, application为修改的对象，可以为None
+# 修改成员申请状态的操作函数, application为修改的对象，可以为None
 # me为操作者
 # info为前端POST字典
 # 返回值为context, warn_code = 1表示失败, 2表示成功; 错误信息在context["warn_message"]

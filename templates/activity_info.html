@@ -5,47 +5,186 @@
 {% block mainpage %}
 
 <!--  BEGIN CONTENT AREA  -->
-<div id="content" class="main-content">
+<div id="content" class="main-content pb-3" style="overflow: hidden;">
 
     {% if html_display.warn_code == 1 %}
-    <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+    <div class="alert alert-warning text-center" style="position: absolute; width: 100%; z-index: 100;">{{ html_display.warn_message }}</div>
     {% elif html_display.warn_code == 2 %}
-    <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
+    <div class="alert alert-success text-center" style="position: absolute; width: 100%; z-index: 100;">{{ html_display.warn_message }}</div>
     {% endif %}
 
-    <!--  BEGIN PHOTO SECTION  -->
-    <div class="d-flex m-0 p-0 overflow-hidden" style="height: 35vh">
-        <div class="d-flex w-100 align-self-center">
-            {% if summary_photo_exists %}
-            <img class="w-100" src={{ summary_photo }} alt="summary photo">
-            {% else %}
-            <img class="w-100" src={{ firstpic }} alt="first photo">
-            {% endif %}
+    <!--  BEGIN UPPER SECTION  -->
+    <div class="d-flex m-0 p-0 overflow-hidden">
+
+        <!--  BEGIN BLURRED BG  -->
+        {% if summary_photo_exists %}
+        <div class="w-100" id="bg" style="background-image: url({{ summary_photo }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
+        {% else %}
+        <div class="w-100" id="bg" style="background-image: url({{ firstpic }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
+        {% endif %}
+            <div class="w-100 h-100 m-0 p-0">
+                <div class="row w-100 m-0" style="height: 20%;"></div>
+                <div class="row w-100 m-0" style="height: 30%; background: -webkit-linear-gradient(top, #ffffff00 0%, #ffffffaa 100%);"></div>
+                <div class="row w-100 m-0" style="height: 50%; background-color: #ffffff;"></div>
+            </div>
         </div>
-        <div class="row m-0 w-100 position-absolute" style="height: 35vh;">
-            <div class="w-100 h-100 m-0 p-0 position-absolute">
-                <div class="row w-100 m-0" style="height: 60%"></div>
-                <div class="row w-100 m-0"
-                    style="height: 40%; background: -webkit-linear-gradient(top, #00000000 0%, #000000dd 100%);">
+        <!--  END BLURRED BG  -->
+
+        <!--  BEGIN FRONT SCENE  -->
+        <div style="position: absolute; width: 100%; top: -8px;">  <!--  hide the top corner  -->
+
+            <!--  BEGIN PHOTO  -->
+            <div id="front-photo" style="position: absolute; width: 66%; height: 30vh; margin-left: 17%; margin-right: 17%; padding-left: 80px; padding-right: 80px;">
+                {% if summary_photo_exists %}
+                <img style="width: 100%; height: 100%; object-fit: cover;" src={{ summary_photo }}></img>
+                {% else %}
+                <img style="width: 100%; height: 100%; object-fit: cover;" src={{ firstpic }}></img>
+                {% endif %}
+            </div>
+            <!--  END PHOTO  -->
+            
+            <div id="front-scene" style="width: 66%; height: 80%; margin: auto;">
+                <div id="front-photo-place-holder" style="height: 30vh;"></div>
+
+                <!--  BEGIN CALENDAR  -->
+                <div id="calendar" style="position: absolute; left: 17%; top: 30vh;">
+                    <div style="position: absolute; left: 0px; top: -70px; width: 70px; height: 70px; border-radius: 8px; overflow: hidden; box-shadow: 1px 1px 16px 2px rgba(0, 0, 0, 0.12);">
+                        <!-- -------------------------------- MONTH -------------------------------- -->
+                        <div class="d-flex" style="position: absolute; left: 0%; top: 0%; width: 100%; height: 30%; background-color: var(--danger)">
+                            <div class="flex" style="width: 100%; margin: auto; text-align: center;">
+                                <b class="text-light" style="font-size: 15px;">{{ start_month }}月</b>
+                            </div>
+                        </div>
+                        <!-- --------------------------------- DAY --------------------------------- -->
+                        <div class="d-flex" style="position: absolute; left: 0%; top: 30%; width: 100%; height: 70%; background-color: var(--white)">
+                            <div class="flex" style="width: 100%; margin: auto; text-align: center;">
+                                {% if start_date < 10 %}
+                                <b class="text-dark" style="font-size: 30px;">{{ start_date }}日</b>
+                                {% else %}
+                                <b class="text-dark" style="font-size: 25px;">{{ start_date }}日</b>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
                 </div>
+                <!--  END CALENDAR  -->
+
+                <!--  BEGIN HEADING  -->
+                <div style="width: 100%; height: max-content; margin-top: 10px;">
+                    <!-- -------------------------------- time --------------------------------- -->
+                    <b class="text-danger">{{ activity.start }} - {{ activity.end }}</b>
+
+                    <!-- -------------------------------- title -------------------------------- -->
+                    <div class="flex d-flex justify-content-start">
+                        <h2 class="flex text-dark" style="font-weight: bolder;">{{ title }}</h2>
+                        <div class="flex my-auto ml-1">
+                            {% if status == "审核中" %}
+                            <span class="badge badge-pill badge-warning">审核中</span>
+                            {% elif status == "等待中" %}
+                            <span class="badge badge-pill badge-info">等待中</span>
+                            {% elif status == "已取消" or status == "已结束" %}
+                            <span class="badge badge-pill badge-danger">{{ status }}</span>
+                            {% else %}
+                            <span class="badge badge-pill badge-success">{{ status }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <!-- --------------------------- org and status ---------------------------- -->
+                    <div class="d-flex justify-content-between" style="margin-top: -8px; font-size: small; color:gray;">
+                        <div class="flex">
+                            <b>{{ org_name }}</b>
+                            发布于
+                            <span>{{ activity.publish_time }}</span>
+                        </div>
+                        <div class="flex">
+                        {% if person %}
+                        {{ pStatus }}
+                        {% endif %}
+                        </div>
+                    </div>
+                </div>
+                <!--  END HEADING  -->
+
+                <!-- ------------------------------ div line ------------------------------- -->
+                <div id="div-line" style="width: 100%; height: 1px; margin: auto; margin-top: 5px; background-color:rgba(0, 0, 0, 0.2)"></div>
+
             </div>
 
+            <!-- ----------------------------- adapt width ----------------------------- -->
+            <script type="text/javascript">
+                window.addEventListener(`load`, resizeWidth);
+                window.addEventListener(`resize`, resizeWidth);
+
+                const front_scene = document.querySelector(`#front-scene`);
+                const fron_photo = document.querySelector(`#front-photo`);
+                const fron_photo_ph = document.querySelector(`#front-photo-place-holder`);
+                const fron_img = fron_photo.querySelector(`img`);
+                const calendar = document.querySelector(`#calendar`);
+                const cal_inn = calendar.querySelector(`div`);
+                function resizeWidth(event) {
+                    const lower = document.querySelector(`#lower`);
+                    if (this.innerWidth <= 767) {
+                        lower.style.width = `95%`;
+                        front_scene.style.width = `83%`;
+                        fron_photo.style.marginLeft = `0%`;
+                        fron_photo.style.marginRight = `0%`;
+                        fron_photo.style.paddingLeft = `0px`;
+                        fron_photo.style.paddingRight = `0px`;
+                        fron_photo.style.width = `100%`;
+                        fron_photo_ph.style.marginBottom = `30px`;
+                        fron_img.style.borderRadius = `0px`;
+                        fron_img.style.boxShadow = `none`;
+                        calendar.style.left = `8%`;
+                        cal_inn.style.top = `-50px`;
+                    } else {
+                        lower.style.width = `70%`;
+                        front_scene.style.width = `66%`;
+                        fron_photo.style.marginLeft = `17%`;
+                        fron_photo.style.marginRight = `17%`;
+                        fron_photo.style.paddingLeft = `80px`;
+                        fron_photo.style.paddingRight = `80px`;
+                        fron_photo.style.width = `66%`;
+                        fron_photo_ph.style.marginBottom = `0px`;
+                        fron_img.style.borderRadius = `8px`;
+                        fron_img.style.boxShadow = `1px 1px 16px 2px rgba(0, 0, 0, 0.12)`;
+                        calendar.style.left = `17%`;
+                        cal_inn.style.top = `-70px`;
+                    }
+                }
+            </script>
+
+            <!-- -------------------------- constrain height --------------------------- -->
+            <script type="text/javascript">
+                window.addEventListener(`load`, resizeHeight);
+                window.addEventListener(`resize`, resizeHeight);
+
+                const bg = document.querySelector(`#bg`);
+                const div_line = document.querySelector(`#div-line`);
+                function resizeHeight(event){
+                    bg.style.height = `${div_line.offsetTop - 8}px`
+                };
+            </script>
+
         </div>
+        <!--  END FRONT SCENE  -->
+
     </div>
-    <!--  END PHOTO SECTION  -->
-    <div class="container">
-    <div class="row w-100 m-0">
+    <!--  END UPPER SECTION  -->
 
-        <div class="col-md-9 col-sm-12 px-1 layout-top-spacing">
+    <div class="row m-0 mx-auto" id="lower" style="width: 70%;">
 
-            <!--  BEGIN ACTIVITY INFORMATION  -->
+        <div class="col-md-9 col-sm-12 px-1">
+
             <div class="container w-100 px-0">
-                <div class="statbox widget box box-shadow">
+
+                <!--  BEGIN ACTIVITY INFORMATION  -->
+                <div class="statbox widget box box-shadow layout-top-spacing">
 
                     <div class="widget-header">
                         <div class="row">
                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                <h4>活动信息</h4>
+                                <h4 style="padding-left: 12px;">活动信息</h4>
                             </div>
                         </div>
                     </div>
@@ -53,41 +192,18 @@
                     <div class="widget-content widget-content-area">
 
                         <!--  活动信息  -->
-                        <div class="code-section-container show-code mt-0">
-
-                            <h1>
-                                {{ title }}
-                                {% if status == "审核中" %}
-                                <span class="badge badge-pill badge-warning">审核中</span>
-                                {% elif status == "等待中" %}
-                                <span class="badge badge-pill badge-info">等待中</span>
-                                {% elif status == "已取消" or status == "已结束" %}
-                                <span class="badge badge-pill badge-danger">{{ status }}</span>
-                                {% else %}
-                                <span class="badge badge-pill badge-success">{{ status }}</span>
-                                {% endif %}
-                            </h1>
-
-                            <h5 class="mb-5">
-                                <u>
-                                    <a href="/orginfo/{{ org_name }}">
-                                        {{ org_name }} - {{ org_type }}
-                                    </a>
-                                </u>
-                            </h5>
+                        <div class="code-section-container show-code my-0">
 
                             <div class="media-body">
                                 <p class="meta-time">
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round" class="feather feather-calendar">
-                                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor"
+                                        stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+                                        class="css-i6dzq1">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
                                     </svg>
                                     <span class="ml-3">
-                                        {{ start_time }} - {{ end_time }}
+                                        持续&nbsp;{{ duration }}
                                     </span>
                                 </p>
 
@@ -125,16 +241,17 @@
                                     </svg>
                                     <span class="ml-3">
                                         {{ apply_manner }}
+                                        ·
+                                        {% if activity.need_checkin %}
+                                        需要签到
+                                        {% else %}
+                                        无需签到
+                                        {% endif %}
                                     </span>
                                 </p>
 
                                 <p>
-                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
-                                        fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
-                                        stroke-linejoin="round">
-                                        <line x1="12" y1="1" x2="12" y2="23" />
-                                        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-                                    </svg>
+                                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><circle cx="12" cy="12" r="10"></circle><rect x="9" y="9" width="6" height="6"></rect></svg>
                                     <span class="ml-3">
                                         {{ price }}&nbsp;元气值
                                     </span>
@@ -150,7 +267,7 @@
                                         <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                                     </svg>
                                     <span class="ml-3">
-                                        {{ current_participants }} / {{ capacity }}&nbsp;报名
+                                        {{ current_participants }} / {{ capacity }}&nbsp;已报名
                                     </span>
                                 </p>
 
@@ -173,16 +290,16 @@
                             </div>
 
                             <!--  按钮部分  -->
-                            <div>
+                            <div class="mt-4">
 
                                 {% if examine %}
-                                    {%if status == "审核中" or not activity.valid %}
-                                    <button class="btn btn-primary btn-block mb-4 mr-2" data-toggle="collapse"
+                                    {% if status == "审核中" or not activity.valid %}
+                                    <button class="btn btn-primary btn-block mb-2" data-toggle="collapse"
                                         data-target="#extend-area" onclick="location='/examineActivity/{{aid}}'">
                                         审批活动
                                     </button>
-                                    {%elif activity.valid%}
-                                    <button class="btn btn-primary btn-block mb-4 mr-2" data-toggle="collapse"
+                                    {% elif activity.valid %}
+                                    <button class="btn btn-primary btn-block mb-2" data-toggle="collapse"
                                         data-target="#extend-area" onclick="location='/examineActivity/{{aid}}'">
                                         审核记录
                                     </button>
@@ -191,110 +308,126 @@
                                 {% endif %}
 
                                 {% if person %}
-                                <!-- ----------------------------------------------------------------------- -->
-                                <!--                            begin person view                            -->
-                                <!-- ----------------------------------------------------------------------- -->
 
-                                {% if pStatus == "无记录" and status == "报名中" %}
-                                <form method="POST">
-                                    <input type="hidden" name="option" value="apply">
-                                    <button class="btn btn-primary btn-block mb-4 mr-2">立即报名</button>
-                                </form>
+                                    {% if pStatus == "无记录" and status == "报名中" %}
+                                    <form method="POST">
+                                        <input type="hidden" name="option" value="apply">
+                                        <button class="btn btn-primary btn-block mb-2">立即报名</button>
+                                    </form>
 
-                                {% elif pStatus == "无记录" and status != "审核中" %}
+                                    {% elif pStatus == "申请中" or pStatus == "已报名" %}
+                                    <form method="POST">
+                                        <input type="hidden" name="option" value="quit">
+                                        <button class="btn btn-danger btn-block mb-2">退出活动</button>
+                                    </form>
 
-                                <!-- ------------------------- begin check status -------------------------- -->
-                                {% if status == "等待中" %}
-                                <a href="javascript:void(0);" class="btn btn-danger btn-block mb-4 mr-2">报名截止</a>
-                                {% endif %}
-
-                                {% elif pStatus == "申请中" %}
-                                <a href="javascript:void(0);" class="btn btn-secondary btn-block mb-4 mr-2">申请中</a>
-                                <form method="POST">
-                                    <input type="hidden" name="option" value="quit">
-                                    <button class="btn btn-danger btn-block mb-4 mr-2">退出活动</button>
-                                </form>
-
-                                {% elif pStatus == "申请失败" %}
-                                <a href="javascript:void(0);" class="btn btn-danger btn-block mb-4 mr-2">申请失败</a>
-
-                                {% elif pStatus == "已报名" %}
-                                <a href="javascript:void(0);" class="btn btn-primary btn-block mb-4 mr-2">已报名</a>
-                                <form method="POST">
-                                    <input type="hidden" name="option" value="quit">
-                                    <button class="btn btn-danger btn-block mb-4 mr-2">退出活动</button>
-                                </form>
-
-                                {% elif pStatus == "已参与" %}
-                                <a href="javascript:void(0);" class="btn btn-primary btn-block mb-4 mr-2">已参与</a>
-
-                                {% elif pStatus == "未参与" %}
-                                <a href="javascript:void(0);" class="btn btn-warning btn-block mb-4 mr-2">未参与</a>
-
-                                {% elif pStatus == "放弃" %}
-                                <a href="javascript:void(0);" class="btn btn-danger btn-block mb-4 mr-2">已退出</a>
+                                    {% endif %}
 
                                 {% endif %}
-                                <!-- -------------------------- end check status --------------------------- -->
 
-                                {% elif ownership %}
+                                {% if ownership %}
 
-                                <!-- ------------------------- begin summary photo ------------------------- -->
-                                {% if status == "已结束" %}
-                                <form method="POST">
-                                    <input type="hidden" name="option" value="payment">
-                                    <button class="btn btn-primary btn-block mb-4 mr-2">申请活动结项</button>
-                                </form>
-                                <button class="btn btn-success btn-block mb-4 mr-2" data-toggle="collapse"
-                                    data-target="#summaryphoto">
-                                    上传/更新总结照片
-                                </button>
-                                <!--  如果要上传照片，则展示下面的部分  -->
-                                <form method="POST" enctype="multipart/form-data">
-                                    <div id="summaryphoto" class="collapse">
-                                        <div class="form-group">
-                                            <div class="col">
-                                                <input onchange="showFilenameLocal(this.files)" type="file"
-                                                    class="custom-file-input" id="images" name="images"
-                                                    accept="image/*">
-                                                <label id="upload_annouce_photo" name="upload_annouce_photo"
-                                                    class="custom-file-label" for="customFile"> 请上传一张图片 </label>
+                                    <!-- ---------------------------- begin summary ---------------------------- -->
+                                    {% if status == "已结束" %}
+                                    <button class="btn btn-success btn-block mb-2" data-toggle="collapse"
+                                        data-target="#summaryphoto">
+                                        上传/更新总结照片
+                                    </button>
+                                    <!--  如果要上传照片，则展示下面的部分  -->
+                                    <form method="POST" enctype="multipart/form-data">
+                                        <div id="summaryphoto" class="collapse">
+                                            <div class="form-group">
+                                                <div class="col">
+                                                    <input onchange="showFilenameLocal(this.files)" type="file"
+                                                        class="custom-file-input" id="images" name="images"
+                                                        accept="image/*">
+                                                    <label id="upload_annouce_photo" name="upload_annouce_photo"
+                                                        class="custom-file-label" for="customFile"> 请上传一张图片 </label>
+                                                </div>
                                             </div>
+                                            <input type="hidden" name="option" value="submitphoto">
+                                            <button type="submit" class="btn btn-primary btn-block mb-2">确认上传</button>
                                         </div>
-                                        <input type="hidden" name="option" value="submitphoto">
-                                        <button type="submit" class="btn btn-primary btn-block mb-4 mr-2">确认上传</button>
-                                    </div>
-                                </form>
-                                <button class="btn btn-success btn-block mb-4 mr-2" id="export_excel" type="button">
-                                    下载签到信息
-                                </button>
-                                {% endif %}
-                                <!-- -------------------------- end summary photo -------------------------- -->
+                                    </form>
+                                    <button class="btn btn-success btn-block mb-2" id="export_excel" type="button">
+                                        下载签到信息
+                                    </button>
+                                    <form method="POST">
+                                        <input type="hidden" name="option" value="payment">
+                                        <button class="btn btn-primary btn-block mb-2">申请活动结项</button>
+                                    </form>
+                                    {% endif %}
+                                    <!-- ----------------------------- end summary ----------------------------- -->
 
-                                <!-- --------------------------- begin settings ---------------------------- -->
-                                {% if status == "审核中" or status == "报名中" or status == "等待中" %}
-                                <form method="POST">
-                                    <input type="hidden" name="option" value="edit">
-                                    <button class="btn btn-primary btn-block mb-4 mr-2">修改信息</button>
-                                </form>
-                                <form method="POST">
-                                    <input type="hidden" name="option" value="cancel">
-                                    <button class="btn btn-danger btn-block mb-4 mr-2">取消活动</button>
-                                </form>
-                                {% endif %}
-                                <!-- ---------------------------- end settings ----------------------------- -->
+                                    <!-- --------------------------- begin settings ---------------------------- -->
+                                    {% if status == "审核中" or status == "报名中" or status == "等待中" %}
+                                    <form method="POST">
+                                        <input type="hidden" name="option" value="edit">
+                                        <button class="btn btn-primary btn-block mb-2">修改信息</button>
+                                    </form>
+                                    <form method="POST">
+                                        <input type="hidden" name="option" value="cancel">
+                                        <button class="btn btn-danger btn-block mb-2">取消活动</button>
+                                    </form>
+                                    {% endif %}
+                                    <!-- ---------------------------- end settings ----------------------------- -->
 
-                                <!-- ----------------------------------------------------------------------- -->
-                                <!--                             end person view                             -->
-                                <!-- ----------------------------------------------------------------------- -->
                                 {% endif %}
                             </div>
                         </div>
 
                     </div>
                 </div>
+                <!--  END ACTIVITY INFORMATION  -->
+
+                <!--  BEGIN ORGANIZAOR & PARTICIPANTS  -->
+                <div class="statbox widget box box-shadow layout-top-spacing">
+
+                    <div class="widget-header">
+                        <div class="row">
+                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                <h4 style="padding-left: 12px;">人员信息</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="widget-content widget-content-area">
+
+                        <h5>组织者</h5>
+                        <div class="d-flex justify-content-start">
+                            <div style="width: max-content; border-radius: 25px; overflow: hidden;">
+                                <img src="{{ org_avatar_path }}" class="flex" alt="organization avatar" height="50px" width="50px">
+                            </div>
+                            <span class="flex flex-grow-1 mx-3">
+                                <div class="d-flex justify-content-between">
+                                    <h5 class="flex" style="height: 21px;">{{ org_name }}</h5>
+                                    <p class="mb-0" style="color: gray;">{{ org_type }}</p>
+                                </div>
+                                <p class="mb-0" style="color: gray;">{{ org.introduction }}</p>
+                            </span>
+                        </div>
+
+                        <div class="mb-4"></div>
+
+                        <h5>参与者</h5>
+                        {% if participants_ava is None %}
+                        <div style="text-align: center;">还没有参与者哦～</div>
+                        {% else %}
+                        <div class="row" style="margin-left: -4px;">
+                            {% for ava in participants_ava %}
+                            <span class="col-0 m-1" style="border-radius: 8px; overflow: hidden;">
+                                <img src="{{ ava }}" class="flex" alt="participant's avatar" height="50px" width="50px">
+                            </span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+    
+                    </div>
+
+                </div>
+                <!--  END ORGANIZAOR & PARTICIPANTS  -->
+
             </div>
-            <!--  END ACTIVITY INFORMATION  -->
 
         </div>
 
@@ -308,13 +441,13 @@
                     <div class="widget-header">
                         <div class="row">
                             <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                <h4>详细介绍</h4>
+                                <h4 style="padding-left: 10px;">详细介绍</h4>
                             </div>
                         </div>
                     </div>
 
                     <div class="widget-content widget-content-area">
-                        <p class="ml-1">
+                        <p style="word-break: break-all;">
                             {{ introduction }}
                         </p>
                     </div>
@@ -349,7 +482,6 @@
         <!--  END RELAVENT INFORMATION  -->
 
     </div>
-</div>
 </div>
 
 <script type="text/javascript">

@@ -2021,9 +2021,9 @@ def viewActivity(request, aid=None):
     org_name = org.oname
     org_avatar_path = org.get_user_ava()
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
-    start_time = activity.start.strftime("%Y-%m-%d %H:%M")
-    end_time = activity.end.strftime("%Y-%m-%d %H:%M")
-    start_THEDAY = activity.start.day # 前端使用量
+    start_month = activity.start.month
+    start_date = activity.start.day
+    duration = activity.end - activity.start
     prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     introduction = activity.introduction
@@ -2090,6 +2090,11 @@ def viewActivity(request, aid=None):
         except Exception as e:
             # print(e)
             pass
+    
+    # 参与者
+    participants = Participant.objects.filter(Q(activity_id=activity),
+        Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APLLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED))
+    participants_ava = [utils.get_user_ava(participant, "Person") for participant in participants.values("person_id")] or None
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
@@ -2900,7 +2905,7 @@ def addComment(request, comment_base, receiver=None):
     context = dict()
     typename = comment_base.typename
     content = {
-        'modifyposition': f'{sender_name}在人事变动申请留有新的评论',
+        'modifyposition': f'{sender_name}在成员变动申请留有新的评论',
         'neworganization': f'{sender_name}在新建组织中留有新的评论',
         'reimbursement': f'{sender_name}在经费申请中留有新的评论',
         'activity': f"{sender_name}在活动申请中留有新的评论"
@@ -3027,7 +3032,7 @@ def showNewOrganization(request):
     return render(request, "neworganization_show.html", locals())
 
 
-# YWolfeee: 重构人事申请页面 Aug 24 12:30 UTC-8
+# YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 def modifyPosition(request):
@@ -3085,7 +3090,7 @@ def modifyPosition(request):
         except:
             # 非法的名字, 出现恶意修改参数的情况
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入人事申请页面"
+            html_display["warn_code"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入成员申请页面"
             return redirect(
                 "/welcome/"
                 + "?warn_code={}&warn_message={}".format(
@@ -3128,7 +3133,7 @@ def modifyPosition(request):
                 make_relevant_notification(application, request.POST)    
 
             elif context["warn_code"] != 1: # 没有返回操作提示
-                raise NotImplementedError("处理人事申请中出现未预见状态，请联系管理员处理！")   
+                raise NotImplementedError("处理成员申请中出现未预见状态，请联系管理员处理！")   
             
 
         else:   # 如果是新增评论
@@ -3227,7 +3232,7 @@ def modifyPosition(request):
 
     
 
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="人事申请详情")
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="成员申请详情")
     return render(request, "modify_position.html", locals())
 
 
@@ -3235,19 +3240,19 @@ def modifyPosition(request):
 @utils.check_user_access(redirect_url="/logout/")
 def showPosition(request):
     '''
-    人事的聚合界面
+    成员的聚合界面
     '''
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)
 
-    # 查看人事聚合页面：拉取个人或组织相关的申请
+    # 查看成员聚合页面：拉取个人或组织相关的申请
     if user_type == "Person":
         shown_instances = ModifyPosition.objects.filter(person=me)
     else:
         shown_instances = ModifyPosition.objects.filter(org=me)
 
     shown_instances = shown_instances.order_by('-modify_time', '-time')
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="人事申请")
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="成员申请")
     return render(request, 'showPosition.html', locals())
 
 @login_required(redirect_field_name="origin")
@@ -3350,15 +3355,15 @@ def make_relevant_notification(application, info):
     # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
     if application_type == ModifyPosition:
         if post_type == 'new_submit':
-            content = f'{application.person.name}发起组织人事变动申请，职位申请：{position_name}，请审核~'
+            content = f'{application.person.name}发起组织成员变动申请，职位申请：{position_name}，请审核~'
         elif post_type == 'modify_submit':
-            content = f'{application.person.name}修改了人事申请信息，请审核~'
+            content = f'{application.person.name}修改了成员申请信息，请审核~'
         elif post_type == 'cancel_submit':
-            content = f'{application.person.name}取消了人事申请信息。'
+            content = f'{application.person.name}取消了成员申请信息。'
         elif post_type == 'accept_submit':
-            content = f'恭喜，您申请的人事变动：{application.org.oname}，审核已通过！申请职位：{position_name}。'
+            content = f'恭喜，您申请的成员变动：{application.org.oname}，审核已通过！申请职位：{position_name}。'
         elif post_type == 'refuse_submit':
-            content = f'抱歉，您申请的人事变动：{application.org.oname}，审核未通过！申请职位：{position_name}。'
+            content = f'抱歉，您申请的成员变动：{application.org.oname}，审核未通过！申请职位：{position_name}。'
         else:
             raise NotImplementedError
         applyer_id = application.person.person_id
@@ -3405,7 +3410,7 @@ def make_relevant_notification(application, info):
     )
 
     # 对于处理类通知的完成(done)，修改状态
-    # 这里的逻辑保证：所有的处理类通知的生命周期必须从“人事发起”开始，从“取消”“通过”“拒绝”结束。
+    # 这里的逻辑保证：所有的处理类通知的生命周期必须从“成员发起”开始，从“取消”“通过”“拒绝”结束。
     if feasible_post.index(post_type) >= 2:
         notification_status_change(
             application.relate_notifications.get(status=Notification.Status.UNDONE).id
@@ -3608,7 +3613,7 @@ def make_notification(application, request,content,receiver):
         publish_to_wechat=publish_to_wechat
     )
     # 对于处理类通知的完成(done)，修改状态
-    # 这里的逻辑保证：所有的处理类通知的生命周期必须从“人事发起”开始，从“取消”“通过”“拒绝”结束。
+    # 这里的逻辑保证：所有的处理类通知的生命周期必须从“成员发起”开始，从“取消”“通过”“拒绝”结束。
     if feasible_post.index(post_type) >= 2:
         notification_status_change(
             application.relate_notifications.get(status=Notification.Status.UNDONE).id,
@@ -3762,7 +3767,7 @@ def modifyOrganization(request):
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="组织申请详情")
     return render(request, "modify_organization.html", locals())
 
-# YWolfeee: 重构人事申请页面 Aug 24 12:30 UTC-8
+# YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 def sendMessage(request):
