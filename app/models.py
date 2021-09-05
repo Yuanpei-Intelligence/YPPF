@@ -46,7 +46,7 @@ class NaturalPerson(models.Model):
         "性别", choices=Gender.choices, null=True, blank=True
     )
 
-    
+    birthday = models.DateField("生日", null=True, blank=True)
     email = models.EmailField("邮箱", null=True, blank=True)
     telephone = models.CharField("电话", max_length=20, null=True, blank=True)
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
@@ -84,6 +84,7 @@ class NaturalPerson(models.Model):
     # 表示信息是否选择展示
     # '昵称','性别','邮箱','电话','专业','宿舍'
     # show_nickname = models.BooleanField(default=False)
+    show_birthday = models.BooleanField(default=False)
     show_gender = models.BooleanField(default=True)
     show_email = models.BooleanField(default=False)
     show_tel = models.BooleanField(default=False)
@@ -95,8 +96,30 @@ class NaturalPerson(models.Model):
         "Organization", related_name="unsubscribers", db_index=True
     )
 
+    class ReceiveLevel(models.IntegerChoices):
+        # DEBUG = (-1000, '全部')
+        MORE = (0, '更多')
+        LESS = (500, '更少')
+        # FATAL_ONLY = (1000, '仅重要')
+        # NONE = (1001, '不接收')
+    
+    wechat_receive_level = models.IntegerField(
+        '微信接收等级',
+        choices=ReceiveLevel.choices, default=0,
+        help_text='允许微信接收的最低消息等级，更低等级的通知类消息将被屏蔽'
+        )
+
     def __str__(self):
         return str(self.name)
+
+    def get_user_ava(self):
+        try:
+            avatar = self.avatar
+        except:
+            avatar = ""
+        if not avatar:
+            avatar = "avatar/person_default.jpg"
+        return settings.MEDIA_URL + str(avatar)
 
     def show_info(self):
         """
@@ -246,6 +269,15 @@ class Organization(models.Model):
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
         super().save(*args, **kwargs)
+
+    def get_user_ava(self):
+        try:
+            avatar = self.avatar
+        except:
+            avatar = ""
+        if not avatar:
+            avatar = "avatar/org_default.png"
+        return settings.MEDIA_URL + str(avatar)
 
 
 class PositionManager(models.Manager):
@@ -516,7 +548,7 @@ class Activity(CommentBase):
     (4) 增加活动状态类, 恢复之前的活动状态记录方式, 通过定时任务来改变 #TODO
     (5) 除了定价方式[bidding]之外的量都可以改变, 其中[capicity]不能低于目前已经报名人数, 活动的开始时间不能早于当前时间+1h
     (6) 修改活动时间同步导致报名时间的修改, 当然也需要考虑EndBefore的修改; 这部分修改通过定时任务的时间体现, 详情请见地下室schedule任务的新建和取消
-    (7) 增加活动管理的接口, activated, 筛选出这个学期的活动(见class [ActivityManager])
+    (7) 增加活动立项的接口, activated, 筛选出这个学期的活动(见class [ActivityManager])
     """
 
     title = models.CharField("活动名称", max_length=50)
@@ -572,7 +604,7 @@ class Activity(CommentBase):
     need_checkin = models.BooleanField("是否需要签到", default=False)
 
     examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
-    # recorded 其实是冗余，但用着方便，存了吧
+    # recorded 其实是冗余，但用着方便，存了吧,activity_show.html用到了
     recorded = models.BooleanField("是否预报备", default=False)
     valid = models.BooleanField("是否已审核", default=False)
 
@@ -660,7 +692,9 @@ class TransferRecord(models.Model):
         REFUND = (4, "已退回")
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
-    is_increase=models.IntegerField("报销兑换",default=0,help_text="报销时转账并未实质发生，用此字段标识，0标识默认转账，1为报销兑换")
+    is_increase=models.IntegerField("报销兑换", default=0,
+        help_text="报销时转账并未实质发生，用此字段标识，0标识默认转账，1为报销兑换")
+    
     def save(self, *args, **kwargs):
         self.amount = round(self.amount, 1)
         super(TransferRecord, self).save(*args, **kwargs)
@@ -750,7 +784,7 @@ class Notification(models.Model):
         VERIFY_INFORM = "审核信息通知"
         POSITION_INFORM = "成员变动通知"
         TRANSFER_FEEDBACK = "转账回执"
-        NEW_ORGANIZATION = "新建组织通知"
+        NEW_ORGANIZATION = "新建团队通知"
 
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
@@ -760,7 +794,8 @@ class Notification(models.Model):
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
     typename = models.SmallIntegerField(choices=Type.choices, default=0)
     URL = models.URLField("相关网址", null=True, blank=True)
-    bulk_identifier = models.CharField("批量信息标识", max_length=64, default="")
+    bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
+                                        db_index=True)
     relate_TransferRecord = models.ForeignKey(
         TransferRecord,
         related_name="transfer_notification",
@@ -841,7 +876,7 @@ class ModifyOrganization(CommentBase):
     def __str__(self):
         # YWolfeee: 不认为应该把类型放在如此重要的位置
         # return f'{self.oname}{self.otype.otype_name}'
-        return f'新建组织{self.oname}的申请'
+        return f'新建团队{self.oname}的申请'
 
     def save(self, *args, **kwargs):
         self.typename = "neworganization"
@@ -857,11 +892,21 @@ class ModifyOrganization(CommentBase):
     def extra_display(self):
         display = []
         if self.introduction and self.introduction != '这里暂时没有介绍哦~':
-            display.append(('组织介绍', self.introduction))
+            display.append(('团队介绍', self.introduction))
         return display
+
+    def get_user_ava(self):
+        try:
+            avatar = self.avatar
+        except:
+            avatar = ""
+        if not avatar:
+            avatar = "avatar/person_default.jpg"
+        return settings.MEDIA_URL + str(avatar)
         
     def is_pending(self):   #表示是不是pending状态
             return self.status == ModifyOrganization.Status.PENDING
+
 
 class ModifyPosition(CommentBase):
     class Meta:
@@ -945,6 +990,7 @@ class ModifyPosition(CommentBase):
         self.typename = "modifyposition"
         super().save(*args, **kwargs)
 
+
 class Reimbursement(CommentBase):
     class Meta:
         verbose_name = "新建报销"
@@ -971,6 +1017,8 @@ class Reimbursement(CommentBase):
     pos = models.ForeignKey(User, on_delete=models.CASCADE)#报销的组织
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
     record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
+    summary_image=models.ImageField(upload_to=f"activity/photo/%Y/%m/",
+                                    verbose_name="活动总结图片",null=True, blank=True)
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
         

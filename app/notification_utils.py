@@ -95,6 +95,7 @@ def notification_create(
         relate_instance=None,
         *,
         publish_to_wechat=False,
+        publish_kws=None,
 ):
     """
     对于一个需要创建通知的事件，请调用该函数创建通知！
@@ -107,9 +108,7 @@ def notification_create(
 
     注意事项：
         publish_to_wechat: bool 仅关键字参数
-        - 你不应该输入这个参数，除非你清楚wechat_send.py的所有逻辑
-        - 在最坏的情况下，可能会阻塞近10s
-        - 简单来说，涉及订阅或者可能向多人连续发送类似通知时，都不要发送到微信
+        - 不要在循环中重复调用以发送，你可能需要看`bulk_notification_create`
         - 在线程锁或原子锁内时，也不要发送
 
     现在，你应该在不急于等待的时候显式调用publish_notification(s)这两个函数，
@@ -125,9 +124,10 @@ def notification_create(
         relate_TransferRecord=relate_TransferRecord,
         relate_instance=relate_instance,
     )
-    notification.save()
     if publish_to_wechat == True:
-        publish_notification(notification)
+        if not publish_kws:
+            publish_kws = {}
+        publish_notification(notification, **publish_kws)
     return notification
 
 def bulk_notification_create(
@@ -141,24 +141,37 @@ def bulk_notification_create(
         relate_instance=None,
         *,
         publish_to_wechat=False,
+        publish_kws=None,
 ):
     bulk_identifier = hasher.encode(str(datetime.now()) + str(random()))
-    notifications = [ Notification(
-        receiver=receiver,
-        sender=sender,
-        typename=typename,
-        title=title,
-        content=content,
-        URL=URL,
-        bulk_identifier=bulk_identifier,
-        relate_TransferRecord=relate_TransferRecord,
-        relate_instance=relate_instance,
-    ) for receiver in receivers ]
-    Notification.objects.bulk_create(notifications, 50)
-    success = True
-    if publish_to_wechat:
-        filter_kws={"bulk_identifier":bulk_identifier}
-        success = publish_notifications(filter_kws=filter_kws)
+    try:
+        notifications = [
+            Notification(
+                receiver=receiver,
+                sender=sender,
+                typename=typename,
+                title=title,
+                content=content,
+                URL=URL,
+                bulk_identifier=bulk_identifier,
+                relate_TransferRecord=relate_TransferRecord,
+                relate_instance=relate_instance,
+            ) for receiver in receivers
+        ]
+        Notification.objects.bulk_create(notifications, 50)
+        # bulk_create不调用save，因此不会自动生成绑定save方法的auto_now_add字段
+        with transaction.atomic():
+            # 添加了db索引 否则会锁整个表
+            Notification.objects.select_for_update().filter(
+                bulk_identifier=bulk_identifier).update(start_time=datetime.now())
+        success = True
+    except:
+        success = False
+    if success and publish_to_wechat:
+        filter_kws = {"bulk_identifier": bulk_identifier}
+        if not publish_kws:
+            publish_kws = {}
+        success = publish_notifications(filter_kws=filter_kws, **publish_kws)
     return success, bulk_identifier
 
 

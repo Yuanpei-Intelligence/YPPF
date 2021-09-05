@@ -87,6 +87,7 @@
                                                 <td style="min-width: 80px;">
                                                     <u>
                                                         <a href="/stuinfo/{{ person.name }}+{{ person.person_id.id }}">
+                                                            <img src="{{ person.get_user_ava }}" alt="大头照" style="height: 20px; width: 20px;">
                                                             {{ attribute }}
                                                         </a>
                                                     </u>
@@ -141,7 +142,7 @@
                                         aria-controls="collapseExample">
                                         <div class="d-flex justify-content-between">
                                             <div>
-                                                <h4>组织搜索({{org_display_list|length}}条)</h4>
+                                                <h4>团队搜索({{org_display_list|length}}条)</h4>
                                             </div>
                                             <div style="display:flex;
                                             justify-content: center;
@@ -171,7 +172,12 @@
                                             {% for orgn in org_display_list %}
                                             <tr class="w-100">
                                                 <td style="min-width: 100px;">
-                                                    <u><a href="/orginfo/{{ orgn.oname }}">{{ orgn.oname }}</a></u>
+                                                    <u>
+                                                        <a href="/orginfo/{{ orgn.oname }}">
+                                                            <img src="{{ orgn.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">
+                                                            {{ orgn.oname }}
+                                                        </a>
+                                                    </u>
                                                 </td>
                                                 <td style="min-width: 100px;">
                                                     {{ orgn.otype }}
@@ -179,7 +185,10 @@
                                                 <td style="min-width: 80px;">
                                                     {% for pos_person in orgn.pos0 %}
                                                     <a href="/stuinfo/{{ pos_person }}">
-                                                        <u>{{ pos_person }}</u> <!-- 重名？ -->
+                                                        <u>
+                                                            <img src="{{ pos_person.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">
+                                                            {{ pos_person }}
+                                                        </u> <!-- 重名？ -->
                                                     </a>
 
                                                     {% endfor %}
@@ -257,13 +266,22 @@
                                                 <td style="min-width: 80px;">
                                                     <u>
                                                         <a href="/orginfo/{{ act.organization_id }}">
+                                                            <img src="{{ act.organization_id.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">
                                                             {{ act.organization_id }}
                                                         </a>
                                                     </u>
                                                 </td>
 
                                                 <td style="min-width: 60px;">
-                                                    {{ act.status }}
+                                                    {% if act.status == "等待中" %}
+                                                        <span id="ret" class="badge badge-pill badge-info">等待开始</span>
+                                                    {% elif act.status == "审核中" %}
+                                                        <span id="ret" class="badge badge-pill badge-warning">审核中</span>
+                                                    {% elif act.status == "报名中" or act.status == "进行中" %}
+                                                        <span id="ret" class="badge badge-pill badge-success">{{act.status}}</span>
+                                                    {% else %}
+                                                        <span id="ret" class="badge badge-pill badge-danger">{{act.status}}</span>
+                                                    {% endif %}
                                                 </td>
                                             </tr>
                                             {% endfor %}

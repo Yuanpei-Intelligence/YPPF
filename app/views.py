@@ -1,3 +1,13 @@
+import json
+from datetime import date, datetime, timedelta
+from urllib import parse, request as urllib2
+import qrcode
+import random
+import requests  # 发送验证码
+import io
+import csv
+import os
+
 from django.dispatch.dispatcher import NO_RECEIVERS, receiver
 from django.template.defaulttags import register
 from app.models import (
@@ -51,7 +61,11 @@ from app.wechat_send import(
     send_wechat_captcha,
     invite,
 )
-from app.notification_utils import notification_create, notification_status_change
+from app.notification_utils import(
+    notification_create,
+    bulk_notification_create,
+    notification_status_change,
+)
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from django.shortcuts import render, redirect
@@ -66,21 +80,7 @@ from django.conf import settings
 from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
 
-import json
-from datetime import date, datetime, timedelta
-from urllib import parse, request as urllib2
-import random
-import requests  # 发送验证码
-import io
-import csv
-
-# 定时任务注册
-from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
-from app.scheduler import scheduler
-
-# 注册启动以上schedule任务
-# register_events(scheduler)
-# scheduler.start()
+# 定时任务不在views直接调用
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
@@ -321,7 +321,8 @@ def stuinfo(request, name=None):
             id__in=person_owned_poss.values("org")
         )  # ta管理的组织
         person_owned_orgs_ava = [
-            utils.get_user_ava(org, "organization") for org in person_owned_orgs
+            # utils.get_user_ava(org, "organization") for org in person_owned_orgs
+            org.get_user_ava() for org in person_owned_orgs
         ]
         person_owned_orgs_pos = [
             person_owned_poss.get(org=org).pos for org in person_owned_orgs
@@ -341,7 +342,7 @@ def stuinfo(request, name=None):
             id__in=person_joined_poss.values("org")
         )  # ta属于的组织
         person_joined_orgs_ava = [
-            utils.get_user_ava(org, "organization") for org in person_joined_orgs
+            org.get_user_ava() for org in person_joined_orgs
         ]
         person_joined_orgs_pos = [
             person_joined_poss.get(org=org).pos for org in person_joined_orgs
@@ -371,7 +372,8 @@ def stuinfo(request, name=None):
             id__in=person_hidden_poss.values("org")
         )  # ta隐藏的组织
         person_hidden_orgs_ava = [
-            utils.get_user_ava(org, "organization") for org in person_hidden_orgs
+            # utils.get_user_ava(org, "organization") for org in person_hidden_orgs
+            org.get_user_ava() for org in person_hidden_orgs
         ]
         person_hidden_orgs_pos = [
             person_hidden_poss.get(org=org).pos for org in person_hidden_orgs
@@ -422,18 +424,18 @@ def stuinfo(request, name=None):
         participate_status_list = participants.values("status")
         participate_status_list = [info["status"] for info in participate_status_list]
         status_color = {
-            Activity.Status.REVIEWING: "primary",
-            Activity.Status.CANCELED: "secondary",
-            Activity.Status.APPLYING: "info",
-            Activity.Status.WAITING: "warning",
+            Activity.Status.REVIEWING: "warning",
+            Activity.Status.CANCELED: "danger",
+            Activity.Status.APPLYING: "success",
+            Activity.Status.WAITING: "info",
             Activity.Status.PROGRESSING: "success",
             Activity.Status.END: "danger",
             Participant.AttendStatus.APPLYING: "primary",
-            Participant.AttendStatus.APLLYFAILED: "danger",
-            Participant.AttendStatus.APLLYSUCCESS: "info",
-            Participant.AttendStatus.ATTENDED: "success",
+            Participant.AttendStatus.APLLYFAILED: "warning",
+            Participant.AttendStatus.APLLYSUCCESS: "primary",
+            Participant.AttendStatus.ATTENDED: "primary",
             Participant.AttendStatus.UNATTENDED: "warning",
-            Participant.AttendStatus.CANCELED: "secondary",
+            Participant.AttendStatus.CANCELED: "warning",
         }
         activity_color_list = [status_color[activity.status] for activity in activities]
         attend_color_list = [status_color[status] for status in participate_status_list]
@@ -473,11 +475,13 @@ def stuinfo(request, name=None):
 
         context["title"] = "我" if is_myself else "Ta"
 
-        context["avatar_path"] = utils.get_user_ava(person, "Person")
+        context["avatar_path"] = person.get_user_ava()
         context["wallpaper_path"] = utils.get_user_wallpaper(person, "Person")
 
         # 新版侧边栏, 顶栏等的呈现，采用 bar_display
-        bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="个人主页")
+        bar_display = utils.get_sidebar_and_navbar(
+            request.user, navbar_name="个人主页", title_name = person.name
+            )
         origin = request.get_full_path()
 
         return render(request, "stuinfo.html", locals())
@@ -506,7 +510,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         try:
             org = Organization.objects.get(oname=name)
         except:  # 找不到对应组织
-            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=找不到对应组织,请联系管理员!"
+            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=找不到对应团队,请联系管理员!"
             return redirect(urls)
         try:
             position = Position.objects.activated().filter(org=org, person=me)
@@ -514,7 +518,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
             position = position[0]
             assert position.pos == 0
         except:
-            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该组织账户的权限!"
+            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团队账户的权限!"
             return redirect(urls)
         # 到这里,是本人组织并且有权限登录
         auth.logout(request)
@@ -532,7 +536,7 @@ def user_login_org(request, org):
     try:
         me = NaturalPerson.objects.activated().get(person_id=user)
     except:  # 找不到合法的用户
-        return wrong("您没有权限访问该网址！请用对应组织账号登陆。")
+        return wrong("您没有权限访问该网址！请用对应团队账号登陆。")
     #是组织一把手
     try:
         position = Position.objects.activated().filter(org=org, person=me)
@@ -540,12 +544,12 @@ def user_login_org(request, org):
         position = position[0]
         assert position.pos == 0
     except:
-        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该组织账户的权限!"
+        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团队账户的权限!"
         return redirect(urls)
     # 到这里,是本人组织并且有权限登录
     auth.logout(request)
     auth.login(request, org.organization_id)  # 切换到组织账号
-    return succeed("成功切换到组织账号处理该事务，建议事务处理完成后退出组织账号。")
+    return succeed("成功切换到团队账号处理该事务，建议事务处理完成后退出团队账号。")
 
 
 
@@ -593,9 +597,15 @@ def orginfo(request, name=None):
 
     organization_name = name
     organization_type_name = org.otype.otype_name
-    org_avatar_path = utils.get_user_ava(org, "Organization")
+    org_avatar_path = org.get_user_ava()
     wallpaper_path = utils.get_user_wallpaper(org, "Organization")
     # org的属性 YQPoint 和 information 不在此赘述，直接在前端调用
+
+    if request.method == "POST" :
+        if request.POST.get("export_excel") is not None and html_display["is_myself"]:
+            html_display["warn_code"] = 2
+            html_display["warn_message"] = "下载成功!"
+            return utils.export_orgpos_info(org)
 
     # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
@@ -689,7 +699,7 @@ def orginfo(request, name=None):
     modpw_status = request.GET.get("modinfo", None)
     if modpw_status is not None and modpw_status == "success":
         html_display["warn_code"] = 2
-        html_display["warn_message"] = "修改组织信息成功!"
+        html_display["warn_message"] = "修改团队信息成功!"
 
     # 补充左边栏信息
 
@@ -704,10 +714,7 @@ def orginfo(request, name=None):
 
     # 补充一些呈现信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "组织主页"
-    bar_display["navbar_name"] = "组织主页"
-
+    bar_display = utils.get_sidebar_and_navbar(request.user,navbar_name = "团队主页", title_name = org.oname)
     # 转账后跳转
     origin = request.get_full_path()
 
@@ -758,7 +765,7 @@ def homepage(request):
     if is_person:
         with transaction.atomic():
             np = NaturalPerson.objects.select_for_update().get(person_id=request.user)
-            if np.last_time_login is None or np.last_time_login.date != nowtime.date:
+            if np.last_time_login is None or np.last_time_login.date() != nowtime.date():
                 np.last_time_login = nowtime
                 np.bonusPoint += 0.5
                 np.save()
@@ -785,6 +792,7 @@ def homepage(request):
         dictmp = {}
         dictmp["deadline"] = deadline
         dictmp["act"] = act
+        dictmp["tobestart"] = int((deadline.__sub__(nowtime).total_seconds())/360)/10
         signup_list.append(dictmp)
     signup_list.sort(key=lambda x:x["deadline"])
     signup_list=signup_list[:10]
@@ -830,15 +838,18 @@ def homepage(request):
         summaryphotos = act.photos.filter(type = ActivityPhoto.PhotoType.SUMMARY)
         if len(summaryphotos)>0:
             photo_display.append(summaryphotos[0]) # 朴素的随机
+    photo_display = photo_display[:4]
     for photo in photo_display:
         if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
     
+    """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
     if len(photo_display)==0: # 这个分类是为了前端显示的便利，就不采用append了
         homepagephoto = "/static/assets/img/taskboard.jpg"
     else:
         firstpic = photo_display[0]
         photos = photo_display[1:]
+    """
 
     # 天气
     # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
@@ -870,7 +881,7 @@ def account_setting(request):
 
     # 补充网页呈现所需信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, "账户设置")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "信息与隐私")
     # bar_display["title_name"] = "Account Setting"
     # bar_display["navbar_name"] = "账户设置"
     # bar_display["help_message"] = local_dict["help_message"]["账户设置"]
@@ -1129,7 +1140,7 @@ def get_stu_img(request):
     if stuId is not None:
         try:
             stu = NaturalPerson.objects.get(person_id__username=stuId)
-            img_path = utils.get_user_ava(stu, "Person")
+            img_path = stu.get_user_ava()
             return JsonResponse({"path": img_path}, status=200)
         except:
             return JsonResponse({"message": "Image not found!"}, status=404)
@@ -1211,23 +1222,23 @@ def search(request):
 
     org_display_list = []
     for org in organization_list:
-        try:
-            recent_activity = Activity.objects.filter(organization_id=org).order_by("-start")[0]
-        except:
-            recent_activity = {"title": "暂无", "id": "#"}
         org_display_list.append(
             {
                 "oname": org.oname,
                 "otype": org.otype,
-                "pos0": [
-                    w["person__name"]
-                    for w in list(
-                        org.position_set.activated()
-                            .filter(pos=0)
-                            .values("person__name")
-                    )
-                ],
-                "activities": get_recent_activity(org)
+                "pos0": NaturalPerson.objects.activated().filter(
+                    id__in=Position.objects.activated().filter(pos=0, org=org).values("person")
+                ),  #TODO:直接查到一个NaturalPerson的Query_set
+                # [
+                #     w["person__name"]
+                #     for w in list(
+                #         org.position_set.activated()
+                #             .filter(pos=0)
+                #             .values("person__name")
+                #     )
+                # ],
+                "activities": get_recent_activity(org),
+                "get_user_ava": org.get_user_ava()
             }
         )
 
@@ -1235,7 +1246,7 @@ def search(request):
     organization_field = ["组织名称", "组织类型", "负责人", "近期活动"]
 
     # 搜索活动
-    activity_list = Activity.objects.filter(
+    activity_list = Activity.objects.activated().filter(
         Q(title__icontains=query) | Q(organization_id__oname__icontains=query)& ~Q(status=Activity.Status.CANCELED)
                                                          & ~Q(status=Activity.Status.REJECT)
         &~Q(status=Activity.Status.REVIEWING)&~Q(status=Activity.Status.ABORT)
@@ -1980,7 +1991,7 @@ def viewActivity(request, aid=None):
             except:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "上传活动照片不能为空"
-            if utils.if_image(photo) == False:
+            if utils.if_image(photo) !=2:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "上传的附件只支持图片格式"
             elif summary_photo_exists:
@@ -1998,7 +2009,10 @@ def viewActivity(request, aid=None):
                 )
                 html_display["warn_message"] = "成功提交活动照片"
             html_display["warn_code"] = 2
-
+        elif option == "download":#下载活动签到信息
+            if not ownership:
+                return redirect("/welcome/")
+            return utils.export_activity_signin(activity)
         else:
             return redirect("/welcome")
 
@@ -2006,7 +2020,7 @@ def viewActivity(request, aid=None):
     # 下面这些都是展示前端页面要用的
     title = activity.title
     org_name = org.oname
-    org_avatar_path = utils.get_user_ava(org, "Organization")
+    org_avatar_path = org.get_user_ava()
     org_type = OrganizationType.objects.get(otype_id=org.otype_id).otype_name
     start_time = activity.start.strftime("%Y-%m-%d %H:%M")
     end_time = activity.end.strftime("%Y-%m-%d %H:%M")
@@ -2052,6 +2066,11 @@ def viewActivity(request, aid=None):
 
     # 签到
     need_checkin = activity.need_checkin
+    show_QRcode = activity.need_checkin and activity.status in [
+        Activity.Status.APPLYING,
+        Activity.Status.WAITING,
+        Activity.Status.PROGRESSING
+    ]
 
     if ownership and need_checkin:
         aQRcode = get_activity_QRcode(activity)
@@ -2075,10 +2094,10 @@ def viewActivity(request, aid=None):
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
-    bar_display = utils.get_sidebar_and_navbar(request.user)
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="活动信息", title_name=title)
     # 补充一些呈现信息
-    bar_display["title_name"] = "活动信息"
-    bar_display["navbar_name"] = "活动信息"
+    # bar_display["title_name"] = "活动信息"
+    # bar_display["navbar_name"] = "活动信息"
 
     return render(request, "activity_info.html", locals())
 
@@ -2215,12 +2234,13 @@ def checkinActivity(request, aid=None):
         activity = Activity.objects.get(id=int(aid))
         varifier = request.GET["auth"]
         assert varifier == hash_coder.encode(aid)
+        assert activity.status == Activity.Status.PROGRESSING
     except:
         return redirect("/welcome/")
     try:
         with transaction.atomic():
             participant = Participant.objects.select_for_update().get(
-                activity_id=int(aid), person_id=np, 
+                activity_id=int(aid), person_id=np,
                 status=Participant.AttendStatus.UNATTENDED
             )
             participant.status = Participant.AttendStatus.ATTENDED
@@ -2319,7 +2339,7 @@ def addActivity(request, aid=None):
     try:
         valid, user_type, html_display = utils.check_user_type(request.user)
         assert valid
-        me = utils.get_person_or_org(request.user, user_type)
+        me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为组织账户
         if aid is None:
             assert user_type == "Organization"
             edit = False
@@ -2404,7 +2424,7 @@ def addActivity(request, aid=None):
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
     html_display["applicant_name"] = me.oname
-    html_display["app_avatar_path"] = utils.get_user_ava(me, "Organization")
+    html_display["app_avatar_path"] = me.get_user_ava() 
     if not edit:
         avialable_teachers = NaturalPerson.objects.teachers()
     else:
@@ -2455,7 +2475,7 @@ def addActivity(request, aid=None):
         amount = activity.YQPoint
         signscheme = "先到先得"
         if bidding:
-            signscheme = "投点参与"
+            signscheme = "抽签模式"
         capacity = activity.capacity
         yq_source = "向学生收取"
         if activity.source == Activity.YQPointSource.COLLEGE:
@@ -2469,6 +2489,13 @@ def addActivity(request, aid=None):
         need_checkin = activity.need_checkin
         apply_reason = activity.apply_reason
         comments = showComment(activity)
+        photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
+        uploaded_photo = False
+        if str(photo).startswith("activity"):
+            uploaded_photo = True
+            photo = os.path.basename(photo)
+        else:
+            photo_id = "picture" + os.path.basename(photo).split(".")[0]
 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     if not edit:
@@ -2573,7 +2600,8 @@ def examineActivity(request, aid):
         no_limit = True
     examine_teacher = activity.examine_teacher.name
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
-    html_display["app_avatar_path"] = utils.get_user_ava(activity.organization_id,"Organization")
+    # html_display["app_avatar_path"] = utils.get_user_ava(activity.organization_id,"Organization")h
+    html_display["app_avatar_path"] = activity.organization_id.get_user_ava()
     html_display["applicant_name"] = activity.organization_id.oname
     bar_display = utils.get_sidebar_and_navbar(request.user)
     status = activity.status
@@ -2893,7 +2921,7 @@ def addComment(request, comment_base, receiver=None):
             return context
         if len(comment_images) > 0:
             for comment_image in comment_images:
-                if utils.if_image(comment_image) == False:
+                if utils.if_image(comment_image)!=2:
                     context["warn_code"] = 1
                     context["warn_message"] = "评论中上传的附件只支持图片格式。"
                     return context
@@ -2943,15 +2971,20 @@ def addComment(request, comment_base, receiver=None):
 
 
 def showComment(commentbase):
-    comments = commentbase.comments.order_by("time")
+    if commentbase is None:
+        return None
+    try:
+        comments = commentbase.comments.order_by("time")
+    except:
+        return None
     for comment in comments:
         commentator = get_person_or_org(comment.commentator)
         if comment.commentator.username[:2] == "zz":
-            comment.ava = utils.get_user_ava(commentator, "Organization")
+            comment.ava = commentator.get_user_ava()
             comment.URL = "/orginfo/{name}".format(name=commentator.oname)
             comment.commentator_name = commentator.oname
         else:
-            comment.ava = utils.get_user_ava(commentator, "Person")
+            comment.ava = commentator.get_user_ava()
             comment.URL = "/stuinfo/{name}".format(name=commentator.name)
             comment.commentator_name = commentator.name
         comment.len = len(comment.comment_photos.all())
@@ -3161,8 +3194,8 @@ def modifyPosition(request):
     comments = showComment(application) if application is not None else None
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
     apply_person = me if is_new_application else application.person
-    app_avatar_path = utils.get_user_ava(apply_person, "Person")
-    org_avatar_path = utils.get_user_ava(applied_org, "Organization")
+    app_avatar_path = apply_person.get_user_ava()
+    org_avatar_path = applied_org.get_user_ava()
     # 获取个人与组织[在当前学年]的关系
     current_pos_list = Position.objects.current().filter(person=apply_person, org=applied_org)
     # 应当假设只有至多一个类型
@@ -3246,7 +3279,7 @@ def showReimbursement(request):
     else:
         shown_instances = Reimbursement.objects.filter(pos=request.user)
     shown_instances = shown_instances.order_by("-modify_time", "-time")
-    bar_display = utils.get_sidebar_and_navbar(request.user, "报销信息")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "活动结项")
     return render(request, "reimbursement_show.html", locals())
 
 @login_required(redirect_field_name="origin")
@@ -3258,7 +3291,7 @@ def showActivity(request):
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
-    is_teacher = False
+    is_teacher = False #该变量同时用于前端
     if user_type == "Person":
         try:
             person = utils.get_person_or_org(request.user, user_type)
@@ -3269,7 +3302,7 @@ def showActivity(request):
         if not is_teacher:
             html_display["warn_code"] = 1
 
-            html_display["warn_code"] = "学生账号不能进入活动管理页面！"
+            html_display["warn_code"] = "学生账号不能进入活动立项页面！"
 
             return redirect(
                 "/welcome/"
@@ -3283,7 +3316,7 @@ def showActivity(request):
         shown_instances = Activity.objects.all_activated().filter(organization_id = me.id)
 
     shown_instances = shown_instances.order_by("-modify_time", "-time")
-    bar_display = utils.get_sidebar_and_navbar(request.user, "活动管理")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "活动立项")
     return render(request, "activity_show.html", locals())
 
 
@@ -3525,7 +3558,7 @@ def modifyReimbursement(request):
     # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
     apply_person = me if is_new_application else utils.get_person_or_org(application.pos)
     #申请人头像
-    app_avatar_path = utils.get_user_ava(apply_person,"Organization")
+    app_avatar_path = apply_person.get_user_ava()
 
     # 未报销活动
     activities = utils.get_unreimb_activity(apply_person)
@@ -3717,10 +3750,10 @@ def modifyOrganization(request):
     comments = showComment(application) if application is not None else None
     # 用于前端展示
     apply_person = me if is_new_application else NaturalPerson.objects.get(person_id=application.pos)
-    app_avatar_path = utils.get_user_ava(apply_person,"Person")
+    app_avatar_path = apply_person.get_user_ava()
     org_avatar_path = utils.get_user_ava(application, "Organization")
     org_types = OrganizationType.objects.order_by("-otype_id").all()  # 当前组织类型，前端展示需要
-    former_img = utils.get_user_ava(None, "Organization")
+    former_img = Organization().get_user_ava()
     if not is_new_application:
         org_type_list[application.otype]['selected'] = True
 
@@ -3809,42 +3842,28 @@ def send_message_check(me, request):
     content = content
     typename = Notification.Type.NEEDREAD
     URL = url
-    if receiver_type == "订阅用户":
-        try:
-            for receiver in NaturalPerson.objects.exclude(id__in=me.unsubscribers.all()):
-                not_list.append(
-                Notification(
-                    receiver=receiver.person_id,
-                    sender=sender,
-                    status=status,
-                    title=title,
-                    content=content,
-                    URL=URL,
-                    typename=typename,
-                )
-            )
-            created_not = Notification.objects.bulk_create(not_list)
-        except:
-            return wrong("创建通知的时候出现错误！请联系管理员！")
-    else:   # 检查过逻辑了，不可能是其他的
-        try:
-            for receiver in NaturalPerson.objects.filter(id__in=me.position_set.values_list('person_id', flat=True)):
-                not_list.append(
-                Notification(
-                    receiver=receiver.person_id,
-                    sender=sender,
-                    status=status,
-                    title=title,
-                    content=content,
-                    URL=URL,
-                    typename=typename,
-                )
-            )
-            created_not = Notification.objects.bulk_create(not_list)
-        except:
-            return wrong("创建通知的时候出现错误！请联系管理员！")
     try:
-        publish_notifications(created_not)
+        if receiver_type == "订阅用户":
+            receivers = NaturalPerson.objects.exclude(id__in=me.unsubscribers.all())
+            receivers = [receiver.person_id for receiver in receivers]
+        else:   # 检查过逻辑了，不可能是其他的
+            receivers = NaturalPerson.objects.filter(
+                id__in=me.position_set.values_list('person_id', flat=True))
+            receivers = [receiver.person_id for receiver in receivers]
+        # 创建通知
+        success, bulk_identifier = bulk_notification_create(
+                receivers=receivers,
+                sender=sender,
+                typename=typename,
+                title=title,
+                content=content,
+                URL=URL,
+            )
+        assert success
+    except:
+        return wrong("创建通知的时候出现错误！请联系管理员！")
+    try:
+        assert publish_notifications(filter_kws={'bulk_identifier': bulk_identifier})
     except:
         return wrong("发送微信的过程出现错误！请联系管理员！")
     
