@@ -118,7 +118,7 @@
                                                                    placeholder="上次你输入的是{{application.amount}}"
                                                                    id="aprice"
                                                                    name="YQP"
-                                                                   placeholder="{{amount}}" step="0.1"
+                                                                   step="0.1"
                                                                    οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')"
                                                             >
                                                             {%else%}
@@ -238,14 +238,15 @@
                                                     <tr>
                                                         <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
                                                                  name="post_type"
-                                                                value="modify_submit">修改并提交
+                                                                value="modify_submit"
+                                                                onclick="return confirm('确认提交活动结项申请？')">修改并提交
                                                         </button>
                                                     </tr>
                                                     <tr>
                                                         <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
                                                                  name="post_type"
                                                                 value="cancel_submit"
-                                                                onclick="return confirm('您确定要取消此活动的经费申请吗？')"
+                                                                onclick="return confirm('确认取消活动结项申请？')"
                                                         >取消申请
                                                         </button>
                                                     </tr>
