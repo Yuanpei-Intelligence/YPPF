@@ -888,7 +888,7 @@ class ModifyOrganization(CommentBase):
     def __str__(self):
         # YWolfeee: 不认为应该把类型放在如此重要的位置
         # return f'{self.oname}{self.otype.otype_name}'
-        return f'新建团队{self.oname}的申请'
+        return f'新建团体{self.oname}的申请'
 
     def save(self, *args, **kwargs):
         self.typename = "neworganization"
@@ -904,7 +904,7 @@ class ModifyOrganization(CommentBase):
     def extra_display(self):
         display = []
         if self.introduction and self.introduction != '这里暂时没有介绍哦~':
-            display.append(('团队介绍', self.introduction))
+            display.append(('团体介绍', self.introduction))
         return display
 
     def get_user_ava(self):
