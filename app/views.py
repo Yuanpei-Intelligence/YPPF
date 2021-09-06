@@ -2131,6 +2131,11 @@ def viewActivity(request, aid=None):
         Activity.Status.PROGRESSING
     ]
 
+    if activity.inner:
+        position = Position.objects.activated().filter(person=me, org=activity.organization_id)
+        if len(position) == 0:
+            not_inner = True
+
     if ownership and need_checkin:
         aQRcode = get_activity_QRcode(activity)
 
