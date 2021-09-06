@@ -719,23 +719,13 @@ def operation_writer(user, message, source, status_code="OK"):
         with open(os.path.join(log_user_path, f"{str(user)}.log"), mode="a") as journal:
             journal.write(message)
 
-        if status_code == "Error":
-            pass
-            # TODO 发送微信消息提醒运维成员
-            '''
-            send_wechat_message(
-                stu_list=['', '', ''],
-                starttime=datetime.now(),
-                room=Room.objects.get(Rid="B107A"),
-                message_type="violated",
-                major_student="地下室系统",
-                usage="发生Error错误",
-                announcement="",
-                num=1,
-                reason=message,
-                # credit=appoint.major_student.Scredit,
-            )
-            '''
+        if status_code == "Error" and local_dict.get('debug_stuids'):
+            from app.wechat_send import send_wechat
+            receivers = list(local_dict['debug_stuids'])
+            if isinstance(receivers, str):
+                receivers = receivers.replace(' ', '').split(',')
+            receivers = list(map(str, receivers))
+            send_wechat(receivers, 'YPPF发生异常\n' + message)
     except Exception as e:
         # 最好是发送邮件通知存在问题
         # 待补充

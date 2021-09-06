@@ -834,19 +834,19 @@
                 applyEnd = new Date(start.setHours(start.getHours()-168));
             else
                 window.location.href = "/welcome/"
-            if (applyEnd < now) {
-                // 相当于提前截止报名，在这改太麻烦了，在 viewActivity 界面留一个 button吧
-                {% if html_display.warn_code == 2 %}
-                document.getElementById("success_msg").style.display = "none";
-                {% endif %}
-                document.getElementById("warn_msg").style.display = "";
-                document.getElementById("warn_msg").innerHTML = "修改失败：修改后的报名截止时间早于当前时间。如果是因为希望提前举办活动，请同时修改报名截止时间，谢谢！。";
-                document.body.scrollTop = document.documentElement.scrollTop = 0;
-                return false;
-            } 
             // else 的情况：已截止/未截止 -> 未截止
             // 如果是已截止，也不需要提醒，重新开放就是了
         }
+        if (applyEnd < now) {
+            // 相当于提前截止报名，在这改太麻烦了，在 viewActivity 界面留一个 button吧
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "修改失败：修改后的报名截止时间早于当前时间。如果是因为希望提前举办活动，请同时修改报名截止时间，谢谢！。";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        } 
         if (before_start < applyEnd) {
             {% if html_display.warn_code == 2 %}
             document.getElementById("success_msg").style.display = "none";
