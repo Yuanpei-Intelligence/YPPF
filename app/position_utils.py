@@ -90,8 +90,8 @@ def update_pos_application(application, me, user_type, applied_org, info):
                     apply_pos = applied_org.otype.get_pos_from_str(apply_pos_name)
                 elif apply_type == "退出团体":
                     if not Position.objects.activated().filter(person=me, org=applied_org).exists():
-                        return wrong("退出团体出错！")
-                    if len(Position.objects.activated().filter(person=me, org=applied_org, pos=0)) == 1:
+                        return wrong("退出团体出错, 请联系管理员!")
+                    if len(Position.objects.activated().filter(org=applied_org, pos=0)) == 1:
                         return wrong("作为团体唯一的老大，你不能退出！")
                     # 退出团体不应该有apply_pos
                     apply_pos = None
