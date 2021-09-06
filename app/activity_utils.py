@@ -46,7 +46,7 @@ from app.scheduler_func import changeActivityStatus, notifyActivity
 from django.db.models import F
 
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
-YQPoint_oname = local_dict["YQPoint_soucre_oname"]
+YQPoint_oname = local_dict["YQPoint_source_oname"]
 
 def get_activity_QRcode(activity):
 

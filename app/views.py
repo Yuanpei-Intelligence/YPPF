@@ -93,7 +93,7 @@ email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
-YQPoint_oname = local_dict["YQPoint_soucre_oname"]
+YQPoint_oname = local_dict["YQPoint_source_oname"]
 
 
 @register.filter
