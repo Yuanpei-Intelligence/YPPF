@@ -140,7 +140,9 @@ def get_org_left_navbar(org, is_myself, html_display):
 def get_inform_share(me, is_myself=True):
     alert_message = ""
     if is_myself and me.inform_share:
-        alert_message = "【关于分享】:如果你在使用手机浏览器，可以使用浏览器自带的分享来分享你的主页或者活动主页，或者可以选择将其在微信/朋友圈中打开。"
+        alert_message = ("【关于分享】:如果你在使用手机浏览器，"+
+                        "可以使用浏览器自带的分享来分享你的主页或者活动主页，"+
+                        "或者可以选择将其在微信/朋友圈中打开并分享。")
         # me.inform_share = False
         # me.save()
         return True, alert_message
