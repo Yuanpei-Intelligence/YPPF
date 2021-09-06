@@ -2806,37 +2806,43 @@ def apply_position(request, oid=None):
 
 
 
-def notification2Display(notification_list):
+def notification2Display(notification_set):
     lis = []
+    sender_userids = notification_set.values_list('sender_id', flat=True)
+    sender_persons = NaturalPerson.objects.filter(person_id__in=sender_userids).values_list('person_id', 'name')
+    sender_persons = {userid: name for userid, name in sender_persons}
+    sender_orgs = Organization.objects.filter(organization_id__in=sender_userids).values_list('organization_id', 'oname')
+    sender_orgs = {userid: name for userid, name in sender_orgs}
     # 储存这个列表中所有record的元气值的和
-    for notification in notification_list:
-        lis.append({})
+    for notification in notification_set:
+        note_display = {}
 
         # id
-        lis[-1]["id"] = notification.id
+        note_display["id"] = notification.id
 
         # 时间
-        lis[-1]["start_time"] = notification.start_time.strftime("%Y-%m-%d %H:%M")
+        note_display["start_time"] = notification.start_time.strftime("%Y-%m-%d %H:%M")
         if notification.finish_time is not None:
-            lis[-1]["finish_time"] = notification.finish_time.strftime("%Y-%m-%d %H:%M")
+            note_display["finish_time"] = notification.finish_time.strftime("%Y-%m-%d %H:%M")
 
         # 留言
-        lis[-1]["content"] = notification.content
+        note_display["content"] = notification.content
 
         # 状态
-        lis[-1]["status"] = notification.get_status_display()
-        lis[-1]["URL"] = notification.URL
-        lis[-1]["type"] = notification.get_typename_display()
-        lis[-1]["title"] = notification.get_title_display()
+        note_display["status"] = notification.get_status_display()
+        note_display["URL"] = notification.URL
+        note_display["type"] = notification.get_typename_display()
+        note_display["title"] = notification.get_title_display()
         _, user_type, _ = utils.check_user_type(notification.sender)
         if user_type == "Organization":
-            lis[-1]["sender"] = Organization.objects.get(
-                organization_id__username=notification.sender.username
-            ).oname
+            note_display["sender"] = sender_orgs.get(
+                notification.sender_id
+            )
         else:
-            lis[-1]["sender"] = NaturalPerson.objects.get(
-                person_id__username=notification.sender.username
-            ).name
+            note_display["sender"] = sender_persons.get(
+                notification.sender_id
+            )
+        lis.append(note_display)
     return lis
 
 
@@ -2899,15 +2905,11 @@ def notifications(request):
     notification_set = Notification.objects.activated().select_related(
         'sender').filter(receiver=request.user)
 
-    done_list = notification2Display(
-        list(notification_set.filter(
+    done_list = notification2Display(notification_set.filter(
             status=Notification.Status.DONE).order_by("-finish_time"))
-    )
 
-    undone_list = notification2Display(
-        list(notification_set.filter(
+    undone_list = notification2Display(notification_set.filter(
             status=Notification.Status.UNDONE).order_by("-start_time"))
-    )
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
