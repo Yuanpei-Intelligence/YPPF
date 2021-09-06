@@ -86,6 +86,8 @@ from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
+from app.utils import operation_writer
+
 # 定时任务不在views直接调用
 # 但是天气任务还是在这里弄吧，太奇怪了
 from app.scheduler_func import start_scheduler
@@ -2492,8 +2494,8 @@ def addActivity(request, aid=None):
                 html_display["warn_code"] = 1
                 # return redirect(f"/viewActivity/{activity.id}")
             except Exception as e:
-                print(e)
-                return redirect("/welcome/")
+                operation_writer(local_dict["system_log"],"活动"+str(activity.id)+"在修改过程中出现异常，报错为:" + str(e),"[views:addActivity]","Error")
+                return redirect("/welcome/?warn_code=1&warn_message=出现意料之外的错误, 请联系管理员帮您解决!")
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]

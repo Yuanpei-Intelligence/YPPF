@@ -437,7 +437,7 @@ def modify_accepted_activity(request, activity):
             activity_id=activity.id, 
             status=Participant.AttendStatus.APLLYSUCCESS
         )):
-            raise ActivityException(f"当前成功报名人数已超过{capacity}人")
+            raise ActivityException(f"当前成功报名人数已超过{capacity}人!")
     activity.capacity = capacity
 
     if request.POST.get("need_checkin"):
@@ -782,8 +782,7 @@ def cancel_activity(request, activity):
         if activity.valid:
             records = TransferRecord.objects.filter(
                 status=TransferRecord.TransferStatus.ACCEPTED, 
-                corres_act=activity,
-            )
+                corres_act=activity).prefetch_related("proposer")
             total_amount = records.aggregate(nums=Sum('amount'))["nums"]
             if total_amount is None:
                 total_amount = 0.0
@@ -807,8 +806,7 @@ def cancel_activity(request, activity):
             # 都是 pending
             records = TransferRecord.objects.filter(
                 status=TransferRecord.TransferStatus.PENDING, 
-                corres_act=activity,
-            )
+                corres_act=activity).prefetch_related("proposer")
             person_list = [record.proposer.id for record in records]
             payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
             for record in records:
