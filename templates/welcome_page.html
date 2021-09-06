@@ -110,6 +110,7 @@
                     const ref = document.querySelector(`#style1`);
                     const photos = ref.querySelectorAll(`img`);
                     /* ---------------- fit wallpaper according to screen height ---------------- */
+                    setTimeout(resize, 0);
                     window.addEventListener(`load`, resize);
                     window.addEventListener(`resize`, resize);
                     function resize() {
