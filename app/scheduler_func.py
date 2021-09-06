@@ -20,7 +20,7 @@ from numpy.random import choice
 from urllib import parse, request as urllib2
 import json
 
-YQPoint_oname = local_dict["YQPoint_soucre_oname"]
+YQPoint_oname = local_dict["YQPoint_source_oname"]
 
 
 # 学院每月下发元气值
