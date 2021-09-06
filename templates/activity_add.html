@@ -25,6 +25,8 @@
             
                 {% if html_display.warn_code == 2 %}
                 <div class="alert alert-success  text-center" id="success_msg" >{{ html_display.warn_msg }}</div>
+                {% else %}
+                <div class="alert alert-success  text-center" id="success_msg" style="display: none;"></div>
                 {% endif %}
                 {% if html_display.warn_code == 1 %}
                 <div class="alert alert-warning  text-center" id="warn_msg" >{{ html_display.warn_msg }}</div>
@@ -347,7 +349,7 @@
                                                     name="need_checkin">
                                                 <label class="form-check-label" for="defaultCheck1">
                                                     需要签到?
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="若勾选此项，则活动开始到结束阶段时组织者可以在活动主页看到签到二维码，需要组织者打开此页面展示给同学扫码签到。为防止远程签到，其余账户将不会看到此签到二维码！">
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="若勾选此项，则活动等待到结束阶段时组织者可以在活动主页看到签到二维码，需要组织者打开此页面展示给同学扫码签到。为防止远程签到，其余账户将不会看到此签到二维码！">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -768,9 +770,7 @@
         end = new Date(end);
         // 结束要比开始晚
         if (start >= end) {
-            {% if html_display.warn_code == 2 %}
             document.getElementById("success_msg").style.display = "none";
-            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "结束时间要晚于开始时间。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;

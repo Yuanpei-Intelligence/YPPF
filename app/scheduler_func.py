@@ -373,6 +373,7 @@ def draw_lots(activity):
             content=content,
             URL=URL,
             publish_to_wechat=True,
+            publish_kws={'app': WechatApp.TO_PARTICIPANT},
         )
     #抽签失败的同学发送通知
     receivers = Participant.objects.filter(
@@ -390,6 +391,7 @@ def draw_lots(activity):
             content=content,
             URL=URL,
             publish_to_wechat=True,
+            publish_kws={'app': WechatApp.TO_PARTICIPANT},
         )
 
 
