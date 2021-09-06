@@ -1952,7 +1952,7 @@ def viewActivity(request, aid=None):
                 if activity.start + timedelta(hours=1) < datetime.now():
                     return redirect(f"/editActivity/{aid}")
                 html_display["warn_code"] = 1
-                html_display["warn_message"] = f"活动即将开始, 不能修改活动。"
+                html_display["warn_message"] = f"距离活动开始前1小时内将不再允许修改活动。如却有雨天等意外情况，请及时取消活动，收取的元气值将会退还。"
             else:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = f"活动状态为{activity.status}, 不能修改。"
@@ -2092,9 +2092,9 @@ def viewActivity(request, aid=None):
             # pStatus 是参与状态
             pStatus = participant.status
         except:
-            pStatus = "无记录"
+            pStatus = "未参与"
         if pStatus == "放弃":
-            pStatus = "无记录"
+            pStatus = "未参与"
 
     # 签到
     need_checkin = activity.need_checkin
