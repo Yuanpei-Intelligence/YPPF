@@ -473,6 +473,8 @@ def stuinfo(request, name=None):
             )
         origin = request.get_full_path()
 
+        if request.session.get('alert_message'):
+            load_alert_message = request.session.pop('alert_message')
         return render(request, "stuinfo.html", locals())
 
 
@@ -729,6 +731,8 @@ def orginfo(request, name=None):
             my_position = my_position[0]
     
 
+    if request.session.get('alert_message'):
+        load_alert_message = request.session.pop('alert_message')
     return render(request, "orginfo.html", locals())
 
 
@@ -923,8 +927,6 @@ def account_setting(request):
                 return redirect("/stuinfo/?modinfo=success")
             # else: 没有更新
 
-        if request.session.get('alert_message'):
-            load_alert_message = request.session.pop('alert_message')
         return render(request, "person_account_setting.html", locals())
 
     else:
@@ -966,8 +968,6 @@ def account_setting(request):
                 return redirect("/orginfo/?modinfo=success")
             # else: 没有更新
 
-        if request.session.get('alert_message'):
-            load_alert_message = request.session.pop('alert_message')
         return render(request, "org_account_setting.html", locals())
 
 
