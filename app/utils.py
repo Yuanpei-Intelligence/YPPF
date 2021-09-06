@@ -836,7 +836,7 @@ def record_modification(user, info=""):
         obj = get_person_or_org(user, usertype)
         name = obj.name if usertype == 'Person' else obj.oname
         firsttime = not user.modify_records.exists()
-        ModifyRecord.objects.create(user=user, name=name, info=info)
+        ModifyRecord.objects.create(user=user, usertype=usertype, name=name, info=info)
         return firsttime
     except:
         return None
