@@ -705,7 +705,7 @@ class TransferRecord(models.Model):
 
     class TransferType(models.IntegerChoices):
         ACTIVITY = (0, "团体活动入账") # 包括像学院申请元气值的部分
-        REIMURSEMENT = (1, "报销兑换") # 元气值湮灭
+        REIMBURSEMENT = (1, "报销兑换") # 元气值湮灭
         BONUS = (2, "学院发放") # 学院发放的奖励
         TRANSACTION = (3, "团体间转账")
 

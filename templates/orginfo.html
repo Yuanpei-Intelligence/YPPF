@@ -148,7 +148,7 @@
                                             <path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"></path>
                                             <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
                                         </svg>
-                                        <a href="/transPage/{{ org.organization_id_id }}">向ta转账</a>
+                                        <a href="/transPage/{{ org.organization_id_id }}">给ta元气值</a>
                                         <a data-toggle="tooltip" data-placement="bottom" title="目前仅支持团体向团体转账">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                 class="bi bi-question-circle-fill" viewBox="0 0 22 22">
@@ -321,54 +321,21 @@
                                                         <div class="d-flex justify-content-between">
                                                             <h5
                                                                 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                <!--一个判断：
-                                                                        进行中：
-                                                                            团体：success
-                                                                            个人：本身的状态/报名截止（primary/danger)
-                                                                        报名中：
-                                                                            团体：success
-                                                                            个人：其他状态/未报名（primary/danger/secondary）
-                                                                        等待中：
-                                                                            团体：info
-                                                                            个人：本身的状态/报名截止（primary/danger)
-                                                                        审核中：都是warning
-                                                                    -->
-
+                                                                
                                                                 {% if rec.act.status == "审核中" %}
                                                                     <span class="badge badge-pill badge-warning">
                                                                         {{ rec.act.status }}
                                                                     </span>
+                                                                {% elif rec.act.status == "等待中" %}
+                                                                    <span class="badge badge-pill badge-info">
+                                                                        等待开始
+                                                                    </span>
                                                                 {% else %}
-                                                                    {% if user_type == "Organization" %}
-                                                                        {% if rec.act.status == "等待中" %}
-                                                                            <span class="badge badge-pill badge-info">
-                                                                                等待开始
-                                                                            </span>
-                                                                        {% else %}
-                                                                            <span class="badge badge-pill badge-success">
-                                                                                {{ rec.act.status }}
-                                                                            </span>
-                                                                        {% endif %}
-                                                                    {% else %}
-
-                                                                        {% if rec.status == "无记录" %}
-                                                                            {% if rec.act.status == "报名中" %}
-                                                                                <span class="badge badge-pill badge-secondary">报名中</span>
-                                                                            {% else %}
-                                                                                <span class="badge badge-pill badge-info">报名截止</span>
-                                                                            {% endif %}
-                                                                        {% elif rec.status == "活动申请失败" or rec.status == "未签到" or rec.status == "放弃" %}
-                                                                            <span class="badge badge-pill badge-warning">
-                                                                                {{ rec.status }}
-                                                                            </span>
-                                                                        {% else %}
-                                                                            <span class="badge badge-pill badge-primary">
-                                                                                {{ rec.status }}
-                                                                            </span>
-                                                                        {% endif %}
-
-                                                                    {% endif %}
+                                                                    <span class="badge badge-pill badge-success">
+                                                                        {{ rec.act.status }}
+                                                                    </span>
                                                                 {% endif %}
+                                                                
 
                                                                 {{rec.act.title}}
 
@@ -466,16 +433,9 @@
                                                             <h5
                                                                 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
 
-                                                                {% if user_type == "Person" and rec.status == "已参与" %}
-                                                                <span class="badge badge-pill badge-primary">已参与</span>
-                                                                {% elif user_type == "Person" and rec.status == "未签到" %}
-                                                                <span
-                                                                    class="badge badge-pill badge-secondary">未签到</span>
-                                                                {% else %}
                                                                 <span class="badge badge-pill badge-danger">
                                                                     {{ rec.act.status }}
                                                                 </span>
-                                                                {% endif %}
 
                                                                 {{ rec.act.title }}
 
