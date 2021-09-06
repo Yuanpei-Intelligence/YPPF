@@ -27,6 +27,12 @@
 
 </head>
 
+{% if load_alert_message %}
+<script>
+    alert('{{load_alert_message}}');
+</script>
+{% endif %}
+
 <body>
 
     <!--  BEGIN NAVBAR  -->

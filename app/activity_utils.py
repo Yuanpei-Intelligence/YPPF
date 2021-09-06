@@ -447,9 +447,9 @@ def modify_accepted_activity(request, activity):
 
     # 内部活动
     if request.POST.get("inner"):
-        activity.need_checkin = True
+        activity.inner = True
     else:
-        activity.need_checkin = False
+        activity.inner = False
 
     activity.end = datetime.strptime(request.POST["actend"], "%Y-%m-%d %H:%M")
     assert activity.start < activity.end
