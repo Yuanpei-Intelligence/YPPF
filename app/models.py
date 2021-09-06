@@ -728,7 +728,7 @@ class Participant(models.Model):
 
     class AttendStatus(models.TextChoices):
         APPLYING = "申请中"
-        APLLYFAILED = "申请失败"
+        APLLYFAILED = "活动申请失败"
         APLLYSUCCESS = "已报名"
         ATTENDED = "已参与"
         UNATTENDED = "未签到"

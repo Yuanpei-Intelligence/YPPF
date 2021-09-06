@@ -420,12 +420,6 @@ def stuinfo(request, name=None):
             Q(id__in=participants.values("activity_id")),
             ~Q(status=Activity.Status.CANCELED),
         )
-        activities_start = [
-            activity.start.strftime("%Y-%m-%d %H:%M") for activity in activities
-        ]
-        activities_end = [
-            activity.end.strftime("%Y-%m-%d %H:%M") for activity in activities
-        ]
         if user_type == "Person":
             activities_me = Participant.objects.filter(person_id=person.id).values(
                 "activity_id"
@@ -441,35 +435,7 @@ def stuinfo(request, name=None):
                 activity["activity_id"] in activities_me
                 for activity in participants.values("activity_id")
             ]
-        participate_status_list = participants.values("status")
-        participate_status_list = [info["status"] for info in participate_status_list]
-        status_color = {
-            Activity.Status.REVIEWING: "warning",
-            Activity.Status.CANCELED: "danger",
-            Activity.Status.APPLYING: "success",
-            Activity.Status.WAITING: "info",
-            Activity.Status.PROGRESSING: "success",
-            Activity.Status.END: "danger",
-            Participant.AttendStatus.APPLYING: "primary",
-            Participant.AttendStatus.APLLYFAILED: "warning",
-            Participant.AttendStatus.APLLYSUCCESS: "primary",
-            Participant.AttendStatus.ATTENDED: "primary",
-            Participant.AttendStatus.UNATTENDED: "warning",
-            Participant.AttendStatus.CANCELED: "warning",
-        }
-        activity_color_list = [status_color[activity.status] for activity in activities]
-        attend_color_list = [status_color[status] for status in participate_status_list]
-        activity_info = list(
-            zip(
-                activities,
-                activities_start,
-                activities_end,
-                participate_status_list,
-                activity_is_same,
-                activity_color_list,
-                attend_color_list,
-            )
-        )
+        activity_info = list(zip(activities, activity_is_same))
         activity_info.sort(key=lambda a: a[0].start, reverse=True)
         html_display["activity_info"] = list(activity_info) or None
 
@@ -796,21 +762,22 @@ def homepage(request):
                 np.save()
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
-    recentactivity_list = Activity.objects.get_recent_activity()
+    recentactivity_list = Activity.objects.get_recent_activity().select_related('organization_id')
 
     # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
-    activities = Activity.objects.get_today_activity()
+    activities = Activity.objects.get_today_activity().select_related('organization_id')
     activities_start = [
         activity.start.strftime("%H:%M") for activity in activities
     ]
     html_display['today_activities'] = list(zip(activities, activities_start)) or None
 
     # 最新一周内发布的活动，按发布的时间逆序
-    newlyreleased_list = Activity.objects.get_newlyreleased_activity()
+    newlyreleased_list = Activity.objects.get_newlyreleased_activity().select_related('organization_id')
 
     # 即将截止的活动，按截止时间正序
     prepare_times = Activity.EndBeforeHours.prepare_times
-    signup_rec = Activity.objects.activated().filter(status = Activity.Status.APPLYING)
+    signup_rec = Activity.objects.activated().select_related(
+        'organization_id').filter(status = Activity.Status.APPLYING)
     signup_list = []
     for act in signup_rec:
         deadline = act.start - timedelta(hours=prepare_times[act.endbefore])
@@ -1986,7 +1953,7 @@ def viewActivity(request, aid=None):
                 if activity.start + timedelta(hours=1) < datetime.now():
                     return redirect(f"/editActivity/{aid}")
                 html_display["warn_code"] = 1
-                html_display["warn_message"] = f"活动即将开始, 不能修改活动。"
+                html_display["warn_message"] = f"距离活动开始前1小时内将不再允许修改活动。如却有雨天等意外情况，请及时取消活动，收取的元气值将会退还。"
             else:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = f"活动状态为{activity.status}, 不能修改。"
@@ -2039,7 +2006,13 @@ def viewActivity(request, aid=None):
             except Exception as e:
                 # print("Exception", e)
                 return redirect("/modifyReimbursement/")
-
+        elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
+            if not ownership:
+                return redirect("/welcome/")
+            return utils.export_activity(activity,option)
+        else:
+            return redirect("/welcome")
+        """
         elif option == "submitphoto":
             if not (ownership and activity.status == Activity.Status.END):
                 return redirect("/welcome/")
@@ -2075,15 +2048,10 @@ def viewActivity(request, aid=None):
                 )
                 html_display["warn_message"] = "成功提交活动照片"
             html_display["warn_code"] = 2
-        elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
-            if not ownership:
-                return redirect("/welcome/")
-            return utils.export_activity_signin(activity)
-        elif option == "cancelInformShare":
-            me.inform_share = False
-            me.save()
-        else:
-            return redirect("/welcome")
+        """
+
+
+
 
 
     # 下面这些都是展示前端页面要用的
@@ -2129,9 +2097,9 @@ def viewActivity(request, aid=None):
             # pStatus 是参与状态
             pStatus = participant.status
         except:
-            pStatus = "无记录"
+            pStatus = "未参与"
         if pStatus == "放弃":
-            pStatus = "无记录"
+            pStatus = "未参与"
 
     # 签到
     need_checkin = activity.need_checkin
@@ -2873,37 +2841,43 @@ def apply_position(request, oid=None):
 
 
 
-def notification2Display(notification_list):
+def notification2Display(notification_set):
     lis = []
+    sender_userids = notification_set.values_list('sender_id', flat=True)
+    sender_persons = NaturalPerson.objects.filter(person_id__in=sender_userids).values_list('person_id', 'name')
+    sender_persons = {userid: name for userid, name in sender_persons}
+    sender_orgs = Organization.objects.filter(organization_id__in=sender_userids).values_list('organization_id', 'oname')
+    sender_orgs = {userid: name for userid, name in sender_orgs}
     # 储存这个列表中所有record的元气值的和
-    for notification in notification_list:
-        lis.append({})
+    for notification in notification_set:
+        note_display = {}
 
         # id
-        lis[-1]["id"] = notification.id
+        note_display["id"] = notification.id
 
         # 时间
-        lis[-1]["start_time"] = notification.start_time.strftime("%Y-%m-%d %H:%M")
+        note_display["start_time"] = notification.start_time.strftime("%Y-%m-%d %H:%M")
         if notification.finish_time is not None:
-            lis[-1]["finish_time"] = notification.finish_time.strftime("%Y-%m-%d %H:%M")
+            note_display["finish_time"] = notification.finish_time.strftime("%Y-%m-%d %H:%M")
 
         # 留言
-        lis[-1]["content"] = notification.content
+        note_display["content"] = notification.content
 
         # 状态
-        lis[-1]["status"] = notification.get_status_display()
-        lis[-1]["URL"] = notification.URL
-        lis[-1]["type"] = notification.get_typename_display()
-        lis[-1]["title"] = notification.get_title_display()
+        note_display["status"] = notification.get_status_display()
+        note_display["URL"] = notification.URL
+        note_display["type"] = notification.get_typename_display()
+        note_display["title"] = notification.get_title_display()
         _, user_type, _ = utils.check_user_type(notification.sender)
         if user_type == "Organization":
-            lis[-1]["sender"] = Organization.objects.get(
-                organization_id__username=notification.sender.username
-            ).oname
+            note_display["sender"] = sender_orgs.get(
+                notification.sender_id
+            )
         else:
-            lis[-1]["sender"] = NaturalPerson.objects.get(
-                person_id__username=notification.sender.username
-            ).name
+            note_display["sender"] = sender_persons.get(
+                notification.sender_id
+            )
+        lis.append(note_display)
     return lis
 
 
@@ -2963,15 +2937,14 @@ def notifications(request):
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
     
-    notification_set = Notification.objects.activated().filter(receiver=request.user)
+    notification_set = Notification.objects.activated().select_related(
+        'sender').filter(receiver=request.user)
 
-    done_list = notification2Display(
-        list(notification_set.union(notification_set).order_by("-finish_time"))
-    )
+    done_list = notification2Display(notification_set.filter(
+            status=Notification.Status.DONE).order_by("-finish_time"))
 
-    undone_list = notification2Display(
-        list(notification_set.union(notification_set).order_by("-start_time"))
-    )
+    undone_list = notification2Display(notification_set.filter(
+            status=Notification.Status.UNDONE).order_by("-start_time"))
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
@@ -3948,6 +3921,12 @@ def send_message_check(me, request):
     
     if len(url) == 0:
         url = None
+    else:
+        try:
+            if url[0:4].upper()!="HTTP":
+                return wrong("URL应当以http或https开头！")
+        except:
+            return wrong("请输入正确的链接地址！")
 
     not_list = []
     sender = me.organization_id

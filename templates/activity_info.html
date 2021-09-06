@@ -128,6 +128,7 @@
 
             <!-- ----------------------------- adapt width ----------------------------- -->
             <script type="text/javascript">
+                setTimeout(resizeWidth, 0);
                 window.addEventListener(`load`, resizeWidth);
                 window.addEventListener(`resize`, resizeWidth);
 
@@ -171,6 +172,7 @@
 
             <!-- -------------------------- constrain height --------------------------- -->
             <script type="text/javascript">
+                setTimeout(resizeHeight, 0);
                 window.addEventListener(`load`, resizeHeight);
                 window.addEventListener(`resize`, resizeHeight);
 
@@ -347,11 +349,11 @@
                                     {% endif %}
                                     <!-- ---------------------------- begin summary ---------------------------- -->
                                     {% if status == "已结束" %}
-                                    <button class="btn btn-primary btn-block mb-2" data-toggle="collapse"
+                                    <!--<button class="btn btn-primary btn-block mb-2" data-toggle="collapse"
                                         data-target="#summaryphoto">
                                         上传/更新总结照片
                                     </button>
-                                    <!--  如果要上传照片，则展示下面的部分  -->
+
                                     <form method="POST" enctype="multipart/form-data">
                                         <div id="summaryphoto" class="collapse">
                                             <div class="form-group">
@@ -366,7 +368,8 @@
                                             <input type="hidden" name="option" value="submitphoto">
                                             <button type="submit" class="btn btn-primary btn-block mb-2">确认上传</button>
                                         </div>
-                                    </form>
+                                    </form>-->
+
                                     <button class="btn btn-primary btn-block mb-2" id="export_sign_excel" type="button">
                                         下载签到信息
                                     </button>
@@ -412,14 +415,14 @@
 
                     <div class="widget-content widget-content-area">
 
-                        <h5>组织者</h5>
+                        <h5>发起者</h5>
                         <div class="d-flex justify-content-start">
                             <div style="width: max-content; border-radius: 25px; overflow: hidden;">
                                 <img src="{{ org_avatar_path }}" class="flex" alt="organization avatar" height="50px" width="50px">
                             </div>
                             <span class="flex flex-grow-1 mx-3">
                                 <div class="d-flex justify-content-between">
-                                    <h5 class="flex" style="height: 21px;">{{ org_name }}</h5>
+                                    <a href='/orginfo/{{org_name}}'><u><h5 class="flex" style="height: 21px;">{{ org_name }}</h5></u></a>
                                     <p class="mb-0" style="color: gray;">{{ org_type }}</p>
                                 </div>
                                 <p class="mb-0" style="color: gray;">{{ org.introduction }}</p>
