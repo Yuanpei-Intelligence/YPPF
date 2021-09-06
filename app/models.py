@@ -614,6 +614,8 @@ class Activity(CommentBase):
     recorded = models.BooleanField("是否预报备", default=False)
     valid = models.BooleanField("是否已审核", default=False)
 
+    inner = models.BooleanField("内部活动", default=False)
+
     class YQPointSource(models.IntegerChoices):
         COLLEGE = (0, "学院")
         STUDENT = (1, "学生")
