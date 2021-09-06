@@ -1,5 +1,5 @@
 from threading import current_thread
-from django.db.models import F
+from django.db.models import F, Sum
 from django.http import JsonResponse, HttpResponse, QueryDict  # Json响应
 from django.shortcuts import render, redirect  # 网页render & redirect
 from django.urls import reverse
