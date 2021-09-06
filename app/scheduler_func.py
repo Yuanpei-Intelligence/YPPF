@@ -343,8 +343,10 @@ def draw_lots(activity):
             activity_id=activity.id,
             status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYFAILED]
         ).update(status=Participant.AttendStatus.APLLYSUCCESS)
+        activity.current_participants = engaged + l
     else:
         lucky_ones = sample(range(l), leftQuota)
+        activity.current_participants = activity.capacity
         for i, participant in enumerate(Participant.objects.select_for_update().filter(
                 activity_id=activity.id,
                 status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYFAILED]
