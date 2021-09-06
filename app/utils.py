@@ -857,14 +857,14 @@ def get_modify_rank(user):
     except:
         return -1
 
-def record_modify(request, info=""):
+def record_modify_with_session(request, info=""):
     try:
         _, usertype, _ = check_user_type(request.user)
         recorded = record_modification(request.user, info)
         if recorded == True:
             rank = get_modify_rank(request.user)
             is_person = usertype == 'Person'
-            info_rank = 100 if is_person else 10
+            info_rank = local_dict.get("max_inform_rank", {}).get(usertype, -1)
             if rank > -1 and rank <= info_rank:
                 msg = (
                     f'您是第{rank}名修改账号信息的'+

@@ -40,6 +40,7 @@ from app.utils import (
     wrong, 
     succeed,
     escape_for_templates,
+    record_modify_with_session,
 )
 from app.activity_utils import (
     create_activity,
@@ -109,6 +110,8 @@ def index(request):
     # request.GET['success'] = "no"
     arg_islogout = request.GET.get("is_logout")
     alert = request.GET.get("alert")
+    if request.session.get('alert_message'):
+        load_alert_message = request.session.pop('alert_message')
     html_display = dict()
     if (
             request.method == "GET"
@@ -916,9 +919,12 @@ def account_setting(request):
             if expr >= 1:
                 useroj.save()
                 upload_state = True
+                record_modify_with_session(request, f"修改了{expr}项信息")
                 return redirect("/stuinfo/?modinfo=success")
             # else: 没有更新
 
+        if request.session.get('alert_message'):
+            load_alert_message = request.session.pop('alert_message')
         return render(request, "person_account_setting.html", locals())
 
     else:
@@ -956,9 +962,12 @@ def account_setting(request):
             avatar_path = settings.MEDIA_URL + str(ava)
             if expr >= 1:
                 upload_state = True
+                record_modify_with_session(request, f"修改了{expr}项信息")
                 return redirect("/orginfo/?modinfo=success")
             # else: 没有更新
 
+        if request.session.get('alert_message'):
+            load_alert_message = request.session.pop('alert_message')
         return render(request, "org_account_setting.html", locals())
 
 
@@ -1493,6 +1502,8 @@ def modpw(request):
                     if forgetpw:
                         request.session.pop("forgetpw")  # 删除session记录
 
+                    record_modify_with_session(request,
+                        "首次修改密码" if isFirst else "修改密码")
                     urls = reverse("index") + "?modinfo=success"
                     return redirect(urls)
                 except:  # modified by pht: 之前使用的if检查是错误的
