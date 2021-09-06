@@ -75,7 +75,7 @@
                         <div class="user-info-list">
                             <ul class="contacts-block list-unstyled">
                                 <div style="width: max-content;">
-                                    <!--
+                                    
                                     {% if context.person.show_nickname %}
                                     <li class="contacts-block__item">
                                         <div class="w-100 row p-0 m-0">
@@ -92,7 +92,7 @@
                                             </div>
                                         </div>
                                     </li>
-                                    {% endif %}-->
+                                    {% endif %}
 
                                     <li class="contacts-block__item">
                                         <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor"
@@ -102,10 +102,10 @@
                                             <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z">
                                             </path>
                                         </svg>
-                                        {% if context.person.stu_grade is not None and context.person.stu_grade != "" %}
+                                        {% if context.person.stu_grade != "None" and context.person.stu_grade != "" %}
                                         {{ context.person.stu_grade }}级
                                         {% endif %}
-                                        {% if context.person.stu_class is not None and context.person.stu_class != "" %}
+                                        {% if context.person.stu_class != "None" and context.person.stu_class != "" %}
                                         {{ context.person.stu_class }}班
                                         {% endif %}
                                         {% if context.person.stu_grade is None or context.person.stu_grade == "" %}
@@ -234,7 +234,7 @@
                                         </svg>
                                         <a href="/transPage/{{context.person.person_id_id}}">
                                             向{{ context.title }}转账</a>
-                                        <a data-toggle="tooltip" data-placement="bottom" title="目前仅支持组织向组织转账">
+                                        <a data-toggle="tooltip" data-placement="bottom" title="目前仅支持团体向团体转账">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                 class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                 <path
@@ -314,7 +314,7 @@
                             {% if html_display.is_myself == False and user_type == 'Person' %}
                             <div class="col-0 mr-4 custom-control custom-switch">
                                 <input type="checkbox" class="custom-control-input" id="org-show-same-button"
-                                    onclick="toggle_same.call(this, `org`, `组织`, `inline-block`, '共同');this.blur();">
+                                    onclick="toggle_same.call(this, `org`, `团体`, `inline-block`, '共同');this.blur();">
                                 <label class="custom-control-label" id="org-show-same-label"
                                     for="org-show-same-button">所有团体</label>
                             </div>

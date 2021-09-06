@@ -87,12 +87,11 @@
                                                 <td style="min-width: 80px;">
                                                     <u>
                                                         <a href="/stuinfo/{{ person.name }}+{{ person.person_id.id }}">
-                                                            <img src="{{ person.get_user_ava }}" alt="大头照" style="height: 20px; width: 20px;">
-                                                            {{ attribute }}
+                                                            <img src="{{ person.get_user_ava }}" alt="大头照" style="height: 20px; width: 20px;">{{ attribute }}
                                                         </a>
                                                     </u>
                                                 </td>
-                                                {% elif forloop.counter == 4 %}
+                                                {% elif forloop.counter == 5 %}
                                                 <!-- 说明此时要展示专业-->
                                                 <td style="min-width: 140px;">
                                                     {% if attribute is None or attribute == 'None' %}
@@ -174,8 +173,7 @@
                                                 <td style="min-width: 100px;">
                                                     <u>
                                                         <a href="/orginfo/{{ orgn.oname }}">
-                                                            <img src="{{ orgn.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">
-                                                            {{ orgn.oname }}
+                                                            <img src="{{ orgn.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">{{ orgn.oname }}
                                                         </a>
                                                     </u>
                                                 </td>
@@ -184,10 +182,9 @@
                                                 </td>
                                                 <td style="min-width: 80px;">
                                                     {% for pos_person in orgn.pos0 %}
-                                                    <a href="/stuinfo/{{ pos_person }}">
+                                                    <a href="/stuinfo/{{ pos_person }}+{{pos_person.person_id_id}}">
                                                         <u>
-                                                            <img src="{{ pos_person.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">
-                                                            {{ pos_person }}
+                                                            <img src="{{ pos_person.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">{{ pos_person }}
                                                         </u> <!-- 重名？ -->
                                                     </a>
 

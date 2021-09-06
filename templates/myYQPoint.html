@@ -14,40 +14,41 @@
         <div class="container">
             <div class="layout-top-spacing">
 
-                <div class="row">
+                <div class="col-12 row mx-0">
                     <div class="col-0 col-xl-2 col-lg-2 col-md-2"></div>
-                    <div class="col-12 col-xl-8 col-lg-8 col-md-8 layout-top-spacing">
+                    <div class="col-sm-12 col-md-8 layout-top-spacing px-0">
                         <div class="card mx-auto">
                             <img class="card-img-top" src="/static/assets/img/YQPointCard.jpeg" alt="Card image" style="width:100%">
                             <div class="card-body">
                                 {% if user_type == "Person" %}
-                                <span style="color: black;">当前元气值：{{quota_and_YQPoint}}</span>
+                                <b class="d-flex">
+                                    <span class="flex">当前元气值</span>
+                                    <span class="flex ml-auto">{{quota_and_YQPoint}}</span>
+                                    <br/>
+                                </b>
                                 {% else %}
-                                <div class="row">
-                                    <div class="col-8" style="color: black;">
-                                        <div class="">
-                                            <span class="float-left" >当前元气值：</span>
-                                            <span class="float-right" >{{me.YQPoint}}</span>
-                                            <br/>
-                                        </div>
-                                        <div class="">
-                                            <span class="float-left" >待收入元气值：</span>
-                                            <span class="float-right" >{{amount.recv}}</span>
-                                            <br/>
-                                        </div>
-                                        <div class="">
-                                            <span class="float-left" >待支出元气值：</span>
-                                            <span class="float-right" >{{amount.send}}</span>
-                                        </div>
-                                    </div>
-                                </div>
+                                <b class="d-flex">
+                                    <span class="flex">当前元气值</span>
+                                    <span class="flex ml-auto">{{me.YQPoint}}</span>
+                                    <br/>
+                                </b>
+                                <b class="d-flex">
+                                    <span class="flex">待收入元气值</span>
+                                    <span class="flex ml-auto">{{amount.recv}}</span>
+                                    <br/>
+                                </b>
+                                <b class="d-flex">
+                                    <span class="flex">待支出元气值</span>
+                                    <span class="flex ml-auto">{{amount.send}}</span>
+                                    <br/>
+                                </b>
                                 {% endif %}
                             </div>
                         </div>
                      </div>
                  </div>
 
-                <div class="col-lg-12 col-12 layout-top-spacing">
+                <div class="col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
                             <h3>既存交易</h3>

@@ -307,7 +307,6 @@
                             <div class="mt-4">
 
                                 {% if examine %}
-
                                     {% if status == "审核中" or not activity.valid %}
                                     <button class="btn btn-primary btn-block mb-2" data-toggle="collapse"
                                         data-target="#extend-area" onclick="location='/examineActivity/{{aid}}'">
@@ -315,7 +314,7 @@
                                     </button>
                                     {% elif activity.valid %}
                                     <button class="btn btn-primary btn-block mb-2" data-toggle="collapse"
-                                        data-target="#extend-area">
+                                        data-target="#extend-area" onclick="location='/examineActivity/{{aid}}'">
                                         审核记录
                                     </button>
                                     {% endif %}
@@ -382,7 +381,7 @@
                                     {% if status == "审核中" or status == "报名中" or status == "等待中" %}
                                     <form method="POST">
                                         <input type="hidden" name="option" value="edit">
-                                        <button class="btn btn-primary btn-block mb-2">修改信息</button>
+                                        <button class="btn btn-primary btn-block mb-2">修改活动</button>
                                     </form>
                                     <form method="POST">
                                         <input type="hidden" name="option" value="cancel">
@@ -430,13 +429,16 @@
                         <div class="mb-4"></div>
 
                         <h5>参与者</h5>
-                        {% if participants_ava is None %}
+                        {% if participants is None %}
                         <div style="text-align: center;">还没有参与者哦～</div>
                         {% else %}
                         <div class="row" style="margin-left: -4px;">
-                            {% for ava in participants_ava %}
+                            {% for person in people_list %}
+                            
                             <span class="col-0 m-1" style="border-radius: 8px; overflow: hidden;">
-                                <img src="{{ ava }}" class="flex" alt="participant's avatar" height="50px" width="50px">
+                                <a href="/stuinfo/{{ person.name }}+{{ person.person_id.id }}">
+                                <img src="{{ person.get_user_ava }}" class="flex" alt="participant's avatar" height="50px" width="50px">
+                                </a>
                             </span>
                             {% endfor %}
                         </div>

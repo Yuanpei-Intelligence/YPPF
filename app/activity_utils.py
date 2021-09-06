@@ -14,6 +14,7 @@ from app.notification_utils import(
     bulk_notification_create,
     notification_status_change,
 )
+from app.wechat_send import WechatApp
 from app.models import (
     NaturalPerson,
     Position,
@@ -42,8 +43,10 @@ import base64
 from django.db.models import Sum
 from app.scheduler import scheduler
 from app.scheduler_func import changeActivityStatus, notifyActivity
+from django.db.models import F
 
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
+YQPoint_oname = local_dict["YQPoint_soucre_oname"]
 
 def get_activity_QRcode(activity):
 
@@ -127,6 +130,7 @@ def activity_base_check(request, edit=False):
     context["recorded"] = False
     if request.POST.get("recorded"):
         context["recorded"] = True
+        assert not context["from_college"]
 
     # 时间
     act_start = datetime.strptime(request.POST["actstart"], "%Y-%m-%d %H:%M")  # 活动报名时间
@@ -202,6 +206,18 @@ def create_activity(request):
 
     context = activity_base_check(request)
 
+    # 查找是否有类似活动存在
+    old_ones = Activity.objects.filter(
+        title=context["title"],
+        start=context["start"],
+        introduction=context["introduction"],
+        location=context["location"]
+    )
+    if len(old_ones) > 0:
+        # 这写法一点也不优雅.....
+        redirect_url = f"/viewActivity/{old_ones.first().id}"
+        raise ActivityException(redirect_url)
+
     # 审批老师存在
     examine_teacher = NaturalPerson.objects.get(name=context["examine_teacher"])
     assert examine_teacher.identity == NaturalPerson.Identity.TEACHER
@@ -209,21 +225,21 @@ def create_activity(request):
     # 检查完毕，创建活动
     org = get_person_or_org(request.user, "Organization")
     activity = Activity.objects.create(
-                    title=context["title"], organization_id=org,
-                    examine_teacher=examine_teacher
+                    title=context["title"], 
+                    organization_id=org,
+                    examine_teacher=examine_teacher,
+                    introduction=context["introduction"],
+                    location=context["location"],
+                    capacity=context["capacity"],
+                    URL=context["url"],
+                    budget=context["budget"],
+                    start=context["start"],
+                    end=context["end"],
+                    YQPoint=context["aprice"],
+                    bidding=context["bidding"],
+                    apply_end=context["signup_end"],
+                    apply_reason=context["apply_reason"],
                 )
-    activity.title = context["title"]
-    activity.introduction = context["introduction"]
-    activity.location = context["location"]
-    activity.capacity = context["capacity"]
-    activity.URL = context["url"]
-    activity.budget = context["budget"]
-    activity.start = context["start"]
-    activity.end = context["end"]
-    activity.YQPoint = context["aprice"]
-    activity.bidding = context["bidding"]
-    activity.apply_end = context["signup_end"]
-    activity.apply_reason = context["apply_reason"]
     if context["from_college"]:
         activity.source = Activity.YQPointSource.COLLEGE
     activity.endbefore = context["endbefore"]
@@ -257,6 +273,8 @@ def create_activity(request):
         content="您有一个活动待审批",
         URL=f"/examineActivity/{activity.id}",
         relate_instance=activity,
+        publish_to_wechat=True,
+        publish_kws={"app":WechatApp.AUDIT},
     )
 
     return activity.id
@@ -329,6 +347,8 @@ def modify_reviewing_activity(request, activity):
     activity.apply_reason = context["apply_reason"]
     if context["from_college"]:
         activity.source = Activity.YQPointSource.COLLEGE
+    else:
+        activity.source = Activity.YQPointSource.STUDENT
     if context.get("need_checkin"):
         activity.need_checkin = True
     else:
@@ -358,7 +378,7 @@ def modify_accepted_activity(request, activity):
     to_participants = [f"您参与的活动{activity.title}发生变化"]
     to_subscribers = [f"您关注的活动{activity.title}发生变化"]
     if activity.location != request.POST["location"]:
-        to_participants.append("活动地点修改为" + activity.location)
+        to_participants.append("活动地点修改为" + request.POST["location"])
         activity.location = request.POST["location"]
 
     # 不是学院来源时，价格可能会变
@@ -387,7 +407,7 @@ def modify_accepted_activity(request, activity):
         to_participants.append(f"活动报名截止时间调整为{signup_end.strftime('%Y-%m-%d %H:%M')}")
     else:
         signup_end = activity.apply_end
-        assert signup_end + timedelta(hours=1) < act_start
+        assert signup_end + timedelta(hours=1) <= act_start
     
     if activity.start != act_start:
         to_subscribers.append(f"活动开始时间调整为{act_start.strftime('%Y-%m-%d %H:%M')}")
@@ -461,6 +481,8 @@ def accept_activity(request, activity):
         content=f"您的活动{activity.title}已通过审批。",
         URL=f"/viewActivity/{activity.id}",
         relate_instance=activity,
+        publish_to_wechat=True,
+        publish_kws={"app":WechatApp.AUDIT},
     )
 
     if activity.status == Activity.Status.REVIEWING:
@@ -483,28 +505,53 @@ def accept_activity(request, activity):
     if activity.source == Activity.YQPointSource.COLLEGE and activity.YQPoint > 0:
         organization_id = activity.organization_id_id
         organization = Organization.objects.select_for_update().get(id=organization_id)
-        YP = Organization.objects.select_for_update().get(oname="元培学院")
         organization.YQPoint += activity.YQPoint
+        organization.save()
+        YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
         YP.YQPoint -= activity.YQPoint
+        YP.save()
         amount = activity.YQPoint
         record = TransferRecord.objects.create(
-            proposer=YP.organization_id, recipient=organization.organization_id
+            proposer=YP.organization_id, 
+            recipient=organization.organization_id,
+            rtype=TransferRecord.TransferType.ACTIVITY
         )
         record.amount = amount
-        record.message = f"From College"
+        record.message = f"From College."
         record.status = TransferRecord.TransferStatus.ACCEPTED
-        record.time = str(datetime.now())
+        record.finish_time = datetime.now()
         record.corres_act = activity
         record.save()
-        YP.save()
-        organization.save()
+
+    elif activity.recorded:
+        # 预报备活动，修改转账记录为 accepted
+        # 锁了 activity，不会有幻读
+        records = TransferRecord.objects.filter(
+            status=TransferRecord.TransferStatus.PENDING, 
+            corres_act=activity,
+        )
+        total_amount = records.aggregate(nums=Sum('amount'))["nums"]
+        if total_amount is None:
+            total_amount = 0.0
+        if total_amount > 0:
+            organization_id = activity.organization_id_id
+            organization = Organization.objects.select_for_update().get(id=organization_id)
+            organization.YQPoint += total_amount
+            organization.save()
+            YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
+            YP.YQPoint -= total_amount
+            YP.save()
+            records.update(
+                status=TransferRecord.TransferStatus.ACCEPTED,
+                finish_time=datetime.now()
+            )
 
     activity.save()
 
 
 
 def reject_activity(request, activity):
-    # 审批通过
+    # 审批过，这个叫 valid 不太合适...... 
     activity.valid = True
 
     # 通知
@@ -514,16 +561,6 @@ def reject_activity(request, activity):
         title=Notification.Title.VERIFY_INFORM
     )
     notification_status_change(notification, Notification.Status.DONE)
-
-    notification_create(
-        receiver=activity.organization_id.organization_id,
-        sender=request.user,
-        typename=Notification.Type.NEEDREAD,
-        title=Notification.Title.ACTIVITY_INFORM,
-        content=f"您的活动{activity.title}被拒绝。",
-        URL=f"/viewActivity/{activity.id}",
-        relate_instance=activity,
-    )
 
     if activity.status == Activity.Status.REVIEWING:
         activity.status = Activity.Status.REJECT
@@ -541,7 +578,35 @@ def reject_activity(request, activity):
         scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
         scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
 
+        # 加退款逻辑 ( 只需要考虑学生 )
+        records = TransferRecord.objects.filter(
+            status=TransferRecord.TransferStatus.PENDING, 
+            corres_act=activity,
+        )
+        person_list = [record.proposer.id for record in records]
+        payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
+        for record in records:
+            NaturalPerson.objects.filter(person_id=record.proposer).update(YQPoint=F("YQPoint") + record.amount)
+        records.update(
+            status=TransferRecord.TransferStatus.SUSPENDED,
+            finish_time=datetime.now()
+        )
+
+    notification = notification_create(
+        receiver=activity.organization_id.organization_id,
+        sender=request.user,
+        typename=Notification.Type.NEEDREAD,
+        title=Notification.Title.ACTIVITY_INFORM,
+        content=f"您的活动{activity.title}被拒绝。",
+        URL=f"/viewActivity/{activity.id}",
+        relate_instance=activity,
+        publish_to_wechat=True,
+        publish_kws={"app":WechatApp.AUDIT},
+    )
+
+
     activity.save()
+
 
 # 调用的时候用 try
 # 调用者把 activity_id 作为参数传过来
@@ -562,11 +627,6 @@ def applyActivity(request, activity):
         pass
     if CREATE == False:
         assert participant.status == Participant.AttendStatus.CANCELED
-
-
-    organization_id = activity.organization_id_id
-    organization = Organization.objects.select_for_update().get(id=organization_id)
-    YP = Organization.objects.select_for_update().get(oname="元培学院")
 
 
     if activity.source == Activity.YQPointSource.COLLEGE:
@@ -596,8 +656,9 @@ def applyActivity(request, activity):
         """
         amount = float(activity.YQPoint)
 
-        if not payer.YQPoint + payer.quota >= amount:
-            raise ActivityException(f"没有足够的元气值。您当前的元气值数量为 {payer.YQPoint + payer.quota}")
+        if amount > 0:
+            if not payer.YQPoint >= amount:
+                raise ActivityException(f"没有足够的元气值。您当前的元气值数量为 {payer.YQPoint}")
 
         if activity.bidding:
             activity.current_participants += 1
@@ -607,40 +668,31 @@ def applyActivity(request, activity):
             else:
                 raise ActivityException("活动已报满，请稍后再试。")
 
-        use_quota = amount
-        if payer.quota >= amount:
-            payer.quota -= amount
-            amount = 0
-        else:
-            use_quota = payer.quota
-            amount -= payer.quota
-            payer.quota = 0
-            payer.YQPoint -= amount
-        YP.YQPoint -= use_quota
-        # 用配额的部分
-        if use_quota > 0:
-            record = TransferRecord.objects.create(
-                proposer=request.user, recipient=organization.organization_id
-            )
-            record.amount = use_quota
-            record.message = "quota"
-            organization.YQPoint += use_quota
-            record.status = TransferRecord.TransferStatus.ACCEPTED
-            record.time = str(datetime.now())
-            record.corres_act = activity
-            record.save()
-        # 用个人账户的部分
         if amount > 0:
+            payer.YQPoint -= amount
             record = TransferRecord.objects.create(
-                proposer=request.user, recipient=organization.organization_id
+                proposer=request.user, 
+                recipient=activity.organization_id.organization_id,
+                rtype=TransferRecord.TransferType.ACTIVITY
             )
             record.amount = amount
-            record.message = "YQPoint"
-            organization.YQPoint += amount
-            record.status = TransferRecord.TransferStatus.ACCEPTED
-            record.time = str(datetime.now())
+            record.message = f"报名参与活动{activity.title}。"
+
+            if activity.valid:
+                organization_id = activity.organization_id_id
+                organization = Organization.objects.select_for_update().get(id=organization_id)
+                organization.YQPoint += amount
+                organization.save()
+                YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
+                YP.YQPoint -= amount
+                YP.save()
+                record.status = TransferRecord.TransferStatus.ACCEPTED
+            else:
+                record.status = TransferRecord.TransferStatus.PENDING
+            record.finish_time = datetime.now()
             record.corres_act = activity
             record.save()
+
 
     if CREATE:
         participant = Participant.objects.create(
@@ -651,8 +703,6 @@ def applyActivity(request, activity):
     else:
         participant.status = Participant.AttendStatus.APPLYING
 
-    YP.save()
-    organization.save()
     participant.save()
     payer.save()
     activity.save()
@@ -680,50 +730,65 @@ def cancel_activity(request, activity):
     org = Organization.objects.select_for_update().get(
                 organization_id=request.user
             )
-    assert activity.organization_id == org
 
-
-    if activity.status != Activity.Status.REVIEWING and activity.YQPoint > 0:
-        if activity.source == Activity.YQPointSource.COLLEGE:
-            if org.YQPoint < activity.YQPoint:
-                raise ActivityException("没有足够的元气值退还给学院，不能取消。")
-            org.YQPoint -= activity.YQPoint
-            # 这里加个悲观锁能提高性能吗 ？
-            YP = Organization.objects.select_for_update().get(oname="元培学院")
-            YP.YQPoint += activity.YQPoint
-            YP.save()
-            # activity 上了悲观锁，这里不用锁，如果锁了整个 record 表全锁住
-            record = TransferRecord.objects.get(
-                proposer=YP, status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity
-            )
-            record.status = TransferRecord.TransferStatus.REFUND
-            record.save()
-        else:
-            # 同理，这里也不用上锁
+    if activity.source == Activity.YQPointSource.COLLEGE and activity.YQPoint > 0:
+        # 向学院申请，不允许预报备，不允许修改元气值数量
+        if org.YQPoint < activity.YQPoint:
+            raise ActivityException("没有足够的元气值退还给学院，不能取消。")
+        org.YQPoint -= activity.YQPoint
+        org.save()
+        # 这里加个悲观锁能提高性能吗 ？
+        YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
+        YP.YQPoint += activity.YQPoint
+        YP.save()
+        # activity 上了悲观锁，这里不用锁
+        record = TransferRecord.objects.get(
+            proposer=YP, 
+            status=TransferRecord.TransferStatus.ACCEPTED, 
+            corres_act=activity
+        )
+        record.status = TransferRecord.TransferStatus.REFUND
+        record.save()
+    else:
+        # 考虑两种情况，活动 valid，所有 record 都是 accepted
+        if activity.valid:
             records = TransferRecord.objects.filter(
-                status=TransferRecord.TransferStatus.ACCEPTED, corres_act=activity
+                status=TransferRecord.TransferStatus.ACCEPTED, 
+                corres_act=activity,
             )
             total_amount = records.aggregate(nums=Sum('amount'))["nums"]
             if total_amount is None:
                 total_amount = 0.0
             if total_amount > org.YQPoint:
                 raise ActivityException("没有足够的元气值退还给同学，不能取消。")
-            totalQuota = records.filter(message="quota").aggregate(nums=Sum('amount'))["nums"]
-            YP = Organization.objects.select_for_update().get(oname="元培学院")
-            YP.YQPoint += activity.YQPoint
-            YP.save()
+            if total_amount > 0:
+                org.YQPoint -= total_amount
+                org.save()
+                YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
+                YP.YQPoint += total_amount
+                YP.save()
+                person_list = [record.proposer.id for record in records]
+                payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
+                for record in records:
+                    NaturalPerson.objects.filter(person_id=record.proposer).update(YQPoint=F("YQPoint") + record.amount)
+                records.update(
+                    status=TransferRecord.TransferStatus.REFUND,
+                    finish_time=datetime.now()
+                )
+        else:
+            # 都是 pending
+            records = TransferRecord.objects.filter(
+                status=TransferRecord.TransferStatus.PENDING, 
+                corres_act=activity,
+            )
+            person_list = [record.proposer.id for record in records]
+            payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
             for record in records:
-                payer = NaturalPerson.objects.select_for_update().get(person_id=record.proposer)
-                if record.message == "quota":
-                    payer.quota += record.amount
-                    YP.YQPoint += record.amount
-                else:
-                    payer.YQPoint += record.amount
-                payer.save()
-                record.status = TransferRecord.TransferStatus.REFUND
-                record.save()
-
-            org.YQPoint -= total_amount
+                NaturalPerson.objects.filter(person_id=record.proposer).update(YQPoint=F("YQPoint") + record.amount)
+            records.update(
+                status=TransferRecord.TransferStatus.SUSPENDED,
+                finish_time=datetime.now()
+            )
 
 
     activity.status = Activity.Status.CANCELED
@@ -734,6 +799,7 @@ def cancel_activity(request, activity):
     )
     notification_status_change(notification, Notification.Status.DELETE)
 
+    # 注意这里，活动取消后，状态变为申请失败了
     participants = Participant.objects.filter(
             activity_id=activity
         ).update(status=Participant.AttendStatus.APLLYFAILED)
@@ -743,7 +809,6 @@ def cancel_activity(request, activity):
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
 
-    org.save()
     activity.save()
 
 
@@ -759,68 +824,62 @@ def withdraw_activity(request, activity):
             Participant.AttendStatus.APLLYSUCCESS,
         ],
     )
-    org = Organization.objects.select_for_update().get(
-        organization_id=activity.organization_id.organization_id
-    )
-    YP = Organization.objects.select_for_update().get(oname="元培学院")
     participant.status = Participant.AttendStatus.CANCELED
     activity.current_participants -= 1
 
-    if activity.source == Activity.YQPointSource.STUDENT and activity.YQPoint > 0:
-        record = None
+    # 去掉了两个 check。一个是报名状态是申请中，一个是活动收取的元气值大于 0
+    # 因为比较宽松的修改限制，上面两条不合适
+    if activity.source == Activity.YQPointSource.STUDENT:
         half_refund = 1
-        if activity.bidding:
-            assert activity.status == Activity.Status.APPLYING
         if activity.status == Activity.Status.WAITING:
             if not datetime.now() < activity.start - timedelta(hours=1):
                 raise ActivityException("活动即将开始，不能取消。")
             half_refund = 0.5
 
-        # 使用 quota 交付的记录
+        # 非预报备的记录 ( 一个活动只可能有两种之一 )
         try:
             record = TransferRecord.objects.select_for_update().get(
                 corres_act=activity,
                 proposer=request.user,
+                # 活动未过审产生的 Pending 记录不需要考虑
                 status=TransferRecord.TransferStatus.ACCEPTED,
-                message="quota"
+                rtype=TransferRecord.TransferType.ACTIVITY
             )
-        except:
-            pass
-        if record is not None:
             amount = record.amount * half_refund
-            amount = int(10 * amount) * 0.1
-            record.status = TransferRecord.TransferStatus.REFUND
-            np.quota += amount
-            YP.YQPoint += amount
+            org = Organization.objects.select_for_update().get(
+                organization_id=activity.organization_id.organization_id
+            )
             if org.YQPoint < amount:
-                raise ActivityException("组织账户元气值不足，请与组织负责人联系。")
+                raise ActivityException("团体账户元气值不足，请与团体负责人联系。")
             org.YQPoint -= amount
-            record.save()
-
-        # 使用个人账户交付的记录
-        record = None
-        try:
-            record = TransferRecord.objects.select_for_update().get(
-                corres_act=activity,
-                proposer=request.user,
-                status=TransferRecord.TransferStatus.ACCEPTED,
-                message="YQPoint"
-            )
-        except:
-            pass
-        if record is not None:
-            amount = record.amount * half_refund
-            amount = int(10 * amount) * 0.1
+            org.save()
             record.status = TransferRecord.TransferStatus.REFUND
+            record.save()
             np.YQPoint += amount
-            if org.YQPoint < amount:
-                raise ActivityException("组织账户元气值不足，请与组织负责人联系。")
-            org.YQPoint -= amount
+            YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
+            YP.YQPoint += amount
+            YP.save()
+        except:
+            pass
+
+        # 预报备记录，状态为 Penging
+        try:
+            record = TransferRecord.objects.select_for_update().get(
+                corres_act=activity,
+                proposer=request.user,
+                # 活动未过审产生的 Pending 记录不需要考虑
+                status=TransferRecord.TransferStatus.PENDING,
+                rtype=TransferRecord.TransferType.ACTIVITY
+            )
+            # 这里如果再退一半有没有问题？
+            # 没啥问题，只是少了配额，不管团体和学院就好了，其实就是团体拿不到赔偿
+            amount = record.amount * half_refund
+            np.YQPoint += amount
+            record.status = TransferRecord.TransferStatus.SUSPENDED
             record.save()
+        except:
+            pass
 
-
-    YP.save()
-    org.save()
     participant.save()
     np.save()
     activity.save()
