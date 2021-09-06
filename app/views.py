@@ -3752,6 +3752,14 @@ def modifyOrganization(request):
     # 根据是否有newid来判断是否是第一次
     org_id = request.GET.get("org_id", None)
 
+    # 获取前端页面中可能存在的提示
+    try:
+        if request.GET.get("warn_code", None) is not None:
+            html_display["warn_code"] = int(request.GET.get("warn_code"))
+            html_display["warn_message"] = request.GET.get("warn_message")
+    except:
+        pass
+
     if org_id is not None: # 如果存在对应申请
         try:    # 尝试获取已经新建的Position
             application = ModifyOrganization.objects.get(id = org_id)
@@ -3796,7 +3804,9 @@ def modifyOrganization(request):
                 is_new_application = False #状态变更
                 if request.POST.get("post_type") == "new_submit":   
                     # 重要！因为该界面没有org_id，重新渲染新建界面
-                    is_new_application = True
+                    #is_new_application = True
+                    # YWolfeee 不理解
+                    pass
 
                 # 处理通知相关的操作，并根据情况发送微信
                 # 默认需要成功,失败也不是用户的问题，直接给管理员报错 TODO
@@ -3821,15 +3831,21 @@ def modifyOrganization(request):
                     else application.pos)
 
         # 准备用户提示量
-        html_display["warn_code"] = context["warn_code"]
-        html_display["warn_message"] = context["warn_message"]
+        # html_display["warn_code"] = context["warn_code"]
+        # html_display["warn_message"] = context["warn_message"]
+        warn_code, warn_message = context["warn_code"], context["warn_message"]
+
+        # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
+        append = f"?org_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
+        return redirect("/modifyOrganization/" + append)
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
 
     # 首先是写死的前端量
     org_type_list = {
         w:{
-            'display' : str(w),  # 前端呈现的使用量
+            'value'   : str(w),
+            'display' : str(w)+"(负责老师:"+str(w.incharge)+")",  # 前端呈现的使用量
             'disabled' : False,  # 是否禁止选择这个量
             'selected' : False   # 是否默认选中这个量
         }
