@@ -780,21 +780,22 @@ def homepage(request):
                 np.save()
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
-    recentactivity_list = Activity.objects.get_recent_activity()
+    recentactivity_list = Activity.objects.get_recent_activity().select_related('organization_id')
 
     # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
-    activities = Activity.objects.get_today_activity()
+    activities = Activity.objects.get_today_activity().select_related('organization_id')
     activities_start = [
         activity.start.strftime("%H:%M") for activity in activities
     ]
     html_display['today_activities'] = list(zip(activities, activities_start)) or None
 
     # 最新一周内发布的活动，按发布的时间逆序
-    newlyreleased_list = Activity.objects.get_newlyreleased_activity()
+    newlyreleased_list = Activity.objects.get_newlyreleased_activity().select_related('organization_id')
 
     # 即将截止的活动，按截止时间正序
     prepare_times = Activity.EndBeforeHours.prepare_times
-    signup_rec = Activity.objects.activated().filter(status = Activity.Status.APPLYING)
+    signup_rec = Activity.objects.activated().select_related(
+        'organization_id').filter(status = Activity.Status.APPLYING)
     signup_list = []
     for act in signup_rec:
         deadline = act.start - timedelta(hours=prepare_times[act.endbefore])
@@ -2925,14 +2926,17 @@ def notifications(request):
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
     
-    notification_set = Notification.objects.activated().filter(receiver=request.user)
+    notification_set = Notification.objects.activated().select_related(
+        'sender').filter(receiver=request.user)
 
     done_list = notification2Display(
-        list(notification_set.union(notification_set).order_by("-finish_time"))
+        list(notification_set.filter(
+            status=Notification.Status.DONE).order_by("-finish_time"))
     )
 
     undone_list = notification2Display(
-        list(notification_set.union(notification_set).order_by("-start_time"))
+        list(notification_set.filter(
+            status=Notification.Status.UNDONE).order_by("-start_time"))
     )
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步

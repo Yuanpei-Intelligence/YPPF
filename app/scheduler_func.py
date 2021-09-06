@@ -437,19 +437,21 @@ scheduler.add_job(notifyActivityStart, "date",
 def notifyActivity(aid: int, msg_type: str, msg=""):
     try:
         activity = Activity.objects.get(id=aid)
+        title = Notification.Title.ACTIVITY_INFORM
         if msg_type == "newActivity":
-            msg = f"您关注的团体{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
-            msg += f"开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}\n"
-            msg += f"活动地点: {activity.location}\n"
+            title = activity.title
+            msg = f"您关注的团体{activity.organization_id.oname}发布了新的活动。"
+            msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
+            msg += f"\n活动地点: {activity.location}"
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
             )
             receivers = [subscriber.person_id for subscriber in subscribers]
             publish_kws = {"app": WechatApp.TO_SUBSCRIBER}  
         elif msg_type == "remind":
-            msg = f"您参与的活动 <{activity.title}> 即将开始。\n"
-            msg += f"开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}\n"
-            msg += f"活动地点: {activity.location}\n"
+            msg = f"您参与的活动 <{activity.title}> 即将开始。"
+            msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
+            msg += f"\n活动地点: {activity.location}"
             participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
             receivers = [participant.person_id.person_id for participant in participants]
             publish_kws = {"app": WechatApp.TO_PARTICIPANT}  
@@ -496,7 +498,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             receivers=list(receivers),
             sender=activity.organization_id.organization_id,
             typename=Notification.Type.NEEDREAD,
-            title=Notification.Title.ACTIVITY_INFORM,
+            title=title,
             content=msg,
             URL=f"/viewActivity/{aid}",
             relate_instance=activity,
