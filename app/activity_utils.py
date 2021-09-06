@@ -167,6 +167,10 @@ def activity_base_check(request, edit=False):
     if request.POST.get("need_checkin"):
         context["need_checkin"] = True
 
+    # 内部活动
+    if request.POST.get("inner"):
+        context["inner"] = True  
+
     # 价格
     aprice = float(request.POST["aprice"])
     assert int(aprice * 10) / 10 == aprice
@@ -245,6 +249,8 @@ def create_activity(request):
     activity.endbefore = context["endbefore"]
     if context.get("need_checkin"):
         activity.need_checkin = True
+    if context.get("inner"):
+        activity.inner = True
     if context["recorded"]:
         # 预报备活动，先开放报名，再审批
         activity.recorded = True
@@ -353,6 +359,10 @@ def modify_reviewing_activity(request, activity):
         activity.need_checkin = True
     else:
         activity.need_checkin = False
+    if context.get("inner"):
+        activity.inner = True
+    else:
+        activity.inner = False
     activity.save()
 
     # 图片
@@ -434,6 +444,12 @@ def modify_accepted_activity(request, activity):
         activity.need_checkin = True
     else:
         activity.need_checkin = False
+
+    # 内部活动
+    if request.POST.get("inner"):
+        activity.inner = True
+    else:
+        activity.inner = False
 
     activity.end = datetime.strptime(request.POST["actend"], "%Y-%m-%d %H:%M")
     assert activity.start < activity.end
@@ -623,6 +639,13 @@ def applyActivity(request, activity):
     payer = NaturalPerson.objects.select_for_update().get(
         person_id=request.user
     )
+
+    if activity.inner:
+        position = Position.objects.activated().filter(person=payer, org=activity.organization_id)
+        if len(position) == 0:
+            # 按理说这里也是走不到的，前端会限制
+            raise ActivityException(f"该活动是{activity.organization_id}内部活动，暂不开放对外报名。")
+
     try:
         participant = Participant.objects.select_for_update().get(
             activity_id=activity, person_id=payer
