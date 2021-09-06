@@ -2620,8 +2620,6 @@ def examineActivity(request, aid):
             except Exception as e:
                 # print(e)
                 return redirect("/welcome/")
-    else:
-        print("GOTCHA GET!")
 
 
     # 状态量，无可编辑量
