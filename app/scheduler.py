@@ -9,4 +9,4 @@ from django_apscheduler.jobstores import DjangoJobStore
 # 定时任务生成器
 scheduler = BackgroundScheduler()
 scheduler.add_jobstore(DjangoJobStore(), "default")
-scheduler.start()
+# scheduler.start() # 把启动放到scheduler_func避免多次触发

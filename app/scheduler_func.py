@@ -20,6 +20,10 @@ from numpy.random import choice
 from urllib import parse, request as urllib2
 import json
 
+# 引入定时任务还是放上面吧
+from app.utils import operation_writer
+from app.scheduler import scheduler
+
 YQPoint_oname = local_dict["YQPoint_source_oname"]
 
 
@@ -393,7 +397,10 @@ def draw_lots(activity):
             content=content,
             URL=URL,
             publish_to_wechat=True,
-            publish_kws={'app': WechatApp.TO_PARTICIPANT},
+            publish_kws={
+                'app': WechatApp.TO_PARTICIPANT,
+                'level': WechatMessageLevel.IMPORTANT,
+            },
         )
 
 
@@ -467,7 +474,10 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
                 status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
             )
             receivers = [participant.person_id.person_id for participant in participants]
-            publish_kws = {"app": WechatApp.TO_PARTICIPANT}  
+            publish_kws = {
+                "app": WechatApp.TO_PARTICIPANT,
+                "level": WechatMessageLevel.IMPORTANT,
+            }
         elif msg_type == "modification_sub_ex_par":
             participants = Participant.objects.filter(
                 activity_id=aid,
@@ -547,19 +557,40 @@ def get_weather():
         operation_writer(local_dict["system_log"], "天气更新成功", "scheduler_func[get_weather]")
         return weather_dict
 
-def start_weather_routine():
-    print("———————————————— Scheduler:   Debug ————————————————")
-    print("before loading scheduler from app.scheduler in scheduler_func.py")
 
+def start_scheduler(with_scheduled_job=True, debug=False):
+    '''
+    noexcept
+
+    启动定时任务，先尝试添加计划任务，再启动，两部分之间互不影响
+    失败时写入log
+    - with_scheduled_job: 添加计划任务
+    - debug: 提供具体的错误信息
+    '''
     # register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
     # 但好像非服务器版本有问题??
-    print("finish import scheduler from app.scheduler")
-    scheduler.add_job(get_weather, 'interval', id="get weather per 5 minute", minutes=5, replace_existing=True)
+    if debug: print("———————————————— Scheduler:   Debug ————————————————")
+    if with_scheduled_job:
+        current_job = None
+        try:
+            current_job = "get_weather"
+            if debug: print(f"try adding scheduled job '{current_job}'")
+            scheduler.add_job(get_weather, 'interval', id=current_job,
+                                minutes=5, replace_existing=True)
+        except Exception as e:
+            info = f"add scheduled job '{current_job}' failed, reason: {e}"
+            operation_writer(local_dict["system_log"], info,
+                            "scheduler_func[start_scheduler]", "Error")
+            if debug: print(info)
 
-    print("finishing loading get_weather function")
-    print("finish scheduler_func")
-    print("———————————————— End     :   Debug ————————————————")
-
-
-from app.scheduler import scheduler
-from app.utils import operation_writer
+    try:
+        if debug: print("try starting schduler in scheduler_func.py")
+        scheduler.start()
+    except Exception as e:
+        info = f"start scheduler failed, reason: {e}"
+        operation_writer(local_dict["system_log"], info,
+                        "scheduler_func[start_scheduler]", "Error")
+        if debug: print(info)
+        scheduler.shutdown(wait=False)
+        if debug: print("successfully shutdown scheduler")
+    if debug: print("———————————————— End     :   Debug ————————————————")
