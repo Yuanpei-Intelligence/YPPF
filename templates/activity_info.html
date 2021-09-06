@@ -13,6 +13,21 @@
     <div class="alert alert-success text-center" style="position: absolute; width: 100%; z-index: 100;">{{ html_display.warn_message }}</div>
     {% endif %}
 
+    {% if inform_share %}
+    <script type="text/javascript">
+        let inform_share = confirm("{{alert_message}}")
+        if (inform_share) {
+            const req = new XMLHttpRequest();
+            let url = '/viewActivity/' + '{{aid}}'
+            req.open('POST', url, true);
+            req.responseType = 'blob';
+            req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
+            req.send("option=" + "cancelInformShare"); //输入参数 参数的值为option="share"
+        }
+    </script>
+    {% endif %}
+
+
     <!--  BEGIN UPPER SECTION  -->
     <div class="d-flex m-0 p-0 overflow-hidden">
 
@@ -189,7 +204,6 @@
                                 <h4 style="padding-left: 12px;">活动信息</h4>
                             </div>
                         </div>
-                    </div>
 
                     <div class="widget-content widget-content-area">
 
@@ -289,7 +303,7 @@
                                 </p>
                                 {% endif %}
 
-                            </div>
+                                </div>
 
                             <!--  按钮部分  -->
                             <div class="mt-4">
@@ -440,14 +454,14 @@
 
             </div>
 
-        </div>
+            </div>
 
-        <!--  BEGIN RELAVENT INFORMATION  -->
-        <div class="col-md-3 col-sm-12 px-1">
+            <!--  BEGIN RELAVENT INFORMATION  -->
+            <div class="col-md-3 col-sm-12 px-1">
 
-            <!--  BEGIN INTRODUCTION  -->
-            <div class="container w-100 px-0 layout-top-spacing">
-                <div class="statbox widget box box-shadow">
+                <!--  BEGIN INTRODUCTION  -->
+                <div class="container w-100 px-0 layout-top-spacing">
+                    <div class="statbox widget box box-shadow">
 
                     <div class="widget-header">
                         <div class="row">
@@ -455,7 +469,6 @@
                                 <h4 style="padding-left: 10px;">详细介绍</h4>
                             </div>
                         </div>
-                    </div>
 
                     <div class="widget-content widget-content-area">
                         <p style="word-break: break-all;">
@@ -463,35 +476,36 @@
                         </p>
                     </div>
 
+                    </div>
                 </div>
-            </div>
-            <!--  END INTRODUCTION  -->
+                <!--  END INTRODUCTION  -->
 
-            {% if ownership and show_QRcode %}
-            <!--  BEGIN QR CODE  -->
-            <div class="container w-100 px-0 layout-top-spacing">
-                <div class="statbox widget box box-shadow">
+                {% if ownership and show_QRcode %}
+                <!--  BEGIN QR CODE  -->
+                <div class="container w-100 px-0 layout-top-spacing">
+                    <div class="statbox widget box box-shadow">
 
-                    <div class="widget-header">
-                        <div class="row">
-                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                <h4>签到二维码</h4>
+                        <div class="widget-header">
+                            <div class="row">
+                                <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                    <h4>签到二维码</h4>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div class="widget-content widget-content-area">
-                        <img class="d-block w-100" id="qrcode" src="{{ aQRcode }}" alt="check-in QR code">
-                    </div>
+                        <div class="widget-content widget-content-area">
+                            <img class="d-block w-100" id="qrcode" src="{{ aQRcode }}" alt="check-in QR code">
+                        </div>
 
+                    </div>
                 </div>
+                <!--  END QR CODE  -->
+                {% endif %}
+
             </div>
-            <!--  END QR CODE  -->
-            {% endif %}
+            <!--  END RELAVENT INFORMATION  -->
 
         </div>
-        <!--  END RELAVENT INFORMATION  -->
-
     </div>
 </div>
 

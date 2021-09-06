@@ -135,6 +135,18 @@ def get_org_left_navbar(org, is_myself, html_display):
     return html_display
 
 
+# 检验是否要展示如何分享信息的帮助，预期只在stuinfo, orginfo, viewActivity使用
+def get_inform_share(me, is_myself=True):
+    alert_message = ""
+    if is_myself and me.inform_share:
+        alert_message = "【关于分享】:如果你在使用手机浏览器，可以使用浏览器自带的分享来分享当前页面 \
+            或者可以选择将其在微信/朋友圈中打开。"
+        # me.inform_share = False
+        # me.save()
+        return True, alert_message
+    return False, alert_message
+
+
 # YWolfeee Aug 16
 # 修改left siderbar的逻辑，统一所有个人和所有团体的左边栏，不随界面而改变
 # 这个函数负责统一get sidebar和navbar的内容，解决了信箱条数显示的问题

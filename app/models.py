@@ -53,6 +53,7 @@ class NaturalPerson(models.Model):
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
     first_time_login = models.BooleanField(default=True)
+    inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
     last_time_login = models.DateTimeField("上次登录时间", blank=True, null=True)
     objects = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
@@ -265,6 +266,7 @@ class Organization(models.Model):
     wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
 
     first_time_login = models.BooleanField(default=True)  # 是否第一次登录
+    inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
 
     def __str__(self):
         return str(self.oname)
