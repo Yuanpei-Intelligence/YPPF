@@ -117,7 +117,7 @@
                         </div>
                         <div class="flex">
                         {% if person %}
-                        {{ pStatus }}
+                        <span class="badge badge-light">{{ pStatus }}</span>
                         {% endif %}
                         </div>
                     </div>
@@ -207,6 +207,7 @@
                                 <h4 style="padding-left: 12px;">活动信息</h4>
                             </div>
                         </div>
+                    </div>
 
                     <div class="widget-content widget-content-area">
 
@@ -432,7 +433,9 @@
                         <h5>发起者</h5>
                         <div class="d-flex justify-content-start">
                             <div style="width: max-content; border-radius: 25px; overflow: hidden;">
+                                <a href='/orginfo/{{org_name}}'>
                                 <img src="{{ org_avatar_path }}" class="flex" alt="organization avatar" height="50px" width="50px">
+                                </a>
                             </div>
                             <span class="flex flex-grow-1 mx-3">
                                 <div class="d-flex justify-content-between">
