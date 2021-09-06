@@ -3914,6 +3914,12 @@ def send_message_check(me, request):
     
     if len(url) == 0:
         url = None
+    else:
+        try:
+            if url[0:4].upper()!="HTTP":
+                return wrong("URL应当以http或https开头！")
+        except:
+            return wrong("请输入正确的链接地址！")
 
     not_list = []
     sender = me.organization_id
