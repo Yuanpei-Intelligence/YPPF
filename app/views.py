@@ -82,6 +82,8 @@ from django.db.models import Q
 from django.conf import settings
 from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
+from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
+from django.core.exceptions import ValidationError
 
 # 定时任务不在views直接调用
 # 但是天气任务还是在这里弄吧，太奇怪了
@@ -1478,16 +1480,34 @@ def modpw(request):
         oldpassword = request.POST["pw"]
         newpw = request.POST["new"]
         strict_check = True
-
-        if oldpassword == newpw and strict_check and not (forgetpw or isFirst):
+        min_length = 8
+        try:
+            if oldpassword == newpw and strict_check and not (forgetpw or isFirst):
+                raise ValidationError(message="新密码不能与原密码相同")
+            elif newpw == username and strict_check:
+                raise ValidationError(message="新密码不能与学号相同")
+            elif newpw != oldpassword and (forgetpw or isFirst):  # added by pht
+                raise ValidationError(message="两次输入的密码不匹配")
+            elif len(newpw) < min_length:
+                raise ValidationError(message=f"新密码不能短于{min_length}位")
+            if strict_check:
+                NumericPasswordValidator().validate(password=newpw)
+                CommonPasswordValidator().validate(password=newpw)
+        except ValidationError as e:
             err_code = 1
-            err_message = "新密码不能与原密码相同"
-        elif newpw == username and strict_check:
-            err_code = 2
-            err_message = "新密码不能与学号相同"
-        elif newpw != oldpassword and (forgetpw or isFirst):  # added by pht
-            err_code = 5
-            err_message = "两次输入的密码不匹配"
+            err_message = e.message
+        # if oldpassword == newpw and strict_check and not (forgetpw or isFirst):
+        #     err_code = 1
+        #     err_message = "新密码不能与原密码相同"
+        # elif newpw == username and strict_check:
+        #     err_code = 2
+        #     err_message = "新密码不能与学号相同"
+        # elif newpw != oldpassword and (forgetpw or isFirst):  # added by pht
+        #     err_code = 5
+        #     err_message = "两次输入的密码不匹配"
+        # elif len(newpw) < min_length:
+        #     err_code = 6
+            # err_message = f"新密码的长度不能少于{min_length}位"
         else:
             # 在1、忘记密码 2、首次登录 3、验证旧密码正确 的前提下，可以修改
             if forgetpw or isFirst:
