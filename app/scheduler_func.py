@@ -1,5 +1,5 @@
 from threading import current_thread
-from django.db.models import F
+from django.db.models import F, Sum
 from django.http import JsonResponse, HttpResponse, QueryDict  # Json响应
 from django.shortcuts import render, redirect  # 网页render & redirect
 from django.urls import reverse
@@ -20,7 +20,7 @@ from numpy.random import choice
 from urllib import parse, request as urllib2
 import json
 
-YQPoint_oname = local_dict["YQPoint_soucre_oname"]
+YQPoint_oname = local_dict["YQPoint_source_oname"]
 
 
 # 学院每月下发元气值

@@ -635,8 +635,8 @@
 
     /* 提示上传预算信息 */
     if (document.referrer.endsWith("/addActivity/")) {
-        document.getElementById("success_msg").style.display = "";
-        document.getElementById("success_msg").innerHTML = "活动发起成功，请在评论区上传预算明细。";
+        document.getElementById("warn_msg").style.display = "";
+        document.getElementById("warn_msg").innerHTML = "活动发起成功，请在评论区上传预算明细。";
     }
 
     /* 将 palceholder 全部换为旧值，很长很啰嗦 */
