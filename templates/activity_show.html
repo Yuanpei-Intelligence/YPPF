@@ -97,8 +97,10 @@
                                                                 <h5 class="text-muted">已撤销</h5>
                                                             {% elif instance.recorded and not instance.valid %}
                                                                 <h5 class="text-info">预报备+审核中</h5>
+                                                            {% elif status == 'Canceled' %}
+                                                                <h5 class="text-danger">已取消</h5>
                                                             {% else %}
-                                                                <h5 class="text-success">审核通过</h5>
+                                                                <h5 class="text-success">{{instance.status}}</h5>
 
                                                             {% endif %}
                                                         </div>
