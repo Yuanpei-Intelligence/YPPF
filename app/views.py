@@ -1812,6 +1812,13 @@ def myYQPoint(request):
 
     to_list, amount = record2Display(to_set, request.user)
     issued_list, _ = record2Display(issued_set, request.user)
+    send_list = []
+    receive_list = []
+    for item in issued_list:
+        if item["obj_direct"] == "To  ":
+            send_list.append(item)
+        else:
+            receive_list.append(item)
 
     show_table = {
         "obj": "对象",
