@@ -354,6 +354,44 @@ def draw_lots(activity):
             else:
                 participant.status = Participant.AttendStatus.APLLYFAILED
             participant.save()
+    #签到成功的转发通知和微信通知
+    receivers = Participant.objects.filter(
+            activity_id=activity.id,
+            status=Participant.AttendStatus.APLLYSUCCESS
+        )
+    receivers = [receiver.person_id.person_id for receiver in receivers]
+    sender=activity.organization_id.organization_id
+    typename = Notification.Type.NEEDREAD
+    content=f'您好！您参与抽签的活动“{activity.title}”报名成功！请准时参加活动！'
+    URL=f'/viewActivity/{activity.id}'
+    if len(receivers)>0:
+        bulk_notification_create(
+            receivers=receivers,
+            sender=sender,
+            typename=typename,
+            title=Notification.Title.ACTIVITY_INFORM,
+            content=content,
+            URL=URL,
+            publish_to_wechat=True,
+        )
+    #抽签失败的同学发送通知
+    receivers = Participant.objects.filter(
+        activity_id=activity.id,
+        status=Participant.AttendStatus.APLLYFAILED
+    )
+    receivers = [receiver.person_id.person_id for receiver in receivers]
+    content = f'很抱歉通知您，您参与抽签的活动“{activity.title}”报名失败！'
+    if len(receivers) > 0:
+        bulk_notification_create(
+            receivers=receivers,
+            sender=sender,
+            typename=typename,
+            title=Notification.Title.ACTIVITY_INFORM,
+            content=content,
+            URL=URL,
+            publish_to_wechat=True,
+        )
+
 
 
 """
@@ -510,7 +548,7 @@ def start_weather_routine():
     # register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
     # 但好像非服务器版本有问题??
     print("finish import scheduler from app.scheduler")
-    scheduler.add_job(get_weather, 'interval', id="get weather per 5 minute", minutes=5, replace_existing=True)
+    #scheduler.add_job(get_weather, 'interval', id="get weather per 5 minute", minutes=5, replace_existing=True)
 
     print("finishing loading get_weather function")
     print("finish scheduler_func")

@@ -2091,9 +2091,9 @@ def viewActivity(request, aid=None):
             # pStatus 是参与状态
             pStatus = participant.status
         except:
-            pStatus = "无记录"
+            pStatus = "未参与"
         if pStatus == "放弃":
-            pStatus = "无记录"
+            pStatus = "未参与"
 
     # 签到
     need_checkin = activity.need_checkin
