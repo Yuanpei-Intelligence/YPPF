@@ -1,5 +1,5 @@
 from threading import current_thread
-from django.db.models import F
+from django.db.models import F, Sum
 from django.http import JsonResponse, HttpResponse, QueryDict  # Json响应
 from django.shortcuts import render, redirect  # 网页render & redirect
 from django.urls import reverse
@@ -343,8 +343,10 @@ def draw_lots(activity):
             activity_id=activity.id,
             status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYFAILED]
         ).update(status=Participant.AttendStatus.APLLYSUCCESS)
+        activity.current_participants = engaged + l
     else:
         lucky_ones = sample(range(l), leftQuota)
+        activity.current_participants = activity.capacity
         for i, participant in enumerate(Participant.objects.select_for_update().filter(
                 activity_id=activity.id,
                 status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYFAILED]
@@ -354,6 +356,46 @@ def draw_lots(activity):
             else:
                 participant.status = Participant.AttendStatus.APLLYFAILED
             participant.save()
+    #签到成功的转发通知和微信通知
+    receivers = Participant.objects.filter(
+            activity_id=activity.id,
+            status=Participant.AttendStatus.APLLYSUCCESS
+        )
+    receivers = [receiver.person_id.person_id for receiver in receivers]
+    sender=activity.organization_id.organization_id
+    typename = Notification.Type.NEEDREAD
+    content=f'您好！您参与抽签的活动“{activity.title}”报名成功！请准时参加活动！'
+    URL=f'/viewActivity/{activity.id}'
+    if len(receivers)>0:
+        bulk_notification_create(
+            receivers=receivers,
+            sender=sender,
+            typename=typename,
+            title=Notification.Title.ACTIVITY_INFORM,
+            content=content,
+            URL=URL,
+            publish_to_wechat=True,
+            publish_kws={'app': WechatApp.TO_PARTICIPANT},
+        )
+    #抽签失败的同学发送通知
+    receivers = Participant.objects.filter(
+        activity_id=activity.id,
+        status=Participant.AttendStatus.APLLYFAILED
+    )
+    receivers = [receiver.person_id.person_id for receiver in receivers]
+    content = f'很抱歉通知您，您参与抽签的活动“{activity.title}”报名失败！'
+    if len(receivers) > 0:
+        bulk_notification_create(
+            receivers=receivers,
+            sender=sender,
+            typename=typename,
+            title=Notification.Title.ACTIVITY_INFORM,
+            content=content,
+            URL=URL,
+            publish_to_wechat=True,
+            publish_kws={'app': WechatApp.TO_PARTICIPANT},
+        )
+
 
 
 """
@@ -395,19 +437,21 @@ scheduler.add_job(notifyActivityStart, "date",
 def notifyActivity(aid: int, msg_type: str, msg=""):
     try:
         activity = Activity.objects.get(id=aid)
+        title = Notification.Title.ACTIVITY_INFORM
         if msg_type == "newActivity":
-            msg = f"您关注的团体{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
-            msg += f"开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}\n"
-            msg += f"活动地点: {activity.location}\n"
+            title = activity.title
+            msg = f"您关注的团体{activity.organization_id.oname}发布了新的活动。"
+            msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
+            msg += f"\n活动地点: {activity.location}"
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
             )
             receivers = [subscriber.person_id for subscriber in subscribers]
             publish_kws = {"app": WechatApp.TO_SUBSCRIBER}  
         elif msg_type == "remind":
-            msg = f"您参与的活动 <{activity.title}> 即将开始。\n"
-            msg += f"开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}\n"
-            msg += f"活动地点: {activity.location}\n"
+            msg = f"您参与的活动 <{activity.title}> 即将开始。"
+            msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
+            msg += f"\n活动地点: {activity.location}"
             participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
             receivers = [participant.person_id.person_id for participant in participants]
             publish_kws = {"app": WechatApp.TO_PARTICIPANT}  
@@ -454,7 +498,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             receivers=list(receivers),
             sender=activity.organization_id.organization_id,
             typename=Notification.Type.NEEDREAD,
-            title=Notification.Title.ACTIVITY_INFORM,
+            title=title,
             content=msg,
             URL=f"/viewActivity/{aid}",
             relate_instance=activity,
