@@ -1989,30 +1989,31 @@ def viewActivity(request, aid=None):
                     summary_photo_exists = True
                 except:
                     pass
-            try:
-                summaryphotos = request.FILES.getlist('images')
-                photo = summaryphotos[0]
-            except:
+            summaryphotos = request.FILES.getlist('images')
+            if len(summaryphotos)==0:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "上传活动照片不能为空"
-            if utils.if_image(photo) !=2:
-                html_display['warn_code'] = 1
-                html_display['warn_message'] = "上传的附件只支持图片格式"
-            elif summary_photo_exists:
-                old_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
-                old_photo.image = photo
-                old_photo.save()
-                summary_photo = settings.MEDIA_URL + str(old_photo.image)
-                html_display["warn_message"] = "成功替换活动照片"
             else:
-                ActivityPhoto.objects.create(
-                    image=photo, 
-                    activity=activity, 
-                    time=datetime.now(),
-                    type = ActivityPhoto.PhotoType.SUMMARY
-                )
-                html_display["warn_message"] = "成功提交活动照片"
-            html_display["warn_code"] = 2
+                photo = summaryphotos[0]
+                if utils.if_image(photo) !=2:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "上传的附件只支持图片格式"
+                elif summary_photo_exists:
+                    old_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
+                    old_photo.image = photo
+                    old_photo.save()
+                    summary_photo = settings.MEDIA_URL + str(old_photo.image)
+                    html_display["warn_message"] = "成功替换活动照片"
+                    html_display["warn_code"] = 2
+                else:
+                    ActivityPhoto.objects.create(
+                        image=photo, 
+                        activity=activity, 
+                        time=datetime.now(),
+                        type = ActivityPhoto.PhotoType.SUMMARY
+                    )
+                    html_display["warn_message"] = "成功提交活动照片"
+                    html_display["warn_code"] = 2
         """
 
 
