@@ -8,7 +8,7 @@ from django.db import transaction  # 原子化更改数据库
 
 from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant, \
     Notification
-from app.wechat_send import publish_notifications
+from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
 from app.forms import YQPointDistributionForm
 from boottest.hasher import MySHA256Hasher
 from app.notification_utils import bulk_notification_create
@@ -20,14 +20,50 @@ from numpy.random import choice
 from urllib import parse, request as urllib2
 import json
 
+YQPoint_oname = local_dict["YQPoint_soucre_oname"]
+
+
+# 学院每月下发元气值
+def distribute_YQPoint_per_month():
+    with transaction.atomic():
+        recipients = NaturalPerson.objects.activated().select_for_update()
+        YP = Organization.objects.get(oname=YQPoint_oname)
+        trans_time = datetime.now()
+        transfer_list = [TransferRecord(
+                proposer=YP.organization_id,
+                recipient=recipient.person_id,
+                amount=(30 + max(0, (30 - recipient.YQPoint))),
+                start_time=trans_time,
+                finish_time=trans_time,
+                message=f"元气值每月发放。",
+                status=TransferRecord.TransferStatus.ACCEPTED,
+                rtype=TransferRecord.TransferType.BONUS
+        ) for recipient in recipients]
+        notification_lists = [
+            Notification(
+                receiver=recipient.person_id,
+                sender=YP.organization_id,
+                typename=Notification.Type.NEEDREAD,
+                title=Notification.Title.YQ_DISTRIBUTION,
+                content=f"{YP}向您发放了本月元气值{30 + max(0, (30 - recipient.YQPoint))}点，请查收！",
+            ) for recipient in recipients
+        ]
+        TransferRecord.objects.bulk_create(transfer_list)
+        Notification.objects.bulk_create(notification_lists)
+        for recipient in recipients:
+            amount = 30 + max(0, (30 - recipient.YQPoint))
+            recipient.YQPoint += amount
+            recipient.YQPoint += recipient.YQPoint_Bonus 
+            recipient.YQPoint_Bonus = 0
+            recipient.save()
 
 def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
     '''
         内容：
-        由proposer账户(默认为一个组织账户)，向每一个在recipients中的账户中发起数额为YQPoints的转账
+        由proposer账户(默认为一个团体账户)，向每一个在recipients中的账户中发起数额为YQPoints的转账
         并且自动生成默认为ACCEPTED的转账记录以便查阅
-        这里的recipients期待为一个Queryset，要么全为自然人，要么全为组织
-        proposer默认为一个组织账户
+        这里的recipients期待为一个Queryset，要么全为自然人，要么全为团体
+        proposer默认为一个团体账户
     '''
     try:
         assert proposer.YQPoint >= recipients.count() * YQPoints
@@ -35,7 +71,7 @@ def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
         # 说明此时proposer账户的元气值不足
         print(f"由{proposer}向自然人{recipients[:3]}...等{recipients.count()}个用户发放元气值失败，原因可能是{proposer}的元气值剩余不足")
     try:
-        is_nperson = isinstance(recipients[0], NaturalPerson)  # 不为自然人则为组织
+        is_nperson = isinstance(recipients[0], NaturalPerson)  # 不为自然人则为团体
     except:
         print("没有转账对象！")
         return
@@ -65,13 +101,13 @@ def distribute_YQPoint(distributer):
     '''
     trans_time = distributer.start_time
 
-    # 没有问题，找到要发放元气值的人和组织
+    # 没有问题，找到要发放元气值的人和团体
     per_to_dis = NaturalPerson.objects.activated().filter(
         YQPoint__lte=distributer.per_max_dis_YQP)
     org_to_dis = Organization.objects.activated().filter(
-        YQPoint__lte=distributer.org_max_dis_YQP).exclude(oname="元培学院")
+        YQPoint__lte=distributer.org_max_dis_YQP).exclude(oname=YQPoint_oname)
     # 由学院账号给大家发放
-    YPcollege = Organization.objects.get(oname="元培学院")
+    YPcollege = Organization.objects.get(oname=YQPoint_oname)
 
     distribute_YQPoint_to_users(proposer=YPcollege, recipients=per_to_dis, YQPoints=distributer.per_YQP,
                                 trans_time=trans_time)
@@ -79,7 +115,7 @@ def distribute_YQPoint(distributer):
                                 trans_time=trans_time)
     end_time = datetime.now()
 
-    debug_msg = f"已向{per_to_dis.count()}个自然人和{org_to_dis.count()}个组织转账，用时{(end_time - trans_time).seconds}s,{(end_time - trans_time).microseconds}microsecond\n"
+    debug_msg = f"已向{per_to_dis.count()}个自然人和{org_to_dis.count()}个团体转账，用时{(end_time - trans_time).seconds}s,{(end_time - trans_time).microseconds}microsecond\n"
     print(debug_msg)
 
 
@@ -243,8 +279,29 @@ def changeActivityStatus(aid, cur_status, to_status):
                         activity_id=aid,
                         status=Participant.AttendStatus.APLLYSUCCESS
                     ).update(status=Participant.AttendStatus.ATTENDED)
-
-            # 结束，计算积分
+                if not activity.valid:
+                    # 活动开始后，未审核自动通过
+                    activity.valid = True
+                    records = TransferRecord.objects.filter(
+                        status=TransferRecord.TransferStatus.PENDING, 
+                        corres_act=activity,
+                    )
+                    total_amount = records.aggregate(nums=Sum('amount'))["nums"]
+                    if total_amount is None:
+                        total_amount = 0.0
+                    if total_amount > 0:
+                        organization_id = activity.organization_id_id
+                        organization = Organization.objects.select_for_update().get(id=organization_id)
+                        organization.YQPoint += total_amount
+                        organization.save()
+                        YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
+                        YP.YQPoint -= total_amount
+                        YP.save()
+                    records.update(
+                        status=TransferRecord.TransferStatus.ACCEPTED,
+                        time=str(datetime.now())
+                    )
+            # 结束，计算积分    
             else:
                 hours = (activity.end - activity.start).seconds / 3600
                 participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.ATTENDED)
@@ -339,30 +396,34 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
     try:
         activity = Activity.objects.get(id=aid)
         if msg_type == "newActivity":
-            msg = f"您关注的组织{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
+            msg = f"您关注的团体{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
             msg += f"开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}\n"
             msg += f"活动地点: {activity.location}\n"
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
             )
             receivers = [subscriber.person_id for subscriber in subscribers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER}  
         elif msg_type == "remind":
             msg = f"您参与的活动 <{activity.title}> 即将开始。\n"
             msg += f"开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}\n"
             msg += f"活动地点: {activity.location}\n"
             participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
             receivers = [participant.person_id.person_id for participant in participants]
+            publish_kws = {"app": WechatApp.TO_PARTICIPANT}  
         elif msg_type == 'modification_sub':
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
             )
             receivers = [subscriber.person_id for subscriber in subscribers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         elif msg_type == 'modification_par':
             participants = Participant.objects.filter(
                 activity_id=aid,
                 status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
             )
             receivers = [participant.person_id.person_id for participant in participants]
+            publish_kws = {"app": WechatApp.TO_PARTICIPANT}  
         elif msg_type == "modification_sub_ex_par":
             participants = Participant.objects.filter(
                 activity_id=aid,
@@ -373,6 +434,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             )
             receivers = list(set(subscribers) - set([participant.person_id for participant in participants]))
             receivers = [receiver.person_id for receiver in receivers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         # 应该用不到了，调用的时候分别发给 par 和 sub
         # 主要发给两类用户的信息往往是不一样的
         elif msg_type == 'modification_all':
@@ -385,6 +447,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             )
             receivers = set([participant.person_id for participant in participants]) | set(subscribers)
             receivers = [receiver.person_id for receiver in receivers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         else:
             raise ValueError
         success, _ = bulk_notification_create(
@@ -395,7 +458,8 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             content=msg,
             URL=f"/viewActivity/{aid}",
             relate_instance=activity,
-            publish_to_wechat=True
+            publish_to_wechat=True,
+            publish_kws=publish_kws,
         )
         assert success
 
@@ -430,26 +494,28 @@ def get_weather():
         with open("weather.json", "w") as weather_json:
             json.dump(weather_dict, weather_json)
     except KeyError as e:
-        print(str(e))
-        print("在get_weather中出错，原因可能是local_dict中缺少weather_api_key")
+        operation_writer(local_dict["system_log"], "天气更新异常,原因可能是local_dict中缺少weather_api_key:"+str(e), "scheduler_func[get_weather]", "Problem")        
         return None
     except Exception as e:
-        # 相当于超时
-        # TODO: 增加天气超时的debug
-        print("任务超时")
+        operation_writer(local_dict["system_log"], "天气更新异常,未知错误", "scheduler_func[get_weather]", "Problem")
         return default_weather
     else:
+        operation_writer(local_dict["system_log"], "天气更新成功", "scheduler_func[get_weather]")
         return weather_dict
 
-print("———————————————— Scheduler:   Debug ————————————————")
-print("before loading scheduler from app.scheduler in scheduler_func.py")
+def start_weather_routine():
+    print("———————————————— Scheduler:   Debug ————————————————")
+    print("before loading scheduler from app.scheduler in scheduler_func.py")
+
+    # register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
+    # 但好像非服务器版本有问题??
+    print("finish import scheduler from app.scheduler")
+    scheduler.add_job(get_weather, 'interval', id="get weather per 5 minute", minutes=5, replace_existing=True)
+
+    print("finishing loading get_weather function")
+    print("finish scheduler_func")
+    print("———————————————— End     :   Debug ————————————————")
+
+
 from app.scheduler import scheduler
-
-# register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
-# 但好像非服务器版本有问题??
-
-scheduler.add_job(get_weather, 'interval', id="get weather per hour", hours=1, replace_existing=True)
-
-print("finishing loading get_weather function")
-print("finish scheduler_func")
-print("———————————————— End     :   Debug ————————————————")
+from app.utils import operation_writer
