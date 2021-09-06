@@ -409,12 +409,6 @@ def stuinfo(request, name=None):
             Q(id__in=participants.values("activity_id")),
             ~Q(status=Activity.Status.CANCELED),
         )
-        activities_start = [
-            activity.start.strftime("%Y-%m-%d %H:%M") for activity in activities
-        ]
-        activities_end = [
-            activity.end.strftime("%Y-%m-%d %H:%M") for activity in activities
-        ]
         if user_type == "Person":
             activities_me = Participant.objects.filter(person_id=person.id).values(
                 "activity_id"
@@ -430,35 +424,7 @@ def stuinfo(request, name=None):
                 activity["activity_id"] in activities_me
                 for activity in participants.values("activity_id")
             ]
-        participate_status_list = participants.values("status")
-        participate_status_list = [info["status"] for info in participate_status_list]
-        status_color = {
-            Activity.Status.REVIEWING: "warning",
-            Activity.Status.CANCELED: "danger",
-            Activity.Status.APPLYING: "success",
-            Activity.Status.WAITING: "info",
-            Activity.Status.PROGRESSING: "success",
-            Activity.Status.END: "danger",
-            Participant.AttendStatus.APPLYING: "primary",
-            Participant.AttendStatus.APLLYFAILED: "warning",
-            Participant.AttendStatus.APLLYSUCCESS: "primary",
-            Participant.AttendStatus.ATTENDED: "primary",
-            Participant.AttendStatus.UNATTENDED: "warning",
-            Participant.AttendStatus.CANCELED: "warning",
-        }
-        activity_color_list = [status_color[activity.status] for activity in activities]
-        attend_color_list = [status_color[status] for status in participate_status_list]
-        activity_info = list(
-            zip(
-                activities,
-                activities_start,
-                activities_end,
-                participate_status_list,
-                activity_is_same,
-                activity_color_list,
-                attend_color_list,
-            )
-        )
+        activity_info = list(zip(activities, activity_is_same))
         activity_info.sort(key=lambda a: a[0].start, reverse=True)
         html_display["activity_info"] = list(activity_info) or None
 
