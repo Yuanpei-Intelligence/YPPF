@@ -88,12 +88,20 @@
                                                         </div>
                                                     </div>
                                                     
-                                                    <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-address-book"></i>{{note.sender}}</p>
-                                                        
-                                                    <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-calendar-o"></i>收信时间：{{note.start_time}}</p>
-                                                    <p style="color: rgb(66, 67, 68);"><i class="fa fa-envelope-o"></i>{{note.content}}</p>
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-address-book" style="width: 14px;"></i>
+                                                        <span class="ml-1">来自&nbsp;<b>{{note.sender}}</b></span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-bell" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.start_time}}发出</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.content}}</span>
+                                                    </p>
                                                 </div>
                                             </div>
                                             {% endfor %}
@@ -166,31 +174,26 @@
                                                             {% endif %}
                                                         </div>
                                                     </div>
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-calendar-o"></i>
-                                                                收信时间：{{note.start_time}}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-envelope-o"></i>
-                                                                {{note.content}}</p>
-                                                        </div>
-                                                    </div>
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class='fa fa-check'></i>
-                                                                处理时间：{{note.finish_time}}</p>
-                                                        </div>
-                                                        <div>
-                                                            <p style="color: rgb(66, 67, 68);"><i
-                                                                    class="fa fa-address-book"></i> {{note.sender}}</p>
-                                                        </div>
-                                                    </div>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-address-book" style="width: 14px;"></i>
+                                                        <span class="ml-1">来自&nbsp;<b>{{note.sender}}</b></span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-bell" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.start_time}}发出</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-eye" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.finish_time}}收到</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{note.content}}</span>
+                                                    </p>
                                                 </div>
 
 

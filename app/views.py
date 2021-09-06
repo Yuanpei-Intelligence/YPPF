@@ -409,12 +409,6 @@ def stuinfo(request, name=None):
             Q(id__in=participants.values("activity_id")),
             ~Q(status=Activity.Status.CANCELED),
         )
-        activities_start = [
-            activity.start.strftime("%Y-%m-%d %H:%M") for activity in activities
-        ]
-        activities_end = [
-            activity.end.strftime("%Y-%m-%d %H:%M") for activity in activities
-        ]
         if user_type == "Person":
             activities_me = Participant.objects.filter(person_id=person.id).values(
                 "activity_id"
@@ -430,35 +424,7 @@ def stuinfo(request, name=None):
                 activity["activity_id"] in activities_me
                 for activity in participants.values("activity_id")
             ]
-        participate_status_list = participants.values("status")
-        participate_status_list = [info["status"] for info in participate_status_list]
-        status_color = {
-            Activity.Status.REVIEWING: "warning",
-            Activity.Status.CANCELED: "danger",
-            Activity.Status.APPLYING: "success",
-            Activity.Status.WAITING: "info",
-            Activity.Status.PROGRESSING: "success",
-            Activity.Status.END: "danger",
-            Participant.AttendStatus.APPLYING: "primary",
-            Participant.AttendStatus.APLLYFAILED: "warning",
-            Participant.AttendStatus.APLLYSUCCESS: "primary",
-            Participant.AttendStatus.ATTENDED: "primary",
-            Participant.AttendStatus.UNATTENDED: "warning",
-            Participant.AttendStatus.CANCELED: "warning",
-        }
-        activity_color_list = [status_color[activity.status] for activity in activities]
-        attend_color_list = [status_color[status] for status in participate_status_list]
-        activity_info = list(
-            zip(
-                activities,
-                activities_start,
-                activities_end,
-                participate_status_list,
-                activity_is_same,
-                activity_color_list,
-                attend_color_list,
-            )
-        )
+        activity_info = list(zip(activities, activity_is_same))
         activity_info.sort(key=lambda a: a[0].start, reverse=True)
         html_display["activity_info"] = list(activity_info) or None
 
@@ -780,21 +746,22 @@ def homepage(request):
                 np.save()
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
-    recentactivity_list = Activity.objects.get_recent_activity()
+    recentactivity_list = Activity.objects.get_recent_activity().select_related('organization_id')
 
     # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
-    activities = Activity.objects.get_today_activity()
+    activities = Activity.objects.get_today_activity().select_related('organization_id')
     activities_start = [
         activity.start.strftime("%H:%M") for activity in activities
     ]
     html_display['today_activities'] = list(zip(activities, activities_start)) or None
 
     # 最新一周内发布的活动，按发布的时间逆序
-    newlyreleased_list = Activity.objects.get_newlyreleased_activity()
+    newlyreleased_list = Activity.objects.get_newlyreleased_activity().select_related('organization_id')
 
     # 即将截止的活动，按截止时间正序
     prepare_times = Activity.EndBeforeHours.prepare_times
-    signup_rec = Activity.objects.activated().filter(status = Activity.Status.APPLYING)
+    signup_rec = Activity.objects.activated().select_related(
+        'organization_id').filter(status = Activity.Status.APPLYING)
     signup_list = []
     for act in signup_rec:
         deadline = act.start - timedelta(hours=prepare_times[act.endbefore])
@@ -1951,7 +1918,7 @@ def viewActivity(request, aid=None):
                 if activity.start + timedelta(hours=1) < datetime.now():
                     return redirect(f"/editActivity/{aid}")
                 html_display["warn_code"] = 1
-                html_display["warn_message"] = f"活动即将开始, 不能修改活动。"
+                html_display["warn_message"] = f"距离活动开始前1小时内将不再允许修改活动。如却有雨天等意外情况，请及时取消活动，收取的元气值将会退还。"
             else:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = f"活动状态为{activity.status}, 不能修改。"
@@ -2929,14 +2896,17 @@ def notifications(request):
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
     
-    notification_set = Notification.objects.activated().filter(receiver=request.user)
+    notification_set = Notification.objects.activated().select_related(
+        'sender').filter(receiver=request.user)
 
     done_list = notification2Display(
-        list(notification_set.union(notification_set).order_by("-finish_time"))
+        list(notification_set.filter(
+            status=Notification.Status.DONE).order_by("-finish_time"))
     )
 
     undone_list = notification2Display(
-        list(notification_set.union(notification_set).order_by("-start_time"))
+        list(notification_set.filter(
+            status=Notification.Status.UNDONE).order_by("-start_time"))
     )
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
