@@ -60,10 +60,10 @@ def distribute_YQPoint_per_month():
 def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
     '''
         内容：
-        由proposer账户(默认为一个组织账户)，向每一个在recipients中的账户中发起数额为YQPoints的转账
+        由proposer账户(默认为一个团体账户)，向每一个在recipients中的账户中发起数额为YQPoints的转账
         并且自动生成默认为ACCEPTED的转账记录以便查阅
-        这里的recipients期待为一个Queryset，要么全为自然人，要么全为组织
-        proposer默认为一个组织账户
+        这里的recipients期待为一个Queryset，要么全为自然人，要么全为团体
+        proposer默认为一个团体账户
     '''
     try:
         assert proposer.YQPoint >= recipients.count() * YQPoints
@@ -71,7 +71,7 @@ def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
         # 说明此时proposer账户的元气值不足
         print(f"由{proposer}向自然人{recipients[:3]}...等{recipients.count()}个用户发放元气值失败，原因可能是{proposer}的元气值剩余不足")
     try:
-        is_nperson = isinstance(recipients[0], NaturalPerson)  # 不为自然人则为组织
+        is_nperson = isinstance(recipients[0], NaturalPerson)  # 不为自然人则为团体
     except:
         print("没有转账对象！")
         return
@@ -101,7 +101,7 @@ def distribute_YQPoint(distributer):
     '''
     trans_time = distributer.start_time
 
-    # 没有问题，找到要发放元气值的人和组织
+    # 没有问题，找到要发放元气值的人和团体
     per_to_dis = NaturalPerson.objects.activated().filter(
         YQPoint__lte=distributer.per_max_dis_YQP)
     org_to_dis = Organization.objects.activated().filter(
@@ -115,7 +115,7 @@ def distribute_YQPoint(distributer):
                                 trans_time=trans_time)
     end_time = datetime.now()
 
-    debug_msg = f"已向{per_to_dis.count()}个自然人和{org_to_dis.count()}个组织转账，用时{(end_time - trans_time).seconds}s,{(end_time - trans_time).microseconds}microsecond\n"
+    debug_msg = f"已向{per_to_dis.count()}个自然人和{org_to_dis.count()}个团体转账，用时{(end_time - trans_time).seconds}s,{(end_time - trans_time).microseconds}microsecond\n"
     print(debug_msg)
 
 
@@ -354,6 +354,44 @@ def draw_lots(activity):
             else:
                 participant.status = Participant.AttendStatus.APLLYFAILED
             participant.save()
+    #签到成功的转发通知和微信通知
+    receivers = Participant.objects.filter(
+            activity_id=activity.id,
+            status=Participant.AttendStatus.APLLYSUCCESS
+        )
+    receivers = [receiver.person_id.person_id for receiver in receivers]
+    sender=activity.organization_id.organization_id
+    typename = Notification.Type.NEEDREAD
+    content=f'您好！您参与抽签的活动“{activity.title}”报名成功！请准时参加活动！'
+    URL=f'/viewActivity/{activity.id}'
+    if len(receivers)>0:
+        bulk_notification_create(
+            receivers=receivers,
+            sender=sender,
+            typename=typename,
+            title=Notification.Title.ACTIVITY_INFORM,
+            content=content,
+            URL=URL,
+            publish_to_wechat=True,
+        )
+    #抽签失败的同学发送通知
+    receivers = Participant.objects.filter(
+        activity_id=activity.id,
+        status=Participant.AttendStatus.APLLYFAILED
+    )
+    receivers = [receiver.person_id.person_id for receiver in receivers]
+    content = f'很抱歉通知您，您参与抽签的活动“{activity.title}”报名失败！'
+    if len(receivers) > 0:
+        bulk_notification_create(
+            receivers=receivers,
+            sender=sender,
+            typename=typename,
+            title=Notification.Title.ACTIVITY_INFORM,
+            content=content,
+            URL=URL,
+            publish_to_wechat=True,
+        )
+
 
 
 """
@@ -396,7 +434,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
     try:
         activity = Activity.objects.get(id=aid)
         if msg_type == "newActivity":
-            msg = f"您关注的组织{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
+            msg = f"您关注的团体{activity.organization_id.oname}发布了新的活动：{activity.title}。\n"
             msg += f"开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}\n"
             msg += f"活动地点: {activity.location}\n"
             subscribers = NaturalPerson.objects.activated().exclude(
@@ -494,26 +532,28 @@ def get_weather():
         with open("weather.json", "w") as weather_json:
             json.dump(weather_dict, weather_json)
     except KeyError as e:
-        print(str(e))
-        print("在get_weather中出错，原因可能是local_dict中缺少weather_api_key")
+        operation_writer(local_dict["system_log"], "天气更新异常,原因可能是local_dict中缺少weather_api_key:"+str(e), "scheduler_func[get_weather]", "Problem")        
         return None
     except Exception as e:
-        # 相当于超时
-        # TODO: 增加天气超时的debug
-        print("任务超时")
+        operation_writer(local_dict["system_log"], "天气更新异常,未知错误", "scheduler_func[get_weather]", "Problem")
         return default_weather
     else:
+        operation_writer(local_dict["system_log"], "天气更新成功", "scheduler_func[get_weather]")
         return weather_dict
 
-print("———————————————— Scheduler:   Debug ————————————————")
-print("before loading scheduler from app.scheduler in scheduler_func.py")
+def start_weather_routine():
+    print("———————————————— Scheduler:   Debug ————————————————")
+    print("before loading scheduler from app.scheduler in scheduler_func.py")
+
+    # register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
+    # 但好像非服务器版本有问题??
+    print("finish import scheduler from app.scheduler")
+    scheduler.add_job(get_weather, 'interval', id="get weather per 5 minute", minutes=5, replace_existing=True)
+
+    print("finishing loading get_weather function")
+    print("finish scheduler_func")
+    print("———————————————— End     :   Debug ————————————————")
+
+
 from app.scheduler import scheduler
-
-# register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
-# 但好像非服务器版本有问题??
-
-scheduler.add_job(get_weather, 'interval', id="get weather per hour", hours=1, replace_existing=True)
-
-print("finishing loading get_weather function")
-print("finish scheduler_func")
-print("———————————————— End     :   Debug ————————————————")
+from app.utils import operation_writer

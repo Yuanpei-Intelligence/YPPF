@@ -84,6 +84,10 @@ from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
 
 # 定时任务不在views直接调用
+# 但是天气任务还是在这里弄吧，太奇怪了
+from app.scheduler_func import start_weather_routine
+start_weather_routine()
+
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
@@ -253,13 +257,13 @@ def stuinfo(request, name=None):
         首先必须登录，并且不是超级账户
         如果name是空
             如果是个人账户，那么就自动跳转个人主页"/stuinfo/myname"
-            如果是组织账户，那么自动跳转welcome
+            如果是团体账户，那么自动跳转welcome
         如果name非空但是找不到对应的对象
             自动跳转到welcome
         如果name有明确的对象
             如果不重名
                 如果是自己，那么呈现并且有左边栏
-                如果不是自己或者自己是组织，那么呈现并且没有侧边栏
+                如果不是自己或者自己是团体，那么呈现并且没有侧边栏
             如果重名
                 那么期望有一个"+"在name中，如果搜不到就跳转到Search/?Query=name让他跳转去
     """
@@ -271,7 +275,7 @@ def stuinfo(request, name=None):
 
     if name is None:
         if user_type == "Organization":
-            return redirect("/welcome/")  # 组织只能指定学生姓名访问
+            return redirect("/welcome/")  # 团体只能指定学生姓名访问
         else:  # 跳轉到自己的頁面
             assert user_type == "Person"
             full_path = request.get_full_path()
@@ -305,12 +309,12 @@ def stuinfo(request, name=None):
         is_myself = user_type == "Person" and person.person_id == user  # 用一个字段储存是否是自己
         html_display["is_myself"] = is_myself  # 存入显示
 
-        # ----------------------------------- 组织卡片 ----------------------------------- #
+        # ----------------------------------- 团体卡片 ----------------------------------- #
 
         person_poss = Position.objects.activated().filter(Q(person=person))
         person_orgs = Organization.objects.filter(
             id__in=person_poss.values("org")
-        )  # ta属于的组织
+        )  # ta属于的团体
         oneself_orgs = (
             [oneself]
             if user_type == "Organization"
@@ -318,44 +322,44 @@ def stuinfo(request, name=None):
                 Q(person=oneself) & Q(show_post=True)
             )
         )
-        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id") # 自己的组织
+        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id") # 自己的团体
 
-        # 管理的组织
+        # 管理的团体
         person_owned_poss = person_poss.filter(pos=0, status=Position.Status.INSERVICE)
         person_owned_orgs = person_orgs.filter(
             id__in=person_owned_poss.values("org")
-        )  # ta管理的组织
+        )  # ta管理的团体
         person_owned_orgs_ava = [
             # utils.get_user_ava(org, "organization") for org in person_owned_orgs
             org.get_user_ava() for org in person_owned_orgs
         ]
         person_owned_orgs_pos = [
             person_owned_poss.get(org=org).pos for org in person_owned_orgs
-        ]  # ta在组织中的职位
+        ]  # ta在团体中的职位
         person_owned_orgs_pos = [
             org.otype.get_name(pos)
             for pos, org in zip(person_owned_orgs_pos, person_owned_orgs)
-        ]  # ta在组织中的职位
+        ]  # ta在团体中的职位
         html_display["owned_orgs_info"] = (
                 list(zip(person_owned_orgs, person_owned_orgs_ava, person_owned_orgs_pos))
                 or None
         )
 
-        # 属于的组织
+        # 属于的团体
         person_joined_poss = person_poss.filter(~Q(pos=0) & Q(show_post=True))
         person_joined_orgs = person_orgs.filter(
             id__in=person_joined_poss.values("org")
-        )  # ta属于的组织
+        )  # ta属于的团体
         person_joined_orgs_ava = [
             org.get_user_ava() for org in person_joined_orgs
         ]
         person_joined_orgs_pos = [
             person_joined_poss.get(org=org).pos for org in person_joined_orgs
-        ]  # ta在组织中的职位
+        ]  # ta在团体中的职位
         person_joined_orgs_pos = [
             org.otype.get_name(pos)
             for pos, org in zip(person_joined_orgs_pos, person_joined_orgs)
-        ]  # ta在组织中的职位
+        ]  # ta在团体中的职位
         person_joined_orgs_same = [
             id in oneself_orgs_id for id in person_joined_poss.values("org")
         ]
@@ -371,18 +375,18 @@ def stuinfo(request, name=None):
                 or None
         )
 
-        # 隐藏的组织
+        # 隐藏的团体
         person_hidden_poss = person_poss.filter(show_post=False)
         person_hidden_orgs = person_orgs.filter(
             id__in=person_hidden_poss.values("org")
-        )  # ta隐藏的组织
+        )  # ta隐藏的团体
         person_hidden_orgs_ava = [
             # utils.get_user_ava(org, "organization") for org in person_hidden_orgs
             org.get_user_ava() for org in person_hidden_orgs
         ]
         person_hidden_orgs_pos = [
             person_hidden_poss.get(org=org).pos for org in person_hidden_orgs
-        ]  # ta在组织中的职位
+        ]  # ta在团体中的职位
         person_hidden_orgs_status = [
             person_hidden_poss.get(org=org).status for org in person_hidden_orgs
         ]  # ta职位的状态
@@ -494,11 +498,11 @@ def stuinfo(request, name=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-def request_login_org(request, name=None):  # 特指个人希望通过个人账户登入组织账户的逻辑
+def request_login_org(request, name=None):  # 特指个人希望通过个人账户登入团体账户的逻辑
     """
-        这个函数的逻辑是，个人账户点击左侧的管理组织直接跳转登录到组织账户
+        这个函数的逻辑是，个人账户点击左侧的管理团体直接跳转登录到团体账户
         首先检查登录的user是个人账户，否则直接跳转orginfo
-        如果个人账户对应的是name对应的组织的最高权限人，那么允许登录，否则跳转回stuinfo并warning
+        如果个人账户对应的是name对应的团体的最高权限人，那么允许登录，否则跳转回stuinfo并warning
     """
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -509,12 +513,12 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         me = NaturalPerson.objects.activated().get(person_id=user)
     except:  # 找不到合法的用户
         return redirect("/welcome/")
-    if name is None:  # 个人登录未指定登入组织,属于不合法行为,弹回欢迎
+    if name is None:  # 个人登录未指定登入团体,属于不合法行为,弹回欢迎
         return redirect("/welcome/")
-    else:  # 确认有无这个组织
+    else:  # 确认有无这个团体
         try:
             org = Organization.objects.get(oname=name)
-        except:  # 找不到对应组织
+        except:  # 找不到对应团体
             urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=找不到对应团体,请联系管理员!"
             return redirect(urls)
         try:
@@ -525,9 +529,9 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         except:
             urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团体账户的权限!"
             return redirect(urls)
-        # 到这里,是本人组织并且有权限登录
+        # 到这里,是本人团体并且有权限登录
         auth.logout(request)
-        auth.login(request, org.organization_id)  # 切换到组织账号
+        auth.login(request, org.organization_id)  # 切换到团体账号
         if org.first_time_login:
             return redirect("/modpw/")
         return redirect("/orginfo/?warn_code=2&warn_message=成功切换到"+str(org)+"的账号!")
@@ -542,7 +546,7 @@ def user_login_org(request, org):
         me = NaturalPerson.objects.activated().get(person_id=user)
     except:  # 找不到合法的用户
         return wrong("您没有权限访问该网址！请用对应团体账号登陆。")
-    #是组织一把手
+    #是团体一把手
     try:
         position = Position.objects.activated().filter(org=org, person=me)
         assert len(position) == 1
@@ -551,9 +555,9 @@ def user_login_org(request, org):
     except:
         urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团体账户的权限!"
         return redirect(urls)
-    # 到这里,是本人组织并且有权限登录
+    # 到这里,是本人团体并且有权限登录
     auth.logout(request)
-    auth.login(request, org.organization_id)  # 切换到组织账号
+    auth.login(request, org.organization_id)  # 切换到团体账号
     return succeed("成功切换到团体账号处理该事务，建议事务处理完成后退出团体账号。")
 
 
@@ -563,8 +567,8 @@ def user_login_org(request, org):
 @utils.check_user_access(redirect_url="/logout/")
 def orginfo(request, name=None):
     """
-        orginfo负责呈现组织主页，逻辑和stuinfo是一样的，可以参考
-        只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个组织界面都是【不可管理/编辑组织信息】
+        orginfo负责呈现团体主页，逻辑和stuinfo是一样的，可以参考
+        只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个团体界面都是【不可管理/编辑团体信息】
     """
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -588,16 +592,16 @@ def orginfo(request, name=None):
             
         return redirect("/orginfo/" + org.oname + append_url)
 
-    try:  # 指定名字访问组织账号的，可以是自然人也可以是法人。在html里要注意区分！
+    try:  # 指定名字访问团体账号的，可以是自然人也可以是法人。在html里要注意区分！
 
-        # 下面是组织信息
+        # 下面是团体信息
 
         org = Organization.objects.activated().get(oname=name)
 
     except:
         return redirect("/welcome/")
 
-    # 判断是否为组织账户本身在登录
+    # 判断是否为团体账户本身在登录
     html_display["is_myself"] = me == org
 
     organization_name = name
@@ -612,7 +616,7 @@ def orginfo(request, name=None):
             html_display["warn_message"] = "下载成功!"
             return utils.export_orgpos_info(org)
 
-    # 该学年、该学期、该组织的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
+    # 该学年、该学期、该团体的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
         Activity.objects.activated()
         .filter(organization_id=org)
@@ -674,7 +678,7 @@ def orginfo(request, name=None):
     # 判断我是不是老大, 首先设置为false, 然后如果有person_id和user一样, 就为True
     html_display["isboss"] = False
 
-    # 组织成员list
+    # 团体成员list
     positions = Position.objects.activated().filter(org=org).order_by("pos")  # 升序
     member_list = []
     for p in positions:
@@ -715,7 +719,7 @@ def orginfo(request, name=None):
     html_display["modpw_code"] = modpw_status is not None and modpw_status == "success"
 
 
-    # 组织活动的信息
+    # 团体活动的信息
 
     # 补充一些呈现信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
@@ -723,7 +727,7 @@ def orginfo(request, name=None):
     # 转账后跳转
     origin = request.get_full_path()
 
-    # 补充订阅该组织的按钮
+    # 补充订阅该团体的按钮
     allow_unsubscribe = org.otype.allow_unsubscribe # 是否允许取关
     is_person = True if user_type == "Person" else False
     if is_person:
@@ -731,7 +735,7 @@ def orginfo(request, name=None):
             organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
             else False
     
-    # 补充作为组织成员，选择是否展示的按钮
+    # 补充作为团体成员，选择是否展示的按钮
     show_post_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
     if user_type == 'Person':
         my_position = Position.objects.activated().filter(org=org, person=me).exclude(pos=0)
@@ -752,7 +756,7 @@ def homepage(request):
     myname = me.name if is_person else me.oname
 
     # 直接储存在html_display中
-    # profile_name = "个人主页" if is_person else "组织主页"
+    # profile_name = "个人主页" if is_person else "团体主页"
     # profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
 
     html_display["is_myself"] = True
@@ -1169,20 +1173,20 @@ def get_stu_img(request):
 def search(request):
     """
         搜索界面的呈现逻辑
-        分成搜索个人和搜索组织两个模块，每个模块的呈现独立开，有内容才呈现，否则不显示
+        分成搜索个人和搜索团体两个模块，每个模块的呈现独立开，有内容才呈现，否则不显示
         搜索个人：
             支持使用姓名搜索，支持对未设为不可见的昵称和专业搜索
             搜索结果的呈现采用内容/未公开表示，所有列表为people_filed
-        搜索组织
-            支持使用组织名、组织类型搜索、一级负责人姓名
-            组织的呈现内容由拓展表体现，不在这个界面呈现具体成员
+        搜索团体
+            支持使用团体名、团体类型搜索、一级负责人姓名
+            团体的呈现内容由拓展表体现，不在这个界面呈现具体成员
             add by syb:
-            支持通过组织名、组织类型来搜索组织
-            支持通过公开关系的个人搜索组织，即如果某自然人用户可以被上面的人员搜索检出，
-            而且该用户选择公开其与组织的关系，那么该组织将在搜索界面呈现。
+            支持通过团体名、团体类型来搜索团体
+            支持通过公开关系的个人搜索团体，即如果某自然人用户可以被上面的人员搜索检出，
+            而且该用户选择公开其与团体的关系，那么该团体将在搜索界面呈现。
             搜索结果的呈现内容见organization_field
         搜索活动
-            支持通过活动名、组织来搜索活动。只要可以搜索到组织，组织对应的活动就也可以被搜到
+            支持通过活动名、团体来搜索活动。只要可以搜索到团体，团体对应的活动就也可以被搜到
             搜索结果的呈现见activity_field
     """
 
@@ -1199,12 +1203,16 @@ def search(request):
         | (  # (Q(nickname__icontains=query) & Q(show_nickname=True)) |
                 Q(stu_major__icontains=query) & Q(show_major=True)
         )
+        | (
+            Q(nickname__icontains=query) & Q(show_nickname=True)
+        )
     )
 
     # 接下来准备呈现的内容
     # 首先是准备搜索个人信息的部分
     people_field = [
         "姓名",
+        "昵称",
         "年级",
         "班级",
         # "昵称",
@@ -1216,12 +1224,12 @@ def search(request):
         "状态",
     ]  # 感觉将年级和班级分开呈现会简洁很多
 
-    # 搜索组织
+    # 搜索团体
     # 先查找query作为姓名包含在字段中的职务信息, 选的是post为true或者职务等级为0
     pos_list = Position.objects.activated().filter(
         Q(person__name__icontains=query) & (Q(show_post=True) | Q(pos=0))
     )
-    # 通过组织名、组织类名、和上述的职务信息对应的组织信息
+    # 通过团体名、团体类名、和上述的职务信息对应的团体信息
     organization_list = Organization.objects.filter(
         Q(oname__icontains=query)
         | Q(otype__otype_name__icontains=query)
@@ -1259,8 +1267,8 @@ def search(request):
             }
         )
 
-    # 组织要呈现的具体内容
-    organization_field = ["组织名称", "组织类型", "负责人", "近期活动"]
+    # 团体要呈现的具体内容
+    organization_field = ["团体名称", "团体类型", "负责人", "近期活动"]
 
     # 搜索活动
     activity_list = Activity.objects.activated().filter(
@@ -1270,7 +1278,7 @@ def search(request):
     )
 
     # 活动要呈现的内容
-    activity_field = ["活动名称", "承办组织", "状态"]
+    activity_field = ["活动名称", "承办团体", "状态"]
 
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
@@ -1345,7 +1353,7 @@ def forget_password(request):
             try:
                 person = NaturalPerson.objects.get(person_id=user)  # 目前只支持自然人
             except:
-                display = wrong("暂不支持组织账号验证码登录！")
+                display = wrong("暂不支持团体账号验证码登录！")
                 display["alert"] = True
                 return render(request, "forget_password.html", locals())
             if send_captcha in ["yes", "email"]:    # 单个按钮(yes)发送邮件
@@ -1519,7 +1527,7 @@ def transaction_page(request, rid=None):
         return redirect(
             "/welcome/?warn_code=1&warn_message=该用户不存在，无法实现转账!")
     if not hasattr(recipient, "organization_id") or user_type != "Organization":
-        html_display = wrong("目前只支持组织向组织转账！")
+        html_display = wrong("目前只支持团体向团体转账！")
     if request.user == user:
         html_display=wrong("不能向自己转账！")
     if html_display['warn_code']==1:
@@ -1860,7 +1868,7 @@ def myYQPoint(request):
 页面逻辑：
 1. 方法为 GET 时，展示一个活动的详情。
     a. 如果当前用户是个人，有立即报名/已报名的 button
-    b. 如果当前用户是组织，并且是该活动的所有者，有修改和取消活动的 button
+    b. 如果当前用户是团体，并且是该活动的所有者，有修改和取消活动的 button
 2. 方法为 POST 时，通过 option 确定操作
     a. 如果修改活动，跳转到 addActivity
     b. 如果取消活动，本函数处理
@@ -1879,7 +1887,7 @@ def myYQPoint(request):
 def viewActivity(request, aid=None):
     """
     aname = str(request.POST["aname"])  # 活动名称
-    organization_id = request.POST["organization_id"]  # 组织id
+    organization_id = request.POST["organization_id"]  # 团体id
     astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
     afinish = request.POST["afinish"]
     content = str(request.POST["content"])
@@ -2069,7 +2077,7 @@ def viewActivity(request, aid=None):
         apply_manner = "抽签模式"
     else:
         apply_manner = "先到先得"
-    # person 表示是否是个人而非组织
+    # person 表示是否是个人而非团体
     person = False
     if user_type == "Person":
         """
@@ -2083,9 +2091,9 @@ def viewActivity(request, aid=None):
             # pStatus 是参与状态
             pStatus = participant.status
         except:
-            pStatus = "无记录"
+            pStatus = "未参与"
         if pStatus == "放弃":
-            pStatus = "无记录"
+            pStatus = "未参与"
 
     # 签到
     need_checkin = activity.need_checkin
@@ -2114,10 +2122,12 @@ def viewActivity(request, aid=None):
         except Exception as e:
             pass
     
-    # 参与者
+    # 参与者, 无论报名是否通过
     participants = Participant.objects.filter(Q(activity_id=activity),
-        Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APLLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED))
-    participants_ava = [utils.get_user_ava(participant, "Person") for participant in participants.values("person_id")] or None
+        Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APLLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED) | Q(status=Participant.AttendStatus.UNATTENDED))
+    #participants_ava = [utils.get_user_ava(participant, "Person") for participant in participants.values("person_id")] or None
+    people_list = NaturalPerson.objects.activated().filter(id__in = participants.values("person_id"))
+
 
     # 新版侧边栏，顶栏等的呈现，采用bar_display，必须放在render前最后一步，但这里render太多了
     # TODO: 整理好代码结构，在最后统一返回
@@ -2352,7 +2362,7 @@ def checkinActivity(request):
 页面逻辑：
 
 该函数处理 GET, POST 两种请求，发起和修改两类操作
-1. 访问 /addActivity/ 时，为创建操作，要求用户是组织；
+1. 访问 /addActivity/ 时，为创建操作，要求用户是团体；
 2. 访问 /editActivity/aid 时，为编辑操作，要求用户是该活动的发起者
 3. GET 请求创建活动的界面，placeholder 为 prompt
 4. GET 请求编辑活动的界面，表单的 placeholder 会被修改为活动的旧值。
@@ -2362,11 +2372,11 @@ def checkinActivity(request):
 @utils.check_user_access(redirect_url="/logout/")
 def addActivity(request, aid=None):
 
-    # 检查：不是超级用户，必须是组织，修改是必须是自己
+    # 检查：不是超级用户，必须是团体，修改是必须是自己
     try:
         valid, user_type, html_display = utils.check_user_type(request.user)
         assert valid
-        me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为组织账户
+        me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为团体账户
         if aid is None:
             assert user_type == "Organization"
             if me.oname == YQPoint_oname:
@@ -2384,11 +2394,11 @@ def addActivity(request, aid=None):
                             html_display["warn_code"], html_display["warn_message"]
                         )
                     )
-                else:#成功以组织账号登陆
+                else:#成功以团体账号登陆
                     #防止后边有使用，因此需要赋值
                     user_type="Organization"
-                    request.user=activity.organization_id.organization_id#组织对应user
-                    me = activity.organization_id#组织
+                    request.user=activity.organization_id.organization_id#团体对应user
+                    me = activity.organization_id#团体
             assert activity.organization_id == me
             edit = True
         html_display["is_myself"] = True
@@ -2487,8 +2497,8 @@ def addActivity(request, aid=None):
             return redirect("/welcome/")
 
         # 决定状态的变量
-        # None/edit/examine ( 组织申请活动/组织编辑/老师审查 )
-        # full_editable/accepted/None ( 组织编辑活动：除审查老师外全可修改/部分可修改/全部不可改 )
+        # None/edit/examine ( 团体申请活动/团体编辑/老师审查 )
+        # full_editable/accepted/None ( 团体编辑活动：除审查老师外全可修改/部分可修改/全部不可改 )
         #        full_editable 为 true 时，accepted 也为 true
         # commentable ( 是否可以评论 )
 
@@ -2578,7 +2588,7 @@ def examineActivity(request, aid):
                         id=int(aid)
                     )
                     accept_activity(request, activity)
-                html_display["warn_msg"] = "活动已通过。"
+                html_display["warn_msg"] = "活动已通过审核。"
                 html_display["warn_code"] = 2
             except Exception as e:
                 # print(e)
@@ -2657,7 +2667,7 @@ def examineActivity(request, aid):
 def subscribeOrganization(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != 'Person':
-        return redirect('/welcome/?warn_code=1&warn_message=组织账号不支持订阅！')
+        return redirect('/welcome/?warn_code=1&warn_message=团体账号不支持订阅！')
 
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
@@ -2948,7 +2958,7 @@ def addComment(request, comment_base, receiver=None):
     typename = comment_base.typename
     content = {
         'modifyposition': f'{sender_name}在成员变动申请留有新的评论',
-        'neworganization': f'{sender_name}在新建组织中留有新的评论',
+        'neworganization': f'{sender_name}在新建团体中留有新的评论',
         'reimbursement': f'{sender_name}在经费申请中留有新的评论',
         'activity': f"{sender_name}在活动申请中留有新的评论"
     }
@@ -3048,12 +3058,12 @@ def showComment(commentbase):
 def showNewOrganization(request):
     """
     YWolfeee: modefied on Aug 24 1:33 a.m. UTC-8
-    新建组织的聚合界面
+    新建团体的聚合界面
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type == "Organization":
         html_display["warn_code"] = 1
-        html_display["warn_code"] = "请不要使用组织账号申请新组织！"
+        html_display["warn_code"] = "请不要使用团体账号申请新团体！"
         return redirect(
             "/welcome/"
             + "?warn_code={}&warn_message={}".format(
@@ -3063,7 +3073,7 @@ def showNewOrganization(request):
 
     me = utils.get_person_or_org(request.user, user_type)
 
-    # 拉取我负责管理申请的组织，这部分由我审核
+    # 拉取我负责管理申请的团体，这部分由我审核
     charge_org = ModifyOrganization.objects.filter(otype__in=me.incharge.all())
 
     # 拉去由我发起的申请，这部分等待审核
@@ -3072,7 +3082,7 @@ def showNewOrganization(request):
     # 排序整合，用于前端呈现
     shown_instances = charge_org.union(applied_org).order_by("-modify_time", "-time")
 
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="新组织申请")
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="新团体申请")
     return render(request, "neworganization_show.html", locals())
 
 
@@ -3083,7 +3093,7 @@ def modifyPosition(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
 
-    # 前端使用量user_type，表示观察者是组织还是个人
+    # 前端使用量user_type，表示观察者是团体还是个人
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
 
@@ -3092,11 +3102,11 @@ def modifyPosition(request):
 
     # 根据是否有newid来判断是否是第一次
     position_id = request.GET.get("pos_id", None)
-    if position_id is not None: # 如果存在对应组织
+    if position_id is not None: # 如果存在对应团体
         try:    # 尝试获取已经新建的Position
             application = ModifyPosition.objects.get(id = position_id)
             # 接下来检查是否有权限check这个条目
-            # 至少应该是申请人或者被申请组织之一
+            # 至少应该是申请人或者被申请团体之一
             if user_type == "Person" and application.person != me:
                 html_display=user_login_org(request,application.org)
                 if html_display['warn_code']==1:
@@ -3153,7 +3163,7 @@ def modifyPosition(request):
     '''
         至此，如果是新申请那么application为None，否则为对应申请
         application = None只有在个人新建申请的时候才可能出现，对应位is_new_application
-        applied_org为对应的组织
+        applied_org为对应的团体
         接下来POST
     '''
 
@@ -3218,7 +3228,7 @@ def modifyPosition(request):
 
     '''
         个人：可能是初次申请或者是修改申请
-        组织：可能是审核申请
+        团体：可能是审核申请
         # TODO 也可能是两边都想自由的查看这个申请
         区别：
             (1) 整个表单允不允许修改和评论
@@ -3229,7 +3239,7 @@ def modifyPosition(request):
     # 用户写表格?
     allow_form_edit = True if (user_type == "Person") and (
                 is_new_application or application.is_pending()) else False
-    # 组织审核?
+    # 团体审核?
     allow_audit_submit = True if (not user_type == "Person") and (not is_new_application) and (
                 application.is_pending()) else False
     # 评论区?
@@ -3247,20 +3257,20 @@ def modifyPosition(request):
     apply_person = me if is_new_application else application.person
     app_avatar_path = apply_person.get_user_ava()
     org_avatar_path = applied_org.get_user_ava()
-    # 获取个人与组织[在当前学年]的关系
+    # 获取个人与团体[在当前学年]的关系
     current_pos_list = Position.objects.current().filter(person=apply_person, org=applied_org)
     # 应当假设只有至多一个类型
 
-    # 检查该同学是否已经属于这个组织
+    # 检查该同学是否已经属于这个团体
     whether_belong = True if len(current_pos_list) and \
         current_pos_list[0].status == Position.Status.INSERVICE else False
     if whether_belong:
-        # 禁用掉加入组织
+        # 禁用掉加入团体
         apply_type_list[ModifyPosition.ApplyType.JOIN]['disabled'] = True
         # 禁用掉修改职位中的自己的那个等级
         position_name_list[current_pos_list[0].get_pos_number()]["disabled"] = True
         #current_pos_name = applied_org.otype.get_name(current_pos_list[0].pos)
-    else:   #不属于组织, 只能选择加入组织
+    else:   #不属于团体, 只能选择加入团体
         apply_type_list[ModifyPosition.ApplyType.WITHDRAW]['disabled'] = True
         apply_type_list[ModifyPosition.ApplyType.TRANSFER]['disabled'] = True
 
@@ -3289,7 +3299,7 @@ def showPosition(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)
 
-    # 查看成员聚合页面：拉取个人或组织相关的申请
+    # 查看成员聚合页面：拉取个人或团体相关的申请
     if user_type == "Person":
         shown_instances = ModifyPosition.objects.filter(person=me)
     else:
@@ -3338,7 +3348,7 @@ def showReimbursement(request):
 def showActivity(request):
     """
     活动信息的聚合界面
-    只有老师和组织才能看到，老师看到检查者是自己的，组织看到发起方是自己的
+    只有老师和团体才能看到，老师看到检查者是自己的，团体看到发起方是自己的
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
@@ -3392,7 +3402,7 @@ def make_relevant_notification(application, info):
         try:
             position_name = application.org.otype.get_name(application.pos)  # 职位名称
         except:
-            position_name = "退出组织"
+            position_name = "退出团体"
     elif application_type == ModifyOrganization:
         apply_person = NaturalPerson.objects.get(person_id=application.pos)
         inchage_person = application.otype.incharge
@@ -3404,7 +3414,7 @@ def make_relevant_notification(application, info):
     # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
     if application_type == ModifyPosition:
         if post_type == 'new_submit':
-            content = f'{application.person.name}发起组织成员变动申请，职位申请：{position_name}，请审核~'
+            content = f'{application.person.name}发起团体成员变动申请，职位申请：{position_name}，请审核~'
         elif post_type == 'modify_submit':
             content = f'{application.person.name}修改了成员申请信息，请审核~'
         elif post_type == 'cancel_submit':
@@ -3421,16 +3431,16 @@ def make_relevant_notification(application, info):
         URL = f'/modifyPosition/?pos_id={application.id}'
     elif application_type == ModifyOrganization:
         if post_type == 'new_submit':
-            content = f'{apply_person.name}发起新建组织申请，新建组织：{application.oname}，请审核~'
+            content = f'{apply_person.name}发起新建团体申请，新建团体：{application.oname}，请审核~'
         elif post_type == 'modify_submit':
-            content = f'{apply_person.name}修改了组织申请信息，请审核~'
+            content = f'{apply_person.name}修改了团体申请信息，请审核~'
         elif post_type == 'cancel_submit':
-            content = f'{apply_person.name}取消了组织{application.oname}的申请。'
+            content = f'{apply_person.name}取消了团体{application.oname}的申请。'
         elif post_type == 'accept_submit':
-            content = f'恭喜，您申请的组织：{application.oname}，审核已通过！组织编号为{new_org.organization_id.username}, \
-                初始密码为{utils.random_code_init(new_org.organization_id.id)}，请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；(2)从登录页面用组织编号或组织名称以及密码登录。'
+            content = f'恭喜，您申请的团体：{application.oname}，审核已通过！团体编号为{new_org.organization_id.username}, \
+                初始密码为{utils.random_code_init(new_org.organization_id.id)}，请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；(2)从登录页面用团体编号或团体名称以及密码登录。'
         elif post_type == 'refuse_submit':
-            content = f'抱歉，您申请的组织：{application.oname}，审核未通过！。'
+            content = f'抱歉，您申请的团体：{application.oname}，审核未通过！。'
         else:
             raise NotImplementedError
         applyer_id = apply_person.person_id
@@ -3478,7 +3488,7 @@ def modifyReimbursement(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
 
-    # 前端使用量user_type，表示观察者是组织还是个人
+    # 前端使用量user_type，表示观察者是团体还是个人
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
 
@@ -3522,7 +3532,7 @@ def modifyReimbursement(request):
         is_new_application = False  # 前端使用量, 表示是老申请还是新的
 
     else:  # 如果不存在id, 默认应该传入活动信息
-        #只有组织才有可能报销
+        #只有团体才有可能报销
         try:
             assert user_type == "Organization"
         except:  # 恶意跳转
@@ -3544,7 +3554,7 @@ def modifyReimbursement(request):
         receiver=application.pos
     '''
         至此，如果是新申请那么application为None，否则为对应申请
-        application = None只有在组织新建申请的时候才可能出现，对应位is_new_application为True
+        application = None只有在团体新建申请的时候才可能出现，对应位is_new_application为True
         接下来POST
     '''
 
@@ -3564,7 +3574,7 @@ def modifyReimbursement(request):
 
                 # 处理通知相关的操作，并根据情况发送微信
                 # 默认需要成功,失败也不是用户的问题，直接给管理员报错
-                #组织名字
+                #团体名字
                 org_name = application.pos.organization.oname
                 #活动标题
                 act_title = application.related_activity.title
@@ -3600,12 +3610,12 @@ def modifyReimbursement(request):
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
     '''
-        组织：可能是新建、修改申请
+        团体：可能是新建、修改申请
         老师：可能是审核申请
     '''
 
     # (1) 是否允许修改表单
-    # 组织写表格?
+    # 团体写表格?
     allow_form_edit = True if (user_type == "Organization") and (
             is_new_application or application.is_pending()) else False
     # 老师审核?
@@ -3679,7 +3689,7 @@ def make_notification(application, request,content,receiver):
             Notification.Status.DONE
         )
 
-# YWolfeee: 重构组织申请页面 Aug 24 12:30 UTC-8
+# YWolfeee: 重构团体申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 def modifyOrganization(request):
@@ -3687,7 +3697,7 @@ def modifyOrganization(request):
     me = utils.get_person_or_org(request.user)  # 获取自身
     if user_type == "Organization":
         html_display["warn_code"] = 1
-        html_display["warn_code"] = "请不要使用组织账号申请新组织！"
+        html_display["warn_code"] = "请不要使用团体账号申请新团体！"
         return redirect(
             "/welcome/"
             + "?warn_code={}&warn_message={}".format(
@@ -3721,8 +3731,8 @@ def modifyOrganization(request):
         is_new_application = False # 前端使用量, 表示是老申请还是新的
 
     else:   
-        # 如果不存在id, 是一个新建组织页面。
-        # 已保证组织不可能访问，任何人都可以发起新建组织。
+        # 如果不存在id, 是一个新建团体页面。
+        # 已保证团体不可能访问，任何人都可以发起新建团体。
         application = None
         is_new_application = True
         
@@ -3757,7 +3767,7 @@ def modifyOrganization(request):
                     raise NotImplementedError
 
             elif context["warn_code"] != 1: # 没有返回操作提示
-                raise NotImplementedError("处理组织申请中出现未预见状态，请联系管理员处理！")   
+                raise NotImplementedError("处理团体申请中出现未预见状态，请联系管理员处理！")   
             
 
         else:   # 如果是新增评论
@@ -3789,7 +3799,7 @@ def modifyOrganization(request):
 
     '''
         个人：可能是初次申请或者是修改申请
-        组织：可能是审核申请
+        团体：可能是审核申请
         # TODO 也可能是两边都想自由的查看这个申请
         区别：
             (1) 整个表单允不允许修改和评论
@@ -3800,7 +3810,7 @@ def modifyOrganization(request):
     # 用户写表格?
     allow_form_edit = True if (
                 is_new_application or (application.pos == me.person_id and application.is_pending())) else False
-    # 组织审核?
+    # 团体审核?
     allow_audit_submit = True if (not is_new_application) and (
                 application.is_pending()) and (application.otype.incharge == me) else False
     # 评论区?
@@ -3818,12 +3828,12 @@ def modifyOrganization(request):
     apply_person = me if is_new_application else NaturalPerson.objects.get(person_id=application.pos)
     app_avatar_path = apply_person.get_user_ava()
     org_avatar_path = utils.get_user_ava(application, "Organization")
-    org_types = OrganizationType.objects.order_by("-otype_id").all()  # 当前组织类型，前端展示需要
+    org_types = OrganizationType.objects.order_by("-otype_id").all()  # 当前团体类型，前端展示需要
     former_img = Organization().get_user_ava()
     if not is_new_application:
         org_type_list[application.otype]['selected'] = True
 
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="组织申请详情")
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="团体申请详情")
     return render(request, "modify_organization.html", locals())
 
 # YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
@@ -3834,7 +3844,7 @@ def sendMessage(request):
     me = utils.get_person_or_org(request.user)  # 获取自身
     if user_type == "Person":
         html_display["warn_code"] = 1
-        html_display["warn_code"] = "只有组织账号才能发送通知！"
+        html_display["warn_code"] = "只有团体账号才能发送通知！"
         return redirect(
             "/welcome/"
             + "?warn_code={}&warn_message={}".format(
@@ -3858,7 +3868,7 @@ def sendMessage(request):
             'disabled' : False,  # 是否禁止选择这个量
             'selected' : False   # 是否默认选中这个量
         }
-        for w in ['订阅用户','组织成员']
+        for w in ['订阅用户','团体成员']
     }
 
     # 设置默认量
@@ -3941,7 +3951,7 @@ def send_message_check(me, request):
         wechat_kws = {}
         if receiver_type == "订阅用户":
             wechat_kws['app'] = WechatApp.TO_SUBSCRIBER
-        else:   # 组织成员
+        else:   # 团体成员
             wechat_kws['app'] = WechatApp.TO_MEMBER
         wechat_kws['filter_kws'] = {'bulk_identifier': bulk_identifier}
         assert publish_notifications(**wechat_kws)

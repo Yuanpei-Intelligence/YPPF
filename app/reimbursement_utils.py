@@ -32,7 +32,7 @@ def succeed(message):
 # 返回值为context, warn_code = 1表示失败, 2表示成功; 错误信息在context["warn_message"]
 # 如果成功context会返回update之后的application,
 #注意新建报销和修改报销时，元气值的合法性检查有所不同。
-#申请报销时，元气值要先扣除。除非老师拒绝或者组织取消报销，元气值一直处于扣除状态。
+#申请报销时，元气值要先扣除。除非老师拒绝或者团体取消报销，元气值一直处于扣除状态。
 
 def update_reimb_application(application, me, user_type, request,auditor_name):
     # 关于这个application与我的关系已经完成检查
@@ -51,15 +51,15 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
         if post_type not in feasible_post:
             return wrong("申请状态异常！")
 
-        # 接下来确定访问的个人/组织是不是在做分内的事情
+        # 接下来确定访问的个人/团体是不是在做分内的事情
         if (user_type == "Person" and feasible_post.index(post_type)<=2 ) or (
                 user_type == "Organization" and feasible_post.index(post_type) >= 3):
             return wrong("您无权进行此操作，如有疑惑, 请联系管理员")
 
         our_college=Organization.objects.get(oname="元培学院").organization_id
-        if feasible_post.index(post_type) <= 2:  # 是组织的操作, 新建\修改\取消
+        if feasible_post.index(post_type) <= 2:  # 是团体的操作, 新建\修改\取消
 
-            # 访问者一定是组织
+            # 访问者一定是团体
             try:
                 assert user_type == "Organization"
             except:
@@ -70,7 +70,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                 if not application.is_pending():  # 如果不在pending状态, 可能是重复点击
                     return wrong("该申请已经完成或被取消!")
                 # 接下来可以进行取消操作
-                #返还组织元气值
+                #返还团体元气值
                 org.YQPoint += application.amount
                 org.save()
                 #修改申请状态
@@ -88,7 +88,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                 message = str(request.POST.get('message'))  # 报销说明
                 if message == "":
                     return wrong("报销说明不能为空，请完整填写。")
-                # 读取本组织和表单中的元气值，对元气值进行初始的合法性检查
+                # 读取本团体和表单中的元气值，对元气值进行初始的合法性检查
                 org=Organization.objects.get(id=me.id)
                 YQP = org.YQPoint
                 try:
@@ -111,7 +111,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     #元气值合法性检查，新建和重新修改时的合法性检查不同
                     if reimb_YQP > YQP:
                         return wrong("申请失败，账户元气值不足！")
-                    # 筛选出该组织未报销的活动
+                    # 筛选出该团体未报销的活动
                     activities=utils.get_unreimb_activity(me)
                     try:
                         reimb_act_id = int(request.POST.get('activity_id'))
@@ -156,7 +156,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                         for payload in images:
                             CommentPhoto.objects.create(
                                 image=payload, comment=reim_comment)
-                    #扣除组织元气值
+                    #扣除团体元气值
                     org.YQPoint-=application.amount
                     org.save()
                     #成功！
@@ -176,7 +176,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     if org.YQPoint<(reimb_YQP-application.amount):
                         return wrong("申请失败，账户元气值不足！")
 
-                    # 修改组织元气值
+                    # 修改团体元气值
                     org.YQPoint-=(reimb_YQP-application.amount)
                     org.save()
                     #修改申请
@@ -203,7 +203,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
             act_title=application.related_activity.title
             # 否则，应该直接完成状态修改
             if post_type == "refuse_submit":
-                #返还组织的元气值
+                #返还团体的元气值
                 org.YQPoint+=application.amount
                 org.save()
                 #修改申请状态
