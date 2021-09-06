@@ -10,6 +10,7 @@ from app.models import (
     Help,
     Reimbursement,
     Participant,
+    ModifyRecord,
 )
 from django.contrib.auth.models import User
 from django.dispatch.dispatcher import receiver
@@ -785,6 +786,8 @@ def export_activity(activity,inf_type):
         output.seek(0)
         response.write(output.getvalue())
     return response
+
+
 # 导出团体成员信息Excel文件
 def export_orgpos_info(org):
     # 设置HTTPResponse的类型
@@ -822,7 +825,36 @@ def export_orgpos_info(org):
         response.write(output.getvalue())
     return response
 
-operation_writer(local_dict["system_log"], "系统启动", "util_底部")
 
 def escape_for_templates(text:str):
     return text.strip().replace("\n", " ")
+
+
+def record_modification(user, info=""):
+    try:
+        _, usertype, _ = check_user_type(user)
+        obj = get_person_or_org(user, usertype)
+        name = obj.name if usertype == 'Person' else obj.oname
+        firsttime = not user.modify_records.exists()
+        ModifyRecord.objects.create(user=user, name=name, info=info)
+        return firsttime
+    except:
+        return None
+
+def get_modify_rank(user):
+    try:
+        _, usertype, _ = check_user_type(user)
+        records = user.modify_records.all()
+        if not records:
+            return -1
+        first = records.order_by('time')[0]
+        rank = ModifyRecord.objects.filter(
+            usertype=usertype,
+            time__lte=first.time,
+            ).values('user').distinct().count()
+        return rank
+    except:
+        return -1
+
+
+operation_writer(local_dict["system_log"], "系统启动", "util_底部")
