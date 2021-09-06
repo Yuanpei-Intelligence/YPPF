@@ -11,6 +11,19 @@
     {% elif html_display.warn_code == 1%}
     <div class="alert alert-warning text-center mb-0">{{html_display.warn_message}}</div>
     {% endif %}
+    {% if inform_share %}
+        <script type="text/javascript">
+            let inform_share = confirm("{{alert_message}}")
+            if (inform_share) {
+                const req = new XMLHttpRequest();
+                let url = '/orginfo/' + "{{name}}"
+                req.open('POST', url, true);
+                req.responseType = 'blob';
+                req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
+                req.send("option=" + "cancelInformShare"); //输入参数 参数的值为option="share"
+            }
+        </script>
+    {% endif %}      
 
     <!--  BEGIN WALLPAPER SECTION  -->
     <div class="d-flex m-0 p-0 overflow-hidden" style="height: 35vh">
