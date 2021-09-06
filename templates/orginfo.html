@@ -16,7 +16,7 @@
             let inform_share = confirm("{{alert_message}}")
             if (inform_share) {
                 const req = new XMLHttpRequest();
-                let url = '/stuinfo/' + "{{name}}"
+                let url = '/orginfo/' + "{{name}}"
                 req.open('POST', url, true);
                 req.responseType = 'blob';
                 req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
