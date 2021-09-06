@@ -140,8 +140,9 @@ def get_org_left_navbar(org, is_myself, html_display):
 def get_inform_share(me, is_myself=True):
     alert_message = ""
     if is_myself and me.inform_share:
-        alert_message = "【关于分享】:如果你在使用手机浏览器，可以使用浏览器自带的分享来分享你的主页或者活动主页 \
-            或者可以选择将其在微信/朋友圈中打开。"
+        alert_message = ("【关于分享】:如果你在使用手机浏览器，"+
+                        "可以使用浏览器自带的分享来分享你的主页或者活动主页，"+
+                        "或者可以选择将其在微信/朋友圈中打开并分享。")
         # me.inform_share = False
         # me.save()
         return True, alert_message
@@ -855,6 +856,24 @@ def get_modify_rank(user):
         return rank
     except:
         return -1
+
+def record_modify(request, info=""):
+    try:
+        _, usertype, _ = check_user_type(request.user)
+        recorded = record_modification(request.user, info)
+        if recorded == True:
+            rank = get_modify_rank(request.user)
+            is_person = usertype == 'Person'
+            info_rank = 100 if is_person else 10
+            if rank > -1 and rank <= info_rank:
+                msg = (
+                    f'您是第{rank}名修改账号信息的'+
+                    '团体' if is_person else '个人'+
+                    '用户！保留此截图可在游园会兑换奖励！'
+                )
+                request.session['alert_message'] = msg
+    except:
+        pass
 
 
 operation_writer(local_dict["system_log"], "系统启动", "util_底部")
