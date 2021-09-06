@@ -548,7 +548,7 @@ def start_weather_routine():
     # register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
     # 但好像非服务器版本有问题??
     print("finish import scheduler from app.scheduler")
-    #scheduler.add_job(get_weather, 'interval', id="get weather per 5 minute", minutes=5, replace_existing=True)
+    scheduler.add_job(get_weather, 'interval', id="get weather per 5 minute", minutes=5, replace_existing=True)
 
     print("finishing loading get_weather function")
     print("finish scheduler_func")
