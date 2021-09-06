@@ -2542,6 +2542,7 @@ def addActivity(request, aid=None):
         status = activity.status
         avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
         need_checkin = activity.need_checkin
+        inner = activity.inner
         apply_reason = activity.apply_reason
         comments = showComment(activity)
         photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
