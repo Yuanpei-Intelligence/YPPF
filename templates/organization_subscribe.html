@@ -98,8 +98,8 @@
                                         <table class="table table-bordered mb-4">
                                             <thead>
                                                 <tr>
-                                                    <th>组织名称</th>
-                                                    <!--<th>组织类型</th>-->
+                                                    <th>团体名称</th>
+                                                    <!--<th>团体类型</th>-->
                                                     <th>订阅状态</th>
                                                 </tr>
                                             </thead>
@@ -256,6 +256,11 @@
         })
             .then((res) => res.json())
             .catch(() => { success: false });
+        if (success) {
+            alert('成功修改微信通知设置！');
+        } else {
+            alert('微信通知设置修改失败！');
+        }
         return success;
     }
     async function save_all(status){

@@ -20,7 +20,7 @@
 
             <div class="account-settings-container layout-top-spacing">
                 {% if upload_state == True %}
-                <div class="alert alert-success  text-center">修改组织信息成功</div>
+                <div class="alert alert-success  text-center">修改团体信息成功</div>
                 {% endif %}
                 {% if expr == False %}
                 <div class="alert alert-warning  text-center">没有检测到信息更新</div>
@@ -34,7 +34,7 @@
                             <div class="col-xl-12 col-lg-12 col-md-12 layout-spacing">
 
                                     <div class="info">
-                                        <h6 class="">组织信息</h6>
+                                        <h6 class="">团体信息</h6>
                                             <div class="row d-flex justify-content-center">
                                                 <div class="upload mr-3" style="border: none;">
                                                     <input type="file" id="avatar" class="dropify" name="avatar"
@@ -71,14 +71,14 @@
                                 <div class="col-xl-12 col-lg-12 col-md-8 mt-md-0 mt-4">
                                                     <div class="form-group">
                                                         <div class="form-check">
-                                                            <label for="aboutBio">组织介绍</label>
+                                                            <label for="aboutBio">团体介绍</label>
                                                             <textarea class="form-control" id="introduction" name="introduction"
                                                                 placeholder="{{userinfo.introduction}}" rows="3" onclick="if(this.placeholder != ''){this.value=this.placeholder;}"></textarea>
                                                         </div>
                                                     </div>
                                             </div>
                             <div class="col-md-12 text-center mb-5" >
-                                <button id="submit" class="btn btn-primary">修改组织信息</button>
+                                <button id="submit" class="btn btn-primary">修改团体信息</button>
                             </div>
                         </div>
 
