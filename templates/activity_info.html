@@ -15,7 +15,7 @@
 
     {% if inform_share %}
     <script type="text/javascript">
-        let share_confirm = confirm("{{alert_message}}")
+        let share_confirm = confirm("{{alert_message}}");
         if (share_confirm) {
             const req = new XMLHttpRequest();
             let url = '/viewActivity/' + '{{aid}}';

@@ -2010,6 +2010,9 @@ def viewActivity(request, aid=None):
             if not ownership:
                 return redirect("/welcome/")
             return utils.export_activity(activity,option)
+        elif option == "cancelInformShare":
+            me.inform_share = False
+            me.save()
         else:
             return redirect("/welcome")
         """
