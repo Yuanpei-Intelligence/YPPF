@@ -82,6 +82,8 @@ from django.db.models import Q
 from django.conf import settings
 from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
+from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
+from django.core.exceptions import ValidationError
 
 # 定时任务不在views直接调用
 # 但是天气任务还是在这里弄吧，太奇怪了
@@ -308,6 +310,15 @@ def stuinfo(request, name=None):
 
         is_myself = user_type == "Person" and person.person_id == user  # 用一个字段储存是否是自己
         html_display["is_myself"] = is_myself  # 存入显示
+        inform_share, alert_message = utils.get_inform_share(me=person, is_myself=is_myself)
+
+        # 处理更改数据库中inform_share的post
+        if request.method == "POST" and request.POST:
+            option = request.POST.get("option", "")
+            assert option == "cancelInformShare" and html_display["is_myself"]
+            person.inform_share = False
+            person.save()
+
 
         # ----------------------------------- 团体卡片 ----------------------------------- #
 
@@ -569,6 +580,7 @@ def orginfo(request, name=None):
 
     # 判断是否为团体账户本身在登录
     html_display["is_myself"] = me == org
+    inform_share, alert_message = utils.get_inform_share(me=me, is_myself=html_display["is_myself"])
 
     organization_name = name
     organization_type_name = org.otype.otype_name
@@ -581,6 +593,10 @@ def orginfo(request, name=None):
             html_display["warn_code"] = 2
             html_display["warn_message"] = "下载成功!"
             return utils.export_orgpos_info(org)
+        elif request.POST.get("option", "") == "cancelInformShare" and html_display["is_myself"]:
+            me.inform_share = False
+            me.save()
+            
 
     # 该学年、该学期、该团体的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
@@ -816,7 +832,7 @@ def homepage(request):
             photo_display.append(summaryphotos[0]) # 朴素的随机
     photo_display = photo_display[:4]
     for photo in photo_display:
-        if str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+        if str(photo.image) and str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
     
     """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
@@ -1431,16 +1447,34 @@ def modpw(request):
         oldpassword = request.POST["pw"]
         newpw = request.POST["new"]
         strict_check = True
-
-        if oldpassword == newpw and strict_check and not (forgetpw or isFirst):
+        min_length = 8
+        try:
+            if oldpassword == newpw and strict_check and not (forgetpw or isFirst):
+                raise ValidationError(message="新密码不能与原密码相同")
+            elif newpw == username and strict_check:
+                raise ValidationError(message="新密码不能与学号相同")
+            elif newpw != oldpassword and (forgetpw or isFirst):  # added by pht
+                raise ValidationError(message="两次输入的密码不匹配")
+            elif len(newpw) < min_length:
+                raise ValidationError(message=f"新密码不能短于{min_length}位")
+            if strict_check:
+                NumericPasswordValidator().validate(password=newpw)
+                CommonPasswordValidator().validate(password=newpw)
+        except ValidationError as e:
             err_code = 1
-            err_message = "新密码不能与原密码相同"
-        elif newpw == username and strict_check:
-            err_code = 2
-            err_message = "新密码不能与学号相同"
-        elif newpw != oldpassword and (forgetpw or isFirst):  # added by pht
-            err_code = 5
-            err_message = "两次输入的密码不匹配"
+            err_message = e.message
+        # if oldpassword == newpw and strict_check and not (forgetpw or isFirst):
+        #     err_code = 1
+        #     err_message = "新密码不能与原密码相同"
+        # elif newpw == username and strict_check:
+        #     err_code = 2
+        #     err_message = "新密码不能与学号相同"
+        # elif newpw != oldpassword and (forgetpw or isFirst):  # added by pht
+        #     err_code = 5
+        #     err_message = "两次输入的密码不匹配"
+        # elif len(newpw) < min_length:
+        #     err_code = 6
+            # err_message = f"新密码的长度不能少于{min_length}位"
         else:
             # 在1、忘记密码 2、首次登录 3、验证旧密码正确 的前提下，可以修改
             if forgetpw or isFirst:
@@ -1886,6 +1920,7 @@ def viewActivity(request, aid=None):
         return redirect("/welcome/")
 
     html_display = dict()
+    inform_share, alert_message = utils.get_inform_share(me)
 
     if request.method == "POST" and request.POST:
         option = request.POST.get("option")
