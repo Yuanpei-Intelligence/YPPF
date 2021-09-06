@@ -868,7 +868,7 @@ def record_modify_with_session(request, info=""):
             if rank > -1 and rank <= info_rank:
                 msg = (
                     f'您是第{rank}名修改账号信息的'+
-                    ('团体' if is_person else '个人')+
+                    ('个人' if is_person else '团体')+
                     '用户！保留此截图可在游园会兑换奖励！'
                 )
                 request.session['alert_message'] = msg
