@@ -420,8 +420,7 @@
                                                     </a>
                                                 </label>
                                                 {% if not examine %}
-                                                <input type="url" id="URL" name="URL" class="form-control"
-                                                    placeholder="{{url}}">
+                                                <textarea type="url" id="URL" name="URL" class="form-control" rows="3" >{{url}}</textarea>
                                                 {% else %}
                                                 <a href="{{url}}"> {{url}} </a>
                                                 {% endif %}
@@ -481,11 +480,11 @@
                                                     活动{{status}}
                                                 </button>
                                                 {% elif edit %}
-                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认修改活动？')">
+                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认修改活动？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
                                                     确认修改
                                                 </button>
                                                 {% else %}
-                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认提交活动申请？')">
+                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认提交活动申请？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
                                                     发起活动
                                                 </button>
                                                 {% endif %}
@@ -664,7 +663,7 @@
     /* 提示上传预算信息 */
     if (document.referrer.endsWith("/addActivity/")) {
         document.getElementById("warn_msg").style.display = "";
-        document.getElementById("warn_msg").innerHTML = "活动发起成功，请在评论区上传预算明细。";
+        document.getElementById("warn_msg").innerHTML = "活动发起成功！如需申请预算，请在评论区上传预算明细。";
     }
 
     /* 将 palceholder 全部换为旧值，很长很啰嗦 */
