@@ -87,8 +87,8 @@ from django.core.exceptions import ValidationError
 
 # 定时任务不在views直接调用
 # 但是天气任务还是在这里弄吧，太奇怪了
-from app.scheduler_func import start_weather_routine
-start_weather_routine()
+from app.scheduler_func import start_scheduler
+start_scheduler(with_scheduled_job=True, debug=True)
 
 
 email_url = local_dict["url"]["email_url"]
