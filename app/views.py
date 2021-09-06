@@ -2004,7 +2004,13 @@ def viewActivity(request, aid=None):
             except Exception as e:
                 # print("Exception", e)
                 return redirect("/modifyReimbursement/")
-
+        elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
+            if not ownership:
+                return redirect("/welcome/")
+            return utils.export_activity(activity,option)
+        else:
+            return redirect("/welcome")
+        """
         elif option == "submitphoto":
             if not (ownership and activity.status == Activity.Status.END):
                 return redirect("/welcome/")
@@ -2040,12 +2046,10 @@ def viewActivity(request, aid=None):
                 )
                 html_display["warn_message"] = "成功提交活动照片"
             html_display["warn_code"] = 2
-        elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
-            if not ownership:
-                return redirect("/welcome/")
-            return utils.export_activity(activity,option)
-        else:
-            return redirect("/welcome")
+        """
+
+
+
 
 
     # 下面这些都是展示前端页面要用的
