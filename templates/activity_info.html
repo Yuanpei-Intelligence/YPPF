@@ -398,14 +398,14 @@
 
                     <div class="widget-content widget-content-area">
 
-                        <h5>组织者</h5>
+                        <h5>发起者</h5>
                         <div class="d-flex justify-content-start">
                             <div style="width: max-content; border-radius: 25px; overflow: hidden;">
                                 <img src="{{ org_avatar_path }}" class="flex" alt="organization avatar" height="50px" width="50px">
                             </div>
                             <span class="flex flex-grow-1 mx-3">
                                 <div class="d-flex justify-content-between">
-                                    <h5 class="flex" style="height: 21px;">{{ org_name }}</h5>
+                                    <a href='/orginfo/{{org_name}}'><u><h5 class="flex" style="height: 21px;">{{ org_name }}</h5></u></a>
                                     <p class="mb-0" style="color: gray;">{{ org_type }}</p>
                                 </div>
                                 <p class="mb-0" style="color: gray;">{{ org.introduction }}</p>
@@ -415,13 +415,16 @@
                         <div class="mb-4"></div>
 
                         <h5>参与者</h5>
-                        {% if participants_ava is None %}
+                        {% if participants is None %}
                         <div style="text-align: center;">还没有参与者哦～</div>
                         {% else %}
                         <div class="row" style="margin-left: -4px;">
-                            {% for ava in participants_ava %}
+                            {% for person in people_list %}
+                            
                             <span class="col-0 m-1" style="border-radius: 8px; overflow: hidden;">
-                                <img src="{{ ava }}" class="flex" alt="participant's avatar" height="50px" width="50px">
+                                <a href="/stuinfo/{{ person.name }}+{{ person.person_id.id }}">
+                                <img src="{{ person.get_user_ava }}" class="flex" alt="participant's avatar" height="50px" width="50px">
+                                </a>
                             </span>
                             {% endfor %}
                         </div>

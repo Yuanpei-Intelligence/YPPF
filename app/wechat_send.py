@@ -303,7 +303,7 @@ def publish_notification(notification_or_id,
     if app is None or app == WechatApp.DEFAULT:
         app = WechatDefault.get_app('notification', notification)
     check_block = app not in UNBLOCK_APPS
-    sender = get_person_or_org(notification.sender)  # 也可能是组织
+    sender = get_person_or_org(notification.sender)  # 也可能是团体
     url = notification.URL
     if url and url[0] == "/":  # 相对路径变为绝对路径
         url = THIS_URL + url
@@ -346,8 +346,8 @@ def publish_notification(notification_or_id,
         if check_block and level < receiver.wechat_receive_level:
             return True
         wechat_receivers = [notification.receiver.username]  # user.username是id
-    else:  # 组织
-        # 转发组织消息给其负责人
+    else:  # 团体
+        # 转发团体消息给其负责人
         message += f'\n消息来源：{str(receiver)}，请切换到该团体账号进行操作。'
         wechat_receivers = receiver.position_set.filter(pos=0)
         if check_block:
@@ -440,7 +440,7 @@ def publish_notifications(
         print("检查失败，发生了未知错误，这里不该发生异常")
         return False
 
-    sender = get_person_or_org(sender)  # 可能是组织或个人
+    sender = get_person_or_org(sender)  # 可能是团体或个人
     if url and url[0] == "/":  # 相对路径变为绝对路径
         url = THIS_URL + url
 
@@ -481,7 +481,7 @@ def publish_notifications(
     if check_block and (level is None or level == WechatMessageLevel.DEFAULT): 
         level = WechatDefault.get_level('notification', latest_notification)
 
-    # 获取接收者列表，组织的接收者为其负责人，去重
+    # 获取接收者列表，团体的接收者为其负责人，去重
     receiver_ids = notifications.values_list("receiver_id", flat=True)
     person_receivers = NaturalPerson.objects.filter(person_id__in=receiver_ids)
     # 如果检查是否屏蔽，仅发送给最小接收等级不大于发送等级的人
@@ -492,7 +492,7 @@ def publish_notifications(
     )
     receiver_set = set(wechat_receivers)
 
-    # 接下来是发送给组织的部分
+    # 接下来是发送给团体的部分
     org_receivers = Organization.objects.filter(organization_id__in=receiver_ids)
     for org in org_receivers:
         managers = org.position_set.filter(pos=0)
@@ -510,7 +510,7 @@ def publish_notifications(
 
 
 def publish_activity(activity_or_id):
-    """根据活动或id（实际是主键）向所有订阅该组织信息的在校学生发送"""
+    """根据活动或id（实际是主键）向所有订阅该团体信息的在校学生发送"""
     raise NotImplementedError('该函数已废弃')
     try:
         if isinstance(activity_or_id, Activity):

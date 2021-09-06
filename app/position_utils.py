@@ -48,7 +48,7 @@ def update_pos_application(application, me, user_type, applied_org, info):
         if post_type not in feasible_post:
             return wrong("申请状态异常！")
 
-        # 接下来确定访问的个人/组织是不是在做分内的事情
+        # 接下来确定访问的个人/团体是不是在做分内的事情
         if (user_type == "Person" and feasible_post.index(post_type) >= 3) or (
                 user_type == "Organization" and feasible_post.index(post_type) <= 2):
             return wrong("您无权进行此操作. 如有疑惑, 请联系管理员")
@@ -81,19 +81,19 @@ def update_pos_application(application, me, user_type, applied_org, info):
                 # 申请类别和职务
                 # 讨论申请的类别，抓取错误
                 apply_type = info.get("apply_type")
-                if apply_type == "加入组织":
+                if apply_type == "加入团体":
                     # 此时应该满足的条件是不存在对应的在职职位
                     if Position.objects.activated().filter(person=me, org=applied_org).exists():
-                        return wrong("加入已存在的组织！")
+                        return wrong("加入已存在的团体！")
                     
                     apply_pos_name = str(info.get('apply_pos'))
                     apply_pos = applied_org.otype.get_pos_from_str(apply_pos_name)
-                elif apply_type == "退出组织":
+                elif apply_type == "退出团体":
                     if not Position.objects.activated().filter(person=me, org=applied_org).exists():
-                        return wrong("退出组织出错！")
+                        return wrong("退出团体出错！")
                     if len(Position.objects.activated().filter(person=me, org=applied_org, pos=0)) == 1:
-                        return wrong("作为组织唯一的老大，你不能退出！")
-                    # 退出组织不应该有apply_pos
+                        return wrong("作为团体唯一的老大，你不能退出！")
+                    # 退出团体不应该有apply_pos
                     apply_pos = None
                 elif apply_type == "修改职位":
                     try:
@@ -116,7 +116,7 @@ def update_pos_application(application, me, user_type, applied_org, info):
                     if ModifyPosition.objects.filter(
                         person=me, org=applied_org, status=ModifyPosition.Status.PENDING
                     ).exists():
-                        return wrong("向该组织的申请已存在，请不要重复申请！")
+                        return wrong("向该团体的申请已存在，请不要重复申请！")
                     # 至此可以新建申请, 创建一个空申请
                     application = ModifyPosition.objects.create(
                         typename="ModifyPosition", pos=apply_pos, person=me, org=applied_org, apply_type=apply_type, reason=apply_reason)
@@ -140,7 +140,7 @@ def update_pos_application(application, me, user_type, applied_org, info):
                     context["application_id"] = application.id
                     return context
 
-        else: # 是组织的操作, 通过\拒绝
+        else: # 是团体的操作, 通过\拒绝
             # 已经确定 me == application.org 了
             # 只需要确定状态是否匹配
             if not application.is_pending():

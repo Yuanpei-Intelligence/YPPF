@@ -407,7 +407,7 @@ def modify_accepted_activity(request, activity):
         to_participants.append(f"活动报名截止时间调整为{signup_end.strftime('%Y-%m-%d %H:%M')}")
     else:
         signup_end = activity.apply_end
-        assert signup_end + timedelta(hours=1) < act_start
+        assert signup_end + timedelta(hours=1) <= act_start
     
     if activity.start != act_start:
         to_subscribers.append(f"活动开始时间调整为{act_start.strftime('%Y-%m-%d %H:%M')}")
@@ -850,7 +850,7 @@ def withdraw_activity(request, activity):
                 organization_id=activity.organization_id.organization_id
             )
             if org.YQPoint < amount:
-                raise ActivityException("组织账户元气值不足，请与组织负责人联系。")
+                raise ActivityException("团体账户元气值不足，请与团体负责人联系。")
             org.YQPoint -= amount
             org.save()
             record.status = TransferRecord.TransferStatus.REFUND
@@ -872,7 +872,7 @@ def withdraw_activity(request, activity):
                 rtype=TransferRecord.TransferType.ACTIVITY
             )
             # 这里如果再退一半有没有问题？
-            # 没啥问题，只是少了配额，不管组织和学院就好了，其实就是组织拿不到赔偿
+            # 没啥问题，只是少了配额，不管团体和学院就好了，其实就是团体拿不到赔偿
             amount = record.amount * half_refund
             np.YQPoint += amount
             record.status = TransferRecord.TransferStatus.SUSPENDED
