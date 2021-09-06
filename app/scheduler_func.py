@@ -574,7 +574,7 @@ def start_scheduler(with_scheduled_job=True, debug=False):
         current_job = None
         try:
             current_job = "get_weather"
-            if debug: print(f"try adding scheduled job '{current_job}'")
+            if debug: print(f"adding scheduled job '{current_job}'")
             scheduler.add_job(get_weather, 'interval', id=current_job,
                                 minutes=5, replace_existing=True)
         except Exception as e:
@@ -584,7 +584,7 @@ def start_scheduler(with_scheduled_job=True, debug=False):
             if debug: print(info)
 
     try:
-        if debug: print("try starting schduler in scheduler_func.py")
+        if debug: print("starting schduler in scheduler_func.py")
         scheduler.start()
     except Exception as e:
         info = f"start scheduler failed, reason: {e}"
