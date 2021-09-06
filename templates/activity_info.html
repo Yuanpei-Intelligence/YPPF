@@ -15,7 +15,7 @@
 
     {% if inform_share %}
     <script type="text/javascript">
-        let share_confirm = confirm("{{alert_message}}")
+        let share_confirm = confirm("{{alert_message}}");
         if (share_confirm) {
             const req = new XMLHttpRequest();
             let url = '/viewActivity/' + '{{aid}}';
@@ -96,7 +96,7 @@
                             {% if status == "审核中" %}
                             <span class="badge badge-pill badge-warning">审核中</span>
                             {% elif status == "等待中" %}
-                            <span class="badge badge-pill badge-info">等待中</span>
+                            <span class="badge badge-pill badge-info">等待开始</span>
                             {% elif status == "已取消" or status == "已结束" %}
                             <span class="badge badge-pill badge-danger">{{ status }}</span>
                             {% else %}
@@ -353,7 +353,6 @@
                                         data-target="#summaryphoto">
                                         上传/更新总结照片
                                     </button>
-
                                     <form method="POST" enctype="multipart/form-data">
                                         <div id="summaryphoto" class="collapse">
                                             <div class="form-group">
@@ -369,7 +368,6 @@
                                             <button type="submit" class="btn btn-primary btn-block mb-2">确认上传</button>
                                         </div>
                                     </form>-->
-
                                     <button class="btn btn-primary btn-block mb-2" id="export_sign_excel" type="button">
                                         下载签到信息
                                     </button>
