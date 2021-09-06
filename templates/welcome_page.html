@@ -48,6 +48,10 @@
                             <a href="/viewActivity/{{photo.activity_id}}">
                                 <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
                                     src={{photo.image}}>
+                                <div class="carousel-caption">
+                                    <h5>{{photo.activity.title}}</h5>
+                                    <p>{{photo.activity.introduction}}</p>
+                              </div>
                             </a>
                         </div>
                         {% endfor %}
@@ -336,7 +340,7 @@
                                                             style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                             {% if act.status == "等待中" %}
                                                             <span class="flex badge badge-pill badge-info">
-                                                                {{ act.status }}
+                                                                等待开始
                                                             </span>
                                                             {% elif act.status == "已取消" or act.status == "已结束" %}
                                                             <span class="badge badge-pill badge-danger">
@@ -395,7 +399,7 @@
                                                             style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                             {% if act.status == "等待中" %}
                                                             <span class="flex badge badge-pill badge-info">
-                                                                {{ act.status }}
+                                                                等待开始
                                                             </span>
                                                             {% elif act.status == "已取消" or act.status == "已结束" %}
                                                             <span class="badge badge-pill badge-danger">
@@ -455,7 +459,7 @@
                                                             style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                             {% if act.status == "等待中" %}
                                                             <span class="flex badge badge-pill badge-info">
-                                                                {{ act.status }}
+                                                                等待开始
                                                             </span>
                                                             {% elif act.status == "已取消" or act.status == "已结束" %}
                                                             <span class="badge badge-pill badge-danger">
