@@ -14,10 +14,10 @@
 
     {% if inform_share %}
         <script type="text/javascript">
-            let inform_share = confirm("{{alert_message}}")
-            if (inform_share) {
+            let share_confirm = confirm("{{alert_message}}")
+            if (share_confirm) {
                 const req = new XMLHttpRequest();
-                let url = '/stuinfo/' + "{{name}}"
+                let url = '/stuinfo/' + "{{name}}";
                 req.open('POST', url, true);
                 req.responseType = 'blob';
                 req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
