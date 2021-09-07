@@ -91,6 +91,9 @@ function showFilename(files){
     {
     text += (" "+files[i].name);
     }
+    if (text == "") {
+        text = "相关图片";
+    }
     $("#uploadfile").html(text);
 }
  </script>
