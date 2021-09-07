@@ -420,7 +420,7 @@
                                                     </a>
                                                 </label>
                                                 {% if not examine %}
-                                                <textarea type="url" id="URL" name="URL" class="form-control" rows="3" >{{url}}</textarea>
+                                                <textarea id="URL" name="URL" class="form-control" rows="3" placeholder="推送链接会和活动通知一起发送"></textarea>
                                                 {% else %}
                                                 <a href="{{url}}"> {{url}} </a>
                                                 {% endif %}
@@ -669,8 +669,8 @@
     /* 将 palceholder 全部换为旧值，很长很啰嗦 */
     // 但是 Django 是做的文本替换，又必须全写出来......
     // 活动信息
-    document.getElementById("title").placeholder = "{{title}}";
-    document.getElementById("location").placeholder = "{{location}}";
+    document.getElementById("title").placeholder = "{{title | safe}}";
+    document.getElementById("location").placeholder = "{{location | safe}}";
     document.getElementById("budget").placeholder="{{budget}}";
     document.getElementById("datetimepicker3").placeholder="{{start}}";
     document.getElementById("datetimepicker4").placeholder="{{end}}";
@@ -695,6 +695,7 @@
     {% if not examine %}
     document.getElementById("inputState").value = {{endbefore}};
     document.getElementById("inputState").disabled = true;
+    document.getElementById("URL").placeholder = "{{url | safe}}";
     {% endif %}
     {% if need_checkin %}
     document.getElementById("need_checkin").checked = true;
@@ -703,9 +704,9 @@
     document.getElementById("inner").checked = true;
     {% endif %}   
     // 宣传信息
-    document.getElementById("aintro").placeholder = "{{introduction}}";
+    document.getElementById("aintro").placeholder = "{{introduction | safe}}";
     {% if yq_source == "向学院申请" %}
-    document.getElementById("apply_reason").placeholder = "{{apply_reason}}";
+    document.getElementById("apply_reason").placeholder = "{{apply_reason | safe}}";
     document.getElementById("reason_block").style.display = "";
     {% endif %}
 
@@ -730,7 +731,7 @@
     
     // 点击自动填充可修改
     {% if edit and accepted %}
-    document.getElementById("URL").placeholder = "{{url}}";
+    document.getElementById("URL").placeholder = "{{url | safe}}";
     function fill_value(a) {
         if (a.value == "")
             a.value = a.placeholder;
