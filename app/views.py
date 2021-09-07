@@ -825,22 +825,16 @@ def homepage(request):
         "#B6E3E9","#B5EAD7","#E2F0CB"
     ]
     backgroundpics = [{"src":"/static/assets/img/backgroundpics/"+str(i+1)+".png","color": colors[i] } for i in range(6)]
-    paths = [
-        "notifications","stuinfo","orginfo","user_account_setting"
-    ]
-    guidepics = ["/static/assets/img/guidepics/"+paths[i]+".jpeg" for i in range(4)]
+
+    guidepicdir = "static/assets/img/guidepics"
+    paths = os.listdir(guidepicdir)
+    guidepics = [('/' + guidepicdir + '/' + picpath, picpath[:-5]) for picpath in paths if picpath != 'default.jpeg']
 
     """ 
         取出过去一周的所有活动，filter出上传了照片的活动，从每个活动的照片中随机选择一张
         如果列表为空，那么添加一张default，否则什么都不加。
     """
-    photo_display = []
-    newlyended_activity = Activity.objects.get_newlyended_activity()
-    for act in newlyended_activity:
-        summaryphotos = act.photos.filter(type = ActivityPhoto.PhotoType.SUMMARY)
-        if len(summaryphotos)>0:
-            photo_display.append(summaryphotos[0]) # 朴素的随机
-    photo_display = photo_display[:4]
+    photo_display = ActivityPhoto.objects.all().order_by('-time')[:4]
     for photo in photo_display:
         if str(photo.image) and str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
