@@ -420,7 +420,7 @@
                                                     </a>
                                                 </label>
                                                 {% if not examine %}
-                                                <textarea type="url" id="URL" name="URL" class="form-control" rows="3" >{{url}}</textarea>
+                                                <textarea type="url" id="URL" name="URL" class="form-control" rows="3" placeholder="如果是外网链接，请使用以http或https开头的绝对地址">{{url}}</textarea>
                                                 {% else %}
                                                 <a href="{{url}}"> {{url}} </a>
                                                 {% endif %}
