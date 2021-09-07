@@ -614,6 +614,8 @@ class Activity(CommentBase):
     recorded = models.BooleanField("是否预报备", default=False)
     valid = models.BooleanField("是否已审核", default=False)
 
+    inner = models.BooleanField("内部活动", default=False)
+
     class YQPointSource(models.IntegerChoices):
         COLLEGE = (0, "学院")
         STUDENT = (1, "学生")
@@ -705,7 +707,7 @@ class TransferRecord(models.Model):
 
     class TransferType(models.IntegerChoices):
         ACTIVITY = (0, "团体活动入账") # 包括像学院申请元气值的部分
-        REIMURSEMENT = (1, "报销兑换") # 元气值湮灭
+        REIMBURSEMENT = (1, "报销兑换") # 元气值湮灭
         BONUS = (2, "学院发放") # 学院发放的奖励
         TRANSACTION = (3, "团体间转账")
 
@@ -1083,3 +1085,18 @@ class Wishes(models.Model):
     text = models.TextField("心愿内容", default="", blank=True)
     time = models.DateTimeField("发布时间", auto_now_add=True)
     background = models.TextField("颜色编码", default="")
+
+
+class ModifyRecord(models.Model):
+    # 仅用作记录，之后大概会删除吧，所以条件都设得很宽松
+    class Meta:
+        verbose_name = "修改记录"
+        verbose_name_plural = verbose_name
+        ordering = ["-time"]
+    user = models.ForeignKey(User, on_delete=models.SET_NULL,
+                             related_name="modify_records",
+                             to_field='username', blank=True, null=True)
+    usertype = models.CharField('用户类型', max_length=16, default='', blank=True)
+    name = models.CharField('名称', max_length=32, default='', blank=True)
+    info = models.TextField('相关信息', default='', blank=True)
+    time = models.DateTimeField('修改时间', auto_now_add=True)

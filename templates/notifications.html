@@ -65,7 +65,7 @@
                                                         <div>
                                                             <h5>
                                                                 {%if note.URL %}
-                                                                <a href={{note.URL}} onclick="read.call(this);this.blur();" id={{note.id}}><u>{{note.title}}</u></a><br />
+                                                                <a href={{note.URL}} {% if note.type == "知晓类" %} onclick="read.call(this);this.blur();" {% endif %} id={{note.id}}><u>{{note.title}}</u></a><br />
                                                                 {%else%}
                                                                 <u style="text-decoration: none">{{note.title}}</u><br />
                                                                 {% endif %}

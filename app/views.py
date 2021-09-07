@@ -40,6 +40,7 @@ from app.utils import (
     wrong, 
     succeed,
     escape_for_templates,
+    record_modify_with_session,
 )
 from app.activity_utils import (
     create_activity,
@@ -85,6 +86,8 @@ from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
+from app.utils import operation_writer
+
 # 定时任务不在views直接调用
 # 但是天气任务还是在这里弄吧，太奇怪了
 from app.scheduler_func import start_scheduler
@@ -109,6 +112,8 @@ def index(request):
     # request.GET['success'] = "no"
     arg_islogout = request.GET.get("is_logout")
     alert = request.GET.get("alert")
+    if request.session.get('alert_message'):
+        load_alert_message = request.session.pop('alert_message')
     html_display = dict()
     if (
             request.method == "GET"
@@ -470,6 +475,8 @@ def stuinfo(request, name=None):
             )
         origin = request.get_full_path()
 
+        if request.session.get('alert_message'):
+            load_alert_message = request.session.pop('alert_message')
         return render(request, "stuinfo.html", locals())
 
 
@@ -726,6 +733,8 @@ def orginfo(request, name=None):
             my_position = my_position[0]
     
 
+    if request.session.get('alert_message'):
+        load_alert_message = request.session.pop('alert_message')
     return render(request, "orginfo.html", locals())
 
 
@@ -916,6 +925,7 @@ def account_setting(request):
             if expr >= 1:
                 useroj.save()
                 upload_state = True
+                record_modify_with_session(request, f"修改了{expr}项信息")
                 return redirect("/stuinfo/?modinfo=success")
             # else: 没有更新
 
@@ -956,6 +966,7 @@ def account_setting(request):
             avatar_path = settings.MEDIA_URL + str(ava)
             if expr >= 1:
                 upload_state = True
+                record_modify_with_session(request, f"修改了{expr}项信息")
                 return redirect("/orginfo/?modinfo=success")
             # else: 没有更新
 
@@ -1493,6 +1504,8 @@ def modpw(request):
                     if forgetpw:
                         request.session.pop("forgetpw")  # 删除session记录
 
+                    record_modify_with_session(request,
+                        "首次修改密码" if isFirst else "修改密码")
                     urls = reverse("index") + "?modinfo=success"
                     return redirect(urls)
                 except:  # modified by pht: 之前使用的if检查是错误的
@@ -1846,6 +1859,13 @@ def myYQPoint(request):
 
     to_list, amount = record2Display(to_set, request.user)
     issued_list, _ = record2Display(issued_set, request.user)
+    send_list = []
+    receive_list = []
+    for item in issued_list:
+        if item["obj_direct"] == "To  ":
+            send_list.append(item)
+        else:
+            receive_list.append(item)
 
     show_table = {
         "obj": "对象",
@@ -2010,6 +2030,9 @@ def viewActivity(request, aid=None):
             if not ownership:
                 return redirect("/welcome/")
             return utils.export_activity(activity,option)
+        elif option == "cancelInformShare":
+            me.inform_share = False
+            me.save()
         else:
             return redirect("/welcome")
         """
@@ -2024,30 +2047,31 @@ def viewActivity(request, aid=None):
                     summary_photo_exists = True
                 except:
                     pass
-            try:
-                summaryphotos = request.FILES.getlist('images')
-                photo = summaryphotos[0]
-            except:
+            summaryphotos = request.FILES.getlist('images')
+            if len(summaryphotos)==0:
                 html_display['warn_code'] = 1
                 html_display['warn_message'] = "上传活动照片不能为空"
-            if utils.if_image(photo) !=2:
-                html_display['warn_code'] = 1
-                html_display['warn_message'] = "上传的附件只支持图片格式"
-            elif summary_photo_exists:
-                old_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
-                old_photo.image = photo
-                old_photo.save()
-                summary_photo = settings.MEDIA_URL + str(old_photo.image)
-                html_display["warn_message"] = "成功替换活动照片"
             else:
-                ActivityPhoto.objects.create(
-                    image=photo, 
-                    activity=activity, 
-                    time=datetime.now(),
-                    type = ActivityPhoto.PhotoType.SUMMARY
-                )
-                html_display["warn_message"] = "成功提交活动照片"
-            html_display["warn_code"] = 2
+                photo = summaryphotos[0]
+                if utils.if_image(photo) !=2:
+                    html_display['warn_code'] = 1
+                    html_display['warn_message'] = "上传的附件只支持图片格式"
+                elif summary_photo_exists:
+                    old_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
+                    old_photo.image = photo
+                    old_photo.save()
+                    summary_photo = settings.MEDIA_URL + str(old_photo.image)
+                    html_display["warn_message"] = "成功替换活动照片"
+                    html_display["warn_code"] = 2
+                else:
+                    ActivityPhoto.objects.create(
+                        image=photo, 
+                        activity=activity, 
+                        time=datetime.now(),
+                        type = ActivityPhoto.PhotoType.SUMMARY
+                    )
+                    html_display["warn_message"] = "成功提交活动照片"
+                    html_display["warn_code"] = 2
         """
 
 
@@ -2108,6 +2132,11 @@ def viewActivity(request, aid=None):
         Activity.Status.WAITING,
         Activity.Status.PROGRESSING
     ]
+
+    if activity.inner:
+        position = Position.objects.activated().filter(person=me, org=activity.organization_id)
+        if len(position) == 0:
+            not_inner = True
 
     if ownership and need_checkin:
         aQRcode = get_activity_QRcode(activity)
@@ -2465,8 +2494,8 @@ def addActivity(request, aid=None):
                 html_display["warn_code"] = 1
                 # return redirect(f"/viewActivity/{activity.id}")
             except Exception as e:
-                print(e)
-                return redirect("/welcome/")
+                operation_writer(local_dict["system_log"],"活动"+str(activity.id)+"在修改过程中出现异常，报错为:" + str(e),"[views:addActivity]","Error")
+                return redirect("/welcome/?warn_code=1&warn_message=出现意料之外的错误, 请联系管理员帮您解决!")
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
@@ -2534,6 +2563,7 @@ def addActivity(request, aid=None):
         status = activity.status
         avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
         need_checkin = activity.need_checkin
+        inner = activity.inner
         apply_reason = activity.apply_reason
         comments = showComment(activity)
         photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
@@ -3293,7 +3323,8 @@ def modifyPosition(request):
         #未通过时，不能修改，但是需要呈现变量。
         if application.status != ModifyPosition.Status.PENDING:  # 未通过
             apply_type_list[application.apply_type]['disabled'] = False
-            position_name_list[application.pos]["disabled"] = False
+            if not application.apply_type == ModifyPosition.ApplyType.WITHDRAW:
+                position_name_list[application.pos]["disabled"] = False
 
     
 
@@ -3724,6 +3755,14 @@ def modifyOrganization(request):
     # 根据是否有newid来判断是否是第一次
     org_id = request.GET.get("org_id", None)
 
+    # 获取前端页面中可能存在的提示
+    try:
+        if request.GET.get("warn_code", None) is not None:
+            html_display["warn_code"] = int(request.GET.get("warn_code"))
+            html_display["warn_message"] = request.GET.get("warn_message")
+    except:
+        pass
+
     if org_id is not None: # 如果存在对应申请
         try:    # 尝试获取已经新建的Position
             application = ModifyOrganization.objects.get(id = org_id)
@@ -3768,7 +3807,9 @@ def modifyOrganization(request):
                 is_new_application = False #状态变更
                 if request.POST.get("post_type") == "new_submit":   
                     # 重要！因为该界面没有org_id，重新渲染新建界面
-                    is_new_application = True
+                    #is_new_application = True
+                    # YWolfeee 不理解
+                    pass
 
                 # 处理通知相关的操作，并根据情况发送微信
                 # 默认需要成功,失败也不是用户的问题，直接给管理员报错 TODO
@@ -3793,15 +3834,21 @@ def modifyOrganization(request):
                     else application.pos)
 
         # 准备用户提示量
-        html_display["warn_code"] = context["warn_code"]
-        html_display["warn_message"] = context["warn_message"]
+        # html_display["warn_code"] = context["warn_code"]
+        # html_display["warn_message"] = context["warn_message"]
+        warn_code, warn_message = context["warn_code"], context["warn_message"]
+
+        # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
+        append = f"?org_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
+        return redirect("/modifyOrganization/" + append)
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
 
     # 首先是写死的前端量
     org_type_list = {
         w:{
-            'display' : str(w),  # 前端呈现的使用量
+            'value'   : str(w),
+            'display' : str(w)+"(负责老师:"+str(w.incharge)+")",  # 前端呈现的使用量
             'disabled' : False,  # 是否禁止选择这个量
             'selected' : False   # 是否默认选中这个量
         }

@@ -349,22 +349,43 @@
                                                 {% endif %}
                                             </div>
 
-                                            <div class="form-check"
-                                                style="align-content: center; vertical-align: middle;">
-                                                <input class="form-check-input" type="checkbox"
-                                                    value="1" id="need_checkin"
-                                                    name="need_checkin">
-                                                <label class="form-check-label" for="defaultCheck1">
-                                                    需要签到?
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="若勾选此项，则活动等待到结束阶段时组织者可以在活动主页看到签到二维码，需要组织者打开此页面展示给同学扫码签到。为防止远程签到，其余账户将不会看到此签到二维码！">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                            <path
-                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                        </svg>
-                                                    </a>
-                                                </label>
-
+                                            <div class="row">
+                                                <div class="col">
+                                                    <div class="form-check"
+                                                        style="align-content: center; vertical-align: middle;">
+                                                        <input class="form-check-input" type="checkbox"
+                                                            value="1" id="need_checkin"
+                                                            name="need_checkin">
+                                                        <label class="form-check-label" for="defaultCheck1">
+                                                            需要签到?
+                                                            <a data-toggle="tooltip" data-placement="bottom" title="若勾选此项，则活动等待到结束阶段时组织者可以在活动主页看到签到二维码，需要组织者打开此页面展示给同学扫码签到。为防止远程签到，其余账户将不会看到此签到二维码！">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                                    class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                                    <path
+                                                                        d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                                </svg>
+                                                            </a>
+                                                        </label>
+                                                    </div>
+                                                </div>
+                                                <div class="col">
+                                                    <div class="form-check"
+                                                        style="align-content: center; vertical-align: middle;">
+                                                        <input class="form-check-input" type="checkbox"
+                                                            value="1" id="inner"
+                                                            name="inner">
+                                                        <label class="form-check-label" for="defaultCheck1">
+                                                            内部活动?
+                                                            <a data-toggle="tooltip" data-placement="bottom" title="内部活动对所有同学可见，但只有团体内部成员可以报名。此选项改变时，已有的报名不受影响。">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                                    class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                                    <path
+                                                                        d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                                </svg>
+                                                            </a>
+                                                        </label>
+                                                    </div>
+                                                </div>
                                             </div>
 
                                             <!--
@@ -399,8 +420,7 @@
                                                     </a>
                                                 </label>
                                                 {% if not examine %}
-                                                <input type="url" id="URL" name="URL" class="form-control"
-                                                    placeholder="{{url}}">
+                                                <textarea type="url" id="URL" name="URL" class="form-control" rows="3" >{{url}}</textarea>
                                                 {% else %}
                                                 <a href="{{url}}"> {{url}} </a>
                                                 {% endif %}
@@ -460,11 +480,11 @@
                                                     活动{{status}}
                                                 </button>
                                                 {% elif edit %}
-                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认修改活动？')">
+                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认修改活动？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
                                                     确认修改
                                                 </button>
                                                 {% else %}
-                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认提交活动申请？')">
+                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认提交活动申请？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
                                                     发起活动
                                                 </button>
                                                 {% endif %}
@@ -643,7 +663,7 @@
     /* 提示上传预算信息 */
     if (document.referrer.endsWith("/addActivity/")) {
         document.getElementById("warn_msg").style.display = "";
-        document.getElementById("warn_msg").innerHTML = "活动发起成功，请在评论区上传预算明细。";
+        document.getElementById("warn_msg").innerHTML = "活动发起成功！如需申请预算，请在评论区上传预算明细。";
     }
 
     /* 将 palceholder 全部换为旧值，很长很啰嗦 */
@@ -679,6 +699,9 @@
     {% if need_checkin %}
     document.getElementById("need_checkin").checked = true;
     {% endif %}
+    {% if inner %}
+    document.getElementById("inner").checked = true;
+    {% endif %}   
     // 宣传信息
     document.getElementById("aintro").placeholder = "{{introduction}}";
     {% if yq_source == "向学院申请" %}
