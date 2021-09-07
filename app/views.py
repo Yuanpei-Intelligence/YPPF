@@ -3141,7 +3141,7 @@ def showNewOrganization(request):
     # 排序整合，用于前端呈现
     shown_instances = charge_org.union(applied_org).order_by("-modify_time", "-time")
 
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="新团体申请")
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="新建团体账号")
     return render(request, "neworganization_show.html", locals())
 
 
