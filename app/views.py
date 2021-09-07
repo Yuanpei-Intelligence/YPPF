@@ -2133,7 +2133,7 @@ def viewActivity(request, aid=None):
         Activity.Status.PROGRESSING
     ]
 
-    if activity.inner:
+    if activity.inner and user_type == "Person":
         position = Position.objects.activated().filter(person=me, org=activity.organization_id)
         if len(position) == 0:
             not_inner = True
