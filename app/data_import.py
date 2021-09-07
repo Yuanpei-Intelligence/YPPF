@@ -17,30 +17,29 @@ def load_file(file):
     return pd.read_csv(f"test_data/{file}", dtype=object, encoding="utf-8")
 
 
-def load_orgtype(debug=False):
-    # if debug:
-    #     username = "YPadmin"
-    #     user, mid = User.objects.get_or_create(username=username)
-    #     password = "YPPFtest"
-    #     user.set_password(password)
-    #     user.save()
+def load_orgtype(debug=True):
+    if debug:
+        username = "someone"
+        user, mid = User.objects.get_or_create(username=username)
+        password = random_code_init()
+        user.set_password(password)
+        user.save()
 
-    #     Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
-    #     Nperson.name = username
-    #     Nperson.save()
+        Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
+        Nperson.name = "待定"
+        Nperson.save()
     org_type_df = load_file("orgtypeinf.csv")
     for _, otype_dict in org_type_df.iterrows():
         type_id = int(otype_dict["otype_id"])
         type_name = otype_dict["otype_name"]
         control_pos_threshold = int(otype_dict.get("control_pos_threshold", 0))
         # type_superior_id = int(otype_dict["otype_superior_id"])
-        incharge = otype_dict.get("incharge", None)
+        incharge = otype_dict.get("incharge", "待定")
         orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
         orgtype.otype_name = type_name
         # orgtype.otype_superior_id = type_superior_id
-        if incharge is not None:
-            Nperson, mid = NaturalPerson.objects.get_or_create(name=incharge)
-            orgtype.incharge = Nperson
+        Nperson, mid = NaturalPerson.objects.get_or_create(name=incharge)
+        orgtype.incharge = Nperson
         orgtype.job_name_list = otype_dict["job_name_list"]
         orgtype.control_pos_threshold = control_pos_threshold
         orgtype.save()
@@ -50,32 +49,33 @@ def load_org():
     org_df = load_file("orginf.csv")
     msg = ''
     for _, org_dict in org_df.iterrows():
-        username = org_dict["organization_id"]
-        password = random_code_init()
-        if username[:2] == "zz":
-            oname = org_dict["oname"]
-            type_id = org_dict["otype_id"]
-            person = org_dict["person"]
-            pos = max(0, int(org_dict.get("pos", 0)))
-            user, mid = User.objects.get_or_create(username=username)
-            user.set_password(password)
-            user.save()
-            orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
-            org, mid = Organization.objects.get_or_create(
-                organization_id=user, otype=orgtype
-            )
-            org.oname = oname
-            org.save()
+        try:
+            username = org_dict["organization_id"]
+            password = random_code_init()
+            if username[:2] == "zz":
+                oname = org_dict["oname"]
+                type_id = org_dict["otype_id"]
+                person = org_dict.get("person", "待定")
+                pos = max(0, int(org_dict.get("pos", 0)))
+                user, mid = User.objects.get_or_create(username=username)
+                user.set_password(password)
+                user.save()
+                orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
+                org, mid = Organization.objects.get_or_create(
+                    organization_id=user, otype=orgtype
+                )
+                org.oname = oname
+                org.save()
 
-            people, mid = NaturalPerson.objects.get(name=person)
-            pos, mid = Position.objects.get_or_create(
-                person=people, org=org, status=Position.Status.INSERVICE,
-                pos=pos, is_admin=True,
-            )
-            pos.save()
-            msg += ' 成功创建组织'+oname+',负责人：'+person
-            # orgtype=OrganizationType.objects.create(otype_id=type_id)
-            # orgtype.otype
+                people, mid = NaturalPerson.objects.get(name=person)
+                pos, mid = Position.objects.get_or_create(
+                    person=people, org=org, status=Position.Status.INSERVICE,
+                    pos=pos, is_admin=True,
+                )
+                pos.save()
+                msg += '<br/>成功创建组织'+oname+',负责人：'+person
+        except Exception as e:
+            msg += '<br/>未能创建组织'+oname+',原因：'+str(e)
     YQPoint_oname = local_dict.get('YQPoint_source_oname')
     if YQPoint_oname:
         username = 'zz00001'
@@ -89,7 +89,7 @@ def load_org():
             )
             org.oname = YQPoint_oname
             org.save()
-            msg += ' 成功创建元气值发放组织'
+            msg += '<br/>成功创建元气值发放组织：'+YQPoint_oname
     return msg
 
 
