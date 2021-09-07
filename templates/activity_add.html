@@ -376,7 +376,7 @@
                                                             name="inner">
                                                         <label class="form-check-label" for="defaultCheck1">
                                                             内部活动?
-                                                            <a data-toggle="tooltip" data-placement="bottom" title="内部活动对所有同学可见，但只有组织内部成员可以报名。此选项改变时，已有的报名不受影响。">
+                                                            <a data-toggle="tooltip" data-placement="bottom" title="内部活动对所有同学可见，但只有团体内部成员可以报名。此选项改变时，已有的报名不受影响。">
                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                                     class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                                     <path
@@ -420,8 +420,7 @@
                                                     </a>
                                                 </label>
                                                 {% if not examine %}
-                                                <input type="url" id="URL" name="URL" class="form-control"
-                                                    placeholder="{{url}}">
+                                                <textarea type="url" id="URL" name="URL" class="form-control" rows="3" >{{url}}</textarea>
                                                 {% else %}
                                                 <a href="{{url}}"> {{url}} </a>
                                                 {% endif %}
@@ -481,11 +480,11 @@
                                                     活动{{status}}
                                                 </button>
                                                 {% elif edit %}
-                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认修改活动？')">
+                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认修改活动？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
                                                     确认修改
                                                 </button>
                                                 {% else %}
-                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认提交活动申请？')">
+                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认提交活动申请？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
                                                     发起活动
                                                 </button>
                                                 {% endif %}
@@ -664,7 +663,7 @@
     /* 提示上传预算信息 */
     if (document.referrer.endsWith("/addActivity/")) {
         document.getElementById("warn_msg").style.display = "";
-        document.getElementById("warn_msg").innerHTML = "活动发起成功，请在评论区上传预算明细。";
+        document.getElementById("warn_msg").innerHTML = "活动发起成功！如需申请预算，请在评论区上传预算明细。";
     }
 
     /* 将 palceholder 全部换为旧值，很长很啰嗦 */
