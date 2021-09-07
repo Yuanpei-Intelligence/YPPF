@@ -22,7 +22,6 @@
                 <!-- 目前是guidance -->
                 <div id="style1" class="carousel slide style-custom-1" data-ride="carousel">
                     <ol class="carousel-indicators">
-                        <li data-target="#style1 active"></li>
                         {% for _ in guidepics %}
                         <li data-target="#style1"></li>
                         {% endfor %}
@@ -32,16 +31,26 @@
                     </ol>
                     <div class="carousel-inner">
                         <div class="carousel-item active">
-                            <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
-                                    src={% static "assets/img/guidepics/default.jpeg" %}>
+                            {% if firsturl %}
+                            <a href="{{ firsturl }}">
+                            {% endif %}
+                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
+                                    src="/static/assets/img/guidepics/{{ firstpic }}" %}>
+                            {% if firsturl %}
+                            </a>
+                            {% endif %}
                         </div>
                         {% for pic, url in guidepics %}
                         <div class="carousel-item">
-                            <a href="/{{ url }}">
+                            {% if url %}
+                            <a href="{{ url }}">
+                            {% endif %}
                                 <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
-                                    src="{{ pic }}" %}>
+                                    src="/static/assets/img/guidepics/{{ pic }}" %}>
+                            {% if url %}
                             </a>
-                        </div>
+                            {% endif %}
+                            </div>
                         {% endfor %}
                         {% for photo in photo_display %}
                         <div class="carousel-item">
