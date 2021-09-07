@@ -55,7 +55,7 @@ def load_org():
             if username[:2] == "zz":
                 oname = org_dict["oname"]
                 type_id = org_dict["otype_id"]
-                person = org_dict.get("person", "待定")
+                persons = org_dict.get("person", "待定")
                 pos = max(0, int(org_dict.get("pos", 0)))
                 user, mid = User.objects.get_or_create(username=username)
                 user.set_password(password)
@@ -66,14 +66,16 @@ def load_org():
                 )
                 org.oname = oname
                 org.save()
+                msg += '<br/>成功创建组织：'+oname
 
-                people, mid = NaturalPerson.objects.get(name=person)
-                pos, mid = Position.objects.get_or_create(
-                    person=people, org=org, status=Position.Status.INSERVICE,
-                    pos=pos, is_admin=True,
-                )
-                pos.save()
-                msg += '<br/>成功创建组织'+oname+',负责人：'+person
+                for person in persons.split(','):
+                    people, mid = NaturalPerson.objects.get(name=person)
+                    pos, mid = Position.objects.get_or_create(
+                        person=people, org=org, status=Position.Status.INSERVICE,
+                        pos=pos, is_admin=True,
+                    )
+                    pos.save()
+                    msg += '<br/>     成功增加负责人：'+person
         except Exception as e:
             msg += '<br/>未能创建组织'+oname+',原因：'+str(e)
     YQPoint_oname = local_dict.get('YQPoint_source_oname')
