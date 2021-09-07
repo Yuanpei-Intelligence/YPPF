@@ -2016,10 +2016,10 @@ def viewActivity(request, aid=None):
                 assert activity.status == Activity.Status.END
                 assert ownership
                 re = Reimbursement.objects.get(related_activity=activity)
-                return redirect(f"/modifyReimbursement/?reimb_id={re.id}")
+                return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
             except Exception as e:
                 # print("Exception", e)
-                return redirect("/modifyReimbursement/")
+                return redirect("/modifyEndActivity/")
         elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
             if not ownership:
                 return redirect("/welcome/")
@@ -3021,7 +3021,7 @@ def addComment(request, comment_base, receiver=None):
     URL={
         'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
         'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
-        'reimbursement': f'/modifyReimbursement/?reimb_id={comment_base.id}',
+        'reimbursement': f'/modifyEndActivity/?reimb_id={comment_base.id}',
         'activity': f"/examineActivity/{comment_base.id}"
     }
     if user_type == "Organization":
@@ -3368,7 +3368,7 @@ def showPosition(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-def showReimbursement(request):
+def endActivity(request):
     """
     报销信息的聚合界面
     对审核老师进行了特判
@@ -3541,7 +3541,7 @@ def make_relevant_notification(application, info):
 # 新建+修改+取消+审核 报销信息
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-def modifyReimbursement(request):
+def modifyEndActivity(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
 
@@ -3556,6 +3556,14 @@ def modifyReimbursement(request):
     #审核老师
     auditor = User.objects.get(username=local_dict["audit_teacher"]["Funds"])
     auditor_name=utils.get_person_or_org(auditor).name
+
+    # 获取前端页面中可能存在的提示
+    try:
+        if request.GET.get("warn_code", None) is not None:
+            html_display["warn_code"] = int(request.GET.get("warn_code"))
+            html_display["warn_message"] = request.GET.get("warn_message")
+    except:
+        pass
 
     if reimb_id is not None:  # 如果存在对应报销
         try:  # 尝试获取已经新建的Reimbursement
@@ -3645,9 +3653,6 @@ def modifyReimbursement(request):
                 }
                 #创建通知
                 make_notification(application,request,content,receiver)
-                if request.POST.get("post_type", None)=="new_submit":
-                    is_new_application=True
-                    application=None
             elif context["warn_code"] != 1:  # 没有返回操作提示
                 raise NotImplementedError("处理经费申请中出现未预见状态，请联系管理员处理！")
 
@@ -3662,8 +3667,13 @@ def modifyReimbursement(request):
             context = addComment(request, application,receiver)
 
         # 准备用户提示量
-        html_display["warn_code"] = context["warn_code"]
-        html_display["warn_message"] = context["warn_message"]
+        warn_code = context["warn_code"]
+        warn_message = context["warn_message"]
+
+
+        # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
+        append = f"?reimb_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
+        return redirect("/modifyEndActivity/" + append)
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
     '''
@@ -3712,7 +3722,7 @@ def make_notification(application, request,content,receiver):
     URL = {
         'modifyposition': f'/modifyPosition/?pos_id={application.id}',
         'neworganization': f'/modifyOrganization/?org_id={application.id}',
-        'reimbursement': f'/modifyReimbursement/?reimb_id={application.id}',
+        'reimbursement': f'/modifyEndActivity/?reimb_id={application.id}',
     }
     sender = request.user
     typename = Notification.Type.NEEDDO if post_type == 'new_submit' else Notification.Type.NEEDREAD
