@@ -832,7 +832,8 @@ def export_orgpos_info(org):
 
 
 def escape_for_templates(text:str):
-    return text.strip().replace("\n", " ")
+    print(text.encode())
+    return text.strip().replace("\r", "").replace("\n", "\\n")
 
 
 def record_modification(user, info=""):
