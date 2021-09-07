@@ -21,7 +21,7 @@ def load_orgtype(debug=True):
     if debug:
         username = "someone"
         user, mid = User.objects.get_or_create(username=username)
-        password = random_code_init()
+        password = random_code_init(username)
         user.set_password(password)
         user.save()
 
@@ -51,7 +51,7 @@ def load_org():
     for _, org_dict in org_df.iterrows():
         try:
             username = org_dict["organization_id"]
-            password = random_code_init()
+            password = random_code_init(username)
             if username[:2] == "zz":
                 oname = org_dict["oname"]
                 type_id = org_dict["otype_id"]
