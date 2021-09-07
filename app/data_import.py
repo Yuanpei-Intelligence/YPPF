@@ -56,6 +56,7 @@ def load_org():
             oname = org_dict["oname"]
             type_id = org_dict["otype_id"]
             person = org_dict["person"]
+            pos = max(0, int(org_dict.get("pos", 0)))
             user, mid = User.objects.get_or_create(username=username)
             user.set_password(password)
             user.save()
@@ -68,7 +69,8 @@ def load_org():
 
             people, mid = NaturalPerson.objects.get_or_create(name=person)
             pos, mid = Position.objects.get_or_create(
-                person=people, org=org, status=Position.Status.INSERVICE, pos = 0, is_admin = True
+                person=people, org=org, status=Position.Status.INSERVICE,
+                pos=pos, is_admin=True,
             )
             pos.save()
             msg += ' 成功创建组织'+oname+',负责人：'+person
