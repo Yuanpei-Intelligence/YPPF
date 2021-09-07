@@ -1504,8 +1504,8 @@ def modpw(request):
                     if forgetpw:
                         request.session.pop("forgetpw")  # 删除session记录
 
-                    record_modify_with_session(request,
-                        "首次修改密码" if isFirst else "修改密码")
+                    # record_modify_with_session(request,
+                    #     "首次修改密码" if isFirst else "修改密码")
                     urls = reverse("index") + "?modinfo=success"
                     return redirect(urls)
                 except:  # modified by pht: 之前使用的if检查是错误的
@@ -2073,9 +2073,14 @@ def viewActivity(request, aid=None):
                     html_display["warn_message"] = "成功提交活动照片"
                     html_display["warn_code"] = 2
         """
-
-
-
+    elif request.method == "GET":
+        warn_code = request.GET.get("warn_code")
+        warn_msg = request.GET.get("warn_message")
+        if warn_code and warn_msg:
+            if warn_code != "1" and warn_code != "2":
+                return redirect("/welcome/")
+            html_display["warn_code"] = int(warn_code)
+            html_display["warn_message"] = warn_msg
 
 
     # 下面这些都是展示前端页面要用的
@@ -2306,21 +2311,34 @@ def checkinActivity(request, aid=None):
         activity = Activity.objects.get(id=int(aid))
         varifier = request.GET["auth"]
         assert varifier == hash_coder.encode(aid)
-        assert activity.status == Activity.Status.PROGRESSING
     except:
         return redirect("/welcome/")
-    try:
-        with transaction.atomic():
-            participant = Participant.objects.select_for_update().get(
-                activity_id=int(aid), person_id=np,
-                status=Participant.AttendStatus.UNATTENDED
-            )
-            participant.status = Participant.AttendStatus.ATTENDED
-            participant.save()
-    except:
-        pass
+
+    warn_code = 1
+    if activity.status == Activity.Status.END:
+        warn_message = "活动已结束，不再开放签到。"
+    elif (
+        activity.status == Activity.Status.PROGRESSING or
+        activity.status == Activity.Status.WAITING and datetime.now() + timedelta(hours=1) >= activity.start
+    ):
+        try:
+            with transaction.atomic():
+                participant = Participant.objects.select_for_update().get(
+                    activity_id=int(aid), person_id=np,
+                    status=Participant.AttendStatus.UNATTENDED
+                )
+                participant.status = Participant.AttendStatus.ATTENDED
+                participant.save()
+                warn_message = "签到成功。"
+                warn_code = 2
+        except:
+            warn_message = "非预期的错误，请确认您报名了活动。也可能您已签到。"
+        
+    else:
+        warn_message = "活动尚未开始签到。"
+        
     # TODO 在 activity_info 里加更多信息
-    return redirect(f"/viewActivity/{aid}")
+    return redirect(f"/viewActivity/{aid}?warn_code={warn_code}&warn_message={warn_message}")
 
 
 # participant checkin activity
