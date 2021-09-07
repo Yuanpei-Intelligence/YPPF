@@ -17,33 +17,38 @@ def load_file(file):
     return pd.read_csv(f"test_data/{file}", dtype=object, encoding="utf-8")
 
 
-def load_orgtype():
-    username = "YPadmin"
-    user, mid = User.objects.get_or_create(username=username)
-    password = "YPPFtest"
-    user.set_password(password)
-    user.save()
+def load_orgtype(debug=False):
+    # if debug:
+    #     username = "YPadmin"
+    #     user, mid = User.objects.get_or_create(username=username)
+    #     password = "YPPFtest"
+    #     user.set_password(password)
+    #     user.save()
 
-    Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
-    Nperson.name = username
-    Nperson.save()
+    #     Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
+    #     Nperson.name = username
+    #     Nperson.save()
     org_type_df = load_file("orgtypeinf.csv")
     for _, otype_dict in org_type_df.iterrows():
         type_id = int(otype_dict["otype_id"])
         type_name = otype_dict["otype_name"]
+        control_pos_threshold = int(otype_dict.get("control_pos_threshold", 0))
         # type_superior_id = int(otype_dict["otype_superior_id"])
-        incharge = otype_dict["incharge"]
+        incharge = otype_dict.get("incharge", None)
         orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
         orgtype.otype_name = type_name
         # orgtype.otype_superior_id = type_superior_id
-        Nperson, mid = NaturalPerson.objects.get_or_create(name=incharge)
-        orgtype.incharge = Nperson
+        if incharge is not None:
+            Nperson, mid = NaturalPerson.objects.get_or_create(name=incharge)
+            orgtype.incharge = Nperson
         orgtype.job_name_list = otype_dict["job_name_list"]
+        orgtype.control_pos_threshold = control_pos_threshold
         orgtype.save()
 
 
 def load_org():
     org_df = load_file("orginf.csv")
+    msg = ''
     for _, org_dict in org_df.iterrows():
         username = org_dict["organization_id"]
         password = random_code_init()
@@ -66,8 +71,26 @@ def load_org():
                 person=people, org=org, status=Position.Status.INSERVICE, pos = 0, is_admin = True
             )
             pos.save()
+            msg += ' 成功创建组织'+oname+',负责人：'+person
             # orgtype=OrganizationType.objects.create(otype_id=type_id)
             # orgtype.otype
+    YQPoint_oname = local_dict.get('YQPoint_source_oname')
+    if YQPoint_oname:
+        username = 'zz00001'
+        user, created = User.objects.get_or_create(username=username)
+        if created:
+            user.set_password(password)
+            user.save()
+            orgtype, mid = OrganizationType.objects.get_or_create(otype_id=0)
+            org, mid = Organization.objects.get_or_create(
+                organization_id=user, otype=orgtype
+            )
+            org.oname = YQPoint_oname
+            org.save()
+            msg += ' 成功创建元气值发放组织'
+    return msg
+
+
 
 
 def load_org_info(request):
@@ -80,8 +103,7 @@ def load_org_info(request):
             load_orgtype()
             message = "导入团体类型信息成功！"
         elif load_type == "org":
-            load_org()
-            message = "导入团体信息成功！"
+            message = "导入团体信息成功！"+load_org()
         else:
             message = "没有得到loadtype参数:[org或otype]"
     else:
