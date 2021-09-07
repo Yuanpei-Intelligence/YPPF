@@ -80,6 +80,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import transaction
 from django.db.models import Q
+from django.db.models import F
 from django.conf import settings
 from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
@@ -341,7 +342,7 @@ def stuinfo(request, name=None):
         oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id") # 自己的团体
 
         # 管理的团体
-        person_owned_poss = person_poss.filter(pos=0, status=Position.Status.INSERVICE)
+        person_owned_poss = person_poss.filter(is_admin=True, status=Position.Status.INSERVICE)
         person_owned_orgs = person_orgs.filter(
             id__in=person_owned_poss.values("org")
         )  # ta管理的团体
@@ -362,7 +363,7 @@ def stuinfo(request, name=None):
         )
 
         # 属于的团体
-        person_joined_poss = person_poss.filter(~Q(pos=0) & Q(show_post=True))
+        person_joined_poss = person_poss.filter(~Q(is_admin=True) & Q(show_post=True))
         person_joined_orgs = person_orgs.filter(
             id__in=person_joined_poss.values("org")
         )  # ta属于的团体
@@ -509,7 +510,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
             position = Position.objects.activated().filter(org=org, person=me)
             assert len(position) == 1
             position = position[0]
-            assert position.pos == 0
+            assert position.pos <= org.otype.control_pos_threshold
         except:
             urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团体账户的权限!"
             return redirect(urls)
@@ -535,7 +536,7 @@ def user_login_org(request, org):
         position = Position.objects.activated().filter(org=org, person=me)
         assert len(position) == 1
         position = position[0]
-        assert position.pos == 0
+        assert position.pos <= org.otype.control_pos_threshold
     except:
         urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团体账户的权限!"
         return redirect(urls)
@@ -727,7 +728,7 @@ def orginfo(request, name=None):
     # 补充作为团体成员，选择是否展示的按钮
     show_post_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
     if user_type == 'Person':
-        my_position = Position.objects.activated().filter(org=org, person=me).exclude(pos=0)
+        my_position = Position.objects.activated().filter(org=org, person=me).exclude(is_admin=True)
         if len(my_position):
             show_post_change_button = True
             my_position = my_position[0]
@@ -1220,9 +1221,8 @@ def search(request):
 
     # 搜索团体
     # 先查找query作为姓名包含在字段中的职务信息, 选的是post为true或者职务等级为0
-    pos_list = Position.objects.activated().filter(
-        Q(person__name__icontains=query) & (Q(show_post=True) | Q(pos=0))
-    )
+    pos_list = Position.objects.activated().filter(person__name__icontains=query).filter(
+        Q(show_post=True) | Q(is_admin=True))
     # 通过团体名、团体类名、和上述的职务信息对应的团体信息
     organization_list = Organization.objects.filter(
         Q(oname__icontains=query)
@@ -1246,7 +1246,7 @@ def search(request):
                 "oname": org.oname,
                 "otype": org.otype,
                 "pos0": NaturalPerson.objects.activated().filter(
-                    id__in=Position.objects.activated().filter(pos=0, org=org).values("person")
+                    id__in=Position.objects.activated().filter(is_admin=True, org=org).values("person")
                 ),  #TODO:直接查到一个NaturalPerson的Query_set
                 # [
                 #     w["person__name"]
@@ -2765,7 +2765,8 @@ def save_show_position_status(request):
         if params["status"]:
             position.show_post = True
         else:
-            if len(Position.objects.filter(pos=0, org=position.org)) == 1 and position.pos==0:    #非法前端量修改
+            org = position.org
+            if len(Position.objects.filter(is_admin=True, org=org)) == 1 and position.pos==0:    #非法前端量修改
                 return JsonResponse({"success":False})
             position.show_post = False
         position.save()
@@ -2828,7 +2829,7 @@ def save_subscribe_status(request):
 
     return JsonResponse({"success": True})
 
-
+'''
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 def apply_position(request, oid=None):
@@ -2884,7 +2885,7 @@ def apply_position(request, oid=None):
         publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.IMPORTANT},
     )
     return redirect("/notifications/")
-
+'''
 
 
 

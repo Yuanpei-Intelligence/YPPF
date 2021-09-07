@@ -27,6 +27,7 @@ import string
 import random
 import xlwt
 from io import BytesIO
+from django.db.models import F
 
 
 YQPoint_oname = local_dict["YQPoint_source_oname"]
@@ -117,7 +118,7 @@ def get_user_left_navbar(person, is_myself, html_display):
     )
     html_display["underground_url"] = local_dict["url"]["base_url"]
 
-    my_org_id_list = Position.objects.activated().filter(person=person).filter(pos=0)
+    my_org_id_list = Position.objects.activated().filter(person=person).filter(is_admin=True)
     html_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的团体
     html_display["my_org_len"] = len(html_display["my_org_list"])
     return html_display
@@ -187,7 +188,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         bar_display["underground_url"] = local_dict["url"]["base_url"]
 
         # 个人所管理的团体列表
-        my_org_id_list = Position.objects.activated().filter(person=me).filter(pos=0)
+        my_org_id_list = Position.objects.activated().filter(person=me).filter(is_admin=True)
         bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的团体
         bar_display["my_org_len"] = len(bar_display["my_org_list"])
         
@@ -566,7 +567,7 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
     org = Organization.objects.create(organization_id=user, oname=application.oname, \
         otype=application.otype, YQPoint=0.0, introduction=application.introduction, avatar=application.avatar)
     charger = get_person_or_org(application.pos)
-    pos = Position.objects.create(person=charger,org=org,pos=0,status=Position.Status.INSERVICE)
+    pos = Position.objects.create(person=charger,org=org,pos=0,status=Position.Status.INSERVICE,is_admin = True)
     # 修改申请状态
     ModifyOrganization.objects.filter(id=application.id).update(status=ModifyOrganization.Status.CONFIRMED)
 

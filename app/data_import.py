@@ -62,7 +62,7 @@ def load_org():
 
             people, mid = NaturalPerson.objects.get_or_create(name=person)
             pos, mid = Position.objects.get_or_create(
-                person=people, org=org, status=Position.Status.INSERVICE, pos=0
+                person=people, org=org, status=Position.Status.INSERVICE, pos = 0, is_admin = True
             )
             pos.save()
             # orgtype=OrganizationType.objects.create(otype_id=type_id)
