@@ -67,7 +67,7 @@ def load_org():
             org.oname = oname
             org.save()
 
-            people, mid = NaturalPerson.objects.get_or_create(name=person)
+            people, mid = NaturalPerson.objects.get(name=person)
             pos, mid = Position.objects.get_or_create(
                 person=people, org=org, status=Position.Status.INSERVICE,
                 pos=pos, is_admin=True,
