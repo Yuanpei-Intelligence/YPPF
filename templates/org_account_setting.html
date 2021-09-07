@@ -27,6 +27,12 @@
         {% if expr == False %}
             <div class="alert alert-warning  text-center">没有检测到信息更新</div>
         {% endif %}
+        
+        <div class="w-100 overflow-hidden" style="height: 200px;">
+            <div class="w-100 overflow-hidden" style="height: 200px; filter: blur(10px); -webkit-filter: blur(10px); background-image: url({{ former_wallpaper }}); background-position: center; background-repeat: no-repeat; background-size: cover; transform: scale(1.1);"></div>
+            <h1 class="text-light" style="position: absolute; left: 8.33%; top: 65px; font-weight: bolder;">{{ useroj.oname }}</h1>
+            <h5 class="text-light" style="position: absolute; left: 8.33%; top: 115px; font-weight: normal;">团体信息设置</h5>
+        </div>
 
         <form id="general-info" class="section general-info" method="POST" enctype="multipart/form-data">
             
