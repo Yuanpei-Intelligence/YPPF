@@ -41,9 +41,6 @@
                         </div>
                      </div>
                  </div>
-                {% if bar_display.help_paragraphs %}
-                    {% include 'help.html' %}
-                {% endif %}
 
                 <div class="col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
@@ -62,17 +59,19 @@
                                     </ul>
                                     -->
                             <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                
                                 <li class="nav-item">
-                                    <a class="nav-link active" href="#received" data-toggle="tab">
-                                        <h5>收入</h5>
+                                    <a class="nav-link active" href="#send" data-toggle="tab">
+                                        <h5>支出</h5>
                                     </a>
                                 </li>
 
                                 <li class="nav-item">
-                                    <a class="nav-link" href="#send" data-toggle="tab">
-                                        <h5>支出</h5>
+                                    <a class="nav-link" href="#received" data-toggle="tab">
+                                        <h5>收入</h5>
                                     </a>
                                 </li>
+                            
                                 {% if user_type != "Person" %}
                                 <li class="nav-item">
                                     <a class="nav-link" href="#unissued" data-toggle="tab">
@@ -83,7 +82,7 @@
                             </ul>
 
                             <div id="myTabContent" class="tab-content">
-                                <div class="tab-pane fade in active show" id="received">
+                                <div class="tab-pane fade" id="received">
                                     {% if receive_list|length == 0 %}
                                     <br />
                                     <p></p>
@@ -147,7 +146,7 @@
                                     </div>
                                     {% endif %}
                                 </div>
-                                <div class="tab-pane fade" id="send">
+                                <div class="tab-pane fade in active show" id="send">
                                     {% if send_list|length == 0 %}
                                     <br />
                                     <p></p>
