@@ -80,13 +80,10 @@
                                                     <div class="form-group">
                                                         <label>团体图标</label>
                                                         <br>
-                                                        {% if allow_form_edit %}
                                                         <input type="file" id="preavatar" class="dropify" name="avatar" accept="image/*"
                                                            data-default-file="{{org_avatar_path}}"
-                                                           data-max-file-size="512K"/>
-                                                        {%else%}
-                                                        <img src="{{org_avatar_path}}" width="200px" height="200px" alt="团体图标"/>
-                                                        {%endif%}
+                                                           data-max-file-size="512K"
+                                                           {%if allow_form_edit == 0 %} disabled="disabled" readonly {%endif%}/>
                                                     </div>
                                             {%else%}
                                                 <label>团体图标</label>
@@ -116,10 +113,10 @@
 
                                             <div class="form-group">
                                                 <label for="aintro">团体类型</label>
-                                                <select class="form-control selectpicker" data-live-search = "true" id="otype" name="otype" {%if not allow_form_edit %} readonly="readonly"{%endif%}>
+                                                <select class="form-control selectpicker" data-live-search = "true" id="otype" name="otype" {%if not allow_form_edit or not is_new_application %} readonly="readonly"{%endif%}>
                                                     {% for key, value in org_type_list.items %}
                                                     {% if not value.disabled %}
-                                                    <option value="{{value.display}}" {% if value.selected %} selected {% endif %} >
+                                                    <option value="{{value.value}}" {% if value.selected %} selected {% endif %} >
                                                         {{value.display}}
                                                     </option>
                                                     {% endif %}
