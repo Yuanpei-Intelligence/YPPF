@@ -51,6 +51,10 @@
             }
         }
     },
+    "max_inform_rank": {
+        "Person": 100,
+        "Organization": 10
+    },
     "semester_data":{
         "year":"2021",
         "semester":"Fall"

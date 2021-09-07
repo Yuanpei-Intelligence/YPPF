@@ -14,6 +14,7 @@ from app.notification_utils import(
     bulk_notification_create,
     notification_status_change,
 )
+from django.contrib.auth.models import User
 from app.wechat_send import WechatApp
 from app.models import (
     NaturalPerson,
@@ -437,7 +438,7 @@ def modify_accepted_activity(request, activity):
             activity_id=activity.id, 
             status=Participant.AttendStatus.APLLYSUCCESS
         )):
-            raise ActivityException(f"当前成功报名人数已超过{capacity}人")
+            raise ActivityException(f"当前成功报名人数已超过{capacity}人!")
     activity.capacity = capacity
 
     if request.POST.get("need_checkin"):
@@ -604,7 +605,8 @@ def reject_activity(request, activity):
             status=TransferRecord.TransferStatus.PENDING, 
             corres_act=activity,
         )
-        person_list = [record.proposer.id for record in records]
+        person_list = User.objects.filter(id__in=records.values_list("proposer_id",flat=True))
+        # person_list = [record.proposer.id for record in records]
         payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
         for record in records:
             NaturalPerson.objects.filter(person_id=record.proposer).update(YQPoint=F("YQPoint") + record.amount)
@@ -782,8 +784,7 @@ def cancel_activity(request, activity):
         if activity.valid:
             records = TransferRecord.objects.filter(
                 status=TransferRecord.TransferStatus.ACCEPTED, 
-                corres_act=activity,
-            )
+                corres_act=activity).prefetch_related("proposer")
             total_amount = records.aggregate(nums=Sum('amount'))["nums"]
             if total_amount is None:
                 total_amount = 0.0
@@ -795,7 +796,8 @@ def cancel_activity(request, activity):
                 YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
                 YP.YQPoint += total_amount
                 YP.save()
-                person_list = [record.proposer.id for record in records]
+                person_list = User.objects.filter(id__in=records.values_list("proposer_id",flat=True))
+                # person_list = [record.proposer.id for record in records]
                 payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
                 for record in records:
                     NaturalPerson.objects.filter(person_id=record.proposer).update(YQPoint=F("YQPoint") + record.amount)
@@ -807,9 +809,9 @@ def cancel_activity(request, activity):
             # 都是 pending
             records = TransferRecord.objects.filter(
                 status=TransferRecord.TransferStatus.PENDING, 
-                corres_act=activity,
-            )
-            person_list = [record.proposer.id for record in records]
+                corres_act=activity).prefetch_related("proposer")
+            # person_list = [record.proposer.id for record in records]
+            person_list = User.objects.filter(id__in=records.values_list("proposer_id",flat=True))
             payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
             for record in records:
                 NaturalPerson.objects.filter(person_id=record.proposer).update(YQPoint=F("YQPoint") + record.amount)

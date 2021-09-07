@@ -102,6 +102,9 @@
                             {% else %}
                             <span class="badge badge-pill badge-success">{{ status }}</span>
                             {% endif %}
+                            {% if activity.inner %}
+                            <span class="badge badge-pill badge-success">内部活动</span>
+                            {% endif %}
                         </div>
                     </div>
 
@@ -114,7 +117,7 @@
                         </div>
                         <div class="flex">
                         {% if person %}
-                        {{ pStatus }}
+                        <span class="badge badge-light">{{ pStatus }}</span>
                         {% endif %}
                         </div>
                     </div>
@@ -204,6 +207,7 @@
                                 <h4 style="padding-left: 12px;">活动信息</h4>
                             </div>
                         </div>
+                    </div>
 
                     <div class="widget-content widget-content-area">
 
@@ -326,10 +330,23 @@
                                 {% if person %}
 
                                     {% if pStatus == "未参与" and status == "报名中" %}
+                                    {% if not not_inner %}
                                     <form method="POST">
                                         <input type="hidden" name="option" value="apply">
                                         <button class="btn btn-primary btn-block mb-2">立即报名</button>
                                     </form>
+                                    {% else %}
+                                        <button class="btn btn-primary btn-block mb-2" disabled>立即报名
+                                        <a data-toggle="tooltip" data-placement="bottom" title="该活动是团体内部活动，只有团体内部成员可以参与。">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
+                                                class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                <path
+                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                            </svg>
+                                            
+                                        </a>
+                                        </button>
+                                    {% endif %}
 
                                     {% elif pStatus == "申请中" or pStatus == "已报名" %}
                                     <form method="POST">
@@ -415,8 +432,10 @@
 
                         <h5>发起者</h5>
                         <div class="d-flex justify-content-start">
-                            <div style="width: max-content; border-radius: 25px; overflow: hidden;">
+                            <div style="width: max-content; border-radius: 25px; ">
+                                <a href='/orginfo/{{org_name}}'>
                                 <img src="{{ org_avatar_path }}" class="flex" alt="organization avatar" height="50px" width="50px">
+                                </a>
                             </div>
                             <span class="flex flex-grow-1 mx-3">
                                 <div class="d-flex justify-content-between">
@@ -467,6 +486,7 @@
                                 <h4 style="padding-left: 10px;">详细介绍</h4>
                             </div>
                         </div>
+                    </div>
 
                     <div class="widget-content widget-content-area">
                         <p style="word-break: break-all;">
