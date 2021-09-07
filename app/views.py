@@ -4009,11 +4009,13 @@ def send_message_check(me, request):
 
     try:
         if receiver_type == "订阅用户":
-            receivers = NaturalPerson.objects.exclude(id__in=me.unsubscribers.all())
+            receivers = NaturalPerson.objects.exclude(
+                id__in=me.unsubscribers.all()).select_related('person_id')
             receivers = [receiver.person_id for receiver in receivers]
         else:   # 检查过逻辑了，不可能是其他的
             receivers = NaturalPerson.objects.filter(
-                id__in=me.position_set.values_list('person_id', flat=True))
+                id__in=me.position_set.values_list('person_id', flat=True)
+                ).select_related('person_id')
             receivers = [receiver.person_id for receiver in receivers]
 
         # 创建通知
