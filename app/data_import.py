@@ -1,5 +1,6 @@
 from app.models import TransferRecord
 from app.models import Notification
+from app.utils import random_code_init
 import pandas as pd
 import os
 from app.models import NaturalPerson, Freshman, Position, Organization, OrganizationType, Activity, Help
@@ -45,7 +46,7 @@ def load_org():
     org_df = load_file("orginf.csv")
     for _, org_dict in org_df.iterrows():
         username = org_dict["organization_id"]
-        password = "YPPFtest"
+        password = random_code_init()
         if username[:2] == "zz":
             oname = org_dict["oname"]
             type_id = org_dict["otype_id"]
@@ -257,49 +258,72 @@ def load_stu_info(request):
         return render(request, "debugging.html", context)
 
     stu_df = load_file("stuinf.csv")
+    total = 0
     stu_list = []
+    exist_list = []
+    failed_list = []
     Char2Gender = {"男": NaturalPerson.Gender.MALE, "女": NaturalPerson.Gender.FEMALE}
+    username = 'null'
     for _, stu_dict in tqdm(stu_df.iterrows()):
-        sid = username = stu_dict["学号"]
-        password = username
-        name = stu_dict["姓名"]
-        gender = Char2Gender[stu_dict["性别"]]
-        stu_major = stu_dict["专业"]
-        if not stu_major or stu_major == "None":
-            stu_major = "元培计划（待定）"
-        stu_grade = "20" + sid[:2]
-        stu_class = stu_dict["班级"]
-        email = stu_dict["邮箱"]
-        if not email or email == "None":
-            if sid[0] == "2":
-                email = sid + "@stu.pku.edu.cn"
-            else:
-                email = sid + "@pku.edu.cn"
-        tel = stu_dict["手机号"]
-        if not tel or tel == "None":
-            tel = None
+        total += 1
+        try:
+            sid = username = stu_dict["学号"]
+            password = username
+            name = stu_dict["姓名"]
+            gender = Char2Gender[stu_dict["性别"]]
+            stu_major = stu_dict["专业"]
+            if not stu_major or stu_major == "None":
+                stu_major = "元培计划（待定）"
+            stu_grade = "20" + sid[:2]
+            stu_class = stu_dict["班级"]
+            email = stu_dict["邮箱"]
+            if not email or email == "None":
+                if sid[0] == "2":
+                    email = sid + "@stu.pku.edu.cn"
+                else:
+                    email = sid + "@pku.edu.cn"
+            tel = stu_dict["手机号"]
+            if not tel or tel == "None":
+                tel = None
 
-        user = User.objects.create_user(username=username, password=password)
-        # 这一步的PBKDF2加密算法太慢了
+            user, created = User.objects.get_or_create(username=username)
+            if not created:
+                exist_list.append(username)
+                continue
+            # 这一步的PBKDF2加密算法太慢了
+            user.set_password(password)
+            user.save()
 
-        # 批量导入比循环导入快很多，但可惜由于外键person_id的存在，必须先保存user，User模型无法批量导入。
-        # 但重点还是 set_password 的加密算法太 TM 的慢了！
-        stu_list.append(
-            NaturalPerson(
-                person_id=user,
-                stu_id_dbonly=sid,
-                name=name,
-                gender=gender,
-                stu_major=stu_major,
-                stu_grade=stu_grade,
-                stu_class=stu_class,
-                email=email,
-                telephone=tel,
+            # 批量导入比循环导入快很多，但可惜由于外键person_id的存在，必须先保存user，User模型无法批量导入。
+            # 但重点还是 set_password 的加密算法太 TM 的慢了！
+            stu_list.append(
+                NaturalPerson(
+                    person_id=user,
+                    stu_id_dbonly=sid,
+                    name=name,
+                    gender=gender,
+                    stu_major=stu_major,
+                    stu_grade=stu_grade,
+                    stu_class=stu_class,
+                    email=email,
+                    telephone=tel,
+                )
             )
-        )
+        except:
+            failed_list.append(username)
+            continue
     NaturalPerson.objects.bulk_create(stu_list)
 
-    context = {"message": "导入学生信息成功！"}
+    context = {
+        "message": '<br/>'.join((
+                    "导入学生信息成功！",
+                    f"共{total}人，尝试导入{len(stu_list)}人",
+                    f"已存在{len(exist_list)}人，名单为",
+                    ','.join(exist_list),
+                    f"失败{len(failed_list)}人，名单为",
+                    ','.join(failed_list),
+                    ))
+        }
     return render(request, "debugging.html", context)
 
 
