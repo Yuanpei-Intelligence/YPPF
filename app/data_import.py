@@ -69,13 +69,13 @@ def load_org():
                 msg += '<br/>成功创建组织：'+oname
 
                 for person in persons.split(','):
-                    people, mid = NaturalPerson.objects.get(name=person)
-                    pos, mid = Position.objects.get_or_create(
+                    people = NaturalPerson.objects.get(name=person)
+                    position, mid = Position.objects.get_or_create(
                         person=people, org=org, status=Position.Status.INSERVICE,
                         pos=pos, is_admin=True,
                     )
-                    pos.save()
-                    msg += '<br/>     成功增加负责人：'+person
+                    position.save()
+                    msg += '<br/>&emsp;&emsp;成功增加负责人：'+person
         except Exception as e:
             msg += '<br/>未能创建组织'+oname+',原因：'+str(e)
     YQPoint_oname = local_dict.get('YQPoint_source_oname')
@@ -83,6 +83,7 @@ def load_org():
         username = 'zz00001'
         user, created = User.objects.get_or_create(username=username)
         if created:
+            password = random_code_init(username)
             user.set_password(password)
             user.save()
             orgtype, mid = OrganizationType.objects.get_or_create(otype_id=0)
