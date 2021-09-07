@@ -2556,14 +2556,16 @@ def addActivity(request, aid=None):
         # commentable ( 是否可以评论 )
 
         # 下面是前端展示的变量
-        title = activity.title
+
+        title = utils.escape_for_templates(activity.title)
         budget = activity.budget
-        location = activity.location
+        location = utils.escape_for_templates(activity.location)
+        apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
         start = activity.start.strftime("%Y-%m-%d %H:%M")
         end = activity.end.strftime("%Y-%m-%d %H:%M")
-        apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
         introduction = escape_for_templates(activity.introduction)
-        url = activity.URL
+        url = utils.escape_for_templates(activity.URL)
+
         endbefore = activity.endbefore
         bidding = activity.bidding
         amount = activity.YQPoint
@@ -2582,7 +2584,7 @@ def addActivity(request, aid=None):
         avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
         need_checkin = activity.need_checkin
         inner = activity.inner
-        apply_reason = activity.apply_reason
+        apply_reason = utils.escape_for_templates(activity.apply_reason)
         comments = showComment(activity)
         photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
         uploaded_photo = False
@@ -2672,15 +2674,15 @@ def examineActivity(request, aid):
         commentable = False
 
     # 展示变量
-    title = activity.title
+    title = utils.escape_for_templates(activity.title)
     budget = activity.budget
-    location = activity.location
+    location = utils.escape_for_templates(activity.location)
     apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     start = activity.start.strftime("%Y-%m-%d %H:%M")
     end = activity.end.strftime("%Y-%m-%d %H:%M")
     introduction = escape_for_templates(activity.introduction)
 
-    url = activity.URL
+    url = utils.escape_for_templates(activity.URL)
     endbefore = activity.endbefore
     bidding = activity.bidding
     amount = activity.YQPoint
@@ -2709,7 +2711,7 @@ def examineActivity(request, aid):
     intro_pic = examine_pic.image
 
     need_checkin = activity.need_checkin
-    apply_reason = activity.apply_reason
+    apply_reason = utils.escape_for_templates(activity.apply_reason)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动审核")
     # bar_display["title_name"] = "审查活动"
