@@ -140,7 +140,9 @@ def get_org_left_navbar(org, is_myself, html_display):
 def get_inform_share(me, is_myself=True):
     alert_message = ""
     if is_myself and me.inform_share:
-        alert_message = "【关于分享】:如果你在使用手机浏览器，可以使用浏览器自带的分享来分享你的主页或者活动主页，或者可以选择将其在微信/朋友圈中打开。"
+        alert_message = ("【关于分享】:如果你在使用手机浏览器，"+
+                        "可以使用浏览器自带的分享来分享你的主页或者活动主页，"+
+                        "或者可以选择将其在微信/朋友圈中打开并分享。")
         # me.inform_share = False
         # me.save()
         return True, alert_message
@@ -628,11 +630,13 @@ def update_org_application(application, me, request):
                 if context['warn_code'] == 1:
                     return context
                 
+                otype = OrganizationType.objects.get(otype_name=info.get('otype'))
+                    
                 # 写入数据库
                 if post_type == 'new_submit':
                     application = ModifyOrganization.objects.create(
                         oname=info.get('oname'),
-                        otype=OrganizationType.objects.get(otype_name=info.get('otype')),
+                        otype=otype,
                         pos=me.person_id,
                         introduction=info.get('introduction'),
                         application=info.get('application')
@@ -640,14 +644,16 @@ def update_org_application(application, me, request):
                     if context["avatar"] is not None:
                         application.avatar = context['avatar'];
                         application.save()
-                    context = succeed("成功地发起"+info.get("oname")+"的申请！")
+                    context = succeed("成功发起团体“"+info.get("oname")+"”的新建申请，请耐心等待"+str(otype.incharge.name)+"老师审核!")
                     context['application_id'] = application.id
                     return context
                 else: # modify_submit
                     if not application.is_pending():
                         return wrong("不能修改状态不为“申请中”的申请！")
+                    # 如果是修改申请, 不能够修改小组类型
+                    if application.otype != otype:
+                        return wrong("修改申请时不允许修改团体类型。如确需修改，请取消后重新申请!")
                     if application.oname == info.get("oname") and \
-                        application.otype.otype_name == info.get("otype") and \
                             application.introduction == info.get('introduction') and \
                                 application.avatar == info.get('avatar', None) and \
                                     application.application == info.get('application'):
@@ -655,13 +661,13 @@ def update_org_application(application, me, request):
                     # 至此可以发起修改
                     ModifyOrganization.objects.filter(id=application.id).update(
                         oname=info.get('oname'),
-                        otype=OrganizationType.objects.get(otype_name=info.get('otype')),
+                        #otype=OrganizationType.objects.get(otype_name=info.get('otype')),
                         introduction=info.get('introduction'),
                         application=info.get('application'))
                     if context["avatar"] is not None:
-                        application.avatar = context['avatar'];
+                        application.avatar = context['avatar']
                         application.save()
-                    context = succeed("成功修改新建团体" + info.get('oname') + "的申请!")
+                    context = succeed("成功修改团体“" + info.get('oname') + "”的新建申请!")
                     context["application_id"] = application.id
                     return context
         else: # 是老师审核的操作, 通过\拒绝
@@ -855,18 +861,18 @@ def get_modify_rank(user):
     except:
         return -1
 
-def record_modify(request, info=""):
+def record_modify_with_session(request, info=""):
     try:
         _, usertype, _ = check_user_type(request.user)
         recorded = record_modification(request.user, info)
         if recorded == True:
             rank = get_modify_rank(request.user)
             is_person = usertype == 'Person'
-            info_rank = 100 if is_person else 10
+            info_rank = local_dict.get("max_inform_rank", {}).get(usertype, -1)
             if rank > -1 and rank <= info_rank:
                 msg = (
                     f'您是第{rank}名修改账号信息的'+
-                    '团体' if is_person else '个人'+
+                    ('个人' if is_person else '团体')+
                     '用户！保留此截图可在游园会兑换奖励！'
                 )
                 request.session['alert_message'] = msg
