@@ -80,6 +80,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import transaction
 from django.db.models import Q
+from django.db.models import F
 from django.conf import settings
 from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
@@ -341,7 +342,7 @@ def stuinfo(request, name=None):
         oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id") # 自己的团体
 
         # 管理的团体
-        person_owned_poss = person_poss.filter(pos=0, status=Position.Status.INSERVICE)
+        person_owned_poss = person_poss.filter(is_admin=True, status=Position.Status.INSERVICE)
         person_owned_orgs = person_orgs.filter(
             id__in=person_owned_poss.values("org")
         )  # ta管理的团体
@@ -362,7 +363,7 @@ def stuinfo(request, name=None):
         )
 
         # 属于的团体
-        person_joined_poss = person_poss.filter(~Q(pos=0) & Q(show_post=True))
+        person_joined_poss = person_poss.filter(~Q(is_admin=True) & Q(show_post=True))
         person_joined_orgs = person_orgs.filter(
             id__in=person_joined_poss.values("org")
         )  # ta属于的团体
@@ -509,7 +510,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
             position = Position.objects.activated().filter(org=org, person=me)
             assert len(position) == 1
             position = position[0]
-            assert position.pos == 0
+            assert position.pos <= org.otype.control_pos_threshold
         except:
             urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团体账户的权限!"
             return redirect(urls)
@@ -535,7 +536,7 @@ def user_login_org(request, org):
         position = Position.objects.activated().filter(org=org, person=me)
         assert len(position) == 1
         position = position[0]
-        assert position.pos == 0
+        assert position.pos <= org.otype.control_pos_threshold
     except:
         urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团体账户的权限!"
         return redirect(urls)
@@ -727,7 +728,7 @@ def orginfo(request, name=None):
     # 补充作为团体成员，选择是否展示的按钮
     show_post_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
     if user_type == 'Person':
-        my_position = Position.objects.activated().filter(org=org, person=me).exclude(pos=0)
+        my_position = Position.objects.activated().filter(org=org, person=me).exclude(is_admin=True)
         if len(my_position):
             show_post_change_button = True
             my_position = my_position[0]
@@ -824,22 +825,19 @@ def homepage(request):
         "#B6E3E9","#B5EAD7","#E2F0CB"
     ]
     backgroundpics = [{"src":"/static/assets/img/backgroundpics/"+str(i+1)+".png","color": colors[i] } for i in range(6)]
-    paths = [
-        "notifications","stuinfo","orginfo","user_account_setting"
-    ]
-    guidepics = ["/static/assets/img/guidepics/"+paths[i]+".jpeg" for i in range(4)]
+
+    # 从redirect.json读取要作为引导图的图片，按照原始顺序
+    guidepicdir = "static/assets/img/guidepics"
+    with open(f"{guidepicdir}/redirect.json") as file:
+        img2url = json.load(file)
+    guidepics = list(img2url.items())
+    (firstpic, firsturl), guidepics = guidepics[0], guidepics[1:]
 
     """ 
         取出过去一周的所有活动，filter出上传了照片的活动，从每个活动的照片中随机选择一张
         如果列表为空，那么添加一张default，否则什么都不加。
     """
-    photo_display = []
-    newlyended_activity = Activity.objects.get_newlyended_activity()
-    for act in newlyended_activity:
-        summaryphotos = act.photos.filter(type = ActivityPhoto.PhotoType.SUMMARY)
-        if len(summaryphotos)>0:
-            photo_display.append(summaryphotos[0]) # 朴素的随机
-    photo_display = photo_display[:4]
+    photo_display = ActivityPhoto.objects.filter(type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')[: 8 - len(guidepics)] # 第一张active不算
     for photo in photo_display:
         if str(photo.image) and str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
             photo.image = settings.MEDIA_URL + str(photo.image)
@@ -1220,9 +1218,8 @@ def search(request):
 
     # 搜索团体
     # 先查找query作为姓名包含在字段中的职务信息, 选的是post为true或者职务等级为0
-    pos_list = Position.objects.activated().filter(
-        Q(person__name__icontains=query) & (Q(show_post=True) | Q(pos=0))
-    )
+    pos_list = Position.objects.activated().filter(person__name__icontains=query).filter(
+        Q(show_post=True) | Q(is_admin=True))
     # 通过团体名、团体类名、和上述的职务信息对应的团体信息
     organization_list = Organization.objects.filter(
         Q(oname__icontains=query)
@@ -1246,7 +1243,7 @@ def search(request):
                 "oname": org.oname,
                 "otype": org.otype,
                 "pos0": NaturalPerson.objects.activated().filter(
-                    id__in=Position.objects.activated().filter(pos=0, org=org).values("person")
+                    id__in=Position.objects.activated().filter(is_admin=True, org=org).values("person")
                 ),  #TODO:直接查到一个NaturalPerson的Query_set
                 # [
                 #     w["person__name"]
@@ -2022,10 +2019,10 @@ def viewActivity(request, aid=None):
                 assert activity.status == Activity.Status.END
                 assert ownership
                 re = Reimbursement.objects.get(related_activity=activity)
-                return redirect(f"/modifyReimbursement/?reimb_id={re.id}")
+                return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
             except Exception as e:
                 # print("Exception", e)
-                return redirect("/modifyReimbursement/")
+                return redirect("/modifyEndActivity/")
         elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
             if not ownership:
                 return redirect("/welcome/")
@@ -2556,14 +2553,16 @@ def addActivity(request, aid=None):
         # commentable ( 是否可以评论 )
 
         # 下面是前端展示的变量
-        title = activity.title
+
+        title = utils.escape_for_templates(activity.title)
         budget = activity.budget
-        location = activity.location
+        location = utils.escape_for_templates(activity.location)
+        apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
         start = activity.start.strftime("%Y-%m-%d %H:%M")
         end = activity.end.strftime("%Y-%m-%d %H:%M")
-        apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
         introduction = escape_for_templates(activity.introduction)
-        url = activity.URL
+        url = utils.escape_for_templates(activity.URL)
+
         endbefore = activity.endbefore
         bidding = activity.bidding
         amount = activity.YQPoint
@@ -2582,7 +2581,7 @@ def addActivity(request, aid=None):
         avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
         need_checkin = activity.need_checkin
         inner = activity.inner
-        apply_reason = activity.apply_reason
+        apply_reason = utils.escape_for_templates(activity.apply_reason)
         comments = showComment(activity)
         photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
         uploaded_photo = False
@@ -2672,15 +2671,15 @@ def examineActivity(request, aid):
         commentable = False
 
     # 展示变量
-    title = activity.title
+    title = utils.escape_for_templates(activity.title)
     budget = activity.budget
-    location = activity.location
+    location = utils.escape_for_templates(activity.location)
     apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     start = activity.start.strftime("%Y-%m-%d %H:%M")
     end = activity.end.strftime("%Y-%m-%d %H:%M")
     introduction = escape_for_templates(activity.introduction)
 
-    url = activity.URL
+    url = utils.escape_for_templates(activity.URL)
     endbefore = activity.endbefore
     bidding = activity.bidding
     amount = activity.YQPoint
@@ -2709,7 +2708,7 @@ def examineActivity(request, aid):
     intro_pic = examine_pic.image
 
     need_checkin = activity.need_checkin
-    apply_reason = activity.apply_reason
+    apply_reason = utils.escape_for_templates(activity.apply_reason)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动审核")
     # bar_display["title_name"] = "审查活动"
@@ -2765,7 +2764,8 @@ def save_show_position_status(request):
         if params["status"]:
             position.show_post = True
         else:
-            if len(Position.objects.filter(pos=0, org=position.org)) == 1 and position.pos==0:    #非法前端量修改
+            org = position.org
+            if len(Position.objects.filter(is_admin=True, org=org)) == 1 and position.pos==0:    #非法前端量修改
                 return JsonResponse({"success":False})
             position.show_post = False
         position.save()
@@ -2828,7 +2828,7 @@ def save_subscribe_status(request):
 
     return JsonResponse({"success": True})
 
-
+'''
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 def apply_position(request, oid=None):
@@ -2884,7 +2884,7 @@ def apply_position(request, oid=None):
         publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.IMPORTANT},
     )
     return redirect("/notifications/")
-
+'''
 
 
 
@@ -3024,7 +3024,7 @@ def addComment(request, comment_base, receiver=None):
     URL={
         'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
         'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
-        'reimbursement': f'/modifyReimbursement/?reimb_id={comment_base.id}',
+        'reimbursement': f'/modifyEndActivity/?reimb_id={comment_base.id}',
         'activity': f"/examineActivity/{comment_base.id}"
     }
     if user_type == "Organization":
@@ -3371,7 +3371,7 @@ def showPosition(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-def showReimbursement(request):
+def endActivity(request):
     """
     报销信息的聚合界面
     对审核老师进行了特判
@@ -3544,7 +3544,7 @@ def make_relevant_notification(application, info):
 # 新建+修改+取消+审核 报销信息
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-def modifyReimbursement(request):
+def modifyEndActivity(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
 
@@ -3559,6 +3559,14 @@ def modifyReimbursement(request):
     #审核老师
     auditor = User.objects.get(username=local_dict["audit_teacher"]["Funds"])
     auditor_name=utils.get_person_or_org(auditor).name
+
+    # 获取前端页面中可能存在的提示
+    try:
+        if request.GET.get("warn_code", None) is not None:
+            html_display["warn_code"] = int(request.GET.get("warn_code"))
+            html_display["warn_message"] = request.GET.get("warn_message")
+    except:
+        pass
 
     if reimb_id is not None:  # 如果存在对应报销
         try:  # 尝试获取已经新建的Reimbursement
@@ -3648,9 +3656,6 @@ def modifyReimbursement(request):
                 }
                 #创建通知
                 make_notification(application,request,content,receiver)
-                if request.POST.get("post_type", None)=="new_submit":
-                    is_new_application=True
-                    application=None
             elif context["warn_code"] != 1:  # 没有返回操作提示
                 raise NotImplementedError("处理经费申请中出现未预见状态，请联系管理员处理！")
 
@@ -3665,8 +3670,13 @@ def modifyReimbursement(request):
             context = addComment(request, application,receiver)
 
         # 准备用户提示量
-        html_display["warn_code"] = context["warn_code"]
-        html_display["warn_message"] = context["warn_message"]
+        warn_code = context["warn_code"]
+        warn_message = context["warn_message"]
+
+
+        # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
+        append = f"?reimb_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
+        return redirect("/modifyEndActivity/" + append)
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
     '''
@@ -3715,7 +3725,7 @@ def make_notification(application, request,content,receiver):
     URL = {
         'modifyposition': f'/modifyPosition/?pos_id={application.id}',
         'neworganization': f'/modifyOrganization/?org_id={application.id}',
-        'reimbursement': f'/modifyReimbursement/?reimb_id={application.id}',
+        'reimbursement': f'/modifyEndActivity/?reimb_id={application.id}',
     }
     sender = request.user
     typename = Notification.Type.NEEDDO if post_type == 'new_submit' else Notification.Type.NEEDREAD

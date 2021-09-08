@@ -1,5 +1,6 @@
 from app.models import TransferRecord
 from app.models import Notification
+from app.utils import random_code_init
 import pandas as pd
 import os
 from app.models import NaturalPerson, Freshman, Position, Organization, OrganizationType, Activity, Help
@@ -16,57 +17,85 @@ def load_file(file):
     return pd.read_csv(f"test_data/{file}", dtype=object, encoding="utf-8")
 
 
-def load_orgtype():
-    username = "YPadmin"
-    user, mid = User.objects.get_or_create(username=username)
-    password = "YPPFtest"
-    user.set_password(password)
-    user.save()
+def load_orgtype(debug=True):
+    if debug:
+        username = "someone"
+        user, mid = User.objects.get_or_create(username=username)
+        password = random_code_init(username)
+        user.set_password(password)
+        user.save()
 
-    Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
-    Nperson.name = username
-    Nperson.save()
+        Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
+        Nperson.name = "待定"
+        Nperson.save()
     org_type_df = load_file("orgtypeinf.csv")
     for _, otype_dict in org_type_df.iterrows():
         type_id = int(otype_dict["otype_id"])
         type_name = otype_dict["otype_name"]
+        control_pos_threshold = int(otype_dict.get("control_pos_threshold", 0))
         # type_superior_id = int(otype_dict["otype_superior_id"])
-        incharge = otype_dict["incharge"]
+        incharge = otype_dict.get("incharge", "待定")
         orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
         orgtype.otype_name = type_name
         # orgtype.otype_superior_id = type_superior_id
         Nperson, mid = NaturalPerson.objects.get_or_create(name=incharge)
         orgtype.incharge = Nperson
         orgtype.job_name_list = otype_dict["job_name_list"]
+        orgtype.control_pos_threshold = control_pos_threshold
         orgtype.save()
 
 
 def load_org():
     org_df = load_file("orginf.csv")
+    msg = ''
     for _, org_dict in org_df.iterrows():
-        username = org_dict["organization_id"]
-        password = "YPPFtest"
-        if username[:2] == "zz":
-            oname = org_dict["oname"]
-            type_id = org_dict["otype_id"]
-            person = org_dict["person"]
-            user, mid = User.objects.get_or_create(username=username)
+        try:
+            username = org_dict["organization_id"]
+            password = random_code_init(username)
+            if username[:2] == "zz":
+                oname = org_dict["oname"]
+                type_id = org_dict["otype_id"]
+                persons = org_dict.get("person", "待定")
+                pos = max(0, int(org_dict.get("pos", 0)))
+                user, mid = User.objects.get_or_create(username=username)
+                user.set_password(password)
+                user.save()
+                orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
+                org, mid = Organization.objects.get_or_create(
+                    organization_id=user, otype=orgtype
+                )
+                org.oname = oname
+                org.save()
+                msg += '<br/>成功创建组织：'+oname
+
+                for person in persons.split(','):
+                    people = NaturalPerson.objects.get(name=person)
+                    position, mid = Position.objects.get_or_create(
+                        person=people, org=org, status=Position.Status.INSERVICE,
+                        pos=pos, is_admin=True,
+                    )
+                    position.save()
+                    msg += '<br/>&emsp;&emsp;成功增加负责人：'+person
+        except Exception as e:
+            msg += '<br/>未能创建组织'+oname+',原因：'+str(e)
+    YQPoint_oname = local_dict.get('YQPoint_source_oname')
+    if YQPoint_oname:
+        username = 'zz00001'
+        user, created = User.objects.get_or_create(username=username)
+        if created:
+            password = random_code_init(username)
             user.set_password(password)
             user.save()
-            orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
+            orgtype, mid = OrganizationType.objects.get_or_create(otype_id=0)
             org, mid = Organization.objects.get_or_create(
                 organization_id=user, otype=orgtype
             )
-            org.oname = oname
+            org.oname = YQPoint_oname
             org.save()
+            msg += '<br/>成功创建元气值发放组织：'+YQPoint_oname
+    return msg
 
-            people, mid = NaturalPerson.objects.get_or_create(name=person)
-            pos, mid = Position.objects.get_or_create(
-                person=people, org=org, status=Position.Status.INSERVICE, pos=0
-            )
-            pos.save()
-            # orgtype=OrganizationType.objects.create(otype_id=type_id)
-            # orgtype.otype
+
 
 
 def load_org_info(request):
@@ -79,8 +108,7 @@ def load_org_info(request):
             load_orgtype()
             message = "导入团体类型信息成功！"
         elif load_type == "org":
-            load_org()
-            message = "导入团体信息成功！"
+            message = "导入团体信息成功！"+load_org()
         else:
             message = "没有得到loadtype参数:[org或otype]"
     else:
@@ -257,49 +285,72 @@ def load_stu_info(request):
         return render(request, "debugging.html", context)
 
     stu_df = load_file("stuinf.csv")
+    total = 0
     stu_list = []
+    exist_list = []
+    failed_list = []
     Char2Gender = {"男": NaturalPerson.Gender.MALE, "女": NaturalPerson.Gender.FEMALE}
+    username = 'null'
     for _, stu_dict in tqdm(stu_df.iterrows()):
-        sid = username = stu_dict["学号"]
-        password = username
-        name = stu_dict["姓名"]
-        gender = Char2Gender[stu_dict["性别"]]
-        stu_major = stu_dict["专业"]
-        if not stu_major or stu_major == "None":
-            stu_major = "元培计划（待定）"
-        stu_grade = "20" + sid[:2]
-        stu_class = stu_dict["班级"]
-        email = stu_dict["邮箱"]
-        if not email or email == "None":
-            if sid[0] == "2":
-                email = sid + "@stu.pku.edu.cn"
-            else:
-                email = sid + "@pku.edu.cn"
-        tel = stu_dict["手机号"]
-        if not tel or tel == "None":
-            tel = None
+        total += 1
+        try:
+            sid = username = stu_dict["学号"]
+            password = username
+            name = stu_dict["姓名"]
+            gender = Char2Gender[stu_dict["性别"]]
+            stu_major = stu_dict["专业"]
+            if not stu_major or stu_major == "None":
+                stu_major = "元培计划（待定）"
+            stu_grade = "20" + sid[:2]
+            stu_class = stu_dict["班级"]
+            email = stu_dict["邮箱"]
+            if not email or email == "None":
+                if sid[0] == "2":
+                    email = sid + "@stu.pku.edu.cn"
+                else:
+                    email = sid + "@pku.edu.cn"
+            tel = stu_dict["手机号"]
+            if not tel or tel == "None":
+                tel = None
 
-        user = User.objects.create_user(username=username, password=password)
-        # 这一步的PBKDF2加密算法太慢了
+            user, created = User.objects.get_or_create(username=username)
+            if not created:
+                exist_list.append(username)
+                continue
+            # 这一步的PBKDF2加密算法太慢了
+            user.set_password(password)
+            user.save()
 
-        # 批量导入比循环导入快很多，但可惜由于外键person_id的存在，必须先保存user，User模型无法批量导入。
-        # 但重点还是 set_password 的加密算法太 TM 的慢了！
-        stu_list.append(
-            NaturalPerson(
-                person_id=user,
-                stu_id_dbonly=sid,
-                name=name,
-                gender=gender,
-                stu_major=stu_major,
-                stu_grade=stu_grade,
-                stu_class=stu_class,
-                email=email,
-                telephone=tel,
+            # 批量导入比循环导入快很多，但可惜由于外键person_id的存在，必须先保存user，User模型无法批量导入。
+            # 但重点还是 set_password 的加密算法太 TM 的慢了！
+            stu_list.append(
+                NaturalPerson(
+                    person_id=user,
+                    stu_id_dbonly=sid,
+                    name=name,
+                    gender=gender,
+                    stu_major=stu_major,
+                    stu_grade=stu_grade,
+                    stu_class=stu_class,
+                    email=email,
+                    telephone=tel,
+                )
             )
-        )
+        except:
+            failed_list.append(username)
+            continue
     NaturalPerson.objects.bulk_create(stu_list)
 
-    context = {"message": "导入学生信息成功！"}
+    context = {
+        "message": '<br/>'.join((
+                    "导入学生信息成功！",
+                    f"共{total}人，尝试导入{len(stu_list)}人",
+                    f"已存在{len(exist_list)}人，名单为",
+                    ','.join(exist_list),
+                    f"失败{len(failed_list)}人，名单为",
+                    ','.join(failed_list),
+                    ))
+        }
     return render(request, "debugging.html", context)
 
 
