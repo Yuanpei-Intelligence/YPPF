@@ -78,13 +78,60 @@ class OrganizationAdmin(admin.ModelAdmin):
 @admin.register(Position)
 class PositionAdmin(admin.ModelAdmin):
     list_display = ["person", "org", "pos", "pos_name", "is_admin"]
-    search_fields = ("person__name", "org__oname")
-    list_filter = ('pos', 'is_admin')
-    list_display_links = ('person', 'org')
+    search_fields = ("person__name", "org__oname", 'org__otype__otype_name')
+    list_filter = ('pos', 'is_admin', 'org__otype')
 
     def pos_name(self, obj):
         return obj.org.otype.get_name(obj.pos)
-    pos_name.short_description = "职位名称"
+    pos_name.short_description = "职务名称"
+
+    actions = ['demote', 'promote', 'to_member', 'to_manager', 'set_admin', 'set_not_admin']
+
+    def demote(self, request, queryset):
+        for pos in queryset:
+            pos.pos += 1
+            pos.save()
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    demote.short_description = "职务等级 增加(降职)"
+
+    def promote(self, request, queryset):
+        for pos in queryset:
+            pos.pos = min(0, pos.pos - 1)
+            pos.save()
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    promote.short_description = "职务等级 降低(升职)"
+
+    def to_member(self, request, queryset):
+        for pos in queryset:
+            pos.pos = pos.org.otype.get_length()
+            pos.is_admin = False
+            pos.save()
+        return self.message_user(request=request,
+                                 message='修改成功, 并收回了管理权限!')
+    to_member.short_description = "设为成员"
+
+    def to_manager(self, request, queryset):
+        for pos in queryset:
+            pos.pos = 0
+            pos.is_admin = True
+            pos.save()
+        return self.message_user(request=request,
+                                 message='修改成功, 并赋予了管理权限!')
+    to_manager.short_description = "设为负责人"
+
+    def set_admin(self, request, queryset):
+        queryset.update(is_admin = True)
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    set_admin.short_description = "赋予 管理权限"
+
+    def set_not_admin(self, request, queryset):
+        queryset.update(is_admin = False)
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    set_not_admin.short_description = "收回 管理权限"
 
 
 
