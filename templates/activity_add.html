@@ -197,19 +197,15 @@
                                                             <option value="get">先到先得</option>
                                                             <option value="bid">抽签模式</option>
                                                         </select>
-                                                        <input type="hidden" id="signscheme" name="signscheme"
-                                                            value="" />
                                                     </div>
         
                                                     <div class="form-group col-6 mb-0">
-                                                        <label for="yq_source">元气值来源</label>
-                                                        <select id="yq_source" name="yq_source" class="form-control selectpicker">
+                                                        <label for="from_college">元气值来源</label>
+                                                        <select id="from_college" name="from_college" class="form-control selectpicker">
                                                             <option value="" selected disabled>选择元气值来源</option>
                                                             <option value="get">向学生收取</option>
-                                                            <option value="college">向学院申请</option>
+                                                            <option id="college" value="college">向学院申请</option>
                                                         </select>
-                                                        <input type="hidden" id="from_college" name="from_college"
-                                                            value="" />
                                                     </div>
 
                                                     {% else %}
@@ -222,7 +218,7 @@
                                                     </div>
                                                     <div style="display: none;">
                                                         <button class="btn btn-outline-primary"
-                                                            type="button" id="yq_source"
+                                                            type="button" id="from_college"
                                                             aria-expanded="false">{{yq_source}}
                                                         </button>
                                                     </div>
@@ -564,11 +560,10 @@
     $("input[name='recorded']").on("change", function () {
         //输出选中状态
         if (false === $(this).prop("checked")) {
-            document.getElementById("college").style.display = "";
+            document.getElementById("college").removeAttribute("disabled");
         } else {
-            document.getElementById("yq_source").innerHTML = "向学生收取";
-            document.getElementById("college").style.display = "none";
-            document.getElementById("from_college").value = "0";
+            document.getElementById("from_college").value = "get";
+            document.getElementById("college").setAttribute("disabled", "");
             document.getElementById("reason_block").style.display = "none";
             document.getElementById("apply_reason").required = "";
         }
@@ -677,7 +672,11 @@
     {% endif %}
     // 报名信息
     document.getElementById("pricebutton").innerHTML = "{{signscheme}}";
-    document.getElementById("yq_source").innerHTML = "{{yq_source}}";
+    {% if yq_source == "向学院申请" %}
+    document.getElementById("from_college").value = "college";
+    {% else %}
+    document.getElementById("from_college").value = "get";
+    {% endif %}
     document.getElementById("aprice").placeholder = "{{amount}}";
     {% if no_limit %}
     document.getElementById("unlimited_capacity").checked = true;
@@ -732,15 +731,15 @@
 
         {% if full_editable %}
             {% if bidding %}
-            document.getElementById("signscheme").value = "1";
+            document.getElementById("signscheme").value = "bid";
             {% else %}
-            document.getElementById("signscheme").value = "0";
+            document.getElementById("signscheme").value = "get";
             {% endif %}
             {% if yq_source == "向学院申请" %}
-            document.getElementById("from_college").value = "1";
+            document.getElementById("from_college").value = "college";
             document.getElementById("reason_block").style.display = "";
             {% else %}
-            document.getElementById("from_college").value = "0";
+            document.getElementById("from_college").value = "get";
             {% endif %}
         {% else %}
             {% if yq_source == "向学院申请" %}

@@ -106,17 +106,17 @@ def activity_base_check(request, edit=False):
     # 预算，元气值支付模式，是否直接向学院索要元气值
     # 在审核通过后，这些不可修改
     context["budget"] = float(request.POST["budget"])
-    signscheme = int(request.POST["signscheme"])
-    if signscheme:
+    signscheme = request.POST["signscheme"]
+    if signscheme == "bid":
         context["bidding"] = True
-    else:
+    elif signscheme == "get":
         context["bidding"] = False
 
     # 向学院申请元气值
     from_college = request.POST["from_college"]
-    if from_college == "1":
+    if from_college == "college":
         context["from_college"] = True
-    elif from_college == "0":
+    elif from_college == "get":
         context["from_college"] = False
 
 
