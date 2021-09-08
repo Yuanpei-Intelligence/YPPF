@@ -52,7 +52,7 @@ class NaturalPerson(models.Model):
     biography = models.TextField("自我介绍", max_length=1024, default="还没有填写哦～")
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
-    first_time_login = models.BooleanField(default=True)
+    first_time_login = models.BooleanField("首次登录", default=True)
     inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
     last_time_login = models.DateTimeField("上次登录时间", blank=True, null=True)
     objects = NaturalPersonManager()
@@ -77,8 +77,8 @@ class NaturalPerson(models.Model):
     stu_dorm = models.CharField("宿舍", max_length=6, null=True, blank=True)
 
     class GraduateStatus(models.IntegerChoices):
-        UNDERGRADUATED = 0  # 未毕业
-        GRADUATED = 1  # 毕业则注销
+        UNDERGRADUATED = (0, "未毕业")
+        GRADUATED = (1, "已毕业")
 
     status = models.SmallIntegerField("在校状态", choices=GraduateStatus.choices, default=0)
 
@@ -207,6 +207,8 @@ class OrganizationType(models.Model):
     )  # [部长, 副部长, 部员]
 
     allow_unsubscribe = models.BooleanField("允许取关?", default=True)
+
+    control_pos_threshold = models.SmallIntegerField("管理者权限等级上限",default = 0)
 
     def __str__(self):
         return str(self.otype_name)
@@ -368,6 +370,9 @@ class Position(models.Model):
     # 职务的逻辑应该是0最高，1次之这样，然后数字映射到名字是在团体类型表中体现的
     # 10 没有特定含义，只表示最低等级
     pos = models.SmallIntegerField(verbose_name="职务等级", default=10)
+
+    # 是否有管理权限，默认值为 pos <= otype.control_pos_threshold, 可以被覆盖
+    is_admin = models.BooleanField("是否是负责人", default = 0)
 
     # 是否选择公开当前的职务
     show_post = models.BooleanField(default=True)
@@ -994,15 +999,16 @@ class ModifyPosition(CommentBase):
             # 尝试获取已有的position
             if Position.objects.current().filter(
                 org = self.org, person = self.person).exists(): # 如果已经存在这个量了
-                Position.objects.current().get(org = self.org, person = self.person
+                Position.objects.current().filter(org = self.org, person = self.person
                 ).update(
                     status = Position.Status.INSERVICE,
-                    pos = self.pos)
+                    pos = self.pos,
+                    is_admin = (self.pos<=self.org.otype.control_pos_threshold))
             else: # 不存在 直接新建
-                Position.objects.create(pos=self.pos, person=self.person, org=self.org)
+                Position.objects.create(pos=self.pos, person=self.person, org=self.org, is_admin = (self.pos<=self.org.otype.control_pos_threshold))
         else:   # 修改 则必定存在这个量
             Position.objects.activated().filter(org = self.org, person = self.person
-                ).update(pos = self.pos)
+                ).update(pos = self.pos, is_admin = (self.pos<=self.org.otype.control_pos_threshold))
         # 修改申请状态
         ModifyPosition.objects.filter(id=self.id).update(status=ModifyPosition.Status.CONFIRMED)
 
