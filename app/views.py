@@ -3121,7 +3121,7 @@ def showNewOrganization(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type == "Organization":
         html_display["warn_code"] = 1
-        html_display["warn_code"] = "请不要使用团体账号申请新团体！"
+        html_display["warn_message"] = "请不要使用团体账号申请新团体！"
         return redirect(
                         "/welcome/"+ "?warn_code=1&warn_message={warn_message}".format(
                             warn_message=html_display["warn_message"]
@@ -3160,19 +3160,19 @@ def modifyPosition(request):
     # 根据是否有newid来判断是否是第一次
     position_id = request.GET.get("pos_id", None)
     if position_id is not None: # 如果存在对应团体
-        application = ModifyPosition.objects.get(id = position_id)
-            # 接下来检查是否有权限check这个条目
-            # 至少应该是申请人或者被申请团体之一
-        
-        try:    # 尝试获取已经新建的Position
+        try:
+            application = ModifyPosition.objects.get(id = position_id)
+                # 接下来检查是否有权限check这个条目
+                # 至少应该是申请人或者被申请团体之一
             if user_type == "Person" and application.person != me:
+                # 尝试获取已经新建的Position
                 html_display=user_login_org(request,application.org)
                 if html_display['warn_code']==1:
                     return redirect(
-                        "/welcome/"+ "?warn_code=1&warn_message={warn_message}".format(
-                                warn_message=html_display["warn_message"]
+                            "/welcome/"+ "?warn_code=1&warn_message={warn_message}".format(
+                                    warn_message=html_display["warn_message"]
+                                )
                             )
-                        )
                 else:
                     #防止后边有使用，因此需要赋值
                     user_type="Organization"
@@ -3200,7 +3200,7 @@ def modifyPosition(request):
         except:
             # 非法的名字, 出现恶意修改参数的情况
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入成员申请页面"
+            html_display["warn_message"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入成员申请页面"
             return redirect(
                         "/welcome/"
                         + "?warn_code=1&warn_message={warn_message}".format(
@@ -3384,7 +3384,7 @@ def endActivity(request):
             pass
         if not is_auditor:
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "请不要使用个人账号申请报销！"
+            html_display["warn_message"] = "请不要使用个人账号申请报销！"
             return redirect(
                         "/welcome/"
                         + "?warn_code=1&warn_message={warn_message}".format(
@@ -3420,7 +3420,7 @@ def showActivity(request):
         if not is_teacher:
             html_display["warn_code"] = 1
 
-            html_display["warn_code"] = "学生账号不能进入活动立项页面！"
+            html_display["warn_message"] = "学生账号不能进入活动立项页面！"
 
             return redirect(
                         "/welcome/"
@@ -3764,7 +3764,7 @@ def modifyOrganization(request):
     me = utils.get_person_or_org(request.user)  # 获取自身
     if user_type == "Organization":
         html_display["warn_code"] = 1
-        html_display["warn_code"] = "请不要使用团体账号申请新团体！"
+        html_display["warn_message"] = "请不要使用团体账号申请新团体！"
         return redirect(
                         "/welcome/"
                         + "?warn_code=1&warn_message={warn_message}".format(
@@ -3927,7 +3927,7 @@ def sendMessage(request):
     me = utils.get_person_or_org(request.user)  # 获取自身
     if user_type == "Person":
         html_display["warn_code"] = 1
-        html_display["warn_code"] = "只有团体账号才能发送通知！"
+        html_display["warn_message"] = "只有团体账号才能发送通知！"
         return redirect(
                         "/welcome/"
                         + "?warn_code=1&warn_message={warn_message}".format(
