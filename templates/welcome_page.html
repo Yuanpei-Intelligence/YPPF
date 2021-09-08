@@ -23,34 +23,44 @@
                 <div id="style1" class="carousel slide style-custom-1" data-ride="carousel">
                     <ol class="carousel-indicators">
                         <li data-target="#style1 active"></li>
-                        {% for path in paths %}
+                        {% for _ in guidepics %}
                         <li data-target="#style1"></li>
                         {% endfor %}
-                        {% for photo in photo_display %}
+                        {% for _ in photo_display %}
                         <li data-target="#style1"></li>
                         {% endfor %}
                     </ol>
                     <div class="carousel-inner">
                         <div class="carousel-item active">
-                            <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
-                                    src={% static "assets/img/guidepics/default.jpeg" %}>
-                        </div>
-                        {% for path in paths %}
-                        <div class="carousel-item">
-                            <a href="/{{path}}">
+                            {% if firsturl %}
+                            <a href="{{ firsturl }}">
+                            {% endif %}
                                 <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
-                                    src="/static/assets/img/guidepics/{{path}}.jpeg" %}>
+                                    src="/static/assets/img/guidepics/{{ firstpic }}" %}>
+                            {% if firsturl %}
                             </a>
+                            {% endif %}
                         </div>
+                        {% for pic, url in guidepics %}
+                        <div class="carousel-item">
+                            {% if url %}
+                            <a href="{{ url }}">
+                            {% endif %}
+                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
+                                    src="/static/assets/img/guidepics/{{ pic }}" %}>
+                            {% if url %}
+                            </a>
+                            {% endif %}
+                            </div>
                         {% endfor %}
                         {% for photo in photo_display %}
                         <div class="carousel-item">
                             <a href="/viewActivity/{{photo.activity_id}}">
                                 <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
                                     src={{photo.image}}>
-                                <div class="carousel-caption">
-                                    <h5>{{photo.activity.title}}</h5>
-                                    <p>{{photo.activity.introduction}}</p>
+                                <div class="carousel-caption" style="left: 0px; background-color: #ffffffaa; width: 100%;">
+                                    <h2 class="mb-0">{{photo.activity.title}}</h2>
+                                    <p class="mb-0">{{photo.activity.introduction}}</p>
                               </div>
                             </a>
                         </div>
