@@ -134,11 +134,38 @@ class PositionAdmin(admin.ModelAdmin):
     set_not_admin.short_description = "收回 管理权限"
 
 
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ["id", "receiver", "sender", "title", "start_time"]
+    search_fields = ('id', "receiver__username", "sender__username", 'title')
+    list_filter = ('start_time', 'status', 'typename', "finish_time")
+
+    actions = ['set_delete']
+
+    def set_delete(self, request, queryset):
+        queryset.update(status = Notification.Status.DELETE)
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    set_delete.short_description = "设置状态为 删除"
+
+
+@admin.register(Help)
+class HelpAdmin(admin.ModelAdmin):
+    list_display = ["id", "title"]
+
+
+@admin.register(Wishes)
+class WishesAdmin(admin.ModelAdmin):
+    list_display = ["id", "text", 'time', "background_display"]
+    list_filter = ('time', 'background')
+    
+    def background_display(self, obj):
+        return mark_safe(f'<span style="color: {obj.background};"><strong>{obj.background}</strong></span>')
+    background_display.short_description = "背景颜色"
+
 
 admin.site.register(Activity)
 admin.site.register(TransferRecord)
 
 admin.site.register(YQPointDistribute)
-admin.site.register(Notification)
-admin.site.register(Help)
 admin.site.register(ModifyRecord)
