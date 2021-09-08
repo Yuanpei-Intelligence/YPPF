@@ -163,7 +163,7 @@
                                                     name="recorded">
                                                 <label class="form-check-label" for="defaultCheck1">
                                                     已审核
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="已审核活动指学期初已上报学院且获准的活动, 擅自勾选有可能导致团体无法报销或者团体被禁止登录！如果向学院申请元气值，需要二次审核，故不要勾选此选项。">
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="已审核活动指学期初已上报学院且获准的活动, 擅自勾选有可能导致小组无法报销或者小组被禁止登录！如果向学院申请元气值，需要二次审核，故不要勾选此选项。">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -319,7 +319,7 @@
                                                                 name="inner">
                                                             <label class="form-check-label" for="defaultCheck1">
                                                                 内部活动?
-                                                                <a data-toggle="tooltip" data-placement="bottom" title="内部活动对所有同学可见，但只有团体内部成员可以报名。此选项改变时，已有的报名不受影响。">
+                                                                <a data-toggle="tooltip" data-placement="bottom" title="内部活动对所有同学可见，但只有小组内部成员可以报名。此选项改变时，已有的报名不受影响。">
                                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                                         class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                                         <path
@@ -399,7 +399,7 @@
                                                             name="need_checkin">
                                                         <label class="form-check-label" for="defaultCheck1">
                                                             需要签到?
-                                                            <a data-toggle="tooltip" data-placement="bottom" title="若勾选此项，会自动生成在仅活动进行时可用、仅允许活动举办团体在活动页面查看或下载的签到二维码。活动进行时，需要将该二维码展示给同学扫码签到。">
+                                                            <a data-toggle="tooltip" data-placement="bottom" title="若勾选此项，会自动生成在仅活动进行时可用、仅允许活动举办小组在活动页面查看或下载的签到二维码。活动进行时，需要将该二维码展示给同学扫码签到。">
                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                                     class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                                     <path
@@ -1001,7 +1001,7 @@
         var now = new Date()
         if (applyEnd < now) {
             document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "活动报名截止时间已过，请通知团体修改。";
+            document.getElementById("warn_msg").innerHTML = "活动报名截止时间已过，请通知小组修改。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
