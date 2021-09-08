@@ -349,7 +349,7 @@ def publish_notification(notification_or_id,
     else:  # 团体
         # 转发团体消息给其负责人
         message += f'\n消息来源：{str(receiver)}，请切换到该团体账号进行操作。'
-        wechat_receivers = receiver.position_set.filter(pos=0)
+        wechat_receivers = receiver.position_set.filter(is_admin=True)
         if check_block:
             wechat_receivers = wechat_receivers.filter(
                 person__wechat_receive_level__lte=level)    # 不小于接收等级
@@ -495,7 +495,7 @@ def publish_notifications(
     # 接下来是发送给团体的部分
     org_receivers = Organization.objects.filter(organization_id__in=receiver_ids)
     for org in org_receivers:
-        managers = org.position_set.filter(pos=0)
+        managers = org.position_set.filter(is_admin=True)
         if check_block:    # 屏蔽时，不小于接收等级
             managers = managers.filter(person__wechat_receive_level__lte=level)
         managers = managers.values_list("person__person_id__username", flat=True)
