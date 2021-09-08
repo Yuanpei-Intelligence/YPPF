@@ -201,10 +201,11 @@ def index(request):
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                 return redirect(
-                    "/welcome/?warn_code={}&warn_message={}".format(
-                        html_display["warn_code"], html_display["warn_message"]
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
                     )
-                )
             if not arg_origin.startswith("http"):  # 非外部链接，合法性已经检查过
                 return redirect(arg_origin)  # 不需要加密验证
 
@@ -538,8 +539,7 @@ def user_login_org(request, org):
         position = position[0]
         assert position.pos <= org.otype.control_pos_threshold
     except:
-        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团体账户的权限!"
-        return redirect(urls)
+        return wrong("没有登录到该团体账户的权限!")
     # 到这里,是本人团体并且有权限登录
     auth.logout(request)
     auth.login(request, org.organization_id)  # 切换到团体账号
@@ -2439,9 +2439,8 @@ def addActivity(request, aid=None):
                 html_display=user_login_org(request,activity.organization_id)
                 if html_display['warn_code']==1:
                     return redirect(
-                        "/welcome/"
-                        + "?warn_code={}&warn_message={}".format(
-                            html_display["warn_code"], html_display["warn_message"]
+                        "/welcome/"+"?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
                         )
                     )
                 else:#成功以团体账号登陆
@@ -3124,11 +3123,10 @@ def showNewOrganization(request):
         html_display["warn_code"] = 1
         html_display["warn_code"] = "请不要使用团体账号申请新团体！"
         return redirect(
-            "/welcome/"
-            + "?warn_code={}&warn_message={}".format(
-                html_display["warn_code"], html_display["warn_message"]
-            )
-        )
+                        "/welcome/"+ "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
 
     me = utils.get_person_or_org(request.user, user_type)
 
@@ -3162,35 +3160,34 @@ def modifyPosition(request):
     # 根据是否有newid来判断是否是第一次
     position_id = request.GET.get("pos_id", None)
     if position_id is not None: # 如果存在对应团体
-        try:    # 尝试获取已经新建的Position
-            application = ModifyPosition.objects.get(id = position_id)
+        application = ModifyPosition.objects.get(id = position_id)
             # 接下来检查是否有权限check这个条目
             # 至少应该是申请人或者被申请团体之一
+        
+        try:    # 尝试获取已经新建的Position
             if user_type == "Person" and application.person != me:
                 html_display=user_login_org(request,application.org)
                 if html_display['warn_code']==1:
                     return redirect(
-                        "/welcome/"
-                        + "?warn_code={}&warn_message={}".format(
-                            html_display["warn_code"], html_display["warn_message"]
+                        "/welcome/"+ "?warn_code=1&warn_message={warn_message}".format(
+                                warn_message=html_display["warn_message"]
+                            )
                         )
-                    )
                 else:
                     #防止后边有使用，因此需要赋值
                     user_type="Organization"
                     request.user=application.org.organization_id
-                    me = application.org
+                    me = application.org    
             assert (application.org == me) or (application.person == me)
-
         except: #恶意跳转
             html_display["warn_code"] = 1
             html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
-                "/welcome/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
         is_new_application = False # 前端使用量, 表示是老申请还是新的
         applied_org = application.org
 
@@ -3205,11 +3202,11 @@ def modifyPosition(request):
             html_display["warn_code"] = 1
             html_display["warn_code"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入成员申请页面"
             return redirect(
-                "/welcome/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
         
         # 查找已经存在的审核中的申请
         try:
@@ -3389,11 +3386,11 @@ def endActivity(request):
             html_display["warn_code"] = 1
             html_display["warn_code"] = "请不要使用个人账号申请报销！"
             return redirect(
-                "/welcome/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
 
     if is_auditor:
         shown_instances = Reimbursement.objects
@@ -3426,11 +3423,11 @@ def showActivity(request):
             html_display["warn_code"] = "学生账号不能进入活动立项页面！"
 
             return redirect(
-                "/welcome/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
     if is_teacher:
         shown_instances = Activity.objects.all_activated().filter(examine_teacher = me.id)
     else:
@@ -3576,8 +3573,8 @@ def modifyEndActivity(request):
                 if html_display['warn_code']==1:
                     return redirect(
                         "/welcome/"
-                        + "?warn_code={}&warn_message={}".format(
-                            html_display["warn_code"], html_display["warn_message"]
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
                         )
                     )
                 else:#成功
@@ -3592,11 +3589,11 @@ def modifyEndActivity(request):
             html_display["warn_code"] = 1
             html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
-                "/welcome/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
         is_new_application = False  # 前端使用量, 表示是老申请还是新的
 
     else:  # 如果不存在id, 默认应该传入活动信息
@@ -3607,11 +3604,11 @@ def modifyEndActivity(request):
             html_display["warn_code"] = 1
             html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
-                "/welcome/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
         is_new_application = True  # 新的申请
 
          # 这种写法是为了方便随时取消某个条件
@@ -3769,11 +3766,11 @@ def modifyOrganization(request):
         html_display["warn_code"] = 1
         html_display["warn_code"] = "请不要使用团体账号申请新团体！"
         return redirect(
-            "/welcome/"
-            + "?warn_code={}&warn_message={}".format(
-                html_display["warn_code"], html_display["warn_message"]
-            )
-        )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
 
@@ -3801,11 +3798,11 @@ def modifyOrganization(request):
             html_display["warn_code"] = 1
             html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
-                "/welcome/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
         is_new_application = False # 前端使用量, 表示是老申请还是新的
 
     else:   
@@ -3932,11 +3929,11 @@ def sendMessage(request):
         html_display["warn_code"] = 1
         html_display["warn_code"] = "只有团体账号才能发送通知！"
         return redirect(
-            "/welcome/"
-            + "?warn_code={}&warn_message={}".format(
-                html_display["warn_code"], html_display["warn_message"]
-            )
-        )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
     
     if request.method == "POST":
         # 合法性检查
