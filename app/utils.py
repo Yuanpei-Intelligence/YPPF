@@ -48,8 +48,10 @@ def check_user_access(redirect_url="/logout/"):
 
             isFirst = get_person_or_org(request.user, user_type).first_time_login
             # 如果是首次登陆，会跳转到用户须知的页面
-            if isFirst and request.session.get('confirmed') != 'yes':
-                return redirect("/agreement/")
+            if isFirst:
+                if request.session.get('confirmed') != 'yes':
+                    return redirect("/agreement/")
+                return redirect('/modpw/')
 
             return view_function(request, *args, **kwargs)
 
