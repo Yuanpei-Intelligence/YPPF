@@ -1088,6 +1088,25 @@ def freshman(request):
     return render(request, html_path, locals())
 
 
+@login_required(redirect_field_name="origin")
+def user_agreement(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect("/index/")
+
+    if request.method == "POST":
+        confirm = request.POST.get('confirm') == 'yes'
+        if not confirm:
+            return redirect('/logout/')
+        request.session['confirmed'] = 'yes'
+        return redirect('/modpw/')
+    
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user, "用户须知")
+    return render(request, 'user_agreement.html', locals())
+
+
+
 def auth_register(request):
     if request.user.is_superuser:
         if request.method == "POST" and request.POST:
@@ -1440,6 +1459,7 @@ def forget_password(request):
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
 def modpw(request):
     """
         可能在三种情况进入这个页面：首次登陆；忘记密码；或者常规的修改密码。
