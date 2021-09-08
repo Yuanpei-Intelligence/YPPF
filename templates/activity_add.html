@@ -188,11 +188,14 @@
                                             </h2>
                                             <div class="form-group">
                                                 <div class="row">
-                                                    {% if not edit and not examine or full_editable %}
 
                                                     <div class="form-group col-6 mb-0">
                                                         <label for="signscheme">报名模式</label>
+                                                        {% if not edit and not examine or full_editable %}
                                                         <select id="signscheme" name="signscheme" class="form-control selectpicker">
+                                                        {% else %}
+                                                        <select id="signscheme" name="signscheme" class="form-control selectpicker" disabled>
+                                                        {% endif %}
                                                             <option value="" selected disabled>选择报名模式</option>
                                                             <option value="get">先到先得</option>
                                                             <option value="bid">抽签模式</option>
@@ -201,29 +204,16 @@
         
                                                     <div class="form-group col-6 mb-0">
                                                         <label for="from_college">元气值来源</label>
-                                                        <select id="from_college" name="from_college" class="form-control selectpicker">
+                                                        {% if not edit and not examine or full_editable %}
+                                                        <select id="signscheme" name="signscheme" class="form-control selectpicker">
+                                                        {% else %}
+                                                        <select id="signscheme" name="signscheme" class="form-control selectpicker" disabled>
+                                                        {% endif %}
                                                             <option value="" selected disabled>选择元气值来源</option>
                                                             <option value="get">向学生收取</option>
                                                             <option id="college" value="college">向学院申请</option>
                                                         </select>
                                                     </div>
-
-                                                    {% else %}
-
-                                                    <div style="display: none;">
-                                                        <button class="btn btn-outline-primary"
-                                                            type="button" id="pricebutton"
-                                                            aria-expanded="false">{{signscheme}}
-                                                        </button>
-                                                    </div>
-                                                    <div style="display: none;">
-                                                        <button class="btn btn-outline-primary"
-                                                            type="button" id="from_college"
-                                                            aria-expanded="false">{{yq_source}}
-                                                        </button>
-                                                    </div>
-
-                                                    {% endif %}
 
                                                 </div>
                                             </div>
@@ -671,7 +661,11 @@
     document.getElementById("recorded").checked = true;
     {% endif %}
     // 报名信息
-    document.getElementById("pricebutton").innerHTML = "{{signscheme}}";
+    {% if signscheme == "先到先得" %}
+    document.getElementById("signscheme").value = "get";
+    {% else %}
+    document.getElementById("signscheme").value = "bid";
+    {% endif %}
     {% if yq_source == "向学院申请" %}
     document.getElementById("from_college").value = "college";
     {% else %}
