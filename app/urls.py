@@ -19,6 +19,7 @@ urlpatterns = [
     path("freshman/", views.freshman, name="freshman"),
     path("register/", views.auth_register, name="register"),
     path("login/", views.index, name="index"),
+    path("agreement/", views.user_agreement, name="user_agreement"),
     path("logout/", views.logout, name="logout"),
     # path("org/",views.org, name="org"),
     path("forgetpw/", views.forget_password, name="forgetpw"),
