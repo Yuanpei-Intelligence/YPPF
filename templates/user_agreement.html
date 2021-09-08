@@ -46,10 +46,10 @@
 
                                     <div class="d-sm-flex justify-content-between">
                                         <button type="submit" id="confirm" name="confirm" class="btn btn-lg btn-primary" value="yes"
-                                            style="display:block;margin:0 auto">我同意</button>
+                                            style="display:block;margin:0 auto">同意</button>
                                         &nbsp;
                                         <button type="submit" class="btn btn-lg btn-mute" value=""
-                                            style="display:block;margin:0 auto">退出</button>
+                                            style="display:block;margin:0 auto">拒绝</button>
                                     </div>
                                 </div>
                                 <!-- </div> -->
@@ -77,10 +77,10 @@
         function settime() {
             if (countdown == 0) {
                 btn.removeAttribute("disabled");
-                btn.innerHTML="我同意";
+                btn.innerHTML="同意";
             } else {
                 btn.setAttribute("disabled", true);
-                btn.innerHTML="我同意(" + countdown + ")";
+                btn.innerHTML="同意(" + countdown + ")";
                 countdown--;
                 setTimeout("settime()",1000);
             }
