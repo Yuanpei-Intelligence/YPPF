@@ -576,7 +576,7 @@ def get_weather():
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={key}&lang={lang}"
         load_json = json.loads(urllib2.urlopen(url, timeout=5).read())  # 这里面信息太多了，不太方便传到前端
         weather_dict = {
-            "modify_time": datetime.now().__str__(),
+            "modify_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
             "description": load_json["weather"][0]["description"],
             "temp": str(round(float(load_json["main"]["temp"]) - 273.15)),
             "temp_feel": str(round(float(load_json["main"]["feels_like"]) - 273.15)),
