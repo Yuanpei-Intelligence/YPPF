@@ -106,9 +106,9 @@ def load_org_info(request):
             message = "没有传入loadtype参数:[org或otype]"
         elif load_type == "otype":
             load_orgtype()
-            message = "导入团体类型信息成功！"
+            message = "导入小组类型信息成功！"
         elif load_type == "org":
-            message = "导入团体信息成功！"+load_org()
+            message = "导入小组信息成功！"+load_org()
         else:
             message = "没有得到loadtype参数:[org或otype]"
     else:
@@ -130,7 +130,7 @@ def load_activity_info(request):
             org = Organization.objects.get(organization_id=user)
         except:
             context = {
-                "message": "请先导入团体信息！{username}".format(username=organization_id)
+                "message": "请先导入小组信息！{username}".format(username=organization_id)
             }
             return render(request, "debugging.html", context)
         title = act_dict["title"]

@@ -32,7 +32,7 @@ from django.db.models import F
 
 YQPoint_oname = local_dict["YQPoint_source_oname"]
 
-def check_user_access(redirect_url="/logout/"):
+def check_user_access(redirect_url="/logout/", is_modpw=False):
     """
     Decorator for views that checks that the user is valid, redirecting
     to specific url if necessary. Then it checks that the user is not
@@ -47,9 +47,12 @@ def check_user_access(redirect_url="/logout/"):
                 return redirect(redirect_url)
 
             isFirst = get_person_or_org(request.user, user_type).first_time_login
-            # 如果是首次登陆，会跳转到密码修改的页面
+            # 如果是首次登陆，会跳转到用户须知的页面
             if isFirst:
-                return redirect("/modpw/")
+                if request.session.get('confirmed') != 'yes':
+                    return redirect("/agreement/")
+                if not is_modpw:
+                    return redirect('/modpw/')
 
             return view_function(request, *args, **kwargs)
 
@@ -119,7 +122,7 @@ def get_user_left_navbar(person, is_myself, html_display):
     html_display["underground_url"] = local_dict["url"]["base_url"]
 
     my_org_id_list = Position.objects.activated().filter(person=person).filter(is_admin=True)
-    html_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的团体
+    html_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
     html_display["my_org_len"] = len(html_display["my_org_list"])
     return html_display
 
@@ -151,7 +154,7 @@ def get_inform_share(me, is_myself=True):
 
 
 # YWolfeee Aug 16
-# 修改left siderbar的逻辑，统一所有个人和所有团体的左边栏，不随界面而改变
+# 修改left siderbar的逻辑，统一所有个人和所有小组的左边栏，不随界面而改变
 # 这个函数负责统一get sidebar和navbar的内容，解决了信箱条数显示的问题
 # user对象是request.user对象直接转移
 # 内容存储在bar_display中
@@ -187,14 +190,14 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         # 个人需要地下室跳转
         bar_display["underground_url"] = local_dict["url"]["base_url"]
 
-        # 个人所管理的团体列表
+        # 个人所管理的小组列表
         my_org_id_list = Position.objects.activated().filter(person=me).filter(is_admin=True)
-        bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的团体
+        bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
         bar_display["my_org_len"] = len(bar_display["my_org_list"])
         
 
     else:
-        bar_display["profile_name"] = "团体主页"
+        bar_display["profile_name"] = "小组主页"
         bar_display["profile_url"] = "/orginfo/"
 
     bar_display["navbar_name"] = navbar_name
@@ -284,9 +287,9 @@ def check_neworg_request(request, org=None):
     context["warn_code"] = 0
     oname = str(request.POST["oname"])
     if len(oname) >= 32:
-        return wrong("团体的名字不能超过32字")
+        return wrong("小组的名字不能超过32字")
     if oname == "":
-        return wrong("团体的名字不能为空")
+        return wrong("小组的名字不能为空")
     if org is not None and oname == org.oname:
         if (
             len(
@@ -300,7 +303,7 @@ def check_neworg_request(request, org=None):
             or len(Organization.objects.filter(oname=oname)) != 0
         ):
             context["warn_code"] = 1
-            context["warn_message"] = "团体的名字不能与正在申请的或者已存在的团体的名字重复"
+            context["warn_message"] = "小组的名字不能与正在申请的或者已存在的小组的名字重复"
             return context
     else:
         if (
@@ -315,7 +318,7 @@ def check_neworg_request(request, org=None):
             or len(Organization.objects.filter(oname=oname)) != 0
         ):
             context["warn_code"] = 1
-            context["warn_message"] = "团体的名字不能与正在申请的或者已存在的团体的名字重复"
+            context["warn_message"] = "小组的名字不能与正在申请的或者已存在的小组的名字重复"
             return context
 
     try:
@@ -331,13 +334,13 @@ def check_neworg_request(request, org=None):
     if context["avatar"] is not None:
         if if_image(context["avatar"]) == 1:
             context["warn_code"] = 1
-            context["warn_message"] = "团体的头像应当为图片格式！"
+            context["warn_message"] = "小组的头像应当为图片格式！"
             return context
 
-    context["oname"] = oname  # 团体名字
-    # 团体类型，必须有
+    context["oname"] = oname  # 小组名字
+    # 小组类型，必须有
     context["pos"] = request.user  # 负责人，必须有滴
-    context["introduction"] = str(request.POST.get("introduction", ""))  # 团体介绍，可能为空
+    context["introduction"] = str(request.POST.get("introduction", ""))  # 小组介绍，可能为空
 
     context["application"] = str(request.POST.get("application", ""))  # 申请理由
 
@@ -356,17 +359,17 @@ def check_newpos_request(request,prepos=None):
     else:
         oname = prepos.position.org.oname
     context['apply_pos'] = int(request.POST.get('apply_pos',10))
-    context['apply_type'] = str(request.POST.get('apply_type',"加入团体"))
+    context['apply_type'] = str(request.POST.get('apply_type',"加入小组"))
     if len(oname) >= 32:
         context['warn_code'] = 1
-        context['warn_msg'] = "团体的名字不能超过32字节"
+        context['warn_msg'] = "小组的名字不能超过32字节"
         return context
     if oname=="":
         context['warn_code'] = 1
-        context['warn_msg'] = "团体的名字不能为空"
+        context['warn_msg'] = "小组的名字不能为空"
         return context
     
-    context['oname'] = oname  # 团体名字
+    context['oname'] = oname  # 小组名字
 
     context["application"] = str(request.POST.get("application", ""))  # 申请理由
 
@@ -376,7 +379,7 @@ def check_newpos_request(request,prepos=None):
     return context
 
 
-# 查询团体代号的最大值+1 用于modifyOrganization()函数，新建团体
+# 查询小组代号的最大值+1 用于modifyOrganization()函数，新建小组
 def find_max_oname():
     organizations = Organization.objects.filter(
         organization_id__username__startswith="zz"
@@ -400,7 +403,7 @@ def if_image(image):
     return 1  # 不是图片
 
 
-# 用于新建团体时，生成6位随机密码
+# 用于新建小组时，生成6位随机密码
 def random_code_init(seed):
     b = string.digits + string.ascii_letters  # 构建密码池
     password = ""
@@ -413,7 +416,7 @@ def random_code_init(seed):
 def get_captcha(request, username, valid_seconds=None, more_info=False):
     '''
     noexcept
-    - username: 学号/团体号, 不一定对应request.user(此时应尚未登录)
+    - username: 学号/小组号, 不一定对应request.user(此时应尚未登录)
     - valid_seconds: float or None, None表示不设置有效期
     ->captcha: str | (captcha, expired, old) if more_info
     '''
@@ -552,7 +555,7 @@ def get_unreimb_activity(org):
     )
     activities = (
         Activity.objects.activated()  # 本学期的
-            .filter(organization_id=org)  # 本部门团体的
+            .filter(organization_id=org)  # 本部门小组的
             .filter(status=Activity.Status.END)  # 已结束的
             .exclude(id__in=reimbursed_act_ids))  # 还没有报销的
     activities.len=len(activities)
@@ -624,7 +627,7 @@ def update_org_application(application, me, request):
                     return wrong("该申请已经完成或被取消!")
                 # 接下来可以进行取消操作
                 ModifyOrganization.objects.filter(id=application.id).update(status=ModifyOrganization.Status.CANCELED)
-                context = succeed("成功取消团体" + application.oname + "的申请!")
+                context = succeed("成功取消小组" + application.oname + "的申请!")
                 context["application_id"] = application.id
                 return context
             else:
@@ -647,7 +650,7 @@ def update_org_application(application, me, request):
                     if context["avatar"] is not None:
                         application.avatar = context['avatar'];
                         application.save()
-                    context = succeed("成功发起团体“"+info.get("oname")+"”的新建申请，请耐心等待"+str(otype.incharge.name)+"老师审核!")
+                    context = succeed("成功发起小组“"+info.get("oname")+"”的新建申请，请耐心等待"+str(otype.incharge.name)+"老师审核!")
                     context['application_id'] = application.id
                     return context
                 else: # modify_submit
@@ -655,7 +658,7 @@ def update_org_application(application, me, request):
                         return wrong("不能修改状态不为“申请中”的申请！")
                     # 如果是修改申请, 不能够修改小组类型
                     if application.otype != otype:
-                        return wrong("修改申请时不允许修改团体类型。如确需修改，请取消后重新申请!")
+                        return wrong("修改申请时不允许修改小组类型。如确需修改，请取消后重新申请!")
                     if application.oname == info.get("oname") and \
                             application.introduction == info.get('introduction') and \
                                 application.avatar == info.get('avatar', None) and \
@@ -670,7 +673,7 @@ def update_org_application(application, me, request):
                     if context["avatar"] is not None:
                         application.avatar = context['avatar']
                         application.save()
-                    context = succeed("成功修改团体“" + info.get('oname') + "”的新建申请!")
+                    context = succeed("成功修改小组“" + info.get('oname') + "”的新建申请!")
                     context["application_id"] = application.id
                     return context
         else: # 是老师审核的操作, 通过\拒绝
@@ -796,13 +799,13 @@ def export_activity(activity,inf_type):
     return response
 
 
-# 导出团体成员信息Excel文件
+# 导出小组成员信息Excel文件
 def export_orgpos_info(org):
     # 设置HTTPResponse的类型
     response = HttpResponse(content_type='application/vnd.ms-excel')
     if org is None:
         return response
-    response['Content-Disposition'] = f'attachment;filename=团体{org.oname}成员信息.xls'
+    response['Content-Disposition'] = f'attachment;filename=小组{org.oname}成员信息.xls'
     participants = Position.objects.filter(org=org).filter(status=Position.Status.INSERVICE)
     """导出excel表"""
     if len(participants) > 0:
@@ -875,7 +878,7 @@ def record_modify_with_session(request, info=""):
             if rank > -1 and rank <= info_rank:
                 msg = (
                     f'您是第{rank}名修改账号信息的'+
-                    ('个人' if is_person else '团体')+
+                    ('个人' if is_person else '小组')+
                     '用户！保留此截图可在游园会兑换奖励！'
                 )
                 request.session['alert_message'] = msg

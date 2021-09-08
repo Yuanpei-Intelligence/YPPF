@@ -163,7 +163,7 @@
                                                     name="recorded">
                                                 <label class="form-check-label" for="defaultCheck1">
                                                     已审核
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="已审核活动指学期初已上报学院且获准的活动, 擅自勾选有可能导致团体无法报销或者团体被禁止登录！如果向学院申请元气值，需要二次审核，故不要勾选此选项。">
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="已审核活动指学期初已上报学院且获准的活动, 擅自勾选有可能导致小组无法报销或者小组被禁止登录！如果向学院申请元气值，需要二次审核，故不要勾选此选项。">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -174,10 +174,11 @@
 
                                             </div>
 
+
                                             <hr>
                                             <p>
-                                                报名信息
-                                                <a data-toggle="tooltip" data-placement="bottom" title="点击报名模式按钮以调整报名模式（如先到先得），点击元气值来源来选择不同的元气值来源（如向同学收取）。在活动通过审核之后，这两项不能修改。">
+                                                元气值
+                                                <a data-toggle="tooltip" data-placement="bottom" title="点击元气值来源来选择不同的元气值来源（如向同学收取）。在活动通过审核之后，此项不能修改。">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                         class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                         <path
@@ -188,20 +189,6 @@
                                             <div class="form-group">
                                                 <div class="input-group mb-3">
                                                     {% if not edit and not examine or full_editable %}
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary dropdown-toggle"
-                                                            type="button" data-toggle="dropdown" aria-haspopup="true"
-                                                            aria-expanded="false" id="pricebutton">报名模式
-                                                        </button>
-                                                        <div class="dropdown-menu">
-                                                            <a class="dropdown-item" onclick="shows($(this).text())"
-                                                                name="get" value="get">先到先得</a>
-                                                            <a class="dropdown-item" onclick="shows($(this).text())"
-                                                                id="bid" name="bid" value="bid">抽签模式</a>
-                                                        </div>
-                                                        <input type="hidden" id="signscheme" name="signscheme"
-                                                            value="" />
-                                                    </div>
 
                                                     <div class="input-group-prepend">
                                                         <button class="btn btn-outline-primary dropdown-toggle"
@@ -220,17 +207,12 @@
                                                     {% else %}
                                                     <div class="input-group-prepend">
                                                         <button class="btn btn-outline-primary"
-                                                            type="button" id="pricebutton"
-                                                            aria-expanded="false">{{signscheme}}
-                                                        </button>
-                                                    </div>
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary"
                                                             type="button" id="yq_source"
                                                             aria-expanded="false">{{yq_source}}
                                                         </button>
                                                     </div>
                                                     {% endif %}
+
                                                     <div class="input-group-prepend">
                                                         <button class="btn btn-outline-primary"
                                                             type="button"
@@ -241,56 +223,115 @@
                                                     <!-- TOCHECK: 如果是 applying 记得设成 disable -->
                                                     <input type="number" class="form-control"
                                                         aria-label="Text input with dropdown button" id="aprice"
-                                                        name="aprice" placeholder="最小精度为0.1" step="0.1" min="0" required="required" 
+                                                        name="aprice" placeholder="精度 0.1" step="0.1" min="0" required="required" 
                                                         οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')" onclick="fill_value(this)">
 
                                                 </div>
                                             </div>
-
                                             <div class="form-group" id="reason_block" style="display: none">
                                                 <label>元气值申请理由 ( 必填 )</label>
                                                 <textarea id="apply_reason" name="apply_reason" class="form-control" rows="3"
                                                     placeholder="申请理由将作为老师审核的依据，请仔细填写~" onclick="fill_value(this)" maxlength=225></textarea>
                                             </div>
 
-                                            <div class="form-group">
-                                                <label>
-                                                参与人数限制
-                                                </label>
-                                                <div class="row">
-                                                    <div class="col">
-                                                        <input type="number" id="maxpeople" name="maxpeople"
-                                                            class="form-control" aria-label="Default" step="1" min="0" 
-                                                            placeholder="人数上限">
-                                                    </div>
-                                                    <div class="col"
-                                                        style="display: flex; flex-direction: column;justify-content: center;text-align: center;">
-                                                        <center>
-                                                            <div class="form-check"
-                                                                style="align-content: center; vertical-align: middle;">
-                                                                <input class="form-check-input" type="checkbox"
-                                                                    value="1" id="unlimited_capacity"
-                                                                    name="unlimited_capacity">
-                                                                <label class="form-check-label" for="defaultCheck1">
-                                                                    无人数限制
-                                                                    <a data-toggle="tooltip" data-placement="bottom" title="无报名人数上限，如面试报名、观赛报名等；可以通过更改人数限制的方式来截止报名">
-                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                                            <path
-                                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                                        </svg>
-                                                                    </a>
-                                                                </label>
 
-                                                            </div>
-                                                        </center>
+
+
+
+                                            <hr>
+                                            <p>
+                                                报名信息
+                                                <a data-toggle="tooltip" data-placement="bottom" title="点击报名模式按钮以调整报名模式（如先到先得）。在活动通过审核之后，此项不能修改。">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path
+                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                            </p>
+                                            <div class="form-group">
+                                                <div class="input-group mb-3">
+                                                    {% if not edit and not examine or full_editable %}
+                                                    <div class="input-group-prepend">
+                                                        <button class="btn btn-outline-primary dropdown-toggle"
+                                                            type="button" data-toggle="dropdown" aria-haspopup="true"
+                                                            aria-expanded="false" id="pricebutton">&nbsp;&nbsp;报名模式&nbsp;&nbsp;
+                                                        </button>
+                                                        <div class="dropdown-menu">
+                                                            <a class="dropdown-item" onclick="shows($(this).text())"
+                                                                name="get" value="get">&nbsp;&nbsp;先到先得&nbsp;&nbsp;</a>
+                                                            <a class="dropdown-item" onclick="shows($(this).text())"
+                                                                id="bid" name="bid" value="bid">&nbsp;&nbsp;抽签模式&nbsp;&nbsp;</a>
+                                                        </div>
+                                                        <input type="hidden" id="signscheme" name="signscheme"
+                                                            value="" />
                                                     </div>
-                                                    
+                                                    {% else %}
+                                                    <div class="input-group-prepend">
+                                                        <button class="btn btn-outline-primary"
+                                                            type="button" id="pricebutton"
+                                                            aria-expanded="false">&nbsp;&nbsp;{{signscheme}}&nbsp;&nbsp;
+                                                        </button>
+                                                    </div>
+                                                    {% endif %}
+                                                    <div class="input-group-prepend">
+                                                        <button class="btn btn-outline-primary"
+                                                            type="button"
+                                                            aria-expanded="false">&nbsp;&nbsp;人数上限&nbsp;&nbsp;
+                                                        </button>
+                                                    </div>
+
+
+
+                                                    <!-- TOCHECK: 如果是 applying 记得设成 disable -->
+                                                    <input type="number" id="maxpeople" name="maxpeople"
+                                                        class="form-control" aria-label="Default" step="1" min="0" 
+                                                        placeholder="人数上限">
+
                                                 </div>
                                             </div>
 
-                                            
-
+                                            <div class="form-group">
+                                                <div class="row">
+                                                    <div class="col">
+                                                        <div class="form-check"
+                                                            style="align-content: center; vertical-align: middle;">
+                                                            <input class="form-check-input" type="checkbox"
+                                                                value="1" id="unlimited_capacity"
+                                                                name="unlimited_capacity">
+                                                            <label class="form-check-label" for="defaultCheck1">
+                                                                无人数限制
+                                                                <a data-toggle="tooltip" data-placement="bottom" title="无报名人数上限，如面试报名、观赛报名等；可以通过更改人数限制的方式来截止报名">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                                        <path
+                                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                                    </svg>
+                                                                </a>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div class="col">
+                                                        <div class="form-check"
+                                                            style="align-content: center; vertical-align: middle;">
+                                                            <input class="form-check-input" type="checkbox"
+                                                                value="1" id="inner"
+                                                                name="inner">
+                                                            <label class="form-check-label" for="defaultCheck1">
+                                                                内部活动?
+                                                                <a data-toggle="tooltip" data-placement="bottom" title="内部活动对所有同学可见，但只有小组内部成员可以报名。此选项改变时，已有的报名不受影响。">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                                        <path
+                                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                                    </svg>
+                                                                </a>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                      
                                             <div class="form-group">
                                                 <label for="aintro">
                                                     报名截止于
@@ -358,25 +399,7 @@
                                                             name="need_checkin">
                                                         <label class="form-check-label" for="defaultCheck1">
                                                             需要签到?
-                                                            <a data-toggle="tooltip" data-placement="bottom" title="若勾选此项，会自动生成在仅活动进行时可用、仅允许活动举办团体在活动页面查看或下载的签到二维码。活动进行时，需要将该二维码展示给同学扫码签到。">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                                    class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                                    <path
-                                                                        d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                                </svg>
-                                                            </a>
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                                <div class="col">
-                                                    <div class="form-check"
-                                                        style="align-content: center; vertical-align: middle;">
-                                                        <input class="form-check-input" type="checkbox"
-                                                            value="1" id="inner"
-                                                            name="inner">
-                                                        <label class="form-check-label" for="defaultCheck1">
-                                                            内部活动?
-                                                            <a data-toggle="tooltip" data-placement="bottom" title="内部活动对所有同学可见，但只有团体内部成员可以报名。此选项改变时，已有的报名不受影响。">
+                                                            <a data-toggle="tooltip" data-placement="bottom" title="若勾选此项，会自动生成在仅活动进行时可用、仅允许活动举办小组在活动页面查看或下载的签到二维码。活动进行时，需要将该二维码展示给同学扫码签到。">
                                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                                     class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                                     <path
@@ -420,7 +443,7 @@
                                                     </a>
                                                 </label>
                                                 {% if not examine %}
-                                                <textarea id="URL" name="URL" class="form-control" rows="3" placeholder="推送链接会和活动通知一起发送" onclick="fill_value(this)"></textarea>
+                                                <textarea id="URL" name="URL" class="form-control" rows="3" placeholder="推送链接会和活动通知一起发送；外网链接请使用以http或https开头的绝对地址" onclick="fill_value(this)"></textarea>
                                                 {% else %}
                                                 <a href="{{url}}"> {{url}} </a>
                                                 {% endif %}
@@ -580,6 +603,7 @@
             document.getElementById("from_college").value = "0";
             document.getElementById("reason_block").style.display = "none";
             document.getElementById("apply_reason").required = "";
+            document.getElementById("aprice").placeholder = "参与活动元气值价格";
         }
     });
     {% for pic in defaultpics %}
@@ -684,8 +708,8 @@
     {% if activity.recorded %}
     document.getElementById("recorded").checked = true;
     {% endif %}
-    // 报名信息
-    document.getElementById("pricebutton").innerHTML = "{{signscheme}}";
+    // 报名信息 
+    document.getElementById("pricebutton").innerHTML = "&nbsp;&nbsp;{{signscheme}}&nbsp;&nbsp;";
     document.getElementById("yq_source").innerHTML = "{{yq_source}}";
     document.getElementById("aprice").placeholder = "{{amount}}";
     {% if no_limit %}
@@ -977,7 +1001,7 @@
         var now = new Date()
         if (applyEnd < now) {
             document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "活动报名截止时间已过，请通知团体修改。";
+            document.getElementById("warn_msg").innerHTML = "活动报名截止时间已过，请通知小组修改。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }

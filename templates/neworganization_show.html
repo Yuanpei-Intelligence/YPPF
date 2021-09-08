@@ -7,7 +7,7 @@
 
 {% block mainpage %}
 
-{% with title='团体账号申请' link='/modifyOrganization/' new_link='' query_field='org_id' new_btn_name='新建团体账号' btn_name='详情' empty_info='列表空空如也！点击按钮申请吧~' %}
+{% with title='小组账号申请' link='/modifyOrganization/' new_link='' query_field='org_id' new_btn_name='新建小组账号' btn_name='详情' empty_info='列表空空如也！点击按钮申请吧~' %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -85,10 +85,10 @@
         </div>
         <div class="d-flex justify-content-between">
             {% if instance.extra_display %}
-            <div>
+            <div class="flex" style="max-width: 80%;">
                 {% for display in instance.extra_display %}
                 {% if display|length == 2 or display|length == 3 %}
-                <p style="color: rgb(66, 67, 68);">
+                <p style="color: rgb(66, 67, 68); word-wrap: break-word;">
                     <i class="fa fa-{{display.2|default:'envelope-o'}}"></i>
                     {{display.0}}：{{display.1}}
                 </p>
@@ -97,7 +97,7 @@
             </div>
             {% endif %}
             {% if instance.get_poster_name %}
-            <div>
+            <div class="flex">
                 <p style="color: rgb(66, 67, 68);">
                     <i class="fa fa-address-book"></i>
                     {{instance.get_poster_name}}

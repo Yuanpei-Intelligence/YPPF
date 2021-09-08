@@ -58,9 +58,9 @@
                             <a href="/viewActivity/{{photo.activity_id}}">
                                 <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
                                     src={{photo.image}}>
-                                <div class="carousel-caption" style="left: 0px; background-color: #ffffffaa; width: 100%;">
-                                    <h2 class="mb-0">{{photo.activity.title}}</h2>
-                                    <p class="mb-0">{{photo.activity.introduction}}</p>
+                                <div class="caption" style="position: absolute; text-align: center; background-color: #ffffffaa; width: 100%; height: 79px; bottom: 22px; padding: 10px; padding-left: 20%; padding-right: 20%;">
+                                    <h2 class="mb-0 caption-h">{{photo.activity.title}}</h2>
+                                    <p class="mb-0 caption-p" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{photo.activity.introduction}}</p>
                               </div>
                             </a>
                         </div>
@@ -128,9 +128,17 @@
                     window.addEventListener(`load`, resize);
                     window.addEventListener(`resize`, resize);
                     function resize() {
-                        photos.forEach(
-                            (photo) => (photo.style.height = this.innerWidth <= 767 ? `30vh` : `50vh`)
-                        );
+                        if (this.innerWidth <= 767) {
+                            photos.forEach((photo) => (photo.style.height = `30vh`));
+                            document.querySelectorAll(`.caption`).forEach((caption) => caption.style.height = `69px`);
+                            document.querySelectorAll(`.caption-h`).forEach((heading) => (heading.style.fontSize = `22px`, heading.style.lineHeight = `30px`));
+                            document.querySelectorAll(`.caption-p`).forEach((paragraph) => (paragraph.style.fontSize = `12px`, paragraph.style.lineHeight = `19px`));
+                        } else {
+                            photos.forEach((photo) => (photo.style.height = `50vh`));
+                            document.querySelectorAll(`.caption`).forEach((caption) => caption.style.height = `79px`);
+                            document.querySelectorAll(`.caption-h`).forEach((heading) => (heading.style.fontSize = `32px`, heading.style.lineHeight = `38px`));
+                            document.querySelectorAll(`.caption-p`).forEach((paragraph) => (paragraph.style.fontSize = `14px`, paragraph.style.lineHeight = `21px`));
+                        }
                     }
                     /* ---------------------- constrain height of wishwall ---------------------- */
                     const fit = () => {
@@ -165,7 +173,8 @@
                         <span>
                             地区：北京 天气：{{ html_display.weather.description }} <br />
                             气温：{{ html_display.weather.temp }} &#8451
-                            体感温度：{{ html_display.weather.temp_feel }} &#8451
+                            体感温度：{{ html_display.weather.temp_feel }} &#8451 <br />
+                            上次更新：{{last_update}}
                         </span>
                         <div>
                             <!-- <img
