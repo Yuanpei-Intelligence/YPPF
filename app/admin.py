@@ -78,20 +78,94 @@ class OrganizationAdmin(admin.ModelAdmin):
 @admin.register(Position)
 class PositionAdmin(admin.ModelAdmin):
     list_display = ["person", "org", "pos", "pos_name", "is_admin"]
-    search_fields = ("person__name", "org__oname")
-    list_filter = ('pos', 'is_admin')
-    list_display_links = ('person', 'org')
+    search_fields = ("person__name", "org__oname", 'org__otype__otype_name')
+    list_filter = ('pos', 'is_admin', 'org__otype')
 
     def pos_name(self, obj):
         return obj.org.otype.get_name(obj.pos)
-    pos_name.short_description = "职位名称"
+    pos_name.short_description = "职务名称"
 
+    actions = ['demote', 'promote', 'to_member', 'to_manager', 'set_admin', 'set_not_admin']
+
+    def demote(self, request, queryset):
+        for pos in queryset:
+            pos.pos += 1
+            pos.save()
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    demote.short_description = "职务等级 增加(降职)"
+
+    def promote(self, request, queryset):
+        for pos in queryset:
+            pos.pos = min(0, pos.pos - 1)
+            pos.save()
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    promote.short_description = "职务等级 降低(升职)"
+
+    def to_member(self, request, queryset):
+        for pos in queryset:
+            pos.pos = pos.org.otype.get_length()
+            pos.is_admin = False
+            pos.save()
+        return self.message_user(request=request,
+                                 message='修改成功, 并收回了管理权限!')
+    to_member.short_description = "设为成员"
+
+    def to_manager(self, request, queryset):
+        for pos in queryset:
+            pos.pos = 0
+            pos.is_admin = True
+            pos.save()
+        return self.message_user(request=request,
+                                 message='修改成功, 并赋予了管理权限!')
+    to_manager.short_description = "设为负责人"
+
+    def set_admin(self, request, queryset):
+        queryset.update(is_admin = True)
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    set_admin.short_description = "赋予 管理权限"
+
+    def set_not_admin(self, request, queryset):
+        queryset.update(is_admin = False)
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    set_not_admin.short_description = "收回 管理权限"
+
+
+@admin.register(Notification)
+class NotificationAdmin(admin.ModelAdmin):
+    list_display = ["id", "receiver", "sender", "title", "start_time"]
+    search_fields = ('id', "receiver__username", "sender__username", 'title')
+    list_filter = ('start_time', 'status', 'typename', "finish_time")
+
+    actions = ['set_delete']
+
+    def set_delete(self, request, queryset):
+        queryset.update(status = Notification.Status.DELETE)
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    set_delete.short_description = "设置状态为 删除"
+
+
+@admin.register(Help)
+class HelpAdmin(admin.ModelAdmin):
+    list_display = ["id", "title"]
+
+
+@admin.register(Wishes)
+class WishesAdmin(admin.ModelAdmin):
+    list_display = ["id", "text", 'time', "background_display"]
+    list_filter = ('time', 'background')
+    
+    def background_display(self, obj):
+        return mark_safe(f'<span style="color: {obj.background};"><strong>{obj.background}</strong></span>')
+    background_display.short_description = "背景颜色"
 
 
 admin.site.register(Activity)
 admin.site.register(TransferRecord)
 
 admin.site.register(YQPointDistribute)
-admin.site.register(Notification)
-admin.site.register(Help)
 admin.site.register(ModifyRecord)

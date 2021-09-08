@@ -303,7 +303,7 @@ def changeActivityStatus(aid, cur_status, to_status):
                         YP.save()
                     records.update(
                         status=TransferRecord.TransferStatus.ACCEPTED,
-                        time=str(datetime.now())
+                        finish_time=datetime.now()
                     )
             # 结束，计算积分    
             else:
