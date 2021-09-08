@@ -64,10 +64,10 @@ def distribute_YQPoint_per_month():
 def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
     '''
         内容：
-        由proposer账户(默认为一个团体账户)，向每一个在recipients中的账户中发起数额为YQPoints的转账
+        由proposer账户(默认为一个小组账户)，向每一个在recipients中的账户中发起数额为YQPoints的转账
         并且自动生成默认为ACCEPTED的转账记录以便查阅
-        这里的recipients期待为一个Queryset，要么全为自然人，要么全为团体
-        proposer默认为一个团体账户
+        这里的recipients期待为一个Queryset，要么全为自然人，要么全为小组
+        proposer默认为一个小组账户
     '''
     try:
         assert proposer.YQPoint >= recipients.count() * YQPoints
@@ -75,7 +75,7 @@ def distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
         # 说明此时proposer账户的元气值不足
         print(f"由{proposer}向自然人{recipients[:3]}...等{recipients.count()}个用户发放元气值失败，原因可能是{proposer}的元气值剩余不足")
     try:
-        is_nperson = isinstance(recipients[0], NaturalPerson)  # 不为自然人则为团体
+        is_nperson = isinstance(recipients[0], NaturalPerson)  # 不为自然人则为小组
     except:
         print("没有转账对象！")
         return
@@ -105,7 +105,7 @@ def distribute_YQPoint(distributer):
     '''
     trans_time = distributer.start_time
 
-    # 没有问题，找到要发放元气值的人和团体
+    # 没有问题，找到要发放元气值的人和小组
     per_to_dis = NaturalPerson.objects.activated().filter(
         YQPoint__lte=distributer.per_max_dis_YQP)
     org_to_dis = Organization.objects.activated().filter(
@@ -119,7 +119,7 @@ def distribute_YQPoint(distributer):
                                 trans_time=trans_time)
     end_time = datetime.now()
 
-    debug_msg = f"已向{per_to_dis.count()}个自然人和{org_to_dis.count()}个团体转账，用时{(end_time - trans_time).seconds}s,{(end_time - trans_time).microseconds}microsecond\n"
+    debug_msg = f"已向{per_to_dis.count()}个自然人和{org_to_dis.count()}个小组转账，用时{(end_time - trans_time).seconds}s,{(end_time - trans_time).microseconds}microsecond\n"
     print(debug_msg)
 
 
@@ -447,7 +447,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         title = Notification.Title.ACTIVITY_INFORM
         if msg_type == "newActivity":
             title = activity.title
-            msg = f"您关注的团体{activity.organization_id.oname}发布了新的活动。"
+            msg = f"您关注的小组{activity.organization_id.oname}发布了新的活动。"
             msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
             msg += f"\n活动地点: {activity.location}"
             subscribers = NaturalPerson.objects.activated().exclude(
