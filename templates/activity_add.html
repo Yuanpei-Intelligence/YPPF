@@ -186,10 +186,8 @@
                                                     </svg>
                                                 </a>
                                             </h2>
-                                            <div class="form-group">
-                                                <div class="row">
 
-                                                    <div class="form-group col-6 mb-0">
+                                                    <div class="form-group">
                                                         <label for="signscheme">报名模式</label>
                                                         {% if not edit and not examine or full_editable %}
                                                         <select id="signscheme" name="signscheme" class="form-control selectpicker">
@@ -202,7 +200,7 @@
                                                         </select>
                                                     </div>
         
-                                                    <div class="form-group col-6 mb-0">
+                                                    <div class="form-group">
                                                         <label for="from_college">元气值来源</label>
                                                         {% if not edit and not examine or full_editable %}
                                                         <select id="signscheme" name="signscheme" class="form-control selectpicker">
@@ -214,9 +212,6 @@
                                                             <option id="college" value="college">向学院申请</option>
                                                         </select>
                                                     </div>
-
-                                                </div>
-                                            </div>
 
                                             <!-- TOCHECK: 如果是 applying 记得设成 disable -->
                                             <div class="form-group">
