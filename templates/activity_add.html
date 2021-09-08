@@ -420,7 +420,7 @@
                                                     </a>
                                                 </label>
                                                 {% if not examine %}
-                                                <textarea id="URL" name="URL" class="form-control" rows="3" placeholder="推送链接会和活动通知一起发送" onclick="fill_value(this)"></textarea>
+                                                <textarea id="URL" name="URL" class="form-control" rows="3" placeholder="推送链接会和活动通知一起发送；外网链接请使用以http或https开头的绝对地址" onclick="fill_value(this)"></textarea>
                                                 {% else %}
                                                 <a href="{{url}}"> {{url}} </a>
                                                 {% endif %}
