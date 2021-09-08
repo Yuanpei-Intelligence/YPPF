@@ -92,7 +92,7 @@
                                     <div class="widget-content widget-content-area">
 
                                         <form role="form" method="POST" enctype="multipart/form-data" onsubmit="return check_inputs()">
-                                            <p>
+                                            <h2>
                                                 活动信息
                                                 <a data-toggle="tooltip" data-placement="bottom" title="填写活动的基本信息；注意：预算、名称在审核通过后不能修改">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
@@ -101,7 +101,7 @@
                                                             d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
                                                     </svg>
                                                 </a>
-                                            </p>
+                                            </h2>
                                             <div class="form-group">
                                                 <label>活动名称</label>
                                                 <input type="text" id="title" name="title" class="form-control"
@@ -174,8 +174,9 @@
 
                                             </div>
 
-                                            <hr>
-                                            <p>
+                                            <hr class="mb-5">
+
+                                            <h2>
                                                 报名信息
                                                 <a data-toggle="tooltip" data-placement="bottom" title="点击报名模式按钮以调整报名模式（如先到先得），点击元气值来源来选择不同的元气值来源（如向同学收取）。在活动通过审核之后，这两项不能修改。">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
@@ -184,67 +185,60 @@
                                                             d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
                                                     </svg>
                                                 </a>
-                                            </p>
+                                            </h2>
                                             <div class="form-group">
-                                                <div class="input-group mb-3">
+                                                <div class="row">
                                                     {% if not edit and not examine or full_editable %}
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary dropdown-toggle"
-                                                            type="button" data-toggle="dropdown" aria-haspopup="true"
-                                                            aria-expanded="false" id="pricebutton">报名模式
-                                                        </button>
-                                                        <div class="dropdown-menu">
-                                                            <a class="dropdown-item" onclick="shows($(this).text())"
-                                                                name="get" value="get">先到先得</a>
-                                                            <a class="dropdown-item" onclick="shows($(this).text())"
-                                                                id="bid" name="bid" value="bid">抽签模式</a>
-                                                        </div>
+
+                                                    <div class="form-group col-6 mb-0">
+                                                        <label for="signscheme">报名模式</label>
+                                                        <select id="signscheme" name="signscheme" class="form-control selectpicker">
+                                                            <option value="" selected disabled>选择报名模式</option>
+                                                            <option value="get">先到先得</option>
+                                                            <option value="bid">抽签模式</option>
+                                                        </select>
                                                         <input type="hidden" id="signscheme" name="signscheme"
                                                             value="" />
                                                     </div>
-
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary dropdown-toggle"
-                                                            type="button" data-toggle="dropdown" aria-haspopup="true"
-                                                            aria-expanded="false" id="yq_source">元气值来源
-                                                        </button>
-                                                        <div class="dropdown-menu">
-                                                            <a class="dropdown-item" onclick="another_shows($(this).text())"
-                                                                name="get" value="get">向学生收取</a>
-                                                            <a class="dropdown-item" onclick="another_shows($(this).text())"
-                                                                id="college" name="college" value="college">向学院申请</a>
-                                                        </div>
+        
+                                                    <div class="form-group col-6 mb-0">
+                                                        <label for="yq_source">元气值来源</label>
+                                                        <select id="yq_source" name="yq_source" class="form-control selectpicker">
+                                                            <option value="" selected disabled>选择元气值来源</option>
+                                                            <option value="get">向学生收取</option>
+                                                            <option value="college">向学院申请</option>
+                                                        </select>
                                                         <input type="hidden" id="from_college" name="from_college"
                                                             value="" />
                                                     </div>
+
                                                     {% else %}
-                                                    <div class="input-group-prepend">
+
+                                                    <div style="display: none;">
                                                         <button class="btn btn-outline-primary"
                                                             type="button" id="pricebutton"
                                                             aria-expanded="false">{{signscheme}}
                                                         </button>
                                                     </div>
-                                                    <div class="input-group-prepend">
+                                                    <div style="display: none;">
                                                         <button class="btn btn-outline-primary"
                                                             type="button" id="yq_source"
                                                             aria-expanded="false">{{yq_source}}
                                                         </button>
                                                     </div>
-                                                    {% endif %}
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary"
-                                                            type="button"
-                                                            aria-expanded="false">元气值数量
-                                                        </button>
-                                                    </div>
 
-                                                    <!-- TOCHECK: 如果是 applying 记得设成 disable -->
-                                                    <input type="number" class="form-control"
-                                                        aria-label="Text input with dropdown button" id="aprice"
-                                                        name="aprice" placeholder="最小精度为0.1" step="0.1" min="0" required="required" 
-                                                        οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')" onclick="fill_value(this)">
+                                                    {% endif %}
 
                                                 </div>
+                                            </div>
+
+                                            <!-- TOCHECK: 如果是 applying 记得设成 disable -->
+                                            <div class="form-group">
+                                                <label for="aprice">元气值数量</label>
+                                                <input type="number" class="form-control"
+                                                    aria-label="Text input with dropdown button" id="aprice"
+                                                    name="aprice" placeholder="最小精度为0.1" step="0.1" min="0" required="required" 
+                                                    οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')" onclick="fill_value(this)">
                                             </div>
 
                                             <div class="form-group" id="reason_block" style="display: none">
@@ -258,32 +252,29 @@
                                                 参与人数限制
                                                 </label>
                                                 <div class="row">
-                                                    <div class="col">
+                                                    <div class="col-6">
                                                         <input type="number" id="maxpeople" name="maxpeople"
                                                             class="form-control" aria-label="Default" step="1" min="0" 
                                                             placeholder="人数上限">
                                                     </div>
-                                                    <div class="col"
-                                                        style="display: flex; flex-direction: column;justify-content: center;text-align: center;">
-                                                        <center>
-                                                            <div class="form-check"
-                                                                style="align-content: center; vertical-align: middle;">
-                                                                <input class="form-check-input" type="checkbox"
-                                                                    value="1" id="unlimited_capacity"
-                                                                    name="unlimited_capacity">
-                                                                <label class="form-check-label" for="defaultCheck1">
-                                                                    无人数限制
-                                                                    <a data-toggle="tooltip" data-placement="bottom" title="无报名人数上限，如面试报名、观赛报名等；可以通过更改人数限制的方式来截止报名">
-                                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                                            <path
-                                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                                        </svg>
-                                                                    </a>
-                                                                </label>
+                                                    <div class="col-6" style="display: flex; align-items: center;">
+                                                        <div class="form-check"
+                                                            style="align-content: center; vertical-align: middle;">
+                                                            <input class="form-check-input" type="checkbox"
+                                                                value="1" id="unlimited_capacity"
+                                                                name="unlimited_capacity">
+                                                            <label class="form-check-label" for="defaultCheck1">
+                                                                无人数限制
+                                                                <a data-toggle="tooltip" data-placement="bottom" title="无报名人数上限，如面试报名、观赛报名等；可以通过更改人数限制的方式来截止报名">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                                        <path
+                                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                                    </svg>
+                                                                </a>
+                                                            </label>
 
-                                                            </div>
-                                                        </center>
+                                                        </div>
                                                     </div>
                                                     
                                                 </div>
@@ -399,9 +390,9 @@
                                                 
                                             </div>
                                             -->
-                                            <hr>
+                                            <hr class="mb-5">
 
-                                            <p>宣传信息</p>
+                                            <h2>宣传信息</h2>
                                             <div class="form-group">
                                                 <label for="aintro">活动简介</label>
                                                 <textarea id="aintro" name="introduction" class="form-control" rows="3"
