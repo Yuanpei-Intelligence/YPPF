@@ -1459,7 +1459,7 @@ def forget_password(request):
 
 
 @login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
+@utils.check_user_access(redirect_url="/logout/", is_modpw=True)
 def modpw(request):
     """
         可能在三种情况进入这个页面：首次登陆；忘记密码；或者常规的修改密码。

@@ -32,7 +32,7 @@ from django.db.models import F
 
 YQPoint_oname = local_dict["YQPoint_source_oname"]
 
-def check_user_access(redirect_url="/logout/"):
+def check_user_access(redirect_url="/logout/", is_modpw=False):
     """
     Decorator for views that checks that the user is valid, redirecting
     to specific url if necessary. Then it checks that the user is not
@@ -51,7 +51,8 @@ def check_user_access(redirect_url="/logout/"):
             if isFirst:
                 if request.session.get('confirmed') != 'yes':
                     return redirect("/agreement/")
-                return redirect('/modpw/')
+                if not is_modpw:
+                    return redirect('/modpw/')
 
             return view_function(request, *args, **kwargs)
 
