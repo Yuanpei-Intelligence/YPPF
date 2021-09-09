@@ -3411,7 +3411,7 @@ def endActivity(request):
     if user_type == "Person":
         try:
             person = utils.get_person_or_org(request.user, user_type)
-            if person.name == local_dict["audit_teacher"]["Funds"]:
+            if person.person_id.username == local_dict["audit_teacher"]["Funds"]:
                 is_auditor = True
         except:
             pass
@@ -3587,7 +3587,7 @@ def modifyEndActivity(request):
     # 根据是否有newid来判断是否是第一次
     reimb_id = request.GET.get("reimb_id", None)
     #审核老师
-    auditor = NaturalPerson.objects.get(name=local_dict["audit_teacher"]["Funds"]).person_id
+    auditor = User.objects.get(username=local_dict["audit_teacher"]["Funds"])
     auditor_name=utils.get_person_or_org(auditor).name
 
     # 获取前端页面中可能存在的提示

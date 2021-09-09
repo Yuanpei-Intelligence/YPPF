@@ -196,7 +196,8 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         bar_display["my_org_len"] = len(bar_display["my_org_list"])
         
         
-        bar_display['is_auditor'] = True if me.name == local_dict["audit_teacher"]["Funds"] else False
+        bar_display['is_auditor'] = True if me.person_id.username == local_dict[
+            "audit_teacher"]["Funds"] else False
     
     else:
         bar_display["profile_name"] = "小组主页"
