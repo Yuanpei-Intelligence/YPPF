@@ -113,10 +113,10 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {% for org in org_list%}
+                                                {% for org, ava in orgava_list%}
                                                 {% if org.otype.otype_name == otype.otype_name %}
                                                 <tr>
-                                                    <td><u><a href="/orginfo/?name={{org.oname}}">{{org.oname}}</a></u></td>
+                                                    <td><u><a href="/orginfo/?name={{org.oname}}"><img src="{{ava}}" width="18px" height="18px" style="margin-top: -2px; margin-right: 5px; border-radius: 9px;"><span>{{org.oname}}</span></a></u></td>
                                                     <!--<td>
                                                         {{org.otype.otype_name}}
                                                     </td>-->

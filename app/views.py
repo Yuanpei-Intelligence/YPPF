@@ -2763,6 +2763,7 @@ def subscribeOrganization(request):
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
     org_list = list(Organization.objects.all())
+    orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
     otype_list = list(OrganizationType.objects.all())
     unsubscribe_list = list(
         me.unsubscribe_list.values_list("organization_id__username", flat=True)
