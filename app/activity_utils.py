@@ -513,11 +513,17 @@ def accept_activity(request, activity):
                 run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
         elif activity.apply_end <= now_time:
             activity.status = Activity.Status.WAITING
+            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
+                run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
             scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
                 run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
         else:
             activity.status = Activity.Status.APPLYING
             notifyActivity(activity.id, "newActivity")
+            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
+                run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
+            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
+                run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
             scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
                 run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
             scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
