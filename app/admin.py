@@ -211,8 +211,19 @@ class ModifyRecordAdmin(admin.ModelAdmin):
                                     message=f'查询失败: {e}!', level='error')
     get_rank.short_description = "查询排名"
 
+@admin.register(ModifyPosition)
+class ModifyPositionAdmin(admin.ModelAdmin):
+    list_display = ["person","org","apply_type", "status"]
+    search_fields = ("org__oname", "person__name")
+
+
+admin.site.register(ModifyOrganization)
+
 
 admin.site.register(Activity)
 admin.site.register(TransferRecord)
 
 admin.site.register(YQPointDistribute)
+admin.site.register(Participant)
+admin.site.register(Reimbursement)
+
