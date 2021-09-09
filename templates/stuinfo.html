@@ -444,21 +444,24 @@
                                     <div class="d-flex b-skills">
                                         <div class="text-nowrap mw-100">
                                             <div class="d-flex justify-content-between">
-                                                <h5
-                                                    style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <h5 style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+
                                                     {% if act.status == "等待中" %}
-                                                    <span class="flex badge badge-pill badge-info">
+                                                    <span class="badge badge-pill badge-warning">
                                                         等待开始
-                                                    </span>
-                                                    {% elif act.status == "已取消" or act.status == "已结束" %}
-                                                    <span class="badge badge-pill badge-danger">
-                                                        {{ act.status }}
-                                                    </span>
                                                     {% else %}
+                                                    {% if act.status == "审核中" %}
+                                                    <span class="flex badge badge-pill badge-secondary">
+                                                    {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                                    <span class="badge badge-pill badge-danger">
+                                                    {% elif act.status == "报名中" %}
+                                                    <span class="badge badge-pill badge-info">
+                                                    {% elif act.status == "进行中" %}
                                                     <span class="badge badge-pill badge-success">
-                                                        {{ act.status }}
-                                                    </span>
                                                     {% endif %}
+                                                        {{ act.status }}
+                                                    {% endif %}
+                                                    </span>
 
                                                     {{ act.title }}
                                                 </h5>

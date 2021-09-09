@@ -93,15 +93,22 @@
                     <div class="flex d-flex justify-content-start">
                         <h2 class="flex text-dark" style="font-weight: bolder;">{{ title }}</h2>
                         <div class="flex my-auto ml-1">
-                            {% if status == "审核中" %}
-                            <span class="badge badge-pill badge-warning">审核中</span>
-                            {% elif status == "等待中" %}
-                            <span class="badge badge-pill badge-info">等待开始</span>
-                            {% elif status == "已取消" or status == "已结束" %}
-                            <span class="badge badge-pill badge-danger">{{ status }}</span>
+                            {% if status == "等待中" %}
+                            <span class="badge badge-pill badge-warning">
+                                等待开始
                             {% else %}
-                            <span class="badge badge-pill badge-success">{{ status }}</span>
+                            {% if status == "审核中" %}
+                            <span class="flex badge badge-pill badge-secondary">
+                            {% elif status == "未过审" or status == "已取消" or status == "已撤销" or status == "已结束" %}
+                            <span class="badge badge-pill badge-danger">
+                            {% elif status == "报名中" %}
+                            <span class="badge badge-pill badge-info">
+                            {% elif status == "进行中" %}
+                            <span class="badge badge-pill badge-success">
                             {% endif %}
+                                {{ status }}
+                            {% endif %}
+                            </span>
                             {% if activity.inner %}
                             <span class="badge badge-pill badge-success">内部活动</span>
                             {% endif %}
