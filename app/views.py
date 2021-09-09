@@ -3587,7 +3587,7 @@ def modifyEndActivity(request):
     # 根据是否有newid来判断是否是第一次
     reimb_id = request.GET.get("reimb_id", None)
     #审核老师
-    auditor = User.objects.get(username=local_dict["audit_teacher"]["Funds"])
+    auditor = NaturalPerson.objects.get(name=local_dict["audit_teacher"]["Funds"]).person_id
     auditor_name=utils.get_person_or_org(auditor).name
 
     # 获取前端页面中可能存在的提示
