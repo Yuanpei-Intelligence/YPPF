@@ -323,19 +323,19 @@
                                                                 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                                 
                                                                 {% if rec.act.status == "审核中" %}
-                                                                    <span class="badge badge-pill badge-warning">
-                                                                        {{ rec.act.status }}
-                                                                    </span>
+                                                                <span class="flex badge badge-pill badge-secondary">
+                                                                {% elif rec.act.status == "未过审" or rec.act.status == "已取消" or rec.act.status == "已撤销" or rec.act.status == "已结束" %}
+                                                                <span class="badge badge-pill badge-danger">
+                                                                {% elif rec.act.status == "报名中" %}
+                                                                <span class="badge badge-pill badge-info">
                                                                 {% elif rec.act.status == "等待中" %}
-                                                                    <span class="badge badge-pill badge-info">
-                                                                        等待开始
-                                                                    </span>
-                                                                {% else %}
-                                                                    <span class="badge badge-pill badge-success">
-                                                                        {{ rec.act.status }}
-                                                                    </span>
+                                                                <span class="badge badge-pill badge-warning">
+                                                                {% elif rec.act.status == "进行中" %}
+                                                                <span class="badge badge-pill badge-success">
                                                                 {% endif %}
-                                                                
+                                                                    {{ ret.act.status }}
+                                                                </span>
+                                                                    
 
                                                                 {{rec.act.title}}
 
