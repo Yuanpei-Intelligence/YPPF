@@ -852,7 +852,7 @@ def homepage(request):
 
     # -----------------------------天气---------------------------------
     try:
-        with open("weather.json") as weather_json:
+        with open("./weather.json") as weather_json:
             html_display['weather'] = json.load(weather_json)
     except:
         from app.scheduler_func import get_weather

@@ -582,7 +582,7 @@ def get_weather():
             "temp_feel": str(round(float(load_json["main"]["feels_like"]) - 273.15)),
             "icon": load_json["weather"][0]["icon"]
         }
-        with open("weather.json", "w") as weather_json:
+        with open("./weather.json", "w") as weather_json:
             json.dump(weather_dict, weather_json)
     except KeyError as e:
         operation_writer(local_dict["system_log"], "天气更新异常,原因可能是local_dict中缺少weather_api_key:"+str(e), "scheduler_func[get_weather]", "Problem")        
