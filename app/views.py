@@ -3026,11 +3026,9 @@ def notifications(request):
     notification_set = Notification.objects.activated().select_related(
         'sender').filter(receiver=request.user)
 
-    done_list = notification2Display(notification_set.filter(
-            status=Notification.Status.DONE).order_by("-finish_time"))
+    done_list = notification2Display(notification_set.order_by("-finish_time"))
 
-    undone_list = notification2Display(notification_set.filter(
-            status=Notification.Status.UNDONE).order_by("-start_time"))
+    undone_list = notification2Display(notification_set.order_by("-start_time"))
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="通知信箱")
