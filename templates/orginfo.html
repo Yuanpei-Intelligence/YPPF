@@ -237,19 +237,20 @@
                                                 </h5>
                                             </div>
                                         </div>
-
+                                        
+                                        {% with member.person as person %}
                                         <div class="d-flex justify-content-between">
                                             <div>
-                                                {% if member.person.stu_grade is not None and member.person.stu_grade != "" %}
-                                                <p style="color: rgb(66, 67, 68);">{{ member.person.stu_grade }}级</p>
+                                                {% if person.stu_grade is not None and person.stu_grade != "" %}
+                                                <p style="color: rgb(66, 67, 68);">{{ person.stu_grade }}级</p>
                                                 {% else %}
                                                 <p style="color: rgb(66, 67, 68);"> </p>
                                                 {% endif %}
                                             </div>
                                             <div>
-                                                {% if member.person.show_major %}
-                                                {% if member.person.stu_major is not None and member.person.stu_major != "" %}
-                                                <p style="color: rgb(66, 67, 68);">{{ member.person.stu_major }}</p>
+                                                {% if person.show_major %}
+                                                {% if person.stu_major is not None and person.stu_major != "" %}
+                                                <p style="color: rgb(66, 67, 68);">{{ person.stu_major }}</p>
                                                 {% else %}
                                                 <p style="color: rgb(66, 67, 68);"> </p>
                                                 {% endif %}
@@ -258,6 +259,17 @@
                                                 {% endif %}
                                             </div>
                                         </div>
+
+                                        {% if person.biography != "还没有填写哦～" %}
+                                        <div class="d-flex justify-content-between">
+                                            
+                                            <p style="color: rgb(66, 67, 68); word-wrap: break-word;white-space:nowrap;overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-envelope"></i>
+                                                {{ person.biography }}
+                                            </p>
+                                        </div>
+                                        {% endif %}
+                                        {% endwith %}
 
                                     </div>
                                 </div>
