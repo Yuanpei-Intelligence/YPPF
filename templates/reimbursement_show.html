@@ -27,8 +27,7 @@
     <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
     {% endif %}
     <div class="container">
-        <div class="container">
-
+        
 
             <div class="row layout-top-spacing">
                 {% if bar_display.help_paragraphs %}
@@ -94,32 +93,25 @@
                 {% elif '取消' in status %}
                 <h5 class="text-muted">{{status}}</h5>
                 {% else %}
-                <h5 class="text-info">审核中</h5>
+                <h5 class="text-info">待审核</h5>
                 {% endif %}
             </div>
             {% endif %}
         </div>
         <div class="d-flex justify-content-between">
-            {% if instance.extra_display %}
-            <div>
-                {% for display in instance.extra_display %}
-                {% if display|length == 2 or display|length == 3 %}
-                <p style="color: rgb(66, 67, 68);">
-                    <i class="fa fa-{{display.2|default:'envelope-o'}}"></i>
-                    {{display.0}}：{{display.1}}
-                </p>
-                {% endif %}
-                {% endfor %}
-            </div>
-            {% endif %}
-            {% if instance.get_poster_name %}
+            {% with instance.get_poster_name as org %}
             <div>
                 <p style="color: rgb(66, 67, 68);">
-                    <i class="fa fa-address-book"></i>
-                    {{instance.get_poster_name}}
+                    <img src="{{ org.get_user_ava }}"  style="width: 20px; height: 20px;">{{ org.oname }}
                 </p>
             </div>
-            {% endif %}
+            {% endwith %}
+            <div>
+                <p style="color: rgb(66, 67, 68);">
+                        报销: {{instance.amount}}元
+                   
+                </p>
+            </div>
         </div>
         <div class="d-flex justify-content-between">
             <div>
@@ -161,7 +153,7 @@
 
             </div>
 
-        </div>
+        
     </div>
 </div>
 <!--  END CONTENT AREA  -->

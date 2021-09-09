@@ -79,21 +79,17 @@
                                                             {% elif '取消' in status %}
                                                             <h5 class="text-muted">{{status}}</h5>
                                                             {% else %}
-                                                            <h5 class="text-info">审核中</h5>
+                                                            <h5 class="text-info">待审核</h5>
                                                             {% endif %}
                                                         </div>
                                                         {% endif %}
                                                     </div>
                                                     <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            {% for display in instance.extra_display %}
-                                                            {% if display|length == 2 or display|length == 3 %}
-                                                            <p style="color: rgb(66, 67, 68);">
-                                                                <i class="fa fa-{{display.2|default:'envelope-o'}}"></i>
-                                                                {{display.0}}：{{display.1}}
+                                                        <div class="flex" style="max-width: 80%;">
+                                                            <p style="color: rgb(66, 67, 68); word-wrap: break-word;white-space:nowrap;overflow: hidden; text-overflow: ellipsis;">
+                                                                <i class="fa fa-envelope"></i>
+                                                                {{ instance.extra_display }}
                                                             </p>
-                                                            {% endif %}
-                                                            {% endfor %}
                                                         </div>
                                                         {% if instance.get_poster_name %}
                                                         <div>

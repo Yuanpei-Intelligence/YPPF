@@ -3417,7 +3417,7 @@ def endActivity(request):
             pass
         if not is_auditor:
             html_display["warn_code"] = 1
-            html_display["warn_message"] = "请不要使用个人账号申请报销！"
+            html_display["warn_message"] = "请不要使用个人账号申请活动结项！"
             return redirect(
                         "/welcome/"
                         + "?warn_code=1&warn_message={warn_message}".format(
