@@ -270,15 +270,19 @@
                                                 </td>
 
                                                 <td style="min-width: 60px;">
-                                                    {% if act.status == "等待中" %}
-                                                        <span id="ret" class="badge badge-pill badge-info">等待开始</span>
-                                                    {% elif act.status == "审核中" %}
-                                                        <span id="ret" class="badge badge-pill badge-warning">审核中</span>
-                                                    {% elif act.status == "报名中" or act.status == "进行中" %}
-                                                        <span id="ret" class="badge badge-pill badge-success">{{act.status}}</span>
-                                                    {% else %}
-                                                        <span id="ret" class="badge badge-pill badge-danger">{{act.status}}</span>
+                                                    {% if act.status == "审核中" %}
+                                                    <span class="flex badge badge-pill badge-secondary">
+                                                    {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                                    <span class="badge badge-pill badge-danger">
+                                                    {% elif act.status == "报名中" %}
+                                                    <span class="badge badge-pill badge-info">
+                                                    {% elif act.status == "等待中" %}
+                                                    <span class="badge badge-pill badge-warning">
+                                                    {% elif act.status == "进行中" %}
+                                                    <span class="badge badge-pill badge-success">
                                                     {% endif %}
+                                                        {{ act.status }}
+                                                    </span>
                                                 </td>
                                             </tr>
                                             {% endfor %}
