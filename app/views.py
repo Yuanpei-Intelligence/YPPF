@@ -201,10 +201,11 @@ def index(request):
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                 return redirect(
-                    "/welcome/?warn_code={}&warn_message={}".format(
-                        html_display["warn_code"], html_display["warn_message"]
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
                     )
-                )
             if not arg_origin.startswith("http"):  # 非外部链接，合法性已经检查过
                 return redirect(arg_origin)  # 不需要加密验证
 
@@ -264,14 +265,14 @@ def stuinfo(request, name=None):
         进入到这里的逻辑:
         首先必须登录，并且不是超级账户
         如果name是空
-            如果是个人账户，那么就自动跳转个人主页"/stuinfo/myname"
-            如果是团体账户，那么自动跳转welcome
+            如果是个人账户，那么就自动跳转个人主页"/stuinfo/?name=myname"
+            如果是小组账户，那么自动跳转welcome
         如果name非空但是找不到对应的对象
             自动跳转到welcome
         如果name有明确的对象
             如果不重名
                 如果是自己，那么呈现并且有左边栏
-                如果不是自己或者自己是团体，那么呈现并且没有侧边栏
+                如果不是自己或者自己是小组，那么呈现并且没有侧边栏
             如果重名
                 那么期望有一个"+"在name中，如果搜不到就跳转到Search/?Query=name让他跳转去
     """
@@ -282,17 +283,19 @@ def stuinfo(request, name=None):
     oneself = utils.get_person_or_org(user, user_type)
 
     if name is None:
+        name = request.GET.get('name', None)
+    if name is None:
         if user_type == "Organization":
-            return redirect("/welcome/")  # 团体只能指定学生姓名访问
+            return redirect("/welcome/")  # 小组只能指定学生姓名访问
         else:  # 跳轉到自己的頁面
             assert user_type == "Person"
             full_path = request.get_full_path()
 
-            append_url = "" if ("?" not in full_path) else "?" + full_path.split("?")[1]
-            return redirect("/stuinfo/" + oneself.name + append_url)
+            append_url = "" if ("?" not in full_path) else "&" + full_path.split("?")[1]
+            return redirect("/stuinfo/?name=" + oneself.name + append_url)
     else:
         # 先对可能的加号做处理
-        name_list = name.split("+")
+        name_list = name.replace(' ', '+').split("+")
         name = name_list[0]
         person = NaturalPerson.objects.activated().filter(name=name)
         if len(person) == 0:  # 查无此人
@@ -326,12 +329,12 @@ def stuinfo(request, name=None):
             person.save()
 
 
-        # ----------------------------------- 团体卡片 ----------------------------------- #
+        # ----------------------------------- 小组卡片 ----------------------------------- #
 
         person_poss = Position.objects.activated().filter(Q(person=person))
         person_orgs = Organization.objects.filter(
             id__in=person_poss.values("org")
-        )  # ta属于的团体
+        )  # ta属于的小组
         oneself_orgs = (
             [oneself]
             if user_type == "Organization"
@@ -339,44 +342,44 @@ def stuinfo(request, name=None):
                 Q(person=oneself) & Q(show_post=True)
             )
         )
-        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id") # 自己的团体
+        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id") # 自己的小组
 
-        # 管理的团体
+        # 管理的小组
         person_owned_poss = person_poss.filter(is_admin=True, status=Position.Status.INSERVICE)
         person_owned_orgs = person_orgs.filter(
             id__in=person_owned_poss.values("org")
-        )  # ta管理的团体
+        )  # ta管理的小组
         person_owned_orgs_ava = [
             # utils.get_user_ava(org, "organization") for org in person_owned_orgs
             org.get_user_ava() for org in person_owned_orgs
         ]
         person_owned_orgs_pos = [
             person_owned_poss.get(org=org).pos for org in person_owned_orgs
-        ]  # ta在团体中的职位
+        ]  # ta在小组中的职位
         person_owned_orgs_pos = [
             org.otype.get_name(pos)
             for pos, org in zip(person_owned_orgs_pos, person_owned_orgs)
-        ]  # ta在团体中的职位
+        ]  # ta在小组中的职位
         html_display["owned_orgs_info"] = (
                 list(zip(person_owned_orgs, person_owned_orgs_ava, person_owned_orgs_pos))
                 or None
         )
 
-        # 属于的团体
+        # 属于的小组
         person_joined_poss = person_poss.filter(~Q(is_admin=True) & Q(show_post=True))
         person_joined_orgs = person_orgs.filter(
             id__in=person_joined_poss.values("org")
-        )  # ta属于的团体
+        )  # ta属于的小组
         person_joined_orgs_ava = [
             org.get_user_ava() for org in person_joined_orgs
         ]
         person_joined_orgs_pos = [
             person_joined_poss.get(org=org).pos for org in person_joined_orgs
-        ]  # ta在团体中的职位
+        ]  # ta在小组中的职位
         person_joined_orgs_pos = [
             org.otype.get_name(pos)
             for pos, org in zip(person_joined_orgs_pos, person_joined_orgs)
-        ]  # ta在团体中的职位
+        ]  # ta在小组中的职位
         person_joined_orgs_same = [
             id in oneself_orgs_id for id in person_joined_poss.values("org")
         ]
@@ -392,18 +395,18 @@ def stuinfo(request, name=None):
                 or None
         )
 
-        # 隐藏的团体
+        # 隐藏的小组
         person_hidden_poss = person_poss.filter(show_post=False)
         person_hidden_orgs = person_orgs.filter(
             id__in=person_hidden_poss.values("org")
-        )  # ta隐藏的团体
+        )  # ta隐藏的小组
         person_hidden_orgs_ava = [
             # utils.get_user_ava(org, "organization") for org in person_hidden_orgs
             org.get_user_ava() for org in person_hidden_orgs
         ]
         person_hidden_orgs_pos = [
             person_hidden_poss.get(org=org).pos for org in person_hidden_orgs
-        ]  # ta在团体中的职位
+        ]  # ta在小组中的职位
         person_hidden_orgs_status = [
             person_hidden_poss.get(org=org).status for org in person_hidden_orgs
         ]  # ta职位的状态
@@ -483,11 +486,11 @@ def stuinfo(request, name=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-def request_login_org(request, name=None):  # 特指个人希望通过个人账户登入团体账户的逻辑
+def request_login_org(request, name=None):  # 特指个人希望通过个人账户登入小组账户的逻辑
     """
-        这个函数的逻辑是，个人账户点击左侧的管理团体直接跳转登录到团体账户
+        这个函数的逻辑是，个人账户点击左侧的管理小组直接跳转登录到小组账户
         首先检查登录的user是个人账户，否则直接跳转orginfo
-        如果个人账户对应的是name对应的团体的最高权限人，那么允许登录，否则跳转回stuinfo并warning
+        如果个人账户对应的是name对应的小组的最高权限人，那么允许登录，否则跳转回stuinfo并warning
     """
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -498,13 +501,15 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         me = NaturalPerson.objects.activated().get(person_id=user)
     except:  # 找不到合法的用户
         return redirect("/welcome/")
-    if name is None:  # 个人登录未指定登入团体,属于不合法行为,弹回欢迎
+    if name is None:  # 个人登录未指定登入小组,属于不合法行为,弹回欢迎
+        name = request.GET.get('name', None)
+    if name is None:  # 个人登录未指定登入小组,属于不合法行为,弹回欢迎
         return redirect("/welcome/")
-    else:  # 确认有无这个团体
+    else:  # 确认有无这个小组
         try:
             org = Organization.objects.get(oname=name)
-        except:  # 找不到对应团体
-            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=找不到对应团体,请联系管理员!"
+        except:  # 找不到对应小组
+            urls = "/stuinfo/?name=" + me.name + "&warn_code=1&warn_message=找不到对应小组,请联系管理员!"
             return redirect(urls)
         try:
             position = Position.objects.activated().filter(org=org, person=me)
@@ -512,11 +517,11 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
             position = position[0]
             assert position.pos <= org.otype.control_pos_threshold
         except:
-            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团体账户的权限!"
+            urls = "/stuinfo/?name=" + me.name + "&warn_code=1&warn_message=没有登录到该小组账户的权限!"
             return redirect(urls)
-        # 到这里,是本人团体并且有权限登录
+        # 到这里,是本人小组并且有权限登录
         auth.logout(request)
-        auth.login(request, org.organization_id)  # 切换到团体账号
+        auth.login(request, org.organization_id)  # 切换到小组账号
         if org.first_time_login:
             return redirect("/modpw/")
         return redirect("/orginfo/?warn_code=2&warn_message=成功切换到"+str(org)+"的账号!")
@@ -530,20 +535,19 @@ def user_login_org(request, org):
     try:
         me = NaturalPerson.objects.activated().get(person_id=user)
     except:  # 找不到合法的用户
-        return wrong("您没有权限访问该网址！请用对应团体账号登陆。")
-    #是团体一把手
+        return wrong("您没有权限访问该网址！请用对应小组账号登陆。")
+    #是小组一把手
     try:
         position = Position.objects.activated().filter(org=org, person=me)
         assert len(position) == 1
         position = position[0]
         assert position.pos <= org.otype.control_pos_threshold
     except:
-        urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该团体账户的权限!"
-        return redirect(urls)
-    # 到这里,是本人团体并且有权限登录
+        return wrong("没有登录到该小组账户的权限!")
+    # 到这里,是本人小组并且有权限登录
     auth.logout(request)
-    auth.login(request, org.organization_id)  # 切换到团体账号
-    return succeed("成功切换到团体账号处理该事务，建议事务处理完成后退出团体账号。")
+    auth.login(request, org.organization_id)  # 切换到小组账号
+    return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")
 
 
 
@@ -552,8 +556,8 @@ def user_login_org(request, org):
 @utils.check_user_access(redirect_url="/logout/")
 def orginfo(request, name=None):
     """
-        orginfo负责呈现团体主页，逻辑和stuinfo是一样的，可以参考
-        只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个团体界面都是【不可管理/编辑团体信息】
+        orginfo负责呈现小组主页，逻辑和stuinfo是一样的，可以参考
+        只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个小组界面都是【不可管理/编辑小组信息】
     """
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -563,6 +567,8 @@ def orginfo(request, name=None):
 
     me = utils.get_person_or_org(user, user_type)
     
+    if name is None:
+        name = request.GET.get('name', None)
 
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if user_type == "Person":
@@ -573,20 +579,20 @@ def orginfo(request, name=None):
             return redirect("/welcome/")
 
         full_path = request.get_full_path()
-        append_url = "" if ("?" not in full_path) else "?" + full_path.split("?")[1]
+        append_url = "" if ("?" not in full_path) else "&" + full_path.split("?")[1]
             
-        return redirect("/orginfo/" + org.oname + append_url)
+        return redirect("/orginfo/?name=" + org.oname + append_url)
 
-    try:  # 指定名字访问团体账号的，可以是自然人也可以是法人。在html里要注意区分！
+    try:  # 指定名字访问小组账号的，可以是自然人也可以是法人。在html里要注意区分！
 
-        # 下面是团体信息
+        # 下面是小组信息
 
         org = Organization.objects.activated().get(oname=name)
 
     except:
         return redirect("/welcome/")
 
-    # 判断是否为团体账户本身在登录
+    # 判断是否为小组账户本身在登录
     html_display["is_myself"] = me == org
     inform_share, alert_message = utils.get_inform_share(me=me, is_myself=html_display["is_myself"])
 
@@ -606,7 +612,7 @@ def orginfo(request, name=None):
             me.save()
             
 
-    # 该学年、该学期、该团体的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
+    # 该学年、该学期、该小组的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
         Activity.objects.activated()
         .filter(organization_id=org)
@@ -668,7 +674,7 @@ def orginfo(request, name=None):
     # 判断我是不是老大, 首先设置为false, 然后如果有person_id和user一样, 就为True
     html_display["isboss"] = False
 
-    # 团体成员list
+    # 小组成员list
     positions = Position.objects.activated().filter(org=org).order_by("pos")  # 升序
     member_list = []
     for p in positions:
@@ -698,7 +704,7 @@ def orginfo(request, name=None):
     modpw_status = request.GET.get("modinfo", None)
     if modpw_status is not None and modpw_status == "success":
         html_display["warn_code"] = 2
-        html_display["warn_message"] = "修改团体信息成功!"
+        html_display["warn_message"] = "修改小组信息成功!"
 
     # 补充左边栏信息
 
@@ -709,15 +715,15 @@ def orginfo(request, name=None):
     html_display["modpw_code"] = modpw_status is not None and modpw_status == "success"
 
 
-    # 团体活动的信息
+    # 小组活动的信息
 
     # 补充一些呈现信息
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user,navbar_name = "团体主页", title_name = org.oname)
+    bar_display = utils.get_sidebar_and_navbar(request.user,navbar_name = "小组主页", title_name = org.oname)
     # 转账后跳转
     origin = request.get_full_path()
 
-    # 补充订阅该团体的按钮
+    # 补充订阅该小组的按钮
     allow_unsubscribe = org.otype.allow_unsubscribe # 是否允许取关
     is_person = True if user_type == "Person" else False
     if is_person:
@@ -725,7 +731,7 @@ def orginfo(request, name=None):
             organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
             else False
     
-    # 补充作为团体成员，选择是否展示的按钮
+    # 补充作为小组成员，选择是否展示的按钮
     show_post_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
     if user_type == 'Person':
         my_position = Position.objects.activated().filter(org=org, person=me).exclude(is_admin=True)
@@ -748,8 +754,8 @@ def homepage(request):
     myname = me.name if is_person else me.oname
 
     # 直接储存在html_display中
-    # profile_name = "个人主页" if is_person else "团体主页"
-    # profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
+    # profile_name = "个人主页" if is_person else "小组主页"
+    # profile_url = "/stuinfo/?name=" + myname if is_person else "/orginfo/?name=" + myname
 
     html_display["is_myself"] = True
 
@@ -852,7 +858,7 @@ def homepage(request):
 
     # -----------------------------天气---------------------------------
     try:
-        with open("weather.json") as weather_json:
+        with open("./weather.json") as weather_json:
             html_display['weather'] = json.load(weather_json)
     except:
         from app.scheduler_func import get_weather
@@ -1088,6 +1094,25 @@ def freshman(request):
     return render(request, html_path, locals())
 
 
+@login_required(redirect_field_name="origin")
+def user_agreement(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect("/index/")
+
+    if request.method == "POST":
+        confirm = request.POST.get('confirm') == 'yes'
+        if not confirm:
+            return redirect('/logout/')
+        request.session['confirmed'] = 'yes'
+        return redirect('/modpw/')
+    
+    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+    bar_display = utils.get_sidebar_and_navbar(request.user, "用户须知")
+    return render(request, 'user_agreement.html', locals())
+
+
+
 def auth_register(request):
     if request.user.is_superuser:
         if request.method == "POST" and request.POST:
@@ -1178,20 +1203,20 @@ def get_stu_img(request):
 def search(request):
     """
         搜索界面的呈现逻辑
-        分成搜索个人和搜索团体两个模块，每个模块的呈现独立开，有内容才呈现，否则不显示
+        分成搜索个人和搜索小组两个模块，每个模块的呈现独立开，有内容才呈现，否则不显示
         搜索个人：
             支持使用姓名搜索，支持对未设为不可见的昵称和专业搜索
             搜索结果的呈现采用内容/未公开表示，所有列表为people_filed
-        搜索团体
-            支持使用团体名、团体类型搜索、一级负责人姓名
-            团体的呈现内容由拓展表体现，不在这个界面呈现具体成员
+        搜索小组
+            支持使用小组名、小组类型搜索、一级负责人姓名
+            小组的呈现内容由拓展表体现，不在这个界面呈现具体成员
             add by syb:
-            支持通过团体名、团体类型来搜索团体
-            支持通过公开关系的个人搜索团体，即如果某自然人用户可以被上面的人员搜索检出，
-            而且该用户选择公开其与团体的关系，那么该团体将在搜索界面呈现。
+            支持通过小组名、小组类型来搜索小组
+            支持通过公开关系的个人搜索小组，即如果某自然人用户可以被上面的人员搜索检出，
+            而且该用户选择公开其与小组的关系，那么该小组将在搜索界面呈现。
             搜索结果的呈现内容见organization_field
         搜索活动
-            支持通过活动名、团体来搜索活动。只要可以搜索到团体，团体对应的活动就也可以被搜到
+            支持通过活动名、小组来搜索活动。只要可以搜索到小组，小组对应的活动就也可以被搜到
             搜索结果的呈现见activity_field
     """
 
@@ -1229,11 +1254,11 @@ def search(request):
         "状态",
     ]  # 感觉将年级和班级分开呈现会简洁很多
 
-    # 搜索团体
+    # 搜索小组
     # 先查找query作为姓名包含在字段中的职务信息, 选的是post为true或者职务等级为0
     pos_list = Position.objects.activated().filter(person__name__icontains=query).filter(
         Q(show_post=True) | Q(is_admin=True))
-    # 通过团体名、团体类名、和上述的职务信息对应的团体信息
+    # 通过小组名、小组类名、和上述的职务信息对应的小组信息
     organization_list = Organization.objects.filter(
         Q(oname__icontains=query)
         | Q(otype__otype_name__icontains=query)
@@ -1271,8 +1296,8 @@ def search(request):
             }
         )
 
-    # 团体要呈现的具体内容
-    organization_field = ["团体名称", "团体类型", "负责人", "近期活动"]
+    # 小组要呈现的具体内容
+    organization_field = ["小组名称", "小组类型", "负责人", "近期活动"]
 
     # 搜索活动
     activity_list = Activity.objects.activated().filter(
@@ -1282,7 +1307,7 @@ def search(request):
     )
 
     # 活动要呈现的内容
-    activity_field = ["活动名称", "承办团体", "状态"]
+    activity_field = ["活动名称", "承办小组", "状态"]
 
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
@@ -1357,7 +1382,7 @@ def forget_password(request):
             try:
                 person = NaturalPerson.objects.get(person_id=user)  # 目前只支持自然人
             except:
-                display = wrong("暂不支持团体账号验证码登录！")
+                display = wrong("暂不支持小组账号验证码登录！")
                 display["alert"] = True
                 return render(request, "forget_password.html", locals())
             if send_captcha in ["yes", "email"]:    # 单个按钮(yes)发送邮件
@@ -1440,6 +1465,7 @@ def forget_password(request):
 
 
 @login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/", is_modpw=True)
 def modpw(request):
     """
         可能在三种情况进入这个页面：首次登陆；忘记密码；或者常规的修改密码。
@@ -1551,18 +1577,18 @@ def transaction_page(request, rid=None):
         return redirect(
             "/welcome/?warn_code=1&warn_message=该用户不存在，无法实现转账!")
     if not hasattr(recipient, "organization_id") or user_type != "Organization":
-        html_display = wrong("目前只支持团体向团体转账！")
+        html_display = wrong("目前只支持小组向小组转账！")
     if request.user == user:
         html_display=wrong("不能向自己转账！")
     if html_display['warn_code']==1:
         if hasattr(recipient, "organization_id"):
             return redirect(
-                "/orginfo/{name}?warn_code=1&warn_message={message}".format(name=recipient.oname,
+                "/orginfo/?name={name}&warn_code=1&warn_message={message}".format(name=recipient.oname,
                                                                                       message=html_display[
                                                                                           'warn_message']))
         else:
             return  redirect(
-                "/stuinfo/{name}?warn_code=1&warn_message={message}".format(name=recipient.name,
+                "/stuinfo/?name={name}&warn_code=1&warn_message={message}".format(name=recipient.name,
                                                                             message=html_display['warn_message']))
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # 如果希望前移，请联系YHT
@@ -1770,10 +1796,10 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
         lis[-1]["obj_direct"] = "To  " if record_type == "send" else "From"
         if hasattr(obj_user, "naturalperson"):  # 如果OneToOne Field在个人上
             lis[-1]["obj"] = obj_user.naturalperson.name
-            lis[-1]["obj_url"] = "/stuinfo/" + lis[-1]["obj"] + "+" + str(obj_user.id)
+            lis[-1]["obj_url"] = "/stuinfo/?name=" + lis[-1]["obj"] + "+" + str(obj_user.id)
         else:
             lis[-1]["obj"] = obj_user.organization.oname
-            lis[-1]["obj_url"] = "/orginfo/" + lis[-1]["obj"]
+            lis[-1]["obj_url"] = "/orginfo/?name=" + lis[-1]["obj"]
 
         # 金额
         lis[-1]["amount"] = record.amount
@@ -1899,7 +1925,7 @@ def myYQPoint(request):
 页面逻辑：
 1. 方法为 GET 时，展示一个活动的详情。
     a. 如果当前用户是个人，有立即报名/已报名的 button
-    b. 如果当前用户是团体，并且是该活动的所有者，有修改和取消活动的 button
+    b. 如果当前用户是小组，并且是该活动的所有者，有修改和取消活动的 button
 2. 方法为 POST 时，通过 option 确定操作
     a. 如果修改活动，跳转到 addActivity
     b. 如果取消活动，本函数处理
@@ -1918,7 +1944,7 @@ def myYQPoint(request):
 def viewActivity(request, aid=None):
     """
     aname = str(request.POST["aname"])  # 活动名称
-    organization_id = request.POST["organization_id"]  # 团体id
+    organization_id = request.POST["organization_id"]  # 小组id
     astart = request.POST["astart"]  # 默认传入的格式为 2021-07-21 21:00:00
     afinish = request.POST["afinish"]
     content = str(request.POST["content"])
@@ -2122,7 +2148,7 @@ def viewActivity(request, aid=None):
         apply_manner = "抽签模式"
     else:
         apply_manner = "先到先得"
-    # person 表示是否是个人而非团体
+    # person 表示是否是个人而非小组
     person = False
     if user_type == "Person":
         """
@@ -2425,7 +2451,7 @@ def checkinActivity(request):
 页面逻辑：
 
 该函数处理 GET, POST 两种请求，发起和修改两类操作
-1. 访问 /addActivity/ 时，为创建操作，要求用户是团体；
+1. 访问 /addActivity/ 时，为创建操作，要求用户是小组；
 2. 访问 /editActivity/aid 时，为编辑操作，要求用户是该活动的发起者
 3. GET 请求创建活动的界面，placeholder 为 prompt
 4. GET 请求编辑活动的界面，表单的 placeholder 会被修改为活动的旧值。
@@ -2435,11 +2461,11 @@ def checkinActivity(request):
 @utils.check_user_access(redirect_url="/logout/")
 def addActivity(request, aid=None):
 
-    # 检查：不是超级用户，必须是团体，修改是必须是自己
+    # 检查：不是超级用户，必须是小组，修改是必须是自己
     try:
         valid, user_type, html_display = utils.check_user_type(request.user)
         assert valid
-        me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为团体账户
+        me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
         if aid is None:
             assert user_type == "Organization"
             if me.oname == YQPoint_oname:
@@ -2452,16 +2478,15 @@ def addActivity(request, aid=None):
                 html_display=user_login_org(request,activity.organization_id)
                 if html_display['warn_code']==1:
                     return redirect(
-                        "/welcome/"
-                        + "?warn_code={}&warn_message={}".format(
-                            html_display["warn_code"], html_display["warn_message"]
+                        "/welcome/"+"?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
                         )
                     )
-                else:#成功以团体账号登陆
+                else:#成功以小组账号登陆
                     #防止后边有使用，因此需要赋值
                     user_type="Organization"
-                    request.user=activity.organization_id.organization_id#团体对应user
-                    me = activity.organization_id#团体
+                    request.user=activity.organization_id.organization_id#小组对应user
+                    me = activity.organization_id#小组
             assert activity.organization_id == me
             edit = True
         html_display["is_myself"] = True
@@ -2560,8 +2585,8 @@ def addActivity(request, aid=None):
             return redirect("/welcome/")
 
         # 决定状态的变量
-        # None/edit/examine ( 团体申请活动/团体编辑/老师审查 )
-        # full_editable/accepted/None ( 团体编辑活动：除审查老师外全可修改/部分可修改/全部不可改 )
+        # None/edit/examine ( 小组申请活动/小组编辑/老师审查 )
+        # full_editable/accepted/None ( 小组编辑活动：除审查老师外全可修改/部分可修改/全部不可改 )
         #        full_editable 为 true 时，accepted 也为 true
         # commentable ( 是否可以评论 )
 
@@ -2733,7 +2758,7 @@ def examineActivity(request, aid):
 def subscribeOrganization(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != 'Person':
-        return redirect('/welcome/?warn_code=1&warn_message=团体账号不支持订阅！')
+        return redirect('/welcome/?warn_code=1&warn_message=小组账号不支持订阅！')
 
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
@@ -2873,7 +2898,7 @@ def apply_position(request, oid=None):
             me, org, apply_type, apply_pos)
     except Exception as e:
         # print(e)
-        return redirect(f"/orginfo/{org.oname}?warn_code=1&warn_message={e}")
+        return redirect(f"/orginfo/?name={org.oname}&warn_code=1&warn_message={e}")
 
     contents = [f"{apply_type}申请已提交审核", f"{apply_type}申请审核"]
     notification_create(
@@ -3030,7 +3055,7 @@ def addComment(request, comment_base, receiver=None):
     typename = comment_base.typename
     content = {
         'modifyposition': f'{sender_name}在成员变动申请留有新的评论',
-        'neworganization': f'{sender_name}在新建团体中留有新的评论',
+        'neworganization': f'{sender_name}在新建小组中留有新的评论',
         'reimbursement': f'{sender_name}在经费申请中留有新的评论',
         'activity': f"{sender_name}在活动申请中留有新的评论"
     }
@@ -3114,11 +3139,11 @@ def showComment(commentbase):
         commentator = get_person_or_org(comment.commentator)
         if comment.commentator.username[:2] == "zz":
             comment.ava = commentator.get_user_ava()
-            comment.URL = "/orginfo/{name}".format(name=commentator.oname)
+            comment.URL = "/orginfo/?name={name}".format(name=commentator.oname)
             comment.commentator_name = commentator.oname
         else:
             comment.ava = commentator.get_user_ava()
-            comment.URL = "/stuinfo/{name}".format(name=commentator.name)
+            comment.URL = "/stuinfo/?name={name}".format(name=commentator.name)
             comment.commentator_name = commentator.name
         comment.len = len(comment.comment_photos.all())
     comments.len = len(comments.all())
@@ -3130,31 +3155,33 @@ def showComment(commentbase):
 def showNewOrganization(request):
     """
     YWolfeee: modefied on Aug 24 1:33 a.m. UTC-8
-    新建团体的聚合界面
+    新建小组的聚合界面
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type == "Organization":
         html_display["warn_code"] = 1
-        html_display["warn_code"] = "请不要使用团体账号申请新团体！"
+        html_display["warn_message"] = "请不要使用小组账号申请新小组！"
         return redirect(
-            "/welcome/"
-            + "?warn_code={}&warn_message={}".format(
-                html_display["warn_code"], html_display["warn_message"]
-            )
-        )
+                        "/welcome/"+ "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
 
     me = utils.get_person_or_org(request.user, user_type)
 
-    # 拉取我负责管理申请的团体，这部分由我审核
-    charge_org = ModifyOrganization.objects.filter(otype__in=me.incharge.all())
+    # 拉取我负责管理申请的小组，这部分由我审核
+    charge_org = ModifyOrganization.objects.filter(otype__in=me.incharge.all()).values_list("id",flat=True)
 
     # 拉去由我发起的申请，这部分等待审核
-    applied_org = ModifyOrganization.objects.filter(pos=request.user)
-
+    applied_org = ModifyOrganization.objects.filter(pos=request.user).values_list("id",flat=True)
+    all_instances = ModifyOrganization.objects.filter(id__in = list(set(charge_org) | set(applied_org)))
     # 排序整合，用于前端呈现
-    shown_instances = charge_org.union(applied_org).order_by("-modify_time", "-time")
+    all_instances = {
+        "undone": all_instances.filter(status=ModifyOrganization.Status.PENDING).order_by("-modify_time", "-time"),
+        "done"  : all_instances.exclude(status=ModifyOrganization.Status.PENDING).order_by("-modify_time", "-time")
+    }
 
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="新建团体账号")
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="新建小组账号")
     return render(request, "neworganization_show.html", locals())
 
 
@@ -3165,7 +3192,7 @@ def modifyPosition(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
 
-    # 前端使用量user_type，表示观察者是团体还是个人
+    # 前端使用量user_type，表示观察者是小组还是个人
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
 
@@ -3174,36 +3201,35 @@ def modifyPosition(request):
 
     # 根据是否有newid来判断是否是第一次
     position_id = request.GET.get("pos_id", None)
-    if position_id is not None: # 如果存在对应团体
-        try:    # 尝试获取已经新建的Position
+    if position_id is not None: # 如果存在对应小组
+        try:
             application = ModifyPosition.objects.get(id = position_id)
             # 接下来检查是否有权限check这个条目
-            # 至少应该是申请人或者被申请团体之一
+            # 至少应该是申请人或者被申请小组之一
             if user_type == "Person" and application.person != me:
+                # 尝试获取已经新建的Position
                 html_display=user_login_org(request,application.org)
                 if html_display['warn_code']==1:
                     return redirect(
-                        "/welcome/"
-                        + "?warn_code={}&warn_message={}".format(
-                            html_display["warn_code"], html_display["warn_message"]
-                        )
-                    )
+                            "/welcome/"+ "?warn_code=1&warn_message={warn_message}".format(
+                                    warn_message=html_display["warn_message"]
+                                )
+                            )
                 else:
                     #防止后边有使用，因此需要赋值
                     user_type="Organization"
                     request.user=application.org.organization_id
-                    me = application.org
+                    me = application.org    
             assert (application.org == me) or (application.person == me)
-
         except: #恶意跳转
             html_display["warn_code"] = 1
             html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
-                "/welcome/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
         is_new_application = False # 前端使用量, 表示是老申请还是新的
         applied_org = application.org
 
@@ -3216,13 +3242,13 @@ def modifyPosition(request):
         except:
             # 非法的名字, 出现恶意修改参数的情况
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入成员申请页面"
+            html_display["warn_message"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入成员申请页面"
             return redirect(
-                "/welcome/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
         
         # 查找已经存在的审核中的申请
         try:
@@ -3235,7 +3261,7 @@ def modifyPosition(request):
     '''
         至此，如果是新申请那么application为None，否则为对应申请
         application = None只有在个人新建申请的时候才可能出现，对应位is_new_application
-        applied_org为对应的团体
+        applied_org为对应的小组
         接下来POST
     '''
 
@@ -3300,7 +3326,7 @@ def modifyPosition(request):
 
     '''
         个人：可能是初次申请或者是修改申请
-        团体：可能是审核申请
+        小组：可能是审核申请
         # TODO 也可能是两边都想自由的查看这个申请
         区别：
             (1) 整个表单允不允许修改和评论
@@ -3311,7 +3337,7 @@ def modifyPosition(request):
     # 用户写表格?
     allow_form_edit = True if (user_type == "Person") and (
                 is_new_application or application.is_pending()) else False
-    # 团体审核?
+    # 小组审核?
     allow_audit_submit = True if (not user_type == "Person") and (not is_new_application) and (
                 application.is_pending()) else False
     # 评论区?
@@ -3329,20 +3355,20 @@ def modifyPosition(request):
     apply_person = me if is_new_application else application.person
     app_avatar_path = apply_person.get_user_ava()
     org_avatar_path = applied_org.get_user_ava()
-    # 获取个人与团体[在当前学年]的关系
+    # 获取个人与小组[在当前学年]的关系
     current_pos_list = Position.objects.current().filter(person=apply_person, org=applied_org)
     # 应当假设只有至多一个类型
 
-    # 检查该同学是否已经属于这个团体
+    # 检查该同学是否已经属于这个小组
     whether_belong = True if len(current_pos_list) and \
         current_pos_list[0].status == Position.Status.INSERVICE else False
     if whether_belong:
-        # 禁用掉加入团体
+        # 禁用掉加入小组
         apply_type_list[ModifyPosition.ApplyType.JOIN]['disabled'] = True
         # 禁用掉修改职位中的自己的那个等级
         position_name_list[current_pos_list[0].get_pos_number()]["disabled"] = True
         #current_pos_name = applied_org.otype.get_name(current_pos_list[0].pos)
-    else:   #不属于团体, 只能选择加入团体
+    else:   #不属于小组, 只能选择加入小组
         apply_type_list[ModifyPosition.ApplyType.WITHDRAW]['disabled'] = True
         apply_type_list[ModifyPosition.ApplyType.TRANSFER]['disabled'] = True
 
@@ -3372,13 +3398,19 @@ def showPosition(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)
 
-    # 查看成员聚合页面：拉取个人或团体相关的申请
+    # 查看成员聚合页面：拉取个人或小组相关的申请
     if user_type == "Person":
-        shown_instances = ModifyPosition.objects.filter(person=me)
+        #shown_instances = ModifyPosition.objects.filter(person=me)
+        all_instances = {
+            "undone": ModifyPosition.objects.filter(person=me, status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
+            "done": ModifyPosition.objects.filter(person=me).exclude(status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time')
+        }
     else:
-        shown_instances = ModifyPosition.objects.filter(org=me)
-
-    shown_instances = shown_instances.order_by('-modify_time', '-time')
+        all_instances = {
+            "undone": ModifyPosition.objects.filter(org=me,status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
+            "done": ModifyPosition.objects.filter(org=me).exclude(status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time')
+        }
+    #shown_instances = shown_instances.order_by('-modify_time', '-time')
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="成员申请")
     return render(request, 'showPosition.html', locals())
 
@@ -3394,25 +3426,34 @@ def endActivity(request):
     if user_type == "Person":
         try:
             person = utils.get_person_or_org(request.user, user_type)
-            if person.name == local_dict["audit_teacher"]["Funds"]:
+            if person.person_id.username == local_dict["audit_teacher"]["Funds"]:
                 is_auditor = True
         except:
             pass
         if not is_auditor:
             html_display["warn_code"] = 1
-            html_display["warn_code"] = "请不要使用个人账号申请报销！"
+            html_display["warn_message"] = "请不要使用个人账号申请活动结项！"
             return redirect(
-                "/welcome/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
 
     if is_auditor:
-        shown_instances = Reimbursement.objects
+        all_instances = {
+            "undone": Reimbursement.objects.filter(status = Reimbursement.ReimburseStatus.WAITING),
+            "done":     Reimbursement.objects.all().exclude(status = Reimbursement.ReimburseStatus.WAITING)
+        }
+        
     else:
-        shown_instances = Reimbursement.objects.filter(pos=request.user)
-    shown_instances = shown_instances.order_by("-modify_time", "-time")
+        all_instances = {
+            "undone":   Reimbursement.objects.filter(pos=request.user, status = Reimbursement.ReimburseStatus.WAITING),
+            "done":     Reimbursement.objects.filter(pos=request.user).exclude(status = Reimbursement.ReimburseStatus.WAITING)
+        }
+
+    all_instances = {key:value.order_by("-modify_time", "-time") for key,value in all_instances.items()}
+    #shown_instances = shown_instances.order_by("-modify_time", "-time")
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动结项")
     return render(request, "reimbursement_show.html", locals())
 
@@ -3421,7 +3462,7 @@ def endActivity(request):
 def showActivity(request):
     """
     活动信息的聚合界面
-    只有老师和团体才能看到，老师看到检查者是自己的，团体看到发起方是自己的
+    只有老师和小组才能看到，老师看到检查者是自己的，小组看到发起方是自己的
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
@@ -3436,20 +3477,26 @@ def showActivity(request):
         if not is_teacher:
             html_display["warn_code"] = 1
 
-            html_display["warn_code"] = "学生账号不能进入活动立项页面！"
+            html_display["warn_message"] = "学生账号不能进入活动立项页面！"
 
             return redirect(
-                "/welcome/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
     if is_teacher:
-        shown_instances = Activity.objects.all_activated().filter(examine_teacher = me.id)
+        all_instances = {
+            "undone":   Activity.objects.all_activated().filter(examine_teacher = me.id, valid = False),
+            "done":     Activity.objects.all_activated().filter(examine_teacher = me.id, valid = True)
+        }
     else:
-        shown_instances = Activity.objects.all_activated().filter(organization_id = me.id)
+        all_instances = {
+            "undone":   Activity.objects.all_activated().filter(organization_id = me.id, valid = False),
+            "done":     Activity.objects.all_activated().filter(organization_id = me.id, valid = True)
+        }
 
-    shown_instances = shown_instances.order_by("-modify_time", "-time")
+    all_instances = {key:value.order_by("-modify_time", "-time") for key,value in all_instances.items()}
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动立项")
 
     # 前端不允许元气值中心创建活动
@@ -3475,7 +3522,7 @@ def make_relevant_notification(application, info):
         try:
             position_name = application.org.otype.get_name(application.pos)  # 职位名称
         except:
-            position_name = "退出团体"
+            position_name = "退出小组"
     elif application_type == ModifyOrganization:
         apply_person = NaturalPerson.objects.get(person_id=application.pos)
         inchage_person = application.otype.incharge
@@ -3487,7 +3534,7 @@ def make_relevant_notification(application, info):
     # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
     if application_type == ModifyPosition:
         if post_type == 'new_submit':
-            content = f'{application.person.name}发起团体成员变动申请，职位申请：{position_name}，请审核~'
+            content = f'{application.person.name}发起小组成员变动申请，职位申请：{position_name}，请审核~'
         elif post_type == 'modify_submit':
             content = f'{application.person.name}修改了成员申请信息，请审核~'
         elif post_type == 'cancel_submit':
@@ -3504,16 +3551,16 @@ def make_relevant_notification(application, info):
         URL = f'/modifyPosition/?pos_id={application.id}'
     elif application_type == ModifyOrganization:
         if post_type == 'new_submit':
-            content = f'{apply_person.name}发起新建团体申请，新建团体：{application.oname}，请审核~'
+            content = f'{apply_person.name}发起新建小组申请，新建小组：{application.oname}，请审核~'
         elif post_type == 'modify_submit':
-            content = f'{apply_person.name}修改了团体申请信息，请审核~'
+            content = f'{apply_person.name}修改了小组申请信息，请审核~'
         elif post_type == 'cancel_submit':
-            content = f'{apply_person.name}取消了团体{application.oname}的申请。'
+            content = f'{apply_person.name}取消了小组{application.oname}的申请。'
         elif post_type == 'accept_submit':
-            content = f'恭喜，您申请的团体：{application.oname}，审核已通过！团体编号为{new_org.organization_id.username}, \
-                初始密码为{utils.random_code_init(new_org.organization_id.id)}，请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；(2)从登录页面用团体编号或团体名称以及密码登录。'
+            content = f'恭喜，您申请的小组：{application.oname}，审核已通过！小组编号为{new_org.organization_id.username}, \
+                初始密码为{utils.random_code_init(new_org.organization_id.id)}，请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；(2)从登录页面用小组编号或小组名称以及密码登录。'
         elif post_type == 'refuse_submit':
-            content = f'抱歉，您申请的团体：{application.oname}，审核未通过！。'
+            content = f'抱歉，您申请的小组：{application.oname}，审核未通过！。'
         else:
             raise NotImplementedError
         applyer_id = apply_person.person_id
@@ -3561,7 +3608,7 @@ def modifyEndActivity(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
 
-    # 前端使用量user_type，表示观察者是团体还是个人
+    # 前端使用量user_type，表示观察者是小组还是个人
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
 
@@ -3589,8 +3636,8 @@ def modifyEndActivity(request):
                 if html_display['warn_code']==1:
                     return redirect(
                         "/welcome/"
-                        + "?warn_code={}&warn_message={}".format(
-                            html_display["warn_code"], html_display["warn_message"]
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
                         )
                     )
                 else:#成功
@@ -3605,26 +3652,26 @@ def modifyEndActivity(request):
             html_display["warn_code"] = 1
             html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
-                "/welcome/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
         is_new_application = False  # 前端使用量, 表示是老申请还是新的
 
     else:  # 如果不存在id, 默认应该传入活动信息
-        #只有团体才有可能报销
+        #只有小组才有可能报销
         try:
             assert user_type == "Organization"
         except:  # 恶意跳转
             html_display["warn_code"] = 1
             html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
-                "/welcome/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
         is_new_application = True  # 新的申请
 
          # 这种写法是为了方便随时取消某个条件
@@ -3635,7 +3682,7 @@ def modifyEndActivity(request):
         receiver=application.pos
     '''
         至此，如果是新申请那么application为None，否则为对应申请
-        application = None只有在团体新建申请的时候才可能出现，对应位is_new_application为True
+        application = None只有在小组新建申请的时候才可能出现，对应位is_new_application为True
         接下来POST
     '''
 
@@ -3655,7 +3702,7 @@ def modifyEndActivity(request):
 
                 # 处理通知相关的操作，并根据情况发送微信
                 # 默认需要成功,失败也不是用户的问题，直接给管理员报错
-                #团体名字
+                #小组名字
                 org_name = application.pos.organization.oname
                 #活动标题
                 act_title = application.related_activity.title
@@ -3693,12 +3740,12 @@ def modifyEndActivity(request):
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
     '''
-        团体：可能是新建、修改申请
+        小组：可能是新建、修改申请
         老师：可能是审核申请
     '''
 
     # (1) 是否允许修改表单
-    # 团体写表格?
+    # 小组写表格?
     allow_form_edit = True if (user_type == "Organization") and (
             is_new_application or application.is_pending()) else False
     # 老师审核?
@@ -3772,7 +3819,7 @@ def make_notification(application, request,content,receiver):
             Notification.Status.DONE
         )
 
-# YWolfeee: 重构团体申请页面 Aug 24 12:30 UTC-8
+# YWolfeee: 重构小组申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 def modifyOrganization(request):
@@ -3780,13 +3827,13 @@ def modifyOrganization(request):
     me = utils.get_person_or_org(request.user)  # 获取自身
     if user_type == "Organization":
         html_display["warn_code"] = 1
-        html_display["warn_code"] = "请不要使用团体账号申请新团体！"
+        html_display["warn_message"] = "请不要使用小组账号申请新小组！"
         return redirect(
-            "/welcome/"
-            + "?warn_code={}&warn_message={}".format(
-                html_display["warn_code"], html_display["warn_message"]
-            )
-        )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
 
@@ -3814,16 +3861,16 @@ def modifyOrganization(request):
             html_display["warn_code"] = 1
             html_display["warn_message"] = "您没有权限访问该网址！"
             return redirect(
-                "/welcome/"
-                + "?warn_code={}&warn_message={}".format(
-                    html_display["warn_code"], html_display["warn_message"]
-                )
-            )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
         is_new_application = False # 前端使用量, 表示是老申请还是新的
 
     else:   
-        # 如果不存在id, 是一个新建团体页面。
-        # 已保证团体不可能访问，任何人都可以发起新建团体。
+        # 如果不存在id, 是一个新建小组页面。
+        # 已保证小组不可能访问，任何人都可以发起新建小组。
         application = None
         is_new_application = True
         
@@ -3860,7 +3907,7 @@ def modifyOrganization(request):
                     raise NotImplementedError
 
             elif context["warn_code"] != 1: # 没有返回操作提示
-                raise NotImplementedError("处理团体申请中出现未预见状态，请联系管理员处理！")   
+                raise NotImplementedError("处理小组申请中出现未预见状态，请联系管理员处理！")   
             
 
         else:   # 如果是新增评论
@@ -3898,7 +3945,7 @@ def modifyOrganization(request):
 
     '''
         个人：可能是初次申请或者是修改申请
-        团体：可能是审核申请
+        小组：可能是审核申请
         # TODO 也可能是两边都想自由的查看这个申请
         区别：
             (1) 整个表单允不允许修改和评论
@@ -3909,7 +3956,7 @@ def modifyOrganization(request):
     # 用户写表格?
     allow_form_edit = True if (
                 is_new_application or (application.pos == me.person_id and application.is_pending())) else False
-    # 团体审核?
+    # 小组审核?
     allow_audit_submit = True if (not is_new_application) and (
                 application.is_pending()) and (application.otype.incharge == me) else False
     # 评论区?
@@ -3927,12 +3974,12 @@ def modifyOrganization(request):
     apply_person = me if is_new_application else NaturalPerson.objects.get(person_id=application.pos)
     app_avatar_path = apply_person.get_user_ava()
     org_avatar_path = utils.get_user_ava(application, "Organization")
-    org_types = OrganizationType.objects.order_by("-otype_id").all()  # 当前团体类型，前端展示需要
+    org_types = OrganizationType.objects.order_by("-otype_id").all()  # 当前小组类型，前端展示需要
     former_img = Organization().get_user_ava()
     if not is_new_application:
         org_type_list[application.otype]['selected'] = True
 
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="团体申请详情")
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="小组申请详情")
     return render(request, "modify_organization.html", locals())
 
 # YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
@@ -3943,13 +3990,13 @@ def sendMessage(request):
     me = utils.get_person_or_org(request.user)  # 获取自身
     if user_type == "Person":
         html_display["warn_code"] = 1
-        html_display["warn_code"] = "只有团体账号才能发送通知！"
+        html_display["warn_message"] = "只有小组账号才能发送通知！"
         return redirect(
-            "/welcome/"
-            + "?warn_code={}&warn_message={}".format(
-                html_display["warn_code"], html_display["warn_message"]
-            )
-        )
+                        "/welcome/"
+                        + "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]
+                        )
+                    )
     
     if request.method == "POST":
         # 合法性检查
@@ -3967,7 +4014,7 @@ def sendMessage(request):
             'disabled' : False,  # 是否禁止选择这个量
             'selected' : False   # 是否默认选中这个量
         }
-        for w in ['订阅用户','团体成员']
+        for w in ['订阅用户','小组成员']
     }
 
     # 设置默认量
@@ -4058,7 +4105,7 @@ def send_message_check(me, request):
         wechat_kws = {}
         if receiver_type == "订阅用户":
             wechat_kws['app'] = WechatApp.TO_SUBSCRIBER
-        else:   # 团体成员
+        else:   # 小组成员
             wechat_kws['app'] = WechatApp.TO_MEMBER
         wechat_kws['filter_kws'] = {'bulk_identifier': bulk_identifier}
         assert publish_notifications(**wechat_kws)

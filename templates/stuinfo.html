@@ -17,7 +17,7 @@
             let share_confirm = confirm("{{alert_message}}");
             if (share_confirm) {
                 const req = new XMLHttpRequest();
-                let url = '/stuinfo/' + "{{name}}";
+                let url = '/stuinfo/?name=' + "{{name}}";
                 req.open('POST', url, true);
                 req.responseType = 'blob';
                 req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
@@ -46,7 +46,7 @@
             <b class="nav-link active" data-toggle="tab" role="tab" href="#information">个人信息</b>
         </li>
         <li class="nav-item">
-            <b class="nav-link" data-toggle="tab" role="tab" href="#organization">{{ context.title }}的团体</b>
+            <b class="nav-link" data-toggle="tab" role="tab" href="#organization">{{ context.title }}的小组</b>
         </li>
         <li class="nav-item">
             <b class="nav-link" data-toggle="tab" role="tab" href="#activity">{{ context.title }}的活动</b>
@@ -234,7 +234,7 @@
                                         </svg>
                                         <a href="/transPage/{{context.person.person_id_id}}">
                                             向{{ context.title }}转账</a>
-                                        <a data-toggle="tooltip" data-placement="bottom" title="目前仅支持团体向团体转账">
+                                        <a data-toggle="tooltip" data-placement="bottom" title="目前仅支持小组向小组转账">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                 class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                 <path
@@ -270,12 +270,12 @@
                     <div class="widget-content widget-content-area my-3">
 
                         <div class="row">
-                            <h3 class="col mb-0">管理的团体</h3>
+                            <h3 class="col mb-0">管理的小组</h3>
                         </div>
 
                         <div class="bio-skill-box">
                             {% if html_display.owned_orgs_info is None %}
-                            <p style="text-align: center;">没有管理的团体</p>
+                            <p style="text-align: center;">没有管理的小组</p>
                             {% else %}
                             <div class="row">
                                 {% for org, ava, pos in html_display.owned_orgs_info %}
@@ -284,7 +284,7 @@
                                         style="padding-left: 2%;padding-right: 2%; background-image: url({{ ava }}); background-size: 55%; background-repeat: no-repeat; background-position: right;">
                                         <div class=" b-skills row" style="background-color: #ffffffcc;">
                                             <div class="col-9 container-fluid">
-                                                <a href="/orginfo/{{ org.oname }}">
+                                                <a href="/orginfo/?name={{ org.oname }}">
                                                     <h5>{{ org.oname }}</h5>
                                                 </a>
                                                 <p
@@ -310,13 +310,13 @@
                     <div class="widget-content widget-content-area my-3">
 
                         <div class="row">
-                            <h3 class="col mb-0">加入的团体</h3>
+                            <h3 class="col mb-0">加入的小组</h3>
                             {% if html_display.is_myself == False and user_type == 'Person' %}
                             <div class="col-0 mr-4 custom-control custom-switch">
                                 <input type="checkbox" class="custom-control-input" id="org-show-same-button"
-                                    onclick="toggle_same.call(this, `org`, `团体`, `inline-block`, '共同');this.blur();">
+                                    onclick="toggle_same.call(this, `org`, `小组`, `inline-block`, '共同');this.blur();">
                                 <label class="custom-control-label" id="org-show-same-label"
-                                    for="org-show-same-button">所有团体</label>
+                                    for="org-show-same-button">所有小组</label>
                             </div>
                             {% endif %}
                         </div>
@@ -325,9 +325,9 @@
                         <div class="bio-skill-box">
 
                             {% if html_display.joined_orgs_info is None %}
-                            <p style="text-align: center;">没有加入的团体或未公开</p>
+                            <p style="text-align: center;">没有加入的小组或未公开</p>
                             {% else %}
-                            <p id="custom-org-none" style="text-align: center; display: none;">没有共同的团体</p>
+                            <p id="custom-org-none" style="text-align: center; display: none;">没有共同的小组</p>
                             <div class="row">
                                 {% for org, ava, pos, same in html_display.joined_orgs_info %}
                                 <div
@@ -336,7 +336,7 @@
                                         style="padding-left: 2%;padding-right: 2%; background-image: url({{ ava }}); background-size: 55%; background-repeat: no-repeat; background-position: right;">
                                         <div class=" b-skills row" style="background-color: #ffffffcc;">
                                             <div class="col-9 container-fluid">
-                                                <a href="/orginfo/{{ org.oname }}">
+                                                <a href="/orginfo/?name={{ org.oname }}">
                                                     <h5>{{ org.oname }}</h5>
                                                 </a>
                                                 <p
@@ -363,13 +363,13 @@
                     <div class="widget-content widget-content-area my-3">
 
                         <div class="row">
-                            <h3 class="col mb-0">隐藏的团体</h3>
+                            <h3 class="col mb-0">隐藏的小组</h3>
                         </div>
 
                         <div class="bio-skill-box">
 
                             {% if html_display.hidden_orgs_info is None %}
-                            <p style="text-align: center;">没有隐藏的团体</p>
+                            <p style="text-align: center;">没有隐藏的小组</p>
                             {% else %}
                             <div class="row">
                                 {% for org, ava, pos, status in html_display.hidden_orgs_info %}
@@ -378,7 +378,7 @@
                                         style="padding-left: 2%;padding-right: 2%; background-image: url({{ ava }}); background-size: 55%; background-repeat: no-repeat; background-position: right;">
                                         <div class=" b-skills row" style="background-color: #ffffffcc;">
                                             <div class="col-9 container-fluid">
-                                                <a href="/orginfo/{{ org.oname }}">
+                                                <a href="/orginfo/?name={{ org.oname }}">
                                                     <h5>{{ org.oname }}</h5>
                                                 </a>
                                                 <p
@@ -444,21 +444,24 @@
                                     <div class="d-flex b-skills">
                                         <div class="text-nowrap mw-100">
                                             <div class="d-flex justify-content-between">
-                                                <h5
-                                                    style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <h5 style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+
                                                     {% if act.status == "等待中" %}
-                                                    <span class="flex badge badge-pill badge-info">
+                                                    <span class="badge badge-pill badge-warning">
                                                         等待开始
-                                                    </span>
-                                                    {% elif act.status == "已取消" or act.status == "已结束" %}
-                                                    <span class="badge badge-pill badge-danger">
-                                                        {{ act.status }}
-                                                    </span>
                                                     {% else %}
+                                                    {% if act.status == "审核中" %}
+                                                    <span class="flex badge badge-pill badge-secondary">
+                                                    {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                                    <span class="badge badge-pill badge-danger">
+                                                    {% elif act.status == "报名中" %}
+                                                    <span class="badge badge-pill badge-info">
+                                                    {% elif act.status == "进行中" %}
                                                     <span class="badge badge-pill badge-success">
-                                                        {{ act.status }}
-                                                    </span>
                                                     {% endif %}
+                                                        {{ act.status }}
+                                                    {% endif %}
+                                                    </span>
 
                                                     {{ act.title }}
                                                 </h5>

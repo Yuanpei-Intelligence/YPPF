@@ -16,7 +16,7 @@
             let share_confirm = confirm("{{alert_message}}");
             if (share_confirm) {
                 const req = new XMLHttpRequest();
-                let url = '/orginfo/' + "{{name}}";
+                let url = '/orginfo/?name=' + "{{name}}";
                 req.open('POST', url, true);
                 req.responseType = 'blob';
                 req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
@@ -44,7 +44,7 @@
     <!--  BEGIN SWITCH TAB  -->
     <ul class="nav nav-tabs nav-tabs-solid nav-justified" role="tablist">
         <li class="nav-item">
-            <b class="nav-link active" data-toggle="tab" role="tab" href="#organization_info">团体档案</b>
+            <b class="nav-link active" data-toggle="tab" role="tab" href="#organization_info">小组档案</b>
         </li>
         <li class="nav-item">
             <b class="nav-link" data-toggle="tab" role="tab" href="#member_info">成员档案</b>
@@ -64,7 +64,7 @@
                     <div class="widget-content widget-content-area">
 
                         <div class="d-flex justify-content-between">
-                            <h3 class="">团体信息</h3>
+                            <h3 class="">小组信息</h3>
                             <br /><br />
                         </div>
 
@@ -149,7 +149,7 @@
                                             <path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"></path>
                                         </svg>
                                         <a href="/transPage/{{ org.organization_id_id }}">给ta元气值</a>
-                                        <a data-toggle="tooltip" data-placement="bottom" title="目前仅支持团体向团体转账">
+                                        <a data-toggle="tooltip" data-placement="bottom" title="目前仅支持小组向小组转账">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                 class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                 <path
@@ -178,7 +178,7 @@
                         </div>
                         {% if not org.introduction == "" %}
                         <div class="d-flex justify-content-between">
-                            <h3 class="">团体简介</h3>
+                            <h3 class="">小组简介</h3>
                             <br /><br />
                         </div>
                         <p class="m-3">{{org.introduction}}</p>
@@ -221,7 +221,7 @@
                                                 <h5>
                                                     <img src={{ member.avatar_path }} width="24" height="24"
                                                         alt="avatar">
-                                                    <a href='/stuinfo/{{ member.person.name }}'>
+                                                    <a href='/stuinfo/?name={{ member.person.name }}'>
                                                         <u>{{ member.person.name }}</u>
                                                     </a>
                                                 </h5>
@@ -237,19 +237,20 @@
                                                 </h5>
                                             </div>
                                         </div>
-
+                                        
+                                        {% with member.person as person %}
                                         <div class="d-flex justify-content-between">
                                             <div>
-                                                {% if member.person.stu_grade is not None and member.person.stu_grade != "" %}
-                                                <p style="color: rgb(66, 67, 68);">{{ member.person.stu_grade }}级</p>
+                                                {% if person.stu_grade is not None and person.stu_grade != "" %}
+                                                <p style="color: rgb(66, 67, 68);">{{ person.stu_grade }}级</p>
                                                 {% else %}
                                                 <p style="color: rgb(66, 67, 68);"> </p>
                                                 {% endif %}
                                             </div>
                                             <div>
-                                                {% if member.person.show_major %}
-                                                {% if member.person.stu_major is not None and member.person.stu_major != "" %}
-                                                <p style="color: rgb(66, 67, 68);">{{ member.person.stu_major }}</p>
+                                                {% if person.show_major %}
+                                                {% if person.stu_major is not None and person.stu_major != "" %}
+                                                <p style="color: rgb(66, 67, 68);">{{ person.stu_major }}</p>
                                                 {% else %}
                                                 <p style="color: rgb(66, 67, 68);"> </p>
                                                 {% endif %}
@@ -258,6 +259,17 @@
                                                 {% endif %}
                                             </div>
                                         </div>
+
+                                        {% if person.biography != "还没有填写哦～" %}
+                                        <div class="d-flex justify-content-between">
+                                            
+                                            <p style="color: rgb(66, 67, 68); word-wrap: break-word;white-space:nowrap;overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-envelope"></i>
+                                                {{ person.biography }}
+                                            </p>
+                                        </div>
+                                        {% endif %}
+                                        {% endwith %}
 
                                     </div>
                                 </div>
@@ -322,20 +334,22 @@
                                                             <h5
                                                                 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                                 
-                                                                {% if rec.act.status == "审核中" %}
-                                                                    <span class="badge badge-pill badge-warning">
-                                                                        {{ rec.act.status }}
-                                                                    </span>
-                                                                {% elif rec.act.status == "等待中" %}
-                                                                    <span class="badge badge-pill badge-info">
-                                                                        等待开始
-                                                                    </span>
+                                                                {% if rec.act.status == "等待中" %}
+                                                                <span class="badge badge-pill badge-warning">
+                                                                    等待开始
                                                                 {% else %}
-                                                                    <span class="badge badge-pill badge-success">
-                                                                        {{ rec.act.status }}
-                                                                    </span>
+                                                                {% if rec.act.status == "审核中" %}
+                                                                <span class="flex badge badge-pill badge-secondary">
+                                                                {% elif rec.act.status == "未过审" or rec.act.status == "已取消" or rec.act.status == "已撤销" or rec.act.status == "已结束" %}
+                                                                <span class="badge badge-pill badge-danger">
+                                                                {% elif rec.act.status == "报名中" %}
+                                                                <span class="badge badge-pill badge-info">
+                                                                {% elif rec.act.status == "进行中" %}
+                                                                <span class="badge badge-pill badge-success">
                                                                 {% endif %}
-                                                                
+                                                                    {{ rec.act.status }}
+                                                                {% endif %}
+                                                                </span>                                 
 
                                                                 {{rec.act.title}}
 
@@ -574,7 +588,7 @@
 <script>
     $("#export_excel").click(function () {
      const req = new XMLHttpRequest();
-     var url='/orginfo/'+"{{org.oname}}"
+     var url='/orginfo/?name='+"{{org.oname}}"
      req.open('POST', url, true);
      req.responseType = 'blob';
      req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头

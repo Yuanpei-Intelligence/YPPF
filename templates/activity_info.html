@@ -93,15 +93,22 @@
                     <div class="flex d-flex justify-content-start">
                         <h2 class="flex text-dark" style="font-weight: bolder;">{{ title }}</h2>
                         <div class="flex my-auto ml-1">
-                            {% if status == "审核中" %}
-                            <span class="badge badge-pill badge-warning">审核中</span>
-                            {% elif status == "等待中" %}
-                            <span class="badge badge-pill badge-info">等待开始</span>
-                            {% elif status == "已取消" or status == "已结束" %}
-                            <span class="badge badge-pill badge-danger">{{ status }}</span>
+                            {% if status == "等待中" %}
+                            <span class="badge badge-pill badge-warning">
+                                等待开始
                             {% else %}
-                            <span class="badge badge-pill badge-success">{{ status }}</span>
+                            {% if status == "审核中" %}
+                            <span class="flex badge badge-pill badge-secondary">
+                            {% elif status == "未过审" or status == "已取消" or status == "已撤销" or status == "已结束" %}
+                            <span class="badge badge-pill badge-danger">
+                            {% elif status == "报名中" %}
+                            <span class="badge badge-pill badge-info">
+                            {% elif status == "进行中" %}
+                            <span class="badge badge-pill badge-success">
                             {% endif %}
+                                {{ status }}
+                            {% endif %}
+                            </span>
                             {% if activity.inner %}
                             <span class="badge badge-pill badge-success">内部活动</span>
                             {% endif %}
@@ -337,7 +344,7 @@
                                     </form>
                                     {% else %}
                                         <button class="btn btn-primary btn-block mb-2" disabled>立即报名
-                                        <a data-toggle="tooltip" data-placement="bottom" title="该活动是团体内部活动，只有团体内部成员可以参与。">
+                                        <a data-toggle="tooltip" data-placement="bottom" title="该活动是小组内部活动，只有小组内部成员可以参与。">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" fill="currentColor"
                                                 class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                 <path
@@ -433,13 +440,13 @@
                         <h5>发起者</h5>
                         <div class="d-flex justify-content-start">
                             <div style="width: max-content; border-radius: 25px; ">
-                                <a href='/orginfo/{{org_name}}'>
+                                <a href='/orginfo/?name={{org_name}}'>
                                 <img src="{{ org_avatar_path }}" class="flex" alt="organization avatar" height="50px" width="50px">
                                 </a>
                             </div>
                             <span class="flex flex-grow-1 mx-3">
                                 <div class="d-flex justify-content-between">
-                                    <a href='/orginfo/{{org_name}}'><u><h5 class="flex" style="height: 21px;">{{ org_name }}</h5></u></a>
+                                    <a href='/orginfo/?name={{org_name}}'><u><h5 class="flex" style="height: 21px;">{{ org_name }}</h5></u></a>
                                     <p class="mb-0" style="color: gray;">{{ org_type }}</p>
                                 </div>
                                 <p class="mb-0" style="color: gray;">{{ org.introduction }}</p>
@@ -456,7 +463,7 @@
                             {% for person in people_list %}
                             
                             <span class="col-0 m-1" style="border-radius: 8px; overflow: hidden;">
-                                <a href="/stuinfo/{{ person.name }}+{{ person.person_id.id }}">
+                                <a href="/stuinfo/?name={{ person.name }}+{{ person.person_id.id }}">
                                 <img src="{{ person.get_user_ava }}" class="flex" alt="participant's avatar" height="50px" width="50px">
                                 </a>
                             </span>

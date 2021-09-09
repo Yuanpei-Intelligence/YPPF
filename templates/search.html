@@ -68,7 +68,7 @@
                                             <tr>
                                                 <!--
                                                 <td><a
-                                                        href=../../stuinfo/{{person.name}}+{{person.id}}>{{person.name}}</a>
+                                                        href=../../stuinfo/?name={{person.name}}+{{person.id}}>{{person.name}}</a>
                                                 </td>
                                                 <td>{{person.pgender}}</td>
                                                 <td>{{person.pyear}}</td>
@@ -86,7 +86,7 @@
                                                 <!-- 说明此时要展示姓名，关联链接 -->
                                                 <td style="min-width: 80px;">
                                                     <u>
-                                                        <a href="/stuinfo/{{ person.name }}+{{ person.person_id.id }}">
+                                                        <a href="/stuinfo/?name={{ person.name }}+{{ person.person_id.id }}">
                                                             <img src="{{ person.get_user_ava }}" alt="大头照" style="height: 20px; width: 20px;">{{ attribute }}
                                                         </a>
                                                     </u>
@@ -141,7 +141,7 @@
                                         aria-controls="collapseExample">
                                         <div class="d-flex justify-content-between">
                                             <div>
-                                                <h4>团体搜索({{org_display_list|length}}条)</h4>
+                                                <h4>小组搜索({{org_display_list|length}}条)</h4>
                                             </div>
                                             <div style="display:flex;
                                             justify-content: center;
@@ -166,13 +166,13 @@
                                         <tbody>
                                             <!-- <tr>
                                                 <td class="text-center"><a
-                                                    href=../../orginfo/{{orgn.oname}}>{{attribute}}</a>
+                                                    href=../../orginfo/?name={{orgn.oname}}>{{attribute}}</a>
                                             </tr> -->
                                             {% for orgn in org_display_list %}
                                             <tr class="w-100">
                                                 <td style="min-width: 100px;">
                                                     <u>
-                                                        <a href="/orginfo/{{ orgn.oname }}">
+                                                        <a href="/orginfo/?name={{ orgn.oname }}">
                                                             <img src="{{ orgn.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">{{ orgn.oname }}
                                                         </a>
                                                     </u>
@@ -182,7 +182,7 @@
                                                 </td>
                                                 <td style="min-width: 80px;">
                                                     {% for pos_person in orgn.pos0 %}
-                                                    <a href="/stuinfo/{{ pos_person }}+{{pos_person.person_id_id}}">
+                                                    <a href="/stuinfo/?name={{ pos_person }}+{{pos_person.person_id_id}}">
                                                         <u>
                                                             <img src="{{ pos_person.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">{{ pos_person }}
                                                         </u> <!-- 重名？ -->
@@ -262,7 +262,7 @@
 
                                                 <td style="min-width: 80px;">
                                                     <u>
-                                                        <a href="/orginfo/{{ act.organization_id }}">
+                                                        <a href="/orginfo/?name={{ act.organization_id }}">
                                                             <img src="{{ act.organization_id.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">
                                                             {{ act.organization_id }}
                                                         </a>
@@ -271,14 +271,21 @@
 
                                                 <td style="min-width: 60px;">
                                                     {% if act.status == "等待中" %}
-                                                        <span id="ret" class="badge badge-pill badge-info">等待开始</span>
-                                                    {% elif act.status == "审核中" %}
-                                                        <span id="ret" class="badge badge-pill badge-warning">审核中</span>
-                                                    {% elif act.status == "报名中" or act.status == "进行中" %}
-                                                        <span id="ret" class="badge badge-pill badge-success">{{act.status}}</span>
+                                                    <span class="badge badge-pill badge-warning">
+                                                        等待开始
                                                     {% else %}
-                                                        <span id="ret" class="badge badge-pill badge-danger">{{act.status}}</span>
+                                                    {% if act.status == "审核中" %}
+                                                    <span class="flex badge badge-pill badge-secondary">
+                                                    {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                                    <span class="badge badge-pill badge-danger">
+                                                    {% elif act.status == "报名中" %}
+                                                    <span class="badge badge-pill badge-info">
+                                                    {% elif act.status == "进行中" %}
+                                                    <span class="badge badge-pill badge-success">
                                                     {% endif %}
+                                                        {{ act.status }}
+                                                    {% endif %}
+                                                    </span>
                                                 </td>
                                             </tr>
                                             {% endfor %}

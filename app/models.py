@@ -188,20 +188,20 @@ class Freshman(models.Model):
 
 class OrganizationType(models.Model):
     class Meta:
-        verbose_name = "团体类型"
+        verbose_name = "小组类型"
         verbose_name_plural = verbose_name
         ordering = ["otype_name"]
 
-    otype_id = models.SmallIntegerField("团体类型编号", unique=True, primary_key=True)
-    otype_name = models.CharField("团体类型名称", max_length=25)
-    otype_superior_id = models.SmallIntegerField("上级团体类型编号", default=0)
+    otype_id = models.SmallIntegerField("小组类型编号", unique=True, primary_key=True)
+    otype_name = models.CharField("小组类型名称", max_length=25)
+    otype_superior_id = models.SmallIntegerField("上级小组类型编号", default=0)
     incharge = models.ForeignKey(
         NaturalPerson,
         related_name="incharge",
         on_delete=models.SET_NULL,
         blank=True,
         null=True,
-    )  # 相关团体的负责人
+    )  # 相关小组的负责人
     job_name_list = ListCharField(
         base_field=models.CharField(max_length=10), size=4, max_length=44
     )  # [部长, 副部长, 部员]
@@ -251,13 +251,13 @@ class OrganizationManager(models.Manager):
 
 class Organization(models.Model):
     class Meta:
-        verbose_name = "团体"
+        verbose_name = "小组"
         verbose_name_plural = verbose_name
 
     organization_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
     oname = models.CharField(max_length=32, unique=True)
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
-    status = models.BooleanField("激活状态", default=True)  # 表示一个团体是否上线(或者是已经被下线)
+    status = models.BooleanField("激活状态", default=True)  # 表示一个小组是否上线(或者是已经被下线)
 
     objects = OrganizationManager()
 
@@ -344,7 +344,7 @@ class Position(models.Model):
     """ 职务
     职务相关：
         - person: 自然人
-        - org: 团体
+        - org: 小组
         - pos: 职务等级
         - status: 职务状态
         - show_post: 是否公开职务
@@ -367,7 +367,7 @@ class Position(models.Model):
         Organization, related_name="position_set", on_delete=models.CASCADE,
     )
 
-    # 职务的逻辑应该是0最高，1次之这样，然后数字映射到名字是在团体类型表中体现的
+    # 职务的逻辑应该是0最高，1次之这样，然后数字映射到名字是在小组类型表中体现的
     # 10 没有特定含义，只表示最低等级
     pos = models.SmallIntegerField(verbose_name="职务等级", default=10)
 
@@ -377,7 +377,7 @@ class Position(models.Model):
     # 是否选择公开当前的职务
     show_post = models.BooleanField(default=True)
 
-    # 表示是这个团体哪一年、哪个学期的成员
+    # 表示是这个小组哪一年、哪个学期的成员
     in_year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
     in_semester = models.CharField(
         "当前学期", choices=Semester.choices, default=Semester.ANNUAL, max_length=15
@@ -386,7 +386,7 @@ class Position(models.Model):
     class Status(models.TextChoices):  # 职务状态
         INSERVICE = "在职"
         DEPART = "离职"
-        # NONE = "无职务状态"  # 用于第一次加入团体申请
+        # NONE = "无职务状态"  # 用于第一次加入小组申请
 
     status = models.CharField(
         "职务状态", choices=Status.choices, max_length=32, default=Status.INSERVICE
@@ -394,8 +394,8 @@ class Position(models.Model):
 
     '''
     class ApplyType(models.TextChoices):  # 成员变动申请类型
-        JOIN = "加入团体"
-        WITHDRAW = "退出团体"
+        JOIN = "加入小组"
+        WITHDRAW = "退出小组"
         TRANSFER = "修改职位"
         NONE = "无申请流程"  # 指派职务
     apply_type = models.CharField(
@@ -711,10 +711,10 @@ class TransferRecord(models.Model):
         PENDING = (5, "待审核")
 
     class TransferType(models.IntegerChoices):
-        ACTIVITY = (0, "团体活动入账") # 包括像学院申请元气值的部分
+        ACTIVITY = (0, "小组活动入账") # 包括像学院申请元气值的部分
         REIMBURSEMENT = (1, "报销兑换") # 元气值湮灭
         BONUS = (2, "学院发放") # 学院发放的奖励
-        TRANSACTION = (3, "团体间转账")
+        TRANSACTION = (3, "小组间转账")
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
     rtype = models.SmallIntegerField(choices=TransferType.choices, default=0)
@@ -760,11 +760,11 @@ class YQPointDistribute(models.Model):
 
     # 发放元气值的上限，多于此值则不发放
     per_max_dis_YQP = models.FloatField("自然人发放元气值上限")
-    org_max_dis_YQP = models.FloatField("团体发放元气值上限")
-    # 个人和团体所能平分的元气值比例
-    # 发放时，从学院剩余元气值中，抽取向自然人分发的数量，平分给元气值低于上限的自然人；团体同理
+    org_max_dis_YQP = models.FloatField("小组发放元气值上限")
+    # 个人和小组所能平分的元气值比例
+    # 发放时，从学院剩余元气值中，抽取向自然人分发的数量，平分给元气值低于上限的自然人；小组同理
     per_YQP = models.FloatField("自然人获得的元气值", default=0)
-    org_YQP = models.FloatField("团体获得的元气值", default=0)
+    org_YQP = models.FloatField("小组获得的元气值", default=0)
 
     start_time = models.DateTimeField("开始时间")
 
@@ -875,7 +875,7 @@ class CommentPhoto(models.Model):
 
 class ModifyOrganization(CommentBase):
     class Meta:
-        verbose_name = "新建团体"
+        verbose_name = "新建小组"
         verbose_name_plural = verbose_name
         ordering = ["-modify_time", "-time"]
 
@@ -886,11 +886,11 @@ class ModifyOrganization(CommentBase):
         "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
     )
     avatar = models.ImageField(
-        upload_to=f"avatar/", verbose_name="团体头像",default="avatar/org_default.png",null=True, blank=True
+        upload_to=f"avatar/", verbose_name="小组头像",default="avatar/org_default.png",null=True, blank=True
     )
     pos = models.ForeignKey(User, on_delete=models.CASCADE)
 
-    class Status(models.IntegerChoices):  # 表示申请团体的请求的状态
+    class Status(models.IntegerChoices):  # 表示申请小组的请求的状态
         PENDING = (0, "审核中")
         CONFIRMED = (1, "已通过")  
         CANCELED = (2, "已取消")  
@@ -901,7 +901,7 @@ class ModifyOrganization(CommentBase):
     def __str__(self):
         # YWolfeee: 不认为应该把类型放在如此重要的位置
         # return f'{self.oname}{self.otype.otype_name}'
-        return f'新建团体{self.oname}的申请'
+        return f'新建小组{self.oname}的申请'
 
     def save(self, *args, **kwargs):
         self.typename = "neworganization"
@@ -917,7 +917,7 @@ class ModifyOrganization(CommentBase):
     def extra_display(self):
         display = []
         if self.introduction and self.introduction != '这里暂时没有介绍哦~':
-            display.append(('团体介绍', self.introduction))
+            display.append(('小组介绍', self.introduction))
         return display
 
     def get_user_ava(self):
@@ -951,7 +951,7 @@ class ModifyPosition(CommentBase):
         to = NaturalPerson, related_name = "position_application", on_delete = models.CASCADE
     )
 
-    # 申请团体
+    # 申请小组
     org = models.ForeignKey(
         to = Organization, related_name = "position_application", on_delete = models.CASCADE
     )
@@ -976,9 +976,9 @@ class ModifyPosition(CommentBase):
         return f'{self.org.oname}成员申请'
 
     class ApplyType(models.TextChoices):  # 成员变动申请类型
-        JOIN = "加入团体"
+        JOIN = "加入小组"
         TRANSFER = "修改职位"
-        WITHDRAW = "退出团体"
+        WITHDRAW = "退出小组"
         # 指派职务不需要通过NewPosition类来实现
         # NONE = "无申请流程"  # 指派职务
 
@@ -986,6 +986,15 @@ class ModifyPosition(CommentBase):
         "申请类型", choices=ApplyType.choices, max_length=32
     )
 
+
+    def get_poster_name(self):
+        try:
+            return self.person
+        except:
+            return '未知'
+    
+    def extra_display(self):
+        return self.reason
 
     def is_pending(self):   #表示是不是pending状态
             return self.status == ModifyPosition.Status.PENDING
@@ -1040,7 +1049,7 @@ class Reimbursement(CommentBase):
     )
     amount = models.FloatField("报销金额", default=0)
     message = models.TextField("备注信息", default="", blank=True)
-    pos = models.ForeignKey(User, on_delete=models.CASCADE)#报销的团体
+    pos = models.ForeignKey(User, on_delete=models.CASCADE)#报销的小组
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
     record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
     summary_image=models.ImageField(upload_to=f"activity/photo/%Y/%m/",
@@ -1055,7 +1064,7 @@ class Reimbursement(CommentBase):
     def get_poster_name(self):
         try:
             org = Organization.objects.get(organization_id=self.pos)
-            return org.oname
+            return org
         except:
             return '未知'
 

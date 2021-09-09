@@ -107,8 +107,8 @@
                                         <table class="table table-bordered mb-4">
                                             <thead>
                                                 <tr>
-                                                    <th>团体名称</th>
-                                                    <!--<th>团体类型</th>-->
+                                                    <th>小组名称</th>
+                                                    <!--<th>小组类型</th>-->
                                                     <th>订阅状态</th>
                                                 </tr>
                                             </thead>
@@ -116,7 +116,7 @@
                                                 {% for org in org_list%}
                                                 {% if org.otype.otype_name == otype.otype_name %}
                                                 <tr>
-                                                    <td><u><a href="/orginfo/{{org.oname}}">{{org.oname}}</a></u></td>
+                                                    <td><u><a href="/orginfo/?name={{org.oname}}">{{org.oname}}</a></u></td>
                                                     <!--<td>
                                                         {{org.otype.otype_name}}
                                                     </td>-->

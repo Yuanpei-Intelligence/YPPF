@@ -22,7 +22,7 @@
         {% endif %}
     
         {% if upload_state == True %}
-            <div class="alert alert-success  text-center">修改团体信息成功</div>
+            <div class="alert alert-success  text-center">修改小组信息成功</div>
         {% endif %}
         {% if expr == False %}
             <div class="alert alert-warning  text-center">没有检测到信息更新</div>
@@ -31,7 +31,7 @@
         <div class="w-100 overflow-hidden" style="height: 200px;">
             <div class="w-100 overflow-hidden" style="height: 200px; filter: blur(10px); -webkit-filter: blur(10px); background-image: url({{ former_wallpaper }}); background-position: center; background-repeat: no-repeat; background-size: cover; transform: scale(1.1);"></div>
             <h1 class="text-light" style="position: absolute; left: 8.33%; top: 65px; font-weight: bolder;">{{ useroj.oname }}</h1>
-            <h5 class="text-light" style="position: absolute; left: 8.33%; top: 115px; font-weight: normal;">团体信息设置</h5>
+            <h5 class="text-light" style="position: absolute; left: 8.33%; top: 115px; font-weight: normal;">小组信息设置</h5>
         </div>
 
         <form id="general-info" class="section general-info" method="POST" enctype="multipart/form-data">
@@ -59,7 +59,7 @@
                         </div>
     
                         <div class="col-6 upload" style="border: none;">
-                            <label for="avatar" style="width: max-content;">主页墙纸
+                            <label for="wallpaper" style="width: max-content;">主页墙纸
                                 <a data-toggle="tooltip" data-placement="bottom" title="欢迎尝试gif格式图片･ω･)ﾉ">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                         class="bi bi-question-circle-fill" viewBox="0 0 22 22">
@@ -67,8 +67,8 @@
                                     </svg>
                                 </a>
                             </label>
-                            <input type="file" id="avatar" class="dropify"
-                                name="avatar" data-default-file="{{ former_wallpaper }}" data-max-file-size="2048K" />
+                            <input type="file" id="wallpaper" class="dropify"
+                                name="wallpaper" data-default-file="{{ former_wallpaper }}" data-max-file-size="2048K" />
                         </div>
                     </div>
                 </div>
@@ -78,12 +78,12 @@
             <div class="row mx-0 pt-5">
                 <div class="col-1 px-0"></div>
                 <div class="col-10 col-md-2 px-0">
-                    <h2 class="text-dark pr-4">团体介绍</h2>
+                    <h2 class="text-dark pr-4">小组介绍</h2>
                 </div>
                 <div class="col-1 px-0 d-md-none"></div>
                 <div class="col-1 px-0 d-md-none"></div>
                 <div class="col-10 col-md-7 px-0">
-                    <label for="introduction" style="width: max-content;">团体介绍</label>
+                    <label for="introduction" style="width: max-content;">小组介绍</label>
                     <div class="mb-4">
                         <textarea class="form-control" id="introduction" name="introduction"
                                 placeholder="{{userinfo.introduction}}" rows="3" onclick="if(this.placeholder != ''){this.value=this.placeholder;}"></textarea>
@@ -92,7 +92,7 @@
             </div>
 
             <div class="row mx-0 pt-5">
-                <button id="submit" class="btn btn-primary mb-5" style="margin: auto;" onclick="return confirm(`确认提交团体信息变动？`)">提交修改</button>
+                <button id="submit" class="btn btn-primary mb-5" style="margin: auto;" onclick="return confirm(`确认提交小组信息变动？`)">提交修改</button>
             </div>
         </form>
     </div>
