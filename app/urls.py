@@ -10,6 +10,7 @@ urlpatterns = [
     path("orginfo/", views.orginfo, name="orginfo"),
     path("stuinfo/<str:name>", views.stuinfo, name="stuinfo"),
     path("orginfo/<str:name>", views.orginfo, name="orginfo"),
+    path("request_login_org/", views.request_login_org, name="request_login_org"),
     path(
         "request_login_org/<str:name>",
         views.request_login_org,
