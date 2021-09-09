@@ -987,6 +987,15 @@ class ModifyPosition(CommentBase):
     )
 
 
+    def get_poster_name(self):
+        try:
+            return self.person
+        except:
+            return '未知'
+    
+    def extra_display(self):
+        return self.reason
+
     def is_pending(self):   #表示是不是pending状态
             return self.status == ModifyPosition.Status.PENDING
 
@@ -1055,7 +1064,7 @@ class Reimbursement(CommentBase):
     def get_poster_name(self):
         try:
             org = Organization.objects.get(organization_id=self.pos)
-            return org.oname
+            return org
         except:
             return '未知'
 

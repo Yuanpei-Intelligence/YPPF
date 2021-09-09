@@ -88,8 +88,8 @@
             <div class="flex" style="max-width: 80%;">
                 {% for display in instance.extra_display %}
                 {% if display|length == 2 or display|length == 3 %}
-                <p style="color: rgb(66, 67, 68); word-wrap: break-word;">
-                    <i class="fa fa-{{display.2|default:'envelope-o'}}"></i>
+                <p style="color: rgb(66, 67, 68); word-wrap: break-word;white-space:nowrap;overflow: hidden; text-overflow: ellipsis;">
+                    <i class="fa fa-{{display.2|default:'envelope'}}"></i>
                     {{display.0}}：{{display.1}}
                 </p>
                 {% endif %}
