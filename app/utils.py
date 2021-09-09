@@ -11,6 +11,7 @@ from app.models import (
     Reimbursement,
     Participant,
     ModifyRecord,
+    Wishes
 )
 from django.contrib.auth.models import User
 from django.dispatch.dispatcher import receiver
@@ -572,10 +573,15 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
     user.save()
     org = Organization.objects.create(organization_id=user, oname=application.oname, \
         otype=application.otype, YQPoint=0.0, introduction=application.introduction, avatar=application.avatar)
+    
+    for person in NaturalPerson.objects.all():
+        org.unsubscribers.add(person)
+    org.save()
     charger = get_person_or_org(application.pos)
     pos = Position.objects.create(person=charger,org=org,pos=0,status=Position.Status.INSERVICE,is_admin = True)
     # 修改申请状态
     ModifyOrganization.objects.filter(id=application.id).update(status=ModifyOrganization.Status.CONFIRMED)
+    Wishes.objects.create(text="学生小组“"+str(org.oname)+"”刚刚成立啦！快点去关注一下吧！")
 
 # 在错误的情况下返回的字典,message为错误信息
 def wrong(message="检测到恶意的申请操作. 如有疑惑，请联系管理员!"):
@@ -697,10 +703,11 @@ def update_org_application(application, me, request):
                     否则就不应该通过这条创建
                 '''
                 try:
-                    accept_modifyorg_submit(application)
-                    context = succeed("成功通过来自" +  NaturalPerson.objects.get(person_id=application.pos).name + "的申请!")
-                    context["application_id"] = application.id
-                    return context
+                    with transaction.atomic():
+                        accept_modifyorg_submit(application)
+                        context = succeed("成功通过来自" +  NaturalPerson.objects.get(person_id=application.pos).name + "的申请!")
+                        context["application_id"] = application.id
+                        return context
                 except:
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
 
