@@ -74,6 +74,25 @@ class OrganizationAdmin(admin.ModelAdmin):
         return mark_safe(display)
     Managers.short_description = "管理者"
 
+    actions = ['all_subscribe', 'all_unsubscribe']
+
+    def all_subscribe(self, request, queryset):
+        for org in queryset:
+            org.unsubscribers.clear()
+            org.save()
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    all_subscribe.short_description = "设置 全部订阅"
+
+    def all_unsubscribe(self, request, queryset):
+        persons = list(NaturalPerson.objects.all().values_list('id', flat=True))
+        for org in queryset:
+            org.unsubscribers.set(persons)
+            org.save()
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    all_unsubscribe.short_description = "设置 全部不订阅"
+
 
 @admin.register(Position)
 class PositionAdmin(admin.ModelAdmin):
@@ -168,6 +187,29 @@ class ModifyRecordAdmin(admin.ModelAdmin):
     list_display = ["id", "user", "usertype", "name", 'time']
     search_fields = ('id', "user__username", "name")
     list_filter = ('time', 'usertype')
+
+    actions = ['get_rank']
+
+    def get_rank(self, request, queryset):
+        if len(queryset) != 1:
+            return self.message_user(
+                request=request, message='一次只能查询一个用户的排名!', level='error')
+        try:
+            record = queryset[0]
+            usertype = record.usertype
+            records = ModifyRecord.objects.filter(
+                user=record.user, usertype=usertype)
+            first = records.order_by('time')[0]
+            rank = ModifyRecord.objects.filter(
+                usertype=usertype,
+                time__lte=first.time,
+                ).values('user').distinct().count()
+            return self.message_user(request=request,
+                                    message=f'查询成功: {first.name}的排名为{rank}!')
+        except Exception as e:
+            return self.message_user(request=request,
+                                    message=f'查询失败: {e}!', level='error')
+    get_rank.short_description = "查询排名"
 
 
 admin.site.register(Activity)
