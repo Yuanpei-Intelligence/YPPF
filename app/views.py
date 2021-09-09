@@ -3164,13 +3164,16 @@ def showNewOrganization(request):
     me = utils.get_person_or_org(request.user, user_type)
 
     # 拉取我负责管理申请的小组，这部分由我审核
-    charge_org = ModifyOrganization.objects.filter(otype__in=me.incharge.all())
+    charge_org = ModifyOrganization.objects.filter(otype__in=me.incharge.all()).values_list("id",flat=True)
 
     # 拉去由我发起的申请，这部分等待审核
-    applied_org = ModifyOrganization.objects.filter(pos=request.user)
-
+    applied_org = ModifyOrganization.objects.filter(pos=request.user).values_list("id",flat=True)
+    all_instances = ModifyOrganization.objects.filter(id__in = list(set(charge_org) | set(applied_org)))
     # 排序整合，用于前端呈现
-    shown_instances = charge_org.union(applied_org).order_by("-modify_time", "-time")
+    all_instances = {
+        "undone": all_instances.filter(status=ModifyOrganization.Status.PENDING).order_by("-modify_time", "-time"),
+        "done"  : all_instances.exclude(status=ModifyOrganization.Status.PENDING).order_by("-modify_time", "-time")
+    }
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="新建小组账号")
     return render(request, "neworganization_show.html", locals())
