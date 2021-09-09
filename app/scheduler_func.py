@@ -27,6 +27,30 @@ from app.scheduler import scheduler
 YQPoint_oname = local_dict["YQPoint_source_oname"]
 
 
+def send_to_persons(title, message, url='/index/'):
+    sender = User.objects.get(username='zz00000')
+    np = NaturalPerson.objects.all()
+    receivers = User.objects.filter(id__in=np.values_list('person_id', flat=True))
+    print(bulk_notification_create(
+        receivers, sender, 
+        Notification.Type.NEEDREAD, title, message, url,
+        publish_to_wechat=True,
+        publish_kws={'level': WechatMessageLevel.IMPORTANT},
+        ))
+
+
+def send_to_orgs(title, message, url='/index/'):
+    sender = User.objects.get(username='zz00000')
+    org = Organization.objects.all().exclude(otype__otype_id=0)
+    receivers = User.objects.filter(id__in=org.values_list('organization_id', flat=True))
+    bulk_notification_create(
+        receivers, sender, 
+        Notification.Type.NEEDREAD, title, message, url,
+        publish_to_wechat=True,
+        publish_kws={'level': WechatMessageLevel.IMPORTANT},
+        )
+
+
 # 学院每月下发元气值
 def distribute_YQPoint_per_month():
     with transaction.atomic():
