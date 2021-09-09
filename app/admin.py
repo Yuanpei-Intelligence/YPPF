@@ -163,9 +163,14 @@ class WishesAdmin(admin.ModelAdmin):
         return mark_safe(f'<span style="color: {obj.background};"><strong>{obj.background}</strong></span>')
     background_display.short_description = "背景颜色"
 
+@admin.register(ModifyRecord)
+class ModifyRecordAdmin(admin.ModelAdmin):
+    list_display = ["id", "user", "usertype", "name", 'time']
+    search_fields = ('id', "user__username", "name")
+    list_filter = ('time', 'usertype')
+
 
 admin.site.register(Activity)
 admin.site.register(TransferRecord)
 
 admin.site.register(YQPointDistribute)
-admin.site.register(ModifyRecord)
