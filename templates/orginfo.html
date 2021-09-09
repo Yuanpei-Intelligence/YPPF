@@ -16,7 +16,7 @@
             let share_confirm = confirm("{{alert_message}}");
             if (share_confirm) {
                 const req = new XMLHttpRequest();
-                let url = '/orginfo/' + "{{name}}";
+                let url = '/orginfo/?name=' + "{{name}}";
                 req.open('POST', url, true);
                 req.responseType = 'blob';
                 req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
@@ -221,7 +221,7 @@
                                                 <h5>
                                                     <img src={{ member.avatar_path }} width="24" height="24"
                                                         alt="avatar">
-                                                    <a href='/stuinfo/{{ member.person.name }}'>
+                                                    <a href='/stuinfo/?name={{ member.person.name }}'>
                                                         <u>{{ member.person.name }}</u>
                                                     </a>
                                                 </h5>
@@ -586,7 +586,7 @@
 <script>
     $("#export_excel").click(function () {
      const req = new XMLHttpRequest();
-     var url='/orginfo/'+"{{org.oname}}"
+     var url='/orginfo/?name='+"{{org.oname}}"
      req.open('POST', url, true);
      req.responseType = 'blob';
      req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
