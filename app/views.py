@@ -265,7 +265,7 @@ def stuinfo(request, name=None):
         进入到这里的逻辑:
         首先必须登录，并且不是超级账户
         如果name是空
-            如果是个人账户，那么就自动跳转个人主页"/stuinfo/myname"
+            如果是个人账户，那么就自动跳转个人主页"/stuinfo/?name=myname"
             如果是小组账户，那么自动跳转welcome
         如果name非空但是找不到对应的对象
             自动跳转到welcome
@@ -283,17 +283,19 @@ def stuinfo(request, name=None):
     oneself = utils.get_person_or_org(user, user_type)
 
     if name is None:
+        name = request.GET.get('name', None)
+    if name is None:
         if user_type == "Organization":
             return redirect("/welcome/")  # 小组只能指定学生姓名访问
         else:  # 跳轉到自己的頁面
             assert user_type == "Person"
             full_path = request.get_full_path()
 
-            append_url = "" if ("?" not in full_path) else "?" + full_path.split("?")[1]
-            return redirect("/stuinfo/" + oneself.name + append_url)
+            append_url = "" if ("?" not in full_path) else "&" + full_path.split("?")[1]
+            return redirect("/stuinfo/?name=" + oneself.name + append_url)
     else:
         # 先对可能的加号做处理
-        name_list = name.split("+")
+        name_list = name.replace(' ', '+').split("+")
         name = name_list[0]
         person = NaturalPerson.objects.activated().filter(name=name)
         if len(person) == 0:  # 查无此人
@@ -500,12 +502,14 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
     except:  # 找不到合法的用户
         return redirect("/welcome/")
     if name is None:  # 个人登录未指定登入小组,属于不合法行为,弹回欢迎
+        name = request.GET.get('name', None)
+    if name is None:  # 个人登录未指定登入小组,属于不合法行为,弹回欢迎
         return redirect("/welcome/")
     else:  # 确认有无这个小组
         try:
             org = Organization.objects.get(oname=name)
         except:  # 找不到对应小组
-            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=找不到对应小组,请联系管理员!"
+            urls = "/stuinfo/?name=" + me.name + "&warn_code=1&warn_message=找不到对应小组,请联系管理员!"
             return redirect(urls)
         try:
             position = Position.objects.activated().filter(org=org, person=me)
@@ -513,7 +517,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
             position = position[0]
             assert position.pos <= org.otype.control_pos_threshold
         except:
-            urls = "/stuinfo/" + me.name + "?warn_code=1&warn_message=没有登录到该小组账户的权限!"
+            urls = "/stuinfo/?name=" + me.name + "&warn_code=1&warn_message=没有登录到该小组账户的权限!"
             return redirect(urls)
         # 到这里,是本人小组并且有权限登录
         auth.logout(request)
@@ -563,6 +567,8 @@ def orginfo(request, name=None):
 
     me = utils.get_person_or_org(user, user_type)
     
+    if name is None:
+        name = request.GET.get('name', None)
 
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if user_type == "Person":
@@ -573,9 +579,9 @@ def orginfo(request, name=None):
             return redirect("/welcome/")
 
         full_path = request.get_full_path()
-        append_url = "" if ("?" not in full_path) else "?" + full_path.split("?")[1]
+        append_url = "" if ("?" not in full_path) else "&" + full_path.split("?")[1]
             
-        return redirect("/orginfo/" + org.oname + append_url)
+        return redirect("/orginfo/?name=" + org.oname + append_url)
 
     try:  # 指定名字访问小组账号的，可以是自然人也可以是法人。在html里要注意区分！
 
@@ -749,7 +755,7 @@ def homepage(request):
 
     # 直接储存在html_display中
     # profile_name = "个人主页" if is_person else "小组主页"
-    # profile_url = "/stuinfo/" + myname if is_person else "/orginfo/" + myname
+    # profile_url = "/stuinfo/?name=" + myname if is_person else "/orginfo/?name=" + myname
 
     html_display["is_myself"] = True
 
@@ -1577,12 +1583,12 @@ def transaction_page(request, rid=None):
     if html_display['warn_code']==1:
         if hasattr(recipient, "organization_id"):
             return redirect(
-                "/orginfo/{name}?warn_code=1&warn_message={message}".format(name=recipient.oname,
+                "/orginfo/?name={name}&warn_code=1&warn_message={message}".format(name=recipient.oname,
                                                                                       message=html_display[
                                                                                           'warn_message']))
         else:
             return  redirect(
-                "/stuinfo/{name}?warn_code=1&warn_message={message}".format(name=recipient.name,
+                "/stuinfo/?name={name}&warn_code=1&warn_message={message}".format(name=recipient.name,
                                                                             message=html_display['warn_message']))
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # 如果希望前移，请联系YHT
@@ -1790,10 +1796,10 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
         lis[-1]["obj_direct"] = "To  " if record_type == "send" else "From"
         if hasattr(obj_user, "naturalperson"):  # 如果OneToOne Field在个人上
             lis[-1]["obj"] = obj_user.naturalperson.name
-            lis[-1]["obj_url"] = "/stuinfo/" + lis[-1]["obj"] + "+" + str(obj_user.id)
+            lis[-1]["obj_url"] = "/stuinfo/?name=" + lis[-1]["obj"] + "+" + str(obj_user.id)
         else:
             lis[-1]["obj"] = obj_user.organization.oname
-            lis[-1]["obj_url"] = "/orginfo/" + lis[-1]["obj"]
+            lis[-1]["obj_url"] = "/orginfo/?name=" + lis[-1]["obj"]
 
         # 金额
         lis[-1]["amount"] = record.amount
@@ -2892,7 +2898,7 @@ def apply_position(request, oid=None):
             me, org, apply_type, apply_pos)
     except Exception as e:
         # print(e)
-        return redirect(f"/orginfo/{org.oname}?warn_code=1&warn_message={e}")
+        return redirect(f"/orginfo/?name={org.oname}&warn_code=1&warn_message={e}")
 
     contents = [f"{apply_type}申请已提交审核", f"{apply_type}申请审核"]
     notification_create(
@@ -3133,11 +3139,11 @@ def showComment(commentbase):
         commentator = get_person_or_org(comment.commentator)
         if comment.commentator.username[:2] == "zz":
             comment.ava = commentator.get_user_ava()
-            comment.URL = "/orginfo/{name}".format(name=commentator.oname)
+            comment.URL = "/orginfo/?name={name}".format(name=commentator.oname)
             comment.commentator_name = commentator.oname
         else:
             comment.ava = commentator.get_user_ava()
-            comment.URL = "/stuinfo/{name}".format(name=commentator.name)
+            comment.URL = "/stuinfo/?name={name}".format(name=commentator.name)
             comment.commentator_name = commentator.name
         comment.len = len(comment.comment_photos.all())
     comments.len = len(comments.all())

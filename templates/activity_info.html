@@ -433,13 +433,13 @@
                         <h5>发起者</h5>
                         <div class="d-flex justify-content-start">
                             <div style="width: max-content; border-radius: 25px; ">
-                                <a href='/orginfo/{{org_name}}'>
+                                <a href='/orginfo/?name={{org_name}}'>
                                 <img src="{{ org_avatar_path }}" class="flex" alt="organization avatar" height="50px" width="50px">
                                 </a>
                             </div>
                             <span class="flex flex-grow-1 mx-3">
                                 <div class="d-flex justify-content-between">
-                                    <a href='/orginfo/{{org_name}}'><u><h5 class="flex" style="height: 21px;">{{ org_name }}</h5></u></a>
+                                    <a href='/orginfo/?name={{org_name}}'><u><h5 class="flex" style="height: 21px;">{{ org_name }}</h5></u></a>
                                     <p class="mb-0" style="color: gray;">{{ org_type }}</p>
                                 </div>
                                 <p class="mb-0" style="color: gray;">{{ org.introduction }}</p>
@@ -456,7 +456,7 @@
                             {% for person in people_list %}
                             
                             <span class="col-0 m-1" style="border-radius: 8px; overflow: hidden;">
-                                <a href="/stuinfo/{{ person.name }}+{{ person.person_id.id }}">
+                                <a href="/stuinfo/?name={{ person.name }}+{{ person.person_id.id }}">
                                 <img src="{{ person.get_user_ava }}" class="flex" alt="participant's avatar" height="50px" width="50px">
                                 </a>
                             </span>
