@@ -203,7 +203,7 @@
                 <ul class="collapse submenu list-unstyled" id="dashboard2" data-parent="#accordionExample">
                     {% for control_org in bar_display.my_org_list %}
                     <li>
-                        <a href="/request_login_org/{{control_org.oname}}"> {{control_org.oname}}</a>
+                        <a href="/request_login_org/?name={{control_org.oname}}"> {{control_org.oname}}</a>
                     </li>
 
                     {% endfor %}
