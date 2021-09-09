@@ -3391,11 +3391,17 @@ def showPosition(request):
 
     # 查看成员聚合页面：拉取个人或小组相关的申请
     if user_type == "Person":
-        shown_instances = ModifyPosition.objects.filter(person=me)
+        #shown_instances = ModifyPosition.objects.filter(person=me)
+        all_instances = {
+            "undone": ModifyPosition.objects.filter(person=me, status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
+            "done": ModifyPosition.objects.filter(person=me).exclude(status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time')
+        }
     else:
-        shown_instances = ModifyPosition.objects.filter(org=me)
-
-    shown_instances = shown_instances.order_by('-modify_time', '-time')
+        all_instances = {
+            "undone": ModifyPosition.objects.filter(org=me,status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
+            "done": ModifyPosition.objects.filter(org=me).exclude(status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time')
+        }
+    #shown_instances = shown_instances.order_by('-modify_time', '-time')
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="成员申请")
     return render(request, 'showPosition.html', locals())
 
@@ -3426,10 +3432,19 @@ def endActivity(request):
                     )
 
     if is_auditor:
-        shown_instances = Reimbursement.objects
+        all_instances = {
+            "undone": Reimbursement.objects.filter(status = Reimbursement.ReimburseStatus.WAITING),
+            "done":     Reimbursement.objects.all().exclude(status = Reimbursement.ReimburseStatus.WAITING)
+        }
+        
     else:
-        shown_instances = Reimbursement.objects.filter(pos=request.user)
-    shown_instances = shown_instances.order_by("-modify_time", "-time")
+        all_instances = {
+            "undone":   Reimbursement.objects.filter(pos=request.user, status = Reimbursement.ReimburseStatus.WAITING),
+            "done":     Reimbursement.objects.filter(pos=request.user).exclude(status = Reimbursement.ReimburseStatus.WAITING)
+        }
+
+    all_instances = {key:value.order_by("-modify_time", "-time") for key,value in all_instances.items()}
+    #shown_instances = shown_instances.order_by("-modify_time", "-time")
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动结项")
     return render(request, "reimbursement_show.html", locals())
 
@@ -3462,11 +3477,17 @@ def showActivity(request):
                         )
                     )
     if is_teacher:
-        shown_instances = Activity.objects.all_activated().filter(examine_teacher = me.id)
+        all_instances = {
+            "undone":   Activity.objects.all_activated().filter(examine_teacher = me.id, valid = False),
+            "done":     Activity.objects.all_activated().filter(examine_teacher = me.id, valid = True)
+        }
     else:
-        shown_instances = Activity.objects.all_activated().filter(organization_id = me.id)
+        all_instances = {
+            "undone":   Activity.objects.all_activated().filter(organization_id = me.id, valid = False),
+            "done":     Activity.objects.all_activated().filter(organization_id = me.id, valid = True)
+        }
 
-    shown_instances = shown_instances.order_by("-modify_time", "-time")
+    all_instances = {key:value.order_by("-modify_time", "-time") for key,value in all_instances.items()}
     bar_display = utils.get_sidebar_and_navbar(request.user, "活动立项")
 
     # 前端不允许元气值中心创建活动
