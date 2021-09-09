@@ -852,7 +852,7 @@ def homepage(request):
 
     # -----------------------------天气---------------------------------
     try:
-        with open("weather.json") as weather_json:
+        with open("./weather.json") as weather_json:
             html_display['weather'] = json.load(weather_json)
     except:
         from app.scheduler_func import get_weather
@@ -3420,7 +3420,7 @@ def endActivity(request):
     if user_type == "Person":
         try:
             person = utils.get_person_or_org(request.user, user_type)
-            if person.name == local_dict["audit_teacher"]["Funds"]:
+            if person.person_id.username == local_dict["audit_teacher"]["Funds"]:
                 is_auditor = True
         except:
             pass
