@@ -1054,6 +1054,7 @@ class Reimbursement(CommentBase):
     record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
     summary_image=models.ImageField(upload_to=f"activity/photo/%Y/%m/",
                                     verbose_name="活动总结图片",null=True, blank=True)
+    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
         

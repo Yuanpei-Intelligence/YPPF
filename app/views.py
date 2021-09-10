@@ -407,6 +407,10 @@ def stuinfo(request, name=None):
         person_hidden_orgs_pos = [
             person_hidden_poss.get(org=org).pos for org in person_hidden_orgs
         ]  # ta在小组中的职位
+        person_hidden_orgs_pos = [
+            org.otype.get_name(pos)
+            for pos, org in zip(person_hidden_orgs_pos,person_hidden_orgs)
+        ]  # ta在小组中的职位
         person_hidden_orgs_status = [
             person_hidden_poss.get(org=org).status for org in person_hidden_orgs
         ]  # ta职位的状态
@@ -2557,7 +2561,7 @@ def addActivity(request, aid=None):
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava() 
     if not edit:
-        avialable_teachers = NaturalPerson.objects.teachers()
+        available_teachers = NaturalPerson.objects.teachers()
     else:
         try:
             org = get_person_or_org(request.user, "Organization")
@@ -2618,7 +2622,7 @@ def addActivity(request, aid=None):
             no_limit = True
         examine_teacher = activity.examine_teacher.name
         status = activity.status
-        avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
+        available_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
         need_checkin = activity.need_checkin
         inner = activity.inner
         apply_reason = utils.escape_for_templates(activity.apply_reason)
@@ -3618,10 +3622,6 @@ def modifyEndActivity(request):
     application = None
     # 根据是否有newid来判断是否是第一次
     reimb_id = request.GET.get("reimb_id", None)
-    #审核老师
-    auditor = User.objects.get(username=local_dict["audit_teacher"]["Funds"])
-    auditor_name=utils.get_person_or_org(auditor).name
-
     # 获取前端页面中可能存在的提示
     try:
         if request.GET.get("warn_code", None) is not None:
@@ -3633,6 +3633,7 @@ def modifyEndActivity(request):
     if reimb_id is not None:  # 如果存在对应报销
         try:  # 尝试获取已经新建的Reimbursement
             application = Reimbursement.objects.get(id=reimb_id)
+            auditor=application.examine_teacher.person_id   #审核老师
             if user_type == "Person" and auditor!=request.user:
                 html_display=user_login_org(request,application.pos.organization)
                 if html_display['warn_code']==1:
@@ -3677,11 +3678,6 @@ def modifyEndActivity(request):
         is_new_application = True  # 新的申请
 
          # 这种写法是为了方便随时取消某个条件
-    #通知的接收者
-    if user_type == "Organization":
-        receiver= auditor
-    else:
-        receiver=application.pos
     '''
         至此，如果是新申请那么application为None，否则为对应申请
         application = None只有在小组新建申请的时候才可能出现，对应位is_new_application为True
@@ -3695,7 +3691,7 @@ def modifyEndActivity(request):
         if request.POST.get("post_type", None) is not None:
 
             # 主要操作函数，更新申请状态
-            context = update_reimb_application(application, me, user_type, request,auditor_name)
+            context = update_reimb_application(application, me, user_type, request)
 
             if context["warn_code"] == 2:  # 成功修改申请
                 # 回传id 防止意外的锁操作
@@ -3716,6 +3712,12 @@ def modifyEndActivity(request):
                     'accept_submit': f'恭喜，您申请的经费申请：{act_title}，审核已通过！已扣除元气值{application.amount}',
                     'refuse_submit': f'抱歉，您申请的经费申请：{act_title}，审核未通过！',
                 }
+                #通知的接收者
+                auditor=application.examine_teacher.person_id
+                if user_type == "Organization":
+                    receiver= auditor
+                else:
+                    receiver=application.pos
                 #创建通知
                 make_notification(application,request,content,receiver)
             elif context["warn_code"] != 1:  # 没有返回操作提示
@@ -3729,6 +3731,12 @@ def modifyEndActivity(request):
             if not allow_comment:  # 存在不合法的操作
                 return redirect(
                     "/welcome/?warn_code=1&warn_message=存在不合法操作,请与管理员联系!")
+            #通知的接收者
+            auditor=application.examine_teacher.person_id
+            if user_type == "Organization":
+                receiver= auditor
+            else:
+                receiver=application.pos
             context = addComment(request, application,receiver)
 
         # 准备用户提示量
@@ -3767,9 +3775,9 @@ def modifyEndActivity(request):
     activities = utils.get_unreimb_activity(apply_person)
     #元培学院
     our_college=Organization.objects.get(oname="元培学院") if allow_audit_submit else None
-
-    # TODO: 设置默认值
-
+    #审核老师
+    available_teachers = NaturalPerson.objects.teachers()
+    examine_teacher=application.examine_teacher if application is not None else None
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="经费申请详情")
     return render(request, "modify_reimbursement.html", locals())
 
