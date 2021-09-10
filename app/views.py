@@ -521,7 +521,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
             position = Position.objects.activated().filter(org=org, person=me)
             assert len(position) == 1
             position = position[0]
-            assert position.pos <= org.otype.control_pos_threshold
+            assert position.is_admin == True
         except:
             urls = "/stuinfo/?name=" + me.name + "&warn_code=1&warn_message=没有登录到该小组账户的权限!"
             return redirect(urls)
@@ -547,7 +547,7 @@ def user_login_org(request, org):
         position = Position.objects.activated().filter(org=org, person=me)
         assert len(position) == 1
         position = position[0]
-        assert position.pos <= org.otype.control_pos_threshold
+        assert position.is_admin == True
     except:
         return wrong("没有登录到该小组账户的权限!")
     # 到这里,是本人小组并且有权限登录
@@ -782,6 +782,7 @@ def homepage(request):
                 np.last_time_login = nowtime
                 np.bonusPoint += 0.5
                 np.save()
+            html_display['first_signin'] = True # 前端显示
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
     recentactivity_list = Activity.objects.get_recent_activity().select_related('organization_id')
