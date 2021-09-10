@@ -407,6 +407,10 @@ def stuinfo(request, name=None):
         person_hidden_orgs_pos = [
             person_hidden_poss.get(org=org).pos for org in person_hidden_orgs
         ]  # ta在小组中的职位
+        person_hidden_orgs_pos = [
+            org.otype.get_name(pos)
+            for pos, org in zip(person_hidden_orgs_pos,person_hidden_orgs)
+        ]  # ta在小组中的职位
         person_hidden_orgs_status = [
             person_hidden_poss.get(org=org).status for org in person_hidden_orgs
         ]  # ta职位的状态
