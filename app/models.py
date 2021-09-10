@@ -808,7 +808,7 @@ class Notification(models.Model):
         VERIFY_INFORM = "审核信息通知"
         POSITION_INFORM = "成员变动通知"
         TRANSFER_FEEDBACK = "转账回执"
-        NEW_ORGANIZATION = "新建团队通知"
+        NEW_ORGANIZATION = "新建小组通知"
         YQ_DISTRIBUTION = "元气值发放通知"
 
 
