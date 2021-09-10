@@ -979,7 +979,7 @@
 
         /* URL 不要太长 */
         var url_value = document.getElementById("URL").value;
-        if (url_value.length >= 2000) {
+        if (url_value.length >= 1000) {
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "URL 长度超出上限。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
