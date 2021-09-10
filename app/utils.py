@@ -63,7 +63,8 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
 
 
 def except_captured(return_value=None, except_type=Exception,
-                    log=True, source='utils[except_captured]', status_code='Error'):
+                    log=True, record_args=False,
+                    source='utils[except_captured]', status_code='Error'):
     """
     Decorator that captures exception and log, raise or 
     return specific value if `return_value` is assigned.
@@ -76,8 +77,11 @@ def except_captured(return_value=None, except_type=Exception,
                 return view_function(*args, **kwargs)
             except except_type as e:
                 if log:
+                    msg = f'发生错误：{e}'
+                    if record_args:
+                        msg += f', 参数为：{args=}, {kwargs=}'
                     operation_writer(local_dict['system_log'],
-                        f'发生错误：{e}', source, status_code)
+                        msg, source, status_code)
                 if return_value is not None:
                     return return_value
                 raise
