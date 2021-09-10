@@ -145,16 +145,16 @@
                                                        οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')">
                                                     {%endif%}
                                                 </div>
-                                                {%if allow_form_edit %}
-                                                <div class="form-group">
-                                                    <label>审核老师</label>
-                                                    <select id="examine_teacher" name="examine_teacher" class="form-control selectpicker" >
-                                                        <option value="" selected disabled>选择审核老师</option>
-                                                        {% for avialable_teacher in avialable_teachers %}
-                                                            <option value="{{avialable_teacher.id}}">{{avialable_teacher.name}}</option>
-                                                        {% endfor %}
-                                                    </select>
-                                                </div>
+                                                {%if not allow_audit_submit%}
+                                                    <div class="form-group">
+                                                        <label>审核老师</label>
+                                                        <select id="examine_teacher" name="examine_teacher" class="form-control selectpicker" >
+                                                            <option value="" selected disabled>选择审核老师</option>
+                                                            {% for avialable_teacher in avialable_teachers %}
+                                                                <option value="{{avialable_teacher.id}}">{{avialable_teacher.name}}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
                                                 {%endif%}
                                         {%if is_new_application %}
                                             <label>报销材料<a
@@ -189,8 +189,13 @@
                                                         </a>
                                         </label>
                                         <br>
-                                        {%if application.summary_image is not None%}
-                                        <img  src="/media/{{application.summary_image}}" >
+                                        {%if not is_new_application%}
+                                            {%if application.summary_image%}
+                                            <img  src="/media/{{application.summary_image}}">
+                                            {%elif allow_audit_submit%}
+                                            <textarea disabled="disabled" class="form-control">小组“{{apply_person.oname}}”未上传活动总结图片
+                                            </textarea>
+                                            {%endif%}
                                         {%endif%}
                                         {%if allow_form_edit %}
                                         <div class="form-group">
