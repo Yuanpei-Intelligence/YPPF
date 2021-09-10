@@ -62,6 +62,35 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
     return actual_decorator
 
 
+def except_captured(return_value=None, except_type=Exception,
+                    log=True, record_args=False,
+                    source='utils[except_captured]', status_code='Error'):
+    """
+    Decorator that captures exception and log, raise or 
+    return specific value if `return_value` is assigned.
+    """
+
+    def actual_decorator(view_function):
+        @wraps(view_function)
+        def _wrapped_view(*args, **kwargs):
+            try:
+                return view_function(*args, **kwargs)
+            except except_type as e:
+                if log:
+                    msg = f'发生错误：{e}'
+                    if record_args:
+                        msg += f', 参数为：{args=}, {kwargs=}'
+                    operation_writer(local_dict['system_log'],
+                        msg, source, status_code)
+                if return_value is not None:
+                    return return_value
+                raise
+
+        return _wrapped_view
+
+    return actual_decorator
+
+
 def get_person_or_org(user, user_type=None):
     if user_type is None:
         if hasattr(user, "naturalperson"):
