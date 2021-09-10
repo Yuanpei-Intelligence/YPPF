@@ -285,6 +285,9 @@ class Organization(models.Model):
         if not avatar:
             avatar = "avatar/org_default.png"
         return settings.MEDIA_URL + str(avatar)
+    
+    def get_subscriber_num(self):
+        return NaturalPerson.objects.all().count() - self.unsubscribers.count()
 
 
 class PositionManager(models.Manager):
