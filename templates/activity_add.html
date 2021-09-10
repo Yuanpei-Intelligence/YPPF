@@ -977,11 +977,17 @@
         }
         {% endif %}
 
-        /* URL 不要太长 */
+        /* URL 不要太长，使用 https 协议 */
         var url_value = document.getElementById("URL").value;
         if (url_value.length >= 1000) {
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "URL 长度超出上限。";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        if (!url_value.startsWith("https://")) {
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "出于安全性考虑，目前仅支持 https 协议的 URL。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
