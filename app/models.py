@@ -633,7 +633,7 @@ class Activity(CommentBase):
     capacity = models.IntegerField("活动最大参与人数", default=100)
     current_participants = models.IntegerField("活动当前报名人数", default=0)
 
-    URL = models.URLField("活动相关(推送)网址", default="", blank=True)
+    URL = models.URLField("活动相关(推送)网址", max_length=2048, default="", blank=True)
 
     def __str__(self):
         return str(self.title)
