@@ -3557,16 +3557,17 @@ def make_relevant_notification(application, info):
         URL = f'/modifyPosition/?pos_id={application.id}'
     elif application_type == ModifyOrganization:
         if post_type == 'new_submit':
-            content = f'{apply_person.name}发起新建小组申请，新建小组：{application.oname}，请审核~'
+            content = f'{apply_person.name}发起新建小组申请，新建小组：{application.oname}，请审核～'
         elif post_type == 'modify_submit':
-            content = f'{apply_person.name}修改了小组申请信息，请审核~'
+            content = f'{apply_person.name}修改了小组申请信息，请审核～'
         elif post_type == 'cancel_submit':
             content = f'{apply_person.name}取消了小组{application.oname}的申请。'
         elif post_type == 'accept_submit':
-            content = f'恭喜，您申请的小组：{application.oname}，审核已通过！小组编号为{new_org.organization_id.username}, \
-                初始密码为{utils.random_code_init(new_org.organization_id.id)}，请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；(2)从登录页面用小组编号或小组名称以及密码登录。'
+            content = f'恭喜，您申请的小组：{application.oname}，审核已通过！小组编号为{new_org.organization_id.username}，\
+                初始密码为{utils.random_code_init(new_org.organization_id.id)}，请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；(2)从登录页面用小组编号或小组名称以及密码登录。\
+                你可以把小组的主页转发到微信群或朋友圈，邀请更多朋友订阅关注。这样大家就能及时收到活动消息啦！使用愉快～'
         elif post_type == 'refuse_submit':
-            content = f'抱歉，您申请的小组：{application.oname}，审核未通过！。'
+            content = f'抱歉，您申请的小组：{application.oname}，审核未通过！'
         else:
             raise NotImplementedError
         applyer_id = apply_person.person_id
