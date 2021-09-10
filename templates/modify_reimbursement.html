@@ -145,6 +145,17 @@
                                                        οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')">
                                                     {%endif%}
                                                 </div>
+                                                {%if allow_form_edit %}
+                                                <div class="form-group">
+                                                    <label>审核老师</label>
+                                                    <select id="examine_teacher" name="examine_teacher" class="form-control selectpicker" >
+                                                        <option value="" selected disabled>选择审核老师</option>
+                                                        {% for avialable_teacher in avialable_teachers %}
+                                                            <option value="{{avialable_teacher.id}}">{{avialable_teacher.name}}</option>
+                                                        {% endfor %}
+                                                    </select>
+                                                </div>
+                                                {%endif%}
                                         {%if is_new_application %}
                                             <label>报销材料<a
                                                             data-toggle="tooltip" data-placement="bottom" title="报销材料只能为图片，支持多张图片同时上传。报销材料上传以后，将被放置在评论区。">
@@ -311,6 +322,12 @@ function showsummaryFilename(files){
         text = "{%if application.summary_image is not None%}更新活动总结图片{%else%}上传一张活动总结图片{%endif%}";
     $("#summaryfile").html(text);
 }
+</script>
+<script type="text/javascript">
+    {% if not is_new_application %}
+    document.getElementById("examine_teacher").value="{{examine_teacher.id}}";
+    document.getElementById("examine_teacher").disabled=true;
+    {% endif %}
 </script>
 {%endblock%}
 {% block add_css_file %}
