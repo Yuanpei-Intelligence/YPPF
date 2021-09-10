@@ -101,12 +101,12 @@
                                                 <label>小组名称</label>
                                                 {%if not is_new_application %}
                                                 <textarea type="text" name="oname" class="form-control"
-                                                          aria-label="Default" placeholder="不超过32个字节"
+                                                          aria-label="Default" placeholder="不超过32个字节，一经创建不可自行修改"
                                                           {%if allow_form_edit == 0 %} disabled="disabled" {%endif%}>{{application.oname}}</textarea>
 
                                                 {%else%}
                                                 <input type="text" name="oname" class="form-control"
-                                                       aria-label="Default" placeholder="不超过32个字节">
+                                                       aria-label="Default" placeholder="不超过32个字节，一经创建不可自行修改">
                                                 {%endif%}
                                             </div>
                                             
