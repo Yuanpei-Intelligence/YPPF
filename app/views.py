@@ -2561,7 +2561,7 @@ def addActivity(request, aid=None):
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava() 
     if not edit:
-        avialable_teachers = NaturalPerson.objects.teachers()
+        available_teachers = NaturalPerson.objects.teachers()
     else:
         try:
             org = get_person_or_org(request.user, "Organization")
@@ -2622,7 +2622,7 @@ def addActivity(request, aid=None):
             no_limit = True
         examine_teacher = activity.examine_teacher.name
         status = activity.status
-        avialable_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
+        available_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
         need_checkin = activity.need_checkin
         inner = activity.inner
         apply_reason = utils.escape_for_templates(activity.apply_reason)
@@ -3776,7 +3776,7 @@ def modifyEndActivity(request):
     #元培学院
     our_college=Organization.objects.get(oname="元培学院") if allow_audit_submit else None
     #审核老师
-    avialable_teachers = NaturalPerson.objects.teachers()
+    available_teachers = NaturalPerson.objects.teachers()
     examine_teacher=application.examine_teacher if application is not None else None
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="经费申请详情")
     return render(request, "modify_reimbursement.html", locals())

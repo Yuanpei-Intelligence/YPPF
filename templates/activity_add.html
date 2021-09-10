@@ -147,7 +147,7 @@
                                                 <label>审核老师</label>
                                                 <select id="examine_teacher" name="examine_teacher" class="form-control selectpicker" >
                                                     <option value="" selected disabled>选择审核老师</option>
-                                                    {% for avialable_teacher in avialable_teachers %}
+                                                    {% for avialable_teacher in available_teachers %}
                                                         <option value="{{avialable_teacher.name}}">{{avialable_teacher.name}}</option>
                                                     {% endfor %}
                                                 </select>
