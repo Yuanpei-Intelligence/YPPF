@@ -21,7 +21,7 @@ from urllib import parse, request as urllib2
 import json
 
 # 引入定时任务还是放上面吧
-from app.utils import operation_writer
+from app.utils import operation_writer, except_captured
 from app.scheduler import scheduler
 
 YQPoint_oname = local_dict["YQPoint_source_oname"]
@@ -468,6 +468,7 @@ scheduler.add_job(notifyActivityStart, "date",
 """
 
 
+@except_captured(True, source='scheduler_func[notifyActivity]发送微信消息')
 def notifyActivity(aid: int, msg_type: str, msg=""):
     try:
         activity = Activity.objects.get(id=aid)
@@ -565,7 +566,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             # receivers = [receiver.person_id for receiver in receivers]
             publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         else:
-            raise ValueError
+            raise ValueError(f"msg_type参数错误: {msg_type}")
         success, _ = bulk_notification_create(
             receivers=list(receivers),
             sender=activity.organization_id.organization_id,
@@ -577,14 +578,10 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             publish_to_wechat=True,
             publish_kws=publish_kws,
         )
-        assert success
+        assert success, "批量创建通知并发送时失败"
 
     except Exception as e:
-        # print(f"Notification {msg} failed. Exception: {e}")
-        # TODO send message to admin to debug
-        operation_writer(local_dict["system_log"], "发送微信消息出现异常:"+str(e),
-                            "scheduler_func[notifyActivity]", "Error")
-        pass
+        raise
 
 
 try:

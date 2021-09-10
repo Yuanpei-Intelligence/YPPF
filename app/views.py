@@ -424,7 +424,9 @@ def stuinfo(request, name=None):
 
         # ----------------------------------- 活动卡片 ----------------------------------- #
 
-        participants = Participant.objects.filter(person_id=person.id)
+        participants = Participant.objects.exclude(
+            status__in=[Participant.AttendStatus.CANCELED, Participant.AttendStatus.APLLYFAILED]
+            ).filter(person_id=person.id)
         activities = Activity.objects.filter(
             Q(id__in=participants.values("activity_id")),
             ~Q(status=Activity.Status.CANCELED),
