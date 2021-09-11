@@ -50,115 +50,110 @@
                                     <div class="bio-skill-box">
                                         <div id="undone-list" class="row">
                                             {% for QA in all_instances.receive %}
-                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="undone={{note.id}}" {% if not note.status == "待处理" %} hidden {%endif%}>
-
-                                                <div class=" b-skills">
-                                                    
-                                                    <p style="color: rgb(66, 67, 68);">
-                                                        <i class="fa fa-address-book" style="width: 14px;"></i>
-                                                        <span class="ml-1">来自&nbsp;<b>{{QA.sender}}</b></span>
-                                                    </p>
-
-                                                    <p style="color: rgb(66, 67, 68);">
-                                                        <i class="fa fa-bell" style="width: 14px;"></i>
-                                                        <span class="ml-1">{{QA.Q_time}}发出</span>
-                                                    </p>
-
-                                                    <p style="color: rgb(66, 67, 68);">
-                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
-                                                        <span class="ml-1">{{QA.Q_text}}</span>
-                                                    </p>
-                                                </div>
-                                            </div>
-                                            {% endfor %}
-                                        </div>
-
-                                    </div>
-
-                                </div>
-                                <div class="tab-pane fade" id="done">
-                                    <div id="done-empty" style="display: none; margin-top: 40px; margin-bottom: -40px;">
-                                        <p style="text-align: center;">没有已处理的消息记录.</p>
-                                    </div>
-                                    <div class="bio-skill-box">
-                                        <div id="done-list" class="row">
-                                            {% for note in done_list %}
-                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="done={{note.id}}" {% if not note.status == "已处理" %} hidden {%endif%}>
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
 
                                                 <div class=" b-skills">
 
                                                     <div class="d-flex justify-content-between">
                                                         <div>
-                                                            <h5>
-                                                                <a href='{{note.URL}}'><u>{{note.title}}</u></a>
+                                                            <h5 style="color: rgb(66, 67, 68);">
+                                                                <span class="ml-1">来自&nbsp;<b>{{QA.sender}}</b>&nbsp;的提问</span>
                                                             </h5>
                                                         </div>
+                                                        {% if not QA.anwser_flag %}
                                                         <div>
-                                                            {% if note.type == "知晓类" %}
-                                                            <div class="btn-group">
-                                                                <div style="margin-left: 8px; ">
-                                                                    <div class="btn-group">
-                                                                        <button type="button"
-                                                                            class="btn btn-light dropdown-toggle dropdown-toggle-split"
-                                                                            data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
-                                                                            操作
-                                                                        </button>
-                                                                        <div class="dropdown-menu">
-                                                                            <button class="dropdown-item"
-                                                                                type="submit" name='post_button'
-                                                                                value="{{note.id}}" id={{note.id}} onclick="unread.call(this);this.blur();"
-                                                                            >标记为未读</button>
-                                                                            <button class="dropdown-item"
-                                                                                type="submit" name='post_button' id={{note.id}}
-                                                                                value="{{note.id}}+cancel" onclick="confirm('你确定要删除这条消息?');cancel.call(this);this.blur();">删除</button>
+                                                            <h5>
+                                                                <a href="#myModal" class="btn-sm btn-outline-primary" tabindex="-1" data-toggle="modal"
+                                                                    role="button">回答</a>
+                                                            </h5>
+                                                            <!-- BEGIN MODAL-->
+                                                            <div class="modal fade" id="myModal">
+                                                                <div class="modal-dialog">
+                                                                    <div class="modal-content">
+                                                                        <!-- 模态框头部 -->
+                                                                        <div class="modal-header">
+                                                                            <h4 class="modal-title">回答</h4>
+                                                                            <button type="button" class="close" data-dismiss="modal">&times;</button>
                                                                         </div>
+
+                                                                        <form method="POST">
+                                                                            <!-- 模态框主体 -->
+                                                                            <div class="modal-body">
+                                                                                <div class="form-group">
+                                                                                    <textarea id="anwser" name="anwser" class="form-control" rows="4"
+                                                                                        placeholder="请填写你的回答！"></textarea>
+                                                                                    <textarea id="id" name="id" class="form-control" rows="1" hidden>{{QA.id}}</textarea>
+                                                                                </div>
+                                                                            </div>
+                                                                            <!-- 模态框底部 -->
+                                                                            <div class="modal-footer">
+                                                                                <button type="submit" class="btn btn-primary">提交</button>
+                                                                            </div>
+                                                                        </form>
                                                                     </div>
                                                                 </div>
                                                             </div>
-                                                            {% else %}
-                                                            <div class="btn-group">
-                                                                <div style="margin-left: 8px; ">
-                                                                    <div class="btn-group">
-                                                                        <button type="button"
-                                                                            class="btn btn-light dropdown-toggle dropdown-toggle-split"
-                                                                            data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
-                                                                            操作
-                                                                        </button>
-                                                                        <div class="dropdown-menu">
-                                                                            <button class="dropdown-item"
-                                                                                type="submit" name='post_button' id={{note.id}}
-                                                                                value="{{note.id}}+cancel"
-                                                                                onclick="confirm('你确定要删除这条消息?');cancel.call(this);this.blur();">删除</button>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                            {% endif %}
+                                                            <!-- END MODAL -->
                                                         </div>
+                                                        {% endif %}
                                                     </div>
 
                                                     <p style="color: rgb(66, 67, 68);">
-                                                        <i class="fa fa-address-book" style="width: 14px;"></i>
-                                                        <span class="ml-1">来自&nbsp;<b>{{note.sender}}</b></span>
-                                                    </p>
-
-                                                    <p style="color: rgb(66, 67, 68);">
                                                         <i class="fa fa-bell" style="width: 14px;"></i>
-                                                        <span class="ml-1">{{note.start_time}}发出</span>
-                                                    </p>
-
-                                                    <p style="color: rgb(66, 67, 68);">
-                                                        <i class="fa fa-eye" style="width: 14px;"></i>
-                                                        <span class="ml-1">{{note.finish_time}}收到</span>
+                                                        <span class="ml-1">{{QA.Q_time}}提问</span>
                                                     </p>
 
                                                     <p style="color: rgb(66, 67, 68);">
                                                         <i class="fa fa-envelope" style="width: 14px;"></i>
-                                                        <span class="ml-1">{{note.content}}</span>
+                                                        <span class="ml-1">提问：{{QA.Q_text}}</span>
                                                     </p>
+                                                    {% if QA.anwser_flag %}
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                        <span class="ml-1">回答：{{QA.A_text}}</span>
+                                                    </p>
+                                                    {% endif %}
                                                 </div>
+                                            </div>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="done">
+                                    <div id="done-empty" style="display: none; margin-top: 40px; margin-bottom: -40px;">
+                                        <p style="text-align: center;">没有检测到您发起的提问！到ta的主页上向它提问吧~</p>
+                                    </div>
+                                    <div class="bio-skill-box">
+                                        <div id="done-list" class="row">
+                                            {% for QA in all_instances.send %}
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
 
+                                                <div class=" b-skills">
 
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h5 style="color: rgb(66, 67, 68);">
+                                                                <span class="ml-1">发送给&nbsp;<b>{{QA.receiver}}</b>&nbsp;的提问</span>
+                                                            </h5>
+                                                        </div>
+                                                    </div>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-bell" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{QA.Q_time}}提问</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                        <span class="ml-1">问题：{{QA.Q_text}}</span>
+                                                    </p>
+                                                    {% if QA.anwser_flag %}
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                        <span class="ml-1">回答：{{QA.A_text}}</span>
+                                                    </p>
+                                                    {% endif %}
+                                                </div>
                                             </div>
                                             {% endfor %}
                                         </div>
@@ -201,45 +196,10 @@
 </script>
 
 <script>
-    var mail_num = Number("{{bar_display.mail_num}}");
     function refresh() {
         document.querySelector(`#undone-empty`).style.display = (document.querySelector(`#undone-list`).querySelectorAll(`:scope > :not([hidden])`).length === 0) ? `block` : `none`;
         document.querySelector(`#done-empty`).style.display = (document.querySelector(`#done-list`).querySelectorAll(`:scope > :not([hidden])`).length === 0) ? `block` : `none`;
     }
     setTimeout(refresh, 0);
-    async function read() {
-        const success = await save_read.call(this,"read");
-        if (success) {
-            document.getElementById("undone="+String(this.id)).hidden = true;
-            document.getElementById("done="+String(this.id)).hidden = false;
-            document.getElementById("mail_num").innerHTML = String(Number(document.getElementById("mail_num").innerHTML) - 1);
-            refresh();
-        }
-    }
-    async function unread() {
-        const success = await save_read.call(this,"read");
-        if (success) {
-            document.getElementById("done="+String(this.id)).hidden = true;
-            document.getElementById("undone="+String(this.id)).hidden = false;
-            document.getElementById("mail_num").innerHTML = String(Number(document.getElementById("mail_num").innerHTML) + 1);
-            refresh();
-        }
-    }
-    async function cancel() {
-        const success = await save_read.call(this,"cancel");
-        if (success) {
-            document.getElementById("done="+String(this.id)).hidden = true;
-        }
-    }
-    async function save_read(func) {
-        const { success } = await fetch(`/notifications/`, {
-            headers: { "Content-Type": `text/plain` },
-            method: `POST`,
-            body: JSON.stringify({ id: this.id, function: func}),
-        })
-            .then((res) => res.json())
-            .catch(() => { success: false });
-        return success;
-    }
 </script>
 {% endblock %}
