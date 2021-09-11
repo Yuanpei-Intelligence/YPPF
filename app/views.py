@@ -71,6 +71,11 @@ from app.notification_utils import(
     bulk_notification_create,
     notification_status_change,
 )
+from app.QA_utils import (
+    QA2Display,
+    QA_anwser,
+    QA_create,
+)
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from django.shortcuts import render, redirect
@@ -323,11 +328,27 @@ def stuinfo(request, name=None):
         inform_share, alert_message = utils.get_inform_share(me=person, is_myself=is_myself)
 
         # 处理更改数据库中inform_share的post
-        if request.method == "POST" and request.POST:
+        if request.POST.get("question") is not None:
+            anonymous_flag = (request.POST.get('show_name') is not None)
+            question = request.POST.get("question")
+            if len(question) == 0:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "请填写问题内容!"
+            else:
+                try:
+                    QA_create(sender=request.user,receiver=person.person_id,Q_text=str(question),anonymous_flag=anonymous_flag)
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "提问发送成功!"
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "提问发送失败!请联系管理员!"
+            return redirect(f"/stuinfo/?name={person.name}&warn_code="+str(html_display["warn_code"])+"&warn_message="+str(html_display["warn_message"]))
+        elif request.method == "POST" and request.POST:
             option = request.POST.get("option", "")
             assert option == "cancelInformShare" and html_display["is_myself"]
             person.inform_share = False
             person.save()
+
 
 
         # ----------------------------------- 小组卡片 ----------------------------------- #
@@ -617,7 +638,23 @@ def orginfo(request, name=None):
         elif request.POST.get("option", "") == "cancelInformShare" and html_display["is_myself"]:
             me.inform_share = False
             me.save()
-            
+        elif request.POST.get("question") is not None:
+            anonymous_flag = (request.POST.get('show_name') is not None)
+            question = request.POST.get("question")
+            if len(question) == 0:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "请填写问题内容!"
+            else:
+                try:
+                    QA_create(sender=request.user,receiver=org.organization_id,Q_text=str(question),anonymous_flag=anonymous_flag)
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "提问发送成功!"
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "提问发送失败!请联系管理员!"
+            return redirect(f"/orginfo/{organization_name}?warn_code="+str(html_display["warn_code"])+"&warn_message="+str(html_display["warn_message"]))
+
+        
 
     # 该学年、该学期、该小组的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
@@ -2963,15 +3000,17 @@ def notification2Display(notification_set):
         note_display["URL"] = notification.URL
         note_display["type"] = notification.get_typename_display()
         note_display["title"] = notification.get_title_display()
+
+
         _, user_type, _ = utils.check_user_type(notification.sender)
         if user_type == "Organization":
             note_display["sender"] = sender_orgs.get(
                 notification.sender_id
-            )
+            ) if not notification.anonymous_flag else "匿名者"
         else:
             note_display["sender"] = sender_persons.get(
                 notification.sender_id
-            )
+            ) if not notification.anonymous_flag else "匿名者"
         lis.append(note_display)
     return lis
 
@@ -4138,10 +4177,18 @@ def QAcenter(request):
 
     me = utils.get_person_or_org(request.user, user_type)
 
-    all_instances = {
-        "send": QandA.objects.activated().filter(sender=request.user).order_by("-Q_time"),
-        "receive": QandA.objects.activated().filter(sender=request.user).order_by("-Q_time")
-    }
+    if request.method == "POST":
+        if request.POST.get("anwser") is not None:
+            anwser = request.POST.get("anwser")
+            if len(anwser) == 0:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "请填写回答再提交！"
+            else:
+                QA_anwser(request.POST.get("id"), anwser)
+                html_display["warn_code"] = 2
+                html_display["warn_message"] = "成功提交该问题的回答！"
+
+    all_instances = QA2Display(request.user)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="问答中心")
     return render(request, "QandA_center.html", locals())

@@ -11,7 +11,8 @@ from app.models import (
     Reimbursement,
     Participant,
     ModifyRecord,
-    Wishes
+    Wishes,
+    QandA,
 )
 from django.contrib.auth.models import User
 from django.dispatch.dispatcher import receiver
