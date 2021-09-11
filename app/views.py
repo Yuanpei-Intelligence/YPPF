@@ -782,7 +782,7 @@ def homepage(request):
                 np.last_time_login = nowtime
                 np.bonusPoint += 0.5
                 np.save()
-            html_display['first_signin'] = True # 前端显示
+                html_display['first_signin'] = True # 前端显示
 
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
     recentactivity_list = Activity.objects.get_recent_activity().select_related('organization_id')
