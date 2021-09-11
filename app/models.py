@@ -775,6 +775,34 @@ class YQPointDistribute(models.Model):
         verbose_name = "元气值发放"
         verbose_name_plural = verbose_name
 
+class QandAManager(models.Manager):
+    def activated(self):
+        return self.exclude(status=QandA.Status.DELETE)
+
+class QandA(models.Model):
+    # 问答类
+    class Meta:
+        verbose_name = "问答记录"
+        verbose_name_plural = verbose_name
+    sender = models.ForeignKey(User, on_delete=models.SET_NULL,
+                             related_name="send_QA_set", blank=True, null=True)
+    receiver = models.ForeignKey(User, on_delete=models.SET_NULL,
+                             related_name="receive_QA_set", blank=True, null=True)
+    Q_time = models.DateTimeField('提问时间', auto_now_add=True)
+    A_time = models.DateTimeField('回答时间', blank=True, null=True)
+    Q_text = models.TextField('提问内容', default='', blank=True)
+    A_text = models.TextField('回答内容', default='', blank=True)
+    anonymous_flag = models.BooleanField("是否匿名", default=False)
+
+    class Status(models.IntegerChoices):
+        DONE = (0, "已回答")
+        UNDONE = (1, "待回答")
+        DELETE = (2, "已删除")
+    
+    status = models.SmallIntegerField(choices=Status.choices, default=1)
+    
+    objects = QandAManager()
+
 class NotificationManager(models.Manager):
     def activated(self):
         return self.exclude(status=Notification.Status.DELETE)
@@ -830,6 +858,13 @@ class Notification(models.Model):
     )
     relate_instance = models.ForeignKey(
         CommentBase,
+        related_name="relate_notifications",
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+    )
+    relate_QandA = models.ForeignKey(
+        QandA,
         related_name="relate_notifications",
         on_delete=models.CASCADE,
         blank=True,
@@ -1115,3 +1150,4 @@ class ModifyRecord(models.Model):
     name = models.CharField('名称', max_length=32, default='', blank=True)
     info = models.TextField('相关信息', default='', blank=True)
     time = models.DateTimeField('修改时间', auto_now_add=True)
+

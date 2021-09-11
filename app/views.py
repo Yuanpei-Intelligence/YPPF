@@ -29,6 +29,7 @@ from app.models import (
     YQPointDistribute,
     Reimbursement,
     Wishes,
+    QandA,
 )
 import app.utils as utils
 from app.forms import UserForm
@@ -4111,3 +4112,22 @@ def send_message_check(me, request):
         return wrong("发送微信的过程出现错误！请联系管理员！")
     
     return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了!")
+
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+def QAcenter(request):
+    """
+    Haowei:
+    QA的聚合界面
+    """
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    me = utils.get_person_or_org(request.user, user_type)
+
+    all_instances = {
+        "send": QandA.objects.activated().filter(sender=request.user).order_by("-Q_time"),
+        "receive": QandA.objects.activated().filter(sender=request.user).order_by("-Q_time")
+    }
+
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="问答中心")
+    return render(request, "QandA_center.html", locals())

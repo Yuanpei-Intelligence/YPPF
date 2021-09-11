@@ -5,15 +5,15 @@
         "email": "debug_hasher_salt"
     },
     "database": {
-        "NAME": "$DATABASE$",
-        "USER": "$USER$",
-        "PASSWORD": "$PASSWORD$"
+        "NAME": "tmpyppf",
+        "USER": "root",
+        "PASSWORD": "lhw3395998"
     },
     "url": {
-        "base_url": "http://$BASEMENT_IP$/appointment/index",
-        "login_url": "http://$THIS_IP$",
-        "email_url": "http://$OUTER_IP$/email/",
-        "wechat_url": "http://$OUTER_IP$"
+        "base_url": "http://162.105.210.3:12881/appointment/index",
+        "login_url": "http://localhost:8000",
+        "email_url": "http://162.105.210.3:12882/email/",
+        "wechat_url": "http://162.105.210.3:12882/"
     },
     "msg": {
         "404": "用户不存在，请在元培学院官方公众号后台留言注册！",
