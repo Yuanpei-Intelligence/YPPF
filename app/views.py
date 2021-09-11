@@ -878,7 +878,6 @@ def homepage(request):
     except:
         from app.scheduler_func import get_weather
         html_display['weather'] = get_weather()
-    """
     update_time_delta = datetime.now() - datetime.strptime(html_display["weather"]["modify_time"],'%Y-%m-%d %H:%M:%S.%f')
     # 根据更新时间长短，展示不同的更新天气时间状态
     def days_hours_minutes_seconds(td):
@@ -892,8 +891,6 @@ def homepage(request):
         last_update = f"{minutes}分钟前"
     else:
         last_update = f"{seconds}秒前"
-    """
-    last_update = "一小时前"
     #-------------------------------天气结束-------------------------
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
