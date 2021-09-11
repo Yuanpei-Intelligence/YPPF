@@ -113,10 +113,15 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {% for org in org_list%}
+                                                {% for org, ava in orgava_list%}
                                                 {% if org.otype.otype_name == otype.otype_name %}
                                                 <tr>
-                                                    <td><u><a href="/orginfo/?name={{org.oname}}">{{org.oname}}</a></u></td>
+                                                    <td>
+                                                        <u><a href="/orginfo/?name={{org.oname}}"><img src="{{ava}}" width="18px" height="18px" style="margin-top: -2px; margin-right: 5px; border-radius: 9px;"><span>{{org.oname}}</span></a></u>
+                                                        {% with org.get_subscriber_num as subscribers %}
+                                                        [<span class="num_sub">{{ subscribers }}</span>关注]
+                                                        {% endwith %}
+                                                    </td>
                                                     <!--<td>
                                                         {{org.otype.otype_name}}
                                                     </td>-->
@@ -208,6 +213,8 @@
                     document.getElementById(`td${lst[i].id}`).bgColor = "FFFFFF";
                     document.getElementById(`font${lst[i].id}`).color = "E1E1E1";
                     document.getElementById(`font${lst[i].id}`).innerHTML = "未订阅";
+                    const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
+                    num.textContent = Number(num.textContent) - 1;
                     lst[i].checked = false;
                 }
             }
@@ -222,6 +229,8 @@
                     document.getElementById(`td${lst[i].id}`).bgColor = "F3FDFF";
                     document.getElementById(`font${lst[i].id}`).color = "5F747B";
                     document.getElementById(`font${lst[i].id}`).innerHTML = "已订阅";
+                    const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
+                    num.textContent = Number(num.textContent) + 1;
                     lst[i].checked = true;
                 }
             }
@@ -229,12 +238,14 @@
     }
     async function change_status() {
         // alert(this.checked);
+        const num = this.parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
         if (!this.checked) {
             const success = await save_subscribe_status.call(this, false);
             if (success) {
                 document.getElementById(`td${this.id}`).bgColor = "FFFFFF";
                 document.getElementById(`font${this.id}`).color = "E1E1E1";
                 document.getElementById(`font${this.id}`).innerHTML = "未订阅";
+                num.textContent = Number(num.textContent) - 1;
             }
             else this.checked = true;
         } else {
@@ -243,6 +254,7 @@
                 document.getElementById(`td${this.id}`).bgColor = "F3FDFF";
                 document.getElementById(`font${this.id}`).color = "5F747B";
                 document.getElementById(`font${this.id}`).innerHTML = "已订阅";
+                num.textContent = Number(num.textContent) + 1;
             }
             else this.checked = false;
         }

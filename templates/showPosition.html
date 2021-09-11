@@ -27,7 +27,30 @@
                 <div class="col-lg-12 col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
+                            {% if user_type == "Person" %}
+                            <div class="d-flex justify-content-between">
+                            <h3 class= "">{{title}}</h3>
+                            <div class="btn-group">
+                                <button type="button"
+                                    class="btn btn-info mb-4 mr-2 dropdown-toggle dropdown-toggle-split"
+                                    data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                    新建申请
+                                </button>
+                                <div class="dropdown-menu" style=" overflow: scroll;height:800%;">
+                                    {% for org in all_org %}
+                                    <button class="dropdown-item"
+                                    onclick="location.href = '/modifyPosition/?org_name={{org.oname}}';" 
+                                    >{{org.oname}}</button>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                                
+                                
+                            </div>
+                            {% else %}
                             <h3>{{title}}</h3>
+                            
+                            {% endif %}
                             
                             <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
                                 <li class="nav-item">
