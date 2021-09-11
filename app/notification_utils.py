@@ -1,5 +1,7 @@
 from app.models import Notification
 from app.wechat_send import publish_notification, publish_notifications
+from boottest import local_dict
+from app.utils import operation_writer
 from django.db import transaction
 from datetime import datetime
 from boottest.hasher import MySHA256Hasher
@@ -185,8 +187,11 @@ def bulk_notification_create(
             Notification.objects.select_for_update().filter(
                 bulk_identifier=bulk_identifier).update(start_time=datetime.now())
         success = True
-    except:
+    except Exception as e:
         success = False
+        operation_writer(local_dict['system_log'],
+                        f'创建通知时发生错误：{e}, 识别码为{bulk_identifier}',
+                        'notification_utils[bulk_notification_create]', 'Error')
     if success and publish_to_wechat:
         filter_kws = {"bulk_identifier": bulk_identifier}
         if not publish_kws:

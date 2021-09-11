@@ -147,7 +147,7 @@
                                                 <label>审核老师</label>
                                                 <select id="examine_teacher" name="examine_teacher" class="form-control selectpicker" >
                                                     <option value="" selected disabled>选择审核老师</option>
-                                                    {% for avialable_teacher in avialable_teachers %}
+                                                    {% for avialable_teacher in available_teachers %}
                                                         <option value="{{avialable_teacher.name}}">{{avialable_teacher.name}}</option>
                                                     {% endfor %}
                                                 </select>
@@ -467,7 +467,7 @@
                                                 <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12">
                                                     <input onchange="showFilenameLocal(this.files)" type="file" 
                                                            class="custom-file-input" id="images" name="images" 
-                                                           accept="image/*">
+                                                           accept="image/*" data-max-file-size="4096K">
                                                     <label id="upload_annouce_photo" name="upload_annouce_photo" class="custom-file-label" 
                                                            for="customFile"> 选择历史活动图片或海报或以下默认图片之一 </label>
 
@@ -976,6 +976,24 @@
             return false;
         }
         {% endif %}
+
+        /* URL 不要太长，使用 https 协议 */
+        var url_value = document.getElementById("URL").value;
+        if (url_value.length >= 1000) {
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "URL 长度超出上限。";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        if (! url_value == ""){
+            if (!url_value.startsWith("http")) {
+                document.getElementById("warn_msg").style.display = "";
+                document.getElementById("warn_msg").innerHTML = "出于安全性考虑，目前仅支持 http 或 https 协议的 URL。";
+                document.body.scrollTop = document.documentElement.scrollTop = 0;
+                return false;
+            }
+        }   
+
 
         {% if edit %}
         /* edit 情况下，未填入的 input 补为 placeholder */

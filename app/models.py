@@ -285,6 +285,9 @@ class Organization(models.Model):
         if not avatar:
             avatar = "avatar/org_default.png"
         return settings.MEDIA_URL + str(avatar)
+    
+    def get_subscriber_num(self):
+        return NaturalPerson.objects.all().count() - self.unsubscribers.count()
 
 
 class PositionManager(models.Manager):
@@ -633,7 +636,7 @@ class Activity(CommentBase):
     capacity = models.IntegerField("活动最大参与人数", default=100)
     current_participants = models.IntegerField("活动当前报名人数", default=0)
 
-    URL = models.URLField("活动相关(推送)网址", default="", blank=True)
+    URL = models.URLField("活动相关(推送)网址", max_length=1024, default="", blank=True)
 
     def __str__(self):
         return str(self.title)
@@ -836,17 +839,17 @@ class Notification(models.Model):
         VERIFY_INFORM = "审核信息通知"
         POSITION_INFORM = "成员变动通知"
         TRANSFER_FEEDBACK = "转账回执"
-        NEW_ORGANIZATION = "新建团队通知"
+        NEW_ORGANIZATION = "新建小组通知"
         YQ_DISTRIBUTION = "元气值发放通知"
 
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
-    title = models.CharField("通知标题", blank=True, null=True, max_length=10)
+    title = models.CharField("通知标题", blank=True, null=True, max_length=50)
     content = models.CharField("通知内容", max_length=225, blank=True)
     start_time = models.DateTimeField("通知发出时间", auto_now_add=True)
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
     typename = models.SmallIntegerField(choices=Type.choices, default=0)
-    URL = models.URLField("相关网址", null=True, blank=True)
+    URL = models.URLField("相关网址", null=True, blank=True, max_length=1024)
     bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
                                         db_index=True)
     relate_TransferRecord = models.ForeignKey(
@@ -1089,6 +1092,7 @@ class Reimbursement(CommentBase):
     record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
     summary_image=models.ImageField(upload_to=f"activity/photo/%Y/%m/",
                                     verbose_name="活动总结图片",null=True, blank=True)
+    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
         
@@ -1150,4 +1154,7 @@ class ModifyRecord(models.Model):
     name = models.CharField('名称', max_length=32, default='', blank=True)
     info = models.TextField('相关信息', default='', blank=True)
     time = models.DateTimeField('修改时间', auto_now_add=True)
+<<<<<<< HEAD
 
+=======
+>>>>>>> 3978072b0b20555da2ee0070df928727f16a402d
