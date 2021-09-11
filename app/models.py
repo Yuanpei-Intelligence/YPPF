@@ -1154,7 +1154,3 @@ class ModifyRecord(models.Model):
     name = models.CharField('名称', max_length=32, default='', blank=True)
     info = models.TextField('相关信息', default='', blank=True)
     time = models.DateTimeField('修改时间', auto_now_add=True)
-<<<<<<< HEAD
-
-=======
->>>>>>> 3978072b0b20555da2ee0070df928727f16a402d
