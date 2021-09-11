@@ -102,7 +102,8 @@ def activity_base_check(request, edit=False):
 
     # url，就不支持了 http 了，真的没必要
     context["url"] = request.POST["URL"] 
-    assert context["url"].startswith("https://")
+    if context["url"] != "":
+        assert context["url"].startswith("http")
 
     # 预算，元气值支付模式，是否直接向学院索要元气值
     # 在审核通过后，这些不可修改

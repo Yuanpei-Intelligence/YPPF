@@ -985,12 +985,14 @@
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
-        if (!url_value.startsWith("https://")) {
-            document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "出于安全性考虑，目前仅支持 https 协议的 URL。";
-            document.body.scrollTop = document.documentElement.scrollTop = 0;
-            return false;
-        }
+        if (! url_value == ""){
+            if (!url_value.startsWith("http")) {
+                document.getElementById("warn_msg").style.display = "";
+                document.getElementById("warn_msg").innerHTML = "出于安全性考虑，目前仅支持 http 或 https 协议的 URL。";
+                document.body.scrollTop = document.documentElement.scrollTop = 0;
+                return false;
+            }
+        }   
 
 
         {% if edit %}
