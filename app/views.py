@@ -487,6 +487,10 @@ def stuinfo(request, name=None):
 
         if request.session.get('alert_message'):
             load_alert_message = request.session.pop('alert_message')
+        
+        # 浏览次数，必须在render之前
+        person.visit_times+=1
+        person.save()
         return render(request, "stuinfo.html", locals())
 
 
@@ -748,6 +752,10 @@ def orginfo(request, name=None):
 
     if request.session.get('alert_message'):
         load_alert_message = request.session.pop('alert_message')
+    
+    # 浏览次数，必须在render之前
+    org.visit_times+=1
+    org.save()
     return render(request, "orginfo.html", locals())
 
 
@@ -870,6 +878,7 @@ def homepage(request):
     except:
         from app.scheduler_func import get_weather
         html_display['weather'] = get_weather()
+    """
     update_time_delta = datetime.now() - datetime.strptime(html_display["weather"]["modify_time"],'%Y-%m-%d %H:%M:%S.%f')
     # 根据更新时间长短，展示不同的更新天气时间状态
     def days_hours_minutes_seconds(td):
@@ -883,6 +892,8 @@ def homepage(request):
         last_update = f"{minutes}分钟前"
     else:
         last_update = f"{seconds}秒前"
+    """
+    last_update = "一小时前"
     #-------------------------------天气结束-------------------------
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
@@ -2219,6 +2230,9 @@ def viewActivity(request, aid=None):
     # bar_display["title_name"] = "活动信息"
     # bar_display["navbar_name"] = "活动信息"
 
+    # 浏览次数，必须在render之前
+    activity.visit_times+=1
+    activity.save()
     return render(request, "activity_info.html", locals())
 
 
