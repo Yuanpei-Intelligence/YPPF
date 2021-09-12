@@ -630,10 +630,10 @@
 
     function shows(a) {
         $("#pricebutton").text(a);
-        if ("先到先得" === a) {
-            document.getElementById("signscheme").value = "0"
+        if (a.lastIndexOf("先到先得") != -1) {
+            document.getElementById("signscheme").value = "0";
         } else {
-            document.getElementById("signscheme").value = "1"
+            document.getElementById("signscheme").value = "1";
         }
     }
     function another_shows(a) {
