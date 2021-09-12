@@ -102,10 +102,10 @@ def update_reimb_application(application, me, user_type, request):
                 except:
                     return wrong("元气值为空或输入有误，请输入非负数。")
                 #活动总结图片
-                summary_images= request.FILES.getlist('summaryimages')
-                if len(summary_images)>0:
+                summary_photos= request.FILES.getlist('summaryimages')
+                if len(summary_photos)>0:
                     #合法性检查
-                    for image in summary_images:
+                    for image in summary_photos:
                             if utils.if_image(image) !=2:
                                 return wrong("上传的报销材料只支持图片格式！")
 
@@ -152,8 +152,8 @@ def update_reimb_application(application, me, user_type, request):
                         message=message,record=record,examine_teacher=examine_teacher)
 
                     #保存活动总结图片
-                    if len(summary_images) > 0:
-                        for payload in summary_images:
+                    if len(summary_photos) > 0:
+                        for payload in summary_photos:
                             ReimbursementPhoto.objects.create(type=ReimbursementPhoto.PhotoType.SUMMARY,
                             related_reimb=application,image=payload)
                     #保存报销材料到评论中，后续如果需要更新报销材料则在评论中更新
@@ -179,7 +179,7 @@ def update_reimb_application(application, me, user_type, request):
                     if not application.is_pending():
                         return wrong("不可以修改状态不为申请中的申请!")
                     # 修改申请的状态应该有所变化
-                    if application.amount == reimb_YQP and application.message == message and len(summary_images)==0:
+                    if application.amount == reimb_YQP and application.message == message and len(summary_photos)==0:
                         return wrong("没有检测到修改!")
                     #元气值合法性检查
 
@@ -195,14 +195,14 @@ def update_reimb_application(application, me, user_type, request):
                     application.record.amount = reimb_YQP  # 更改相应的转账的元气值
                     application.record.save()
                     # 保存活动总结图片
-                    if len(summary_images) >0:
+                    if len(summary_photos) >0:
                         #清除之前的图片
                         old_images=application.reimbphotos.filter(type=ReimbursementPhoto.PhotoType.SUMMARY)
                         if len(old_images)>0:
                             for payload in old_images.all():
                                 payload.delete()
                         #保存更新后的图片
-                        for payload in summary_images:
+                        for payload in summary_photos:
                             ReimbursementPhoto.objects.create(type=ReimbursementPhoto.PhotoType.SUMMARY,
                             related_reimb=application,image=payload)
                     application.save()
