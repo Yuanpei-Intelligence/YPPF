@@ -33,10 +33,16 @@
                             {% else %}
                             <div class="d-flex justify-content-between">
                                 <h3>新建小组账号</h3>
+                                <!--
                                 <a href="{{link}}{{new_link}}" class=" btn btn-info mb-4 mr-2" tabindex="1"
-                                role="button"  style="text-align: center;vertical-align: middle;text-align: justify;">
+                                role="button"  style="display:block;white-space:nowrap;overflow:hidden; ">
                                 {{new_btn_name}}
                                 </a>
+                                -->
+                                <button type="button" class="btn btn-info mb-4 mr-2 "
+                                onclick="location.href = '{{link}}{{new_link}}';" 
+                                    >{{new_btn_name}}
+                                </button>
                             </div>                            
                             {% endif %}
                             <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">

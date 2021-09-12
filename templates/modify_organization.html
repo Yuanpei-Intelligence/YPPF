@@ -101,12 +101,12 @@
                                                 <label>小组名称</label>
                                                 {%if not is_new_application %}
                                                 <textarea type="text" name="oname" class="form-control"
-                                                          aria-label="Default" placeholder="不超过32个字节"
+                                                          aria-label="Default" placeholder="不超过32个字节，一经创建不可自行修改"
                                                           {%if allow_form_edit == 0 %} disabled="disabled" {%endif%}>{{application.oname}}</textarea>
 
                                                 {%else%}
                                                 <input type="text" name="oname" class="form-control"
-                                                       aria-label="Default" placeholder="不超过32个字节">
+                                                       aria-label="Default" placeholder="不超过32个字节，一经创建不可自行修改">
                                                 {%endif%}
                                             </div>
                                             
@@ -151,7 +151,7 @@
                                                     </div>
                                                 {%else%}
                                                 <button type="submit" class="btn btn-primary btn-block mb-4 mr-2"
-                                                        value="new_submit" name="post_type" onclick="return confirm('确认提交新建团队申请？')">
+                                                        value="new_submit" name="post_type" onclick="return confirm('确认提交新建小组申请？')">
                                                     提交申请
                                                 </button>
                                                 {% endif %}
@@ -160,11 +160,11 @@
                                                     <table>
                                                         <tr>
                                                             <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
-                                                        value="accept_submit" name="post_type" onclick="return confirm('确认通过团队申请？')">通过申请</button>
+                                                        value="accept_submit" name="post_type" onclick="return confirm('确认通过小组申请？')">通过申请</button>
                                                         </tr>
                                                         <tr>
                                                             <button type="submit" class="btn btn-lg mb-4 mr-2"
-                                                        value="refuse_submit" name="post_type" onclick="return confirm('确认拒绝团队申请？')">拒绝申请</button>
+                                                        value="refuse_submit" name="post_type" onclick="return confirm('确认拒绝小组申请？')">拒绝申请</button>
                                                         </tr>
                                                     </table>
                                                 </div>

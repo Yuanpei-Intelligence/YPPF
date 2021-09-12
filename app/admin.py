@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.utils.safestring import mark_safe
 from app.models import *
+from random import choice
 
 # Register your models here.
 admin.site.site_title = '元培成长档案管理后台'
@@ -74,6 +75,33 @@ class OrganizationAdmin(admin.ModelAdmin):
         return mark_safe(display)
     Managers.short_description = "管理者"
 
+    actions = ['all_subscribe', 'all_unsubscribe']
+
+    def all_subscribe(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        for org in queryset:
+            org.unsubscribers.clear()
+            org.save()
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    all_subscribe.short_description = "设置 全部订阅"
+
+    def all_unsubscribe(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        persons = list(NaturalPerson.objects.all().values_list('id', flat=True))
+        for org in queryset:
+            org.unsubscribers.set(persons)
+            org.save()
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    all_unsubscribe.short_description = "设置 全部不订阅"
+
 
 @admin.register(Position)
 class PositionAdmin(admin.ModelAdmin):
@@ -88,6 +116,10 @@ class PositionAdmin(admin.ModelAdmin):
     actions = ['demote', 'promote', 'to_member', 'to_manager', 'set_admin', 'set_not_admin']
 
     def demote(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
         for pos in queryset:
             pos.pos += 1
             pos.save()
@@ -96,6 +128,10 @@ class PositionAdmin(admin.ModelAdmin):
     demote.short_description = "职务等级 增加(降职)"
 
     def promote(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
         for pos in queryset:
             pos.pos = min(0, pos.pos - 1)
             pos.save()
@@ -104,6 +140,10 @@ class PositionAdmin(admin.ModelAdmin):
     promote.short_description = "职务等级 降低(升职)"
 
     def to_member(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
         for pos in queryset:
             pos.pos = pos.org.otype.get_length()
             pos.is_admin = False
@@ -113,6 +153,10 @@ class PositionAdmin(admin.ModelAdmin):
     to_member.short_description = "设为成员"
 
     def to_manager(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
         for pos in queryset:
             pos.pos = 0
             pos.is_admin = True
@@ -122,12 +166,20 @@ class PositionAdmin(admin.ModelAdmin):
     to_manager.short_description = "设为负责人"
 
     def set_admin(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
         queryset.update(is_admin = True)
         return self.message_user(request=request,
                                  message='修改成功!')
     set_admin.short_description = "赋予 管理权限"
 
     def set_not_admin(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
         queryset.update(is_admin = False)
         return self.message_user(request=request,
                                  message='修改成功!')
@@ -143,6 +195,10 @@ class NotificationAdmin(admin.ModelAdmin):
     actions = ['set_delete']
 
     def set_delete(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
         queryset.update(status = Notification.Status.DELETE)
         return self.message_user(request=request,
                                  message='修改成功!')
@@ -156,6 +212,10 @@ class HelpAdmin(admin.ModelAdmin):
 
 @admin.register(Wishes)
 class WishesAdmin(admin.ModelAdmin):
+    COLORS = [
+        "#FDAFAB","#FFDAC1","#FAF1D6",
+        "#B6E3E9","#B5EAD7","#E2F0CB"
+    ]
     list_display = ["id", "text", 'time', "background_display"]
     list_filter = ('time', 'background')
     
@@ -163,9 +223,67 @@ class WishesAdmin(admin.ModelAdmin):
         return mark_safe(f'<span style="color: {obj.background};"><strong>{obj.background}</strong></span>')
     background_display.short_description = "背景颜色"
 
+    actions = ['change_color']
+
+    def change_color(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        for wish in queryset:
+            wish.background = choice(WishesAdmin.COLORS)
+            wish.save()
+        return self.message_user(request=request,
+                                 message='修改成功!已经随机设置了背景颜色!')
+    change_color.short_description = "随机设置背景颜色"
+        
+
+@admin.register(ModifyRecord)
+class ModifyRecordAdmin(admin.ModelAdmin):
+    list_display = ["id", "user", "usertype", "name", 'time']
+    search_fields = ('id', "user__username", "name")
+    list_filter = ('time', 'usertype')
+
+    actions = ['get_rank']
+
+    def get_rank(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        if len(queryset) != 1:
+            return self.message_user(
+                request=request, message='一次只能查询一个用户的排名!', level='error')
+        try:
+            record = queryset[0]
+            usertype = record.usertype
+            records = ModifyRecord.objects.filter(
+                user=record.user, usertype=usertype)
+            first = records.order_by('time')[0]
+            rank = ModifyRecord.objects.filter(
+                usertype=usertype,
+                time__lte=first.time,
+                ).values('user').distinct().count()
+            return self.message_user(request=request,
+                                    message=f'查询成功: {first.name}的排名为{rank}!')
+        except Exception as e:
+            return self.message_user(request=request,
+                                    message=f'查询失败: {e}!', level='error')
+    get_rank.short_description = "查询排名"
+
+@admin.register(ModifyPosition)
+class ModifyPositionAdmin(admin.ModelAdmin):
+    list_display = ["person","org","apply_type", "status"]
+    search_fields = ("org__oname", "person__name")
+
+
+admin.site.register(ModifyOrganization)
+
 
 admin.site.register(Activity)
 admin.site.register(TransferRecord)
 
 admin.site.register(YQPointDistribute)
-admin.site.register(ModifyRecord)
+admin.site.register(Participant)
+admin.site.register(Reimbursement)
+

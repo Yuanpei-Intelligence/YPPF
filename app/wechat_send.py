@@ -23,7 +23,7 @@ from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from datetime import datetime, timedelta
 
 # 获取对象等操作
-from app.utils import get_person_or_org
+from app.utils import get_person_or_org, except_captured
 
 # 全局设置
 # 是否启用定时任务，请最好仅在服务器启用，如果不启用，后面的多个设置也会随之变化
@@ -284,6 +284,7 @@ def send_wechat(
             base_send_wechat(*args, **kws)  # 不使用定时任务请改为这句
 
 
+@except_captured(False, record_args=True, source='wechat_send[publish_notification]')
 def publish_notification(notification_or_id,
                         app=None, level=None):
     """
@@ -298,8 +299,7 @@ def publish_notification(notification_or_id,
         else:
             notification = Notification.objects.get(pk=notification_or_id)
     except:
-        print(f"未找到id为{notification_or_id}的通知")
-        return False
+        raise ValueError("未找到该id的通知")
     if app is None or app == WechatApp.DEFAULT:
         app = WechatDefault.get_app('notification', notification)
     check_block = app not in UNBLOCK_APPS
@@ -363,6 +363,7 @@ def publish_notification(notification_or_id,
     return True
 
 
+@except_captured(False, record_args=True, source='wechat_send[publish_notifications]')
 def publish_notifications(
     notifications_or_ids=None, filter_kws=None, exclude_kws=None,
     app=None, level=None,
@@ -392,8 +393,7 @@ def publish_notifications(
     - success: bool, 是否尝试了发送，出错时返回False
     """
     if notifications_or_ids is None and filter_kws is None and exclude_kws is None:
-        print("必须至少传入一个有效参数才能发布通知到微信！")
-        return False
+        raise ValueError("必须至少传入一个有效参数才能发布通知到微信！")
     try:
         notifications = Notification.objects.all()
         if notifications_or_ids is not None:
@@ -409,8 +409,7 @@ def publish_notifications(
             notifications = notifications.exclude(**exclude_kws)
         notifications = notifications.order_by("-start_time")
     except:
-        print(f"传给publish_notifications的参数错误！")
-        return False
+        raise ValueError("必须至少传入一个有效参数才能发布通知到微信！")
 
     total_ct = len(notifications)
     if total_ct == 0:
@@ -437,8 +436,7 @@ def publish_notifications(
                 URL=url,
             )
     except:
-        print("检查失败，发生了未知错误，这里不该发生异常")
-        return False
+        raise Exception("检查失败，发生了未知错误，这里不该发生异常")
 
     sender = get_person_or_org(sender)  # 可能是小组或个人
     if url and url[0] == "/":  # 相对路径变为绝对路径

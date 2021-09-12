@@ -1,5 +1,6 @@
 from django.dispatch.dispatcher import receiver
 from app.models import (
+    NaturalPerson,
     Organization,
     Reimbursement,
     Activity,
@@ -34,7 +35,7 @@ def succeed(message):
 #注意新建报销和修改报销时，元气值的合法性检查有所不同。
 #申请报销时，元气值要先扣除。除非老师拒绝或者小组取消报销，元气值一直处于扣除状态。
 
-def update_reimb_application(application, me, user_type, request,auditor_name):
+def update_reimb_application(application, me, user_type, request):
     # 关于这个application与我的关系已经完成检查
     # 确定request.POST中有post_type且不是None
 
@@ -122,6 +123,12 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                             return wrong("报销的元气值不能超过活动预算的1.5倍！")
                     except:
                         return wrong("找不到该活动，请检查报销的活动的合法性！")
+                    #审核老师
+                    try:
+                        examine_teacher_id=request.POST.get('examine_teacher')
+                        examine_teacher=NaturalPerson.objects.get(id=examine_teacher_id)
+                    except:
+                        return wrong("找不到该老师，请检查是否选择正确的老师！")
                     #报销材料
                     images = request.FILES.getlist('images')
                     if len(images) > 0:
@@ -140,7 +147,7 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     # 至此可以新建申请, 创建一个空申请
                     application =Reimbursement.objects.create(
                                 related_activity=reimb_act, amount=reimb_YQP, pos=me.organization_id,
-                        message=message,record=record)
+                        message=message,record=record,examine_teacher=examine_teacher)
 
                     #保存活动总结图片
                     if summary_image is not None:
@@ -160,7 +167,8 @@ def update_reimb_application(application, me, user_type, request,auditor_name):
                     org.YQPoint-=application.amount
                     org.save()
                     #成功！
-                    context = succeed(f'活动“{reimb_act.title}”的经费申请已成功发送，请耐心等待{auditor_name}老师审批！' )
+
+                    context = succeed(f'活动“{reimb_act.title}”的经费申请已成功发送，请耐心等待{application.examine_teacher.name}老师审批！' )
                     context["application_id"] = application.id
                     return context
 
