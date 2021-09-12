@@ -487,6 +487,10 @@ def stuinfo(request, name=None):
 
         if request.session.get('alert_message'):
             load_alert_message = request.session.pop('alert_message')
+        
+        # 浏览次数，必须在render之前
+        person.visit_times+=1
+        person.save()
         return render(request, "stuinfo.html", locals())
 
 
@@ -748,6 +752,10 @@ def orginfo(request, name=None):
 
     if request.session.get('alert_message'):
         load_alert_message = request.session.pop('alert_message')
+    
+    # 浏览次数，必须在render之前
+    org.visit_times+=1
+    org.save()
     return render(request, "orginfo.html", locals())
 
 
@@ -2219,6 +2227,9 @@ def viewActivity(request, aid=None):
     # bar_display["title_name"] = "活动信息"
     # bar_display["navbar_name"] = "活动信息"
 
+    # 浏览次数，必须在render之前
+    activity.visit_times+=1
+    activity.save()
     return render(request, "activity_info.html", locals())
 
 

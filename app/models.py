@@ -57,6 +57,7 @@ class NaturalPerson(models.Model):
     last_time_login = models.DateTimeField("上次登录时间", blank=True, null=True)
     objects = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
+    visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
 
     YQPoint_Bonus = models.FloatField("待发放元气值", default=0)
     YQPoint = models.FloatField("元气值余额", default=0)
@@ -266,6 +267,7 @@ class Organization(models.Model):
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
     wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
+    visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
 
     first_time_login = models.BooleanField(default=True)  # 是否第一次登录
     inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
@@ -616,6 +618,8 @@ class Activity(CommentBase):
     budget = models.FloatField("预算", default=0.0)
 
     need_checkin = models.BooleanField("是否需要签到", default=False)
+
+    visit_times = models.IntegerField("浏览次数",default=0)
 
     examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     # recorded 其实是冗余，但用着方便，存了吧,activity_show.html用到了
