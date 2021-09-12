@@ -57,6 +57,7 @@ class NaturalPerson(models.Model):
     last_time_login = models.DateTimeField("上次登录时间", blank=True, null=True)
     objects = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
+    visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
 
     YQPoint_Bonus = models.FloatField("待发放元气值", default=0)
     YQPoint = models.FloatField("元气值余额", default=0)
@@ -266,6 +267,7 @@ class Organization(models.Model):
     avatar = models.ImageField(upload_to=f"avatar/", blank=True)
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)  # 二维码字段
     wallpaper = models.ImageField(upload_to=f"wallpaper/", blank=True)
+    visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
 
     first_time_login = models.BooleanField(default=True)  # 是否第一次登录
     inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
@@ -617,6 +619,8 @@ class Activity(CommentBase):
 
     need_checkin = models.BooleanField("是否需要签到", default=False)
 
+    visit_times = models.IntegerField("浏览次数",default=0)
+
     examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     # recorded 其实是冗余，但用着方便，存了吧,activity_show.html用到了
     recorded = models.BooleanField("是否预报备", default=False)
@@ -778,6 +782,34 @@ class YQPointDistribute(models.Model):
         verbose_name = "元气值发放"
         verbose_name_plural = verbose_name
 
+class QandAManager(models.Manager):
+    def activated(self):
+        return self.exclude(status=QandA.Status.DELETE)
+
+class QandA(models.Model):
+    # 问答类
+    class Meta:
+        verbose_name = "问答记录"
+        verbose_name_plural = verbose_name
+    sender = models.ForeignKey(User, on_delete=models.SET_NULL,
+                             related_name="send_QA_set", blank=True, null=True)
+    receiver = models.ForeignKey(User, on_delete=models.SET_NULL,
+                             related_name="receive_QA_set", blank=True, null=True)
+    Q_time = models.DateTimeField('提问时间', auto_now_add=True)
+    A_time = models.DateTimeField('回答时间', blank=True, null=True)
+    Q_text = models.TextField('提问内容', default='', blank=True)
+    A_text = models.TextField('回答内容', default='', blank=True)
+    anonymous_flag = models.BooleanField("是否匿名", default=False)
+
+    class Status(models.IntegerChoices):
+        DONE = (0, "已回答")
+        UNDONE = (1, "待回答")
+        DELETE = (2, "已删除")
+    
+    status = models.SmallIntegerField(choices=Status.choices, default=1)
+    
+    objects = QandAManager()
+
 class NotificationManager(models.Manager):
     def activated(self):
         return self.exclude(status=Notification.Status.DELETE)
@@ -824,6 +856,7 @@ class Notification(models.Model):
     URL = models.URLField("相关网址", null=True, blank=True, max_length=1024)
     bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
                                         db_index=True)
+    anonymous_flag = models.BooleanField("接收者是否匿名", default=False)
     relate_TransferRecord = models.ForeignKey(
         TransferRecord,
         related_name="transfer_notification",
@@ -833,6 +866,13 @@ class Notification(models.Model):
     )
     relate_instance = models.ForeignKey(
         CommentBase,
+        related_name="relate_notifications",
+        on_delete=models.CASCADE,
+        blank=True,
+        null=True,
+    )
+    relate_QandA = models.ForeignKey(
+        QandA,
         related_name="relate_notifications",
         on_delete=models.CASCADE,
         blank=True,

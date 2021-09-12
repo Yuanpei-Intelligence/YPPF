@@ -95,6 +95,8 @@ def notification_create(
         URL=None,
         relate_TransferRecord=None,
         relate_instance=None,
+        relate_QandA=None,
+        anonymous_flag=False,
         *,
         publish_to_wechat=False,
         publish_kws=None,
@@ -127,6 +129,8 @@ def notification_create(
         URL=URL,
         relate_TransferRecord=relate_TransferRecord,
         relate_instance=relate_instance,
+        relate_QandA=relate_QandA,
+        anonymous_flag=anonymous_flag,
     )
     if publish_to_wechat == True:
         if not publish_kws:
