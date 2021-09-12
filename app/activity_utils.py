@@ -173,6 +173,8 @@ def activity_base_check(request, edit=False):
     # 内部活动
     if request.POST.get("inner"):
         context["inner"] = True  
+    else:
+        context["inner"] = False
 
     # 价格
     aprice = float(request.POST["aprice"])
@@ -246,14 +248,13 @@ def create_activity(request):
                     bidding=context["bidding"],
                     apply_end=context["signup_end"],
                     apply_reason=context["apply_reason"],
+                    inner=context["inner"],
                 )
     if context["from_college"]:
         activity.source = Activity.YQPointSource.COLLEGE
     activity.endbefore = context["endbefore"]
     if context.get("need_checkin"):
         activity.need_checkin = True
-    if context.get("inner"):
-        activity.inner = True
     if context["recorded"]:
         # 预报备活动，先开放报名，再审批
         activity.recorded = True
