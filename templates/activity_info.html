@@ -33,7 +33,7 @@
 
         <!--  BEGIN BLURRED BG  -->
         {% if summary_photo_exists %}
-        <div class="w-100" id="bg" style="background-image: url({{ summary_photo }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
+        <div class="w-100" id="bg" style="background-image: url({{ firstpic }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
         {% else %}
         <div class="w-100" id="bg" style="background-image: url({{ firstpic }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
         {% endif %}
@@ -60,6 +60,7 @@
                                 <div class="h-100 carousel-item">
                                     <img class="d-block w-100 slide-image" style="width: 100%; height: 100%; object-fit: cover;" src="/media/{{ summary_photo.image }}"></img>
                                 </div>
+                                
                                 {%endfor%}
                         {% endif %}
                     </div>
