@@ -30,6 +30,7 @@ from app.models import (
     Reimbursement,
     Wishes,
     QandA,
+    ReimbursementPhoto
 )
 import app.utils as utils
 from app.forms import UserForm
@@ -2124,44 +2125,7 @@ def viewActivity(request, aid=None):
             me.save()
         else:
             return redirect("/welcome")
-        """
-        elif option == "submitphoto":
-            if not (ownership and activity.status == Activity.Status.END):
-                return redirect("/welcome/")
-
-            summary_photo_exists = False
-            if activity.status == Activity.Status.END:
-                try:
-                    summary_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
-                    summary_photo_exists = True
-                except:
-                    pass
-            summaryphotos = request.FILES.getlist('images')
-            if len(summaryphotos)==0:
-                html_display['warn_code'] = 1
-                html_display['warn_message'] = "上传活动照片不能为空"
-            else:
-                photo = summaryphotos[0]
-                if utils.if_image(photo) !=2:
-                    html_display['warn_code'] = 1
-                    html_display['warn_message'] = "上传的附件只支持图片格式"
-                elif summary_photo_exists:
-                    old_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
-                    old_photo.image = photo
-                    old_photo.save()
-                    summary_photo = settings.MEDIA_URL + str(old_photo.image)
-                    html_display["warn_message"] = "成功替换活动照片"
-                    html_display["warn_code"] = 2
-                else:
-                    ActivityPhoto.objects.create(
-                        image=photo, 
-                        activity=activity, 
-                        time=datetime.now(),
-                        type = ActivityPhoto.PhotoType.SUMMARY
-                    )
-                    html_display["warn_message"] = "成功提交活动照片"
-                    html_display["warn_code"] = 2
-        """
+        
     elif request.method == "GET":
         warn_code = request.GET.get("warn_code")
         warn_msg = request.GET.get("warn_message")
@@ -2245,9 +2209,8 @@ def viewActivity(request, aid=None):
     summary_photo_exists = False
     if activity.status == Activity.Status.END:
         try:
-            summary_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
+            summary_photos = activity.photos.filter(type=ActivityPhoto.PhotoType.SUMMARY)
             summary_photo_exists = True
-            summary_photo = settings.MEDIA_URL + str(summary_photo.image)
         except Exception as e:
             pass
     
@@ -3826,6 +3789,10 @@ def modifyEndActivity(request):
 
     # 未报销活动
     activities = utils.get_unreimb_activity(apply_person)
+
+    #活动总结图片
+    summary_photos=application.reimbphotos.filter(type=ReimbursementPhoto.PhotoType.SUMMARY) if application is not None else None
+    summary_photo_len=len(summary_photos) if summary_photos is not None else 0
     #元培学院
     our_college=Organization.objects.get(oname="元培学院") if allow_audit_submit else None
     #审核老师
