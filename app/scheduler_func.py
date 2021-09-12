@@ -568,11 +568,14 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         else:
             raise ValueError(f"msg_type参数错误: {msg_type}")
-
-        if inner:
-            inner_np_list = Position.objects.activated().filter(org=activity.organization_id).values_list('person__person_id', flat=True)
-            inner_receivers = User.objects.filter(id__in=inner_np_list)
-            receivers = inner_receivers & receivers
+        
+        # 现在必须保证到此处时receivers是一个queryset, 不过也有好处就是更统一了
+        # 参与者总是收到消息, 但订阅者消息只会发给内部
+        if inner and publish_kws.get('app') == WechatApp.TO_SUBSCRIBER:
+            member_id_list = Position.objects.activated().filter(
+                org=activity.organization_id).values_list(
+                    'person__person_id', flat=True)
+            receivers = receivers.filter(id__in=member_id_list)
 
         success, _ = bulk_notification_create(
             receivers=list(receivers),
