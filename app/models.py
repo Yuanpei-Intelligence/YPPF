@@ -1095,8 +1095,6 @@ class Reimbursement(CommentBase):
     pos = models.ForeignKey(User, on_delete=models.CASCADE)#报销的小组
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
     record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
-    summary_image=models.ImageField(upload_to=f"activity/photo/%Y/%m/",
-                                    verbose_name="活动总结图片",null=True, blank=True)
     examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
@@ -1121,6 +1119,19 @@ class Reimbursement(CommentBase):
     def is_pending(self):   #表示是不是pending状态
             return self.status == Reimbursement.ReimburseStatus.WAITING
 
+class ReimbursementPhoto(models.Model):
+    class Meta:
+        verbose_name = "报销相关图片"
+        verbose_name_plural = verbose_name
+        ordering = ["-time"]
+    class PhotoType(models.IntegerChoices):
+        MATERIAL = (0, "报销材料")  #如账单信息等
+        SUMMARY = (1, "总结图片")   #待审核的活动总结图片
+    type = models.SmallIntegerField(choices=PhotoType.choices)
+    image = models.ImageField(upload_to=f"reimbursement/photo/%Y/%m/", verbose_name=u'报销相关图片', null=True, blank=True)
+    related_reimb = models.ForeignKey(Reimbursement, related_name="reimbphotos", on_delete=models.CASCADE)
+    time = models.DateTimeField("上传时间", auto_now_add=True)
+    
 
 class Help(models.Model):
     '''

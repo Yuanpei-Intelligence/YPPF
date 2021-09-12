@@ -7,7 +7,8 @@ from app.models import (
     Comment,
     CommentPhoto,
     TransferRecord,
-    ActivityPhoto
+    ActivityPhoto,
+    ReimbursementPhoto
 )
 import app.utils as utils
 from django.db import transaction
@@ -101,11 +102,12 @@ def update_reimb_application(application, me, user_type, request):
                 except:
                     return wrong("元气值为空或输入有误，请输入非负数。")
                 #活动总结图片
-                summary_image= request.FILES.get('summaryimage')
-                if summary_image is not None:
+                summary_images= request.FILES.getlist('summaryimages')
+                if len(summary_images)>0:
                     #合法性检查
-                    if utils.if_image(summary_image)!=2:
-                        return wrong("上传的活动总结材料只支持图片格式！")
+                    for image in summary_images:
+                            if utils.if_image(image) !=2:
+                                return wrong("上传的报销材料只支持图片格式！")
 
                 # 如果是新建申请,
                 if post_type == "new_submit":
@@ -150,10 +152,10 @@ def update_reimb_application(application, me, user_type, request):
                         message=message,record=record,examine_teacher=examine_teacher)
 
                     #保存活动总结图片
-                    if summary_image is not None:
-                        application.summary_image=summary_image
-                        application.save()
-
+                    if len(summary_images) > 0:
+                        for payload in summary_images:
+                            ReimbursementPhoto.objects.create(type=ReimbursementPhoto.PhotoType.SUMMARY,
+                            related_reimb=application,image=payload)
                     #保存报销材料到评论中，后续如果需要更新报销材料则在评论中更新
                     if len(images)>0:
                         text = "以下默认为初始的报销材料"
@@ -177,7 +179,7 @@ def update_reimb_application(application, me, user_type, request):
                     if not application.is_pending():
                         return wrong("不可以修改状态不为申请中的申请!")
                     # 修改申请的状态应该有所变化
-                    if application.amount == reimb_YQP and application.message == message and summary_image is None:
+                    if application.amount == reimb_YQP and application.message == message and len(summary_images)==0:
                         return wrong("没有检测到修改!")
                     #元气值合法性检查
 
@@ -193,10 +195,18 @@ def update_reimb_application(application, me, user_type, request):
                     application.record.amount = reimb_YQP  # 更改相应的转账的元气值
                     application.record.save()
                     # 保存活动总结图片
-                    if summary_image is not None:
-                        application.summary_image = summary_image
+                    if len(summary_images) >0:
+                        #清除之前的图片
+                        old_images=application.reimbphotos.filter(type=ReimbursementPhoto.PhotoType.SUMMARY)
+                        if len(old_images)>0:
+                            for payload in old_images.all():
+                                payload.delete()
+                        #保存更新后的图片
+                        for payload in summary_images:
+                            ReimbursementPhoto.objects.create(type=ReimbursementPhoto.PhotoType.SUMMARY,
+                            related_reimb=application,image=payload)
                     application.save()
-                    context = succeed(f'活动“{application.related_activity.title}”的经费申请已成功修改，请耐心等待{auditor_name}老师审批！' )
+                    context = succeed(f'活动“{application.related_activity.title}”的经费申请已成功修改，请耐心等待{application.examine_teacher.name}老师审批！' )
                     context["application_id"] = application.id
                     return context
 
@@ -232,12 +242,15 @@ def update_reimb_application(application, me, user_type, request):
                 application.status = Reimbursement.ReimburseStatus.CONFIRMED
                 application.record.status = TransferRecord.TransferStatus.ACCEPTED  # 已接受
                 application.record.save()
-                ActivityPhoto.objects.create(
-                    image=application.summary_image,
-                    activity=application.related_activity,
-                    time=datetime.now(),
-                    type=ActivityPhoto.PhotoType.SUMMARY
-                )
+                old_images=application.reimbphotos.filter(type=ReimbursementPhoto.PhotoType.SUMMARY)
+                if len(old_images)>0:
+                    for payload in old_images:
+                        ActivityPhoto.objects.create(
+                            image=payload.image,
+                            activity=application.related_activity,
+                            time=datetime.now(),
+                            type=ActivityPhoto.PhotoType.SUMMARY
+                        )
                 application.save()
                 context = succeed(f'活动“{act_title}”的经费申请已通过！')
                 context["application_id"] = application.id
