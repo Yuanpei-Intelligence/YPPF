@@ -1,0 +1,146 @@
+
+<!--begin comment-->
+<style type="text/css">
+img {
+    max-width: 300px;
+    max-height:600px;
+}
+</style>
+<hr>
+<div id="comments_display" class="widget-header">
+    {%if  commentable == 1 or comments.len > 0 %}
+    <label><h4>评论区</h4></label>
+    {%endif%}
+    {%for comment in comments%}
+    <div class="form-group">
+        <div class="d-flex justify-content-between">
+            <div>
+                <p style="color: rgb(66, 67, 68);"><i class="fa fa-calendar-o"></i>{{comment.time}}</p>
+            </div>
+            <div align="right">
+                <img src={{ comment.ava }} width="24" height="24" alt="avatar">
+                    <a href='{{comment.URL}}'><u>{{comment.commentator_name}}</u></a>
+            </div>
+        </div>
+        {%if comment.text != ""%}
+        <textarea name="comment" class="form-control" disabled="disabled">{{comment.text}}</textarea>
+        {%if comment.len > 0 %}
+        <br>
+        {%endif %}
+        {%endif%}
+        {%if comment.len > 0 %}
+            <div style="max-height:1000px;overflow:auto;">
+            {%for image in comment.comment_photos.all%}
+            <img  src={{image.imagepath}} >
+            <!--移动端图片大小需要修正!-->
+            {%endfor%}
+            </div>
+        {%endif%}
+        <hr>
+    </div>
+    {% endfor %}
+</div>
+{%if commentable %}
+<form role="form" method="POST" enctype="multipart/form-data" onsubmit="return check_comment_inputs()">
+    <div>
+        
+        <div class="form-group">
+            <textarea type="text" id="comment" name="comment"
+                      class="form-control"
+                      aria-label="Default" rows="3"
+                      placeholder="添加评论"></textarea>
+            
+            <br>
+
+            <div class="form-group">
+                
+                    <div class="custom-file" lang="zh">
+                        <input onchange="showFilename(this.files)" type="file" 
+                               class="custom-file-input" id="customFile" name="comment_images"
+                               accept="image/*"  multiple/>
+                        <label id="uploadfile" class="custom-file-label" 
+                               for="customFile">相关图片</label>
+                    </div>
+                
+                </div>
+            </div>
+            <br>
+            <div class="d-flex justify-content-between">
+            <div>
+
+            </div>
+            <div class="" style="text-align: right;">
+                    <button type="submit"
+                            class="btn btn-primary btn-block mb-4 mr-2"
+                            name="comment_submit" value="1">
+                        回复
+                    </button>
+                </div>
+            </div>
+            </div>
+        
+    </div>
+</form>
+<!--end comment-->
+{%endif%}
+{% block add_js_file %}
+<script>
+function showFilename(files){
+    var text = "";
+    for (i = 0; i < files.length; i++)
+    {
+    text += (" "+files[i].name);
+    }
+    if (text == "") {
+        text = "相关图片";
+    }
+    $("#uploadfile").html(text);
+}
+ </script>
+{%endblock%}
+{% block add_css_file %}
+<style>
+    .custom-file-input:lang(zh)~.custom-file-label::after {
+    content: "上传";}
+</style>
+<script type="text/javascript">
+    function check_comment_inputs() {
+        var images = document.getElementById("customFile").files;
+        var comments = document.getElementById("comment").value;
+        var formats = ["jpg", "bmp", "png", "jpeg", "rgb", "tif"]
+        if (images.length == 0 && comments == "") {
+            document.getElementById("warn_msg").style.display = "";
+            document.getElementById("warn_msg").innerHTML = "不能发布空评论";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
+        // 这个限制 html 好像自带，可以不用
+        for (var i = 0; i < images.length; i++) {
+            var name = images[i].name.toLowerCase();
+            var format = name.substring(name.lastIndexOf('.') + 1);
+            var flag = false;
+            var fileMaxSize = 3072
+            for (var j = 0; j < formats.length; j++) {
+                if (formats[j] == format) {
+                    flag = true;
+                    break;
+                }
+            }
+            //检查图片大小
+            if ((images[i].size/1024)>fileMaxSize){
+                    document.getElementById("warn_msg").style.display = "";
+                    document.getElementById("warn_msg").innerHTML = "图片大小不应该超过3M";
+                    document.body.scrollTop = document.documentElement.scrollTop = 0;
+                    return false
+                }
+            if (!flag) {
+                document.getElementById("warn_msg").style.display = "";
+                document.getElementById("warn_msg").innerHTML = "仅支持图片类型文件。";
+                document.body.scrollTop = document.documentElement.scrollTop = 0;
+                return false
+            }
+        }
+        return true;
+    }
+</script>
+{%endblock%}

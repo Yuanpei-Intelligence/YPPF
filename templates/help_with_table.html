@@ -1,0 +1,43 @@
+
+<!-- 以下style和折叠密切相关 -->
+<style class="text/css">
+    [data-toggle="collapse"] .fa:before {
+        font-family: 'Font Awesome 5 Free';  
+        content: "\f068";
+        float: right; 
+    }
+
+    [data-toggle="collapse"].collapsed .fa:before {
+        content: "\f067"; 
+    }
+</style>
+<div id="tableDropdown" class="col-lg-12 col-12 layout-spacing">
+<div class="statbox widget box box-shadow">
+    <div class="widget-header">
+        <div class="row">
+            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                <div data-toggle="collapse" href="#help-content" role="button" aria-expanded="false"
+                    aria-controls="collapseExample" class="collapsed">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h4>使用帮助</h4>
+                        </div>
+                        <div style="display:flex;
+                        justify-content: center;
+                        align-items: center;">
+                            <i class="fa" aria-hidden="true"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="collapse" id="help-content">
+        <div class="widget-content widget-content-area">
+            
+            {{bar_display.help_paragraphs | safe}}
+            
+        </div>
+    </div>
+</div>
+</div>

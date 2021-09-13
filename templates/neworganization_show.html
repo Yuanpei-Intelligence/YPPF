@@ -1,0 +1,180 @@
+{% extends "base.html" %}
+
+{% block add_css_file %}
+<!-- 和搜索页面相同，在需要引入“使用帮助”的页面，也要在add_css_file中添加以下style -->
+
+{% endblock %}
+
+{% block mainpage %}
+
+{% with  link='/modifyOrganization/' new_link='' query_field='org_id' new_btn_name='新建小组账号' btn_name='详情' empty_info='列表空空如也~' %}
+
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    {% if html_display.warn_code == 1 %}
+    <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+    {% elif html_display.warn_code == 2 %}
+    <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
+    {% endif %}
+        <div class="container">
+
+
+
+            <div class="row layout-top-spacing">
+                {% if bar_display.help_paragraphs %}
+                    {% include 'help.html' %}
+                {% endif %}
+                <div class="col-lg-12 col-12 layout-top-spacing">
+                    <div class="bio layout-spacing ">
+                        <div class="widget-content widget-content-area">
+                            {% if bar_display.person_type == 0 %}
+                            <h3>新建小组审核
+                            </h3>
+                            {% else %}
+                            <div class="d-flex justify-content-between">
+                                <h3>新建小组账号</h3>
+                                <!--
+                                <a href="{{link}}{{new_link}}" class=" btn btn-info mb-4 mr-2" tabindex="1"
+                                role="button"  style="display:block;white-space:nowrap;overflow:hidden; ">
+                                {{new_btn_name}}
+                                </a>
+                                -->
+                                <button type="button" class="btn btn-info mb-4 mr-2 "
+                                onclick="location.href = '{{link}}{{new_link}}';" 
+                                    >{{new_btn_name}}
+                                </button>
+                            </div>                            
+                            {% endif %}
+                            <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                <li class="nav-item">
+                                    <a class="nav-link active" href="#undone" data-toggle="tab">
+                                        <h5><i class="fa fa-envelope-o"></i> 待审核</h5>
+                                    </a>
+                                </li>
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="#done" data-toggle="tab">
+                                        <h5><i class="fa fa-envelope-o"></i> 已处理</h5>
+                                    </a>
+                                </li>
+
+                            </ul>
+
+                            <div id="myTabContent" class="tab-content">
+                                {% for key, shown_instances in all_instances.items %}
+                                
+                                <div class="tab-pane fade  {% if key == "undone" %}in active show {% endif %} " id="{{key}}">
+                                    {% if not shown_instances %}
+                                    <br />
+                                    <p></p>
+                                    <p style="text-align: center;">{{empty_info}}</p>
+                                    <br />
+                                    {% else %}
+                                    <div class="bio-skill-box">
+                                        <div class="row">
+
+
+{% for instance in shown_instances %}
+    {% with instance.get_instance.get_status_display as status %}
+<div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+
+    <div class=" b-skills">
+
+
+        <div class="d-flex justify-content-between">
+            <div>
+                <h5>
+                    <a href="{{link}}{% if query_field %}?{{query_field}}={{instance.id}}{% endif %}">
+                        <u>{{instance.get_instance}}</u>
+                    </a>
+                    <br />
+                </h5>
+            </div>
+            {% if status is not None %}
+            <div>
+                {% if '拒绝' in status or '未' in status or '不' in status %}
+                <h5 class="text-danger">{{status}}</h5>
+                {% elif '通过' in status or '接受' in status %}
+                <h5 class="text-success">已通过</h5>
+                {% elif '修改' in status %}
+                <h5 class="text-warning">待修改</h5>
+                {% elif '取消' in status %}
+                <h5 class="text-muted">{{status}}</h5>
+                {% else %}
+                <h5 class="text-info">审核中</h5>
+                {% endif %}
+            </div>
+            {% endif %}
+        </div>
+        <div class="d-flex justify-content-between">
+            {% if instance.extra_display %}
+            <div class="flex" style="max-width: 80%;">
+                {% for display in instance.extra_display %}
+                {% if display|length == 2 or display|length == 3 %}
+                <p style="color: rgb(66, 67, 68); word-wrap: break-word;white-space:nowrap;overflow: hidden; text-overflow: ellipsis;">
+                    <i class="fa fa-{{display.2|default:'envelope'}}"></i>
+                    {{display.0}}：{{display.1}}
+                </p>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% endif %}
+            {% if instance.get_poster_name %}
+            <div class="flex">
+                <p style="color: rgb(66, 67, 68);">
+                    <i class="fa fa-address-book"></i>
+                    {{instance.get_poster_name}}
+                </p>
+            </div>
+            {% endif %}
+        </div>
+        <div class="d-flex justify-content-between">
+            <div>
+                <p style="color: rgb(66, 67, 68);">
+                    <i class="fa fa-calendar-plus-o"></i>
+                    创建时间：{{instance.time|date:'m/d H:i'}}
+                </p>
+                <p style="color: rgb(66, 67, 68);">
+                    <i class="fa fa-calendar-o"></i>
+                    上次修改：{{instance.modify_time|date:'m/d H:i'}}
+                </p>
+            </div>
+            <div>
+                <h5>
+                    <a href="#" class="btn btn-primary my-3 my-sm-2" tabindex="-1"
+                        role="button"
+                        onclick="window.location='{{link}}{% if query_field %}?{{query_field}}={{instance.id}}{% endif %}'">
+                        {{btn_name}}
+                    </a>
+                </h5>
+            </div>
+        </div>
+    </div>
+</div>
+    {% endwith %}
+{% endfor %}
+                                        </div>
+
+                                    </div>
+
+                                    {% endif %}
+                                </div>
+
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+
+                </div>
+
+            </div>
+
+        </div>
+    
+</div>
+<!--  END CONTENT AREA  -->
+
+{% endwith %}
+
+{% endblock %}
