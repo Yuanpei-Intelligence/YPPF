@@ -281,4 +281,5 @@ admin.site.register(TransferRecord)
 admin.site.register(YQPointDistribute)
 admin.site.register(Participant)
 admin.site.register(Reimbursement)
+admin.site.register(QandA)
 
