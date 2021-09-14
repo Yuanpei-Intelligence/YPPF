@@ -11,7 +11,7 @@
     <!-- BEGIN GLOBAL MANDATORY STYLES -->
     <!-- Favicons -->
     <link type="image/x-icon" href="{% static '/assets/img/yp_favicon.png' %}" rel="icon">
-    <link href="https://fonts.googleapis.com/css?family=Nunito:400,600,700" rel="stylesheet">
+    <link href={% static "outer/fonts.googleapis.com%2Fcss%3Ffamily%3DNunito%3A400%2C600%2C700/.css" %} rel="stylesheet">
     <link href={% static "bootstrap/css/bootstrap.min.css" %} rel="stylesheet" type="text/css" />
     <link href={% static "assets/css/plugins.css" %} rel="stylesheet" type="text/css" />
     <!-- END GLOBAL MANDATORY STYLES -->
@@ -20,7 +20,10 @@
     <link href={% static "assets/css/users/user-profile.css" %} rel="stylesheet" type="text/css" />
     <!--  END CUSTOM STYLE FILE  -->
 
+    <link href={% static "outer/cdnjs.cloudflare.com%2Fajax%2Flibs%2Ffont-awesome%2F5.15.4%2Fcss%2Fall.min.css/.css" %} rel="stylesheet" type="text/css" />
+    <!-- 废弃的外部链接
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    -->
     {% block add_css_file %}
 
     {% endblock %}
