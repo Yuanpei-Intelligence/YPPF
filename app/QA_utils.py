@@ -28,7 +28,6 @@ def QA_create(sender, receiver, Q_text, anonymous_flag=False):
         title="您收到了一条提问",
         content=Q_text,
         URL='/QAcenter/',
-        relate_QandA=new_qa,
         anonymous_flag=anonymous_flag
     )
 
@@ -44,7 +43,6 @@ def QA_anwser(QA_id, A_text):
         title="您收到了一条回答",
         content=A_text,
         URL='/QAcenter/',
-        relate_QandA=qa,
     )
 
 def QA2Display(user):
