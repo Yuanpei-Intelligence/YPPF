@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from datetime import datetime, timedelta
 from boottest import local_dict
 from django.conf import settings
+from random import choice
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
@@ -1141,9 +1142,18 @@ class Wishes(models.Model):
         verbose_name = "心愿"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
+    
+    COLORS = [
+        "#FDAFAB","#FFDAC1","#FAF1D6",
+        "#B6E3E9","#B5EAD7","#E2F0CB",
+    ]
+    # 不要随便删 admin.py也依赖本随机函数
+    def rand_color():
+        return choice(Wishes.COLORS)
+
     text = models.TextField("心愿内容", default="", blank=True)
     time = models.DateTimeField("发布时间", auto_now_add=True)
-    background = models.TextField("颜色编码", default="")
+    background = models.TextField("颜色编码", default=rand_color)
 
 
 class ModifyRecord(models.Model):
