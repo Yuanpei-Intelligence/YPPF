@@ -857,7 +857,7 @@ class Notification(models.Model):
     URL = models.URLField("相关网址", null=True, blank=True, max_length=1024)
     bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
                                         db_index=True)
-    anonymous_flag = models.BooleanField("接收者是否匿名", default=False)
+    anonymous_flag = models.BooleanField("是否匿名", default=False)
     relate_TransferRecord = models.ForeignKey(
         TransferRecord,
         related_name="transfer_notification",
@@ -867,13 +867,6 @@ class Notification(models.Model):
     )
     relate_instance = models.ForeignKey(
         CommentBase,
-        related_name="relate_notifications",
-        on_delete=models.CASCADE,
-        blank=True,
-        null=True,
-    )
-    relate_QandA = models.ForeignKey(
-        QandA,
         related_name="relate_notifications",
         on_delete=models.CASCADE,
         blank=True,
