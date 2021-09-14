@@ -899,7 +899,7 @@ def homepage(request):
     """
     photo_display = ActivityPhoto.objects.filter(type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')[: 8 - len(guidepics)] # 第一张active不算
     for photo in photo_display:
-        if str(photo.image) and str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+        if str(photo.image) : 
             photo.image = settings.MEDIA_URL + str(photo.image)
     
     """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
