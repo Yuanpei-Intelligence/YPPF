@@ -29,6 +29,7 @@ from app.models import (
     YQPointDistribute,
     Reimbursement,
     Wishes,
+    QandA,
 )
 import app.utils as utils
 from app.forms import UserForm
@@ -69,6 +70,13 @@ from app.notification_utils import(
     notification_create,
     bulk_notification_create,
     notification_status_change,
+)
+from app.QA_utils import (
+    QA2Display,
+    QA_anwser,
+    QA_create,
+    QA_delete,
+    QA_ignore,
 )
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
@@ -171,17 +179,21 @@ def index(request):
         if userinfo:
             auth.login(request, userinfo)
             request.session["username"] = username
-            if arg_origin is not None:
-                pass # 现在统一放到下面处理，这里只负责登录
-            else:
-                # 先处理初次登录
-                valid, user_type, html_display = utils.check_user_type(request.user)
-                if not valid:
-                    return redirect("/logout/")
+            valid, user_type, html_display = utils.check_user_type(request.user)
+            if not valid:
+                return redirect("/logout/")
+            if user_type == "Person":
+                request.session["NP"] = username
                 me = utils.get_person_or_org(userinfo, user_type)
                 if me.first_time_login:
+                    # 不管有没有跳转，这个逻辑都应该是优先的
+                    # TODO：应该在修改密码之后做一个跳转
                     return redirect("/modpw/")
+                orgs = list(Position.objects.activated().filter(is_admin=True, person=me).values_list("org__oname", flat=True))
+                request.session["Incharge"] = orgs
 
+
+            if arg_origin is None:
                 return redirect("/welcome/")
                 """
                 valid, user_type , html_display = utils.check_user_type(request.user)
@@ -226,6 +238,55 @@ def index(request):
                 )
 
     return render(request, "index.html", locals())
+
+
+@login_required(redirect_field_name="origin")
+def shiftAccount(request, oname=""):
+
+    user = request.user
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect("/welcome/")
+    oneself = utils.get_person_or_org(user, user_type)
+
+    # 切换到个人
+    if not oname:
+        try:
+            assert request.session["NP"]
+            assert user_type == "Organization"
+            orgs = request.session["Incharge"]
+            orgs.append(oneself.oname)
+            username = request.session["NP"]
+            user = User.objects.get(username=username)
+            # 切换用户之后 session 会重置，倒也肯定是......
+            auth.logout(request)
+            auth.login(request, user)
+            request.session["NP"] = username
+            request.session["Incharge"] = orgs
+        except:
+            return redirect("/welcome/")
+    # 切换到小组账号
+    else:
+        try: 
+            assert oname in request.session["Incharge"]
+            username = request.session["NP"]
+            orgs = request.session["Incharge"]
+            if user_type == "Organization":
+                orgs.append(oneself.oname)
+            orgs.remove(oname)
+            org = Organization.objects.get(oname=oname)
+            auth.logout(request)
+            auth.login(request, org.organization_id) 
+            request.session["NP"] = username
+            request.session["Incharge"] = orgs 
+        except:
+            return redirect("/welcome/")
+
+    if request.GET and request.GET.get("origin"):
+        return redirect(request.GET["origin"])
+    return redirect("/welcome/")
+
+
 
 
 # Return content
@@ -322,11 +383,27 @@ def stuinfo(request, name=None):
         inform_share, alert_message = utils.get_inform_share(me=person, is_myself=is_myself)
 
         # 处理更改数据库中inform_share的post
-        if request.method == "POST" and request.POST:
+        if request.POST.get("question") is not None:
+            anonymous_flag = (request.POST.get('show_name') is not None)
+            question = request.POST.get("question")
+            if len(question) == 0:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "请填写问题内容!"
+            else:
+                try:
+                    QA_create(sender=request.user,receiver=person.person_id,Q_text=str(question),anonymous_flag=anonymous_flag)
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "提问发送成功!"
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "提问发送失败!请联系管理员!"
+            return redirect(f"/stuinfo/?name={person.name}&warn_code="+str(html_display["warn_code"])+"&warn_message="+str(html_display["warn_message"]))
+        elif request.method == "POST" and request.POST:
             option = request.POST.get("option", "")
             assert option == "cancelInformShare" and html_display["is_myself"]
             person.inform_share = False
             person.save()
+
 
 
         # ----------------------------------- 小组卡片 ----------------------------------- #
@@ -342,7 +419,7 @@ def stuinfo(request, name=None):
                 Q(person=oneself) & Q(show_post=True)
             )
         )
-        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id") # 自己的小组
+        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("org") # 自己的小组
 
         # 管理的小组
         person_owned_poss = person_poss.filter(is_admin=True, status=Position.Status.INSERVICE)
@@ -487,6 +564,10 @@ def stuinfo(request, name=None):
 
         if request.session.get('alert_message'):
             load_alert_message = request.session.pop('alert_message')
+        
+        # 浏览次数，必须在render之前
+        person.visit_times+=1
+        person.save()
         return render(request, "stuinfo.html", locals())
 
 
@@ -616,7 +697,23 @@ def orginfo(request, name=None):
         elif request.POST.get("option", "") == "cancelInformShare" and html_display["is_myself"]:
             me.inform_share = False
             me.save()
-            
+        elif request.POST.get("question") is not None:
+            anonymous_flag = (request.POST.get('show_name') is not None)
+            question = request.POST.get("question")
+            if len(question) == 0:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "请填写问题内容!"
+            else:
+                try:
+                    QA_create(sender=request.user,receiver=org.organization_id,Q_text=str(question),anonymous_flag=anonymous_flag)
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "提问发送成功!"
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "提问发送失败!请联系管理员!"
+            return redirect(f"/orginfo/{organization_name}?warn_code="+str(html_display["warn_code"])+"&warn_message="+str(html_display["warn_message"]))
+
+        
 
     # 该学年、该学期、该小组的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
@@ -748,6 +845,10 @@ def orginfo(request, name=None):
 
     if request.session.get('alert_message'):
         load_alert_message = request.session.pop('alert_message')
+    
+    # 浏览次数，必须在render之前
+    org.visit_times+=1
+    org.save()
     return render(request, "orginfo.html", locals())
 
 
@@ -833,11 +934,13 @@ def homepage(request):
     wishes = wishes[:100]
 
     # 心愿墙背景图片
-    colors = [
-        "#FDAFAB","#FFDAC1","#FAF1D6",
-        "#B6E3E9","#B5EAD7","#E2F0CB"
-    ]
-    backgroundpics = [{"src":"/static/assets/img/backgroundpics/"+str(i+1)+".png","color": colors[i] } for i in range(6)]
+    colors = Wishes.COLORS
+    backgroundpics = [
+            {
+                "src":"/static/assets/img/backgroundpics/"+str(i+1)+".png",
+                "color": color
+            } for i, color in enumerate(colors)
+        ]
 
     # 从redirect.json读取要作为引导图的图片，按照原始顺序
     guidepicdir = "static/assets/img/guidepics"
@@ -2219,6 +2322,9 @@ def viewActivity(request, aid=None):
     # bar_display["title_name"] = "活动信息"
     # bar_display["navbar_name"] = "活动信息"
 
+    # 浏览次数，必须在render之前
+    activity.visit_times+=1
+    activity.save()
     return render(request, "activity_info.html", locals())
 
 
@@ -2958,15 +3064,17 @@ def notification2Display(notification_set):
         note_display["URL"] = notification.URL
         note_display["type"] = notification.get_typename_display()
         note_display["title"] = notification.get_title_display()
+
+
         _, user_type, _ = utils.check_user_type(notification.sender)
         if user_type == "Organization":
             note_display["sender"] = sender_orgs.get(
                 notification.sender_id
-            )
+            ) if not notification.anonymous_flag else "匿名者"
         else:
             note_display["sender"] = sender_persons.get(
                 notification.sender_id
-            )
+            ) if not notification.anonymous_flag else "匿名者"
         lis.append(note_display)
     return lis
 
@@ -3384,6 +3492,8 @@ def modifyPosition(request):
             apply_type_list[application.apply_type]['disabled'] = False
             if not application.apply_type == ModifyPosition.ApplyType.WITHDRAW:
                 position_name_list[application.pos]["disabled"] = False
+    else:
+        position_name_list[-1]['selected'] = True   # 默认选中pos最低的！
 
     
 
@@ -3407,7 +3517,8 @@ def showPosition(request):
             "undone": ModifyPosition.objects.filter(person=me, status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
             "done": ModifyPosition.objects.filter(person=me).exclude(status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time')
         }
-        all_org = Organization.objects.activated().exclude(id__in = all_instances["undone"].values_list("org_id",flat=True))
+        all_org = Organization.objects.activated().exclude(
+            id__in = all_instances["undone"].values_list("org_id",flat=True))
     else:
         all_instances = {
             "undone": ModifyPosition.objects.filter(org=me,status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
@@ -4121,3 +4232,55 @@ def send_message_check(me, request):
         return wrong("发送微信的过程出现错误！请联系管理员！")
     
     return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了!")
+
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+def QAcenter(request):
+    """
+    Haowei:
+    QA的聚合界面
+    """
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    me = utils.get_person_or_org(request.user, user_type)
+
+    if request.method == "POST":
+        if request.POST.get("anwser") is not None:
+            anwser = request.POST.get("anwser")
+            if len(anwser) == 0:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "请填写回答再提交！"
+            else:
+                QA_anwser(request.POST.get("id"), anwser)
+                html_display["warn_code"] = 2
+                html_display["warn_message"] = "成功提交该问题的回答！"
+        else:
+            post_args = json.loads(request.body.decode("utf-8"))
+            if 'cancel' in post_args['function']:
+                try:
+                    QA_delete(int(post_args['id']))
+                    html_display['warn_code'] = 2
+                    html_display['warn_message'] = "成功删除一条提问！"
+                    return JsonResponse({"success":True})
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
+                    return JsonResponse({"success":False})
+            else:
+                try:
+                    QA_ignore(int(post_args['id']), \
+                        sender_flag=(post_args['function'] == 'sender')
+                        )
+                    html_display['warn_code'] = 2
+                    html_display['warn_message'] = "成功忽略一条提问！"
+                    return JsonResponse({"success":True})
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
+                    return JsonResponse({"success":False})
+        
+
+    all_instances = QA2Display(request.user)
+
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="问答中心")
+    return render(request, "QandA_center.html", locals())

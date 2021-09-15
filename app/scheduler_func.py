@@ -7,11 +7,11 @@ from datetime import datetime, timedelta, timezone, time, date
 from django.db import transaction  # 原子化更改数据库
 
 from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant, \
-    Notification
+    Notification, Position
 from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
 from app.forms import YQPointDistributionForm
 from boottest.hasher import MySHA256Hasher
-from app.notification_utils import bulk_notification_create
+from app.notification_utils import bulk_notification_create, notification_status_change
 from boottest import local_dict
 
 from random import sample
@@ -329,6 +329,14 @@ def changeActivityStatus(aid, cur_status, to_status):
                         status=TransferRecord.TransferStatus.ACCEPTED,
                         finish_time=datetime.now()
                     )
+
+                    notification = Notification.objects.get(
+                        relate_instance=activity, 
+                        status=Notification.Status.UNDONE,
+                        title=Notification.Title.VERIFY_INFORM
+                    )
+                    notification_status_change(notification, Notification.Status.DONE)
+
             # 结束，计算积分    
             else:
                 hours = (activity.end - activity.start).seconds / 3600
@@ -472,6 +480,7 @@ scheduler.add_job(notifyActivityStart, "date",
 def notifyActivity(aid: int, msg_type: str, msg=""):
     try:
         activity = Activity.objects.get(id=aid)
+        inner = activity.inner
         title = Notification.Title.ACTIVITY_INFORM
         if msg_type == "newActivity":
             title = activity.title
@@ -480,8 +489,8 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             msg += f"\n活动地点: {activity.location}"
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
-            ).prefetch_related('person_id')
-            receivers = [subscriber.person_id for subscriber in subscribers]
+            ).values_list('person_id', flat=True)
+            receivers = User.objects.filter(id__in=subscribers)
             publish_kws = {"app": WechatApp.TO_SUBSCRIBER}  
         elif msg_type == "remind":
             msg = f"您参与的活动 <{activity.title}> 即将开始。"
@@ -495,8 +504,8 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
         elif msg_type == 'modification_sub':
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
-            ).prefetch_related('person_id')
-            receivers = [subscriber.person_id for subscriber in subscribers]
+            ).values_list('person_id', flat=True)
+            receivers = User.objects.filter(id__in=subscribers)
             publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         elif msg_type == 'modification_par':
             participants = Participant.objects.filter(
@@ -567,6 +576,15 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         else:
             raise ValueError(f"msg_type参数错误: {msg_type}")
+        
+        # 现在必须保证到此处时receivers是一个queryset, 不过也有好处就是更统一了
+        # 参与者总是收到消息, 但订阅者消息只会发给内部
+        if inner and publish_kws.get('app') == WechatApp.TO_SUBSCRIBER:
+            member_id_list = Position.objects.activated().filter(
+                org=activity.organization_id).values_list(
+                    'person__person_id', flat=True)
+            receivers = receivers.filter(id__in=member_id_list)
+
         success, _ = bulk_notification_create(
             receivers=list(receivers),
             sender=activity.organization_id.organization_id,

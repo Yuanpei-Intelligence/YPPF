@@ -53,12 +53,8 @@ def get_activity_QRcode(activity):
 
     auth_code = hash_coder.encode(str(activity.id))
     # url = f"http://localhost:8000/checkinActivity/{activity.id}?auth={auth_code}"
-    url = os.path.join(
-            local_dict["url"]["login_url"], 
-            "checkinActivity", 
-            f"{activity.id}?auth={auth_code}"
-        )
-
+    url_components = [local_dict["url"]["login_url"].strip("/"), "checkinActivity", f"{activity.id}?auth={auth_code}"]
+    url = "/".join(url_components)
     qr=qrcode.QRCode(version = 2,error_correction = qrcode.constants.ERROR_CORRECT_L,box_size=5,border=5)
     qr.add_data(url)
     qr.make(fit=True)
@@ -103,7 +99,7 @@ def activity_base_check(request, edit=False):
     # url，就不支持了 http 了，真的没必要
     context["url"] = request.POST["URL"] 
     if context["url"] != "":
-        assert context["url"].startswith("http")
+        assert context["url"].startswith("http://") or context["url"].startswith("https://")
 
     # 预算，元气值支付模式，是否直接向学院索要元气值
     # 在审核通过后，这些不可修改
@@ -173,6 +169,8 @@ def activity_base_check(request, edit=False):
     # 内部活动
     if request.POST.get("inner"):
         context["inner"] = True  
+    else:
+        context["inner"] = False
 
     # 价格
     aprice = float(request.POST["aprice"])
@@ -246,14 +244,13 @@ def create_activity(request):
                     bidding=context["bidding"],
                     apply_end=context["signup_end"],
                     apply_reason=context["apply_reason"],
+                    inner=context["inner"],
                 )
     if context["from_college"]:
         activity.source = Activity.YQPointSource.COLLEGE
     activity.endbefore = context["endbefore"]
     if context.get("need_checkin"):
         activity.need_checkin = True
-    if context.get("inner"):
-        activity.inner = True
     if context["recorded"]:
         # 预报备活动，先开放报名，再审批
         activity.recorded = True
