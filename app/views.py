@@ -177,17 +177,21 @@ def index(request):
         if userinfo:
             auth.login(request, userinfo)
             request.session["username"] = username
-            if arg_origin is not None:
-                pass # 现在统一放到下面处理，这里只负责登录
-            else:
-                # 先处理初次登录
-                valid, user_type, html_display = utils.check_user_type(request.user)
-                if not valid:
-                    return redirect("/logout/")
+            valid, user_type, html_display = utils.check_user_type(request.user)
+            if not valid:
+                return redirect("/logout/")
+            if user_type == "Person":
+                request.session["NP"] = username
                 me = utils.get_person_or_org(userinfo, user_type)
                 if me.first_time_login:
+                    # 不管有没有跳转，这个逻辑都应该是优先的
+                    # TODO：应该在修改密码之后做一个跳转
                     return redirect("/modpw/")
+                orgs = list(Position.objects.activated().filter(is_admin=True, person=me).values_list("org__oname", flat=True))
+                request.session["Incharge"] = orgs
 
+
+            if arg_origin is None:
                 return redirect("/welcome/")
                 """
                 valid, user_type , html_display = utils.check_user_type(request.user)
@@ -232,6 +236,55 @@ def index(request):
                 )
 
     return render(request, "index.html", locals())
+
+
+@login_required(redirect_field_name="origin")
+def shiftAccount(request, oname=""):
+
+    user = request.user
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    if not valid:
+        return redirect("/welcome/")
+    oneself = utils.get_person_or_org(user, user_type)
+
+    # 切换到个人
+    if not oname:
+        try:
+            assert request.session["NP"]
+            assert user_type == "Organization"
+            orgs = request.session["Incharge"]
+            orgs.append(oneself.oname)
+            username = request.session["NP"]
+            user = User.objects.get(username=username)
+            # 切换用户之后 session 会重置，倒也肯定是......
+            auth.logout(request)
+            auth.login(request, user)
+            request.session["NP"] = username
+            request.session["Incharge"] = orgs
+        except:
+            return redirect("/welcome/")
+    # 切换到小组账号
+    else:
+        try: 
+            assert oname in request.session["Incharge"]
+            username = request.session["NP"]
+            orgs = request.session["Incharge"]
+            if user_type == "Organization":
+                orgs.append(oneself.oname)
+            orgs.remove(oname)
+            org = Organization.objects.get(oname=oname)
+            auth.logout(request)
+            auth.login(request, org.organization_id) 
+            request.session["NP"] = username
+            request.session["Incharge"] = orgs 
+        except:
+            return redirect("/welcome/")
+
+    if request.GET and request.GET.get("origin"):
+        return redirect(request.GET["origin"])
+    return redirect("/welcome/")
+
+
 
 
 # Return content
