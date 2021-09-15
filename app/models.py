@@ -784,7 +784,11 @@ class YQPointDistribute(models.Model):
         verbose_name_plural = verbose_name
 
 class QandAManager(models.Manager):
-    def activated(self):
+    def activated(self, sender_flag=False, receiver_flag=False):
+        if sender_flag:
+            return self.exclude(status__in=[QandA.Status.IGNORE_SENDER,QandA.Status.DELETE])
+        if receiver_flag:
+            return self.exclude(status__in=[QandA.Status.IGNORE_RECEIVER,QandA.Status.DELETE])
         return self.exclude(status=QandA.Status.DELETE)
 
 class QandA(models.Model):
@@ -806,6 +810,8 @@ class QandA(models.Model):
         DONE = (0, "已回答")
         UNDONE = (1, "待回答")
         DELETE = (2, "已删除")
+        IGNORE_SENDER = (3, "发送者忽略")
+        IGNORE_RECEIVER = (4, "接收者忽略")
     
     status = models.SmallIntegerField(choices=Status.choices, default=1)
     
