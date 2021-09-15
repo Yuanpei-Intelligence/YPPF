@@ -48,13 +48,13 @@ class FreshmanAdmin(admin.ModelAdmin):
 @admin.register(OrganizationType)
 class OrganizationTypeAdmin(admin.ModelAdmin):
     list_display = ["otype_id", "otype_name", "incharge", "job_name_list", "control_pos_threshold"]
-    search_fields = ("oname", "otype", "incharge__name", "job_name_list")
+    search_fields = ("otype_name", "otype_id", "incharge__name", "job_name_list")
 
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ["organization_id", "oname", "otype", "Managers"]
-    search_fields = ("oname", "otype")
+    search_fields = ("oname", "otype__otype_id", "otype__otype_name")
     list_filter = ("otype", )
 
     def Managers(self, obj):
