@@ -75,6 +75,8 @@ from app.QA_utils import (
     QA2Display,
     QA_anwser,
     QA_create,
+    QA_delete,
+    QA_ignore,
 )
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
@@ -3441,6 +3443,8 @@ def modifyPosition(request):
             apply_type_list[application.apply_type]['disabled'] = False
             if not application.apply_type == ModifyPosition.ApplyType.WITHDRAW:
                 position_name_list[application.pos]["disabled"] = False
+    else:
+        position_name_list[-1]['selected'] = True   # 默认选中pos最低的！
 
     
 
@@ -4200,6 +4204,31 @@ def QAcenter(request):
                 QA_anwser(request.POST.get("id"), anwser)
                 html_display["warn_code"] = 2
                 html_display["warn_message"] = "成功提交该问题的回答！"
+        else:
+            post_args = json.loads(request.body.decode("utf-8"))
+            if 'cancel' in post_args['function']:
+                try:
+                    QA_delete(int(post_args['id']))
+                    html_display['warn_code'] = 2
+                    html_display['warn_message'] = "成功删除一条提问！"
+                    return JsonResponse({"success":True})
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
+                    return JsonResponse({"success":False})
+            else:
+                try:
+                    QA_ignore(int(post_args['id']), \
+                        sender_flag=(post_args['function'] == 'sender')
+                        )
+                    html_display['warn_code'] = 2
+                    html_display['warn_message'] = "成功忽略一条提问！"
+                    return JsonResponse({"success":True})
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
+                    return JsonResponse({"success":False})
+        
 
     all_instances = QA2Display(request.user)
 
