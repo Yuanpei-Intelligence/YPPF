@@ -7,6 +7,7 @@ from django.dispatch import receiver
 from datetime import datetime, timedelta
 from boottest import local_dict
 from django.conf import settings
+from random import choice
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
@@ -856,7 +857,7 @@ class Notification(models.Model):
     URL = models.URLField("相关网址", null=True, blank=True, max_length=1024)
     bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
                                         db_index=True)
-    anonymous_flag = models.BooleanField("接收者是否匿名", default=False)
+    anonymous_flag = models.BooleanField("是否匿名", default=False)
     relate_TransferRecord = models.ForeignKey(
         TransferRecord,
         related_name="transfer_notification",
@@ -866,13 +867,6 @@ class Notification(models.Model):
     )
     relate_instance = models.ForeignKey(
         CommentBase,
-        related_name="relate_notifications",
-        on_delete=models.CASCADE,
-        blank=True,
-        null=True,
-    )
-    relate_QandA = models.ForeignKey(
-        QandA,
         related_name="relate_notifications",
         on_delete=models.CASCADE,
         blank=True,
@@ -1141,9 +1135,18 @@ class Wishes(models.Model):
         verbose_name = "心愿"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
+    
+    COLORS = [
+        "#FDAFAB","#FFDAC1","#FAF1D6",
+        "#B6E3E9","#B5EAD7","#E2F0CB",
+    ]
+    # 不要随便删 admin.py也依赖本随机函数
+    def rand_color():
+        return choice(Wishes.COLORS)
+
     text = models.TextField("心愿内容", default="", blank=True)
     time = models.DateTimeField("发布时间", auto_now_add=True)
-    background = models.TextField("颜色编码", default="")
+    background = models.TextField("颜色编码", default=rand_color)
 
 
 class ModifyRecord(models.Model):

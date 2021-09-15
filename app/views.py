@@ -879,11 +879,13 @@ def homepage(request):
     wishes = wishes[:100]
 
     # 心愿墙背景图片
-    colors = [
-        "#FDAFAB","#FFDAC1","#FAF1D6",
-        "#B6E3E9","#B5EAD7","#E2F0CB"
-    ]
-    backgroundpics = [{"src":"/static/assets/img/backgroundpics/"+str(i+1)+".png","color": colors[i] } for i in range(6)]
+    colors = Wishes.COLORS
+    backgroundpics = [
+            {
+                "src":"/static/assets/img/backgroundpics/"+str(i+1)+".png",
+                "color": color
+            } for i, color in enumerate(colors)
+        ]
 
     # 从redirect.json读取要作为引导图的图片，按照原始顺序
     guidepicdir = "static/assets/img/guidepics"
