@@ -3466,7 +3466,6 @@ def showPosition(request):
         }
         all_org = Organization.objects.activated().exclude(
             id__in = all_instances["undone"].values_list("org_id",flat=True))
-        all_org_names = list(all_org.values_list('oname', flat=True))
     else:
         all_instances = {
             "undone": ModifyPosition.objects.filter(org=me,status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
