@@ -2769,17 +2769,11 @@ def subscribeOrganization(request):
 
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    org_list = list(Organization.objects.all())
-    orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
+    org_list = list(Organization.objects.all().select_related("organization_id","otype"))
+    #orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
     otype_list = list(OrganizationType.objects.all())
-    unsubscribe_list = list(
-        me.unsubscribe_list.values_list("organization_id__username", flat=True)
-    )  # 获取不订阅列表（数据库里的是不订阅列表）
-    subscribe_list = [
-        org.organization_id.username
-        for org in org_list
-        if org.organization_id.username not in unsubscribe_list
-    ]  # 获取订阅列表
+    unsubscribe_list = list(me.unsubscribe_list.values_list("organization_id__username", flat=True))
+    # 获取不订阅列表（数据库里的是不订阅列表）
 
 
 
@@ -2791,6 +2785,8 @@ def subscribeOrganization(request):
     # bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     subscribe_url = reverse("save_subscribe_status")
+
+    all_number = NaturalPerson.objects.activated().all().count()    # 人数全体 优化查询
     return render(request, "organization_subscribe.html", locals())
 
 

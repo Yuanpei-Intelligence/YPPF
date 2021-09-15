@@ -289,6 +289,9 @@ class Organization(models.Model):
     def get_subscriber_num(self):
         return NaturalPerson.objects.all().count() - self.unsubscribers.count()
 
+    def get_neg_unsubscriber_num(self):
+        return -self.unsubscribers.count()
+
 
 class PositionManager(models.Manager):
     def current(self):
