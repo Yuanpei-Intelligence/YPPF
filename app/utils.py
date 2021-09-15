@@ -11,7 +11,8 @@ from app.models import (
     Reimbursement,
     Participant,
     ModifyRecord,
-    Wishes
+    Wishes,
+    QandA,
 )
 from django.contrib.auth.models import User
 from django.dispatch.dispatcher import receiver
@@ -221,9 +222,9 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         bar_display["underground_url"] = local_dict["url"]["base_url"]
 
         # 个人所管理的小组列表
-        my_org_id_list = Position.objects.activated().filter(person=me, is_admin=True).select_related("org")
-        bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
-        bar_display["my_org_len"] = len(bar_display["my_org_list"])
+        # my_org_id_list = Position.objects.activated().filter(person=me, is_admin=True).select_related("org")
+        # bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
+        # bar_display["my_org_len"] = len(bar_display["my_org_list"])
         
         
         bar_display['is_auditor'] = True if me.person_id.username == local_dict[
