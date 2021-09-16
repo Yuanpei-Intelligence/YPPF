@@ -180,13 +180,13 @@
                         <ul class="collapse submenu list-unstyled" id="dashboard2" data-parent="#accordionExample">
                             {% if request.session.NP %}
                             <li>
-                                <a href="/shiftAccount">个人账号</a>
+                                <a href="/shiftAccount/">个人账号</a>
                             </li>
                             {% endif %}
                             {% for oname in request.session.Incharge %}
                             <li>
                                 <!-- TODO   Onclick 添加 origin  但是由于个人和组织能看的页面并不统一，暂且不加了 -->
-                                <a href="/shiftAccount/{{oname}}"> {{oname}}</a>
+                                <a href="/shiftAccount/?oname={{oname}}"> {{oname}}</a>
                             </li>
                             {% endfor %}
                         </ul>

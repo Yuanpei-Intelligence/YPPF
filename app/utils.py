@@ -925,5 +925,33 @@ def record_modify_with_session(request, info=""):
     except:
         pass
 
+"""
+外层保证 username 是一个自然人的 username 并且合法
+
+登录时 shift 为 false，切换时为 True
+切换到某个组织时 oname 不为空，否则都是空
+"""
+def update_related_account_in_session(request, username, shift=False, oname=""):
+
+    np = NaturalPerson.objects.activated().get(person_id__username=username)
+    orgs = list(Position.objects.activated().filter(is_admin=True, person=np).values_list("org__oname", flat=True))
+
+    if oname:
+        if oname in orgs:
+            orgs.remove(oname)
+            user = Organization.objects.get(oname=oname).organization_id
+        else:
+            return False
+    else:
+        user = np.person_id
+
+    if shift:
+        auth.logout(request)
+        auth.login(request, user)
+
+    request.session["Incharge"] = orgs
+    request.session["NP"] = username
+
+    return True
 
 operation_writer(local_dict["system_log"], "系统启动", "util_底部")
