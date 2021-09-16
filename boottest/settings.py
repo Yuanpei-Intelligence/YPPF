@@ -103,9 +103,10 @@ DATABASES = {
         "PORT": 3306,
         "USER": local_dict["database"]["USER"],
         "PASSWORD": local_dict["database"]["PASSWORD"],
-        # 'OPTIONS': {
+        'OPTIONS': {
+            'charset': 'utf8mb4',
         #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-        # }
+        },
     }
 }
 
