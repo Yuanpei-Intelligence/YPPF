@@ -184,9 +184,9 @@ def base_send_wechat(users, message, app='default',
     post_url = app2absolute_url(app)
 
     if RECEIVER_SET is not None:
-        users = list((set(users) & RECEIVER_SET) - BLACKLIST_SET)
+        users = sorted((set(users) & RECEIVER_SET) - BLACKLIST_SET)
     else:
-        users = list(set(users) - BLACKLIST_SET)
+        users = sorted(set(users) - BLACKLIST_SET)
     user_num = len(users)
     if user_num == 0:
         print("没有合法的用户")
