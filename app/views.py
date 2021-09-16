@@ -75,6 +75,8 @@ from app.QA_utils import (
     QA2Display,
     QA_anwser,
     QA_create,
+    QA_delete,
+    QA_ignore,
 )
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
@@ -187,9 +189,6 @@ def index(request):
                     # TODO：应该在修改密码之后做一个跳转
                     return redirect("/modpw/")
                 update_related_account_in_session(request, username)
-
-
-
             if arg_origin is None:
                 return redirect("/welcome/")
                 """
@@ -2844,17 +2843,11 @@ def subscribeOrganization(request):
 
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    org_list = list(Organization.objects.all())
-    orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
+    org_list = list(Organization.objects.all().select_related("organization_id","otype"))
+    #orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
     otype_list = list(OrganizationType.objects.all())
-    unsubscribe_list = list(
-        me.unsubscribe_list.values_list("organization_id__username", flat=True)
-    )  # 获取不订阅列表（数据库里的是不订阅列表）
-    subscribe_list = [
-        org.organization_id.username
-        for org in org_list
-        if org.organization_id.username not in unsubscribe_list
-    ]  # 获取订阅列表
+    unsubscribe_list = list(me.unsubscribe_list.values_list("organization_id__username", flat=True))
+    # 获取不订阅列表（数据库里的是不订阅列表）
 
 
 
@@ -2866,6 +2859,8 @@ def subscribeOrganization(request):
     # bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     subscribe_url = reverse("save_subscribe_status")
+
+    all_number = NaturalPerson.objects.activated().all().count()    # 人数全体 优化查询
     return render(request, "organization_subscribe.html", locals())
 
 
@@ -3465,6 +3460,8 @@ def modifyPosition(request):
             apply_type_list[application.apply_type]['disabled'] = False
             if not application.apply_type == ModifyPosition.ApplyType.WITHDRAW:
                 position_name_list[application.pos]["disabled"] = False
+    else:
+        position_name_list[-1]['selected'] = True   # 默认选中pos最低的！
 
     
 
@@ -3490,7 +3487,6 @@ def showPosition(request):
         }
         all_org = Organization.objects.activated().exclude(
             id__in = all_instances["undone"].values_list("org_id",flat=True))
-        all_org_names = list(all_org.values_list('oname', flat=True))
     else:
         all_instances = {
             "undone": ModifyPosition.objects.filter(org=me,status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
@@ -4226,6 +4222,31 @@ def QAcenter(request):
                 QA_anwser(request.POST.get("id"), anwser)
                 html_display["warn_code"] = 2
                 html_display["warn_message"] = "成功提交该问题的回答！"
+        else:
+            post_args = json.loads(request.body.decode("utf-8"))
+            if 'cancel' in post_args['function']:
+                try:
+                    QA_delete(int(post_args['id']))
+                    html_display['warn_code'] = 2
+                    html_display['warn_message'] = "成功删除一条提问！"
+                    return JsonResponse({"success":True})
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
+                    return JsonResponse({"success":False})
+            else:
+                try:
+                    QA_ignore(int(post_args['id']), \
+                        sender_flag=(post_args['function'] == 'sender')
+                        )
+                    html_display['warn_code'] = 2
+                    html_display['warn_message'] = "成功忽略一条提问！"
+                    return JsonResponse({"success":True})
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
+                    return JsonResponse({"success":False})
+        
 
     all_instances = QA2Display(request.user)
 

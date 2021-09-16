@@ -16,7 +16,7 @@ from django.conf import settings
 from boottest import local_dict
 
 # 模型与加密模型
-from app.models import NaturalPerson, Organization, Activity, Notification, Participant
+from app.models import NaturalPerson, Organization, Activity, Notification, Position
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 # 日期与定时任务
@@ -349,7 +349,8 @@ def publish_notification(notification_or_id,
     else:  # 小组
         # 转发小组消息给其负责人
         message += f'\n消息来源：{str(receiver)}，请切换到该小组账号进行操作。'
-        wechat_receivers = receiver.position_set.filter(is_admin=True)
+        wechat_receivers = Position.objects.activated().filter(
+            org=receiver, is_admin=True)
         if check_block:
             wechat_receivers = wechat_receivers.filter(
                 person__wechat_receive_level__lte=level)    # 不小于接收等级
@@ -492,8 +493,10 @@ def publish_notifications(
 
     # 接下来是发送给小组的部分
     org_receivers = Organization.objects.filter(organization_id__in=receiver_ids)
+    activate_positions = Position.objects.activated()
     for org in org_receivers:
-        managers = org.position_set.filter(is_admin=True)
+        managers = activate_positions.filter(
+            org=org, is_admin=True)
         if check_block:    # 屏蔽时，不小于接收等级
             managers = managers.filter(person__wechat_receive_level__lte=level)
         managers = managers.values_list("person__person_id__username", flat=True)
