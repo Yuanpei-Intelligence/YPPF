@@ -185,8 +185,10 @@ def base_send_wechat(users, message, app='default',
 
     if RECEIVER_SET is not None:
         users = sorted((set(users) & RECEIVER_SET) - BLACKLIST_SET)
-    else:
+    elif BLACKLIST_SET is not None and BLACKLIST_SET:
         users = sorted(set(users) - BLACKLIST_SET)
+    else:
+        users = sorted(users)
     user_num = len(users)
     if user_num == 0:
         print("没有合法的用户")
@@ -585,6 +587,7 @@ def send_wechat_captcha(stu_id: str or int, captcha: str, url='/forgetpw/'):
                 "YPPF登录验证\n"
                 "您的账号正在进行企业微信验证\n本次请求的验证码为："
                 f"<div class=\"highlight\">{captcha}</div>"
+                f"发送时间：{datetime.now().strftime('%m月%d日 %H:%M:%S')}"
             )
     if url:
         kws["url"] = url
