@@ -49,7 +49,13 @@
                     <div class="col-12 col-md-10">
                         <label for="nickname" style="width: max-content;">我的昵称</label>
                         <input type="text" class="form-control" id="nickname"
-                            name="nickname" placeholder="{{ userinfo.nickname }}" onclick="this.value === `` && (this.value = this.placeholder)">
+                            name="nickname" 
+                            {% if userinfo.nickname %}
+                            placeholder="{{ userinfo.nickname }}" onclick="this.value === `` && (this.value = this.placeholder)"
+                            {% else %}
+                            placeholder="快来起个好听的昵称吧~"
+                            {% endif %}
+                            >
                         <div class="form-check mb-4">
                             {% if useroj.show_nickname %}
                             <input type="checkbox" class="form-check-input" id="show_nickname" name='show_nickname' checked>
