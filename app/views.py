@@ -93,7 +93,7 @@ from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
-from app.utils import operation_writer
+from app.utils import operation_writer, update_related_account_in_session
 
 # 定时任务不在views直接调用
 # 但是天气任务还是在这里弄吧，太奇怪了
@@ -181,14 +181,13 @@ def index(request):
             if not valid:
                 return redirect("/logout/")
             if user_type == "Person":
-                request.session["NP"] = username
                 me = utils.get_person_or_org(userinfo, user_type)
                 if me.first_time_login:
                     # 不管有没有跳转，这个逻辑都应该是优先的
                     # TODO：应该在修改密码之后做一个跳转
                     return redirect("/modpw/")
-                orgs = list(Position.objects.activated().filter(is_admin=True, person=me).values_list("org__oname", flat=True))
-                request.session["Incharge"] = orgs
+                update_related_account_in_session(request, username)
+
 
 
             if arg_origin is None:
@@ -239,46 +238,18 @@ def index(request):
 
 
 @login_required(redirect_field_name="origin")
-def shiftAccount(request, oname=""):
+def shiftAccount(request):
 
-    user = request.user
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    if not valid:
+    username = request.session.get("NP")
+    if not username:
         return redirect("/welcome/")
-    oneself = utils.get_person_or_org(user, user_type)
 
-    # 切换到个人
-    if not oname:
-        try:
-            assert request.session["NP"]
-            assert user_type == "Organization"
-            orgs = request.session["Incharge"]
-            orgs.append(oneself.oname)
-            username = request.session["NP"]
-            user = User.objects.get(username=username)
-            # 切换用户之后 session 会重置，倒也肯定是......
-            auth.logout(request)
-            auth.login(request, user)
-            request.session["NP"] = username
-            request.session["Incharge"] = orgs
-        except:
-            return redirect("/welcome/")
-    # 切换到小组账号
-    else:
-        try: 
-            assert oname in request.session["Incharge"]
-            username = request.session["NP"]
-            orgs = request.session["Incharge"]
-            if user_type == "Organization":
-                orgs.append(oneself.oname)
-            orgs.remove(oname)
-            org = Organization.objects.get(oname=oname)
-            auth.logout(request)
-            auth.login(request, org.organization_id) 
-            request.session["NP"] = username
-            request.session["Incharge"] = orgs 
-        except:
-            return redirect("/welcome/")
+    oname = ""
+    if request.GET and request.GET.get("oname"):
+        oname = request.GET["oname"]
+
+    # 不一定更新成功，但无所谓
+    update_related_account_in_session(request, username, shift=True, oname=oname)
 
     if request.GET and request.GET.get("origin"):
         return redirect(request.GET["origin"])
