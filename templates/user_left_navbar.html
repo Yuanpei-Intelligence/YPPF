@@ -188,7 +188,7 @@
             </li>
             {% endif %}
 
-            {% if bar_display.my_org_len %}
+            {% if request.session.Incharge %}
             <li class="menu">
                 <a href="#dashboard2" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
@@ -210,15 +210,17 @@
                     </div>
                 </a>
                 <ul class="collapse submenu list-unstyled" id="dashboard2" data-parent="#accordionExample">
-                    {% for control_org in bar_display.my_org_list %}
+                    {% for oname in request.session.Incharge %}
                     <li>
-                        <a href="/request_login_org/?name={{control_org.oname}}"> {{control_org.oname}}</a>
+                        <!-- TODO   Onclick 添加 origin  但是由于个人和组织能看的页面并不统一，暂且不加了 -->
+                        <a href="/shiftAccount/?oname={{oname}}"> {{oname}}</a>
                     </li>
 
                     {% endfor %}
                 </ul>
             </li>
             {% endif %}
+
 
             <li class="menu">
                 <a href="#dashboard3" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
@@ -250,6 +252,7 @@
                     </li>
                 </ul>
             </li>
+
 
             <li class="menu">
                 <a href="/logout/" aria-expanded="false" class="dropdown-toggle">

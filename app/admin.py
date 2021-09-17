@@ -1,7 +1,6 @@
 from django.contrib import admin
 from django.utils.safestring import mark_safe
 from app.models import *
-from random import choice
 
 # Register your models here.
 admin.site.site_title = '元培成长档案管理后台'
@@ -49,13 +48,13 @@ class FreshmanAdmin(admin.ModelAdmin):
 @admin.register(OrganizationType)
 class OrganizationTypeAdmin(admin.ModelAdmin):
     list_display = ["otype_id", "otype_name", "incharge", "job_name_list", "control_pos_threshold"]
-    search_fields = ("oname", "otype", "incharge__name", "job_name_list")
+    search_fields = ("otype_name", "otype_id", "incharge__name", "job_name_list")
 
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ["organization_id", "oname", "otype", "Managers"]
-    search_fields = ("oname", "otype")
+    search_fields = ("oname", "otype__otype_id", "otype__otype_name")
     list_filter = ("otype", )
 
     def Managers(self, obj):
@@ -186,6 +185,18 @@ class PositionAdmin(admin.ModelAdmin):
     set_not_admin.short_description = "收回 管理权限"
 
 
+@admin.register(Activity)
+class ActivityAdmin(admin.ModelAdmin):
+    list_display = ["title", 'id', "organization_id", "publish_time", "start", "end",]
+    search_fields = ('id', "title", "organization_id__oname",)
+    list_filter =   (
+                        "need_checkin", "valid", "inner", "source",
+                        'endbefore', "year", "organization_id__otype",
+                        "publish_time", 'start', 'end',
+                    )
+    date_hierarchy = 'start'
+
+
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
     list_display = ["id", "receiver", "sender", "title", "start_time"]
@@ -212,10 +223,6 @@ class HelpAdmin(admin.ModelAdmin):
 
 @admin.register(Wishes)
 class WishesAdmin(admin.ModelAdmin):
-    COLORS = [
-        "#FDAFAB","#FFDAC1","#FAF1D6",
-        "#B6E3E9","#B5EAD7","#E2F0CB"
-    ]
     list_display = ["id", "text", 'time', "background_display"]
     list_filter = ('time', 'background')
     
@@ -231,7 +238,7 @@ class WishesAdmin(admin.ModelAdmin):
                                      message='操作失败,没有权限,请联系老师!',
                                      level='warning')
         for wish in queryset:
-            wish.background = choice(WishesAdmin.COLORS)
+            wish.background = Wishes.rand_color()
             wish.save()
         return self.message_user(request=request,
                                  message='修改成功!已经随机设置了背景颜色!')
@@ -280,10 +287,10 @@ class ModifyPositionAdmin(admin.ModelAdmin):
 admin.site.register(ModifyOrganization)
 
 
-admin.site.register(Activity)
 admin.site.register(TransferRecord)
 
 admin.site.register(YQPointDistribute)
 admin.site.register(Participant)
 admin.site.register(Reimbursement)
+admin.site.register(QandA)
 

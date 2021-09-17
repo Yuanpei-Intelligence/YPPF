@@ -26,9 +26,8 @@ def QA_create(sender, receiver, Q_text, anonymous_flag=False):
         sender=sender,
         typename=Notification.Type.NEEDREAD,
         title="您收到了一条提问",
-        content=Q_text,
+        content="请点击本条通知的标题，进入问答中心查看我的提问！",
         URL='/QAcenter/',
-        relate_QandA=new_qa,
         anonymous_flag=anonymous_flag
     )
 
@@ -44,15 +43,30 @@ def QA_anwser(QA_id, A_text):
         title="您收到了一条回答",
         content=A_text,
         URL='/QAcenter/',
-        relate_QandA=qa,
     )
 
+def QA_ignore(QA_id, sender_flag=True):
+    with transaction.atomic():
+        qa = QandA.objects.select_for_update().get(id=QA_id)
+        # 如果两边都ignore了，就delete
+        if sender_flag:
+            qa.status = QandA.Status.DELETE if qa.status == QandA.Status.IGNORE_RECEIVER else QandA.Status.IGNORE_SENDER
+        else:
+            qa.status = QandA.Status.DELETE if qa.status == QandA.Status.IGNORE_SENDER else QandA.Status.IGNORE_RECEIVER
+        qa.save()
+
+def QA_delete(QA_id):
+    with transaction.atomic():
+        qa = QandA.objects.select_for_update().get(id=QA_id)
+        qa.status = QandA.Status.DELETE
+        qa.save()
+    
 def QA2Display(user):
     all_instances = dict()
     all_instances['send'], all_instances['receive'] = [], []
     instances = {
-        "send": QandA.objects.activated().filter(sender=user).order_by("-Q_time"),
-        "receive": QandA.objects.activated().filter(receiver=user).order_by("-Q_time"),
+        "send": QandA.objects.activated(sender_flag=True).filter(sender=user).order_by("-Q_time"),
+        "receive": QandA.objects.activated(receiver_flag=True).filter(receiver=user).order_by("-Q_time"),
     }
 
     for qa in instances['send']:
