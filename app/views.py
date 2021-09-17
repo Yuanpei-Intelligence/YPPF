@@ -1002,16 +1002,24 @@ def account_setting(request):
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
-            expr = bool(attr_dict['ava'] or attr_dict['wallpaper'] or (attr_dict['gender'] != useroj.get_gender_display()))
-            expr += bool(sum(
-                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_check_list]))
-            expr += bool(sum([getattr(useroj, show_attr) != show_dict[show_attr]
-                              for show_attr in show_dict.keys()]))
+            modify_info = []
+            if attr_dict['gender'] != useroj.get_gender_display():
+                modify_info.append(f'gender: {useroj.get_gender_display()}->{attr_dict["gender"]}')
+            if attr_dict['ava']:
+                modify_info.append(f'avatar: {attr_dict["ava"]}')
+            if attr_dict['wallpaper']:
+                modify_info.append(f'wallpaper: {attr_dict["wallpaper"]}')
+            modify_info += [f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}'
+                            for attr in attr_check_list
+                            if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr])]
+            modify_info += [f'{show_attr}: {getattr(useroj, show_attr)}->{show_dict[show_attr]}'
+                            for show_attr in show_dict.keys() 
+                            if getattr(useroj, show_attr) != show_dict[show_attr]]
 
             if attr_dict['gender'] != useroj.gender:
                 useroj.gender = NaturalPerson.Gender.MALE if attr_dict['gender'] == '男' else NaturalPerson.Gender.FEMALE
             for attr in attr_check_list:
-                if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
+                if attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]:
                     setattr(useroj, attr, attr_dict[attr])
             for show_attr in show_dict.keys():
                 if getattr(useroj, show_attr) != show_dict[show_attr]:
@@ -1020,10 +1028,13 @@ def account_setting(request):
                 useroj.avatar = attr_dict['ava']
             if 'wallpaper' in attr_dict.keys() and attr_dict['wallpaper'] is not None:
                 useroj.wallpaper = attr_dict['wallpaper']
+            expr = len(modify_info)
             if expr >= 1:
                 useroj.save()
                 upload_state = True
-                record_modify_with_session(request, f"修改了{expr}项信息")
+                modify_msg = '\n'.join(modify_info)
+                record_modify_with_session(request,
+                    f"修改了{expr}项信息：\n{modify_msg}")
                 return redirect("/stuinfo/?modinfo=success")
             # else: 没有更新
 
@@ -1038,17 +1049,21 @@ def account_setting(request):
         if request.method == "POST" and request.POST:
 
             ava = request.FILES.get("avatar")
-            wallpaper=request.FILES.get("wallpaper")
+            wallpaper = request.FILES.get("wallpaper")
             # 合法性检查
             attr_dict, show_dict, html_display = utils.check_account_setting(request, user_type)
             attr_check_list = [attr for attr in attr_dict.keys()]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
-            expr = bool(ava)
-
-            expr += bool(sum(
-                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_check_list]))
+            modify_info = []
+            if ava:
+                modify_info.append(f'avatar: {ava}')
+            if wallpaper:
+                modify_info.append(f'wallpaper: {wallpaper}')
+            modify_info += [f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}'
+                            for attr in attr_check_list
+                            if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr])]
 
             for attr in attr_check_list:
                 if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
@@ -1057,14 +1072,16 @@ def account_setting(request):
                 pass
             else:
                 useroj.avatar = ava
-            expr += bool(wallpaper)
             if wallpaper is not None:
                 useroj.wallpaper = wallpaper
             useroj.save()
             avatar_path = settings.MEDIA_URL + str(ava)
+            expr = len(modify_info)
             if expr >= 1:
                 upload_state = True
-                record_modify_with_session(request, f"修改了{expr}项信息")
+                modify_msg = '\n'.join(modify_info)
+                record_modify_with_session(request,
+                    f"修改了{expr}项信息：\n{modify_msg}")
                 return redirect("/orginfo/?modinfo=success")
             # else: 没有更新
 
