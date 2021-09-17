@@ -28,6 +28,7 @@ import imghdr
 import string
 import random
 import xlwt
+import traceback
 from io import BytesIO
 from django.db.models import F
 
@@ -64,7 +65,7 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
 
 
 def except_captured(return_value=None, except_type=Exception,
-                    log=True, record_args=False,
+                    log=True, show_traceback=False, record_args=False, record_user=False,
                     source='utils[except_captured]', status_code='Error'):
     """
     Decorator that captures exception and log, raise or 
@@ -78,9 +79,23 @@ def except_captured(return_value=None, except_type=Exception,
                 return view_function(*args, **kwargs)
             except except_type as e:
                 if log:
-                    msg = f'发生错误：{e}'
+                    msg = f'发生意外的错误：{e}'
                     if record_args:
                         msg += f', 参数为：{args=}, {kwargs=}'
+                    if record_user:
+                        try:
+                            if not args:
+                                if 'request' in kwargs.keys():
+                                    msg += f', 用户为{kwargs["request"].user.username}'
+                                elif 'user' in kwargs.keys():
+                                    msg += f', 用户为{kwargs["user"].username}'
+                            else:
+                                msg += f', 用户为{args[0].user.username}'
+                        except:
+                            msg += f', 尝试追踪用户, 但未能找到该参数'
+                    if show_traceback:
+                        msg += '\n详细信息：\n\t'
+                        msg += traceback.format_exc().replace('\n', '\n\t')
                     operation_writer(local_dict['system_log'],
                         msg, source, status_code)
                 if return_value is not None:
