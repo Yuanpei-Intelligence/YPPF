@@ -628,7 +628,7 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
     pos = Position.objects.create(person=charger,org=org,pos=0,status=Position.Status.INSERVICE,is_admin = True)
     # 修改申请状态
     ModifyOrganization.objects.filter(id=application.id).update(status=ModifyOrganization.Status.CONFIRMED)
-    Wishes.objects.create(text="学生小组“"+str(org.oname)+"”刚刚成立啦！快点去关注一下吧！")
+    Wishes.objects.create(text=f"{org.otype.otype_name}“{org.oname}”刚刚成立啦！快点去关注一下吧！")
 
 # 在错误的情况下返回的字典,message为错误信息
 def wrong(message="检测到恶意的申请操作. 如有疑惑，请联系管理员!"):
