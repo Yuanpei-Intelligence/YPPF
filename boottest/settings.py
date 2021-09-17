@@ -145,11 +145,7 @@ TIME_ZONE = "Asia/Shanghai"
 
 USE_I18N = True
 
-# 是否启用数据的本地化格式，如果开启将会导致django以他认为的本地格式显示后台数据
-# 主要表现为时间的呈现形式变为年/月/日 小时:分钟 关闭时则为yyyy-mm-dd HH:MM:SS
-# 关闭后，后台才能正常显示秒并进行修改
-# https://docs.djangoproject.com/zh-hans/3.1/ref/settings/#use-i18n
-USE_L10N = False
+USE_L10N = True
 
 # USE_TZ限制了Datetime等时间Field被存入数据库时是否必须包含时区信息
 # 这导致定时任务和常用的datetime.now()等无时区时间在存入时被强制-8h转化为UTC时间
