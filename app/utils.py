@@ -299,10 +299,12 @@ def url_check(arg_url):
     if re.match("^/[^/?]*/", arg_url):  # 相对地址
         return True
     for url in local_dict["url"].values():
-        base = re.findall("^https?://[^/]*/?", url)[0]
+        base = re.findall("^https?://([^/]*)/?", url)[0]
+        base = f'^https?://{base}/?'
         # print('base:', base)
         if re.match(base, arg_url):
             return True
+    operation_writer(local_dict['system_log'], f'URL检查不合格: {arg_url}', 'utils[url_check]', 'Problem')
     return False
 
 
