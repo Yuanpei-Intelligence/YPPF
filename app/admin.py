@@ -185,6 +185,18 @@ class PositionAdmin(admin.ModelAdmin):
     set_not_admin.short_description = "收回 管理权限"
 
 
+@admin.register(Activity)
+class ActivityAdmin(admin.ModelAdmin):
+    list_display = ["title", 'id', "organization_id", "publish_time", "start", "end",]
+    search_fields = ('id', "title", "organization_id__oname",)
+    list_filter =   (
+                        "need_checkin", "valid", "inner", "source",
+                        'endbefore', "year", "organization_id__otype",
+                        "publish_time", 'start', 'end',
+                    )
+    date_hierarchy = 'start'
+
+
 @admin.register(Notification)
 class NotificationAdmin(admin.ModelAdmin):
     list_display = ["id", "receiver", "sender", "title", "start_time"]
@@ -275,7 +287,6 @@ class ModifyPositionAdmin(admin.ModelAdmin):
 admin.site.register(ModifyOrganization)
 
 
-admin.site.register(Activity)
 admin.site.register(TransferRecord)
 
 admin.site.register(YQPointDistribute)
