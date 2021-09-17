@@ -933,15 +933,18 @@ def record_modify_with_session(request, info=""):
 """
 def update_related_account_in_session(request, username, shift=False, oname=""):
 
-    np = NaturalPerson.objects.activated().get(person_id__username=username)
-    orgs = list(Position.objects.activated().filter(is_admin=True, person=np).values_list("org__oname", flat=True))
+    try:
+        np = NaturalPerson.objects.activated().get(person_id__username=username)
+    except:
+        return False
+    orgs = list(Position.objects.activated().filter(
+        is_admin=True, person=np).values_list("org__oname", flat=True))
 
     if oname:
-        if oname in orgs:
-            orgs.remove(oname)
-            user = Organization.objects.get(oname=oname).organization_id
-        else:
+        if oname not in orgs:
             return False
+        orgs.remove(oname)
+        user = Organization.objects.get(oname=oname).organization_id
     else:
         user = np.person_id
 

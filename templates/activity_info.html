@@ -33,7 +33,7 @@
 
         <!--  BEGIN BLURRED BG  -->
         {% if summary_photo_exists %}
-        <div class="w-100" id="bg" style="background-image: url({{ summary_photo }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
+        <div class="w-100" id="bg" style="background-image: url({{ firstpic }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
         {% else %}
         <div class="w-100" id="bg" style="background-image: url({{ firstpic }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
         {% endif %}
@@ -50,11 +50,29 @@
 
             <!--  BEGIN PHOTO  -->
             <div id="front-photo" style="position: absolute; width: 66%; height: 30vh; margin-left: 17%; margin-right: 17%; padding-left: 80px; padding-right: 80px;">
-                {% if summary_photo_exists %}
-                <img style="width: 100%; height: 100%; object-fit: cover;" src={{ summary_photo }}></img>
-                {% else %}
-                <img style="width: 100%; height: 100%; object-fit: cover;" src={{ firstpic }}></img>
-                {% endif %}
+                <div id="style1" class="carousel slide style-custom-1 h-100" data-ride="carousel">
+                    <div class="carousel-inner h-100">
+                        <div class="h-100 carousel-item active">
+                            <img class="d-block w-100 slide-image" style="width: 100%; height: 100%; object-fit: cover;" src={{ firstpic }}></img>
+                        </div>
+                        {% if summary_photo_exists %}
+                                {%for summary_photo in summary_photos.all %}
+                                <div class="h-100 carousel-item">
+                                    <img class="d-block w-100 slide-image" style="width: 100%; height: 100%; object-fit: cover;" src="/media/{{ summary_photo.image }}"></img>
+                                </div>
+                                
+                                {%endfor%}
+                        {% endif %}
+                    </div>
+                    <a class="carousel-control-prev" href="#style1" role="button" data-slide="prev">
+                           <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                           <span class="sr-only">Previous</span>
+                    </a>
+                   <a class="carousel-control-next" href="#style1" role="button" data-slide="next">
+                           <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                           <span class="sr-only">Next</span>
+                   </a> 
+               </div>
             </div>
             <!--  END PHOTO  -->
             
