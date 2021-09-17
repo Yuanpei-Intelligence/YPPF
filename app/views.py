@@ -372,7 +372,7 @@ def stuinfo(request, name=None):
             assert option == "cancelInformShare" and html_display["is_myself"]
             person.inform_share = False
             person.save()
-            return redirect('')
+            return redirect("/welcome/")
 
 
 
@@ -669,7 +669,7 @@ def orginfo(request, name=None):
         elif request.POST.get("option", "") == "cancelInformShare" and html_display["is_myself"]:
             me.inform_share = False
             me.save()
-            return redirect('')
+            return redirect("/welcome/")
         elif request.POST.get("question") is not None:
             anonymous_flag = (request.POST.get('show_name') is not None)
             question = request.POST.get("question")
@@ -2170,7 +2170,7 @@ def viewActivity(request, aid=None):
         elif option == "cancelInformShare":
             me.inform_share = False
             me.save()
-            return redirect('')
+            return redirect("/welcome/")
         else:
             return redirect("/welcome")
         
