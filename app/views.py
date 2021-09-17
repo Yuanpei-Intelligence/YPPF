@@ -3116,13 +3116,14 @@ def addComment(request, comment_base, receiver=None):
             context["warn_code"] = 1
             context["warn_message"] = "评论失败，请联系管理员。"
             return context
-
+            
+        if len(text) >= 32:
+            text = text[:31] + "……"
         if len(text) > 0:
             content[typename] += f':{text}'
         else:
             content[typename] += "。"
-        if len(text) >= 32:
-            text = text[:31] + "……"
+        
        
         if user_type == "Organization":
             URL["activity"] = f"/examineActivity/{comment_base.id}"
@@ -3759,9 +3760,12 @@ def modifyEndActivity(request):
         warn_code = context["warn_code"]
         warn_message = context["warn_message"]
 
-
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
-        append = f"?reimb_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
+        if warn_code==1:
+            append = f"warn_code={warn_code}&warn_message={warn_message}"
+        else:
+            append = f"?reimb_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
+        
         return redirect("/modifyEndActivity/" + append)
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
@@ -3957,7 +3961,10 @@ def modifyOrganization(request):
         warn_code, warn_message = context["warn_code"], context["warn_message"]
 
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
-        append = f"?org_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
+        if warn_code==1:
+            append = f"warn_code={warn_code}&warn_message={warn_message}"
+        else:
+            append = f"?org_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
         return redirect("/modifyOrganization/" + append)
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
