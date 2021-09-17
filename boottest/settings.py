@@ -145,6 +145,13 @@ TIME_ZONE = "Asia/Shanghai"
 
 USE_I18N = True
 
+# 是否启用数据的本地化格式，如果开启将会导致django以他认为的本地格式显示后台数据
+# 主要表现为时间的呈现形式变为年/月/日 小时:分钟 关闭时则为yyyy-mm-dd HH:MM:SS
+# 关闭后，后台才能正常显示秒并进行修改
+# 本地化有其他副作用，比如其他前端呈现的兼容
+# 不想关闭可以调整django/conf/locale/zh_Hans/format.py中的TIME_INPUT_FORMATS顺序
+# 而该文件中的其它变量被证明对后台呈现无效
+# https://docs.djangoproject.com/zh-hans/3.1/ref/settings/#use-i18n
 USE_L10N = True
 
 # USE_TZ限制了Datetime等时间Field被存入数据库时是否必须包含时区信息
