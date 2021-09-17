@@ -578,6 +578,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         # 到这里,是本人小组并且有权限登录
         auth.logout(request)
         auth.login(request, org.organization_id)  # 切换到小组账号
+        utils.update_related_account_in_session(request, user.username, oname=org.oname)
         if org.first_time_login:
             return redirect("/modpw/")
         return redirect("/orginfo/?warn_code=2&warn_message=成功切换到"+str(org)+"的账号!")
@@ -603,6 +604,7 @@ def user_login_org(request, org):
     # 到这里,是本人小组并且有权限登录
     auth.logout(request)
     auth.login(request, org.organization_id)  # 切换到小组账号
+    utils.update_related_account_in_session(request, user.username, oname=org.oname)
     return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")
 
 
@@ -1533,6 +1535,7 @@ def forget_password(request):
                     display = wrong("验证码已过期，请重新发送")
                 elif str(vertify_code).upper() == captcha.upper():
                     auth.login(request, user)
+                    utils.update_related_account_in_session(request, user.username)
                     utils.clear_captcha_session(request)
                     request.session["username"] = username
                     request.session["forgetpw"] = "yes"
