@@ -10,16 +10,25 @@ admin.site.site_header = '元培成长档案 - 管理后台'
 @admin.register(NaturalPerson)
 class NaturalPersonAdmin(admin.ModelAdmin):
     fieldsets = (
-        ["Commom Attributes", {"fields": (
-            "person_id", "name", "nickname", "gender", "identity",
-            "YQPoint", "YQPoint_Bonus", "wechat_receive_level")}],
+        [
+            "Commom Attributes",
+            {
+                "fields": (
+                    "person_id", "name", "nickname", "gender", "identity", "status",
+                    "YQPoint", "YQPoint_Bonus", "bonusPoint", "wechat_receive_level",
+                    "stu_id_dbonly",
+                    ),
+            }
+        ],
         [
             "Student Attributes",
             {
                 "classes": ("collapse",),
-                "fields": ("stu_grade", "stu_dorm", "stu_class", "stu_major",
-                "show_gender", "show_email", "show_tel", "show_major", "show_dorm"),
-                # "show_nickname"
+                "fields": (
+                    "stu_grade", "stu_class", "stu_dorm", "stu_major",
+                    "show_gender", "show_email", "show_tel", "show_major", "show_dorm",
+                    "show_nickname", "show_birthday", 
+                    ),
             },
         ],
     )
@@ -30,7 +39,101 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         "first_time_login",
     ]
     search_fields = ("person_id__username", "name")
-    list_filter = ("stu_grade", "status", "identity", "first_time_login", "wechat_receive_level")
+    readonly_fields = ("stu_id_dbonly",)
+    list_filter = (
+        "status", "identity",
+        "first_time_login", "wechat_receive_level",
+        "stu_grade", "stu_class",
+        )
+
+    actions = [
+        'YQ_send',
+        'set_student', 'set_teacher',
+        'set_graduate', 'set_ungraduate',
+        'all_subscribe', 'all_unsubscribe',
+        ]
+
+    def YQ_send(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        try:
+            from app.scheduler_func import distribute_YQPoint_per_month
+            distribute_YQPoint_per_month()
+            return self.message_user(request=request,
+                                    message='发放成功!')
+        except Exception as e:
+            return self.message_user(request=request,
+                                     message=f'操作失败, 原因为: {e}',
+                                     level='error')
+    YQ_send.short_description = "发放元气值"
+    
+    def set_student(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        queryset.update(identity=NaturalPerson.Identity.STUDENT)
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    set_student.short_description = "设为 学生"
+
+    def set_teacher(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        queryset.update(identity=NaturalPerson.Identity.TEACHER)
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    set_teacher.short_description = "设为 老师"
+
+    def set_graduate(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        queryset.update(status=NaturalPerson.GraduateStatus.GRADUATED)
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    set_graduate.short_description = "设为 已毕业"
+
+    def set_ungraduate(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        queryset.update(status=NaturalPerson.GraduateStatus.UNDERGRADUATED)
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    set_ungraduate.short_description = "设为 未毕业"
+
+    def all_subscribe(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        for org in queryset:
+            org.unsubscribers.clear()
+            org.save()
+        return self.message_user(request=request,
+                                 message='修改成功!')
+    all_subscribe.short_description = "设置 全部订阅"
+
+    def all_unsubscribe(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        orgs = list(Organization.objects.exclude(
+            otype__otype_id=0).values_list('id', flat=True))
+        for person in queryset:
+            person.unsubscribers.set(orgs)
+            person.save()
+        return self.message_user(request=request,
+                                 message='修改成功!已经取消所有非官方组织的订阅!')
+    all_unsubscribe.short_description = "设置 取消订阅"
 
 @admin.register(Freshman)
 class FreshmanAdmin(admin.ModelAdmin):
