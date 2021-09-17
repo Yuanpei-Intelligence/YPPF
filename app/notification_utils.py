@@ -185,6 +185,7 @@ def bulk_notification_create(
             ) for receiver in receivers
         ]
         Notification.objects.bulk_create(notifications, 50)
+        success = True
     except Exception as e:
         success = False
         operation_writer(local_dict['system_log'],
