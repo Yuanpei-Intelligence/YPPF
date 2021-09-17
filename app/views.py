@@ -3761,7 +3761,7 @@ def modifyEndActivity(request):
         warn_message = context["warn_message"]
 
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
-        if warn_code==1:
+        if application is None:
             append = f"warn_code={warn_code}&warn_message={warn_message}"
         else:
             append = f"?reimb_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
@@ -3961,7 +3961,7 @@ def modifyOrganization(request):
         warn_code, warn_message = context["warn_code"], context["warn_message"]
 
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
-        if warn_code==1:
+        if application is None:
             append = f"warn_code={warn_code}&warn_message={warn_message}"
         else:
             append = f"?org_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
