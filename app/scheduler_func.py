@@ -340,6 +340,10 @@ def changeActivityStatus(aid, cur_status, to_status):
             # 结束，计算积分    
             else:
                 hours = (activity.end - activity.start).seconds / 3600
+                if '报名' in activity.title or '选课' in activity.title or hours > 12:
+                    activity.save()
+                    return
+                hours = min(6.0, hours)
                 participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.ATTENDED)
                 NaturalPerson.objects.filter(id__in=participants.values_list('person_id', flat=True)).update(
                     bonusPoint=F('bonusPoint') + hours)
