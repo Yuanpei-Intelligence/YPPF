@@ -340,7 +340,7 @@ def changeActivityStatus(aid, cur_status, to_status):
             # 结束，计算积分    
             else:
                 hours = (activity.end - activity.start).seconds / 3600
-                if '报名' in activity.title or '选课' in activity.title or hours > 12:
+                if '选课' in activity.title or hours > 12:
                     activity.save()
                     return
                 hours = min(6.0, hours)
