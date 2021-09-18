@@ -16,7 +16,7 @@ from django.conf import settings
 from boottest import local_dict
 
 # 模型与加密模型
-from app.models import NaturalPerson, Organization, Activity, Notification, Participant
+from app.models import NaturalPerson, Organization, Activity, Notification, Position
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 # 日期与定时任务
@@ -184,9 +184,11 @@ def base_send_wechat(users, message, app='default',
     post_url = app2absolute_url(app)
 
     if RECEIVER_SET is not None:
-        users = list((set(users) & RECEIVER_SET) - BLACKLIST_SET)
+        users = sorted((set(users) & RECEIVER_SET) - BLACKLIST_SET)
+    elif BLACKLIST_SET is not None and BLACKLIST_SET:
+        users = sorted(set(users) - BLACKLIST_SET)
     else:
-        users = list(set(users) - BLACKLIST_SET)
+        users = sorted(users)
     user_num = len(users)
     if user_num == 0:
         print("没有合法的用户")
@@ -349,7 +351,8 @@ def publish_notification(notification_or_id,
     else:  # 小组
         # 转发小组消息给其负责人
         message += f'\n消息来源：{str(receiver)}，请切换到该小组账号进行操作。'
-        wechat_receivers = receiver.position_set.filter(is_admin=True)
+        wechat_receivers = Position.objects.activated().filter(
+            org=receiver, is_admin=True)
         if check_block:
             wechat_receivers = wechat_receivers.filter(
                 person__wechat_receive_level__lte=level)    # 不小于接收等级
@@ -492,8 +495,10 @@ def publish_notifications(
 
     # 接下来是发送给小组的部分
     org_receivers = Organization.objects.filter(organization_id__in=receiver_ids)
+    activate_positions = Position.objects.activated()
     for org in org_receivers:
-        managers = org.position_set.filter(is_admin=True)
+        managers = activate_positions.filter(
+            org=org, is_admin=True)
         if check_block:    # 屏蔽时，不小于接收等级
             managers = managers.filter(person__wechat_receive_level__lte=level)
         managers = managers.values_list("person__person_id__username", flat=True)
@@ -582,6 +587,7 @@ def send_wechat_captcha(stu_id: str or int, captcha: str, url='/forgetpw/'):
                 "YPPF登录验证\n"
                 "您的账号正在进行企业微信验证\n本次请求的验证码为："
                 f"<div class=\"highlight\">{captcha}</div>"
+                f"发送时间：{datetime.now().strftime('%m月%d日 %H:%M:%S')}"
             )
     if url:
         kws["url"] = url
