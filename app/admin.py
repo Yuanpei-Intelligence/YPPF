@@ -487,10 +487,10 @@ class WishesAdmin(admin.ModelAdmin):
     actions = ['change_color']
 
     def change_color(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
+        # if not request.user.is_superuser:
+        #     return self.message_user(request=request,
+        #                              message='操作失败,没有权限,请联系老师!',
+        #                              level='warning')
         for wish in queryset:
             wish.background = Wishes.rand_color()
             wish.save()
@@ -508,10 +508,10 @@ class ModifyRecordAdmin(admin.ModelAdmin):
     actions = ['get_rank']
 
     def get_rank(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
+        # if not request.user.is_superuser:
+        #     return self.message_user(request=request,
+        #                              message='操作失败,没有权限,请联系老师!',
+        #                              level='warning')
         if len(queryset) != 1:
             return self.message_user(
                 request=request, message='一次只能查询一个用户的排名!', level='error')
