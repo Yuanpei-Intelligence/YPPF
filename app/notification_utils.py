@@ -167,7 +167,8 @@ def bulk_notification_create(
     现在，你应该在不急于等待的时候显式调用publish_notification(s)这两个函数，
         具体选择哪个取决于你创建的通知是一批类似通知还是单个通知
     """
-    bulk_identifier = hasher.encode(str(datetime.now()) + str(random()))
+    start_time = datetime.now()
+    bulk_identifier = hasher.encode(str(start_time) + str(random()))
     try:
         notifications = [
             Notification(
@@ -180,14 +181,10 @@ def bulk_notification_create(
                 bulk_identifier=bulk_identifier,
                 relate_TransferRecord=relate_TransferRecord,
                 relate_instance=relate_instance,
+                start_time=start_time,
             ) for receiver in receivers
         ]
         Notification.objects.bulk_create(notifications, 50)
-        # bulk_create不调用save，因此不会自动生成绑定save方法的auto_now_add字段
-        with transaction.atomic():
-            # 添加了db索引 否则会锁整个表
-            Notification.objects.select_for_update().filter(
-                bulk_identifier=bulk_identifier).update(start_time=datetime.now())
         success = True
     except Exception as e:
         success = False

@@ -31,6 +31,9 @@ import xlwt
 import traceback
 from io import BytesIO
 from django.db.models import F
+import traceback
+import json
+import hashlib
 
 
 YQPoint_oname = local_dict["YQPoint_source_oname"]
@@ -801,6 +804,35 @@ def operation_writer(user, message, source, status_code="OK"):
         print(e)
 
     lock.release()
+
+
+log_detailed_path = os.path.join(log_root_path, "traceback_record")
+def record_traceback(request, e):
+    d = {}
+    d["time"] = datetime.now().strftime("%Y/%m/%d-%H%M")
+    d["username"] = request.user.username
+    d["request_path"] = request.path
+    if request.GET:
+        d["GET_Param"] = request.GET
+    if request.POST:
+        d["POST_Param"] = request.POST
+    d["traceback"] = traceback.format_exc()
+
+    hash_value = hashlib.sha1(json.dumps(d).encode()).digest().hex()
+    log_dir = os.path.join(log_detailed_path, request.user.username)
+    log_path = os.path.join(log_dir, hash_value + ".json")
+    os.makedirs(log_dir, exist_ok=True)
+    with open(log_path, "w") as f:
+        json.dump(d, f)
+
+    if local_dict.get('debug_stuids'):
+        from app.wechat_send import send_wechat
+        receivers = list(local_dict['debug_stuids'])
+        if isinstance(receivers, str):
+            receivers = receivers.replace(' ', '').split(',')
+        receivers = list(map(str, receivers))
+        message = f"错误类型：{type(e)}\n + 记录路径：{log_path}\n"
+        send_wechat(receivers, 'YPPF 记录到错误详情\n' + f"记录路径：{log_path}")
 
 
 # 导出Excel文件

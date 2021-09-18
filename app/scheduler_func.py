@@ -497,14 +497,47 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             receivers = User.objects.filter(id__in=subscribers)
             publish_kws = {"app": WechatApp.TO_SUBSCRIBER}  
         elif msg_type == "remind":
-            msg = f"您参与的活动 <{activity.title}> 即将开始。"
-            msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
-            msg += f"\n活动地点: {activity.location}"
-            participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
-            receivers = participants.values_list('person_id__person_id', flat=True)
-            receivers = User.objects.filter(id__in=receivers)
-            # receivers = [participant.person_id.person_id for participant in participants]
-            publish_kws = {"app": WechatApp.TO_PARTICIPANT}  
+
+            with transaction.atomic():
+                activity = Activity.objects.select_for_update().get(id=aid)
+                nowtime = datetime.now()
+                notifications = Notification.objects.filter(
+                    relate_instance=activity,
+                    start_time__gt=nowtime + timedelta(seconds=60),
+                    title=Notification.Title.PENDING_INFORM,
+                )
+                if len(notifications) > 0:
+                    return False
+                else:
+                    msg = f"您参与的活动 <{activity.title}> 即将开始。"
+                    msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
+                    msg += f"\n活动地点: {activity.location}"
+                    participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
+                    receivers = participants.values_list('person_id__person_id', flat=True)
+                    receivers = User.objects.filter(id__in=receivers)
+                    # receivers = [participant.person_id.person_id for participant in participants]
+                    publish_kws = {"app": WechatApp.TO_PARTICIPANT}
+
+                    if inner and publish_kws.get('app') == WechatApp.TO_SUBSCRIBER:
+                        member_id_list = Position.objects.activated().filter(
+                            org=activity.organization_id).values_list(
+                                'person__person_id', flat=True)
+                        receivers = receivers.filter(id__in=member_id_list)
+
+                    success, _ = bulk_notification_create(
+                        receivers=list(receivers),
+                        sender=activity.organization_id.organization_id,
+                        typename=Notification.Type.NEEDREAD,
+                        title=title,
+                        content=msg,
+                        URL=f"/viewActivity/{aid}",
+                        relate_instance=activity,
+                        publish_to_wechat=True,
+                        publish_kws=publish_kws,
+                    )
+
+                    return success
+
         elif msg_type == 'modification_sub':
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
