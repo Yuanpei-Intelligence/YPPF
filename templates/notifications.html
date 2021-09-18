@@ -138,7 +138,7 @@
                                                                             >标记为未读</button>
                                                                             <button class="dropdown-item"
                                                                                 type="submit" name='post_button' id={{note.id}}
-                                                                                value="{{note.id}}+cancel" onclick="confirm('你确定要删除这条消息?');cancel.call(this);this.blur();">删除</button>
+                                                                                value="{{note.id}}+cancel" onclick="if(confirm('你确定要删除这条消息?')){cancel.call(this);this.blur();}">删除</button>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -156,7 +156,7 @@
                                                                             <button class="dropdown-item"
                                                                                 type="submit" name='post_button' id={{note.id}}
                                                                                 value="{{note.id}}+cancel"
-                                                                                onclick="confirm('你确定要删除这条消息?');cancel.call(this);this.blur();">删除</button>
+                                                                                onclick="if(confirm('你确定要删除这条消息?')){cancel.call(this);this.blur();}">删除</button>
                                                                         </div>
                                                                     </div>
                                                                 </div>

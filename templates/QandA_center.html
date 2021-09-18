@@ -75,7 +75,7 @@
                                                                                 <button href="#myModal" class="dropdown-item" tabindex="-1" data-toggle="modal"
                                                                                     role="button">回答</button>
                                                                                 <button class="dropdown-item"
-                                                                                    id={{QA.id}} onclick="confirm('你确定要忽略这条消息?');ignore_receiver.call(this);this.blur();">忽略</button>
+                                                                                    id={{QA.id}} onclick="if(confirm('你确定要忽略这条消息?')){ignore_receiver.call(this);this.blur();}">忽略</button>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -123,7 +123,7 @@
                                                                             </button>
                                                                             <div class="dropdown-menu">
                                                                                 <button class="dropdown-item"
-                                                                                    id={{QA.id}} onclick="confirm('你确定要删除这条消息?你自己删除了，对方还能看到哦！');ignore_receiver.call(this);this.blur();">删除</button>
+                                                                                    id={{QA.id}} onclick="if(confirm('你确定要删除这条消息?你自己删除了，对方还能看到哦！')){ignore_receiver.call(this);this.blur();}">删除</button>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -184,10 +184,10 @@
                                                                             <div class="dropdown-menu">
                                                                                 {% if not QA.anwser_flag %}
                                                                                 <button class="dropdown-item"
-                                                                                    id={{QA.id}} onclick="confirm('你确定要撤回这条提问?注意：撤回后你们双方都将看不见这条提问。');cancel.call(this);this.blur();">撤回</button>
+                                                                                    id={{QA.id}} onclick="if(confirm('你确定要撤回这条提问?注意：撤回后你们双方都将看不见这条提问。')){cancel.call(this);this.blur();}">撤回</button>
                                                                                 {% endif %}
                                                                                     <button class="dropdown-item"
-                                                                                    id={{QA.id}} onclick="confirm('你确定要删除这条提问?注意：删除后，对方还能看到这条提问！而且你永远收不到回答了！');ignore_sender.call(this);this.blur();">删除</button>
+                                                                                    id={{QA.id}} onclick="if(confirm('你确定要删除这条提问?注意：删除后，对方还能看到这条提问！而且你永远收不到回答了！')){ignore_sender.call(this);this.blur();}">删除</button>
                                                                             </div>
                                                                         </div>
                                                                     </div>
