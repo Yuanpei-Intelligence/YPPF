@@ -9,12 +9,16 @@ from boottest import local_dict
 from django.conf import settings
 from random import choice
 
+
+def current_year()-> int:
+    return int(datetime.now().strftime("%Y"))
+
 class NaturalPersonManager(models.Manager):
     def activated(self):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
 
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
-        year = int(datetime.now().strftime("%Y")) - 4
+        year = current_year() - 4
         self.activated().filter(stu_grade=str(year)).update(GraduateStatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
@@ -292,6 +296,9 @@ class Organization(models.Model):
     def get_subscriber_num(self):
         return NaturalPerson.objects.all().count() - self.unsubscribers.count()
 
+    def get_neg_unsubscriber_num(self):
+        return -self.unsubscribers.count()
+
 
 class PositionManager(models.Manager):
     def current(self):
@@ -304,6 +311,7 @@ class PositionManager(models.Manager):
         return self.current().filter(status=Position.Status.INSERVICE)
 
     def create_application(self, person, org, apply_type, apply_pos):
+        raise NotImplementedError('该函数已废弃')
         warn_duplicate_message = "There has already been an application of this state!"
         with transaction.atomic():
             if apply_type == "JOIN":
@@ -384,7 +392,7 @@ class Position(models.Model):
     show_post = models.BooleanField(default=True)
 
     # 表示是这个小组哪一年、哪个学期的成员
-    in_year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
+    in_year = models.IntegerField("当前学年", default=current_year)
     in_semester = models.CharField(
         "当前学期", choices=Semester.choices, default=Semester.ANNUAL, max_length=15
     )
@@ -433,7 +441,7 @@ class Course(models.Model):
     cid = models.OneToOneField(to=Organization, on_delete=models.CASCADE)
 
     # 课程周期
-    year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
+    year = models.IntegerField("当前学年", default=current_year)
     semester = models.CharField("当前学期", choices=Semester.choices, max_length=15)
 
     scheduler = models.CharField("上课时间", max_length=25)
@@ -575,7 +583,7 @@ class Activity(CommentBase):
         on_delete=models.CASCADE,
     )
 
-    year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
+    year = models.IntegerField("活动年份", default=current_year)
 
     semester = models.CharField(
         "活动学期",
@@ -1095,8 +1103,6 @@ class Reimbursement(CommentBase):
     pos = models.ForeignKey(User, on_delete=models.CASCADE)#报销的小组
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
     record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
-    summary_image=models.ImageField(upload_to=f"activity/photo/%Y/%m/",
-                                    verbose_name="活动总结图片",null=True, blank=True)
     examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
@@ -1121,6 +1127,19 @@ class Reimbursement(CommentBase):
     def is_pending(self):   #表示是不是pending状态
             return self.status == Reimbursement.ReimburseStatus.WAITING
 
+class ReimbursementPhoto(models.Model):
+    class Meta:
+        verbose_name = "报销相关图片"
+        verbose_name_plural = verbose_name
+        ordering = ["-time"]
+    class PhotoType(models.IntegerChoices):
+        MATERIAL = (0, "报销材料")  #如账单信息等
+        SUMMARY = (1, "总结图片")   #待审核的活动总结图片
+    type = models.SmallIntegerField(choices=PhotoType.choices)
+    image = models.ImageField(upload_to=f"reimbursement/photo/%Y/%m/", verbose_name=u'报销相关图片', null=True, blank=True)
+    related_reimb = models.ForeignKey(Reimbursement, related_name="reimbphotos", on_delete=models.CASCADE)
+    time = models.DateTimeField("上传时间", auto_now_add=True)
+    
 
 class Help(models.Model):
     '''

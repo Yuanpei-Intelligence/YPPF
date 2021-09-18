@@ -49,7 +49,13 @@
                     <div class="col-12 col-md-10">
                         <label for="nickname" style="width: max-content;">我的昵称</label>
                         <input type="text" class="form-control" id="nickname"
-                            name="nickname" placeholder="{{ userinfo.nickname }}" onclick="this.value === `` && (this.value = this.placeholder)">
+                            name="nickname" 
+                            {% if userinfo.nickname %}
+                            placeholder="{{ userinfo.nickname }}" onclick="this.value === `` && (this.value = this.placeholder)"
+                            {% else %}
+                            placeholder="快来起个好听的昵称吧~"
+                            {% endif %}
+                            >
                         <div class="form-check mb-4">
                             {% if useroj.show_nickname %}
                             <input type="checkbox" class="form-check-input" id="show_nickname" name='show_nickname' checked>
@@ -85,7 +91,13 @@
 
                 <label for="birthday" style="width: max-content;">我的生日</label>
                 <input type="date" class="form-control" id="birthday"
-                    name="birthday" placeholder="{{ userinfo.birthday }}" onclick="this.value === `` && (this.value = this.placeholder)">
+                    name="birthday" 
+                    {% if userinfo.birthday is not None %}
+                    placeholder="{{ userinfo.birthday }}" onclick="this.value === `` && (this.value = this.placeholder)"
+                    {% else %}
+                    placeholder="选择日期"
+                    {% endif %}
+                    >
                 <script>
                     /* -------------------- format of date is not guaranteed -------------------- */
                     const [_match, yyyy, mm, dd] = birthday.placeholder.match(/^(\d\d\d\d).(\d?\d).(\d?\d).$/);
@@ -102,7 +114,13 @@
 
                 <label for="major" style="width: max-content;">我的专业</label>
                 <input type="text" class="form-control" id="major"
-                    name="major" placeholder="{{ userinfo.stu_major }}" onclick="this.value === `` && (this.value = this.placeholder)">
+                    name="major" 
+                    {% if userinfo.stu_major is not None %}
+                    placeholder="{{ userinfo.stu_major }}" onclick="this.value === `` && (this.value = this.placeholder)"
+                    {% else %}
+                    placeholder="暂无信息"
+                    {% endif %}
+                    >
                 <div class="form-check mb-4">
                     {% if useroj.show_major %}
                     <input type="checkbox" class="form-check-input" id="show_major" name="show_major" checked>
@@ -137,7 +155,13 @@
             <div class="col-10 col-md-7 px-0">
                 <label for="tel" style="width: max-content;">我的电话</label>
                 <input type="tel" class="form-control" id="tel"
-                    name="tel" placeholder="{{ userinfo.telephone }}" onclick="this.value === `` && (this.value = this.placeholder)">
+                    name="tel" 
+                    {% if userinfo.telephone is not None %}
+                    placeholder="{{ userinfo.telephone }}" onclick="this.value === `` && (this.value = this.placeholder)"
+                    {% else %}
+                    placeholder="暂无信息"
+                    {% endif %}
+                    >
                 <div class="form-check mb-4">
                     {% if useroj.show_tel %}
                     <input type="checkbox" class="form-check-input" id="show_tel" name="show_tel" checked>
@@ -149,7 +173,13 @@
 
                 <label for="email" style="width: max-content;">我的邮箱</label>
                 <input type="email" class="form-control" id="email" 
-                    name="email" placeholder="{{ userinfo.email }}" onclick="this.value === `` && (this.value = this.placeholder)">
+                    name="email" 
+                    {% if userinfo.email is not None %}
+                    placeholder="{{ userinfo.email }}" onclick="this.value === `` && (this.value = this.placeholder)"
+                    {% else %}
+                    placeholder="暂无信息"
+                    {% endif %}
+                    >
                 <div class="form-check mb-4">
                     {% if useroj.show_email %}
                     <input type="checkbox" class="form-check-input" id="show_email" name="show_email" checked>

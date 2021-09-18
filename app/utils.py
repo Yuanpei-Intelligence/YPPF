@@ -28,6 +28,7 @@ import imghdr
 import string
 import random
 import xlwt
+import traceback
 from io import BytesIO
 from django.db.models import F
 
@@ -64,7 +65,7 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
 
 
 def except_captured(return_value=None, except_type=Exception,
-                    log=True, record_args=False,
+                    log=True, show_traceback=False, record_args=False, record_user=False,
                     source='utils[except_captured]', status_code='Error'):
     """
     Decorator that captures exception and log, raise or 
@@ -78,9 +79,23 @@ def except_captured(return_value=None, except_type=Exception,
                 return view_function(*args, **kwargs)
             except except_type as e:
                 if log:
-                    msg = f'发生错误：{e}'
+                    msg = f'发生意外的错误：{e}'
                     if record_args:
                         msg += f', 参数为：{args=}, {kwargs=}'
+                    if record_user:
+                        try:
+                            if not args:
+                                if 'request' in kwargs.keys():
+                                    msg += f', 用户为{kwargs["request"].user.username}'
+                                elif 'user' in kwargs.keys():
+                                    msg += f', 用户为{kwargs["user"].username}'
+                            else:
+                                msg += f', 用户为{args[0].user.username}'
+                        except:
+                            msg += f', 尝试追踪用户, 但未能找到该参数'
+                    if show_traceback:
+                        msg += '\n详细信息：\n\t'
+                        msg += traceback.format_exc().replace('\n', '\n\t')
                     operation_writer(local_dict['system_log'],
                         msg, source, status_code)
                 if return_value is not None:
@@ -222,9 +237,9 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         bar_display["underground_url"] = local_dict["url"]["base_url"]
 
         # 个人所管理的小组列表
-        my_org_id_list = Position.objects.activated().filter(person=me, is_admin=True).select_related("org")
-        bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
-        bar_display["my_org_len"] = len(bar_display["my_org_list"])
+        # my_org_id_list = Position.objects.activated().filter(person=me, is_admin=True).select_related("org")
+        # bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
+        # bar_display["my_org_len"] = len(bar_display["my_org_list"])
         
         
         bar_display['is_auditor'] = True if me.person_id.username == local_dict[
@@ -284,10 +299,12 @@ def url_check(arg_url):
     if re.match("^/[^/?]*/", arg_url):  # 相对地址
         return True
     for url in local_dict["url"].values():
-        base = re.findall("^https?://[^/]*/?", url)[0]
+        base = re.findall("^https?://([^/]*)/?", url)[0]
+        base = f'^https?://{base}/?'
         # print('base:', base)
         if re.match(base, arg_url):
             return True
+    operation_writer(local_dict['system_log'], f'URL检查不合格: {arg_url}', 'utils[url_check]', 'Problem')
     return False
 
 
@@ -611,7 +628,7 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
     pos = Position.objects.create(person=charger,org=org,pos=0,status=Position.Status.INSERVICE,is_admin = True)
     # 修改申请状态
     ModifyOrganization.objects.filter(id=application.id).update(status=ModifyOrganization.Status.CONFIRMED)
-    Wishes.objects.create(text="学生小组“"+str(org.oname)+"”刚刚成立啦！快点去关注一下吧！")
+    Wishes.objects.create(text=f"{org.otype.otype_name}“{org.oname}”刚刚成立啦！快点去关注一下吧！")
 
 # 在错误的情况下返回的字典,message为错误信息
 def wrong(message="检测到恶意的申请操作. 如有疑惑，请联系管理员!"):
@@ -925,5 +942,36 @@ def record_modify_with_session(request, info=""):
     except:
         pass
 
+"""
+外层保证 username 是一个自然人的 username 并且合法
+
+登录时 shift 为 false，切换时为 True
+切换到某个组织时 oname 不为空，否则都是空
+"""
+def update_related_account_in_session(request, username, shift=False, oname=""):
+
+    try:
+        np = NaturalPerson.objects.activated().get(person_id__username=username)
+    except:
+        return False
+    orgs = list(Position.objects.activated().filter(
+        is_admin=True, person=np).values_list("org__oname", flat=True))
+
+    if oname:
+        if oname not in orgs:
+            return False
+        orgs.remove(oname)
+        user = Organization.objects.get(oname=oname).organization_id
+    else:
+        user = np.person_id
+
+    if shift:
+        auth.logout(request)
+        auth.login(request, user)
+
+    request.session["Incharge"] = orgs
+    request.session["NP"] = username
+
+    return True
 
 operation_writer(local_dict["system_log"], "系统启动", "util_底部")

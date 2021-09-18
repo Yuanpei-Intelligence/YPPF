@@ -11,7 +11,7 @@ from app.models import Organization, NaturalPerson, YQPointDistribute, TransferR
 from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
 from app.forms import YQPointDistributionForm
 from boottest.hasher import MySHA256Hasher
-from app.notification_utils import bulk_notification_create
+from app.notification_utils import bulk_notification_create, notification_status_change
 from boottest import local_dict
 
 from random import sample
@@ -329,9 +329,21 @@ def changeActivityStatus(aid, cur_status, to_status):
                         status=TransferRecord.TransferStatus.ACCEPTED,
                         finish_time=datetime.now()
                     )
+
+                    notification = Notification.objects.get(
+                        relate_instance=activity, 
+                        status=Notification.Status.UNDONE,
+                        title=Notification.Title.VERIFY_INFORM
+                    )
+                    notification_status_change(notification, Notification.Status.DONE)
+
             # 结束，计算积分    
             else:
                 hours = (activity.end - activity.start).seconds / 3600
+                if '选课' in activity.title or hours > 12:
+                    activity.save()
+                    return
+                hours = min(6.0, hours)
                 participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.ATTENDED)
                 NaturalPerson.objects.filter(id__in=participants.values_list('person_id', flat=True)).update(
                     bonusPoint=F('bonusPoint') + hours)
