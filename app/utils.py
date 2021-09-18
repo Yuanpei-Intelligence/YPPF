@@ -911,7 +911,7 @@ def export_orgpos_info(org):
         for participant in participants:
             name = participant.person.name
             Sno = participant.person.person_id.username
-            pos=org.otype.job_name_list[participant.pos]
+            pos = org.otype.get_name(participant.pos)
             # 写入每一行对应的数据
             w.write(excel_row, 0, name)
             w.write(excel_row, 1, Sno)
