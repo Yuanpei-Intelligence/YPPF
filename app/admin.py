@@ -290,14 +290,165 @@ class PositionAdmin(admin.ModelAdmin):
 
 @admin.register(Activity)
 class ActivityAdmin(admin.ModelAdmin):
-    list_display = ["title", 'id', "organization_id", "publish_time", "start", "end",]
-    search_fields = ('id', "title", "organization_id__oname",)
+    list_display = ["title", 'id', "organization_id",
+                    "status", "participant_diaplay",
+                    "publish_time", "start", "end",]
+    search_fields = ('id', "title", "organization_id__oname",
+                     "current_participants",)
     list_filter =   (
-                        "need_checkin", "valid", "inner", "source",
-                        'endbefore', "year", "organization_id__otype",
+                        "status", "inner", "need_checkin", "valid",
+                        "organization_id__otype", "source",
+                        'endbefore', "capacity", "year",
                         "publish_time", 'start', 'end',
                     )
     date_hierarchy = 'start'
+
+    def participant_diaplay(self, obj):
+        return f'{obj.current_participants}/{"无限" if obj.capacity == 10000 else obj.capacity}'
+    participant_diaplay.short_description = "报名情况"
+
+    actions = [
+                'refresh_count',
+                'to_waiting', 'to_processing', 'to_end',
+                'cancel_scheduler'
+        ]
+
+    def refresh_count(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        for activity in queryset:
+            activity.current_participants = Participant.objects.filter(
+                activity_id=activity, status__in=[
+                    Participant.AttendStatus.ATTENDED,
+                    Participant.AttendStatus.UNATTENDED,
+                    Participant.AttendStatus.APLLYSUCCESS,
+                    ]).count()
+            activity.save()
+        return self.message_user(request=request, message='修改成功!')
+    refresh_count.short_description = "更新 报名人数"
+
+    def to_waiting(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        if len(queryset) != 1:
+            return self.message_user(
+                request=request, message='一次只能修改一个活动状态!', level='error')
+        activity = queryset[0]
+        try:
+            from app.scheduler_func import changeActivityStatus
+            changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
+            try:
+                from app.scheduler_func import scheduler
+                scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.WAITING}')
+                return self.message_user(request=request,
+                                        message='修改成功, 并移除了定时任务!')
+            except:
+                return self.message_user(request=request,
+                                        message='修改成功!')
+        except Exception as e:
+            return self.message_user(
+                request=request, message=f'操作失败, 原因: {e}', level='error')
+    to_waiting.short_description = "进入 等待中 状态"
+    
+    def to_processing(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        if len(queryset) != 1:
+            return self.message_user(
+                request=request, message='一次只能修改一个活动状态!', level='error')
+        activity = queryset[0]
+        try:
+            from app.scheduler_func import changeActivityStatus
+            changeActivityStatus(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
+            try:
+                from app.scheduler_func import scheduler
+                scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.PROGRESSING}')
+                return self.message_user(request=request,
+                                        message='修改成功, 并移除了定时任务!')
+            except:
+                return self.message_user(request=request,
+                                        message='修改成功!')
+        except Exception as e:
+            return self.message_user(
+                request=request, message=f'操作失败, 原因: {e}', level='error')
+    to_processing.short_description = "进入 进行中 状态"
+    
+    def to_end(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        if len(queryset) != 1:
+            return self.message_user(
+                request=request, message='一次只能修改一个活动状态!', level='error')
+        activity = queryset[0]
+        try:
+            from app.scheduler_func import changeActivityStatus
+            changeActivityStatus(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
+            try:
+                from app.scheduler_func import scheduler
+                scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.END}')
+                return self.message_user(request=request,
+                                        message='修改成功, 并移除了定时任务!')
+            except:
+                return self.message_user(request=request,
+                                        message='修改成功!')
+        except Exception as e:
+            return self.message_user(
+                request=request, message=f'操作失败, 原因: {e}', level='error')
+    to_end.short_description = "进入 已结束 状态"
+
+    def cancel_scheduler(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        success_list = []
+        failed_list = []
+        try:
+            from app.scheduler_func import scheduler
+            CANCEL_STATUSES = [
+                'remind',
+                Activity.Status.END,
+                Activity.Status.PROGRESSING,
+                Activity.Status.WAITING,
+            ]
+            for activity in queryset:
+                failed_statuses = []
+                for status in CANCEL_STATUSES:
+                    try:
+                        scheduler.remove_job(f'activity_{activity.id}_{status}')
+                    except:
+                        failed_statuses.append(status)
+                if failed_statuses:
+                    if len(failed_statuses) != len(CANCEL_STATUSES):
+                        failed_list.append(f'{activity.id}: {",".join(failed_statuses)}')
+                    else:
+                        failed_list.append(f'{activity.id}')
+                else:
+                    success_list.append(f'{activity.id}')
+            
+            msg = f'成功取消{len(success_list)}项活动的定时任务!' if success_list else '未能完全取消任何任务'
+            if failed_list:
+                msg += f'\n{len(failed_list)}项活动取消失败：\n{";".join(failed_list)}'
+            return self.message_user(request=request, message=msg)
+        except Exception as e:
+            return self.message_user(
+                request=request, message=f'操作失败, 原因: {e}', level='error')
+    cancel_scheduler.short_description = "取消 定时任务"
+
+
+@admin.register(Participant)
+class ParticipantAdmin(admin.ModelAdmin):
+    list_display = ["id", 'activity_id', "person_id", "status",]
+    search_fields = ('id', "activity_id__title", "person_id__name",)
+    list_filter =   ("status", )
 
 
 @admin.register(Notification)
@@ -393,7 +544,6 @@ admin.site.register(ModifyOrganization)
 admin.site.register(TransferRecord)
 
 admin.site.register(YQPointDistribute)
-admin.site.register(Participant)
 admin.site.register(Reimbursement)
 admin.site.register(QandA)
 
