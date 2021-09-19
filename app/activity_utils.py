@@ -224,7 +224,8 @@ def create_activity(request):
         raise ActivityException(redirect_url)
 
     # 审批老师存在
-    examine_teacher = NaturalPerson.objects.get(name=context["examine_teacher"])
+    examine_teacher = NaturalPerson.objects.get(
+        name=context["examine_teacher"], identity=NaturalPerson.Identity.TEACHER)
     assert examine_teacher.identity == NaturalPerson.Identity.TEACHER
 
     # 检查完毕，创建活动
@@ -312,7 +313,8 @@ def modify_reviewing_activity(request, activity):
     if context["examine_teacher"] == activity.examine_teacher.name:
         pass
     else:
-        examine_teacher = NaturalPerson.objects.get(name=context["examine_teacher"])
+        examine_teacher = NaturalPerson.objects.get(
+            name=context["examine_teacher"], identity=NaturalPerson.Identity.TEACHER)
         assert examine_teacher.identity == NaturalPerson.Identity.TEACHER
         activity.examine_teacher = examine_teacher
         # TODO
