@@ -293,10 +293,16 @@ class Organization(models.Model):
             avatar = "avatar/org_default.png"
         return settings.MEDIA_URL + str(avatar)
     
-    def get_subscriber_num(self):
+    def get_subscriber_num(self, activated=True):
+        if activated:
+            return NaturalPerson.objects.activated().exclude(
+                id__in=self.unsubscribers.all()).count()
         return NaturalPerson.objects.all().count() - self.unsubscribers.count()
 
-    def get_neg_unsubscriber_num(self):
+    def get_neg_unsubscriber_num(self, activated=True):
+        if activated:
+            return -NaturalPerson.objects.activated().filter(
+                id__in=self.unsubscribers.all()).count()
         return -self.unsubscribers.count()
 
 
