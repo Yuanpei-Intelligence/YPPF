@@ -521,7 +521,7 @@ def stuinfo(request, name=None):
 
         context["person"] = person
 
-        context["title"] = "我" if is_myself else "Ta"
+        context["title"] = "我" if is_myself else ["他", "她"][person.gender] if person.show_gender else "Ta"
 
         context["avatar_path"] = person.get_user_ava()
         context["wallpaper_path"] = utils.get_user_wallpaper(person, "Person")
