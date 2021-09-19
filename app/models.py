@@ -871,7 +871,7 @@ class Notification(models.Model):
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
     title = models.CharField("通知标题", blank=True, null=True, max_length=50)
-    content = models.CharField("通知内容", max_length=225, blank=True)
+    content = models.TextField("通知内容", blank=True)
     start_time = models.DateTimeField("通知发出时间", auto_now_add=True)
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
     typename = models.SmallIntegerField(choices=Type.choices, default=0)
