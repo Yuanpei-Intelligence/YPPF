@@ -58,9 +58,9 @@
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <h5>
-                                                                {%if note.URL %}
-                                                                <a href={{note.URL}} {% if note.type == "知晓类" %} onclick="read.call(this);this.blur();" {% endif %} id={{note.id}}><u>{{note.title}}</u></a><br />
-                                                                {%else%}
+                                                                {% if note.URL %}
+                                                                <a href='{{note.URL}}' {% if note.type == "知晓类" %} onclick="read.call(this);this.blur();" {% endif %} id="{{note.id}}"><u>{{note.title}}</u></a><br />
+                                                                {% else %}
                                                                 <u style="text-decoration: none">{{note.title}}</u><br />
                                                                 {% endif %}
                                                             </h5>
@@ -70,7 +70,7 @@
                                                             <h5>
                                                                 <button class="btn btn-primary" type="submit"
                                                                     name='post_button' value="{{note.id}}"
-                                                                    onclick="read.call(this);this.blur();" id={{note.id}}>知道啦</button>
+                                                                    onclick="read.call(this);this.blur();" id="{{note.id}}">知道啦</button>
                                                             </h5>
                                                             {% else %}
                                                             <h5>
@@ -118,7 +118,11 @@
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <h5>
+                                                                {% if note.URL %}
                                                                 <a href='{{note.URL}}'><u>{{note.title}}</u></a>
+                                                                {% else %}
+                                                                <u style="text-decoration: none">{{note.title}}</u>
+                                                                {% endif %}
                                                             </h5>
                                                         </div>
                                                         <div>
@@ -134,11 +138,11 @@
                                                                         <div class="dropdown-menu">
                                                                             <button class="dropdown-item"
                                                                                 type="submit" name='post_button'
-                                                                                value="{{note.id}}" id={{note.id}} onclick="unread.call(this);this.blur();"
+                                                                                value="{{note.id}}" id="{{note.id}}" onclick="unread.call(this);this.blur();"
                                                                             >标记为未读</button>
                                                                             <button class="dropdown-item"
-                                                                                type="submit" name='post_button' id={{note.id}}
-                                                                                value="{{note.id}}+cancel" onclick="confirm('你确定要删除这条消息?');cancel.call(this);this.blur();">删除</button>
+                                                                                type="submit" name='post_button' id="{{note.id}}"
+                                                                                value="{{note.id}}+cancel" onclick="if(confirm('你确定要删除这条消息?')){cancel.call(this);this.blur();}">删除</button>
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -154,9 +158,9 @@
                                                                         </button>
                                                                         <div class="dropdown-menu">
                                                                             <button class="dropdown-item"
-                                                                                type="submit" name='post_button' id={{note.id}}
+                                                                                type="submit" name='post_button' id="{{note.id}}"
                                                                                 value="{{note.id}}+cancel"
-                                                                                onclick="confirm('你确定要删除这条消息?');cancel.call(this);this.blur();">删除</button>
+                                                                                onclick="if(confirm('你确定要删除这条消息?')){cancel.call(this);this.blur();}">删除</button>
                                                                         </div>
                                                                     </div>
                                                                 </div>

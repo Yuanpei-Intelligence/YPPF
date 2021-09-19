@@ -7,13 +7,18 @@ from django.dispatch import receiver
 from datetime import datetime, timedelta
 from boottest import local_dict
 from django.conf import settings
+from random import choice
+
+
+def current_year()-> int:
+    return int(datetime.now().strftime("%Y"))
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
 
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
-        year = int(datetime.now().strftime("%Y")) - 4
+        year = current_year() - 4
         self.activated().filter(stu_grade=str(year)).update(GraduateStatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
@@ -291,6 +296,9 @@ class Organization(models.Model):
     def get_subscriber_num(self):
         return NaturalPerson.objects.all().count() - self.unsubscribers.count()
 
+    def get_neg_unsubscriber_num(self):
+        return -self.unsubscribers.count()
+
 
 class PositionManager(models.Manager):
     def current(self):
@@ -303,6 +311,7 @@ class PositionManager(models.Manager):
         return self.current().filter(status=Position.Status.INSERVICE)
 
     def create_application(self, person, org, apply_type, apply_pos):
+        raise NotImplementedError('该函数已废弃')
         warn_duplicate_message = "There has already been an application of this state!"
         with transaction.atomic():
             if apply_type == "JOIN":
@@ -383,7 +392,7 @@ class Position(models.Model):
     show_post = models.BooleanField(default=True)
 
     # 表示是这个小组哪一年、哪个学期的成员
-    in_year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
+    in_year = models.IntegerField("当前学年", default=current_year)
     in_semester = models.CharField(
         "当前学期", choices=Semester.choices, default=Semester.ANNUAL, max_length=15
     )
@@ -432,7 +441,7 @@ class Course(models.Model):
     cid = models.OneToOneField(to=Organization, on_delete=models.CASCADE)
 
     # 课程周期
-    year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
+    year = models.IntegerField("当前学年", default=current_year)
     semester = models.CharField("当前学期", choices=Semester.choices, max_length=15)
 
     scheduler = models.CharField("上课时间", max_length=25)
@@ -574,7 +583,7 @@ class Activity(CommentBase):
         on_delete=models.CASCADE,
     )
 
-    year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
+    year = models.IntegerField("活动年份", default=current_year)
 
     semester = models.CharField(
         "活动学期",
@@ -782,6 +791,40 @@ class YQPointDistribute(models.Model):
         verbose_name = "元气值发放"
         verbose_name_plural = verbose_name
 
+class QandAManager(models.Manager):
+    def activated(self, sender_flag=False, receiver_flag=False):
+        if sender_flag:
+            return self.exclude(status__in=[QandA.Status.IGNORE_SENDER,QandA.Status.DELETE])
+        if receiver_flag:
+            return self.exclude(status__in=[QandA.Status.IGNORE_RECEIVER,QandA.Status.DELETE])
+        return self.exclude(status=QandA.Status.DELETE)
+
+class QandA(models.Model):
+    # 问答类
+    class Meta:
+        verbose_name = "问答记录"
+        verbose_name_plural = verbose_name
+    sender = models.ForeignKey(User, on_delete=models.SET_NULL,
+                             related_name="send_QA_set", blank=True, null=True)
+    receiver = models.ForeignKey(User, on_delete=models.SET_NULL,
+                             related_name="receive_QA_set", blank=True, null=True)
+    Q_time = models.DateTimeField('提问时间', auto_now_add=True)
+    A_time = models.DateTimeField('回答时间', blank=True, null=True)
+    Q_text = models.TextField('提问内容', default='', blank=True)
+    A_text = models.TextField('回答内容', default='', blank=True)
+    anonymous_flag = models.BooleanField("是否匿名", default=False)
+
+    class Status(models.IntegerChoices):
+        DONE = (0, "已回答")
+        UNDONE = (1, "待回答")
+        DELETE = (2, "已删除")
+        IGNORE_SENDER = (3, "发送者忽略")
+        IGNORE_RECEIVER = (4, "接收者忽略")
+    
+    status = models.SmallIntegerField(choices=Status.choices, default=1)
+    
+    objects = QandAManager()
+
 class NotificationManager(models.Manager):
     def activated(self):
         return self.exclude(status=Notification.Status.DELETE)
@@ -817,6 +860,7 @@ class Notification(models.Model):
         TRANSFER_FEEDBACK = "转账回执"
         NEW_ORGANIZATION = "新建小组通知"
         YQ_DISTRIBUTION = "元气值发放通知"
+        PENDING_INFORM = "事务开始通知"
 
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
@@ -828,6 +872,7 @@ class Notification(models.Model):
     URL = models.URLField("相关网址", null=True, blank=True, max_length=1024)
     bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
                                         db_index=True)
+    anonymous_flag = models.BooleanField("是否匿名", default=False)
     relate_TransferRecord = models.ForeignKey(
         TransferRecord,
         related_name="transfer_notification",
@@ -1059,8 +1104,6 @@ class Reimbursement(CommentBase):
     pos = models.ForeignKey(User, on_delete=models.CASCADE)#报销的小组
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
     record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
-    summary_image=models.ImageField(upload_to=f"activity/photo/%Y/%m/",
-                                    verbose_name="活动总结图片",null=True, blank=True)
     examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
@@ -1085,6 +1128,19 @@ class Reimbursement(CommentBase):
     def is_pending(self):   #表示是不是pending状态
             return self.status == Reimbursement.ReimburseStatus.WAITING
 
+class ReimbursementPhoto(models.Model):
+    class Meta:
+        verbose_name = "报销相关图片"
+        verbose_name_plural = verbose_name
+        ordering = ["-time"]
+    class PhotoType(models.IntegerChoices):
+        MATERIAL = (0, "报销材料")  #如账单信息等
+        SUMMARY = (1, "总结图片")   #待审核的活动总结图片
+    type = models.SmallIntegerField(choices=PhotoType.choices)
+    image = models.ImageField(upload_to=f"reimbursement/photo/%Y/%m/", verbose_name=u'报销相关图片', null=True, blank=True)
+    related_reimb = models.ForeignKey(Reimbursement, related_name="reimbphotos", on_delete=models.CASCADE)
+    time = models.DateTimeField("上传时间", auto_now_add=True)
+    
 
 class Help(models.Model):
     '''
@@ -1105,9 +1161,18 @@ class Wishes(models.Model):
         verbose_name = "心愿"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
+    
+    COLORS = [
+        "#FDAFAB","#FFDAC1","#FAF1D6",
+        "#B6E3E9","#B5EAD7","#E2F0CB",
+    ]
+    # 不要随便删 admin.py也依赖本随机函数
+    def rand_color():
+        return choice(Wishes.COLORS)
+
     text = models.TextField("心愿内容", default="", blank=True)
     time = models.DateTimeField("发布时间", auto_now_add=True)
-    background = models.TextField("颜色编码", default="")
+    background = models.TextField("颜色编码", default=rand_color)
 
 
 class ModifyRecord(models.Model):

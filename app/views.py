@@ -29,6 +29,8 @@ from app.models import (
     YQPointDistribute,
     Reimbursement,
     Wishes,
+    QandA,
+    ReimbursementPhoto
 )
 import app.utils as utils
 from app.forms import UserForm
@@ -70,6 +72,13 @@ from app.notification_utils import(
     bulk_notification_create,
     notification_status_change,
 )
+from app.QA_utils import (
+    QA2Display,
+    QA_anwser,
+    QA_create,
+    QA_delete,
+    QA_ignore,
+)
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from django.shortcuts import render, redirect
@@ -87,7 +96,7 @@ from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
-from app.utils import operation_writer
+from app.utils import operation_writer, update_related_account_in_session
 
 # 定时任务不在views直接调用
 # 但是天气任务还是在这里弄吧，太奇怪了
@@ -171,17 +180,17 @@ def index(request):
         if userinfo:
             auth.login(request, userinfo)
             request.session["username"] = username
-            if arg_origin is not None:
-                pass # 现在统一放到下面处理，这里只负责登录
-            else:
-                # 先处理初次登录
-                valid, user_type, html_display = utils.check_user_type(request.user)
-                if not valid:
-                    return redirect("/logout/")
+            valid, user_type, html_display = utils.check_user_type(request.user)
+            if not valid:
+                return redirect("/logout/")
+            if user_type == "Person":
                 me = utils.get_person_or_org(userinfo, user_type)
                 if me.first_time_login:
+                    # 不管有没有跳转，这个逻辑都应该是优先的
+                    # TODO：应该在修改密码之后做一个跳转
                     return redirect("/modpw/")
-
+                update_related_account_in_session(request, username)
+            if arg_origin is None:
                 return redirect("/welcome/")
                 """
                 valid, user_type , html_display = utils.check_user_type(request.user)
@@ -226,6 +235,27 @@ def index(request):
                 )
 
     return render(request, "index.html", locals())
+
+
+@login_required(redirect_field_name="origin")
+def shiftAccount(request):
+
+    username = request.session.get("NP")
+    if not username:
+        return redirect("/welcome/")
+
+    oname = ""
+    if request.GET and request.GET.get("oname"):
+        oname = request.GET["oname"]
+
+    # 不一定更新成功，但无所谓
+    update_related_account_in_session(request, username, shift=True, oname=oname)
+
+    if request.GET and request.GET.get("origin"):
+        return redirect(request.GET["origin"])
+    return redirect("/welcome/")
+
+
 
 
 # Return content
@@ -322,11 +352,28 @@ def stuinfo(request, name=None):
         inform_share, alert_message = utils.get_inform_share(me=person, is_myself=is_myself)
 
         # 处理更改数据库中inform_share的post
-        if request.method == "POST" and request.POST:
+        if request.POST.get("question") is not None:
+            anonymous_flag = (request.POST.get('show_name') is not None)
+            question = request.POST.get("question")
+            if len(question) == 0:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "请填写问题内容!"
+            else:
+                try:
+                    QA_create(sender=request.user,receiver=person.person_id,Q_text=str(question),anonymous_flag=anonymous_flag)
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "提问发送成功!"
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "提问发送失败!请联系管理员!"
+            return redirect(f"/stuinfo/?name={person.name}&warn_code="+str(html_display["warn_code"])+"&warn_message="+str(html_display["warn_message"]))
+        elif request.method == "POST" and request.POST:
             option = request.POST.get("option", "")
             assert option == "cancelInformShare" and html_display["is_myself"]
             person.inform_share = False
             person.save()
+            return redirect("/welcome/")
+
 
 
         # ----------------------------------- 小组卡片 ----------------------------------- #
@@ -342,7 +389,7 @@ def stuinfo(request, name=None):
                 Q(person=oneself) & Q(show_post=True)
             )
         )
-        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id") # 自己的小组
+        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("org") # 自己的小组
 
         # 管理的小组
         person_owned_poss = person_poss.filter(is_admin=True, status=Position.Status.INSERVICE)
@@ -532,6 +579,7 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         # 到这里,是本人小组并且有权限登录
         auth.logout(request)
         auth.login(request, org.organization_id)  # 切换到小组账号
+        utils.update_related_account_in_session(request, user.username, oname=org.oname)
         if org.first_time_login:
             return redirect("/modpw/")
         return redirect("/orginfo/?warn_code=2&warn_message=成功切换到"+str(org)+"的账号!")
@@ -557,6 +605,7 @@ def user_login_org(request, org):
     # 到这里,是本人小组并且有权限登录
     auth.logout(request)
     auth.login(request, org.organization_id)  # 切换到小组账号
+    utils.update_related_account_in_session(request, user.username, oname=org.oname)
     return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")
 
 
@@ -620,7 +669,24 @@ def orginfo(request, name=None):
         elif request.POST.get("option", "") == "cancelInformShare" and html_display["is_myself"]:
             me.inform_share = False
             me.save()
-            
+            return redirect("/welcome/")
+        elif request.POST.get("question") is not None:
+            anonymous_flag = (request.POST.get('show_name') is not None)
+            question = request.POST.get("question")
+            if len(question) == 0:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "请填写问题内容!"
+            else:
+                try:
+                    QA_create(sender=request.user,receiver=org.organization_id,Q_text=str(question),anonymous_flag=anonymous_flag)
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "提问发送成功!"
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "提问发送失败!请联系管理员!"
+            return redirect(f"/orginfo/{organization_name}?warn_code="+str(html_display["warn_code"])+"&warn_message="+str(html_display["warn_message"]))
+
+        
 
     # 该学年、该学期、该小组的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
@@ -841,11 +907,13 @@ def homepage(request):
     wishes = wishes[:100]
 
     # 心愿墙背景图片
-    colors = [
-        "#FDAFAB","#FFDAC1","#FAF1D6",
-        "#B6E3E9","#B5EAD7","#E2F0CB"
-    ]
-    backgroundpics = [{"src":"/static/assets/img/backgroundpics/"+str(i+1)+".png","color": colors[i] } for i in range(6)]
+    colors = Wishes.COLORS
+    backgroundpics = [
+            {
+                "src":"/static/assets/img/backgroundpics/"+str(i+1)+".png",
+                "color": color
+            } for i, color in enumerate(colors)
+        ]
 
     # 从redirect.json读取要作为引导图的图片，按照原始顺序
     guidepicdir = "static/assets/img/guidepics"
@@ -860,7 +928,7 @@ def homepage(request):
     """
     photo_display = ActivityPhoto.objects.filter(type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')[: 8 - len(guidepics)] # 第一张active不算
     for photo in photo_display:
-        if str(photo.image) and str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+        if str(photo.image) : 
             photo.image = settings.MEDIA_URL + str(photo.image)
     
     """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
@@ -936,16 +1004,24 @@ def account_setting(request):
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
-            expr = bool(attr_dict['ava'] or attr_dict['wallpaper'] or (attr_dict['gender'] != useroj.get_gender_display()))
-            expr += bool(sum(
-                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_check_list]))
-            expr += bool(sum([getattr(useroj, show_attr) != show_dict[show_attr]
-                              for show_attr in show_dict.keys()]))
+            modify_info = []
+            if attr_dict['gender'] != useroj.get_gender_display():
+                modify_info.append(f'gender: {useroj.get_gender_display()}->{attr_dict["gender"]}')
+            if attr_dict['ava']:
+                modify_info.append(f'avatar: {attr_dict["ava"]}')
+            if attr_dict['wallpaper']:
+                modify_info.append(f'wallpaper: {attr_dict["wallpaper"]}')
+            modify_info += [f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}'
+                            for attr in attr_check_list
+                            if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr])]
+            modify_info += [f'{show_attr}: {getattr(useroj, show_attr)}->{show_dict[show_attr]}'
+                            for show_attr in show_dict.keys() 
+                            if getattr(useroj, show_attr) != show_dict[show_attr]]
 
             if attr_dict['gender'] != useroj.gender:
                 useroj.gender = NaturalPerson.Gender.MALE if attr_dict['gender'] == '男' else NaturalPerson.Gender.FEMALE
             for attr in attr_check_list:
-                if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
+                if attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]:
                     setattr(useroj, attr, attr_dict[attr])
             for show_attr in show_dict.keys():
                 if getattr(useroj, show_attr) != show_dict[show_attr]:
@@ -954,10 +1030,13 @@ def account_setting(request):
                 useroj.avatar = attr_dict['ava']
             if 'wallpaper' in attr_dict.keys() and attr_dict['wallpaper'] is not None:
                 useroj.wallpaper = attr_dict['wallpaper']
+            expr = len(modify_info)
             if expr >= 1:
                 useroj.save()
                 upload_state = True
-                record_modify_with_session(request, f"修改了{expr}项信息")
+                modify_msg = '\n'.join(modify_info)
+                record_modify_with_session(request,
+                    f"修改了{expr}项信息：\n{modify_msg}")
                 return redirect("/stuinfo/?modinfo=success")
             # else: 没有更新
 
@@ -972,17 +1051,21 @@ def account_setting(request):
         if request.method == "POST" and request.POST:
 
             ava = request.FILES.get("avatar")
-            wallpaper=request.FILES.get("wallpaper")
+            wallpaper = request.FILES.get("wallpaper")
             # 合法性检查
             attr_dict, show_dict, html_display = utils.check_account_setting(request, user_type)
             attr_check_list = [attr for attr in attr_dict.keys()]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
-            expr = bool(ava)
-
-            expr += bool(sum(
-                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_check_list]))
+            modify_info = []
+            if ava:
+                modify_info.append(f'avatar: {ava}')
+            if wallpaper:
+                modify_info.append(f'wallpaper: {wallpaper}')
+            modify_info += [f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}'
+                            for attr in attr_check_list
+                            if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr])]
 
             for attr in attr_check_list:
                 if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
@@ -991,14 +1074,16 @@ def account_setting(request):
                 pass
             else:
                 useroj.avatar = ava
-            expr += bool(wallpaper)
             if wallpaper is not None:
                 useroj.wallpaper = wallpaper
             useroj.save()
             avatar_path = settings.MEDIA_URL + str(ava)
+            expr = len(modify_info)
             if expr >= 1:
                 upload_state = True
-                record_modify_with_session(request, f"修改了{expr}项信息")
+                modify_msg = '\n'.join(modify_info)
+                record_modify_with_session(request,
+                    f"修改了{expr}项信息：\n{modify_msg}")
                 return redirect("/orginfo/?modinfo=success")
             # else: 没有更新
 
@@ -1469,6 +1554,7 @@ def forget_password(request):
                     display = wrong("验证码已过期，请重新发送")
                 elif str(vertify_code).upper() == captcha.upper():
                     auth.login(request, user)
+                    utils.update_related_account_in_session(request, user.username)
                     utils.clear_captcha_session(request)
                     request.session["username"] = username
                     request.session["forgetpw"] = "yes"
@@ -2084,46 +2170,10 @@ def viewActivity(request, aid=None):
         elif option == "cancelInformShare":
             me.inform_share = False
             me.save()
+            return redirect("/welcome/")
         else:
             return redirect("/welcome")
-        """
-        elif option == "submitphoto":
-            if not (ownership and activity.status == Activity.Status.END):
-                return redirect("/welcome/")
-
-            summary_photo_exists = False
-            if activity.status == Activity.Status.END:
-                try:
-                    summary_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
-                    summary_photo_exists = True
-                except:
-                    pass
-            summaryphotos = request.FILES.getlist('images')
-            if len(summaryphotos)==0:
-                html_display['warn_code'] = 1
-                html_display['warn_message'] = "上传活动照片不能为空"
-            else:
-                photo = summaryphotos[0]
-                if utils.if_image(photo) !=2:
-                    html_display['warn_code'] = 1
-                    html_display['warn_message'] = "上传的附件只支持图片格式"
-                elif summary_photo_exists:
-                    old_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
-                    old_photo.image = photo
-                    old_photo.save()
-                    summary_photo = settings.MEDIA_URL + str(old_photo.image)
-                    html_display["warn_message"] = "成功替换活动照片"
-                    html_display["warn_code"] = 2
-                else:
-                    ActivityPhoto.objects.create(
-                        image=photo, 
-                        activity=activity, 
-                        time=datetime.now(),
-                        type = ActivityPhoto.PhotoType.SUMMARY
-                    )
-                    html_display["warn_message"] = "成功提交活动照片"
-                    html_display["warn_code"] = 2
-        """
+        
     elif request.method == "GET":
         warn_code = request.GET.get("warn_code")
         warn_msg = request.GET.get("warn_message")
@@ -2207,9 +2257,8 @@ def viewActivity(request, aid=None):
     summary_photo_exists = False
     if activity.status == Activity.Status.END:
         try:
-            summary_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
+            summary_photos = activity.photos.filter(type=ActivityPhoto.PhotoType.SUMMARY)
             summary_photo_exists = True
-            summary_photo = settings.MEDIA_URL + str(summary_photo.image)
         except Exception as e:
             pass
     
@@ -2780,17 +2829,11 @@ def subscribeOrganization(request):
 
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    org_list = list(Organization.objects.all())
-    orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
+    org_list = list(Organization.objects.all().select_related("organization_id","otype"))
+    #orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
     otype_list = list(OrganizationType.objects.all())
-    unsubscribe_list = list(
-        me.unsubscribe_list.values_list("organization_id__username", flat=True)
-    )  # 获取不订阅列表（数据库里的是不订阅列表）
-    subscribe_list = [
-        org.organization_id.username
-        for org in org_list
-        if org.organization_id.username not in unsubscribe_list
-    ]  # 获取订阅列表
+    unsubscribe_list = list(me.unsubscribe_list.values_list("organization_id__username", flat=True))
+    # 获取不订阅列表（数据库里的是不订阅列表）
 
 
 
@@ -2802,6 +2845,8 @@ def subscribeOrganization(request):
     # bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     subscribe_url = reverse("save_subscribe_status")
+
+    all_number = NaturalPerson.objects.activated().all().count()    # 人数全体 优化查询
     return render(request, "organization_subscribe.html", locals())
 
 
@@ -2973,15 +3018,17 @@ def notification2Display(notification_set):
         note_display["URL"] = notification.URL
         note_display["type"] = notification.get_typename_display()
         note_display["title"] = notification.get_title_display()
+
+
         _, user_type, _ = utils.check_user_type(notification.sender)
         if user_type == "Organization":
             note_display["sender"] = sender_orgs.get(
                 notification.sender_id
-            )
+            ) if not notification.anonymous_flag else "匿名者"
         else:
             note_display["sender"] = sender_persons.get(
                 notification.sender_id
-            )
+            ) if not notification.anonymous_flag else "匿名者"
         lis.append(note_display)
     return lis
 
@@ -3113,13 +3160,14 @@ def addComment(request, comment_base, receiver=None):
             context["warn_code"] = 1
             context["warn_message"] = "评论失败，请联系管理员。"
             return context
-
+            
+        if len(text) >= 32:
+            text = text[:31] + "……"
         if len(text) > 0:
             content[typename] += f':{text}'
         else:
             content[typename] += "。"
-        if len(text) >= 32:
-            text = text[:31] + "……"
+        
        
         if user_type == "Organization":
             URL["activity"] = f"/examineActivity/{comment_base.id}"
@@ -3399,6 +3447,8 @@ def modifyPosition(request):
             apply_type_list[application.apply_type]['disabled'] = False
             if not application.apply_type == ModifyPosition.ApplyType.WITHDRAW:
                 position_name_list[application.pos]["disabled"] = False
+    else:
+        position_name_list[-1]['selected'] = True   # 默认选中pos最低的！
 
     
 
@@ -3422,7 +3472,8 @@ def showPosition(request):
             "undone": ModifyPosition.objects.filter(person=me, status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
             "done": ModifyPosition.objects.filter(person=me).exclude(status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time')
         }
-        all_org = Organization.objects.activated().exclude(id__in = all_instances["undone"].values_list("org_id",flat=True))
+        all_org = Organization.objects.activated().exclude(
+            id__in = all_instances["undone"].values_list("org_id",flat=True))
     else:
         all_instances = {
             "undone": ModifyPosition.objects.filter(org=me,status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
@@ -3756,9 +3807,12 @@ def modifyEndActivity(request):
         warn_code = context["warn_code"]
         warn_message = context["warn_message"]
 
-
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
-        append = f"?reimb_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
+        if application is None:
+            append = f"warn_code={warn_code}&warn_message={warn_message}"
+        else:
+            append = f"?reimb_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
+        
         return redirect("/modifyEndActivity/" + append)
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
@@ -3786,6 +3840,10 @@ def modifyEndActivity(request):
 
     # 未报销活动
     activities = utils.get_unreimb_activity(apply_person)
+
+    #活动总结图片
+    summary_photos=application.reimbphotos.filter(type=ReimbursementPhoto.PhotoType.SUMMARY) if application is not None else None
+    summary_photo_len=len(summary_photos) if summary_photos is not None else 0
     #元培学院
     our_college=Organization.objects.get(oname="元培学院") if allow_audit_submit else None
     #审核老师
@@ -3950,7 +4008,10 @@ def modifyOrganization(request):
         warn_code, warn_message = context["warn_code"], context["warn_message"]
 
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
-        append = f"?org_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
+        if application is None:
+            append = f"warn_code={warn_code}&warn_message={warn_message}"
+        else:
+            append = f"?org_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
         return redirect("/modifyOrganization/" + append)
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
@@ -4136,3 +4197,55 @@ def send_message_check(me, request):
         return wrong("发送微信的过程出现错误！请联系管理员！")
     
     return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了!")
+
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+def QAcenter(request):
+    """
+    Haowei:
+    QA的聚合界面
+    """
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    me = utils.get_person_or_org(request.user, user_type)
+
+    if request.method == "POST":
+        if request.POST.get("anwser") is not None:
+            anwser = request.POST.get("anwser")
+            if len(anwser) == 0:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "请填写回答再提交！"
+            else:
+                QA_anwser(request.POST.get("id"), anwser)
+                html_display["warn_code"] = 2
+                html_display["warn_message"] = "成功提交该问题的回答！"
+        else:
+            post_args = json.loads(request.body.decode("utf-8"))
+            if 'cancel' in post_args['function']:
+                try:
+                    QA_delete(int(post_args['id']))
+                    html_display['warn_code'] = 2
+                    html_display['warn_message'] = "成功删除一条提问！"
+                    return JsonResponse({"success":True})
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
+                    return JsonResponse({"success":False})
+            else:
+                try:
+                    QA_ignore(int(post_args['id']), \
+                        sender_flag=(post_args['function'] == 'sender')
+                        )
+                    html_display['warn_code'] = 2
+                    html_display['warn_message'] = "成功忽略一条提问！"
+                    return JsonResponse({"success":True})
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
+                    return JsonResponse({"success":False})
+        
+
+    all_instances = QA2Display(request.user)
+
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="问答中心")
+    return render(request, "QandA_center.html", locals())

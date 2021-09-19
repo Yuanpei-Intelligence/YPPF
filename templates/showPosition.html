@@ -34,9 +34,9 @@
                                 <button type="button"
                                     class="btn btn-info mb-4 mr-2 dropdown-toggle dropdown-toggle-split"
                                     data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
-                                    新建申请
+                                    {{new_btn_name}}
                                 </button>
-                                <div class="dropdown-menu" style=" overflow: scroll;height:800%;">
+                                <div class="dropdown-menu" style="max-width: 300%; max-height: 500%; overflow: scroll;">
                                     {% for org in all_org %}
                                     <button class="dropdown-item"
                                     onclick="location.href = '/modifyPosition/?org_name={{org.oname}}';" 
