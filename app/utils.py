@@ -128,7 +128,12 @@ def get_person_or_org(user, user_type=None):
 # 同步开启一个html_display，方便拓展前端逻辑的呈现
 def check_user_type(user):
     html_display = {}
-    if user.is_superuser:
+    if user.is_superuser or user.is_staff:
+        if user.is_staff:
+            for user_type in ["Organization", "Person"]:
+                if hasattr(user, user_type.lower()):
+                    html_display["user_type"] = user_type
+                    return True, user_type, html_display
         return False, "", html_display
     if user.username[:2] == "zz":
         user_type = "Organization"
