@@ -80,11 +80,11 @@ except:
 SEND_LIMIT = 500  # 上限1000
 SEND_BATCH = 500
 try:
-    SEND_LIMIT = min(1000, int(local_dict["threholds"]["wechat_send_number"]))
+    SEND_LIMIT = min(1000, int(local_dict["thresholds"]["wechat_send_number"]))
 except:
     pass
 try:
-    SEND_BATCH = min(1000, int(local_dict["threholds"]["wechat_send_batch"]))
+    SEND_BATCH = min(1000, int(local_dict["thresholds"]["wechat_send_batch"]))
 except:
     pass
 
