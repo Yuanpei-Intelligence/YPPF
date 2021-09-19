@@ -183,7 +183,7 @@ def index(request):
         userinfo = auth.authenticate(username=username, password=password)
         if userinfo:
             auth.login(request, userinfo)
-            request.session["username"] = username
+            # request.session["username"] = username 已废弃
             valid, user_type, html_display = utils.check_user_type(request.user)
             if not valid:
                 return redirect("/logout/")
@@ -223,7 +223,7 @@ def index(request):
                 return redirect(arg_origin)  # 不需要加密验证
 
             timeStamp = str(int(datetime.utcnow().timestamp())) # UTC 统一服务器
-            username = request.session["username"]
+            username = request.user.username    # session["username"] 已废弃
             en_pw = hash_coder.encode(username + timeStamp)
             try:
                 userinfo = NaturalPerson.objects.get(person_id__username=username)
@@ -257,7 +257,10 @@ def shiftAccount(request):
     update_related_account_in_session(request, username, shift=True, oname=oname)
 
     if request.method == "GET" and request.GET.get("origin"):
-        return redirect(request.GET["origin"])
+        arg_url = request.GET["origin"]
+        if url_check(arg_url) and check_cross_site(request, arg_url) :
+            if not arg_url.startswith('http'): # 暂时只允许内部链接
+                return redirect(arg_url)
     return redirect("/welcome/")
 
 
@@ -284,8 +287,8 @@ def miniLogin(request):
 
             auth.login(request, userinfo)
 
-            request.session["username"] = username
-            en_pw = hash_coder.encode(request.session["username"])
+            # request.session["username"] = username 已废弃
+            en_pw = hash_coder.encode(username)
             user_account = NaturalPerson.objects.get(person_id=username)
             return JsonResponse({"Sname": user_account.name, "Succeed": 1}, status=200)
         else:
@@ -1572,7 +1575,7 @@ def forget_password(request):
                     auth.login(request, user)
                     utils.update_related_account_in_session(request, user.username)
                     utils.clear_captcha_session(request)
-                    request.session["username"] = username
+                    # request.session["username"] = username 已废弃
                     request.session["forgetpw"] = "yes"
                     return redirect(reverse("modpw"))
                 else:
