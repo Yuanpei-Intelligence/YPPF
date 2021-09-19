@@ -340,13 +340,39 @@ def changeActivityStatus(aid, cur_status, to_status):
             # 结束，计算积分    
             else:
                 hours = (activity.end - activity.start).seconds / 3600
-                if '选课' in activity.title or hours > 12:
-                    activity.save()
-                    return
-                hours = min(6.0, hours)
-                participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.ATTENDED)
-                NaturalPerson.objects.filter(id__in=participants.values_list('person_id', flat=True)).update(
-                    bonusPoint=F('bonusPoint') + hours)
+                record_point = True
+                
+                # 活动记录积分的最长持续时间，超过后不记录积分，默认24h
+                try: invalid_hour = float(local_dict["thresholds"]["activity_point_invalid_hour"])
+                except: invalid_hour = 24.0
+                if hours > invalid_hour:
+                    record_point = False
+                # 以标题筛选不记录积分的活动，包含筛选词时不记录积分
+                try:
+                    invalid_letters = local_dict["thresholds"]["activity_point_invalid_titles"]
+                    assert isinstance(invalid_letters, list)
+                    for invalid_letter in invalid_letters:
+                        if invalid_letter in activity.title:
+                            record_point = False
+                            break
+                except:
+                    pass
+                
+                if record_point:
+                    # 每小时获取的积分，默认1
+                    try: point_rate = float(local_dict["thresholds"]["activity_point_per_hour"])
+                    except: point_rate = 1.0
+                    point = point_rate * hours
+                    # 单次活动记录的积分上限，默认6
+                    try: max_point = float(local_dict["thresholds"]["activity_point"])
+                    except: max_point = 6.0
+                    point = min(point, max_point)
+
+                    participants = Participant.objects.filter(
+                        activity_id=aid, status=Participant.AttendStatus.ATTENDED)
+                    NaturalPerson.objects.filter(id__in=participants.values_list(
+                        'person_id', flat=True)).update(
+                        bonusPoint=F('bonusPoint') + point)
 
             activity.save()
 
