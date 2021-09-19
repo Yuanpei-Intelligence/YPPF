@@ -120,7 +120,7 @@ def update_pos_application(application, me, user_type, applied_org, info):
                         return wrong("向该小组的申请已存在，请不要重复申请！")
                     # 至此可以新建申请, 创建一个空申请
                     application = ModifyPosition.objects.create(
-                        typename="ModifyPosition", pos=apply_pos, person=me, org=applied_org, apply_type=apply_type, reason=apply_reason)
+                        pos=apply_pos, person=me, org=applied_org, apply_type=apply_type, reason=apply_reason)
                     context = succeed("成功发起向" + applied_org.oname + "的申请!")
                     context["application_id"] = application.id
                     return context
