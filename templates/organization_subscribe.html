@@ -119,8 +119,8 @@
                                                 <tr>
                                                     <td>
                                                         <u><a href="/orginfo/?name={{org.oname}}"><img src="{{org.get_user_ava}}" width="18px" height="18px" style="margin-top: -2px; margin-right: 5px; border-radius: 9px;"><span>{{org.oname}}</span></a></u>
-                                                        {% with org.get_neg_unsubscriber_num as subscribers %}
-                                                        [<span class="num_sub">{{ all_number|add:subscribers }}</span>关注]
+                                                        {% with org.get_subscriber_num as subscribers %}
+                                                        [<span class="num_sub">{{ subscribers }}</span>关注]
                                                         {% endwith %}
                                                     </td>
                                                     <!--<td>
