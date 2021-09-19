@@ -2874,7 +2874,7 @@ def subscribeOrganization(request):
 
     subscribe_url = reverse("save_subscribe_status")
 
-    all_number = NaturalPerson.objects.activated().all().count()    # 人数全体 优化查询
+    # all_number = NaturalPerson.objects.activated().all().count()    # 人数全体 优化查询
     return render(request, "organization_subscribe.html", locals())
 
 
