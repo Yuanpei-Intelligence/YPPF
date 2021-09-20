@@ -15,7 +15,6 @@ from app.models import (
     QandA,
 )
 from django.contrib.auth.models import User
-from django.dispatch.dispatcher import receiver
 from django.contrib import auth
 from django.shortcuts import redirect
 from django.conf import settings
@@ -23,6 +22,8 @@ from django.http import HttpResponse
 from boottest import local_dict
 from datetime import datetime, timedelta
 from functools import wraps
+# 类型信息提示
+from typing import Union
 import re
 import imghdr
 import string
@@ -639,18 +640,39 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
     Wishes.objects.create(text=f"{org.otype.otype_name}“{org.oname}”刚刚成立啦！快点去关注一下吧！")
 
 # 在错误的情况下返回的字典,message为错误信息
-def wrong(message="检测到恶意的申请操作. 如有疑惑，请联系管理员!"):
-    context = dict()
+def wrong(message="检测到恶意的操作. 如有疑惑，请联系管理员!", context=None):
+    if context is None:
+        context = dict()
     context["warn_code"] = 1
     context["warn_message"] = message
     return context
 
 
-def succeed(message="检测到恶意的申请操作. 如有疑惑，请联系管理员!"):
-    context = dict()
+def succeed(message="检测到恶意的操作. 如有疑惑，请联系管理员!", context=None):
+    if context is None:
+        context = dict()
     context["warn_code"] = 2
     context["warn_message"] = message
     return context
+
+
+def message_url(context: Union[dict, list], url: str="/welcome/")-> str:
+    '''
+    提供要发送的信息体和原始URL，返回带提示信息的URL
+    - context: 包含`warn_code`和`warn_message`的字典或者二元数组
+    - url: str, 可以包含GET参数
+    '''
+    max
+    concat = '&' if '?' in url else '?'
+    try:
+        warn_code, warn_message = context["warn_code"], context["warn_message"]
+    except:
+        # 即使报错，也可能是因为其中一项不存在，排除对len有影响的dict和str
+        if not isinstance(context, (str, dict)) and len(context) == 2:
+            warn_code, warn_message = context
+    # 如果不是以上的情况(即合法的字典或二元数组), 就报错吧, 别静默发生错误
+    append_msg = f'warn_code={warn_code}&warn_message={warn_message}'
+    return url + concat + append_msg
 
 
 # 修改成员申请状态的操作函数, application为修改的对象，可以为None

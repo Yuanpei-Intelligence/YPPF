@@ -8,8 +8,6 @@ import io
 import csv
 import os
 
-from django.dispatch.dispatcher import NO_RECEIVERS, receiver
-from django.template.defaulttags import register
 from app.models import (
     NaturalPerson,
     Freshman,
@@ -41,6 +39,7 @@ from app.utils import (
     update_org_application, 
     wrong, 
     succeed,
+    message_url,
     escape_for_templates,
     record_modify_with_session,
 )
@@ -88,8 +87,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import transaction
-from django.db.models import Q
-from django.db.models import F
+from django.db.models import Q, F
 from django.conf import settings
 from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
@@ -110,13 +108,7 @@ email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
 YQPoint_oname = local_dict["YQPoint_source_oname"]
 
-EXCEPT_REDIRECT = HttpResponseRedirect(
-    '/welcome/?warn_code=1&warn_message=出现意料之外的错误, 请联系管理员!')
-
-
-@register.filter
-def get_item(dictionary, key):
-    return dictionary.get(key)
+EXCEPT_REDIRECT = HttpResponseRedirect(message_url(wrong('出现意料之外的错误, 请联系管理员!')))
 
 
 @utils.except_captured(source='views[index]', record_user=True)
@@ -247,7 +239,7 @@ def shiftAccount(request):
 
     username = request.session.get("NP")
     if not username:
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('没有可切换的账户信息，请重新登录!')))
 
     oname = ""
     if request.method == "GET" and request.GET.get("oname"):
@@ -326,7 +318,7 @@ def stuinfo(request, name=None):
         name = request.GET.get('name', None)
     if name is None:
         if user_type == "Organization":
-            return redirect("/welcome/")  # 小组只能指定学生姓名访问
+            return redirect("/orginfo/")  # 小组只能指定学生姓名访问
         else:  # 跳轉到自己的頁面
             assert user_type == "Person"
             full_path = request.get_full_path()
@@ -339,7 +331,7 @@ def stuinfo(request, name=None):
         name = name_list[0]
         person = NaturalPerson.objects.activated().filter(name=name)
         if len(person) == 0:  # 查无此人
-            return redirect("/welcome/")
+            return redirect(message_url(wrong('用户不存在!')))
         if len(person) == 1:  # 无重名
             person = person[0]
         else:  # 有很多人，这时候假设加号后面的是user的id
@@ -518,7 +510,7 @@ def stuinfo(request, name=None):
                 request.GET.get("warn_code", 0)
             )  # 是否有来自外部的消息
         except:
-            return redirect("/welcome/")
+            return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
         html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
 
         modpw_status = request.GET.get("modinfo", None)
@@ -531,7 +523,8 @@ def stuinfo(request, name=None):
 
         context["person"] = person
 
-        context["title"] = "我" if is_myself else ["他", "她"][person.gender] if person.show_gender else "Ta"
+        context["title"] = "我" if is_myself else (
+            {0: "他", 1: "她"}.get(person.gender, 'Ta') if person.show_gender else "Ta")
 
         context["avatar_path"] = person.get_user_ava()
         context["wallpaper_path"] = utils.get_user_wallpaper(person, "Person")
@@ -546,8 +539,10 @@ def stuinfo(request, name=None):
             load_alert_message = request.session.pop('alert_message')
         
         # 浏览次数，必须在render之前
-        person.visit_times+=1
-        person.save()
+        # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据
+        NaturalPerson.objects.filter(id=person.id).update(visit_times=F('visit_times')+1)
+        # person.visit_times+=1
+        # person.save()
         return render(request, "stuinfo.html", locals())
 
 
@@ -568,11 +563,11 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
     try:
         me = NaturalPerson.objects.activated().get(person_id=user)
     except:  # 找不到合法的用户
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('用户不存在!')))
     if name is None:  # 个人登录未指定登入小组,属于不合法行为,弹回欢迎
         name = request.GET.get('name', None)
     if name is None:  # 个人登录未指定登入小组,属于不合法行为,弹回欢迎
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('无效的小组信息!')))
     else:  # 确认有无这个小组
         try:
             org = Organization.objects.get(oname=name)
@@ -644,11 +639,11 @@ def orginfo(request, name=None):
 
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if user_type == "Person":
-            return redirect("/welcome/")
+            return redirect(message_url(wrong('个人账号不能登陆小组主页!')))
         try:
             org = Organization.objects.activated().get(organization_id=user)
         except:
-            return redirect("/welcome/")
+            return redirect(message_url(wrong('用户小组不存在或已经失效!')))
 
         full_path = request.get_full_path()
         append_url = "" if ("?" not in full_path) else "&" + full_path.split("?")[1]
@@ -662,7 +657,7 @@ def orginfo(request, name=None):
         org = Organization.objects.activated().get(oname=name)
 
     except:
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('该小组不存在!')))
 
     # 判断是否为小组账户本身在登录
     html_display["is_myself"] = me == org
@@ -680,8 +675,8 @@ def orginfo(request, name=None):
             html_display["warn_message"] = "下载成功!"
             return utils.export_orgpos_info(org)
         elif request.POST.get("option", "") == "cancelInformShare" and html_display["is_myself"]:
-            me.inform_share = False
-            me.save()
+            org.inform_share = False
+            org.save()
             return redirect("/welcome/")
         elif request.POST.get("question") is not None:
             anonymous_flag = (request.POST.get('show_name') is not None)
@@ -689,6 +684,9 @@ def orginfo(request, name=None):
             if len(question) == 0:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = "请填写问题内容!"
+            elif html_display['is_myself']:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "不能向自己提问!"
             else:
                 try:
                     QA_create(sender=request.user,receiver=org.organization_id,Q_text=str(question),anonymous_flag=anonymous_flag)
@@ -697,7 +695,7 @@ def orginfo(request, name=None):
                 except:
                     html_display["warn_code"] = 1
                     html_display["warn_message"] = "提问发送失败!请联系管理员!"
-            return redirect(f"/orginfo/?name={organization_name}&warn_code="+str(html_display["warn_code"])+"&warn_message="+str(html_display["warn_message"]))
+            return redirect(message_url(html_display, f"/orginfo/?name={organization_name}"))
 
         
 
@@ -786,7 +784,7 @@ def orginfo(request, name=None):
         html_display["warn_code"] = int(
             request.GET.get("warn_code", 0))  # 是否有来自外部的消息
     except:
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
     html_display["warn_message"] = request.GET.get(
         "warn_message", "")  # 提醒的具体内容
 
@@ -833,8 +831,10 @@ def orginfo(request, name=None):
         load_alert_message = request.session.pop('alert_message')
     
     # 浏览次数，必须在render之前
-    org.visit_times+=1
-    org.save()
+    # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据
+    Organization.objects.filter(id=org.id).update(visit_times=F('visit_times')+1)
+    # org.visit_times+=1
+    # org.save()
     return render(request, "orginfo.html", locals())
 
 
@@ -857,7 +857,7 @@ def homepage(request):
         html_display["warn_code"] = int(
             request.GET.get("warn_code", 0))  # 是否有来自外部的消息
     except:
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
     html_display["warn_message"] = request.GET.get(
         "warn_message", "")  # 提醒的具体内容
 
@@ -1108,7 +1108,7 @@ def account_setting(request):
 @utils.except_captured(source='views[freshman]', record_user=True)
 def freshman(request):
     if request.user.is_authenticated:
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('你已经登录，无需进行注册!')))
 
     if request.GET.get("success") is not None:
         alert = request.GET.get("alert")
@@ -1347,7 +1347,7 @@ def search(request):
 
     query = request.GET.get("Query", "")
     if query == "":
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('请填写有效的搜索信息!')))
 
     not_found_message = "找不到符合搜索的信息或相关内容未公开！"
     # 首先搜索个人, 允许搜索姓名或者公开的专业, 删去小名搜索
@@ -1738,7 +1738,7 @@ def transaction_page(request, rid=None):
             assert amount > 0
             assert int(amount * 10) == amount * 10
         except:
-            return redirect("/welcome/")
+            return redirect(message_url(wrong('非法的转账数量!')))
 
         # 到这里, 参数的合法性检查完成了, 接下来应该是检查发起人的账户, 够钱就转
         try:
@@ -2121,9 +2121,8 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
-                print("GOTCHA")
             except:
-                redirect("/welcome/")
+                return EXCEPT_REDIRECT
 
         elif option == "edit":
             if (
@@ -2155,7 +2154,7 @@ def viewActivity(request, aid=None):
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
             except:
-                redirect('/welcome/')
+                return EXCEPT_REDIRECT
 
 
         elif option == "quit":
@@ -2177,7 +2176,7 @@ def viewActivity(request, aid=None):
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
             except:
-                return redirect('/welcome/')
+                return EXCEPT_REDIRECT
 
         elif option == "payment":
             try:
@@ -2190,21 +2189,21 @@ def viewActivity(request, aid=None):
                 return redirect("/modifyEndActivity/")
         elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
             if not ownership:
-                return redirect("/welcome/")
+                return redirect(message_url(wrong('没有下载权限!')))
             return utils.export_activity(activity,option)
         elif option == "cancelInformShare":
             me.inform_share = False
             me.save()
             return redirect("/welcome/")
         else:
-            return redirect("/welcome")
+            return redirect(message_url(wrong('无效的请求!')))
         
     elif request.method == "GET":
         warn_code = request.GET.get("warn_code")
         warn_msg = request.GET.get("warn_message")
         if warn_code and warn_msg:
             if warn_code != "1" and warn_code != "2":
-                return redirect("/welcome/")
+                return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
             html_display["warn_code"] = int(warn_code)
             html_display["warn_message"] = warn_msg
 
@@ -2302,8 +2301,10 @@ def viewActivity(request, aid=None):
     # bar_display["navbar_name"] = "活动信息"
 
     # 浏览次数，必须在render之前
-    activity.visit_times+=1
-    activity.save()
+    # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据
+    Activity.objects.filter(id=activity.id).update(visit_times=F('visit_times')+1)
+    # activity.visit_times+=1
+    # activity.save()
     return render(request, "activity_info.html", locals())
 
 
@@ -2442,7 +2443,7 @@ def checkinActivity(request, aid=None):
         varifier = request.GET["auth"]
         assert varifier == hash_coder.encode(aid)
     except:
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('签到失败!')))
 
     warn_code = 1
     if activity.status == Activity.Status.END:
@@ -2587,8 +2588,7 @@ def addActivity(request, aid=None):
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
-        print(e)
-        return redirect("/welcome/")
+        return EXCEPT_REDIRECT
 
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
@@ -2602,8 +2602,7 @@ def addActivity(request, aid=None):
             except ActivityException as e:
                 return redirect(str(e))
             except Exception as e:
-                print(e)
-                return redirect("/welcome/")
+                return EXCEPT_REDIRECT
 
         # 仅这几个阶段可以修改
         if (
@@ -2611,7 +2610,7 @@ def addActivity(request, aid=None):
                 activity.status != Activity.Status.APPLYING and 
                 activity.status != Activity.Status.WAITING
         ):
-            return redirect("/welcome/")
+            return redirect(message_url(wrong('当前活动状态不允许修改!')))
 
         # 处理 comment
         if request.POST.get("comment_submit"):
@@ -2626,8 +2625,7 @@ def addActivity(request, aid=None):
                 html_display["warn_code"] = 2
                 # return redirect(f"/editActivity/{aid}")
             except Exception as e:
-                print(e)
-                return redirect("/welcome/")
+                return EXCEPT_REDIRECT
         else:
             try:
                 # 只能修改自己的活动
@@ -2677,8 +2675,7 @@ def addActivity(request, aid=None):
                 # 不是三个可以评论的状态
                 commentable = front_check = False
         except Exception as e:
-            print(e)
-            return redirect("/welcome/")
+            return EXCEPT_REDIRECT
 
         # 决定状态的变量
         # None/edit/examine ( 小组申请活动/小组编辑/老师审查 )
@@ -2754,8 +2751,10 @@ def examineActivity(request, aid):
                 activity.status != Activity.Status.REVIEWING and
                 activity.status != Activity.Status.APPLYING and
                 activity.status != Activity.Status.WAITING
-        ) or activity.valid:
-            return redirect("/welcome/")
+        ):
+            return redirect(message_url(wrong('当前活动状态不可审核!')))
+        if activity.valid:
+            return redirect(message_url(succeed('活动已审核!')))
 
 
         if request.POST.get("comment_submit"):
@@ -2766,8 +2765,7 @@ def examineActivity(request, aid):
                 html_display["warn_msg"] = "评论成功。"
                 html_display["warn_code"] = 2
             except Exception as e:
-                # print(e)
-                return redirect("/welcome/")
+                return EXCEPT_REDIRECT
 
         elif request.POST.get("review_accepted"):
             try:
@@ -2779,8 +2777,7 @@ def examineActivity(request, aid):
                 html_display["warn_msg"] = "活动已通过审核。"
                 html_display["warn_code"] = 2
             except Exception as e:
-                # print(e)
-                return redirect("/welcome/")
+                return EXCEPT_REDIRECT
         else:
             try:
                 with transaction.atomic():
@@ -2791,8 +2788,7 @@ def examineActivity(request, aid):
                 html_display["warn_msg"] = "活动已被拒绝。"
                 html_display["warn_code"] = 2
             except Exception as e:
-                # print(e)
-                return redirect("/welcome/")
+                return EXCEPT_REDIRECT
 
 
     # 状态量，无可编辑量
