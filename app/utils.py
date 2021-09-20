@@ -640,15 +640,17 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
     Wishes.objects.create(text=f"{org.otype.otype_name}“{org.oname}”刚刚成立啦！快点去关注一下吧！")
 
 # 在错误的情况下返回的字典,message为错误信息
-def wrong(message="检测到恶意的操作. 如有疑惑，请联系管理员!"):
-    context = dict()
+def wrong(message="检测到恶意的操作. 如有疑惑，请联系管理员!", context=None):
+    if context is None:
+        context = dict()
     context["warn_code"] = 1
     context["warn_message"] = message
     return context
 
 
-def succeed(message="检测到恶意的操作. 如有疑惑，请联系管理员!"):
-    context = dict()
+def succeed(message="检测到恶意的操作. 如有疑惑，请联系管理员!", context=None):
+    if context is None:
+        context = dict()
     context["warn_code"] = 2
     context["warn_message"] = message
     return context
