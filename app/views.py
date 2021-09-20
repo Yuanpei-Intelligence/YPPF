@@ -672,8 +672,8 @@ def orginfo(request, name=None):
             html_display["warn_message"] = "下载成功!"
             return utils.export_orgpos_info(org)
         elif request.POST.get("option", "") == "cancelInformShare" and html_display["is_myself"]:
-            me.inform_share = False
-            me.save()
+            org.inform_share = False
+            org.save()
             return redirect("/welcome/")
         elif request.POST.get("question") is not None:
             anonymous_flag = (request.POST.get('show_name') is not None)
@@ -681,6 +681,9 @@ def orginfo(request, name=None):
             if len(question) == 0:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = "请填写问题内容!"
+            elif html_display['is_myself']:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "不能向自己提问!"
             else:
                 try:
                     QA_create(sender=request.user,receiver=org.organization_id,Q_text=str(question),anonymous_flag=anonymous_flag)
