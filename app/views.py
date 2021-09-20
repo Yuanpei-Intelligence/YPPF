@@ -8,8 +8,6 @@ import io
 import csv
 import os
 
-from django.dispatch.dispatcher import NO_RECEIVERS, receiver
-from django.template.defaulttags import register
 from app.models import (
     NaturalPerson,
     Freshman,
@@ -41,6 +39,7 @@ from app.utils import (
     update_org_application, 
     wrong, 
     succeed,
+    message_url,
     escape_for_templates,
     record_modify_with_session,
 )
@@ -88,8 +87,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import transaction
-from django.db.models import Q
-from django.db.models import F
+from django.db.models import Q, F
 from django.conf import settings
 from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
@@ -110,13 +108,7 @@ email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
 YQPoint_oname = local_dict["YQPoint_source_oname"]
 
-EXCEPT_REDIRECT = HttpResponseRedirect(
-    '/welcome/?warn_code=1&warn_message=出现意料之外的错误, 请联系管理员!')
-
-
-@register.filter
-def get_item(dictionary, key):
-    return dictionary.get(key)
+EXCEPT_REDIRECT = HttpResponseRedirect(message_url(wrong('出现意料之外的错误, 请联系管理员!')))
 
 
 @utils.except_captured(source='views[index]', record_user=True)

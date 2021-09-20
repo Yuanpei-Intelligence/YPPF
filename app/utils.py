@@ -15,7 +15,6 @@ from app.models import (
     QandA,
 )
 from django.contrib.auth.models import User
-from django.dispatch.dispatcher import receiver
 from django.contrib import auth
 from django.shortcuts import redirect
 from django.conf import settings
