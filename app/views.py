@@ -697,7 +697,7 @@ def orginfo(request, name=None):
                 except:
                     html_display["warn_code"] = 1
                     html_display["warn_message"] = "提问发送失败!请联系管理员!"
-            return redirect(f"/orginfo/{organization_name}?warn_code="+str(html_display["warn_code"])+"&warn_message="+str(html_display["warn_message"]))
+            return redirect(f"/orginfo/?name={organization_name}&warn_code="+str(html_display["warn_code"])+"&warn_message="+str(html_display["warn_message"]))
 
         
 
