@@ -71,25 +71,18 @@
                             <img src={{ context.avatar_path }} height="90px" width="90px" alt="avatar">
                             <p class="">
                                 {% if person.show_gender == False %}
-                                <span style="color: #0e1726;">{{ context.person.name }}</span>
-                                    {% if context.title == "我" %}
-                                    <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="" data-original-title="性别未公开"><i class=
-                                        {% if person.gender == 0 %}
-                                        "fa fa-mars"
-                                        {% else %}
-                                        "fa fa-venus"
-                                        {% endif %}
-                                    style="color: gray;"></i></a>
-                                    {% endif %}
+                                <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="" data-original-title="性别未公开">
+                                    <span style="color: #0e1726;">{{ context.person.name }}</span>
+                                </a>
                                 {% else %}
 
                                 {% if person.gender == 0 %}
-                                <span style="color: #1b55e2;">
+                                <span style="color: #4064bf;">
                                     {{ context.person.name }}
                                     <i class="fa fa-mars"></i>
                                 </span>
                                 {% else %}
-                                <span style="color: #e83e8c;">
+                                <span style="color: #c95e90;">
                                     {{ context.person.name }}
                                     <i class="fa fa-venus"></i>
                                 </span>
