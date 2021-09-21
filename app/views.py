@@ -2649,6 +2649,7 @@ def addActivity(request, aid=None):
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava() 
 
+    use_template = False
     if request.method == "GET" and request.GET.get("template"):
         use_template = True
         activity = Activity.objects.get(id=int(request.GET["template"]))
