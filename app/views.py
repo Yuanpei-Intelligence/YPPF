@@ -485,7 +485,7 @@ def stuinfo(request, name=None):
             ~Q(status=Activity.Status.CANCELED),
         )
         if user_type == "Person":
-            activities_me = Participant.objects.filter(person_id=person.id).values(
+            activities_me = Participant.objects.filter(person_id=oneself.id).values(
                 "activity_id"
             )
             activity_is_same = [
