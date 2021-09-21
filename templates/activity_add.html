@@ -342,7 +342,7 @@
                                             <div class="form-group">
                                                 <label for="aintro">
                                                     报名截止于
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="在短期内将要开展的活动可以将报名截止时间设定的晚一些，如活动开始前1小时在报名开始后；可以修改截止时间来延长报名">
+                                                        <a data-toggle="tooltip" data-placement="bottom" title="在短期内将要开展的活动可以将报名截止时间设定的晚一些，如活动开始前1小时在报名开始后；如果报名人员会经历变动，可以设为1/3天，然后根据情况延长至1小时(系统会重新开放报名)。可以修改截止时间来延长报名">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -688,6 +688,47 @@
 </script>
 
 
+{% if use_template %}
+<script type="text/javascript">
+    document.getElementById("title").value = "{{title | safe}}";
+    document.getElementById("location").value = "{{location | safe}}";
+    document.getElementById("budget").value = "{{budget}}";   
+    document.getElementById("examine_teacher").value="{{examine_teacher}}";
+    {% if activity.recorded %}
+    document.getElementById("recorded").checked = true;
+    document.getElementById("yq_source").innerHTML = "向学生收取";
+    document.getElementById("college").style.display = "none";
+    document.getElementById("from_college").value = "0";
+    document.getElementById("reason_block").style.display = "none";
+    document.getElementById("apply_reason").required = "";
+    document.getElementById("aprice").placeholder = "参与活动元气值价格";
+    {% endif %}
+    document.getElementById("pricebutton").innerHTML = "&nbsp;&nbsp;{{signscheme}}&nbsp;&nbsp;";
+    document.getElementById("yq_source").innerHTML = "{{yq_source}}";
+    document.getElementById("aprice").value = "{{amount}}";
+    {% if no_limit %}
+    document.getElementById("unlimited_capacity").checked = true;
+    document.getElementById("maxpeople").disabled = true;
+    {% else %}
+    document.getElementById("maxpeople").value = "{{capacity}}";
+    {% endif %}
+    {% if need_checkin %}
+    document.getElementById("need_checkin").checked = true;
+    {% endif %}
+    {% if inner %}
+    document.getElementById("inner").checked = true;
+    {% endif %}  
+    document.getElementById("aintro").value = "{{introduction | safe}}";
+    {% if yq_source == "向学院申请" %}
+    document.getElementById("apply_reason").value = "{{apply_reason | safe}}";
+    document.getElementById("reason_block").style.display = "";
+    {% endif %}
+    document.getElementById("inputState").value = {{endbefore}};
+    document.getElementById("URL").placeholder = "{{url | safe}}";
+</script>
+
+{% endif %}
+
 <!-- 请求为 edit 或 examine 时执行的脚本， -->
 {% if edit or examine %}
 <script type="text/javascript">
@@ -981,6 +1022,16 @@
             document.getElementById("warn_msg").innerHTML = "仅支持上传一张图片。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
+        }
+        if (document.getElementById("images").files.length == 1) {
+            var valid_list = ["jpg", "bmp", "png", "jpeg", "rgb", "tif"];
+            var type = document.getElementById("images").files[0].name.split(".").pop().toLowerCase();
+            if (!(type in valid_list)) {
+                document.getElementById("warn_msg").style.display = "";
+                document.getElementById("warn_msg").innerHTML = "不支持的图片格式。";
+                document.body.scrollTop = document.documentElement.scrollTop = 0;
+                return false;
+            }
         }
         {% endif %}
 
