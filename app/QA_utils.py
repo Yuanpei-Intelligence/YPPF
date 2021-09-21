@@ -71,6 +71,7 @@ def QA2Display(user):
 
     me = NaturalPerson.objects.get(person_id=user) if hasattr(user, 'naturalperson') \
         else Organization.objects.get(organization_id=user)
+    my_name = me.name if hasattr(user, "naturalperson") else me.oname
     
     receiver_userids = instances['send'].values_list('receiver_id', flat=True)
     sender_userids = instances['receive'].values_list('sender_id', flat=True)
@@ -87,9 +88,9 @@ def QA2Display(user):
 
     for qa in instances['send']:
         QA = dict()
-        QA['sender'] = me.name if hasattr(user, "naturalperson") else me.oname
+        QA['sender'] = my_name
         if qa.anonymous_flag:
-            QA['sender'] = "匿名者"
+            QA['sender'] += "(匿名)"
         
         _, user_type, _ = utils.check_user_type(qa.receiver)
         if user_type == "Organization":
@@ -107,15 +108,16 @@ def QA2Display(user):
 
     for qa in instances['receive']:
         QA = dict()
-        _, user_type, _ = utils.check_user_type(qa.sender)
-        if user_type == "Organization":
-            QA["sender"] = sender_orgs.get(qa.sender_id)
-        else:
-            QA["sender"] = sender_persons.get(qa.sender_id)
-        
         if qa.anonymous_flag:
             QA['sender'] = "匿名者"
-        QA['receiver'] = me.name if hasattr(user, "naturalperson") else me.oname
+        else:
+            _, user_type, _ = utils.check_user_type(qa.sender)
+            if user_type == "Organization":
+                QA["sender"] = sender_orgs.get(qa.sender_id)
+            else:
+                QA["sender"] = sender_persons.get(qa.sender_id)
+        
+        QA['receiver'] = my_name
         QA['Q_text'] = qa.Q_text
         QA['A_text'] = qa.A_text
         QA['Q_time'] = qa.Q_time
