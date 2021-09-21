@@ -2648,7 +2648,11 @@ def addActivity(request, aid=None):
     defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava() 
-    if not edit:
+
+    if request.method == "GET" and request.GET.get("template"):
+        use_template = True
+        activity = Activity.objects.get(id=int(request.GET["template"]))
+    if not edit and not use_template:
         available_teachers = NaturalPerson.objects.teachers()
     else:
         try:

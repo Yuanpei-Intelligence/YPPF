@@ -368,6 +368,8 @@ def changeActivityStatus(aid, cur_status, to_status):
                     except: max_point = 6.0
                     point = min(point, max_point)
 
+                    activity.binusPoint = point
+
                     participants = Participant.objects.filter(
                         activity_id=aid, status=Participant.AttendStatus.ATTENDED)
                     NaturalPerson.objects.filter(id__in=participants.values_list(

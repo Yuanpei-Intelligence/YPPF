@@ -183,8 +183,7 @@ def activity_base_check(request, edit=False):
     announcephoto = request.FILES.getlist("images")
     if len(announcephoto) > 0:
         pic = announcephoto[0]
-        if if_image(pic)!=2:
-            raise ActivityException("上传的附件只支持图片格式。")
+        assert if_image(pic) == 2
     else:
         if request.POST.get("picture1"):
             pic = request.POST.get("picture1")
@@ -828,6 +827,7 @@ def cancel_activity(request, activity):
             )
 
 
+
     activity.status = Activity.Status.CANCELED
     notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
     notification = Notification.objects.get(
@@ -836,10 +836,22 @@ def cancel_activity(request, activity):
     )
     notification_status_change(notification, Notification.Status.DELETE)
 
+    # 回滚积分
+    if activity.status == Activity.Status.END:
+        point = activity.bonusPoint
+        participants = Participant.objects.filter(
+            activity_id=activity,
+            status=Participant.AttendStatus.ATTENDED
+        ).values_list("person_id", flat=True)
+        NaturalPerson.objects.filter(id__in=participants).update(bonusPoint=F("bonusPoint") - point)
+
+
     # 注意这里，活动取消后，状态变为申请失败了
     participants = Participant.objects.filter(
             activity_id=activity
         ).update(status=Participant.AttendStatus.APLLYFAILED)
+
+
 
     scheduler.remove_job(f"activity_{activity.id}_remind")
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")

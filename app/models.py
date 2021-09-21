@@ -673,6 +673,8 @@ class Activity(CommentBase):
         "活动状态", choices=Status.choices, default=Status.REVIEWING, max_length=32
     )
 
+    bonusPoint = models.IntegerField("下发的积分数量", default=0)
+
     objects = ActivityManager()
 
     def save(self, *args, **kwargs):
