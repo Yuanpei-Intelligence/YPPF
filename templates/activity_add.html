@@ -704,7 +704,17 @@
     document.getElementById("aprice").placeholder = "参与活动元气值价格";
     {% endif %}
     document.getElementById("pricebutton").innerHTML = "&nbsp;&nbsp;{{signscheme}}&nbsp;&nbsp;";
+    if ("{{signscheme}}" == "先到先得") {
+        document.getElementById("signscheme").value = "0";
+    } else {
+        document.getElementById("signscheme").value = "1";
+    }
     document.getElementById("yq_source").innerHTML = "{{yq_source}}";
+    if ("{{yq_source}}" == "向学生收取") {
+        document.getElementById("from_college").value = "0";
+    } else {
+        document.getElementById("from_college").value = "1";
+    }
     document.getElementById("aprice").value = "{{amount}}";
     {% if no_limit %}
     document.getElementById("unlimited_capacity").checked = true;
