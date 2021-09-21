@@ -69,20 +69,32 @@
 
                         <div class="text-center user-info">
                             <img src={{ context.avatar_path }} height="90px" width="90px" alt="avatar">
-                            <p class="">{{ context.person.name }}
-                                {% if context.title == "他" or context.title == "我" and person.gender == 0 %}
+                            <p class="">
                                 {% if person.show_gender == False %}
-                                <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="" data-original-title="性别未公开"><i class="fa fa-mars" style="color: gray;"></i></a>
+                                <span style="color: #0e1726;">{{ context.person.name }}</span>
+                                    {% if context.title == "我" %}
+                                    <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="gender not shown" data-original-title="性别未公开"><i class=
+                                        {% if person.gender == 0 %}
+                                        "fa fa-mars"
+                                        {% else %}
+                                        "fa fa-venus"
+                                        {% endif %}
+                                    style="color: gray;"></i></a>
+                                    {% endif %}
                                 {% else %}
-                                <i class="fa fa-mars"></i>
-                                {% endif %}
-                                {% endif %}
-                                {% if context.title == "她" or context.title == "我" and person.gender == 1 %}
-                                {% if person.show_gender == False %}
-                                <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="" data-original-title="性别未公开"><i class="fa fa-venus" style="color: gray;"></i></a>
+
+                                {% if person.gender == 0 %}
+                                <span style="color: #1b55e2;">
+                                    {{ context.person.name }}
+                                    <i class="fa fa-mars"></i>
+                                </span>
                                 {% else %}
-                                <i class="fa fa-venus"></i>
+                                <span style="color: #e83e8c;">
+                                    {{ context.person.name }}
+                                    <i class="fa fa-venus"></i>
+                                </span>
                                 {% endif %}
+
                                 {% endif %}
                             </p>
                         </div>
