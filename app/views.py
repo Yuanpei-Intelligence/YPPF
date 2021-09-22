@@ -2652,7 +2652,8 @@ def addActivity(request, aid=None):
     use_template = False
     if request.method == "GET" and request.GET.get("template"):
         use_template = True
-        activity = Activity.objects.get(id=int(request.GET["template"]))
+        template_id = int(request.GET["template"])
+        activity = Activity.objects.get(id=template_id)
     if not edit and not use_template:
         available_teachers = NaturalPerson.objects.teachers()
     else:
