@@ -474,7 +474,7 @@
                                                 <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12">
                                                     <input onchange="showFilenameLocal(this.files)" type="file" 
                                                            class="custom-file-input" id="images" name="images" 
-                                                           accept="image/*" data-max-file-size="4096K">
+                                                           accept="image/*" data-default-file="/media/{{photo_path}}" data-max-file-size="4096K">
                                                     <label id="upload_annouce_photo" name="upload_annouce_photo" class="custom-file-label" 
                                                            for="customFile"> 选择历史活动图片或海报或以下默认图片之一 </label>
 
@@ -632,6 +632,11 @@
         }
         if (text == "")
             text = "选择历史活动图片或海报或以下默认图片之一";
+        else {
+            {% for pic in defaultpics %}
+            document.getElementById("{{pic.id}}").checked = false;
+            {% endfor %}
+        }
         $("#upload_annouce_photo").html(text);
     }
 
@@ -693,6 +698,8 @@
     document.getElementById("title").value = "{{title | safe}}";
     document.getElementById("location").value = "{{location | safe}}";
     document.getElementById("budget").value = "{{budget}}";   
+    document.getElementById("datetimepicker3").value="{{start}}";
+    document.getElementById("datetimepicker4").value="{{end}}";
     document.getElementById("examine_teacher").value="{{examine_teacher}}";
     {% if activity.recorded %}
     document.getElementById("recorded").checked = true;
@@ -735,6 +742,12 @@
     {% endif %}
     document.getElementById("inputState").value = {{endbefore}};
     document.getElementById("URL").placeholder = "{{url | safe}}";
+
+    {% if uploaded_photo %}
+    document.getElementById("upload_annouce_photo").innerHTML = "{{photo}}";
+    {% else %}
+    document.getElementById("{{photo_id}}").checked = true;
+    {% endif %}
 </script>
 
 {% endif %}
@@ -1012,7 +1025,7 @@
         {% endif %}
 
         /* 检查图片 */
-        {% if not examine and not accepted %}
+        {% if not examine and not accepted and not use_template %}
             {% if not edit %}
             if (!(document.getElementById("picture1").checked ||
                 document.getElementById("picture2").checked ||
@@ -1036,12 +1049,19 @@
         if (document.getElementById("images").files.length == 1) {
             var valid_list = ["jpg", "bmp", "png", "jpeg", "rgb", "tif"];
             var type = document.getElementById("images").files[0].name.split(".").pop().toLowerCase();
-            if (!(type in valid_list)) {
+            var flag = false;
+            for (t in valid_list) {
+                if (valid_list[t] == type) {
+                    flag = true;
+                    break;
+                }
+            }
+            if (!flag) {
                 document.getElementById("warn_msg").style.display = "";
                 document.getElementById("warn_msg").innerHTML = "不支持的图片格式。";
                 document.body.scrollTop = document.documentElement.scrollTop = 0;
                 return false;
-            }
+            } 
         }
         {% endif %}
 
