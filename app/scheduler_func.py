@@ -21,7 +21,7 @@ from urllib import parse, request as urllib2
 import json
 
 # 引入定时任务还是放上面吧
-from app.utils import operation_writer, except_captured, calcu_activity_bonus
+from app.utils import operation_writer, except_captured, calcu_activity_bonus, record_traceback
 from app.scheduler import scheduler
 
 YQPoint_oname = local_dict["YQPoint_source_oname"]
@@ -372,6 +372,7 @@ def changeActivityStatus(aid, cur_status, to_status):
         # with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
         #     f.write(str(e) + "\n")
         #     f.close()
+        record_traceback(request, e)
         pass
 
 
