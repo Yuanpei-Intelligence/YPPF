@@ -160,8 +160,11 @@ def check_user_type(user):
     html_display = {}
     if user.is_superuser or user.is_staff:
         if user.is_staff:
-            for user_type in ["Organization", "Person"]:
-                if hasattr(user, user_type.lower()):
+            for user_type, model_name in [
+                ("Organization", "organization"),
+                ("Person", "naturalperson"),
+                ]:
+                if hasattr(user, model_name):
                     html_display["user_type"] = user_type
                     return True, user_type, html_display
         return False, "", html_display
