@@ -2663,6 +2663,8 @@ def addActivity(request, aid=None):
             if not activity.valid:
                 commentable = True
                 front_check = True
+            if use_template:
+                commentable = False
             # 全可编辑
             full_editable = False
             accepted = False
@@ -2718,14 +2720,17 @@ def addActivity(request, aid=None):
         need_checkin = activity.need_checkin
         inner = activity.inner
         apply_reason = utils.escape_for_templates(activity.apply_reason)
-        comments = showComment(activity)
+        if not use_template:
+            comments = showComment(activity)
         photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
         uploaded_photo = False
         if str(photo).startswith("activity"):
             uploaded_photo = True
+            photo_path = photo
             photo = os.path.basename(photo)
         else:
             photo_id = "picture" + os.path.basename(photo).split(".")[0]
+
 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     if not edit:
