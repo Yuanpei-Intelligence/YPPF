@@ -1033,7 +1033,8 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
 
     return True
 
-def calcu_activity_bonus(hours):
+def calcu_activity_bonus(activity):
+    hours = (activity.end - activity.start).seconds / 3600
     try: 
         invalid_hour = float(local_dict["thresholds"]["activity_point_invalid_hour"])
     except: 

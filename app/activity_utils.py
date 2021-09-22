@@ -586,8 +586,7 @@ def accept_activity(request, activity):
             )
 
     if activity.status == Activity.Status.END:
-        hours = (activity.end - activity.start).seconds / 3600
-        point = calcu_activity_bonus(hours)
+        point = calcu_activity_bonus(activity)
         participants = Participant.objects.filter(
             activity_id=activity,
             status=Participant.AttendStatus.ATTENDED
