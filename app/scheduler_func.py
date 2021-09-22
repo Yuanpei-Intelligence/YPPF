@@ -395,6 +395,7 @@ def changeActivityStatus(aid, cur_status, to_status):
 """
 
 
+
 def draw_lots(activity):
     participants_applying = Participant.objects.filter(activity_id=activity.id,
                                                        status=Participant.AttendStatus.APPLYING)
