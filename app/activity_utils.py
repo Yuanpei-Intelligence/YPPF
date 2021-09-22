@@ -788,6 +788,9 @@ def cancel_activity(request, activity):
         else:
             raise ActivityException("活动已于一天前开始，不能取消。")
 
+    if activity.status == Activity.Status.CANCELED:
+        raise ActivityException("活动已取消。")
+
     org = Organization.objects.select_for_update().get(
                 organization_id=request.user
             )
@@ -887,8 +890,11 @@ def withdraw_activity(request, activity):
         status__in=[
             Participant.AttendStatus.APPLYING,
             Participant.AttendStatus.APLLYSUCCESS,
+            Participant.AttendStatus.CANCELED,
         ],
     )
+    if participant.status == Participant.AttendStatus.CANCELED:
+        raise ActivityException("已退出活动。")
     participant.status = Participant.AttendStatus.CANCELED
     activity.current_participants -= 1
 
