@@ -295,9 +295,59 @@ class ActivityAdmin(admin.ModelAdmin):
                     "publish_time", "start", "end",]
     search_fields = ('id', "title", "organization_id__oname",
                      "current_participants",)
+    
+    class ErrorFilter(admin.SimpleListFilter):
+        title = '错误状态' # 过滤标题显示为"以 错误状态"
+        parameter_name = 'wrong_status' # 过滤器使用的过滤字段
+    
+        def lookups(self, request, model_admin):
+            '''针对字段值设置过滤器的显示效果'''
+            return (
+                ('all', '全部错误状态'),
+                ('not_waiting', '未进入 等待中 状态'),
+                ('not_processing', '未进入 进行中 状态'),
+                ('not_end', '未进入 已结束 状态'),
+                ('normal', '正常'),
+            )
+        
+        def queryset(self, request, queryset):
+            '''定义过滤器的过滤动作'''
+            now = datetime.now()
+            error_id_set = set()
+            activate_queryset = queryset.exclude(
+                    status__in=[
+                        Activity.Status.CANCELED,
+                        Activity.Status.REJECT,
+                        Activity.Status.ABORT,
+                    ])
+            if self.value() in ['not_waiting', 'all', 'normal']:
+                error_id_set.update(activate_queryset.exclude(
+                    status=Activity.Status.WAITING).filter(
+                    apply_end__lte=now,
+                    start__gt=now,
+                    ).values_list('id', flat=True))
+            if self.value() in ['not_processing', 'all', 'normal']:
+                error_id_set.update(activate_queryset.exclude(
+                    status=Activity.Status.PROGRESSING).filter(
+                    start__lte=now,
+                    end__gt=now,
+                    ).values_list('id', flat=True))
+            if self.value() in ['not_end', 'all', 'normal']:
+                error_id_set.update(activate_queryset.exclude(
+                    status=Activity.Status.END).filter(
+                    end__lte=now,
+                    ).values_list('id', flat=True))
+
+            if self.value() == 'normal':
+                return queryset.exclude(id__in=error_id_set)
+            elif self.value() is not None:
+                return queryset.filter(id__in=error_id_set)
+            return queryset
+    
     list_filter =   (
                         "status", "inner", "need_checkin", "valid",
                         "organization_id__otype", "source",
+                        ErrorFilter,
                         'endbefore', "capacity", "year",
                         "publish_time", 'start', 'end',
                     )
