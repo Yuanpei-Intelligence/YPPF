@@ -355,11 +355,7 @@ def changeActivityStatus(aid, cur_status, to_status):
 
             # 结束，计算积分    
             elif activity.valid:
-                hours = (activity.end - activity.start).seconds / 3600
-                point = calcu_activity_bonus(hours)
-
-                # activity.binusPoint = point
-
+                point = calcu_activity_bonus(activity)
                 participants = Participant.objects.filter(
                     activity_id=aid, status=Participant.AttendStatus.ATTENDED)
                 NaturalPerson.objects.filter(id__in=participants.values_list(
