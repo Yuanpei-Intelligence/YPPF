@@ -257,6 +257,8 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     me = get_person_or_org(user)  # 获得对应的对象
     _, user_type, _ = check_user_type(user)
     bar_display["user_type"] = user_type
+    if user.is_staff:
+        bar_display["is_staff"] = True
 
     # 接下来填补各种前端呈现信息
 
