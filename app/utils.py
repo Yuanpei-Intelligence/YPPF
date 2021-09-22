@@ -1033,4 +1033,34 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
 
     return True
 
+def calcu_activity_bonus(hours):
+    try: 
+        invalid_hour = float(local_dict["thresholds"]["activity_point_invalid_hour"])
+    except: 
+        invalid_hour = 24.0
+    if hours > invalid_hour:
+        return 0.0
+    # 以标题筛选不记录积分的活动，包含筛选词时不记录积分
+    try:
+        invalid_letters = local_dict["thresholds"]["activity_point_invalid_titles"]
+        assert isinstance(invalid_letters, list)
+        for invalid_letter in invalid_letters:
+            if invalid_letter in activity.title:
+                return 0.0
+    except:
+        pass
+    
+    try: 
+        point_rate = float(local_dict["thresholds"]["activity_point_per_hour"])
+    except: 
+        point_rate = 1.0
+    point = point_rate * hours
+    # 单次活动记录的积分上限，默认6
+    try: 
+        max_point = float(local_dict["thresholds"]["activity_point"])
+    except: 
+        max_point = 6.0
+    return min(point, max_point)
+
+
 operation_writer(local_dict["system_log"], "系统启动", "util_底部")
