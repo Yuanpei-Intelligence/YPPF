@@ -378,7 +378,7 @@ def modify_reviewing_activity(request, activity):
     activity.save()
 
     # 图片
-    if context["pic"] is not None:
+    if context.get("pic") is not None:
         pic = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
         pic.image = context["pic"]
         pic.save()

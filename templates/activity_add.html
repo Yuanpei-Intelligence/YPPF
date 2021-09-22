@@ -988,6 +988,9 @@
         {% if not edit %}
         /* 选择了审核老师 */
         if (document.getElementById("examine_teacher").value == "") {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "尚未选择审核老师。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -996,6 +999,9 @@
         /* 检查选择了报名方式 */
         var option = document.getElementById("signscheme").value;
         if (option == "") {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "尚未选择报名模式。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -1004,6 +1010,9 @@
         /* 检查选择了元气值来源 */
         var from_college = document.getElementById("from_college").value;
         if (from_college == "") {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "尚未选择元气值来源。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -1022,6 +1031,9 @@
         var max_people = document.getElementById("maxpeople");
         console.log(max_people.value);
         if (no_limit.checked == false && max_people.value == "") {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "请设置报名人数限制。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -1046,6 +1058,9 @@
             }
             {% endif %}
         if (document.getElementById("images").files.length > 1) {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "仅支持上传一张图片。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -1062,6 +1077,9 @@
                 }
             }
             if (!flag) {
+                {% if html_display.warn_code == 2 %}
+                document.getElementById("success_msg").style.display = "none";
+                {% endif %}
                 document.getElementById("warn_msg").style.display = "";
                 document.getElementById("warn_msg").innerHTML = "不支持的图片格式。";
                 document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -1073,6 +1091,9 @@
         /* URL 不要太长，使用 https 协议 */
         var url_value = document.getElementById("URL").value;
         if (url_value.length >= 1000) {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "URL 长度超出上限。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -1080,6 +1101,9 @@
         }
         if (! url_value == ""){
             if (!url_value.startsWith("http")) {
+                {% if html_display.warn_code == 2 %}
+                document.getElementById("success_msg").style.display = "none";
+                {% endif %}
                 document.getElementById("warn_msg").style.display = "";
                 document.getElementById("warn_msg").innerHTML = "出于安全性考虑，目前仅支持 http 或 https 协议的 URL。";
                 document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -1110,6 +1134,9 @@
         var applyEnd = new Date("{{apply_end}}")
         var now = new Date()
         if (applyEnd < now) {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "活动报名截止时间已过，请通知小组修改。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
