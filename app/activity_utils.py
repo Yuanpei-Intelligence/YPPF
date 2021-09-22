@@ -196,11 +196,14 @@ def activity_base_check(request, edit=False):
         else:
             pic = request.POST.get("picture5")
 
+    template_id = request.POST.get("template_id")
+    if template_id:
+        context["template_id"] = int(template_id)
+    else:
+        if not edit:
+            assert pic is not None
 
-    if not edit:
-        assert pic is not None
-
-    context["pic"] = pic
+        context["pic"] = pic
 
 
     return context
@@ -269,7 +272,15 @@ def create_activity(request):
     
     activity.save()
 
-    ActivityPhoto.objects.create(image=context["pic"], type=ActivityPhoto.PhotoType.ANNOUNCE ,activity=activity)
+    if context.get("template_id"):
+        template = Activity.objects.get(id=context["template_id"])
+        photo = ActivityPhoto.objects.get(type=ActivityPhoto.PhotoType.ANNOUNCE ,activity=template)
+        photo.pk = None
+        photo.id = None
+        photo.activity = activity
+        photo.save()
+    else:
+        ActivityPhoto.objects.create(image=context["pic"], type=ActivityPhoto.PhotoType.ANNOUNCE ,activity=activity)
 
     notification_create(
         receiver=examine_teacher.person_id,
