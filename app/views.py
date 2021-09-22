@@ -42,6 +42,7 @@ from app.utils import (
     message_url,
     escape_for_templates,
     record_modify_with_session,
+    record_traceback,
 )
 from app.activity_utils import (
     create_activity,
@@ -2066,7 +2067,6 @@ def myYQPoint(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[viewActivity]', record_user=True, return_value=EXCEPT_REDIRECT)
 def viewActivity(request, aid=None):
     """
     aname = str(request.POST["aname"])  # 活动名称
@@ -2098,8 +2098,8 @@ def viewActivity(request, aid=None):
             assert activity.status != Activity.Status.ABORT
             assert activity.status != Activity.Status.REJECT
     except Exception as e:
-        # print(e)
-        return redirect("/welcome/")
+        record_traceback(request, e)
+        return EXCEPT_REDIRECT
 
     html_display = dict()
     inform_share, alert_message = utils.get_inform_share(me)
@@ -2121,6 +2121,9 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
         elif option == "edit":
             if (
@@ -2151,6 +2154,9 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
 
         elif option == "quit":
@@ -2171,6 +2177,9 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
         elif option == "payment":
             try:
@@ -2179,8 +2188,8 @@ def viewActivity(request, aid=None):
                 re = Reimbursement.objects.get(related_activity=activity)
                 return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
             except Exception as e:
-                # print("Exception", e)
-                return redirect("/modifyEndActivity/")
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
         elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
             if not ownership:
                 return redirect(message_url(wrong('没有下载权限!')))
@@ -2549,7 +2558,6 @@ def checkinActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[addActivity]', record_user=True, return_value=EXCEPT_REDIRECT)
 def addActivity(request, aid=None):
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
@@ -2578,7 +2586,8 @@ def addActivity(request, aid=None):
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
-        raise
+        record_traceback(request, e)
+        return EXCEPT_REDIRECT
 
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
@@ -2591,6 +2600,9 @@ def addActivity(request, aid=None):
                     return redirect(f"/editActivity/{aid}")
             except ActivityException as e:
                 return redirect(str(e))
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
         # 仅这几个阶段可以修改
         if (
@@ -2625,6 +2637,9 @@ def addActivity(request, aid=None):
                 html_display["warn_msg"] = str(e)
                 html_display["warn_code"] = 1
                 # return redirect(f"/viewActivity/{activity.id}")
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
@@ -2665,7 +2680,8 @@ def addActivity(request, aid=None):
                 # 不是三个可以评论的状态
                 commentable = front_check = False
         except Exception as e:
-            raise
+            record_traceback(request, e)
+            return EXCEPT_REDIRECT
 
         # 决定状态的变量
         # None/edit/examine ( 小组申请活动/小组编辑/老师审查 )
