@@ -196,13 +196,13 @@ def activity_base_check(request, edit=False):
         else:
             pic = request.POST.get("picture5")
 
-    template_id = request.POST.get("template_id")
-    if template_id:
-        context["template_id"] = int(template_id)
+    if pic is None:
+        template_id = request.POST.get("template_id")
+        if template_id:
+            context["template_id"] = int(template_id)
+        else:
+            assert edit
     else:
-        if not edit:
-            assert pic is not None
-
         context["pic"] = pic
 
 
