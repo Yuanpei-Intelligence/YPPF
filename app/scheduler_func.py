@@ -262,6 +262,21 @@ scheduler.add_job(changeActivityStatus, "date",
 """
 
 
+def changeAllActivities():
+    activities = Activity.objects.filter(status__in=[Activity.Status.APPLYING, Activity.Status.WAITING, Activity.Status.PROGRESSING])
+    for activity in activities:
+        now_time = datetime.now()
+        if activity.end <= now_time:
+            changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
+            changeActivityStatus(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
+            changeActivityStatus(activity.id, Activity.Activity.Status.PROGRESSING, Activity.Status.END)
+        elif activity.start <= now_time:
+            changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
+            changeActivityStatus(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
+        elif activity.apply_end <= now_time:
+            changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
+
+
 def changeActivityStatus(aid, cur_status, to_status):
     # print(f"Change Activity Job works: aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
     # with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
