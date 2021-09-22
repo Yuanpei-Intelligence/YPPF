@@ -8,7 +8,7 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 如果存在预期异常，抛出 ActivityException，否则抛出其他异常
 """
 from datetime import datetime, timedelta
-from app.utils import get_person_or_org, if_image
+from app.utils import get_person_or_org, if_image, calcu_activity_bonus
 from app.notification_utils import(
     notification_create,
     bulk_notification_create,
@@ -274,13 +274,13 @@ def create_activity(request):
 
     if context.get("template_id"):
         template = Activity.objects.get(id=context["template_id"])
-        photo = ActivityPhoto.objects.get(type=ActivityPhoto.PhotoType.ANNOUNCE ,activity=template)
+        photo = ActivityPhoto.objects.get(type=ActivityPhoto.PhotoType.ANNOUNCE, activity=template)
         photo.pk = None
         photo.id = None
         photo.activity = activity
         photo.save()
     else:
-        ActivityPhoto.objects.create(image=context["pic"], type=ActivityPhoto.PhotoType.ANNOUNCE ,activity=activity)
+        ActivityPhoto.objects.create(image=context["pic"], type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
     notification_create(
         receiver=examine_teacher.person_id,
@@ -585,6 +585,15 @@ def accept_activity(request, activity):
                 finish_time=datetime.now()
             )
 
+    if activity.status == Activity.Status.END:
+        hours = (activity.end - activity.start).seconds / 3600
+        point = calcu_activity_bonus(hours)
+        participants = Participant.objects.filter(
+            activity_id=activity,
+            status=Participant.AttendStatus.ATTENDED
+        ).values_list("person_id", flat=True)
+        NaturalPerson.objects.filter(id__in=participants).update(bonusPoint=F("bonusPoint") + point)
+
     activity.save()
 
 
@@ -631,6 +640,7 @@ def reject_activity(request, activity):
             status=TransferRecord.TransferStatus.SUSPENDED,
             finish_time=datetime.now()
         )
+
 
     notification = notification_create(
         receiver=activity.organization_id.organization_id,
@@ -850,15 +860,6 @@ def cancel_activity(request, activity):
         typename=Notification.Type.NEEDDO
     )
     notification_status_change(notification, Notification.Status.DELETE)
-
-    # 回滚积分
-    if activity.status == Activity.Status.END:
-        point = activity.bonusPoint
-        participants = Participant.objects.filter(
-            activity_id=activity,
-            status=Participant.AttendStatus.ATTENDED
-        ).values_list("person_id", flat=True)
-        NaturalPerson.objects.filter(id__in=participants).update(bonusPoint=F("bonusPoint") - point)
 
 
     # 注意这里，活动取消后，状态变为申请失败了

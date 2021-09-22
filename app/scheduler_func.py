@@ -21,7 +21,7 @@ from urllib import parse, request as urllib2
 import json
 
 # 引入定时任务还是放上面吧
-from app.utils import operation_writer, except_captured
+from app.utils import operation_writer, except_captured, calcu_activity_bonus
 from app.scheduler import scheduler
 
 YQPoint_oname = local_dict["YQPoint_source_oname"]
@@ -322,74 +322,49 @@ def changeActivityStatus(aid, cur_status, to_status):
                         activity_id=aid,
                         status=Participant.AttendStatus.APLLYSUCCESS
                     ).update(status=Participant.AttendStatus.ATTENDED)
-                if not activity.valid:
-                    # 活动开始后，未审核自动通过
-                    activity.valid = True
-                    records = TransferRecord.objects.filter(
-                        status=TransferRecord.TransferStatus.PENDING, 
-                        corres_act=activity,
-                    )
-                    total_amount = records.aggregate(nums=Sum('amount'))["nums"]
-                    if total_amount is None:
-                        total_amount = 0.0
-                    if total_amount > 0:
-                        organization_id = activity.organization_id_id
-                        organization = Organization.objects.select_for_update().get(id=organization_id)
-                        organization.YQPoint += total_amount
-                        organization.save()
-                        YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-                        YP.YQPoint -= total_amount
-                        YP.save()
-                    records.update(
-                        status=TransferRecord.TransferStatus.ACCEPTED,
-                        finish_time=datetime.now()
-                    )
 
-                    notification = Notification.objects.get(
-                        relate_instance=activity, 
-                        status=Notification.Status.UNDONE,
-                        title=Notification.Title.VERIFY_INFORM
-                    )
-                    notification_status_change(notification, Notification.Status.DONE)
+                # if not activity.valid:
+                #     # 活动开始后，未审核自动通过
+                #     activity.valid = True
+                #     records = TransferRecord.objects.filter(
+                #         status=TransferRecord.TransferStatus.PENDING, 
+                #         corres_act=activity,
+                #     )
+                #     total_amount = records.aggregate(nums=Sum('amount'))["nums"]
+                #     if total_amount is None:
+                #         total_amount = 0.0
+                #     if total_amount > 0:
+                #         organization_id = activity.organization_id_id
+                #         organization = Organization.objects.select_for_update().get(id=organization_id)
+                #         organization.YQPoint += total_amount
+                #         organization.save()
+                #         YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
+                #         YP.YQPoint -= total_amount
+                #         YP.save()
+                #     records.update(
+                #         status=TransferRecord.TransferStatus.ACCEPTED,
+                #         finish_time=datetime.now()
+                #     )
+
+                #     notification = Notification.objects.get(
+                #         relate_instance=activity, 
+                #         status=Notification.Status.UNDONE,
+                #         title=Notification.Title.VERIFY_INFORM
+                #     )
+                #     notification_status_change(notification, Notification.Status.DONE)
 
             # 结束，计算积分    
-            else:
+            elif activity.valid:
                 hours = (activity.end - activity.start).seconds / 3600
-                record_point = True
-                
-                # 活动记录积分的最长持续时间，超过后不记录积分，默认24h
-                try: invalid_hour = float(local_dict["thresholds"]["activity_point_invalid_hour"])
-                except: invalid_hour = 24.0
-                if hours > invalid_hour:
-                    record_point = False
-                # 以标题筛选不记录积分的活动，包含筛选词时不记录积分
-                try:
-                    invalid_letters = local_dict["thresholds"]["activity_point_invalid_titles"]
-                    assert isinstance(invalid_letters, list)
-                    for invalid_letter in invalid_letters:
-                        if invalid_letter in activity.title:
-                            record_point = False
-                            break
-                except:
-                    pass
-                
-                if record_point:
-                    # 每小时获取的积分，默认1
-                    try: point_rate = float(local_dict["thresholds"]["activity_point_per_hour"])
-                    except: point_rate = 1.0
-                    point = point_rate * hours
-                    # 单次活动记录的积分上限，默认6
-                    try: max_point = float(local_dict["thresholds"]["activity_point"])
-                    except: max_point = 6.0
-                    point = min(point, max_point)
+                point = calcu_activity_bonus(hours)
 
-                    activity.binusPoint = point
+                # activity.binusPoint = point
 
-                    participants = Participant.objects.filter(
-                        activity_id=aid, status=Participant.AttendStatus.ATTENDED)
-                    NaturalPerson.objects.filter(id__in=participants.values_list(
-                        'person_id', flat=True)).update(
-                        bonusPoint=F('bonusPoint') + point)
+                participants = Participant.objects.filter(
+                    activity_id=aid, status=Participant.AttendStatus.ATTENDED)
+                NaturalPerson.objects.filter(id__in=participants.values_list(
+                    'person_id', flat=True)).update(
+                    bonusPoint=F('bonusPoint') + point)
 
             activity.save()
 
