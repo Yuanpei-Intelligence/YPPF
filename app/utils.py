@@ -69,7 +69,8 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
 
 
 def except_captured(return_value=None, except_type=Exception,
-                    log=True, show_traceback=False, record_args=False, record_user=False,
+                    log=True, show_traceback=False, record_args=False, 
+                    record_user=False, record_request_args=False,
                     source='utils[except_captured]', status_code='Error'):
     """
     Decorator that captures exception and log, raise or 
@@ -88,15 +89,43 @@ def except_captured(return_value=None, except_type=Exception,
                         msg += f', 参数为：{args=}, {kwargs=}'
                     if record_user:
                         try:
+                            user = None
                             if not args:
                                 if 'request' in kwargs.keys():
-                                    msg += f', 用户为{kwargs["request"].user.username}'
+                                    user = kwargs["request"].user
                                 elif 'user' in kwargs.keys():
-                                    msg += f', 用户为{kwargs["user"].username}'
+                                    user = kwargs["user"]
                             else:
-                                msg += f', 用户为{args[0].user.username}'
+                                user = args[0].user
+                            msg += f', 用户为{user.username}'
+                            try: msg += f', 姓名: {user.naturalperson}'
+                            except: pass
+                            try: msg += f', 组织名: {user.organization}'
+                            except: pass
                         except:
                             msg += f', 尝试追踪用户, 但未能找到该参数'
+                    if record_request_args:
+                        try:
+                            request = None
+                            if not args:
+                                request = kwargs["request"]
+                            else:
+                                request = args[0]
+                            infos = []
+                            infos.append(f'请求方式: {request.method}, 请求地址: {request.path}')
+                            if request.GET:
+                                infos.append(
+                                    'GET参数: ' +
+                                    ';'.join([f'{k}: {v}' for k, v in request.GET.items()])
+                                )
+                            if request.POST:
+                                infos.append(
+                                    'POST参数: ' +
+                                    ';'.join([f'{k}: {v}' for k, v in request.POST.items()])
+                                )
+                            msg = msg + '\n' + '\n'.join(infos)
+                        except:
+                            msg += f'\n尝试记录请求体, 但未能找到该参数'
                     if show_traceback:
                         msg += '\n详细信息：\n\t'
                         msg += traceback.format_exc().replace('\n', '\n\t')
@@ -131,8 +160,11 @@ def check_user_type(user):
     html_display = {}
     if user.is_superuser or user.is_staff:
         if user.is_staff:
-            for user_type in ["Organization", "Person"]:
-                if hasattr(user, user_type.lower()):
+            for user_type, model_name in [
+                ("Organization", "organization"),
+                ("Person", "naturalperson"),
+                ]:
+                if hasattr(user, model_name):
                     html_display["user_type"] = user_type
                     return True, user_type, html_display
         return False, "", html_display
@@ -824,7 +856,7 @@ def operation_writer(user, message, source, status_code="OK"):
             if isinstance(receivers, str):
                 receivers = receivers.replace(' ', '').split(',')
             receivers = list(map(str, receivers))
-            send_wechat(receivers, 'YPPF发生异常\n' + message)
+            send_wechat(receivers, 'YPPF发生异常\n' + message[:500], card=len(message) < 200)
     except Exception as e:
         # 最好是发送邮件通知存在问题
         # 待补充
