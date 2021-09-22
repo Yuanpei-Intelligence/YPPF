@@ -21,7 +21,7 @@ from urllib import parse, request as urllib2
 import json
 
 # 引入定时任务还是放上面吧
-from app.utils import operation_writer, except_captured, calcu_activity_bonus, record_traceback
+from app.utils import operation_writer, except_captured, calcu_activity_bonus
 from app.scheduler import scheduler
 
 YQPoint_oname = local_dict["YQPoint_source_oname"]
@@ -301,7 +301,7 @@ scheduler.add_job(changeActivityStatus, "date",
 活动变更为进行中时，更新报名成功人员状态
 """
 
-
+@except_captured(True, source='scheduler_func[changeActivityStatus]修改活动状态')
 def changeActivityStatus(aid, cur_status, to_status):
     # print(f"Change Activity Job works: aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
     # with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
@@ -391,8 +391,7 @@ def changeActivityStatus(aid, cur_status, to_status):
 
 
     except Exception as e:
-        print(e)
-        pass
+        raise
 
 
 """
