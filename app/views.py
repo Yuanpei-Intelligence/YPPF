@@ -3834,8 +3834,7 @@ def modifyEndActivity(request):
             allow_comment = True if (not is_new_application) and (
                 application.is_pending()) else False
             if not allow_comment:  # 存在不合法的操作
-                return redirect(
-                    "/welcome/?warn_code=1&warn_message=存在不合法操作,请与管理员联系!")
+                return redirect(message_url(wrong('存在不合法操作,请与管理员联系!')))
             #通知的接收者
             auditor=application.examine_teacher.person_id
             if user_type == "Organization":
@@ -3844,17 +3843,11 @@ def modifyEndActivity(request):
                 receiver=application.pos
             context = addComment(request, application,receiver)
 
-        # 准备用户提示量
-        warn_code = context["warn_code"]
-        warn_message = context["warn_message"]
-
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
         if application is None:
-            append = f"warn_code={warn_code}&warn_message={warn_message}"
+            return redirect(message_url(context, '/modifyEndActivity/'))
         else:
-            append = f"?reimb_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
-        
-        return redirect("/modifyEndActivity/" + append)
+            return redirect(message_url(context, f'/modifyEndActivity/?reimb_id={application.id}'))
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
     '''
@@ -4039,8 +4032,7 @@ def modifyOrganization(request):
             allow_comment = True if (not is_new_application) and (
                 application.is_pending()) else False
             if not allow_comment:   # 存在不合法的操作
-                return redirect(
-                    "/welcome/?warn_code=1&warn_message=存在不合法操作,请与管理员联系!")
+                return redirect(message_url(wrong('存在不合法操作,请与管理员联系!')))
             context = addComment(request, application, \
                 application.otype.incharge.person_id if me.person_id == application.pos \
                     else application.pos)
@@ -4048,14 +4040,13 @@ def modifyOrganization(request):
         # 准备用户提示量
         # html_display["warn_code"] = context["warn_code"]
         # html_display["warn_message"] = context["warn_message"]
-        warn_code, warn_message = context["warn_code"], context["warn_message"]
+        # warn_code, warn_message = context["warn_code"], context["warn_message"]
 
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
         if application is None:
-            append = f"warn_code={warn_code}&warn_message={warn_message}"
+            return redirect(message_url(context, '/modifyOrganization/'))
         else:
-            append = f"?org_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
-        return redirect("/modifyOrganization/" + append)
+            return redirect(message_url(context, f'/modifyOrganization/?org_id={application.id}'))
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
 
