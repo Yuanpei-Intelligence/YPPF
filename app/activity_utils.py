@@ -398,7 +398,7 @@ def modify_accepted_activity(request, activity):
     # 删除任务，注册新任务
 
     to_participants = [f"您参与的活动{activity.title}发生变化"]
-    to_subscribers = [f"您关注的活动{activity.title}发生变化"]
+    # to_subscribers = [f"您关注的活动{activity.title}发生变化"]
     if activity.location != request.POST["location"]:
         to_participants.append("活动地点修改为" + request.POST["location"])
         activity.location = request.POST["location"]
@@ -409,7 +409,7 @@ def modify_accepted_activity(request, activity):
         assert int(aprice * 10) / 10 == aprice
         assert aprice >= 0
         if activity.YQPoint != aprice:
-            to_subscribers.append("活动价格调整为" + str(aprice))
+            # to_subscribers.append("活动价格调整为" + str(aprice))
             to_participants.append("活动价格调整为" + str(aprice))
             activity.YQPoint = aprice
 
@@ -425,14 +425,14 @@ def modify_accepted_activity(request, activity):
         signup_end = act_start - timedelta(hours=prepare_time)
         assert now_time <= signup_end
         activity.apply_end = signup_end
-        to_subscribers.append(f"活动报名截止时间调整为{signup_end.strftime('%Y-%m-%d %H:%M')}")
+        # to_subscribers.append(f"活动报名截止时间调整为{signup_end.strftime('%Y-%m-%d %H:%M')}")
         to_participants.append(f"活动报名截止时间调整为{signup_end.strftime('%Y-%m-%d %H:%M')}")
     else:
         signup_end = activity.apply_end
         assert signup_end + timedelta(hours=1) <= act_start
     
     if activity.start != act_start:
-        to_subscribers.append(f"活动开始时间调整为{act_start.strftime('%Y-%m-%d %H:%M')}")
+        # to_subscribers.append(f"活动开始时间调整为{act_start.strftime('%Y-%m-%d %H:%M')}")
         to_participants.append(f"活动开始时间调整为{act_start.strftime('%Y-%m-%d %H:%M')}")
         activity.start = act_start
 
@@ -481,8 +481,8 @@ def modify_accepted_activity(request, activity):
         run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
 
 
-    if len(to_subscribers) > 1:
-        notifyActivity(activity.id, "modification_sub_ex_par", "\n".join(to_subscribers))
+    # if len(to_subscribers) > 1:
+    #     notifyActivity(activity.id, "modification_sub_ex_par", "\n".join(to_subscribers))
     if len(to_participants) > 1:   
         notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
 
@@ -673,7 +673,11 @@ def applyActivity(request, activity):
     except:
         pass
     if CREATE == False:
-        assert participant.status == Participant.AttendStatus.CANCELED
+        if (
+            participant.status == Participant.AttendStatus.APLLYSUCCESS or
+            participant.status == Participant.AttendStatus.APPLYING
+        ):
+            raise ActivityException("您已报名该活动。")
 
 
     if activity.source == Activity.YQPointSource.COLLEGE:

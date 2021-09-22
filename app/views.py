@@ -2697,6 +2697,7 @@ def addActivity(request, aid=None):
         budget = activity.budget
         location = utils.escape_for_templates(activity.location)
         apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
+        # apply_end_for_js = activity.apply_end.strftime("%Y-%m-%d %H:%M")
         start = activity.start.strftime("%Y-%m-%d %H:%M")
         end = activity.end.strftime("%Y-%m-%d %H:%M")
         introduction = escape_for_templates(activity.introduction)
