@@ -2066,7 +2066,7 @@ def myYQPoint(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[viewActivity]', record_user=True)
+@utils.except_captured(source='views[viewActivity]', record_user=True, return_value=EXCEPT_REDIRECT)
 def viewActivity(request, aid=None):
     """
     aname = str(request.POST["aname"])  # 活动名称
@@ -2121,8 +2121,6 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
-            except:
-                return EXCEPT_REDIRECT
 
         elif option == "edit":
             if (
@@ -2153,8 +2151,6 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
-            except:
-                return EXCEPT_REDIRECT
 
 
         elif option == "quit":
@@ -2175,8 +2171,6 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
-            except:
-                return EXCEPT_REDIRECT
 
         elif option == "payment":
             try:
@@ -2555,7 +2549,7 @@ def checkinActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[addActivity]', record_user=True)
+@utils.except_captured(source='views[addActivity]', record_user=True, return_value=EXCEPT_REDIRECT)
 def addActivity(request, aid=None):
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
@@ -2574,11 +2568,7 @@ def addActivity(request, aid=None):
             if user_type == "Person":
                 html_display=user_login_org(request,activity.organization_id)
                 if html_display['warn_code']==1:
-                    return redirect(
-                        "/welcome/"+"?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]
-                        )
-                    )
+                    return redirect(message_url(wrong(html_display["warn_message"])))
                 else:#成功以小组账号登陆
                     #防止后边有使用，因此需要赋值
                     user_type="Organization"
@@ -2588,7 +2578,7 @@ def addActivity(request, aid=None):
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
-        return EXCEPT_REDIRECT
+        raise
 
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
@@ -2601,8 +2591,6 @@ def addActivity(request, aid=None):
                     return redirect(f"/editActivity/{aid}")
             except ActivityException as e:
                 return redirect(str(e))
-            except Exception as e:
-                return EXCEPT_REDIRECT
 
         # 仅这几个阶段可以修改
         if (
@@ -2614,18 +2602,15 @@ def addActivity(request, aid=None):
 
         # 处理 comment
         if request.POST.get("comment_submit"):
-            try:
-                # 创建活动只能在审核时添加评论
-                assert not activity.valid
-                context = addComment(request, activity, activity.examine_teacher.person_id)
-                # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
-                assert context["warn_code"] == 2
-                # 成功后重新加载界面
-                html_display["warn_msg"] = "评论成功。"
-                html_display["warn_code"] = 2
-                # return redirect(f"/editActivity/{aid}")
-            except Exception as e:
-                return EXCEPT_REDIRECT
+            # 创建活动只能在审核时添加评论
+            assert not activity.valid
+            context = addComment(request, activity, activity.examine_teacher.person_id)
+            # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
+            assert context["warn_code"] == 2, context["warn_message"]
+            # 成功后重新加载界面
+            html_display["warn_msg"] = "评论成功。"
+            html_display["warn_code"] = 2
+            # return redirect(f"/editActivity/{aid}")
         else:
             try:
                 # 只能修改自己的活动
@@ -2640,9 +2625,6 @@ def addActivity(request, aid=None):
                 html_display["warn_msg"] = str(e)
                 html_display["warn_code"] = 1
                 # return redirect(f"/viewActivity/{activity.id}")
-            except Exception as e:
-                operation_writer(local_dict["system_log"],"活动"+str(activity.id)+"在修改过程中出现异常，报错为:" + str(e),"[views:addActivity]","Error")
-                return redirect("/welcome/?warn_code=1&warn_message=出现意料之外的错误, 请联系管理员帮您解决!")
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
@@ -2675,7 +2657,7 @@ def addActivity(request, aid=None):
                 # 不是三个可以评论的状态
                 commentable = front_check = False
         except Exception as e:
-            return EXCEPT_REDIRECT
+            raise
 
         # 决定状态的变量
         # None/edit/examine ( 小组申请活动/小组编辑/老师审查 )
