@@ -342,7 +342,7 @@
                                             <div class="form-group">
                                                 <label for="aintro">
                                                     报名截止于
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="在短期内将要开展的活动可以将报名截止时间设定的晚一些，如活动开始前1小时在报名开始后；可以修改截止时间来延长报名">
+                                                        <a data-toggle="tooltip" data-placement="bottom" title="在短期内将要开展的活动可以将报名截止时间设定的晚一些，如活动开始前1小时在报名开始后；如果报名人员会经历变动，可以设为1/3天，然后根据情况延长至1小时(系统会重新开放报名)。可以修改截止时间来延长报名">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -472,6 +472,9 @@
                                                     </a>
                                                 </label><br/>
                                                 <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12">
+                                                    {% if use_template %}
+                                                    <input type="hidden" id="template_id" name="template_id" value="{{template_id}}">
+                                                    {% endif %}
                                                     <input onchange="showFilenameLocal(this.files)" type="file" 
                                                            class="custom-file-input" id="images" name="images" 
                                                            accept="image/*" data-max-file-size="4096K">
@@ -632,6 +635,11 @@
         }
         if (text == "")
             text = "选择历史活动图片或海报或以下默认图片之一";
+        else {
+            {% for pic in defaultpics %}
+            document.getElementById("{{pic.id}}").checked = false;
+            {% endfor %}
+        }
         $("#upload_annouce_photo").html(text);
     }
 
@@ -687,6 +695,65 @@
     });
 </script>
 
+
+{% if use_template %}
+<script type="text/javascript">
+    document.getElementById("title").value = "{{title | safe}}";
+    document.getElementById("location").value = "{{location | safe}}";
+    document.getElementById("budget").value = "{{budget}}";   
+    document.getElementById("datetimepicker3").value="{{start}}";
+    document.getElementById("datetimepicker4").value="{{end}}";
+    document.getElementById("examine_teacher").value="{{examine_teacher}}";
+    {% if activity.recorded %}
+    document.getElementById("recorded").checked = true;
+    document.getElementById("yq_source").innerHTML = "向学生收取";
+    document.getElementById("college").style.display = "none";
+    document.getElementById("from_college").value = "0";
+    document.getElementById("reason_block").style.display = "none";
+    document.getElementById("apply_reason").required = "";
+    document.getElementById("aprice").placeholder = "参与活动元气值价格";
+    {% endif %}
+    document.getElementById("pricebutton").innerHTML = "&nbsp;&nbsp;{{signscheme}}&nbsp;&nbsp;";
+    if ("{{signscheme}}" == "先到先得") {
+        document.getElementById("signscheme").value = "0";
+    } else {
+        document.getElementById("signscheme").value = "1";
+    }
+    document.getElementById("yq_source").innerHTML = "{{yq_source}}";
+    if ("{{yq_source}}" == "向学生收取") {
+        document.getElementById("from_college").value = "0";
+    } else {
+        document.getElementById("from_college").value = "1";
+    }
+    document.getElementById("aprice").value = "{{amount}}";
+    {% if no_limit %}
+    document.getElementById("unlimited_capacity").checked = true;
+    document.getElementById("maxpeople").disabled = true;
+    {% else %}
+    document.getElementById("maxpeople").value = "{{capacity}}";
+    {% endif %}
+    {% if need_checkin %}
+    document.getElementById("need_checkin").checked = true;
+    {% endif %}
+    {% if inner %}
+    document.getElementById("inner").checked = true;
+    {% endif %}  
+    document.getElementById("aintro").value = "{{introduction | safe}}";
+    {% if yq_source == "向学院申请" %}
+    document.getElementById("apply_reason").value = "{{apply_reason | safe}}";
+    document.getElementById("reason_block").style.display = "";
+    {% endif %}
+    document.getElementById("inputState").value = {{endbefore}};
+    document.getElementById("URL").placeholder = "{{url | safe}}";
+
+    {% if uploaded_photo %}
+    document.getElementById("upload_annouce_photo").innerHTML = "{{photo}}";
+    {% else %}
+    document.getElementById("{{photo_id}}").checked = true;
+    {% endif %}
+</script>
+
+{% endif %}
 
 <!-- 请求为 edit 或 examine 时执行的脚本， -->
 {% if edit or examine %}
@@ -878,7 +945,9 @@
         {% else %}
         var before_start = new Date(start);
         before_start = new Date(before_start.setHours(before_start.getHours()-1));
-        var applyEnd = new Date("{{apply_end_for_js}}");
+        // 记不清当时为什么这么写了，先留着
+        // var applyEnd = new Date("{{apply_end_for_js}}");
+        var applyEnd = new Date("{{apply_end}}");
         if (document.getElementById("adjust_apply_ddl").checked) {
             if (prepare_option == "0")
                 applyEnd = new Date(start.setHours(start.getHours()-1));
@@ -894,7 +963,7 @@
             // 如果是已截止，也不需要提醒，重新开放就是了
         }
         if (applyEnd < now) {
-            // 相当于提前截止报名，在这改太麻烦了，在 viewActivity 界面留一个 button吧
+            // 相当于提前截止报名，在这改太麻烦了，在 viewActivity 界面留一个 button 吧
             {% if html_display.warn_code == 2 %}
             document.getElementById("success_msg").style.display = "none";
             {% endif %}
@@ -919,6 +988,9 @@
         {% if not edit %}
         /* 选择了审核老师 */
         if (document.getElementById("examine_teacher").value == "") {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "尚未选择审核老师。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -927,6 +999,9 @@
         /* 检查选择了报名方式 */
         var option = document.getElementById("signscheme").value;
         if (option == "") {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "尚未选择报名模式。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -935,6 +1010,9 @@
         /* 检查选择了元气值来源 */
         var from_college = document.getElementById("from_college").value;
         if (from_college == "") {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "尚未选择元气值来源。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -953,6 +1031,9 @@
         var max_people = document.getElementById("maxpeople");
         console.log(max_people.value);
         if (no_limit.checked == false && max_people.value == "") {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "请设置报名人数限制。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -961,7 +1042,7 @@
         {% endif %}
 
         /* 检查图片 */
-        {% if not examine and not accepted %}
+        {% if not examine and not accepted and not use_template %}
             {% if not edit %}
             if (!(document.getElementById("picture1").checked ||
                 document.getElementById("picture2").checked ||
@@ -977,16 +1058,42 @@
             }
             {% endif %}
         if (document.getElementById("images").files.length > 1) {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "仅支持上传一张图片。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
+        }
+        if (document.getElementById("images").files.length == 1) {
+            var valid_list = ["jpg", "bmp", "png", "jpeg", "rgb", "tif"];
+            var type = document.getElementById("images").files[0].name.split(".").pop().toLowerCase();
+            var flag = false;
+            for (t in valid_list) {
+                if (valid_list[t] == type) {
+                    flag = true;
+                    break;
+                }
+            }
+            if (!flag) {
+                {% if html_display.warn_code == 2 %}
+                document.getElementById("success_msg").style.display = "none";
+                {% endif %}
+                document.getElementById("warn_msg").style.display = "";
+                document.getElementById("warn_msg").innerHTML = "不支持的图片格式。";
+                document.body.scrollTop = document.documentElement.scrollTop = 0;
+                return false;
+            } 
         }
         {% endif %}
 
         /* URL 不要太长，使用 https 协议 */
         var url_value = document.getElementById("URL").value;
         if (url_value.length >= 1000) {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "URL 长度超出上限。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -994,6 +1101,9 @@
         }
         if (! url_value == ""){
             if (!url_value.startsWith("http")) {
+                {% if html_display.warn_code == 2 %}
+                document.getElementById("success_msg").style.display = "none";
+                {% endif %}
                 document.getElementById("warn_msg").style.display = "";
                 document.getElementById("warn_msg").innerHTML = "出于安全性考虑，目前仅支持 http 或 https 协议的 URL。";
                 document.body.scrollTop = document.documentElement.scrollTop = 0;
@@ -1024,6 +1134,9 @@
         var applyEnd = new Date("{{apply_end}}")
         var now = new Date()
         if (applyEnd < now) {
+            {% if html_display.warn_code == 2 %}
+            document.getElementById("success_msg").style.display = "none";
+            {% endif %}
             document.getElementById("warn_msg").style.display = "";
             document.getElementById("warn_msg").innerHTML = "活动报名截止时间已过，请通知小组修改。";
             document.body.scrollTop = document.documentElement.scrollTop = 0;

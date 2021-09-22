@@ -42,6 +42,7 @@ from app.utils import (
     message_url,
     escape_for_templates,
     record_modify_with_session,
+    record_traceback,
 )
 from app.activity_utils import (
     create_activity,
@@ -2098,8 +2099,8 @@ def viewActivity(request, aid=None):
             assert activity.status != Activity.Status.ABORT
             assert activity.status != Activity.Status.REJECT
     except Exception as e:
-        # print(e)
-        return redirect("/welcome/")
+        record_traceback(request, e)
+        return EXCEPT_REDIRECT
 
     html_display = dict()
     inform_share, alert_message = utils.get_inform_share(me)
@@ -2121,6 +2122,9 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
         elif option == "edit":
             if (
@@ -2151,6 +2155,9 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
 
         elif option == "quit":
@@ -2171,6 +2178,9 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
         elif option == "payment":
             try:
@@ -2179,8 +2189,8 @@ def viewActivity(request, aid=None):
                 re = Reimbursement.objects.get(related_activity=activity)
                 return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
             except Exception as e:
-                # print("Exception", e)
-                return redirect("/modifyEndActivity/")
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
         elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
             if not ownership:
                 return redirect(message_url(wrong('没有下载权限!')))
@@ -2578,7 +2588,8 @@ def addActivity(request, aid=None):
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
-        raise
+        record_traceback(request, e)
+        return EXCEPT_REDIRECT
 
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
@@ -2591,6 +2602,9 @@ def addActivity(request, aid=None):
                     return redirect(f"/editActivity/{aid}")
             except ActivityException as e:
                 return redirect(str(e))
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
         # 仅这几个阶段可以修改
         if (
@@ -2625,12 +2639,21 @@ def addActivity(request, aid=None):
                 html_display["warn_msg"] = str(e)
                 html_display["warn_code"] = 1
                 # return redirect(f"/viewActivity/{activity.id}")
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava() 
-    if not edit:
+
+    use_template = False
+    if request.method == "GET" and request.GET.get("template"):
+        use_template = True
+        template_id = int(request.GET["template"])
+        activity = Activity.objects.get(id=template_id)
+    if not edit and not use_template:
         available_teachers = NaturalPerson.objects.teachers()
     else:
         try:
@@ -2640,6 +2663,8 @@ def addActivity(request, aid=None):
             if not activity.valid:
                 commentable = True
                 front_check = True
+            if use_template:
+                commentable = False
             # 全可编辑
             full_editable = False
             accepted = False
@@ -2657,7 +2682,8 @@ def addActivity(request, aid=None):
                 # 不是三个可以评论的状态
                 commentable = front_check = False
         except Exception as e:
-            raise
+            record_traceback(request, e)
+            return EXCEPT_REDIRECT
 
         # 决定状态的变量
         # None/edit/examine ( 小组申请活动/小组编辑/老师审查 )
@@ -2671,6 +2697,7 @@ def addActivity(request, aid=None):
         budget = activity.budget
         location = utils.escape_for_templates(activity.location)
         apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
+        # apply_end_for_js = activity.apply_end.strftime("%Y-%m-%d %H:%M")
         start = activity.start.strftime("%Y-%m-%d %H:%M")
         end = activity.end.strftime("%Y-%m-%d %H:%M")
         introduction = escape_for_templates(activity.introduction)
@@ -2695,14 +2722,17 @@ def addActivity(request, aid=None):
         need_checkin = activity.need_checkin
         inner = activity.inner
         apply_reason = utils.escape_for_templates(activity.apply_reason)
-        comments = showComment(activity)
+        if not use_template:
+            comments = showComment(activity)
         photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
         uploaded_photo = False
         if str(photo).startswith("activity"):
             uploaded_photo = True
+            photo_path = photo
             photo = os.path.basename(photo)
         else:
             photo_id = "picture" + os.path.basename(photo).split(".")[0]
+
 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     if not edit:
