@@ -458,9 +458,14 @@ class Course(models.Model):
 
 
 class ActivityManager(models.Manager):
-    def activated(self):
+    def activated(self, only_displayable=True):
         # 选择学年相同，并且学期相同或者覆盖的
-        return self.displayable().filter(year=int(local_dict["semester_data"]["year"])).filter(
+        # 请保证query_range是一个queryset，将manager的行为包装在query_range计算完之前
+        if only_displayable:
+            query_range = self.displayable()
+        else:
+            query_range = self.all()
+        return query_range.filter(year=int(local_dict["semester_data"]["year"])).filter(
             semester__contains=local_dict["semester_data"]["semester"]
         )
 
@@ -473,12 +478,6 @@ class ActivityManager(models.Manager):
             Activity.Status.ABORT,
             Activity.Status.REJECT
         ])
-    
-    def all_activated(self):
-        # 选择学年相同，并且学期相同或者覆盖的，保持任何状态的活动都可见
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
-            semester__contains=local_dict["semester_data"]["semester"]
-        )
 
     def get_newlyended_activity(self):
         # 一周内结束的活动
@@ -744,6 +743,17 @@ class TransferRecord(models.Model):
         super(TransferRecord, self).save(*args, **kwargs)
 
 
+class ParticipantManager(models.Manager):
+    def activated(self, no_unattend=False):
+        '''返回成功报名的参与信息'''
+        exclude_status = [
+            Participant.AttendStatus.CANCELED,
+            Participant.AttendStatus.APLLYFAILED,
+        ]
+        if no_unattend:
+            exclude_status.append(Participant.AttendStatus.UNATTENDED)
+        return self.exclude(status__in=exclude_status)
+
 class Participant(models.Model):
     class Meta:
         verbose_name = "活动参与情况"
@@ -767,6 +777,7 @@ class Participant(models.Model):
         default=AttendStatus.APPLYING,
         max_length=32,
     )
+    objects = ParticipantManager()
 
 
 class YQPointDistribute(models.Model):
