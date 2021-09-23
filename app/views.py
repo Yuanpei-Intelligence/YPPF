@@ -2443,37 +2443,45 @@ def checkinActivity(request, aid=None):
     try:
         assert user_type == "Person"
         np = get_person_or_org(request.user)
-        activity = Activity.objects.get(id=int(aid))
+        aid = int(aid)
+        activity = Activity.objects.get(id=aid)
         varifier = request.GET["auth"]
-        assert varifier == hash_coder.encode(aid)
+        assert varifier == hash_coder.encode(str(aid))
     except:
         return redirect(message_url(wrong('签到失败!')))
 
-    warn_code = 1
+    # context = wrong('发生意外错误')   # 理应在任何情况都生成context, 如果没有就让包装器捕获吧
     if activity.status == Activity.Status.END:
-        warn_message = "活动已结束，不再开放签到。"
+        context = wrong("活动已结束，不再开放签到。")
     elif (
         activity.status == Activity.Status.PROGRESSING or
-        activity.status == Activity.Status.WAITING and datetime.now() + timedelta(hours=1) >= activity.start
+        (activity.status == Activity.Status.WAITING
+        and datetime.now() + timedelta(hours=1) >= activity.start)
     ):
         try:
             with transaction.atomic():
                 participant = Participant.objects.select_for_update().get(
-                    activity_id=int(aid), person_id=np,
-                    status=Participant.AttendStatus.UNATTENDED
+                    activity_id=aid, person_id=np,
+                    status__in=[
+                        Participant.AttendStatus.UNATTENDED,
+                        Participant.AttendStatus.APLLYSUCCESS,
+                        Participant.AttendStatus.ATTENDED,
+                    ]
                 )
-                participant.status = Participant.AttendStatus.ATTENDED
-                participant.save()
-                warn_message = "签到成功。"
-                warn_code = 2
+                if participant.status == Participant.AttendStatus.ATTENDED:
+                    context = succeed("您已签到，无需重复签到!")
+                else:
+                    participant.status = Participant.AttendStatus.ATTENDED
+                    participant.save()
+                    context = succeed("签到成功!")
         except:
-            warn_message = "非预期的错误，请确认您报名了活动。也可能您已签到。"
+            context = wrong("您尚未报名该活动!")
         
     else:
-        warn_message = "活动尚未开始签到。"
+        context = wrong("活动开始前一小时开放签到，请耐心等待!")
         
     # TODO 在 activity_info 里加更多信息
-    return redirect(f"/viewActivity/{aid}?warn_code={warn_code}&warn_message={warn_message}")
+    return redirect(message_url(context, f"/viewActivity/{aid}"))
 
 
 # participant checkin activity
