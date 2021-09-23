@@ -678,6 +678,30 @@ class Activity(CommentBase):
         self.YQPoint = round(self.YQPoint, 1)
         self.typename = "activity"
         super().save(*args, **kwargs)
+    
+    def popular_level(self, any_status=False):
+        if not any_status and not self.status in [
+            Activity.Status.WAITING,
+            Activity.Status.PROGRESSING,
+            Activity.Status.END,
+        ]:
+            return 0
+        if self.current_participants >= self.capacity:
+            return 2
+        if (self.current_participants >= 30
+            or (self.capacity >= 10 and self.current_participants >= self.capacity * 0.85)
+            ):
+            return 1
+        return 0
+
+    def has_tag(self):
+        if self.need_checkin or self.inner:
+            return True
+        if self.status == Activity.Status.APPLYING:
+            return True
+        if self.is_popular():
+            return True
+        return False
 
 class ActivityPhoto(models.Model):
     class Meta:
