@@ -8,8 +8,6 @@ import io
 import csv
 import os
 
-from django.dispatch.dispatcher import NO_RECEIVERS, receiver
-from django.template.defaulttags import register
 from app.models import (
     NaturalPerson,
     Freshman,
@@ -29,6 +27,8 @@ from app.models import (
     YQPointDistribute,
     Reimbursement,
     Wishes,
+    QandA,
+    ReimbursementPhoto
 )
 import app.utils as utils
 from app.forms import UserForm
@@ -39,8 +39,10 @@ from app.utils import (
     update_org_application, 
     wrong, 
     succeed,
+    message_url,
     escape_for_templates,
     record_modify_with_session,
+    record_traceback,
 )
 from app.activity_utils import (
     create_activity,
@@ -70,6 +72,13 @@ from app.notification_utils import(
     bulk_notification_create,
     notification_status_change,
 )
+from app.QA_utils import (
+    QA2Display,
+    QA_anwser,
+    QA_create,
+    QA_delete,
+    QA_ignore,
+)
 from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from django.shortcuts import render, redirect
@@ -79,15 +88,14 @@ from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import transaction
-from django.db.models import Q
-from django.db.models import F
+from django.db.models import Q, F
 from django.conf import settings
 from django.urls import reverse
 from django.views.decorators.http import require_POST, require_GET
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
-from app.utils import operation_writer
+from app.utils import operation_writer, update_related_account_in_session
 
 # 定时任务不在views直接调用
 # 但是天气任务还是在这里弄吧，太奇怪了
@@ -101,12 +109,10 @@ email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
 YQPoint_oname = local_dict["YQPoint_source_oname"]
 
-
-@register.filter
-def get_item(dictionary, key):
-    return dictionary.get(key)
+EXCEPT_REDIRECT = HttpResponseRedirect(message_url(wrong('出现意料之外的错误, 请联系管理员!')))
 
 
+@utils.except_captured(source='views[index]', record_user=True)
 def index(request):
     arg_origin = request.GET.get("origin")
     modpw_status = request.GET.get("modinfo")
@@ -170,18 +176,18 @@ def index(request):
         userinfo = auth.authenticate(username=username, password=password)
         if userinfo:
             auth.login(request, userinfo)
-            request.session["username"] = username
-            if arg_origin is not None:
-                pass # 现在统一放到下面处理，这里只负责登录
-            else:
-                # 先处理初次登录
-                valid, user_type, html_display = utils.check_user_type(request.user)
-                if not valid:
-                    return redirect("/logout/")
+            # request.session["username"] = username 已废弃
+            valid, user_type, html_display = utils.check_user_type(request.user)
+            if not valid:
+                return redirect("/logout/")
+            if user_type == "Person":
                 me = utils.get_person_or_org(userinfo, user_type)
                 if me.first_time_login:
+                    # 不管有没有跳转，这个逻辑都应该是优先的
+                    # TODO：应该在修改密码之后做一个跳转
                     return redirect("/modpw/")
-
+                update_related_account_in_session(request, username)
+            if arg_origin is None:
                 return redirect("/welcome/")
                 """
                 valid, user_type , html_display = utils.check_user_type(request.user)
@@ -210,7 +216,7 @@ def index(request):
                 return redirect(arg_origin)  # 不需要加密验证
 
             timeStamp = str(int(datetime.utcnow().timestamp())) # UTC 统一服务器
-            username = request.session["username"]
+            username = request.user.username    # session["username"] 已废弃
             en_pw = hash_coder.encode(username + timeStamp)
             try:
                 userinfo = NaturalPerson.objects.get(person_id__username=username)
@@ -228,11 +234,37 @@ def index(request):
     return render(request, "index.html", locals())
 
 
+@login_required(redirect_field_name="origin")
+@utils.except_captured(source='views[shiftAccount]', record_user=True)
+def shiftAccount(request):
+
+    username = request.session.get("NP")
+    if not username:
+        return redirect(message_url(wrong('没有可切换的账户信息，请重新登录!')))
+
+    oname = ""
+    if request.method == "GET" and request.GET.get("oname"):
+        oname = request.GET["oname"]
+
+    # 不一定更新成功，但无所谓
+    update_related_account_in_session(request, username, shift=True, oname=oname)
+
+    if request.method == "GET" and request.GET.get("origin"):
+        arg_url = request.GET["origin"]
+        if url_check(arg_url) and check_cross_site(request, arg_url) :
+            if not arg_url.startswith('http'): # 暂时只允许内部链接
+                return redirect(arg_url)
+    return redirect("/welcome/")
+
+
+
+
 # Return content
 # Sname 姓名 Succeed 成功与否
 wechat_login_coder = MyMD5PasswordHasher("wechat_login")
 
 
+@utils.except_captured(source='views[miniLogin]', record_user=True)
 def miniLogin(request):
     try:
         assert request.method == "POST"
@@ -248,8 +280,8 @@ def miniLogin(request):
 
             auth.login(request, userinfo)
 
-            request.session["username"] = username
-            en_pw = hash_coder.encode(request.session["username"])
+            # request.session["username"] = username 已废弃
+            en_pw = hash_coder.encode(username)
             user_account = NaturalPerson.objects.get(person_id=username)
             return JsonResponse({"Sname": user_account.name, "Succeed": 1}, status=200)
         else:
@@ -260,6 +292,7 @@ def miniLogin(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[stuinfo]', record_user=True)
 def stuinfo(request, name=None):
     """
         进入到这里的逻辑:
@@ -286,7 +319,7 @@ def stuinfo(request, name=None):
         name = request.GET.get('name', None)
     if name is None:
         if user_type == "Organization":
-            return redirect("/welcome/")  # 小组只能指定学生姓名访问
+            return redirect("/orginfo/")  # 小组只能指定学生姓名访问
         else:  # 跳轉到自己的頁面
             assert user_type == "Person"
             full_path = request.get_full_path()
@@ -299,7 +332,7 @@ def stuinfo(request, name=None):
         name = name_list[0]
         person = NaturalPerson.objects.activated().filter(name=name)
         if len(person) == 0:  # 查无此人
-            return redirect("/welcome/")
+            return redirect(message_url(wrong('用户不存在!')))
         if len(person) == 1:  # 无重名
             person = person[0]
         else:  # 有很多人，这时候假设加号后面的是user的id
@@ -322,11 +355,28 @@ def stuinfo(request, name=None):
         inform_share, alert_message = utils.get_inform_share(me=person, is_myself=is_myself)
 
         # 处理更改数据库中inform_share的post
-        if request.method == "POST" and request.POST:
+        if request.POST.get("question") is not None:
+            anonymous_flag = (request.POST.get('show_name') is not None)
+            question = request.POST.get("question")
+            if len(question) == 0:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "请填写问题内容!"
+            else:
+                try:
+                    QA_create(sender=request.user,receiver=person.person_id,Q_text=str(question),anonymous_flag=anonymous_flag)
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "提问发送成功!"
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "提问发送失败!请联系管理员!"
+            return redirect(f"/stuinfo/?name={person.name}&warn_code="+str(html_display["warn_code"])+"&warn_message="+str(html_display["warn_message"]))
+        elif request.method == "POST" and request.POST:
             option = request.POST.get("option", "")
             assert option == "cancelInformShare" and html_display["is_myself"]
             person.inform_share = False
             person.save()
+            return redirect("/welcome/")
+
 
 
         # ----------------------------------- 小组卡片 ----------------------------------- #
@@ -342,7 +392,7 @@ def stuinfo(request, name=None):
                 Q(person=oneself) & Q(show_post=True)
             )
         )
-        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("id") # 自己的小组
+        oneself_orgs_id = [oneself.id] if user_type == "Organization" else oneself_orgs.values("org") # 自己的小组
 
         # 管理的小组
         person_owned_poss = person_poss.filter(is_admin=True, status=Position.Status.INSERVICE)
@@ -436,7 +486,7 @@ def stuinfo(request, name=None):
             ~Q(status=Activity.Status.CANCELED),
         )
         if user_type == "Person":
-            activities_me = Participant.objects.filter(person_id=person.id).values(
+            activities_me = Participant.objects.filter(person_id=oneself.id).values(
                 "activity_id"
             )
             activity_is_same = [
@@ -461,7 +511,7 @@ def stuinfo(request, name=None):
                 request.GET.get("warn_code", 0)
             )  # 是否有来自外部的消息
         except:
-            return redirect("/welcome/")
+            return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
         html_display["warn_message"] = request.GET.get("warn_message", "")  # 提醒的具体内容
 
         modpw_status = request.GET.get("modinfo", None)
@@ -474,7 +524,8 @@ def stuinfo(request, name=None):
 
         context["person"] = person
 
-        context["title"] = "我" if is_myself else "Ta"
+        context["title"] = "我" if is_myself else (
+            {0: "他", 1: "她"}.get(person.gender, 'Ta') if person.show_gender else "Ta")
 
         context["avatar_path"] = person.get_user_ava()
         context["wallpaper_path"] = utils.get_user_wallpaper(person, "Person")
@@ -489,13 +540,16 @@ def stuinfo(request, name=None):
             load_alert_message = request.session.pop('alert_message')
         
         # 浏览次数，必须在render之前
-        person.visit_times+=1
-        person.save()
+        # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据
+        NaturalPerson.objects.filter(id=person.id).update(visit_times=F('visit_times')+1)
+        # person.visit_times+=1
+        # person.save()
         return render(request, "stuinfo.html", locals())
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[request_login_org]', record_user=True)
 def request_login_org(request, name=None):  # 特指个人希望通过个人账户登入小组账户的逻辑
     """
         这个函数的逻辑是，个人账户点击左侧的管理小组直接跳转登录到小组账户
@@ -510,11 +564,11 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
     try:
         me = NaturalPerson.objects.activated().get(person_id=user)
     except:  # 找不到合法的用户
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('用户不存在!')))
     if name is None:  # 个人登录未指定登入小组,属于不合法行为,弹回欢迎
         name = request.GET.get('name', None)
     if name is None:  # 个人登录未指定登入小组,属于不合法行为,弹回欢迎
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('无效的小组信息!')))
     else:  # 确认有无这个小组
         try:
             org = Organization.objects.get(oname=name)
@@ -532,12 +586,14 @@ def request_login_org(request, name=None):  # 特指个人希望通过个人账�
         # 到这里,是本人小组并且有权限登录
         auth.logout(request)
         auth.login(request, org.organization_id)  # 切换到小组账号
+        utils.update_related_account_in_session(request, user.username, oname=org.oname)
         if org.first_time_login:
             return redirect("/modpw/")
         return redirect("/orginfo/?warn_code=2&warn_message=成功切换到"+str(org)+"的账号!")
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[user_login_org]', record_user=True)
 def user_login_org(request, org):
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -557,6 +613,7 @@ def user_login_org(request, org):
     # 到这里,是本人小组并且有权限登录
     auth.logout(request)
     auth.login(request, org.organization_id)  # 切换到小组账号
+    utils.update_related_account_in_session(request, user.username, oname=org.oname)
     return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")
 
 
@@ -564,6 +621,7 @@ def user_login_org(request, org):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[orginfo]', record_user=True)
 def orginfo(request, name=None):
     """
         orginfo负责呈现小组主页，逻辑和stuinfo是一样的，可以参考
@@ -582,11 +640,11 @@ def orginfo(request, name=None):
 
     if name is None:  # 此时登陆的必需是法人账号，如果是自然人，则跳转welcome
         if user_type == "Person":
-            return redirect("/welcome/")
+            return redirect(message_url(wrong('个人账号不能登陆小组主页!')))
         try:
             org = Organization.objects.activated().get(organization_id=user)
         except:
-            return redirect("/welcome/")
+            return redirect(message_url(wrong('用户小组不存在或已经失效!')))
 
         full_path = request.get_full_path()
         append_url = "" if ("?" not in full_path) else "&" + full_path.split("?")[1]
@@ -600,7 +658,7 @@ def orginfo(request, name=None):
         org = Organization.objects.activated().get(oname=name)
 
     except:
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('该小组不存在!')))
 
     # 判断是否为小组账户本身在登录
     html_display["is_myself"] = me == org
@@ -618,9 +676,29 @@ def orginfo(request, name=None):
             html_display["warn_message"] = "下载成功!"
             return utils.export_orgpos_info(org)
         elif request.POST.get("option", "") == "cancelInformShare" and html_display["is_myself"]:
-            me.inform_share = False
-            me.save()
-            
+            org.inform_share = False
+            org.save()
+            return redirect("/welcome/")
+        elif request.POST.get("question") is not None:
+            anonymous_flag = (request.POST.get('show_name') is not None)
+            question = request.POST.get("question")
+            if len(question) == 0:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "请填写问题内容!"
+            elif html_display['is_myself']:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "不能向自己提问!"
+            else:
+                try:
+                    QA_create(sender=request.user,receiver=org.organization_id,Q_text=str(question),anonymous_flag=anonymous_flag)
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "提问发送成功!"
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "提问发送失败!请联系管理员!"
+            return redirect(message_url(html_display, f"/orginfo/?name={organization_name}"))
+
+        
 
     # 该学年、该学期、该小组的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
@@ -707,7 +785,7 @@ def orginfo(request, name=None):
         html_display["warn_code"] = int(
             request.GET.get("warn_code", 0))  # 是否有来自外部的消息
     except:
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
     html_display["warn_message"] = request.GET.get(
         "warn_message", "")  # 提醒的具体内容
 
@@ -754,13 +832,16 @@ def orginfo(request, name=None):
         load_alert_message = request.session.pop('alert_message')
     
     # 浏览次数，必须在render之前
-    org.visit_times+=1
-    org.save()
+    # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据
+    Organization.objects.filter(id=org.id).update(visit_times=F('visit_times')+1)
+    # org.visit_times+=1
+    # org.save()
     return render(request, "orginfo.html", locals())
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[homepage]', record_user=True)
 def homepage(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = True if user_type == "Person" else False
@@ -777,7 +858,7 @@ def homepage(request):
         html_display["warn_code"] = int(
             request.GET.get("warn_code", 0))  # 是否有来自外部的消息
     except:
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
     html_display["warn_message"] = request.GET.get(
         "warn_message", "")  # 提醒的具体内容
 
@@ -841,11 +922,13 @@ def homepage(request):
     wishes = wishes[:100]
 
     # 心愿墙背景图片
-    colors = [
-        "#FDAFAB","#FFDAC1","#FAF1D6",
-        "#B6E3E9","#B5EAD7","#E2F0CB"
-    ]
-    backgroundpics = [{"src":"/static/assets/img/backgroundpics/"+str(i+1)+".png","color": colors[i] } for i in range(6)]
+    colors = Wishes.COLORS
+    backgroundpics = [
+            {
+                "src":"/static/assets/img/backgroundpics/"+str(i+1)+".png",
+                "color": color
+            } for i, color in enumerate(colors)
+        ]
 
     # 从redirect.json读取要作为引导图的图片，按照原始顺序
     guidepicdir = "static/assets/img/guidepics"
@@ -860,7 +943,7 @@ def homepage(request):
     """
     photo_display = ActivityPhoto.objects.filter(type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')[: 8 - len(guidepics)] # 第一张active不算
     for photo in photo_display:
-        if str(photo.image) and str(photo.image)[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+        if str(photo.image) : 
             photo.image = settings.MEDIA_URL + str(photo.image)
     
     """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
@@ -903,6 +986,7 @@ def homepage(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[account_setting]', record_user=True)
 def account_setting(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -936,16 +1020,24 @@ def account_setting(request):
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
-            expr = bool(attr_dict['ava'] or attr_dict['wallpaper'] or (attr_dict['gender'] != useroj.get_gender_display()))
-            expr += bool(sum(
-                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_check_list]))
-            expr += bool(sum([getattr(useroj, show_attr) != show_dict[show_attr]
-                              for show_attr in show_dict.keys()]))
+            modify_info = []
+            if attr_dict['gender'] != useroj.get_gender_display():
+                modify_info.append(f'gender: {useroj.get_gender_display()}->{attr_dict["gender"]}')
+            if attr_dict['ava']:
+                modify_info.append(f'avatar: {attr_dict["ava"]}')
+            if attr_dict['wallpaper']:
+                modify_info.append(f'wallpaper: {attr_dict["wallpaper"]}')
+            modify_info += [f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}'
+                            for attr in attr_check_list
+                            if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr])]
+            modify_info += [f'{show_attr}: {getattr(useroj, show_attr)}->{show_dict[show_attr]}'
+                            for show_attr in show_dict.keys() 
+                            if getattr(useroj, show_attr) != show_dict[show_attr]]
 
             if attr_dict['gender'] != useroj.gender:
                 useroj.gender = NaturalPerson.Gender.MALE if attr_dict['gender'] == '男' else NaturalPerson.Gender.FEMALE
             for attr in attr_check_list:
-                if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
+                if attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]:
                     setattr(useroj, attr, attr_dict[attr])
             for show_attr in show_dict.keys():
                 if getattr(useroj, show_attr) != show_dict[show_attr]:
@@ -954,10 +1046,13 @@ def account_setting(request):
                 useroj.avatar = attr_dict['ava']
             if 'wallpaper' in attr_dict.keys() and attr_dict['wallpaper'] is not None:
                 useroj.wallpaper = attr_dict['wallpaper']
+            expr = len(modify_info)
             if expr >= 1:
                 useroj.save()
                 upload_state = True
-                record_modify_with_session(request, f"修改了{expr}项信息")
+                modify_msg = '\n'.join(modify_info)
+                record_modify_with_session(request,
+                    f"修改了{expr}项信息：\n{modify_msg}")
                 return redirect("/stuinfo/?modinfo=success")
             # else: 没有更新
 
@@ -972,17 +1067,21 @@ def account_setting(request):
         if request.method == "POST" and request.POST:
 
             ava = request.FILES.get("avatar")
-            wallpaper=request.FILES.get("wallpaper")
+            wallpaper = request.FILES.get("wallpaper")
             # 合法性检查
             attr_dict, show_dict, html_display = utils.check_account_setting(request, user_type)
             attr_check_list = [attr for attr in attr_dict.keys()]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
-            expr = bool(ava)
-
-            expr += bool(sum(
-                [(getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "") for attr in attr_check_list]))
+            modify_info = []
+            if ava:
+                modify_info.append(f'avatar: {ava}')
+            if wallpaper:
+                modify_info.append(f'wallpaper: {wallpaper}')
+            modify_info += [f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}'
+                            for attr in attr_check_list
+                            if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr])]
 
             for attr in attr_check_list:
                 if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
@@ -991,23 +1090,26 @@ def account_setting(request):
                 pass
             else:
                 useroj.avatar = ava
-            expr += bool(wallpaper)
             if wallpaper is not None:
                 useroj.wallpaper = wallpaper
             useroj.save()
             avatar_path = settings.MEDIA_URL + str(ava)
+            expr = len(modify_info)
             if expr >= 1:
                 upload_state = True
-                record_modify_with_session(request, f"修改了{expr}项信息")
+                modify_msg = '\n'.join(modify_info)
+                record_modify_with_session(request,
+                    f"修改了{expr}项信息：\n{modify_msg}")
                 return redirect("/orginfo/?modinfo=success")
             # else: 没有更新
 
         return render(request, "org_account_setting.html", locals())
 
 
+@utils.except_captured(source='views[freshman]', record_user=True)
 def freshman(request):
     if request.user.is_authenticated:
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('你已经登录，无需进行注册!')))
 
     if request.GET.get("success") is not None:
         alert = request.GET.get("alert")
@@ -1110,7 +1212,9 @@ def freshman(request):
 
 
 @login_required(redirect_field_name="origin")
+@utils.except_captured(source='views[user_agreement]', record_user=True)
 def user_agreement(request):
+    # 不要加check_user_access，因为本页面就是该包装器首次登录时的跳转页面之一
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect("/index/")
@@ -1128,6 +1232,7 @@ def user_agreement(request):
 
 
 
+@utils.except_captured(source='views[auth_register]', record_user=True)
 def auth_register(request):
     if request.user.is_superuser:
         if request.method == "POST" and request.POST:
@@ -1178,12 +1283,14 @@ def auth_register(request):
 
 
 # @login_required(redirect_field_name=None)
+@utils.except_captured(source='views[logout]', record_user=True)
 def logout(request):
     auth.logout(request)
     return HttpResponseRedirect("/index/")
 
 
 """
+@utils.except_captured(source='views[org_spec]', record_user=True)
 def org_spec(request, *args, **kwargs):
     arg = args[0]
     org_dict = local_dict['org']
@@ -1200,6 +1307,7 @@ def org_spec(request, *args, **kwargs):
     return render(request, 'org_spec.html', locals())
 """
 
+@utils.except_captured(source='views[get_stu_img]', record_user=True)
 def get_stu_img(request):
     print("in get stu img")
     stuId = request.GET.get("stuId")
@@ -1215,6 +1323,7 @@ def get_stu_img(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[search]', record_user=True)
 def search(request):
     """
         搜索界面的呈现逻辑
@@ -1239,7 +1348,7 @@ def search(request):
 
     query = request.GET.get("Query", "")
     if query == "":
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('请填写有效的搜索信息!')))
 
     not_found_message = "找不到符合搜索的信息或相关内容未公开！"
     # 首先搜索个人, 允许搜索姓名或者公开的专业, 删去小名搜索
@@ -1335,11 +1444,7 @@ def search(request):
     return render(request, "search.html", locals())
 
 
-def test(request):
-    request.session["cookies"] = "hello, i m still here."
-    return render(request, "all_org.html")
-
-
+@utils.except_captured(source='views[forget_password]', record_user=True)
 def forget_password(request):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
@@ -1469,8 +1574,9 @@ def forget_password(request):
                     display = wrong("验证码已过期，请重新发送")
                 elif str(vertify_code).upper() == captcha.upper():
                     auth.login(request, user)
+                    utils.update_related_account_in_session(request, user.username)
                     utils.clear_captcha_session(request)
-                    request.session["username"] = username
+                    # request.session["username"] = username 已废弃
                     request.session["forgetpw"] = "yes"
                     return redirect(reverse("modpw"))
                 else:
@@ -1481,6 +1587,7 @@ def forget_password(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/", is_modpw=True)
+@utils.except_captured(source='views[modpw]', record_user=True)
 def modpw(request):
     """
         可能在三种情况进入这个页面：首次登陆；忘记密码；或者常规的修改密码。
@@ -1578,6 +1685,7 @@ def modpw(request):
 # 搜索不希望出现学号，rid 为 User 的 index
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[transaction_page]', record_user=True)
 def transaction_page(request, rid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
@@ -1631,7 +1739,7 @@ def transaction_page(request, rid=None):
             assert amount > 0
             assert int(amount * 10) == amount * 10
         except:
-            return redirect("/welcome/")
+            return redirect(message_url(wrong('非法的转账数量!')))
 
         # 到这里, 参数的合法性检查完成了, 接下来应该是检查发起人的账户, 够钱就转
         try:
@@ -1700,6 +1808,7 @@ def transaction_page(request, rid=None):
 
 
 
+@utils.except_captured(source='views[confirm_transaction]', record_user=True)
 def confirm_transaction(request, tid=None, reject=None):
     context = dict()
     context["warn_code"] = 1  # 先假设有问题
@@ -1786,6 +1895,7 @@ def confirm_transaction(request, tid=None, reject=None):
     return context
 
 
+@utils.except_captured(source='views[record2Display]')
 def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_list
     lis = []
     amount = {"send": 0.0, "recv": 0.0}
@@ -1851,6 +1961,7 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[myYQPoint]', record_user=True)
 def myYQPoint(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -1956,6 +2067,7 @@ def myYQPoint(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[viewActivity]', record_user=True, return_value=EXCEPT_REDIRECT)
 def viewActivity(request, aid=None):
     """
     aname = str(request.POST["aname"])  # 活动名称
@@ -1987,8 +2099,8 @@ def viewActivity(request, aid=None):
             assert activity.status != Activity.Status.ABORT
             assert activity.status != Activity.Status.REJECT
     except Exception as e:
-        # print(e)
-        return redirect("/welcome/")
+        record_traceback(request, e)
+        return EXCEPT_REDIRECT
 
     html_display = dict()
     inform_share, alert_message = utils.get_inform_share(me)
@@ -2010,9 +2122,9 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
-                print("GOTCHA")
-            except:
-                redirect("/welcome/")
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
         elif option == "edit":
             if (
@@ -2043,8 +2155,9 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
-            except:
-                redirect('/welcome/')
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
 
         elif option == "quit":
@@ -2065,8 +2178,9 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
-            except:
-                return redirect('/welcome/')
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
         elif option == "payment":
             try:
@@ -2075,61 +2189,25 @@ def viewActivity(request, aid=None):
                 re = Reimbursement.objects.get(related_activity=activity)
                 return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
             except Exception as e:
-                # print("Exception", e)
-                return redirect("/modifyEndActivity/")
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
         elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
             if not ownership:
-                return redirect("/welcome/")
+                return redirect(message_url(wrong('没有下载权限!')))
             return utils.export_activity(activity,option)
         elif option == "cancelInformShare":
             me.inform_share = False
             me.save()
+            return redirect("/welcome/")
         else:
-            return redirect("/welcome")
-        """
-        elif option == "submitphoto":
-            if not (ownership and activity.status == Activity.Status.END):
-                return redirect("/welcome/")
-
-            summary_photo_exists = False
-            if activity.status == Activity.Status.END:
-                try:
-                    summary_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
-                    summary_photo_exists = True
-                except:
-                    pass
-            summaryphotos = request.FILES.getlist('images')
-            if len(summaryphotos)==0:
-                html_display['warn_code'] = 1
-                html_display['warn_message'] = "上传活动照片不能为空"
-            else:
-                photo = summaryphotos[0]
-                if utils.if_image(photo) !=2:
-                    html_display['warn_code'] = 1
-                    html_display['warn_message'] = "上传的附件只支持图片格式"
-                elif summary_photo_exists:
-                    old_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
-                    old_photo.image = photo
-                    old_photo.save()
-                    summary_photo = settings.MEDIA_URL + str(old_photo.image)
-                    html_display["warn_message"] = "成功替换活动照片"
-                    html_display["warn_code"] = 2
-                else:
-                    ActivityPhoto.objects.create(
-                        image=photo, 
-                        activity=activity, 
-                        time=datetime.now(),
-                        type = ActivityPhoto.PhotoType.SUMMARY
-                    )
-                    html_display["warn_message"] = "成功提交活动照片"
-                    html_display["warn_code"] = 2
-        """
+            return redirect(message_url(wrong('无效的请求!')))
+        
     elif request.method == "GET":
         warn_code = request.GET.get("warn_code")
         warn_msg = request.GET.get("warn_message")
         if warn_code and warn_msg:
             if warn_code != "1" and warn_code != "2":
-                return redirect("/welcome/")
+                return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
             html_display["warn_code"] = int(warn_code)
             html_display["warn_message"] = warn_msg
 
@@ -2207,9 +2285,8 @@ def viewActivity(request, aid=None):
     summary_photo_exists = False
     if activity.status == Activity.Status.END:
         try:
-            summary_photo = activity.photos.get(type=ActivityPhoto.PhotoType.SUMMARY)
+            summary_photos = activity.photos.filter(type=ActivityPhoto.PhotoType.SUMMARY)
             summary_photo_exists = True
-            summary_photo = settings.MEDIA_URL + str(summary_photo.image)
         except Exception as e:
             pass
     
@@ -2228,8 +2305,10 @@ def viewActivity(request, aid=None):
     # bar_display["navbar_name"] = "活动信息"
 
     # 浏览次数，必须在render之前
-    activity.visit_times+=1
-    activity.save()
+    # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据
+    Activity.objects.filter(id=activity.id).update(visit_times=F('visit_times')+1)
+    # activity.visit_times+=1
+    # activity.save()
     return render(request, "activity_info.html", locals())
 
 
@@ -2251,6 +2330,7 @@ def viewActivity(request, aid=None):
 # TODO: 前端页面待对接
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[getActivityInfo]', record_user=True)
 def getActivityInfo(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -2357,6 +2437,7 @@ def getActivityInfo(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[checkinActivity]', record_user=True)
 def checkinActivity(request, aid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     try:
@@ -2366,7 +2447,7 @@ def checkinActivity(request, aid=None):
         varifier = request.GET["auth"]
         assert varifier == hash_coder.encode(aid)
     except:
-        return redirect("/welcome/")
+        return redirect(message_url(wrong('签到失败!')))
 
     warn_code = 1
     if activity.status == Activity.Status.END:
@@ -2403,6 +2484,7 @@ def checkinActivity(request, aid=None):
 """
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[checkinActivity]', record_user=True)
 def checkinActivity(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -2477,6 +2559,7 @@ def checkinActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[addActivity]', record_user=True, return_value=EXCEPT_REDIRECT)
 def addActivity(request, aid=None):
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
@@ -2495,11 +2578,7 @@ def addActivity(request, aid=None):
             if user_type == "Person":
                 html_display=user_login_org(request,activity.organization_id)
                 if html_display['warn_code']==1:
-                    return redirect(
-                        "/welcome/"+"?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]
-                        )
-                    )
+                    return redirect(message_url(wrong(html_display["warn_message"])))
                 else:#成功以小组账号登陆
                     #防止后边有使用，因此需要赋值
                     user_type="Organization"
@@ -2509,8 +2588,8 @@ def addActivity(request, aid=None):
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
-        print(e)
-        return redirect("/welcome/")
+        record_traceback(request, e)
+        return EXCEPT_REDIRECT
 
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
@@ -2524,8 +2603,8 @@ def addActivity(request, aid=None):
             except ActivityException as e:
                 return redirect(str(e))
             except Exception as e:
-                print(e)
-                return redirect("/welcome/")
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
         # 仅这几个阶段可以修改
         if (
@@ -2533,23 +2612,19 @@ def addActivity(request, aid=None):
                 activity.status != Activity.Status.APPLYING and 
                 activity.status != Activity.Status.WAITING
         ):
-            return redirect("/welcome/")
+            return redirect(message_url(wrong('当前活动状态不允许修改!')))
 
         # 处理 comment
         if request.POST.get("comment_submit"):
-            try:
-                # 创建活动只能在审核时添加评论
-                assert not activity.valid
-                context = addComment(request, activity, activity.examine_teacher.person_id)
-                # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
-                assert context["warn_code"] == 2
-                # 成功后重新加载界面
-                html_display["warn_msg"] = "评论成功。"
-                html_display["warn_code"] = 2
-                # return redirect(f"/editActivity/{aid}")
-            except Exception as e:
-                print(e)
-                return redirect("/welcome/")
+            # 创建活动只能在审核时添加评论
+            assert not activity.valid
+            context = addComment(request, activity, activity.examine_teacher.person_id)
+            # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
+            assert context["warn_code"] == 2, context["warn_message"]
+            # 成功后重新加载界面
+            html_display["warn_msg"] = "评论成功。"
+            html_display["warn_code"] = 2
+            # return redirect(f"/editActivity/{aid}")
         else:
             try:
                 # 只能修改自己的活动
@@ -2565,14 +2640,20 @@ def addActivity(request, aid=None):
                 html_display["warn_code"] = 1
                 # return redirect(f"/viewActivity/{activity.id}")
             except Exception as e:
-                operation_writer(local_dict["system_log"],"活动"+str(activity.id)+"在修改过程中出现异常，报错为:" + str(e),"[views:addActivity]","Error")
-                return redirect("/welcome/?warn_code=1&warn_message=出现意料之外的错误, 请联系管理员帮您解决!")
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava() 
-    if not edit:
+
+    use_template = False
+    if request.method == "GET" and request.GET.get("template"):
+        use_template = True
+        template_id = int(request.GET["template"])
+        activity = Activity.objects.get(id=template_id)
+    if not edit and not use_template:
         available_teachers = NaturalPerson.objects.teachers()
     else:
         try:
@@ -2582,6 +2663,8 @@ def addActivity(request, aid=None):
             if not activity.valid:
                 commentable = True
                 front_check = True
+            if use_template:
+                commentable = False
             # 全可编辑
             full_editable = False
             accepted = False
@@ -2599,8 +2682,8 @@ def addActivity(request, aid=None):
                 # 不是三个可以评论的状态
                 commentable = front_check = False
         except Exception as e:
-            print(e)
-            return redirect("/welcome/")
+            record_traceback(request, e)
+            return EXCEPT_REDIRECT
 
         # 决定状态的变量
         # None/edit/examine ( 小组申请活动/小组编辑/老师审查 )
@@ -2614,6 +2697,7 @@ def addActivity(request, aid=None):
         budget = activity.budget
         location = utils.escape_for_templates(activity.location)
         apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
+        # apply_end_for_js = activity.apply_end.strftime("%Y-%m-%d %H:%M")
         start = activity.start.strftime("%Y-%m-%d %H:%M")
         end = activity.end.strftime("%Y-%m-%d %H:%M")
         introduction = escape_for_templates(activity.introduction)
@@ -2638,14 +2722,17 @@ def addActivity(request, aid=None):
         need_checkin = activity.need_checkin
         inner = activity.inner
         apply_reason = utils.escape_for_templates(activity.apply_reason)
-        comments = showComment(activity)
+        if not use_template:
+            comments = showComment(activity)
         photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
         uploaded_photo = False
         if str(photo).startswith("activity"):
             uploaded_photo = True
+            photo_path = photo
             photo = os.path.basename(photo)
         else:
             photo_id = "picture" + os.path.basename(photo).split(".")[0]
+
 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     if not edit:
@@ -2656,6 +2743,7 @@ def addActivity(request, aid=None):
     return render(request, "activity_add.html", locals())
 
 @login_required(redirect_field_name="origin")
+@utils.except_captured(source='views[examineActivity]', record_user=True)
 def examineActivity(request, aid):
     valid, user_type, html_display = utils.check_user_type(request.user)
     try:
@@ -2675,8 +2763,10 @@ def examineActivity(request, aid):
                 activity.status != Activity.Status.REVIEWING and
                 activity.status != Activity.Status.APPLYING and
                 activity.status != Activity.Status.WAITING
-        ) or activity.valid:
-            return redirect("/welcome/")
+        ):
+            return redirect(message_url(wrong('当前活动状态不可审核!')))
+        if activity.valid:
+            return redirect(message_url(succeed('活动已审核!')))
 
 
         if request.POST.get("comment_submit"):
@@ -2687,8 +2777,7 @@ def examineActivity(request, aid):
                 html_display["warn_msg"] = "评论成功。"
                 html_display["warn_code"] = 2
             except Exception as e:
-                # print(e)
-                return redirect("/welcome/")
+                return EXCEPT_REDIRECT
 
         elif request.POST.get("review_accepted"):
             try:
@@ -2700,8 +2789,7 @@ def examineActivity(request, aid):
                 html_display["warn_msg"] = "活动已通过审核。"
                 html_display["warn_code"] = 2
             except Exception as e:
-                # print(e)
-                return redirect("/welcome/")
+                return EXCEPT_REDIRECT
         else:
             try:
                 with transaction.atomic():
@@ -2712,8 +2800,7 @@ def examineActivity(request, aid):
                 html_display["warn_msg"] = "活动已被拒绝。"
                 html_display["warn_code"] = 2
             except Exception as e:
-                # print(e)
-                return redirect("/welcome/")
+                return EXCEPT_REDIRECT
 
 
     # 状态量，无可编辑量
@@ -2773,6 +2860,7 @@ def examineActivity(request, aid):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[subscribeOrganization]', record_user=True)
 def subscribeOrganization(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != 'Person':
@@ -2780,17 +2868,11 @@ def subscribeOrganization(request):
 
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    org_list = list(Organization.objects.all())
-    orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
-    otype_list = list(OrganizationType.objects.all())
-    unsubscribe_list = list(
-        me.unsubscribe_list.values_list("organization_id__username", flat=True)
-    )  # 获取不订阅列表（数据库里的是不订阅列表）
-    subscribe_list = [
-        org.organization_id.username
-        for org in org_list
-        if org.organization_id.username not in unsubscribe_list
-    ]  # 获取订阅列表
+    org_list = list(Organization.objects.all().select_related("organization_id","otype"))
+    #orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
+    otype_list = list(OrganizationType.objects.all().order_by('-otype_id'))
+    unsubscribe_list = list(me.unsubscribe_list.values_list("organization_id__username", flat=True))
+    # 获取不订阅列表（数据库里的是不订阅列表）
 
 
 
@@ -2802,11 +2884,14 @@ def subscribeOrganization(request):
     # bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
     subscribe_url = reverse("save_subscribe_status")
+
+    # all_number = NaturalPerson.objects.activated().all().count()    # 人数全体 优化查询
     return render(request, "organization_subscribe.html", locals())
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[save_show_position_status]', record_user=True)
 def save_show_position_status(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -2830,6 +2915,7 @@ def save_show_position_status(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[save_subscribe_status]', record_user=True)
 def save_subscribe_status(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != 'Person':
@@ -2888,6 +2974,7 @@ def save_subscribe_status(request):
 '''
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[apply_position]', record_user=True)
 def apply_position(request, oid=None):
     """ apply for position in organization, including join, withdraw, transfer
     Args:
@@ -2946,6 +3033,7 @@ def apply_position(request, oid=None):
 
 
 
+@utils.except_captured(source='views[notification2Display]')
 def notification2Display(notification_set):
     lis = []
     sender_userids = notification_set.values_list('sender_id', flat=True)
@@ -2973,21 +3061,24 @@ def notification2Display(notification_set):
         note_display["URL"] = notification.URL
         note_display["type"] = notification.get_typename_display()
         note_display["title"] = notification.get_title_display()
+
+
         _, user_type, _ = utils.check_user_type(notification.sender)
         if user_type == "Organization":
             note_display["sender"] = sender_orgs.get(
                 notification.sender_id
-            )
+            ) if not notification.anonymous_flag else "匿名者"
         else:
             note_display["sender"] = sender_persons.get(
                 notification.sender_id
-            )
+            ) if not notification.anonymous_flag else "匿名者"
         lis.append(note_display)
     return lis
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[notifications]', record_user=True)
 def notifications(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -3057,6 +3148,7 @@ def notifications(request):
 # 新建评论，
 
 
+@utils.except_captured(source='views[addComment]', record_user=True)
 def addComment(request, comment_base, receiver=None):
     """
     传入POST得到的request和与评论相关联的实例即可
@@ -3113,13 +3205,14 @@ def addComment(request, comment_base, receiver=None):
             context["warn_code"] = 1
             context["warn_message"] = "评论失败，请联系管理员。"
             return context
-
+            
+        if len(text) >= 32:
+            text = text[:31] + "……"
         if len(text) > 0:
             content[typename] += f':{text}'
         else:
             content[typename] += "。"
-        if len(text) >= 32:
-            text = text[:31] + "……"
+        
        
         if user_type == "Organization":
             URL["activity"] = f"/examineActivity/{comment_base.id}"
@@ -3145,6 +3238,7 @@ def addComment(request, comment_base, receiver=None):
     return context
 
 
+@utils.except_captured(source='views[showComment]')
 def showComment(commentbase):
     if commentbase is None:
         return None
@@ -3169,6 +3263,7 @@ def showComment(commentbase):
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[showNewOrganization]', record_user=True)
 def showNewOrganization(request):
     """
     YWolfeee: modefied on Aug 24 1:33 a.m. UTC-8
@@ -3205,6 +3300,7 @@ def showNewOrganization(request):
 # YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[modifyPosition]', record_user=True)
 def modifyPosition(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
@@ -3399,6 +3495,8 @@ def modifyPosition(request):
             apply_type_list[application.apply_type]['disabled'] = False
             if not application.apply_type == ModifyPosition.ApplyType.WITHDRAW:
                 position_name_list[application.pos]["disabled"] = False
+    else:
+        position_name_list[-1]['selected'] = True   # 默认选中pos最低的！
 
     
 
@@ -3408,6 +3506,7 @@ def modifyPosition(request):
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[showPosition]', record_user=True)
 def showPosition(request):
     '''
     成员的聚合界面
@@ -3422,7 +3521,8 @@ def showPosition(request):
             "undone": ModifyPosition.objects.filter(person=me, status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
             "done": ModifyPosition.objects.filter(person=me).exclude(status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time')
         }
-        all_org = Organization.objects.activated().exclude(id__in = all_instances["undone"].values_list("org_id",flat=True))
+        all_org = Organization.objects.activated().exclude(
+            id__in = all_instances["undone"].values_list("org_id",flat=True))
     else:
         all_instances = {
             "undone": ModifyPosition.objects.filter(org=me,status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
@@ -3434,6 +3534,7 @@ def showPosition(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[endActivity]', record_user=True)
 def endActivity(request):
     """
     报销信息的聚合界面
@@ -3477,6 +3578,7 @@ def endActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[showActivity]', record_user=True)
 def showActivity(request):
     """
     活动信息的聚合界面
@@ -3526,6 +3628,7 @@ def showActivity(request):
 
 # 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
 # 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
+@utils.except_captured(source='views[make_relevant_notification]')
 def make_relevant_notification(application, info):
     # 考虑不同post_type的信息发送行为
     post_type = info.get("post_type")
@@ -3623,6 +3726,7 @@ def make_relevant_notification(application, info):
 # 新建+修改+取消+审核 报销信息
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[modifyEndActivity]', record_user=True)
 def modifyEndActivity(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
@@ -3742,8 +3846,7 @@ def modifyEndActivity(request):
             allow_comment = True if (not is_new_application) and (
                 application.is_pending()) else False
             if not allow_comment:  # 存在不合法的操作
-                return redirect(
-                    "/welcome/?warn_code=1&warn_message=存在不合法操作,请与管理员联系!")
+                return redirect(message_url(wrong('存在不合法操作,请与管理员联系!')))
             #通知的接收者
             auditor=application.examine_teacher.person_id
             if user_type == "Organization":
@@ -3752,14 +3855,11 @@ def modifyEndActivity(request):
                 receiver=application.pos
             context = addComment(request, application,receiver)
 
-        # 准备用户提示量
-        warn_code = context["warn_code"]
-        warn_message = context["warn_message"]
-
-
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
-        append = f"?reimb_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
-        return redirect("/modifyEndActivity/" + append)
+        if application is None:
+            return redirect(message_url(context, '/modifyEndActivity/'))
+        else:
+            return redirect(message_url(context, f'/modifyEndActivity/?reimb_id={application.id}'))
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
     '''
@@ -3786,6 +3886,10 @@ def modifyEndActivity(request):
 
     # 未报销活动
     activities = utils.get_unreimb_activity(apply_person)
+
+    #活动总结图片
+    summary_photos=application.reimbphotos.filter(type=ReimbursementPhoto.PhotoType.SUMMARY) if application is not None else None
+    summary_photo_len=len(summary_photos) if summary_photos is not None else 0
     #元培学院
     our_college=Organization.objects.get(oname="元培学院") if allow_audit_submit else None
     #审核老师
@@ -3798,6 +3902,7 @@ def modifyEndActivity(request):
 # 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
 # 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
 #用于报销的通知
+@utils.except_captured(source='views[make_notification]')
 def make_notification(application, request,content,receiver):
     # 考虑不同post_type的信息发送行为
     post_type = request.POST.get("post_type")
@@ -3845,6 +3950,7 @@ def make_notification(application, request,content,receiver):
 # YWolfeee: 重构小组申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[modifyOrganization]', record_user=True)
 def modifyOrganization(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
@@ -3938,8 +4044,7 @@ def modifyOrganization(request):
             allow_comment = True if (not is_new_application) and (
                 application.is_pending()) else False
             if not allow_comment:   # 存在不合法的操作
-                return redirect(
-                    "/welcome/?warn_code=1&warn_message=存在不合法操作,请与管理员联系!")
+                return redirect(message_url(wrong('存在不合法操作,请与管理员联系!')))
             context = addComment(request, application, \
                 application.otype.incharge.person_id if me.person_id == application.pos \
                     else application.pos)
@@ -3947,11 +4052,13 @@ def modifyOrganization(request):
         # 准备用户提示量
         # html_display["warn_code"] = context["warn_code"]
         # html_display["warn_message"] = context["warn_message"]
-        warn_code, warn_message = context["warn_code"], context["warn_message"]
+        # warn_code, warn_message = context["warn_code"], context["warn_message"]
 
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
-        append = f"?org_id=" + str(application.id) + f"&warn_code={warn_code}&warn_message={warn_message}"
-        return redirect("/modifyOrganization/" + append)
+        if application is None:
+            return redirect(message_url(context, '/modifyOrganization/'))
+        else:
+            return redirect(message_url(context, f'/modifyOrganization/?org_id={application.id}'))
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
 
@@ -4008,6 +4115,7 @@ def modifyOrganization(request):
 # YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[sendMessage]', record_user=True)
 def sendMessage(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
@@ -4056,6 +4164,7 @@ def sendMessage(request):
     return render(request, "sendMessage.html", locals())
 
                 
+@utils.except_captured(source='views[send_message_check]')
 def send_message_check(me, request):
     # 已经检查了我的类型合法，并且确认是post
     # 设置默认量
@@ -4102,11 +4211,11 @@ def send_message_check(me, request):
 
     try:
         if receiver_type == "订阅用户":
-            receivers = NaturalPerson.objects.exclude(
+            receivers = NaturalPerson.objects.activated().exclude(
                 id__in=me.unsubscribers.all()).select_related('person_id')
             receivers = [receiver.person_id for receiver in receivers]
         else:   # 检查过逻辑了，不可能是其他的
-            receivers = NaturalPerson.objects.filter(
+            receivers = NaturalPerson.objects.activated().filter(
                 id__in=me.position_set.values_list('person_id', flat=True)
                 ).select_related('person_id')
             receivers = [receiver.person_id for receiver in receivers]
@@ -4136,3 +4245,56 @@ def send_message_check(me, request):
         return wrong("发送微信的过程出现错误！请联系管理员！")
     
     return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了!")
+
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+@utils.except_captured(source='views[QAcenter]', record_user=True)
+def QAcenter(request):
+    """
+    Haowei:
+    QA的聚合界面
+    """
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    me = utils.get_person_or_org(request.user, user_type)
+
+    if request.method == "POST":
+        if request.POST.get("anwser") is not None:
+            anwser = request.POST.get("anwser")
+            if len(anwser) == 0:
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "请填写回答再提交！"
+            else:
+                QA_anwser(request.POST.get("id"), anwser)
+                html_display["warn_code"] = 2
+                html_display["warn_message"] = "成功提交该问题的回答！"
+        else:
+            post_args = json.loads(request.body.decode("utf-8"))
+            if 'cancel' in post_args['function']:
+                try:
+                    QA_delete(int(post_args['id']))
+                    html_display['warn_code'] = 2
+                    html_display['warn_message'] = "成功删除一条提问！"
+                    return JsonResponse({"success":True})
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
+                    return JsonResponse({"success":False})
+            else:
+                try:
+                    QA_ignore(int(post_args['id']), \
+                        sender_flag=(post_args['function'] == 'sender')
+                        )
+                    html_display['warn_code'] = 2
+                    html_display['warn_message'] = "成功忽略一条提问！"
+                    return JsonResponse({"success":True})
+                except:
+                    html_display["warn_code"] = 1
+                    html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
+                    return JsonResponse({"success":False})
+        
+
+    all_instances = QA2Display(request.user)
+
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="问答中心")
+    return render(request, "QandA_center.html", locals())

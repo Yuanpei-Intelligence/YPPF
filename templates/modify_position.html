@@ -111,7 +111,7 @@
                                             <div class="form-group">
                                                 <label for="aintro">申请理由或陈述</label>
                                                 <textarea name="apply_reason" class="form-control" rows="7" placeholder=
-                                                        "解释你为什么申请加入，或陈述你的个人情况。发起申请后可以在评论区继续补充或上传图片。"{%if not allow_form_edit %} readonly="readonly"{%endif%}
+                                                        "解释你为什么申请，或陈述你的个人情况。发起申请后可以在评论区继续补充或上传图片。"{%if not allow_form_edit %} readonly="readonly"{%endif%}
                                                 >{% if not is_new_application %}{{application.reason}}{% endif %}</textarea>
                                             </div>
                                             {%if allow_form_edit %}

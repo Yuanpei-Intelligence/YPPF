@@ -7,11 +7,11 @@ from datetime import datetime, timedelta, timezone, time, date
 from django.db import transaction  # 原子化更改数据库
 
 from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant, \
-    Notification
+    Notification, Position
 from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
 from app.forms import YQPointDistributionForm
 from boottest.hasher import MySHA256Hasher
-from app.notification_utils import bulk_notification_create
+from app.notification_utils import bulk_notification_create, notification_status_change
 from boottest import local_dict
 
 from random import sample
@@ -21,7 +21,7 @@ from urllib import parse, request as urllib2
 import json
 
 # 引入定时任务还是放上面吧
-from app.utils import operation_writer, except_captured
+from app.utils import operation_writer, except_captured, calcu_activity_bonus
 from app.scheduler import scheduler
 
 YQPoint_oname = local_dict["YQPoint_source_oname"]
@@ -247,6 +247,46 @@ def YQPoint_Distributions(request):
         return YQPoint_Distribution(request, dis_id)
 
 
+
+"""
+频繁执行，添加更新其他活动的定时任务，主要是为了异步调度
+对于被多次落下的活动，每次更新一步状态
+"""
+
+def changeAllActivities():
+
+    now = datetime.now()
+    execute_time = now + timedelta(seconds=20)
+    applying_activities = Activity.objects.filter(
+        status=Activity.Status.APPLYING,
+        apply_end__lte=now,
+    )
+    for activity in applying_activities:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
+            run_date=execute_time, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+        execute_time += timedelta(seconds=5)
+
+    waiting_activities = Activity.objects.filter(
+        status=Activity.Status.WAITING,
+        start__lte=now,
+    )
+    for activity in waiting_activities:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
+            run_date=execute_time, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
+        execute_time += timedelta(seconds=5)
+
+
+    progressing_activities = Activity.objects.filter(
+        status=Activity.Status.PROGRESSING,
+        end__lte=now,
+    )
+    for activity in progressing_activities:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
+            run_date=execute_time, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
+        execute_time += timedelta(seconds=5)
+
+
+
 """
 使用方式：
 scheduler.add_job(changeActivityStatus, "date", 
@@ -261,7 +301,7 @@ scheduler.add_job(changeActivityStatus, "date",
 活动变更为进行中时，更新报名成功人员状态
 """
 
-
+@except_captured(True, source='scheduler_func[changeActivityStatus]修改活动状态')
 def changeActivityStatus(aid, cur_status, to_status):
     # print(f"Change Activity Job works: aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
     # with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
@@ -307,52 +347,58 @@ def changeActivityStatus(aid, cur_status, to_status):
                         activity_id=aid,
                         status=Participant.AttendStatus.APLLYSUCCESS
                     ).update(status=Participant.AttendStatus.ATTENDED)
-                if not activity.valid:
-                    # 活动开始后，未审核自动通过
-                    activity.valid = True
-                    records = TransferRecord.objects.filter(
-                        status=TransferRecord.TransferStatus.PENDING, 
-                        corres_act=activity,
-                    )
-                    total_amount = records.aggregate(nums=Sum('amount'))["nums"]
-                    if total_amount is None:
-                        total_amount = 0.0
-                    if total_amount > 0:
-                        organization_id = activity.organization_id_id
-                        organization = Organization.objects.select_for_update().get(id=organization_id)
-                        organization.YQPoint += total_amount
-                        organization.save()
-                        YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-                        YP.YQPoint -= total_amount
-                        YP.save()
-                    records.update(
-                        status=TransferRecord.TransferStatus.ACCEPTED,
-                        finish_time=datetime.now()
-                    )
+
+                # if not activity.valid:
+                #     # 活动开始后，未审核自动通过
+                #     activity.valid = True
+                #     records = TransferRecord.objects.filter(
+                #         status=TransferRecord.TransferStatus.PENDING, 
+                #         corres_act=activity,
+                #     )
+                #     total_amount = records.aggregate(nums=Sum('amount'))["nums"]
+                #     if total_amount is None:
+                #         total_amount = 0.0
+                #     if total_amount > 0:
+                #         organization_id = activity.organization_id_id
+                #         organization = Organization.objects.select_for_update().get(id=organization_id)
+                #         organization.YQPoint += total_amount
+                #         organization.save()
+                #         YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
+                #         YP.YQPoint -= total_amount
+                #         YP.save()
+                #     records.update(
+                #         status=TransferRecord.TransferStatus.ACCEPTED,
+                #         finish_time=datetime.now()
+                #     )
+
+                #     notification = Notification.objects.get(
+                #         relate_instance=activity, 
+                #         status=Notification.Status.UNDONE,
+                #         title=Notification.Title.VERIFY_INFORM
+                #     )
+                #     notification_status_change(notification, Notification.Status.DONE)
+
             # 结束，计算积分    
-            else:
-                hours = (activity.end - activity.start).seconds / 3600
-                participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.ATTENDED)
-                NaturalPerson.objects.filter(id__in=participants.values_list('person_id', flat=True)).update(
-                    bonusPoint=F('bonusPoint') + hours)
+            elif activity.valid:
+                point = calcu_activity_bonus(activity)
+                participants = Participant.objects.filter(
+                    activity_id=aid, status=Participant.AttendStatus.ATTENDED)
+                NaturalPerson.objects.filter(id__in=participants.values_list(
+                    'person_id', flat=True)).update(
+                    bonusPoint=F('bonusPoint') + point)
 
             activity.save()
 
 
     except Exception as e:
-        # print(e)
-
-        # TODO send message to admin to debug
-        # with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
-        #     f.write(str(e) + "\n")
-        #     f.close()
-        pass
+        raise
 
 
 """
 需要在 transaction 中使用
 所有涉及到 activity 的函数，都应该先锁 activity
 """
+
 
 
 def draw_lots(activity):
@@ -472,6 +518,7 @@ scheduler.add_job(notifyActivityStart, "date",
 def notifyActivity(aid: int, msg_type: str, msg=""):
     try:
         activity = Activity.objects.get(id=aid)
+        inner = activity.inner
         title = Notification.Title.ACTIVITY_INFORM
         if msg_type == "newActivity":
             title = activity.title
@@ -480,23 +527,56 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             msg += f"\n活动地点: {activity.location}"
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
-            ).prefetch_related('person_id')
-            receivers = [subscriber.person_id for subscriber in subscribers]
+            ).values_list('person_id', flat=True)
+            receivers = User.objects.filter(id__in=subscribers)
             publish_kws = {"app": WechatApp.TO_SUBSCRIBER}  
         elif msg_type == "remind":
-            msg = f"您参与的活动 <{activity.title}> 即将开始。"
-            msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
-            msg += f"\n活动地点: {activity.location}"
-            participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
-            receivers = participants.values_list('person_id__person_id', flat=True)
-            receivers = User.objects.filter(id__in=receivers)
-            # receivers = [participant.person_id.person_id for participant in participants]
-            publish_kws = {"app": WechatApp.TO_PARTICIPANT}  
+
+            with transaction.atomic():
+                activity = Activity.objects.select_for_update().get(id=aid)
+                nowtime = datetime.now()
+                notifications = Notification.objects.filter(
+                    relate_instance=activity,
+                    start_time__gt=nowtime + timedelta(seconds=60),
+                    title=Notification.Title.PENDING_INFORM,
+                )
+                if len(notifications) > 0:
+                    return False
+                else:
+                    msg = f"您参与的活动 <{activity.title}> 即将开始。"
+                    msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
+                    msg += f"\n活动地点: {activity.location}"
+                    participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
+                    receivers = participants.values_list('person_id__person_id', flat=True)
+                    receivers = User.objects.filter(id__in=receivers)
+                    # receivers = [participant.person_id.person_id for participant in participants]
+                    publish_kws = {"app": WechatApp.TO_PARTICIPANT}
+
+                    if inner and publish_kws.get('app') == WechatApp.TO_SUBSCRIBER:
+                        member_id_list = Position.objects.activated().filter(
+                            org=activity.organization_id).values_list(
+                                'person__person_id', flat=True)
+                        receivers = receivers.filter(id__in=member_id_list)
+
+                    success, _ = bulk_notification_create(
+                        receivers=list(receivers),
+                        sender=activity.organization_id.organization_id,
+                        typename=Notification.Type.NEEDREAD,
+                        title=title,
+                        content=msg,
+                        URL=f"/viewActivity/{aid}",
+                        relate_instance=activity,
+                        publish_to_wechat=True,
+                        publish_kws=publish_kws,
+                    )
+
+                    return success
+
         elif msg_type == 'modification_sub':
             subscribers = NaturalPerson.objects.activated().exclude(
                 id__in=activity.organization_id.unsubscribers.all()
-            ).prefetch_related('person_id')
-            receivers = [subscriber.person_id for subscriber in subscribers]
+            ).values_list('person_id', flat=True)
+            receivers = User.objects.filter(id__in=subscribers)
             publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         elif msg_type == 'modification_par':
             participants = Participant.objects.filter(
@@ -567,6 +647,15 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         else:
             raise ValueError(f"msg_type参数错误: {msg_type}")
+        
+        # 现在必须保证到此处时receivers是一个queryset, 不过也有好处就是更统一了
+        # 参与者总是收到消息, 但订阅者消息只会发给内部
+        if inner and publish_kws.get('app') == WechatApp.TO_SUBSCRIBER:
+            member_id_list = Position.objects.activated().filter(
+                org=activity.organization_id).values_list(
+                    'person__person_id', flat=True)
+            receivers = receivers.filter(id__in=member_id_list)
+
         success, _ = bulk_notification_create(
             receivers=list(receivers),
             sender=activity.organization_id.organization_id,
@@ -638,6 +727,10 @@ def start_scheduler(with_scheduled_job=True, debug=False):
             if debug: print(f"adding scheduled job '{current_job}'")
             scheduler.add_job(get_weather, 'interval', id=current_job,
                                 minutes=5, replace_existing=True)
+            scheduler.add_job(
+                changeAllActivities, "interval", id="activityStatusUpdater",
+                minutes=5, replace_existing=True
+            )
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"
             operation_writer(local_dict["system_log"], info,

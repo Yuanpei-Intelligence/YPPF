@@ -91,7 +91,8 @@ def update_pos_application(application, me, user_type, applied_org, info):
                 elif apply_type == "退出小组":
                     if not Position.objects.activated().filter(person=me, org=applied_org).exists():
                         return wrong("退出小组出错, 请联系管理员!")
-                    if len(Position.objects.activated().filter(org=applied_org, is_admin=True)) == 1:
+                    managers = Position.objects.activated().filter(org=applied_org, is_admin=True)
+                    if len(managers) == 1 and managers[0].person == me:
                         return wrong("作为小组唯一的老大，你不能退出！")
                     # 退出小组不应该有apply_pos
                     apply_pos = None
@@ -119,7 +120,7 @@ def update_pos_application(application, me, user_type, applied_org, info):
                         return wrong("向该小组的申请已存在，请不要重复申请！")
                     # 至此可以新建申请, 创建一个空申请
                     application = ModifyPosition.objects.create(
-                        typename="ModifyPosition", pos=apply_pos, person=me, org=applied_org, apply_type=apply_type, reason=apply_reason)
+                        pos=apply_pos, person=me, org=applied_org, apply_type=apply_type, reason=apply_reason)
                     context = succeed("成功发起向" + applied_org.oname + "的申请!")
                     context["application_id"] = application.id
                     return context
