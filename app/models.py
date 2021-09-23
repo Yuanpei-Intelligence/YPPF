@@ -699,7 +699,7 @@ class Activity(CommentBase):
             return True
         if self.status == Activity.Status.APPLYING:
             return True
-        if self.is_popular():
+        if self.popular_level():
             return True
         return False
 
