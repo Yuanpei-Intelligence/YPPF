@@ -2460,7 +2460,7 @@ def checkinActivity(request, aid=None):
             with transaction.atomic():
                 participant = Participant.objects.select_for_update().get(
                     activity_id=int(aid), person_id=np,
-                    status=Participant.AttendStatus.UNATTENDED
+                    status__in=[Participant.AttendStatus.UNATTENDED, Participant.AttendStatus.APLLYSUCCESS]
                 )
                 participant.status = Participant.AttendStatus.ATTENDED
                 participant.save()
