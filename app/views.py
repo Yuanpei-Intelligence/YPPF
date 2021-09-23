@@ -478,28 +478,23 @@ def stuinfo(request, name=None):
 
         # ----------------------------------- 活动卡片 ----------------------------------- #
 
-        participants = Participant.objects.exclude(
-            status__in=[Participant.AttendStatus.CANCELED, Participant.AttendStatus.APLLYFAILED]
-            ).filter(person_id=person.id)
-        activities = Activity.objects.filter(
+        participants = Participant.objects.activated().filter(person_id=person)
+        activities = Activity.objects.activated().filter(
             Q(id__in=participants.values("activity_id")),
-            ~Q(status=Activity.Status.CANCELED),
+            # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
         )
         if user_type == "Person":
-            activities_me = Participant.objects.filter(person_id=oneself.id).values(
-                "activity_id"
-            )
-            activity_is_same = [
-                activity in activities_me
-                for activity in participants.values("activity_id")
-            ]
+            # 因为上面筛选过活动，这里就不用筛选了
+            # 之前那个写法是O(nm)的
+            activities_me = Participant.objects.activated().filter(person_id=oneself)
+            activities_me = set(activities_me.values_list("activity_id_id", flat=True))
         else:
-            activities_me = activities.filter(organization_id=oneself.id).values("id")
-            activities_me = [activity["id"] for activity in activities_me]
-            activity_is_same = [
-                activity["activity_id"] in activities_me
-                for activity in participants.values("activity_id")
-            ]
+            activities_me = activities.filter(organization_id=oneself)
+            activities_me = set(activities_me.values_list("id", flat=True))
+        activity_is_same = [
+            activity in activities_me
+            for activity in activities.values_list("id", flat=True)
+        ]
         activity_info = list(zip(activities, activity_is_same))
         activity_info.sort(key=lambda a: a[0].start, reverse=True)
         html_display["activity_info"] = list(activity_info) or None
@@ -3615,13 +3610,13 @@ def showActivity(request):
                     )
     if is_teacher:
         all_instances = {
-            "undone":   Activity.objects.all_activated().filter(examine_teacher = me.id, valid = False),
-            "done":     Activity.objects.all_activated().filter(examine_teacher = me.id, valid = True)
+            "undone":   Activity.objects.activated(only_displayable=False).filter(examine_teacher = me.id, valid = False),
+            "done":     Activity.objects.activated(only_displayable=False).filter(examine_teacher = me.id, valid = True)
         }
     else:
         all_instances = {
-            "undone":   Activity.objects.all_activated().filter(organization_id = me.id, valid = False),
-            "done":     Activity.objects.all_activated().filter(organization_id = me.id, valid = True)
+            "undone":   Activity.objects.activated(only_displayable=False).filter(organization_id = me.id, valid = False),
+            "done":     Activity.objects.activated(only_displayable=False).filter(organization_id = me.id, valid = True)
         }
 
     all_instances = {key:value.order_by("-modify_time", "-time") for key,value in all_instances.items()}

@@ -615,9 +615,9 @@ def reject_activity(request, activity):
         Notification.objects.filter(
             relate_instance=activity
             ).update(status=Notification.Status.DELETE)
-        Participant.objects.filter(
-                activity_id=activity
-            ).update(status=Participant.AttendStatus.APLLYFAILED)
+        # Participant.objects.filter(
+        #         activity_id=activity
+        #     ).update(status=Participant.AttendStatus.APLLYFAILED)
         notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
         activity.status = Activity.Status.CANCELED
         scheduler.remove_job(f"activity_{activity.id}_remind")
@@ -865,9 +865,9 @@ def cancel_activity(request, activity):
 
 
     # 注意这里，活动取消后，状态变为申请失败了
-    participants = Participant.objects.filter(
-            activity_id=activity
-        ).update(status=Participant.AttendStatus.APLLYFAILED)
+    # participants = Participant.objects.filter(
+    #         activity_id=activity
+    #     ).update(status=Participant.AttendStatus.APLLYFAILED)
 
 
 
