@@ -83,7 +83,6 @@ from boottest import local_dict
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from django.shortcuts import render, redirect
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
-import django.template.defaulttags as django_template
 from django.contrib import auth, messages
 from django.contrib.auth.models import User
 from django.contrib.auth.decorators import login_required
@@ -111,12 +110,6 @@ email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 YQPoint_oname = local_dict["YQPoint_source_oname"]
 
 EXCEPT_REDIRECT = HttpResponseRedirect(message_url(wrong('出现意料之外的错误, 请联系管理员!')))
-
-
-# 模板中使用的函数
-@django_template.register.filter
-def template_mul(a, b):
-    return float(a) * float(b)
 
 
 @utils.except_captured(source='views[index]', record_user=True)
