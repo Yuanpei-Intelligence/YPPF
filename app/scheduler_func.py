@@ -247,6 +247,46 @@ def YQPoint_Distributions(request):
         return YQPoint_Distribution(request, dis_id)
 
 
+
+"""
+频繁执行，添加更新其他活动的定时任务，主要是为了异步调度
+对于被多次落下的活动，每次更新一步状态
+"""
+
+def changeAllActivities():
+
+    now = datetime.now()
+    execute_time = now + timedelta(seconds=20)
+    applying_activities = Activity.objects.filter(
+        status=Activity.Status.APPLYING,
+        apply_end__lte=now,
+    )
+    for activity in applying_activities:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
+            run_date=execute_time, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+        execute_time += timedelta(seconds=5)
+
+    waiting_activities = Activity.objects.filter(
+        status=Activity.Status.WAITING,
+        start__lte=now,
+    )
+    for activity in waiting_activities:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
+            run_date=execute_time, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
+        execute_time += timedelta(seconds=5)
+
+
+    progressing_activities = Activity.objects.filter(
+        status=Activity.Status.PROGRESSING,
+        end__lte=now,
+    )
+    for activity in progressing_activities:
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
+            run_date=execute_time, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
+        execute_time += timedelta(seconds=5)
+
+
+
 """
 使用方式：
 scheduler.add_job(changeActivityStatus, "date", 
@@ -261,22 +301,7 @@ scheduler.add_job(changeActivityStatus, "date",
 活动变更为进行中时，更新报名成功人员状态
 """
 
-
-def changeAllActivities():
-    activities = Activity.objects.filter(status__in=[Activity.Status.APPLYING, Activity.Status.WAITING, Activity.Status.PROGRESSING])
-    for activity in activities:
-        now_time = datetime.now()
-        if activity.end <= now_time:
-            changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
-            changeActivityStatus(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
-            changeActivityStatus(activity.id, Activity.Activity.Status.PROGRESSING, Activity.Status.END)
-        elif activity.start <= now_time:
-            changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
-            changeActivityStatus(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
-        elif activity.apply_end <= now_time:
-            changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
-
-
+@except_captured(True, source='scheduler_func[changeActivityStatus]修改活动状态')
 def changeActivityStatus(aid, cur_status, to_status):
     # print(f"Change Activity Job works: aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
     # with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
@@ -366,13 +391,7 @@ def changeActivityStatus(aid, cur_status, to_status):
 
 
     except Exception as e:
-        # print(e)
-
-        # TODO send message to admin to debug
-        # with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
-        #     f.write(str(e) + "\n")
-        #     f.close()
-        pass
+        raise
 
 
 """
@@ -708,6 +727,10 @@ def start_scheduler(with_scheduled_job=True, debug=False):
             if debug: print(f"adding scheduled job '{current_job}'")
             scheduler.add_job(get_weather, 'interval', id=current_job,
                                 minutes=5, replace_existing=True)
+            scheduler.add_job(
+                changeAllActivities, "interval", id="activityStatusUpdater",
+                minutes=5, replace_existing=True
+            )
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"
             operation_writer(local_dict["system_log"], info,
