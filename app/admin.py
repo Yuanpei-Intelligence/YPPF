@@ -307,6 +307,7 @@ class ActivityAdmin(admin.ModelAdmin):
                 ('not_waiting', '未进入 等待中 状态'),
                 ('not_processing', '未进入 进行中 状态'),
                 ('not_end', '未进入 已结束 状态'),
+                ('review_end', '已结束的未审核'),
                 ('normal', '正常'),
             )
         
@@ -316,6 +317,7 @@ class ActivityAdmin(admin.ModelAdmin):
             error_id_set = set()
             activate_queryset = queryset.exclude(
                     status__in=[
+                        Activity.Status.REVIEWING,
                         Activity.Status.CANCELED,
                         Activity.Status.REJECT,
                         Activity.Status.ABORT,
@@ -335,6 +337,11 @@ class ActivityAdmin(admin.ModelAdmin):
             if self.value() in ['not_end', 'all', 'normal']:
                 error_id_set.update(activate_queryset.exclude(
                     status=Activity.Status.END).filter(
+                    end__lte=now,
+                    ).values_list('id', flat=True))
+            if self.value() in ['review_end', 'all', 'normal']:
+                error_id_set.update(queryset.filter(
+                    status=Activity.Status.REVIEWING,
                     end__lte=now,
                     ).values_list('id', flat=True))
 
