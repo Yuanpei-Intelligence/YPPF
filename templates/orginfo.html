@@ -532,7 +532,11 @@
                                                             <h5
                                                                 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
 
+                                                                {% if rec.act.status == "已取消" %}
+                                                                <span class="badge badge-pill badge-dark">
+                                                                {% else %}
                                                                 <span class="badge badge-pill badge-danger">
+                                                                {% endif %}
                                                                     {{ rec.act.status }}
                                                                 </span>
 
