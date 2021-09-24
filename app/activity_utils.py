@@ -687,6 +687,9 @@ def applyActivity(request, activity):
             participant.status == Participant.AttendStatus.APPLYING
         ):
             raise ActivityException("您已报名该活动。")
+        elif participant.status != Participant.AttendStatus.CANCELED:
+            raise ActivityException(f"您的报名状态异常，当前状态为：{participant.status}")
+        
 
 
     if activity.source == Activity.YQPointSource.COLLEGE:
