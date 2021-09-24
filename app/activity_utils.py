@@ -85,6 +85,7 @@ def check_ac_time(start_time, end_time):
 
 
 def activity_base_check(request, edit=False):
+    '''正常情况下检查出错误会抛出不含错误信息的AssertionError，不抛出ActivityException'''
 
     context = dict()
 
@@ -210,25 +211,39 @@ def activity_base_check(request, edit=False):
 
 
 def create_activity(request):
+    '''
+    检查活动，合法时寻找该活动，不存在时创建
+    返回(activity.id, created)
+
+    ---
+    检查不合格时抛出AssertionError
+    - 不再假设ActivityException特定语义，暂不抛出该类异常
+    '''
 
     context = activity_base_check(request)
 
     # 查找是否有类似活动存在
-    old_ones = Activity.objects.filter(
+    old_ones = Activity.objects.activated().filter(
         title=context["title"],
         start=context["start"],
         introduction=context["introduction"],
         location=context["location"]
     )
-    if len(old_ones) > 0:
-        # 这写法一点也不优雅.....
-        redirect_url = f"/viewActivity/{old_ones.first().id}"
-        raise ActivityException(redirect_url)
+    if len(old_ones) == 0:
+        old_ones = Activity.objects.filter(
+            title = context["title"],
+            start = context["start"],
+            introduction = context["introduction"],
+            location = context["location"],
+            status = Activity.Status.REVIEWING,
+        )
+    if len(old_ones):
+        assert len(old_ones) == 1, "创建活动时，已存在的相似活动不唯一"
+        return old_ones[0].id, False
 
     # 审批老师存在
     examine_teacher = NaturalPerson.objects.get(
         name=context["examine_teacher"], identity=NaturalPerson.Identity.TEACHER)
-    assert examine_teacher.identity == NaturalPerson.Identity.TEACHER
 
     # 检查完毕，创建活动
     org = get_person_or_org(request.user, "Organization")
@@ -294,7 +309,7 @@ def create_activity(request):
         publish_kws={"app":WechatApp.AUDIT},
     )
 
-    return activity.id
+    return activity.id, True
 
 
 

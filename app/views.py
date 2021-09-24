@@ -2593,12 +2593,13 @@ def addActivity(request, aid=None):
                 html_display=user_login_org(request,activity.organization_id)
                 if html_display['warn_code']==1:
                     return redirect(message_url(wrong(html_display["warn_message"])))
-                else:#成功以小组账号登陆
-                    #防止后边有使用，因此需要赋值
-                    user_type="Organization"
-                    request.user=activity.organization_id.organization_id#小组对应user
-                    me = activity.organization_id#小组
-            assert activity.organization_id == me
+                else: # 成功以小组账号登陆
+                    # 防止后边有使用，因此需要赋值
+                    user_type = "Organization"
+                    request.user = activity.organization_id.organization_id #小组对应user
+                    me = activity.organization_id #小组
+            if activity.organization_id != me:
+                return redirect(message_url(wrong("无法修改其他小组的活动!")))
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
@@ -2612,10 +2613,12 @@ def addActivity(request, aid=None):
         if not edit:
             try:
                 with transaction.atomic():
-                    aid = create_activity(request)
+                    aid, created = create_activity(request)
+                    if not created:
+                        return redirect(message_url(
+                            succeed('存在信息相同的活动，已为您自动跳转!'),
+                            f'/viewActivity/{aid}'))
                     return redirect(f"/editActivity/{aid}")
-            except ActivityException as e:
-                return redirect(str(e))
             except Exception as e:
                 record_traceback(request, e)
                 return EXCEPT_REDIRECT
@@ -2626,7 +2629,8 @@ def addActivity(request, aid=None):
                 activity.status != Activity.Status.APPLYING and 
                 activity.status != Activity.Status.WAITING
         ):
-            return redirect(message_url(wrong('当前活动状态不允许修改!')))
+            return redirect(message_url(wrong('当前活动状态不允许修改!'),
+                                        f'/viewActivity/{activity.id}'))
 
         # 处理 comment
         if request.POST.get("comment_submit"):
