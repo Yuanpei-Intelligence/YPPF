@@ -660,6 +660,7 @@ def reject_activity(request, activity):
 # 调用的时候用 try
 # 调用者把 activity_id 作为参数传过来
 def applyActivity(request, activity):
+    '''这个函数在正常情况下只应该抛出提示错误信息的ActivityException'''
     context = dict()
     context["success"] = False
     CREATE = True
@@ -687,6 +688,9 @@ def applyActivity(request, activity):
             participant.status == Participant.AttendStatus.APPLYING
         ):
             raise ActivityException("您已报名该活动。")
+        elif participant.status != Participant.AttendStatus.CANCELED:
+            raise ActivityException(f"您的报名状态异常，当前状态为：{participant.status}")
+        
 
 
     if activity.source == Activity.YQPointSource.COLLEGE:
