@@ -3563,7 +3563,7 @@ def endActivity(request):
     if user_type == "Person":
         try:
             person = utils.get_person_or_org(request.user, user_type)
-            if person.person_id.username == local_dict["audit_teacher"]["Funds"]:
+            if person.identity == NaturalPerson.Identity.TEACHER:
                 is_auditor = True
         except:
             pass
@@ -3579,8 +3579,8 @@ def endActivity(request):
 
     if is_auditor:
         all_instances = {
-            "undone": Reimbursement.objects.filter(status = Reimbursement.ReimburseStatus.WAITING),
-            "done":     Reimbursement.objects.all().exclude(status = Reimbursement.ReimburseStatus.WAITING)
+            "undone": Reimbursement.objects.filter(examine_teacher=person, status = Reimbursement.ReimburseStatus.WAITING),
+            "done": Reimbursement.objects.filter(examine_teacher=person).exclude(status = Reimbursement.ReimburseStatus.WAITING)
         }
         
     else:
