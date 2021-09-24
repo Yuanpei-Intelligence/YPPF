@@ -2062,7 +2062,7 @@ def myYQPoint(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[viewActivity]', record_user=True, return_value=EXCEPT_REDIRECT)
+@utils.except_captured(EXCEPT_REDIRECT, source='views[viewActivity]', record_user=True)
 def viewActivity(request, aid=None):
     """
     aname = str(request.POST["aname"])  # 活动名称
@@ -2572,7 +2572,7 @@ def checkinActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[addActivity]', record_user=True, return_value=EXCEPT_REDIRECT)
+@utils.except_captured(EXCEPT_REDIRECT, source='views[addActivity]', record_user=True)
 def addActivity(request, aid=None):
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
