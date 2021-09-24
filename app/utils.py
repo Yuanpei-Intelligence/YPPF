@@ -858,7 +858,15 @@ def operation_writer(user, message, source, status_code="OK"):
             if isinstance(receivers, str):
                 receivers = receivers.replace(' ', '').split(',')
             receivers = list(map(str, receivers))
-            send_wechat(receivers, 'YPPF发生异常\n' + message[:500], card=len(message) < 200)
+            send_message = message
+            if len(send_message) > 400:
+                send_message = '\n'.join([
+                    send_message[:300],
+                    '...',
+                    send_message[-100:],
+                    '详情请查看log'
+                ])
+            send_wechat(receivers, 'YPPF发生异常\n' + send_message, card=len(message) < 200)
     except Exception as e:
         # 最好是发送邮件通知存在问题
         # 待补充

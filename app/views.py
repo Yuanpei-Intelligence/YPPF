@@ -2062,7 +2062,7 @@ def myYQPoint(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[viewActivity]', record_user=True, return_value=EXCEPT_REDIRECT)
+@utils.except_captured(EXCEPT_REDIRECT, source='views[viewActivity]', record_user=True)
 def viewActivity(request, aid=None):
     """
     aname = str(request.POST["aname"])  # 活动名称
@@ -2080,7 +2080,7 @@ def viewActivity(request, aid=None):
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
         valid, user_type, html_display = utils.check_user_type(request.user)
-        assert valid
+        # assert valid  已经在check_user_access检查过了
         org = activity.organization_id
         me = utils.get_person_or_org(request.user, user_type)
         ownership = False
@@ -2089,10 +2089,12 @@ def viewActivity(request, aid=None):
         examine = False
         if user_type == "Person" and activity.examine_teacher == me:
             examine = True
-        if not (ownership or examine):
-            assert activity.status != Activity.Status.REVIEWING
-            assert activity.status != Activity.Status.ABORT
-            assert activity.status != Activity.Status.REJECT
+        if not (ownership or examine) and activity.status in [
+                Activity.Status.REVIEWING,
+                Activity.Status.ABORT,
+                Activity.Status.REJECT,
+            ]:
+            return redirect(message_url(wrong('该活动暂不可见!')))
     except Exception as e:
         record_traceback(request, e)
         return EXCEPT_REDIRECT
@@ -2104,11 +2106,15 @@ def viewActivity(request, aid=None):
         option = request.POST.get("option")
         if option == "cancel":
             try:
-                assert activity.status != Activity.Status.REJECT
-                assert activity.status != Activity.Status.ABORT
-                assert activity.status != Activity.Status.END
-                assert activity.status != Activity.Status.CANCELED
-                assert ownership
+                if activity.status in [
+                    Activity.Status.REJECT,
+                    Activity.Status.ABORT,
+                    Activity.Status.END,
+                    Activity.Status.CANCELED,
+                ]:
+                    return redirect(message_url(wrong('该活动已结束，不可取消!'), request.path))
+                if not ownership:
+                    return redirect(message_url(wrong('您没有修改该活动的权限!'), request.path))
                 with transaction.atomic():
                     activity = Activity.objects.select_for_update().get(id=aid)
                     cancel_activity(request, activity)
@@ -2123,15 +2129,15 @@ def viewActivity(request, aid=None):
 
         elif option == "edit":
             if (
-                    activity.status == activity.Status.APPLYING
-                    or activity.status == activity.Status.REVIEWING
+                    activity.status == Activity.Status.APPLYING
+                    or activity.status == Activity.Status.REVIEWING
             ):
                 return redirect(f"/editActivity/{aid}")
-            if activity.status == activity.Status.WAITING:
+            if activity.status == Activity.Status.WAITING:
                 if activity.start + timedelta(hours=1) < datetime.now():
                     return redirect(f"/editActivity/{aid}")
                 html_display["warn_code"] = 1
-                html_display["warn_message"] = f"距离活动开始前1小时内将不再允许修改活动。如却有雨天等意外情况，请及时取消活动，收取的元气值将会退还。"
+                html_display["warn_message"] = f"距离活动开始前1小时内将不再允许修改活动。如确有雨天等意外情况，请及时取消活动，收取的元气值将会退还。"
             else:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = f"活动状态为{activity.status}, 不能修改。"
@@ -2140,7 +2146,8 @@ def viewActivity(request, aid=None):
             try:
                 with transaction.atomic():
                     activity = Activity.objects.select_for_update().get(id=int(aid))
-                    assert activity.status == Activity.Status.APPLYING
+                    if activity.status != Activity.Status.APPLYING:
+                        return redirect(message_url(wrong('活动不在报名状态!'), request.path))
                     applyActivity(request, activity)
                     if activity.bidding:
                         html_display["warn_message"] = f"活动申请中，请等待报名结果。"
@@ -2159,10 +2166,11 @@ def viewActivity(request, aid=None):
             try:
                 with transaction.atomic():
                     activity = Activity.objects.select_for_update().get(id=aid)
-                    assert (
-                            activity.status == Activity.Status.APPLYING
-                            or activity.status == Activity.Status.WAITING
-                    )
+                    if activity.status not in [
+                        Activity.Status.APPLYING,
+                        Activity.Status.WAITING,
+                    ]:
+                        return redirect(message_url(wrong('当前状态不允许取消报名!'), request.path))
                     withdraw_activity(request, activity)
                     if activity.bidding:
                         html_display["warn_message"] = f"已取消申请。"
@@ -2179,8 +2187,10 @@ def viewActivity(request, aid=None):
 
         elif option == "payment":
             try:
-                assert activity.status == Activity.Status.END
-                assert ownership
+                if activity.status != Activity.Status.END:
+                    return redirect(message_url(wrong('活动尚未结束!'), request.path))
+                if not ownership:
+                    return redirect(message_url(wrong('您没有申请活动结项的权限!'), request.path))
                 re = Reimbursement.objects.get(related_activity=activity)
                 return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
             except Exception as e:
@@ -2188,21 +2198,21 @@ def viewActivity(request, aid=None):
                 return EXCEPT_REDIRECT
         elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
             if not ownership:
-                return redirect(message_url(wrong('没有下载权限!')))
+                return redirect(message_url(wrong('没有下载权限!'), request.path))
             return utils.export_activity(activity,option)
         elif option == "cancelInformShare":
             me.inform_share = False
             me.save()
             return redirect("/welcome/")
         else:
-            return redirect(message_url(wrong('无效的请求!')))
+            return redirect(message_url(wrong('无效的请求!'), request.path))
         
     elif request.method == "GET":
         warn_code = request.GET.get("warn_code")
         warn_msg = request.GET.get("warn_message")
         if warn_code and warn_msg:
             if warn_code != "1" and warn_code != "2":
-                return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
+                return redirect(message_url(wrong('非法的状态码，请勿篡改URL!'), request.path))
             html_display["warn_code"] = int(warn_code)
             html_display["warn_message"] = warn_msg
 
@@ -2562,16 +2572,17 @@ def checkinActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[addActivity]', record_user=True, return_value=EXCEPT_REDIRECT)
+@utils.except_captured(EXCEPT_REDIRECT, source='views[addActivity]', record_user=True)
 def addActivity(request, aid=None):
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
     try:
         valid, user_type, html_display = utils.check_user_type(request.user)
-        assert valid
+        # assert valid  已经在check_user_access检查过了
         me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
         if aid is None:
-            assert user_type == "Organization"
+            if user_type != "Organization":
+                return redirect(message_url(wrong('小组账号才能添加活动!')))
             if me.oname == YQPoint_oname:
                 return redirect("/showActivity")
             edit = False
@@ -2582,12 +2593,13 @@ def addActivity(request, aid=None):
                 html_display=user_login_org(request,activity.organization_id)
                 if html_display['warn_code']==1:
                     return redirect(message_url(wrong(html_display["warn_message"])))
-                else:#成功以小组账号登陆
-                    #防止后边有使用，因此需要赋值
-                    user_type="Organization"
-                    request.user=activity.organization_id.organization_id#小组对应user
-                    me = activity.organization_id#小组
-            assert activity.organization_id == me
+                else: # 成功以小组账号登陆
+                    # 防止后边有使用，因此需要赋值
+                    user_type = "Organization"
+                    request.user = activity.organization_id.organization_id #小组对应user
+                    me = activity.organization_id #小组
+            if activity.organization_id != me:
+                return redirect(message_url(wrong("无法修改其他小组的活动!")))
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
@@ -2601,10 +2613,12 @@ def addActivity(request, aid=None):
         if not edit:
             try:
                 with transaction.atomic():
-                    aid = create_activity(request)
+                    aid, created = create_activity(request)
+                    if not created:
+                        return redirect(message_url(
+                            succeed('存在信息相同的活动，已为您自动跳转!'),
+                            f'/viewActivity/{aid}'))
                     return redirect(f"/editActivity/{aid}")
-            except ActivityException as e:
-                return redirect(str(e))
             except Exception as e:
                 record_traceback(request, e)
                 return EXCEPT_REDIRECT
@@ -2615,7 +2629,8 @@ def addActivity(request, aid=None):
                 activity.status != Activity.Status.APPLYING and 
                 activity.status != Activity.Status.WAITING
         ):
-            return redirect(message_url(wrong('当前活动状态不允许修改!')))
+            return redirect(message_url(wrong('当前活动状态不允许修改!'),
+                                        f'/viewActivity/{activity.id}'))
 
         # 处理 comment
         if request.POST.get("comment_submit"):
