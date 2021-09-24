@@ -8,7 +8,7 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 如果存在预期异常，抛出 ActivityException，否则抛出其他异常
 """
 from datetime import datetime, timedelta
-from app.utils import get_person_or_org, if_image
+from app.utils import get_person_or_org, if_image, calcu_activity_bonus
 from app.notification_utils import(
     notification_create,
     bulk_notification_create,
@@ -183,8 +183,7 @@ def activity_base_check(request, edit=False):
     announcephoto = request.FILES.getlist("images")
     if len(announcephoto) > 0:
         pic = announcephoto[0]
-        if if_image(pic)!=2:
-            raise ActivityException("上传的附件只支持图片格式。")
+        assert if_image(pic) == 2
     else:
         if request.POST.get("picture1"):
             pic = request.POST.get("picture1")
@@ -197,11 +196,14 @@ def activity_base_check(request, edit=False):
         else:
             pic = request.POST.get("picture5")
 
-
-    if not edit:
-        assert pic is not None
-
-    context["pic"] = pic
+    if pic is None:
+        template_id = request.POST.get("template_id")
+        if template_id:
+            context["template_id"] = int(template_id)
+        else:
+            assert edit
+    else:
+        context["pic"] = pic
 
 
     return context
@@ -270,7 +272,15 @@ def create_activity(request):
     
     activity.save()
 
-    ActivityPhoto.objects.create(image=context["pic"], type=ActivityPhoto.PhotoType.ANNOUNCE ,activity=activity)
+    if context.get("template_id"):
+        template = Activity.objects.get(id=context["template_id"])
+        photo = ActivityPhoto.objects.get(type=ActivityPhoto.PhotoType.ANNOUNCE, activity=template)
+        photo.pk = None
+        photo.id = None
+        photo.activity = activity
+        photo.save()
+    else:
+        ActivityPhoto.objects.create(image=context["pic"], type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
     notification_create(
         receiver=examine_teacher.person_id,
@@ -368,7 +378,7 @@ def modify_reviewing_activity(request, activity):
     activity.save()
 
     # 图片
-    if context["pic"] is not None:
+    if context.get("pic") is not None:
         pic = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
         pic.image = context["pic"]
         pic.save()
@@ -388,7 +398,7 @@ def modify_accepted_activity(request, activity):
     # 删除任务，注册新任务
 
     to_participants = [f"您参与的活动{activity.title}发生变化"]
-    to_subscribers = [f"您关注的活动{activity.title}发生变化"]
+    # to_subscribers = [f"您关注的活动{activity.title}发生变化"]
     if activity.location != request.POST["location"]:
         to_participants.append("活动地点修改为" + request.POST["location"])
         activity.location = request.POST["location"]
@@ -399,7 +409,7 @@ def modify_accepted_activity(request, activity):
         assert int(aprice * 10) / 10 == aprice
         assert aprice >= 0
         if activity.YQPoint != aprice:
-            to_subscribers.append("活动价格调整为" + str(aprice))
+            # to_subscribers.append("活动价格调整为" + str(aprice))
             to_participants.append("活动价格调整为" + str(aprice))
             activity.YQPoint = aprice
 
@@ -415,14 +425,14 @@ def modify_accepted_activity(request, activity):
         signup_end = act_start - timedelta(hours=prepare_time)
         assert now_time <= signup_end
         activity.apply_end = signup_end
-        to_subscribers.append(f"活动报名截止时间调整为{signup_end.strftime('%Y-%m-%d %H:%M')}")
+        # to_subscribers.append(f"活动报名截止时间调整为{signup_end.strftime('%Y-%m-%d %H:%M')}")
         to_participants.append(f"活动报名截止时间调整为{signup_end.strftime('%Y-%m-%d %H:%M')}")
     else:
         signup_end = activity.apply_end
         assert signup_end + timedelta(hours=1) <= act_start
     
     if activity.start != act_start:
-        to_subscribers.append(f"活动开始时间调整为{act_start.strftime('%Y-%m-%d %H:%M')}")
+        # to_subscribers.append(f"活动开始时间调整为{act_start.strftime('%Y-%m-%d %H:%M')}")
         to_participants.append(f"活动开始时间调整为{act_start.strftime('%Y-%m-%d %H:%M')}")
         activity.start = act_start
 
@@ -471,8 +481,8 @@ def modify_accepted_activity(request, activity):
         run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
 
 
-    if len(to_subscribers) > 1:
-        notifyActivity(activity.id, "modification_sub_ex_par", "\n".join(to_subscribers))
+    # if len(to_subscribers) > 1:
+    #     notifyActivity(activity.id, "modification_sub_ex_par", "\n".join(to_subscribers))
     if len(to_participants) > 1:   
         notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
 
@@ -575,6 +585,14 @@ def accept_activity(request, activity):
                 finish_time=datetime.now()
             )
 
+    if activity.status == Activity.Status.END:
+        point = calcu_activity_bonus(activity)
+        participants = Participant.objects.filter(
+            activity_id=activity,
+            status=Participant.AttendStatus.ATTENDED
+        ).values_list("person_id", flat=True)
+        NaturalPerson.objects.filter(id__in=participants).update(bonusPoint=F("bonusPoint") + point)
+
     activity.save()
 
 
@@ -597,9 +615,9 @@ def reject_activity(request, activity):
         Notification.objects.filter(
             relate_instance=activity
             ).update(status=Notification.Status.DELETE)
-        Participant.objects.filter(
-                activity_id=activity
-            ).update(status=Participant.AttendStatus.APLLYFAILED)
+        # Participant.objects.filter(
+        #         activity_id=activity
+        #     ).update(status=Participant.AttendStatus.APLLYFAILED)
         notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
         activity.status = Activity.Status.CANCELED
         scheduler.remove_job(f"activity_{activity.id}_remind")
@@ -621,6 +639,7 @@ def reject_activity(request, activity):
             status=TransferRecord.TransferStatus.SUSPENDED,
             finish_time=datetime.now()
         )
+
 
     notification = notification_create(
         receiver=activity.organization_id.organization_id,
@@ -663,7 +682,11 @@ def applyActivity(request, activity):
     except:
         pass
     if CREATE == False:
-        assert participant.status == Participant.AttendStatus.CANCELED
+        if (
+            participant.status == Participant.AttendStatus.APLLYSUCCESS or
+            participant.status == Participant.AttendStatus.APPLYING
+        ):
+            raise ActivityException("您已报名该活动。")
 
 
     if activity.source == Activity.YQPointSource.COLLEGE:
@@ -764,6 +787,9 @@ def cancel_activity(request, activity):
         else:
             raise ActivityException("活动已于一天前开始，不能取消。")
 
+    if activity.status == Activity.Status.CANCELED:
+        raise ActivityException("活动已取消。")
+
     org = Organization.objects.select_for_update().get(
                 organization_id=request.user
             )
@@ -828,6 +854,7 @@ def cancel_activity(request, activity):
             )
 
 
+
     activity.status = Activity.Status.CANCELED
     notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
     notification = Notification.objects.get(
@@ -836,10 +863,13 @@ def cancel_activity(request, activity):
     )
     notification_status_change(notification, Notification.Status.DELETE)
 
+
     # 注意这里，活动取消后，状态变为申请失败了
-    participants = Participant.objects.filter(
-            activity_id=activity
-        ).update(status=Participant.AttendStatus.APLLYFAILED)
+    # participants = Participant.objects.filter(
+    #         activity_id=activity
+    #     ).update(status=Participant.AttendStatus.APLLYFAILED)
+
+
 
     scheduler.remove_job(f"activity_{activity.id}_remind")
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
@@ -859,8 +889,11 @@ def withdraw_activity(request, activity):
         status__in=[
             Participant.AttendStatus.APPLYING,
             Participant.AttendStatus.APLLYSUCCESS,
+            Participant.AttendStatus.CANCELED,
         ],
     )
+    if participant.status == Participant.AttendStatus.CANCELED:
+        raise ActivityException("已退出活动。")
     participant.status = Participant.AttendStatus.CANCELED
     activity.current_participants -= 1
 

@@ -42,6 +42,7 @@ from app.utils import (
     message_url,
     escape_for_templates,
     record_modify_with_session,
+    record_traceback,
 )
 from app.activity_utils import (
     create_activity,
@@ -477,28 +478,23 @@ def stuinfo(request, name=None):
 
         # ----------------------------------- 活动卡片 ----------------------------------- #
 
-        participants = Participant.objects.exclude(
-            status__in=[Participant.AttendStatus.CANCELED, Participant.AttendStatus.APLLYFAILED]
-            ).filter(person_id=person.id)
-        activities = Activity.objects.filter(
+        participants = Participant.objects.activated().filter(person_id=person)
+        activities = Activity.objects.activated().filter(
             Q(id__in=participants.values("activity_id")),
-            ~Q(status=Activity.Status.CANCELED),
+            # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
         )
         if user_type == "Person":
-            activities_me = Participant.objects.filter(person_id=oneself.id).values(
-                "activity_id"
-            )
-            activity_is_same = [
-                activity in activities_me
-                for activity in participants.values("activity_id")
-            ]
+            # 因为上面筛选过活动，这里就不用筛选了
+            # 之前那个写法是O(nm)的
+            activities_me = Participant.objects.activated().filter(person_id=oneself)
+            activities_me = set(activities_me.values_list("activity_id_id", flat=True))
         else:
-            activities_me = activities.filter(organization_id=oneself.id).values("id")
-            activities_me = [activity["id"] for activity in activities_me]
-            activity_is_same = [
-                activity["activity_id"] in activities_me
-                for activity in participants.values("activity_id")
-            ]
+            activities_me = activities.filter(organization_id=oneself)
+            activities_me = set(activities_me.values_list("id", flat=True))
+        activity_is_same = [
+            activity in activities_me
+            for activity in activities.values_list("id", flat=True)
+        ]
         activity_info = list(zip(activities, activity_is_same))
         activity_info.sort(key=lambda a: a[0].start, reverse=True)
         html_display["activity_info"] = list(activity_info) or None
@@ -2098,8 +2094,8 @@ def viewActivity(request, aid=None):
             assert activity.status != Activity.Status.ABORT
             assert activity.status != Activity.Status.REJECT
     except Exception as e:
-        # print(e)
-        return redirect("/welcome/")
+        record_traceback(request, e)
+        return EXCEPT_REDIRECT
 
     html_display = dict()
     inform_share, alert_message = utils.get_inform_share(me)
@@ -2121,6 +2117,9 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
         elif option == "edit":
             if (
@@ -2151,6 +2150,9 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
 
         elif option == "quit":
@@ -2171,6 +2173,9 @@ def viewActivity(request, aid=None):
             except ActivityException as e:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
         elif option == "payment":
             try:
@@ -2179,8 +2184,8 @@ def viewActivity(request, aid=None):
                 re = Reimbursement.objects.get(related_activity=activity)
                 return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
             except Exception as e:
-                # print("Exception", e)
-                return redirect("/modifyEndActivity/")
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
         elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
             if not ownership:
                 return redirect(message_url(wrong('没有下载权限!')))
@@ -2433,37 +2438,45 @@ def checkinActivity(request, aid=None):
     try:
         assert user_type == "Person"
         np = get_person_or_org(request.user)
-        activity = Activity.objects.get(id=int(aid))
+        aid = int(aid)
+        activity = Activity.objects.get(id=aid)
         varifier = request.GET["auth"]
-        assert varifier == hash_coder.encode(aid)
+        assert varifier == hash_coder.encode(str(aid))
     except:
         return redirect(message_url(wrong('签到失败!')))
 
-    warn_code = 1
+    # context = wrong('发生意外错误')   # 理应在任何情况都生成context, 如果没有就让包装器捕获吧
     if activity.status == Activity.Status.END:
-        warn_message = "活动已结束，不再开放签到。"
+        context = wrong("活动已结束，不再开放签到。")
     elif (
         activity.status == Activity.Status.PROGRESSING or
-        activity.status == Activity.Status.WAITING and datetime.now() + timedelta(hours=1) >= activity.start
+        (activity.status == Activity.Status.WAITING
+        and datetime.now() + timedelta(hours=1) >= activity.start)
     ):
         try:
             with transaction.atomic():
                 participant = Participant.objects.select_for_update().get(
-                    activity_id=int(aid), person_id=np,
-                    status=Participant.AttendStatus.UNATTENDED
+                    activity_id=aid, person_id=np,
+                    status__in=[
+                        Participant.AttendStatus.UNATTENDED,
+                        Participant.AttendStatus.APLLYSUCCESS,
+                        Participant.AttendStatus.ATTENDED,
+                    ]
                 )
-                participant.status = Participant.AttendStatus.ATTENDED
-                participant.save()
-                warn_message = "签到成功。"
-                warn_code = 2
+                if participant.status == Participant.AttendStatus.ATTENDED:
+                    context = succeed("您已签到，无需重复签到!")
+                else:
+                    participant.status = Participant.AttendStatus.ATTENDED
+                    participant.save()
+                    context = succeed("签到成功!")
         except:
-            warn_message = "非预期的错误，请确认您报名了活动。也可能您已签到。"
+            context = wrong("您尚未报名该活动!")
         
     else:
-        warn_message = "活动尚未开始签到。"
+        context = wrong("活动开始前一小时开放签到，请耐心等待!")
         
     # TODO 在 activity_info 里加更多信息
-    return redirect(f"/viewActivity/{aid}?warn_code={warn_code}&warn_message={warn_message}")
+    return redirect(message_url(context, f"/viewActivity/{aid}"))
 
 
 # participant checkin activity
@@ -2578,7 +2591,8 @@ def addActivity(request, aid=None):
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
-        raise
+        record_traceback(request, e)
+        return EXCEPT_REDIRECT
 
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
@@ -2591,6 +2605,9 @@ def addActivity(request, aid=None):
                     return redirect(f"/editActivity/{aid}")
             except ActivityException as e:
                 return redirect(str(e))
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
         # 仅这几个阶段可以修改
         if (
@@ -2625,12 +2642,21 @@ def addActivity(request, aid=None):
                 html_display["warn_msg"] = str(e)
                 html_display["warn_code"] = 1
                 # return redirect(f"/viewActivity/{activity.id}")
+            except Exception as e:
+                record_traceback(request, e)
+                return EXCEPT_REDIRECT
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava() 
-    if not edit:
+
+    use_template = False
+    if request.method == "GET" and request.GET.get("template"):
+        use_template = True
+        template_id = int(request.GET["template"])
+        activity = Activity.objects.get(id=template_id)
+    if not edit and not use_template:
         available_teachers = NaturalPerson.objects.teachers()
     else:
         try:
@@ -2640,6 +2666,8 @@ def addActivity(request, aid=None):
             if not activity.valid:
                 commentable = True
                 front_check = True
+            if use_template:
+                commentable = False
             # 全可编辑
             full_editable = False
             accepted = False
@@ -2657,7 +2685,8 @@ def addActivity(request, aid=None):
                 # 不是三个可以评论的状态
                 commentable = front_check = False
         except Exception as e:
-            raise
+            record_traceback(request, e)
+            return EXCEPT_REDIRECT
 
         # 决定状态的变量
         # None/edit/examine ( 小组申请活动/小组编辑/老师审查 )
@@ -2671,6 +2700,7 @@ def addActivity(request, aid=None):
         budget = activity.budget
         location = utils.escape_for_templates(activity.location)
         apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
+        # apply_end_for_js = activity.apply_end.strftime("%Y-%m-%d %H:%M")
         start = activity.start.strftime("%Y-%m-%d %H:%M")
         end = activity.end.strftime("%Y-%m-%d %H:%M")
         introduction = escape_for_templates(activity.introduction)
@@ -2695,14 +2725,17 @@ def addActivity(request, aid=None):
         need_checkin = activity.need_checkin
         inner = activity.inner
         apply_reason = utils.escape_for_templates(activity.apply_reason)
-        comments = showComment(activity)
+        if not use_template:
+            comments = showComment(activity)
         photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
         uploaded_photo = False
         if str(photo).startswith("activity"):
             uploaded_photo = True
+            photo_path = photo
             photo = os.path.basename(photo)
         else:
             photo_id = "picture" + os.path.basename(photo).split(".")[0]
+
 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     if not edit:
@@ -3577,13 +3610,13 @@ def showActivity(request):
                     )
     if is_teacher:
         all_instances = {
-            "undone":   Activity.objects.all_activated().filter(examine_teacher = me.id, valid = False),
-            "done":     Activity.objects.all_activated().filter(examine_teacher = me.id, valid = True)
+            "undone":   Activity.objects.activated(only_displayable=False).filter(examine_teacher = me.id, valid = False),
+            "done":     Activity.objects.activated(only_displayable=False).filter(examine_teacher = me.id, valid = True)
         }
     else:
         all_instances = {
-            "undone":   Activity.objects.all_activated().filter(organization_id = me.id, valid = False),
-            "done":     Activity.objects.all_activated().filter(organization_id = me.id, valid = True)
+            "undone":   Activity.objects.activated(only_displayable=False).filter(organization_id = me.id, valid = False),
+            "done":     Activity.objects.activated(only_displayable=False).filter(organization_id = me.id, valid = True)
         }
 
     all_instances = {key:value.order_by("-modify_time", "-time") for key,value in all_instances.items()}
