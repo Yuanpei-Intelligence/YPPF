@@ -351,6 +351,7 @@ def modify_reviewing_activity(request, activity):
         assert activity.apply_end <= context["start"] - timedelta(hours=1)
     else:
         activity.apply_end = context["signup_end"]
+        activity.endbefore = context["endbefore"]
 
     activity.title = context["title"]
     activity.introduction = context["introduction"]
@@ -425,6 +426,7 @@ def modify_accepted_activity(request, activity):
         signup_end = act_start - timedelta(hours=prepare_time)
         assert now_time <= signup_end
         activity.apply_end = signup_end
+        activity.endbefore = prepare_scheme
         # to_subscribers.append(f"活动报名截止时间调整为{signup_end.strftime('%Y-%m-%d %H:%M')}")
         to_participants.append(f"活动报名截止时间调整为{signup_end.strftime('%Y-%m-%d %H:%M')}")
     else:

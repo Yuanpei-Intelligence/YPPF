@@ -2113,7 +2113,9 @@ def viewActivity(request, aid=None):
                 assert activity.status != Activity.Status.ABORT
                 assert activity.status != Activity.Status.END
                 assert activity.status != Activity.Status.CANCELED
-                assert ownership
+                # assert ownership
+                if not ownership:
+                    raise ActivityException("当前账号不能取消活动，请使用组织账号进行操作。")
                 with transaction.atomic():
                     activity = Activity.objects.select_for_update().get(id=aid)
                     cancel_activity(request, activity)
@@ -2441,7 +2443,7 @@ def getActivityInfo(request):
 def checkinActivity(request, aid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     try:
-        assert user_type == "Person"
+        # assert user_type == "Person"
         np = get_person_or_org(request.user)
         activity = Activity.objects.get(id=int(aid))
         varifier = request.GET["auth"]
@@ -2450,7 +2452,9 @@ def checkinActivity(request, aid=None):
         return redirect(message_url(wrong('签到失败!')))
 
     warn_code = 1
-    if activity.status == Activity.Status.END:
+    if user_type != "Person":
+        warn_message = "请切换到个人账号进行签到！"
+    elif activity.status == Activity.Status.END:
         warn_message = "活动已结束，不再开放签到。"
     elif (
         activity.status == Activity.Status.PROGRESSING or
@@ -2567,8 +2571,10 @@ def addActivity(request, aid=None):
         valid, user_type, html_display = utils.check_user_type(request.user)
         assert valid
         me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
+        if user_type == "Person":
+            return redirect(message_url(wrong("当前账号为个人账号，请切换到组织账号进行操作。")))
         if aid is None:
-            assert user_type == "Organization"
+            # assert user_type == "Organization"
             if me.oname == YQPoint_oname:
                 return redirect("/showActivity")
             edit = False
@@ -2576,6 +2582,7 @@ def addActivity(request, aid=None):
             aid = int(aid)
             activity = Activity.objects.get(id=aid)
             if user_type == "Person":
+                # 不确定这个逻辑是否兼容现在的账号切换逻辑，现在也走不到这了
                 html_display=user_login_org(request,activity.organization_id)
                 if html_display['warn_code']==1:
                     return redirect(message_url(wrong(html_display["warn_message"])))
