@@ -887,11 +887,11 @@ def homepage(request):
         'organization_id').filter(status = Activity.Status.APPLYING)
     signup_list = []
     for act in signup_rec:
-        deadline = act.start - timedelta(hours=prepare_times[act.endbefore])
+        deadline = act.apply_end
         dictmp = {}
         dictmp["deadline"] = deadline
         dictmp["act"] = act
-        dictmp["tobestart"] = int((deadline.__sub__(nowtime).total_seconds())/360)/10
+        dictmp["tobestart"] = (deadline - nowtime).total_seconds()//360/10
         signup_list.append(dictmp)
     signup_list.sort(key=lambda x:x["deadline"])
     signup_list=signup_list[:10]
