@@ -85,6 +85,7 @@ def check_ac_time(start_time, end_time):
 
 
 def activity_base_check(request, edit=False):
+    '''正常情况下检查出错误会抛出不含错误信息的AssertionError，不抛出ActivityException'''
 
     context = dict()
 
@@ -210,25 +211,39 @@ def activity_base_check(request, edit=False):
 
 
 def create_activity(request):
+    '''
+    检查活动，合法时寻找该活动，不存在时创建
+    返回(activity.id, created)
+
+    ---
+    检查不合格时抛出AssertionError
+    - 不再假设ActivityException特定语义，暂不抛出该类异常
+    '''
 
     context = activity_base_check(request)
 
     # 查找是否有类似活动存在
-    old_ones = Activity.objects.filter(
+    old_ones = Activity.objects.activated().filter(
         title=context["title"],
         start=context["start"],
         introduction=context["introduction"],
         location=context["location"]
     )
-    if len(old_ones) > 0:
-        # 这写法一点也不优雅.....
-        redirect_url = f"/viewActivity/{old_ones.first().id}"
-        raise ActivityException(redirect_url)
+    if len(old_ones) == 0:
+        old_ones = Activity.objects.filter(
+            title = context["title"],
+            start = context["start"],
+            introduction = context["introduction"],
+            location = context["location"],
+            status = Activity.Status.REVIEWING,
+        )
+    if len(old_ones):
+        assert len(old_ones) == 1, "创建活动时，已存在的相似活动不唯一"
+        return old_ones[0].id, False
 
     # 审批老师存在
     examine_teacher = NaturalPerson.objects.get(
         name=context["examine_teacher"], identity=NaturalPerson.Identity.TEACHER)
-    assert examine_teacher.identity == NaturalPerson.Identity.TEACHER
 
     # 检查完毕，创建活动
     org = get_person_or_org(request.user, "Organization")
@@ -294,7 +309,7 @@ def create_activity(request):
         publish_kws={"app":WechatApp.AUDIT},
     )
 
-    return activity.id
+    return activity.id, True
 
 
 
@@ -617,9 +632,9 @@ def reject_activity(request, activity):
         Notification.objects.filter(
             relate_instance=activity
             ).update(status=Notification.Status.DELETE)
-        Participant.objects.filter(
-                activity_id=activity
-            ).update(status=Participant.AttendStatus.APLLYFAILED)
+        # Participant.objects.filter(
+        #         activity_id=activity
+        #     ).update(status=Participant.AttendStatus.APLLYFAILED)
         notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
         activity.status = Activity.Status.CANCELED
         scheduler.remove_job(f"activity_{activity.id}_remind")
@@ -662,6 +677,7 @@ def reject_activity(request, activity):
 # 调用的时候用 try
 # 调用者把 activity_id 作为参数传过来
 def applyActivity(request, activity):
+    '''这个函数在正常情况下只应该抛出提示错误信息的ActivityException'''
     context = dict()
     context["success"] = False
     CREATE = True
@@ -689,6 +705,9 @@ def applyActivity(request, activity):
             participant.status == Participant.AttendStatus.APPLYING
         ):
             raise ActivityException("您已报名该活动。")
+        elif participant.status != Participant.AttendStatus.CANCELED:
+            raise ActivityException(f"您的报名状态异常，当前状态为：{participant.status}")
+        
 
 
     if activity.source == Activity.YQPointSource.COLLEGE:
@@ -867,9 +886,9 @@ def cancel_activity(request, activity):
 
 
     # 注意这里，活动取消后，状态变为申请失败了
-    participants = Participant.objects.filter(
-            activity_id=activity
-        ).update(status=Participant.AttendStatus.APLLYFAILED)
+    # participants = Participant.objects.filter(
+    #         activity_id=activity
+    #     ).update(status=Participant.AttendStatus.APLLYFAILED)
 
 
 

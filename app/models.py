@@ -458,9 +458,14 @@ class Course(models.Model):
 
 
 class ActivityManager(models.Manager):
-    def activated(self):
+    def activated(self, only_displayable=True):
         # 选择学年相同，并且学期相同或者覆盖的
-        return self.displayable().filter(year=int(local_dict["semester_data"]["year"])).filter(
+        # 请保证query_range是一个queryset，将manager的行为包装在query_range计算完之前
+        if only_displayable:
+            query_range = self.displayable()
+        else:
+            query_range = self.all()
+        return query_range.filter(year=int(local_dict["semester_data"]["year"])).filter(
             semester__contains=local_dict["semester_data"]["semester"]
         )
 
@@ -473,12 +478,6 @@ class ActivityManager(models.Manager):
             Activity.Status.ABORT,
             Activity.Status.REJECT
         ])
-    
-    def all_activated(self):
-        # 选择学年相同，并且学期相同或者覆盖的，保持任何状态的活动都可见
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
-            semester__contains=local_dict["semester_data"]["semester"]
-        )
 
     def get_newlyended_activity(self):
         # 一周内结束的活动
@@ -634,7 +633,7 @@ class Activity(CommentBase):
 
     visit_times = models.IntegerField("浏览次数",default=0)
 
-    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
     # recorded 其实是冗余，但用着方便，存了吧,activity_show.html用到了
     recorded = models.BooleanField("是否预报备", default=False)
     valid = models.BooleanField("是否已审核", default=False)
@@ -679,6 +678,30 @@ class Activity(CommentBase):
         self.YQPoint = round(self.YQPoint, 1)
         self.typename = "activity"
         super().save(*args, **kwargs)
+    
+    def popular_level(self, any_status=False):
+        if not any_status and not self.status in [
+            Activity.Status.WAITING,
+            Activity.Status.PROGRESSING,
+            Activity.Status.END,
+        ]:
+            return 0
+        if self.current_participants >= self.capacity:
+            return 2
+        if (self.current_participants >= 30
+            or (self.capacity >= 10 and self.current_participants >= self.capacity * 0.85)
+            ):
+            return 1
+        return 0
+
+    def has_tag(self):
+        if self.need_checkin or self.inner:
+            return True
+        if self.status == Activity.Status.APPLYING:
+            return True
+        if self.popular_level():
+            return True
+        return False
 
 class ActivityPhoto(models.Model):
     class Meta:
@@ -744,6 +767,17 @@ class TransferRecord(models.Model):
         super(TransferRecord, self).save(*args, **kwargs)
 
 
+class ParticipantManager(models.Manager):
+    def activated(self, no_unattend=False):
+        '''返回成功报名的参与信息'''
+        exclude_status = [
+            Participant.AttendStatus.CANCELED,
+            Participant.AttendStatus.APLLYFAILED,
+        ]
+        if no_unattend:
+            exclude_status.append(Participant.AttendStatus.UNATTENDED)
+        return self.exclude(status__in=exclude_status)
+
 class Participant(models.Model):
     class Meta:
         verbose_name = "活动参与情况"
@@ -767,6 +801,7 @@ class Participant(models.Model):
         default=AttendStatus.APPLYING,
         max_length=32,
     )
+    objects = ParticipantManager()
 
 
 class YQPointDistribute(models.Model):
@@ -904,7 +939,7 @@ class Comment(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["-time"]
 
-    commentator = models.ForeignKey(User, on_delete=models.CASCADE)
+    commentator = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="评论者")
     commentbase = models.ForeignKey(
         CommentBase, related_name="comments", on_delete=models.CASCADE
     )
@@ -986,7 +1021,7 @@ class ModifyOrganization(CommentBase):
         return settings.MEDIA_URL + str(avatar)
         
     def is_pending(self):   #表示是不是pending状态
-            return self.status == ModifyOrganization.Status.PENDING
+        return self.status == ModifyOrganization.Status.PENDING
 
 
 class ModifyPosition(CommentBase):
@@ -1107,8 +1142,8 @@ class Reimbursement(CommentBase):
     message = models.TextField("备注信息", default="", blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)#报销的小组
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
-    record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
-    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    record = models.ForeignKey(TransferRecord, on_delete=models.CASCADE) #转账信息的记录
+    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
         
@@ -1129,8 +1164,9 @@ class Reimbursement(CommentBase):
         if self.message:
             display.append(('备注', self.message))
         return display
+
     def is_pending(self):   #表示是不是pending状态
-            return self.status == Reimbursement.ReimburseStatus.WAITING
+        return self.status == Reimbursement.ReimburseStatus.WAITING
 
 class ReimbursementPhoto(models.Model):
     class Meta:

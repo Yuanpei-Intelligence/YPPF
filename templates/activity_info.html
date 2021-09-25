@@ -117,7 +117,9 @@
                             {% else %}
                             {% if status == "审核中" %}
                             <span class="flex badge badge-pill badge-secondary">
-                            {% elif status == "未过审" or status == "已取消" or status == "已撤销" or status == "已结束" %}
+                            {% elif status == "已取消" %}
+                            <span class="badge badge-pill badge-dark">
+                            {% elif status == "未过审" or status == "已撤销" or status == "已结束" %}
                             <span class="badge badge-pill badge-danger">
                             {% elif status == "报名中" %}
                             <span class="badge badge-pill badge-info">
@@ -374,7 +376,7 @@
                                     {% if not not_inner %}
                                     <form method="POST">
                                         <input type="hidden" name="option" value="apply">
-                                        <button class="btn btn-primary btn-block mb-2">立即报名</button>
+                                        <button class="btn btn-primary btn-block mb-2" onclick="return confirm('确认报名？')">立即报名</button>
                                     </form>
                                     {% else %}
                                         <button class="btn btn-primary btn-block mb-2" disabled>立即报名
@@ -392,7 +394,10 @@
                                     {% elif pStatus == "申请中" or pStatus == "已报名" %}
                                     <form method="POST">
                                         <input type="hidden" name="option" value="quit">
-                                        <button class="btn btn-danger btn-block mb-2">退出活动</button>
+                                        <button class="btn btn-danger btn-block mb-2"
+                                            onclick="return confirm('确认退出活动？{% if activity.source == "学生" and activity.YQPoint > 0 %}{% if status != "报名中" %}当前状态将无法取回全部元气值！{% else %}用于报名的元气值将被退回至您的账户。{% endif %}{% endif %}')"
+                                            退出活动
+                                        </button>
                                     </form>
 
                                     {% endif %}

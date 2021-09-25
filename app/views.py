@@ -478,28 +478,23 @@ def stuinfo(request, name=None):
 
         # ----------------------------------- 活动卡片 ----------------------------------- #
 
-        participants = Participant.objects.exclude(
-            status__in=[Participant.AttendStatus.CANCELED, Participant.AttendStatus.APLLYFAILED]
-            ).filter(person_id=person.id)
-        activities = Activity.objects.filter(
+        participants = Participant.objects.activated().filter(person_id=person)
+        activities = Activity.objects.activated().filter(
             Q(id__in=participants.values("activity_id")),
-            ~Q(status=Activity.Status.CANCELED),
+            # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
         )
         if user_type == "Person":
-            activities_me = Participant.objects.filter(person_id=oneself.id).values(
-                "activity_id"
-            )
-            activity_is_same = [
-                activity in activities_me
-                for activity in participants.values("activity_id")
-            ]
+            # 因为上面筛选过活动，这里就不用筛选了
+            # 之前那个写法是O(nm)的
+            activities_me = Participant.objects.activated().filter(person_id=oneself)
+            activities_me = set(activities_me.values_list("activity_id_id", flat=True))
         else:
-            activities_me = activities.filter(organization_id=oneself.id).values("id")
-            activities_me = [activity["id"] for activity in activities_me]
-            activity_is_same = [
-                activity["activity_id"] in activities_me
-                for activity in participants.values("activity_id")
-            ]
+            activities_me = activities.filter(organization_id=oneself)
+            activities_me = set(activities_me.values_list("id", flat=True))
+        activity_is_same = [
+            activity in activities_me
+            for activity in activities.values_list("id", flat=True)
+        ]
         activity_info = list(zip(activities, activity_is_same))
         activity_info.sort(key=lambda a: a[0].start, reverse=True)
         html_display["activity_info"] = list(activity_info) or None
@@ -2067,7 +2062,7 @@ def myYQPoint(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[viewActivity]', record_user=True, return_value=EXCEPT_REDIRECT)
+@utils.except_captured(EXCEPT_REDIRECT, source='views[viewActivity]', record_user=True)
 def viewActivity(request, aid=None):
     """
     aname = str(request.POST["aname"])  # 活动名称
@@ -2085,7 +2080,7 @@ def viewActivity(request, aid=None):
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
         valid, user_type, html_display = utils.check_user_type(request.user)
-        assert valid
+        # assert valid  已经在check_user_access检查过了
         org = activity.organization_id
         me = utils.get_person_or_org(request.user, user_type)
         ownership = False
@@ -2094,10 +2089,12 @@ def viewActivity(request, aid=None):
         examine = False
         if user_type == "Person" and activity.examine_teacher == me:
             examine = True
-        if not (ownership or examine):
-            assert activity.status != Activity.Status.REVIEWING
-            assert activity.status != Activity.Status.ABORT
-            assert activity.status != Activity.Status.REJECT
+        if not (ownership or examine) and activity.status in [
+                Activity.Status.REVIEWING,
+                Activity.Status.ABORT,
+                Activity.Status.REJECT,
+            ]:
+            return redirect(message_url(wrong('该活动暂不可见!')))
     except Exception as e:
         record_traceback(request, e)
         return EXCEPT_REDIRECT
@@ -2109,13 +2106,15 @@ def viewActivity(request, aid=None):
         option = request.POST.get("option")
         if option == "cancel":
             try:
-                assert activity.status != Activity.Status.REJECT
-                assert activity.status != Activity.Status.ABORT
-                assert activity.status != Activity.Status.END
-                assert activity.status != Activity.Status.CANCELED
-                # assert ownership
+                if activity.status in [
+                    Activity.Status.REJECT,
+                    Activity.Status.ABORT,
+                    Activity.Status.END,
+                    Activity.Status.CANCELED,
+                ]:
+                    return redirect(message_url(wrong('该活动已结束，不可取消!'), request.path))
                 if not ownership:
-                    raise ActivityException("当前账号不能取消活动，请使用组织账号进行操作。")
+                    return redirect(message_url(wrong('您没有修改该活动的权限!'), request.path))
                 with transaction.atomic():
                     activity = Activity.objects.select_for_update().get(id=aid)
                     cancel_activity(request, activity)
@@ -2130,15 +2129,15 @@ def viewActivity(request, aid=None):
 
         elif option == "edit":
             if (
-                    activity.status == activity.Status.APPLYING
-                    or activity.status == activity.Status.REVIEWING
+                    activity.status == Activity.Status.APPLYING
+                    or activity.status == Activity.Status.REVIEWING
             ):
                 return redirect(f"/editActivity/{aid}")
-            if activity.status == activity.Status.WAITING:
+            if activity.status == Activity.Status.WAITING:
                 if activity.start + timedelta(hours=1) < datetime.now():
                     return redirect(f"/editActivity/{aid}")
                 html_display["warn_code"] = 1
-                html_display["warn_message"] = f"距离活动开始前1小时内将不再允许修改活动。如却有雨天等意外情况，请及时取消活动，收取的元气值将会退还。"
+                html_display["warn_message"] = f"距离活动开始前1小时内将不再允许修改活动。如确有雨天等意外情况，请及时取消活动，收取的元气值将会退还。"
             else:
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = f"活动状态为{activity.status}, 不能修改。"
@@ -2147,7 +2146,8 @@ def viewActivity(request, aid=None):
             try:
                 with transaction.atomic():
                     activity = Activity.objects.select_for_update().get(id=int(aid))
-                    assert activity.status == Activity.Status.APPLYING
+                    if activity.status != Activity.Status.APPLYING:
+                        return redirect(message_url(wrong('活动不在报名状态!'), request.path))
                     applyActivity(request, activity)
                     if activity.bidding:
                         html_display["warn_message"] = f"活动申请中，请等待报名结果。"
@@ -2166,10 +2166,11 @@ def viewActivity(request, aid=None):
             try:
                 with transaction.atomic():
                     activity = Activity.objects.select_for_update().get(id=aid)
-                    assert (
-                            activity.status == Activity.Status.APPLYING
-                            or activity.status == Activity.Status.WAITING
-                    )
+                    if activity.status not in [
+                        Activity.Status.APPLYING,
+                        Activity.Status.WAITING,
+                    ]:
+                        return redirect(message_url(wrong('当前状态不允许取消报名!'), request.path))
                     withdraw_activity(request, activity)
                     if activity.bidding:
                         html_display["warn_message"] = f"已取消申请。"
@@ -2185,31 +2186,32 @@ def viewActivity(request, aid=None):
                 return EXCEPT_REDIRECT
 
         elif option == "payment":
+            if activity.status != Activity.Status.END:
+                return redirect(message_url(wrong('活动尚未结束!'), request.path))
+            if not ownership:
+                return redirect(message_url(wrong('您没有申请活动结项的权限!'), request.path))
             try:
-                assert activity.status == Activity.Status.END
-                assert ownership
                 re = Reimbursement.objects.get(related_activity=activity)
                 return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
-            except Exception as e:
-                record_traceback(request, e)
-                return EXCEPT_REDIRECT
+            except:
+                return redirect(f"/modifyEndActivity/")
         elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
             if not ownership:
-                return redirect(message_url(wrong('没有下载权限!')))
+                return redirect(message_url(wrong('没有下载权限!'), request.path))
             return utils.export_activity(activity,option)
         elif option == "cancelInformShare":
             me.inform_share = False
             me.save()
             return redirect("/welcome/")
         else:
-            return redirect(message_url(wrong('无效的请求!')))
+            return redirect(message_url(wrong('无效的请求!'), request.path))
         
     elif request.method == "GET":
         warn_code = request.GET.get("warn_code")
         warn_msg = request.GET.get("warn_message")
         if warn_code and warn_msg:
             if warn_code != "1" and warn_code != "2":
-                return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
+                return redirect(message_url(wrong('非法的状态码，请勿篡改URL!'), request.path))
             html_display["warn_code"] = int(warn_code)
             html_display["warn_message"] = warn_msg
 
@@ -2442,42 +2444,50 @@ def getActivityInfo(request):
 @utils.except_captured(source='views[checkinActivity]', record_user=True)
 def checkinActivity(request, aid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
+    if user_type != "Person":
+        return redirect(message_url(wrong('签到失败：请使用个人账号签到')))
     try:
-        # assert user_type == "Person"
-        np = get_person_or_org(request.user)
-        activity = Activity.objects.get(id=int(aid))
+        np = get_person_or_org(request.user, user_type)
+        aid = int(aid)
+        activity = Activity.objects.get(id=aid)
         varifier = request.GET["auth"]
-        assert varifier == hash_coder.encode(aid)
     except:
         return redirect(message_url(wrong('签到失败!')))
+    if varifier != hash_coder.encode(str(aid)):
+        return redirect(message_url(wrong('签到失败：活动校验码不匹配')))
 
-    warn_code = 1
-    if user_type != "Person":
-        warn_message = "请切换到个人账号进行签到！"
-    elif activity.status == Activity.Status.END:
-        warn_message = "活动已结束，不再开放签到。"
+    # context = wrong('发生意外错误')   # 理应在任何情况都生成context, 如果没有就让包装器捕获吧
+    if activity.status == Activity.Status.END:
+        context = wrong("活动已结束，不再开放签到。")
     elif (
         activity.status == Activity.Status.PROGRESSING or
-        activity.status == Activity.Status.WAITING and datetime.now() + timedelta(hours=1) >= activity.start
+        (activity.status == Activity.Status.WAITING
+        and datetime.now() + timedelta(hours=1) >= activity.start)
     ):
         try:
             with transaction.atomic():
                 participant = Participant.objects.select_for_update().get(
-                    activity_id=int(aid), person_id=np,
-                    status__in=[Participant.AttendStatus.UNATTENDED, Participant.AttendStatus.APLLYSUCCESS]
+                    activity_id=aid, person_id=np,
+                    status__in=[
+                        Participant.AttendStatus.UNATTENDED,
+                        Participant.AttendStatus.APLLYSUCCESS,
+                        Participant.AttendStatus.ATTENDED,
+                    ]
                 )
-                participant.status = Participant.AttendStatus.ATTENDED
-                participant.save()
-                warn_message = "签到成功。"
-                warn_code = 2
+                if participant.status == Participant.AttendStatus.ATTENDED:
+                    context = succeed("您已签到，无需重复签到!")
+                else:
+                    participant.status = Participant.AttendStatus.ATTENDED
+                    participant.save()
+                    context = succeed("签到成功!")
         except:
-            warn_message = "非预期的错误，请确认您报名了活动。也可能您已签到。"
+            context = wrong("您尚未报名该活动!")
         
     else:
-        warn_message = "活动尚未开始签到。"
+        context = wrong("活动开始前一小时开放签到，请耐心等待!")
         
     # TODO 在 activity_info 里加更多信息
-    return redirect(f"/viewActivity/{aid}?warn_code={warn_code}&warn_message={warn_message}")
+    return redirect(message_url(context, f"/viewActivity/{aid}"))
 
 
 # participant checkin activity
@@ -2563,18 +2573,17 @@ def checkinActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@utils.except_captured(source='views[addActivity]', record_user=True, return_value=EXCEPT_REDIRECT)
+@utils.except_captured(EXCEPT_REDIRECT, source='views[addActivity]', record_user=True)
 def addActivity(request, aid=None):
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
     try:
         valid, user_type, html_display = utils.check_user_type(request.user)
-        assert valid
+        # assert valid  已经在check_user_access检查过了
         me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
-        if user_type == "Person":
-            return redirect(message_url(wrong("当前账号为个人账号，请切换到组织账号进行操作。")))
         if aid is None:
-            # assert user_type == "Organization"
+            if user_type != "Organization":
+                return redirect(message_url(wrong('小组账号才能添加活动!')))
             if me.oname == YQPoint_oname:
                 return redirect("/showActivity")
             edit = False
@@ -2582,16 +2591,16 @@ def addActivity(request, aid=None):
             aid = int(aid)
             activity = Activity.objects.get(id=aid)
             if user_type == "Person":
-                # 不确定这个逻辑是否兼容现在的账号切换逻辑，现在也走不到这了
                 html_display=user_login_org(request,activity.organization_id)
                 if html_display['warn_code']==1:
                     return redirect(message_url(wrong(html_display["warn_message"])))
-                else:#成功以小组账号登陆
-                    #防止后边有使用，因此需要赋值
-                    user_type="Organization"
-                    request.user=activity.organization_id.organization_id#小组对应user
-                    me = activity.organization_id#小组
-            assert activity.organization_id == me
+                else: # 成功以小组账号登陆
+                    # 防止后边有使用，因此需要赋值
+                    user_type = "Organization"
+                    request.user = activity.organization_id.organization_id #小组对应user
+                    me = activity.organization_id #小组
+            if activity.organization_id != me:
+                return redirect(message_url(wrong("无法修改其他小组的活动!")))
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
@@ -2605,10 +2614,12 @@ def addActivity(request, aid=None):
         if not edit:
             try:
                 with transaction.atomic():
-                    aid = create_activity(request)
+                    aid, created = create_activity(request)
+                    if not created:
+                        return redirect(message_url(
+                            succeed('存在信息相同的活动，已为您自动跳转!'),
+                            f'/viewActivity/{aid}'))
                     return redirect(f"/editActivity/{aid}")
-            except ActivityException as e:
-                return redirect(str(e))
             except Exception as e:
                 record_traceback(request, e)
                 return EXCEPT_REDIRECT
@@ -2619,7 +2630,8 @@ def addActivity(request, aid=None):
                 activity.status != Activity.Status.APPLYING and 
                 activity.status != Activity.Status.WAITING
         ):
-            return redirect(message_url(wrong('当前活动状态不允许修改!')))
+            return redirect(message_url(wrong('当前活动状态不允许修改!'),
+                                        f'/viewActivity/{activity.id}'))
 
         # 处理 comment
         if request.POST.get("comment_submit"):
@@ -2743,9 +2755,9 @@ def addActivity(request, aid=None):
 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     if not edit:
-         bar_display = utils.get_sidebar_and_navbar(request.user, "活动发起")
+        bar_display = utils.get_sidebar_and_navbar(request.user, "活动发起")
     else:
-         bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
+        bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
 
     return render(request, "activity_add.html", locals())
 
@@ -3552,7 +3564,7 @@ def endActivity(request):
     if user_type == "Person":
         try:
             person = utils.get_person_or_org(request.user, user_type)
-            if person.person_id.username == local_dict["audit_teacher"]["Funds"]:
+            if person.identity == NaturalPerson.Identity.TEACHER:
                 is_auditor = True
         except:
             pass
@@ -3568,8 +3580,8 @@ def endActivity(request):
 
     if is_auditor:
         all_instances = {
-            "undone": Reimbursement.objects.filter(status = Reimbursement.ReimburseStatus.WAITING),
-            "done":     Reimbursement.objects.all().exclude(status = Reimbursement.ReimburseStatus.WAITING)
+            "undone": Reimbursement.objects.filter(examine_teacher=person, status = Reimbursement.ReimburseStatus.WAITING),
+            "done": Reimbursement.objects.filter(examine_teacher=person).exclude(status = Reimbursement.ReimburseStatus.WAITING)
         }
         
     else:
@@ -3614,13 +3626,13 @@ def showActivity(request):
                     )
     if is_teacher:
         all_instances = {
-            "undone":   Activity.objects.all_activated().filter(examine_teacher = me.id, valid = False),
-            "done":     Activity.objects.all_activated().filter(examine_teacher = me.id, valid = True)
+            "undone":   Activity.objects.activated(only_displayable=False).filter(examine_teacher = me.id, valid = False),
+            "done":     Activity.objects.activated(only_displayable=False).filter(examine_teacher = me.id, valid = True)
         }
     else:
         all_instances = {
-            "undone":   Activity.objects.all_activated().filter(organization_id = me.id, valid = False),
-            "done":     Activity.objects.all_activated().filter(organization_id = me.id, valid = True)
+            "undone":   Activity.objects.activated(only_displayable=False).filter(organization_id = me.id, valid = False),
+            "done":     Activity.objects.activated(only_displayable=False).filter(organization_id = me.id, valid = True)
         }
 
     all_instances = {key:value.order_by("-modify_time", "-time") for key,value in all_instances.items()}
