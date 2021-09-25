@@ -633,7 +633,7 @@ class Activity(CommentBase):
 
     visit_times = models.IntegerField("浏览次数",default=0)
 
-    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
     # recorded 其实是冗余，但用着方便，存了吧,activity_show.html用到了
     recorded = models.BooleanField("是否预报备", default=False)
     valid = models.BooleanField("是否已审核", default=False)
@@ -939,7 +939,7 @@ class Comment(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["-time"]
 
-    commentator = models.ForeignKey(User, on_delete=models.CASCADE)
+    commentator = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="评论者")
     commentbase = models.ForeignKey(
         CommentBase, related_name="comments", on_delete=models.CASCADE
     )
@@ -1021,7 +1021,7 @@ class ModifyOrganization(CommentBase):
         return settings.MEDIA_URL + str(avatar)
         
     def is_pending(self):   #表示是不是pending状态
-            return self.status == ModifyOrganization.Status.PENDING
+        return self.status == ModifyOrganization.Status.PENDING
 
 
 class ModifyPosition(CommentBase):
@@ -1142,8 +1142,8 @@ class Reimbursement(CommentBase):
     message = models.TextField("备注信息", default="", blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)#报销的小组
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
-    record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
-    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    record = models.ForeignKey(TransferRecord, on_delete=models.CASCADE) #转账信息的记录
+    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
         
@@ -1164,8 +1164,9 @@ class Reimbursement(CommentBase):
         if self.message:
             display.append(('备注', self.message))
         return display
+
     def is_pending(self):   #表示是不是pending状态
-            return self.status == Reimbursement.ReimburseStatus.WAITING
+        return self.status == Reimbursement.ReimburseStatus.WAITING
 
 class ReimbursementPhoto(models.Model):
     class Meta:
