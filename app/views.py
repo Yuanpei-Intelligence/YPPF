@@ -2444,15 +2444,17 @@ def getActivityInfo(request):
 @utils.except_captured(source='views[checkinActivity]', record_user=True)
 def checkinActivity(request, aid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
+    if user_type != "Person":
+        return redirect(message_url(wrong('签到失败：请使用个人账号签到')))
     try:
-        assert user_type == "Person"
-        np = get_person_or_org(request.user)
+        np = get_person_or_org(request.user, user_type)
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
         varifier = request.GET["auth"]
-        assert varifier == hash_coder.encode(str(aid))
     except:
         return redirect(message_url(wrong('签到失败!')))
+    if varifier != hash_coder.encode(str(aid)):
+        return redirect(message_url(wrong('签到失败：活动校验码不匹配')))
 
     # context = wrong('发生意外错误')   # 理应在任何情况都生成context, 如果没有就让包装器捕获吧
     if activity.status == Activity.Status.END:
