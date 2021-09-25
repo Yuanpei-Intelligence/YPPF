@@ -2186,16 +2186,15 @@ def viewActivity(request, aid=None):
                 return EXCEPT_REDIRECT
 
         elif option == "payment":
+            if activity.status != Activity.Status.END:
+                return redirect(message_url(wrong('活动尚未结束!'), request.path))
+            if not ownership:
+                return redirect(message_url(wrong('您没有申请活动结项的权限!'), request.path))
             try:
-                if activity.status != Activity.Status.END:
-                    return redirect(message_url(wrong('活动尚未结束!'), request.path))
-                if not ownership:
-                    return redirect(message_url(wrong('您没有申请活动结项的权限!'), request.path))
                 re = Reimbursement.objects.get(related_activity=activity)
                 return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
-            except Exception as e:
-                record_traceback(request, e)
-                return EXCEPT_REDIRECT
+            except:
+                return redirect(f"/modifyEndActivity/")
         elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
             if not ownership:
                 return redirect(message_url(wrong('没有下载权限!'), request.path))
