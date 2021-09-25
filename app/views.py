@@ -2754,9 +2754,9 @@ def addActivity(request, aid=None):
 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     if not edit:
-         bar_display = utils.get_sidebar_and_navbar(request.user, "活动发起")
+        bar_display = utils.get_sidebar_and_navbar(request.user, "活动发起")
     else:
-         bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
+        bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
 
     return render(request, "activity_add.html", locals())
 
