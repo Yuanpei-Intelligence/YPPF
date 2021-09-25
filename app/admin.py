@@ -157,7 +157,7 @@ class OrganizationTypeAdmin(admin.ModelAdmin):
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ["organization_id", "oname", "otype", "Managers"]
-    search_fields = ("oname", "otype__otype_id", "otype__otype_name")
+    search_fields = ("organization_id", "oname", "otype__otype_name")
     list_filter = ("otype", )
 
     def Managers(self, obj):
@@ -307,6 +307,7 @@ class ActivityAdmin(admin.ModelAdmin):
                 ('not_waiting', '未进入 等待中 状态'),
                 ('not_processing', '未进入 进行中 状态'),
                 ('not_end', '未进入 已结束 状态'),
+                ('review_end', '已结束的未审核'),
                 ('normal', '正常'),
             )
         
@@ -316,6 +317,7 @@ class ActivityAdmin(admin.ModelAdmin):
             error_id_set = set()
             activate_queryset = queryset.exclude(
                     status__in=[
+                        Activity.Status.REVIEWING,
                         Activity.Status.CANCELED,
                         Activity.Status.REJECT,
                         Activity.Status.ABORT,
@@ -335,6 +337,11 @@ class ActivityAdmin(admin.ModelAdmin):
             if self.value() in ['not_end', 'all', 'normal']:
                 error_id_set.update(activate_queryset.exclude(
                     status=Activity.Status.END).filter(
+                    end__lte=now,
+                    ).values_list('id', flat=True))
+            if self.value() in ['review_end', 'all', 'normal']:
+                error_id_set.update(queryset.filter(
+                    status=Activity.Status.REVIEWING,
                     end__lte=now,
                     ).values_list('id', flat=True))
 
@@ -582,18 +589,36 @@ class ModifyRecordAdmin(admin.ModelAdmin):
                                     message=f'查询失败: {e}!', level='error')
     get_rank.short_description = "查询排名"
 
+
 @admin.register(ModifyPosition)
 class ModifyPositionAdmin(admin.ModelAdmin):
-    list_display = ["person","org","apply_type", "status"]
+    list_display = ["id", "person", "org", "apply_type", "status"]
     search_fields = ("org__oname", "person__name")
+    list_filter = ("apply_type", 'status', "org__otype", 'time', 'modify_time',)
 
 
-admin.site.register(ModifyOrganization)
+@admin.register(ModifyOrganization)
+class ModifyOrganizationAdmin(admin.ModelAdmin):
+    list_display = ["id", "oname", "otype", "pos", "get_poster_name", "status"]
+    search_fields = ("id", "oname", "otype__otype_name", "pos__username",)
+    list_filter = ('status', "otype", 'time', 'modify_time',)
+    ModifyOrganization.get_poster_name.short_description = "申请者"
+
+
+@admin.register(Reimbursement)
+class ReimbursementAdmin(admin.ModelAdmin):
+    list_display = ["related_activity", "id", "pos", "get_poster_name",
+                    "amount",
+                    "examine_teacher", "time", "status",]
+    search_fields = ("id", "related_activity__title",
+                    "related_activity__organization_id__oname", "pos__username",
+                    'examine_teacher__name',)
+    list_filter = ('status', 'time', 'modify_time',)
+    Reimbursement.get_poster_name.short_description = "申请者"
 
 
 admin.site.register(TransferRecord)
 
 admin.site.register(YQPointDistribute)
-admin.site.register(Reimbursement)
 admin.site.register(QandA)
 

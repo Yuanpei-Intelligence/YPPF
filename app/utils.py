@@ -285,8 +285,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         # bar_display["my_org_len"] = len(bar_display["my_org_list"])
         
         
-        bar_display['is_auditor'] = True if me.person_id.username == local_dict[
-            "audit_teacher"]["Funds"] else False
+        bar_display['is_auditor'] = me.identity == NaturalPerson.Identity.TEACHER
     
     else:
         bar_display["profile_name"] = "小组主页"
@@ -858,7 +857,15 @@ def operation_writer(user, message, source, status_code="OK"):
             if isinstance(receivers, str):
                 receivers = receivers.replace(' ', '').split(',')
             receivers = list(map(str, receivers))
-            send_wechat(receivers, 'YPPF发生异常\n' + message[:500], card=len(message) < 200)
+            send_message = message
+            if len(send_message) > 400:
+                send_message = '\n'.join([
+                    send_message[:300],
+                    '...',
+                    send_message[-100:],
+                    '详情请查看log'
+                ])
+            send_wechat(receivers, 'YPPF发生异常\n' + send_message, card=len(message) < 200)
     except Exception as e:
         # 最好是发送邮件通知存在问题
         # 待补充

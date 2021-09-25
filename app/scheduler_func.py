@@ -301,97 +301,98 @@ scheduler.add_job(changeActivityStatus, "date",
 活动变更为进行中时，更新报名成功人员状态
 """
 
-@except_captured(True, source='scheduler_func[changeActivityStatus]修改活动状态')
+@except_captured(True, record_args=True, source='scheduler_func[changeActivityStatus]修改活动状态')
+@except_captured(True, AssertionError, record_args=True, status_code='Problem',
+                 record_user=False, record_request_args=False,
+                 source='scheduler_func[changeActivityStatus]检查活动状态')
 def changeActivityStatus(aid, cur_status, to_status):
+    '''
+    幂等；可能发生异常；包装器负责处理异常
+    必须提供cur_status，则会在转换状态前检查前后状态，每次只能变更一个阶段
+    即：报名中->等待中->进行中->结束
+    状态不符合时，抛出AssertionError
+    '''
     # print(f"Change Activity Job works: aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
-    # with open("/Users/liuzhanpeng/working/yp/YPPF/logs/error.txt", "a+") as f:
-    #     f.write(f"aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
-    #     f.close()
-    try:
-        with transaction.atomic():
-            activity = Activity.objects.select_for_update().get(id=aid)
-            if cur_status is not None:
-                assert cur_status == activity.status
+    with transaction.atomic():
+        activity = Activity.objects.select_for_update().get(id=aid)
+        if cur_status is not None:
+            assert cur_status == activity.status, f"希望的状态是{cur_status}，但实际状态为{activity.status}"
             if cur_status == Activity.Status.APPLYING:
-                assert to_status == Activity.Status.WAITING
+                assert to_status == Activity.Status.WAITING, f"不能从{cur_status}变更到{to_status}"
             elif cur_status == Activity.Status.WAITING:
-                assert to_status == Activity.Status.PROGRESSING
+                assert to_status == Activity.Status.PROGRESSING, f"不能从{cur_status}变更到{to_status}"
             elif cur_status == Activity.Status.PROGRESSING:
-                assert to_status == Activity.Status.END
-            else:
-                raise ValueError
+                assert to_status == Activity.Status.END, f"不能从{cur_status}变更到{to_status}"
+        else:
+            raise AssertionError('未提供当前状态，不允许进行活动状态修改')
 
-            activity.status = to_status
-
-            if to_status == Activity.Status.WAITING:
-                if activity.bidding:
-                    """
-                    投点时使用
-                    if activity.source == Activity.YQPointSource.COLLEGE:
-                        draw_lots(activity)
-                    else:
-                        weighted_draw_lots(activity)
-                    """
+        if to_status == Activity.Status.WAITING:
+            if activity.bidding:
+                """
+                投点时使用
+                if activity.source == Activity.YQPointSource.COLLEGE:
                     draw_lots(activity)
-
-
-            # 活动变更为进行中时，修改参与人参与状态
-            elif to_status == Activity.Status.PROGRESSING:
-                if activity.need_checkin:
-                    Participant.objects.filter(
-                        activity_id=aid,
-                        status=Participant.AttendStatus.APLLYSUCCESS
-                    ).update(status=Participant.AttendStatus.UNATTENDED)
                 else:
-                    Participant.objects.filter(
-                        activity_id=aid,
-                        status=Participant.AttendStatus.APLLYSUCCESS
-                    ).update(status=Participant.AttendStatus.ATTENDED)
-
-                # if not activity.valid:
-                #     # 活动开始后，未审核自动通过
-                #     activity.valid = True
-                #     records = TransferRecord.objects.filter(
-                #         status=TransferRecord.TransferStatus.PENDING, 
-                #         corres_act=activity,
-                #     )
-                #     total_amount = records.aggregate(nums=Sum('amount'))["nums"]
-                #     if total_amount is None:
-                #         total_amount = 0.0
-                #     if total_amount > 0:
-                #         organization_id = activity.organization_id_id
-                #         organization = Organization.objects.select_for_update().get(id=organization_id)
-                #         organization.YQPoint += total_amount
-                #         organization.save()
-                #         YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-                #         YP.YQPoint -= total_amount
-                #         YP.save()
-                #     records.update(
-                #         status=TransferRecord.TransferStatus.ACCEPTED,
-                #         finish_time=datetime.now()
-                #     )
-
-                #     notification = Notification.objects.get(
-                #         relate_instance=activity, 
-                #         status=Notification.Status.UNDONE,
-                #         title=Notification.Title.VERIFY_INFORM
-                #     )
-                #     notification_status_change(notification, Notification.Status.DONE)
-
-            # 结束，计算积分    
-            elif activity.valid:
-                point = calcu_activity_bonus(activity)
-                participants = Participant.objects.filter(
-                    activity_id=aid, status=Participant.AttendStatus.ATTENDED)
-                NaturalPerson.objects.filter(id__in=participants.values_list(
-                    'person_id', flat=True)).update(
-                    bonusPoint=F('bonusPoint') + point)
-
-            activity.save()
+                    weighted_draw_lots(activity)
+                """
+                draw_lots(activity)
 
 
-    except Exception as e:
-        raise
+        # 活动变更为进行中时，修改参与人参与状态
+        elif to_status == Activity.Status.PROGRESSING:
+            if activity.need_checkin:
+                Participant.objects.filter(
+                    activity_id=aid,
+                    status=Participant.AttendStatus.APLLYSUCCESS
+                ).update(status=Participant.AttendStatus.UNATTENDED)
+            else:
+                Participant.objects.filter(
+                    activity_id=aid,
+                    status=Participant.AttendStatus.APLLYSUCCESS
+                ).update(status=Participant.AttendStatus.ATTENDED)
+
+            # if not activity.valid:
+            #     # 活动开始后，未审核自动通过
+            #     activity.valid = True
+            #     records = TransferRecord.objects.filter(
+            #         status=TransferRecord.TransferStatus.PENDING, 
+            #         corres_act=activity,
+            #     )
+            #     total_amount = records.aggregate(nums=Sum('amount'))["nums"]
+            #     if total_amount is None:
+            #         total_amount = 0.0
+            #     if total_amount > 0:
+            #         organization_id = activity.organization_id_id
+            #         organization = Organization.objects.select_for_update().get(id=organization_id)
+            #         organization.YQPoint += total_amount
+            #         organization.save()
+            #         YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
+            #         YP.YQPoint -= total_amount
+            #         YP.save()
+            #     records.update(
+            #         status=TransferRecord.TransferStatus.ACCEPTED,
+            #         finish_time=datetime.now()
+            #     )
+
+            #     notification = Notification.objects.get(
+            #         relate_instance=activity, 
+            #         status=Notification.Status.UNDONE,
+            #         title=Notification.Title.VERIFY_INFORM
+            #     )
+            #     notification_status_change(notification, Notification.Status.DONE)
+
+        # 结束，计算积分    
+        elif to_status == Activity.Status.END and activity.valid:
+            point = calcu_activity_bonus(activity)
+            participants = Participant.objects.filter(
+                activity_id=aid, status=Participant.AttendStatus.ATTENDED)
+            NaturalPerson.objects.filter(id__in=participants.values_list(
+                'person_id', flat=True)).update(
+                bonusPoint=F('bonusPoint') + point)
+
+        # 过早进行这个修改，将被写到activity待执行的保存中，导致失败后调用activity.save仍会调整状态
+        activity.status = to_status
+        activity.save()
 
 
 """
