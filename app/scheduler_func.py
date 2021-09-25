@@ -407,8 +407,10 @@ def draw_lots(activity):
                                                        status=Participant.AttendStatus.APPLYING)
     l = len(participants_applying)
 
-    participants_applySuccess = Participant.objects.filter(activity_id=activity.id,
-                                                           status=Participant.AttendStatus.APLLYSUCCESS)
+    participants_applySuccess = Participant.objects.filter(
+        activity_id=activity.id,
+        status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.UNATTENDED, Participant.AttendStatus.ATTENDED]
+    )
     engaged = len(participants_applySuccess)
 
     leftQuota = activity.capacity - engaged
