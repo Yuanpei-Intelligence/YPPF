@@ -617,7 +617,14 @@ class ReimbursementAdmin(admin.ModelAdmin):
     Reimbursement.get_poster_name.short_description = "申请者"
 
 
-admin.site.register(TransferRecord)
+@admin.register(TransferRecord)
+class TransferRecordAdmin(admin.ModelAdmin):
+    list_display = ["proposer", "recipient", "corres_act",
+                    "amount", "rtype", "status",
+                    "start_time",]
+    search_fields = ("proposer__username", "recipient__username",
+                    "corres_act__title",)
+    list_filter = ("status", "rtype", "start_time", "finish_time",)
 
 admin.site.register(YQPointDistribute)
 admin.site.register(QandA)
