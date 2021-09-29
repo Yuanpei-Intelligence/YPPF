@@ -157,7 +157,7 @@ class OrganizationTypeAdmin(admin.ModelAdmin):
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ["organization_id", "oname", "otype", "Managers"]
-    search_fields = ("organization_id", "oname", "otype__otype_name")
+    search_fields = ("organization_id__username", "oname", "otype__otype_name")
     list_filter = ("otype", )
 
     def Managers(self, obj):
