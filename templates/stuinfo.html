@@ -526,7 +526,7 @@
                             {% if html_display.activity_info is None %}
                             <p class="w-100" style="text-align: center;">没有参与的活动</p>
                             {% else %}
-                            <p id="custom-activity-none" style="display: none; text-align: center;">没有共同的活动</p>
+                            <p class="w-100" id="custom-activity-none" style="display: none; text-align: center;">没有共同的活动</p>
                             {% for act, same in html_display.activity_info %}
                             <div class="col-sm-12 col-md-6 mb-3 custom-activity-card custom-activity-issame-{{ same }}">
                                 <a href="/viewActivity/{{ act.id }}">
