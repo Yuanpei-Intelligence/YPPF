@@ -936,10 +936,20 @@ def homepage(request):
         取出过去一周的所有活动，filter出上传了照片的活动，从每个活动的照片中随机选择一张
         如果列表为空，那么添加一张default，否则什么都不加。
     """
-    photo_display = ActivityPhoto.objects.filter(type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')[: 8 - len(guidepics)] # 第一张active不算
-    for photo in photo_display:
-        if str(photo.image) : 
-            photo.image = settings.MEDIA_URL + str(photo.image)
+    all_photo_display = ActivityPhoto.objects.filter(type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')
+    photo_display, activity_set = list(), set()
+    count = 0
+    for photo in all_photo_display:
+        if photo.activity not in activity_set:
+            activity_set.add(photo.activity)
+            photo_display.append(photo)
+
+            if str(photo.image):
+                photo.image = settings.MEDIA_URL + str(photo.image)
+
+            count += 1
+            if count >= 8 - len(guidepics):  # 第一张active不算
+                break
     
     """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
     if len(photo_display)==0: # 这个分类是为了前端显示的便利，就不采用append了
