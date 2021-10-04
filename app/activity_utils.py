@@ -8,14 +8,14 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 如果存在预期异常，抛出 ActivityException，否则抛出其他异常
 """
 from datetime import datetime, timedelta
-from app.utils import get_person_or_org, if_image, calcu_activity_bonus
+from app.utils import get_person_or_org, if_image, calcu_activity_bonus, except_captured
 from app.notification_utils import(
     notification_create,
     bulk_notification_create,
     notification_status_change,
 )
 from django.contrib.auth.models import User
-from app.wechat_send import WechatApp
+from app.wechat_send import WechatApp, WechatMessageLevel
 from app.models import (
     NaturalPerson,
     Position,
@@ -273,7 +273,7 @@ def create_activity(request):
         # 预报备活动，先开放报名，再审批
         activity.recorded = True
         activity.status = Activity.Status.APPLYING
-        notifyActivity(activity.id, "newActivity")
+        syncNotifyActivity(activity, "newActivity")
 
         scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
             run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
@@ -501,7 +501,7 @@ def modify_accepted_activity(request, activity):
     # if len(to_subscribers) > 1:
     #     notifyActivity(activity.id, "modification_sub_ex_par", "\n".join(to_subscribers))
     if len(to_participants) > 1:   
-        notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
+        syncNotifyActivity(activity, "modification_par", "\n".join(to_participants))
 
 
 
@@ -547,7 +547,10 @@ def accept_activity(request, activity):
                 run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
         else:
             activity.status = Activity.Status.APPLYING
-            notifyActivity(activity.id, "newActivity")
+            # scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_notify",
+            #     run_date=datetime.now() + timedelta(seconds=10), args=[activity.id, "newActivity"], replace_existing=True)
+            # notifyActivity(activity.id, "newActivity")
+            syncNotifyActivity(activity, "newActivity")
             scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
                 run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
             scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
@@ -635,7 +638,7 @@ def reject_activity(request, activity):
         # Participant.objects.filter(
         #         activity_id=activity
         #     ).update(status=Participant.AttendStatus.APLLYFAILED)
-        notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
+        syncNotifyActivity(activity, "modification_par", f"您报名的活动{activity.title}已取消。")
         activity.status = Activity.Status.CANCELED
         scheduler.remove_job(f"activity_{activity.id}_remind")
         scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
@@ -877,7 +880,7 @@ def cancel_activity(request, activity):
 
 
     activity.status = Activity.Status.CANCELED
-    notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
+    syncNotifyActivity(activity, "modification_par", f"您报名的活动{activity.title}已取消。")
     notification = Notification.objects.get(
         relate_instance=activity,
         typename=Notification.Type.NEEDDO
@@ -976,7 +979,50 @@ def withdraw_activity(request, activity):
     activity.save()
 
 
-
+# 如果拿到过锁，则同步调用该函数
+def syncNotifyActivity(activity, msg_type: str, msg=""):
+    inner = activity.inner
+    title = Notification.Title.ACTIVITY_INFORM
+    if msg_type == "newActivity":
+        title = activity.title
+        msg = f"您关注的小组{activity.organization_id.oname}发布了新的活动。"
+        msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
+        msg += f"\n活动地点: {activity.location}"
+        subscribers = NaturalPerson.objects.activated().exclude(
+            id__in=activity.organization_id.unsubscribers.all()
+        ).values_list('person_id', flat=True)
+        receivers = User.objects.filter(id__in=subscribers)
+        publish_kws = {"app": WechatApp.TO_SUBSCRIBER}  
+    elif msg_type == 'modification_par':
+        participants = Participant.objects.filter(
+            activity_id=activity.id,
+            status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
+        )
+        receivers = participants.values_list('person_id__person_id', flat=True)
+        receivers = User.objects.filter(id__in=receivers)
+        publish_kws = {
+            "app": WechatApp.TO_PARTICIPANT,
+            "level": WechatMessageLevel.IMPORTANT,
+        }
+    if inner and publish_kws.get('app') == WechatApp.TO_SUBSCRIBER:
+        member_id_list = Position.objects.activated().filter(
+            org=activity.organization_id).values_list(
+                'person__person_id', flat=True)
+        receivers = receivers.filter(id__in=member_id_list)
+    if len(receivers) == 0:
+        return
+    success, _ = bulk_notification_create(
+        receivers=list(receivers),
+        sender=activity.organization_id.organization_id,
+        typename=Notification.Type.NEEDREAD,
+        title=title,
+        content=msg,
+        URL=f"/viewActivity/{activity.id}",
+        relate_instance=activity,
+        publish_to_wechat=True,
+        publish_kws=publish_kws,
+    )
+    assert success, "批量创建通知并发送时失败"
 
 
 

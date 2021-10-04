@@ -2781,8 +2781,9 @@ def examineActivity(request, aid):
         me = utils.get_person_or_org(request.user)
         activity = Activity.objects.get(id=int(aid))
         assert activity.examine_teacher == me
-    except:
-        return redirect("/welcome/")
+    except Exception as e:
+        record_traceback(request, e)
+        return EXCEPT_REDIRECT
 
     html_display["is_myself"] = True
 
@@ -2806,6 +2807,7 @@ def examineActivity(request, aid):
                 html_display["warn_msg"] = "评论成功。"
                 html_display["warn_code"] = 2
             except Exception as e:
+                record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
         elif request.POST.get("review_accepted"):
@@ -2818,6 +2820,7 @@ def examineActivity(request, aid):
                 html_display["warn_msg"] = "活动已通过审核。"
                 html_display["warn_code"] = 2
             except Exception as e:
+                record_traceback(request, e)
                 return EXCEPT_REDIRECT
         else:
             try:
@@ -2829,6 +2832,7 @@ def examineActivity(request, aid):
                 html_display["warn_msg"] = "活动已被拒绝。"
                 html_display["warn_code"] = 2
             except Exception as e:
+                record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
 
