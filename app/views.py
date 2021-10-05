@@ -930,16 +930,30 @@ def homepage(request):
     with open(f"{guidepicdir}/redirect.json") as file:
         img2url = json.load(file)
     guidepics = list(img2url.items())
-    (firstpic, firsturl), guidepics = guidepics[0], guidepics[1:]
+    # (firstpic, firsturl), guidepics = guidepics[0], guidepics[1:]
+    # firstpic是第一个导航图，不是第一张图片，现在把这个逻辑在模板处理了
 
     """ 
         取出过去一周的所有活动，filter出上传了照片的活动，从每个活动的照片中随机选择一张
         如果列表为空，那么添加一张default，否则什么都不加。
     """
-    photo_display = ActivityPhoto.objects.filter(type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')[: 8 - len(guidepics)] # 第一张active不算
-    for photo in photo_display:
-        if str(photo.image) : 
+    all_photo_display = ActivityPhoto.objects.filter(type=ActivityPhoto.PhotoType.SUMMARY).order_by('-time')
+    photo_display, activity_id_set = list(), set()  # 实例的哈希值未定义，不可靠
+    count = 9 - len(guidepics)  # 算第一张导航图
+    for photo in all_photo_display:
+        # 不用activity，因为外键需要访问数据库
+        if photo.activity_id not in activity_id_set and photo.image:
+            # 数据库设成了image可以为空而不是空字符串，str的判断对None没有意义
+
             photo.image = settings.MEDIA_URL + str(photo.image)
+            photo_display.append(photo)
+            activity_id_set.add(photo.activity_id)
+            count -= 1
+
+            if count <= 0:  # 目前至少能显示一个，应该也合理吧
+                break
+    if photo_display:
+        guidepics = guidepics[1:]   # 第一张只是封面图，如果有需要呈现的内容就不显示
     
     """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
     if len(photo_display)==0: # 这个分类是为了前端显示的便利，就不采用append了
