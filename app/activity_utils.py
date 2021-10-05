@@ -15,7 +15,7 @@ from app.notification_utils import(
     notification_status_change,
 )
 from django.contrib.auth.models import User
-from app.wechat_send import WechatApp, WechatMessageLevel
+from app.wechat_send import WechatApp
 from app.models import (
     NaturalPerson,
     Position,
@@ -974,9 +974,5 @@ def withdraw_activity(request, activity):
     participant.save()
     np.save()
     activity.save()
-
-
-
-
 
 
