@@ -952,6 +952,8 @@ def homepage(request):
 
             if count <= 0:  # 目前至少能显示一个，应该也合理吧
                 break
+    if photo_display:
+        guidepics = guidepics[1:]   # 第一张只是封面图，如果有需要呈现的内容就不显示
     
     """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
     if len(photo_display)==0: # 这个分类是为了前端显示的便利，就不采用append了
