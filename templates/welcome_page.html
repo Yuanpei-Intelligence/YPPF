@@ -25,16 +25,16 @@
                 <!-- 目前是guidance -->
                 <div id="style1" class="carousel slide style-custom-1" data-ride="carousel">
                     <ol class="carousel-indicators">
-                        {% for _ in guidepics %}
-                        <li data-target="#style1 {% if forloop.first and not photo_display %} active{% endif %}"></li>
-                        {% endfor %}
                         {% for _ in photo_display %}
-                        <li data-target="#style1 {% if forloop.first %} active{% endif %}"></li>
+                        <li data-target="#style1{% if forloop.first %} active{% endif %}"></li>
+                        {% endfor %}
+                        {% for _ in guidepics %}
+                        <li data-target="#style1{% if forloop.first and not photo_display %} active{% endif %}"></li>
                         {% endfor %}
                     </ol>
                     <div class="carousel-inner">
                         {% for photo in photo_display %}
-                        <div class="carousel-item {% if forloop.first %} active{% endif %}">
+                        <div class="carousel-item{% if forloop.first %} active{% endif %}">
                             <a href="/viewActivity/{{photo.activity_id}}">
                                 <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
                                     src={{photo.image}}>
@@ -58,7 +58,7 @@
                         </div>
                         -->
                         {% for pic, url in guidepics %}
-                        <div class="carousel-item {% if forloop.first and not photo_display %} active{% endif %}">
+                        <div class="carousel-item{% if forloop.first and not photo_display %} active{% endif %}">
                             {% if url %}
                             <a href="{{ url }}">
                             {% endif %}
