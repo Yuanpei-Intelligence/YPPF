@@ -517,10 +517,17 @@ scheduler.add_job(notifyActivityStart, "date",
 """
 
 
-@except_captured(True, source='scheduler_func[notifyActivity]发送微信消息')
-def notifyActivity(aid: int, msg_type: str, msg=""):
+@except_captured(True, record_args=True, source='scheduler_func[notifyActivity]发送微信消息')
+def notifyActivity(aid: int, msg_type: str, msg="",
+                    *, sync=False,):
+    '''如果sync同步调用，则aid应当是activity实例，这是试错用的临时约定'''
     try:
-        activity = Activity.objects.get(id=aid)
+        if sync:
+            activity = aid
+        else:
+            if isinstance(aid, Activity):
+                aid = aid.id
+            activity = Activity.objects.get(id=aid)
         inner = activity.inner
         title = Notification.Title.ACTIVITY_INFORM
         if msg_type == "newActivity":
@@ -540,7 +547,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
                 nowtime = datetime.now()
                 notifications = Notification.objects.filter(
                     relate_instance=activity,
-                    start_time__gt=nowtime + timedelta(seconds=60),
+                    start_time__gt=nowtime - timedelta(seconds=60),
                     title=Notification.Title.PENDING_INFORM,
                 )
                 if len(notifications) > 0:
