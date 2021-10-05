@@ -25,12 +25,11 @@
                 <!-- 目前是guidance -->
                 <div id="style1" class="carousel slide style-custom-1" data-ride="carousel">
                     <ol class="carousel-indicators">
-                        <li data-target="#style1 active"></li>
                         {% for _ in guidepics %}
-                        <li data-target="#style1"></li>
+                        <li data-target="#style1 {% if forloop.first and not photo_display %} active{% endif %}"></li>
                         {% endfor %}
                         {% for _ in photo_display %}
-                        <li data-target="#style1"></li>
+                        <li data-target="#style1 {% if forloop.first %} active{% endif %}"></li>
                         {% endfor %}
                     </ol>
                     <div class="carousel-inner">
