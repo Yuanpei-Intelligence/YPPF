@@ -190,3 +190,15 @@ LOGGING = {
     },
 }
 '''
+
+import logging
+logging.basicConfig(
+    filename=os.path.join(
+        os.path.join(BASE_DIR, 'logstore'), 
+        'scheduler.log',
+        ),
+    filemode='a',
+    format='%(asctime)s,%(msecs)d in %(funcName)s - %(levelname)s: %(message)s',
+    datefmt='%m-%d %H:%M:%S',
+    level=logging.INFO,
+)
