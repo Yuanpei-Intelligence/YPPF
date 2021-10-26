@@ -35,6 +35,7 @@ from django.db.models import F
 import traceback
 import json
 import hashlib
+import urllib.parse
 
 
 YQPoint_oname = local_dict["YQPoint_source_oname"]
@@ -350,6 +351,76 @@ def url_check(arg_url):
     return False
 
 
+def append_query(url, *, _query: str='', **querys):
+    '''
+    在URL末尾附加GET参数
+
+    关键字参数
+    - _query: str, 直接用于拼接的字符串
+
+    说明
+    - 已包含GET参数的URL将会以`&`连接
+    - _query开头无需包含`?`或`&`
+    - 基于字符串(`str`)拼接，URL不能包含段参数`#`
+    '''
+    concat = '&' if '?' in url else '?'
+    new_querys = []
+    if _query:
+        new_querys.append(_query.lstrip('?&'))
+    for k, v in querys.items():
+        new_querys.append(f'{k}={v}')
+    return url + concat + '&'.join(new_querys)
+
+
+def site_match(site, url, path_check_level=0, scheme_check=False):
+    '''检查是否是同一个域名，也可以检查路径是否相同
+    - path_check_level: 0-2, 不检查/忽视末尾斜杠/完全相同
+    - scheme_check: bool, 协议是否相同
+    '''
+    site = urllib.parse.urlparse(site)
+    url = urllib.parse.urlparse(url)
+    if site.netloc != url.netloc:
+        return False
+    if scheme_check and site.scheme != url.scheme:
+        return False
+    if path_check_level:
+        spath, upath = site.path, url.path
+        if path_check_level > 1:
+            spath, upath = spath.rstrip('/'), upath.rstrip('/')
+        if spath != upath:
+            return False
+    return True
+
+def get_std_underground_url(underground_url):
+    '''检查是否是地下室网址，返回(is_underground, standard_url)
+    - 如果是，规范化网址，否则返回原URL
+    - 如果参数为None，返回URL为地下室网址'''
+    site_url = local_dict["url"]["base_url"]
+    if underground_url is None:
+        underground_url = site_url
+    if site_match(site_url, underground_url):
+        underground_url = urllib.parse.urlunparse(
+            urllib.parse.urlparse(site_url)[:2]
+            + urllib.parse.urlparse(underground_url)[2:])
+        return True, underground_url
+    return False, underground_url
+
+def get_std_inner_url(inner_url):
+    '''检查是否是内部网址，返回(is_inner, standard_url)
+    - 如果是，规范化网址，否则返回原URL
+    - 如果参数为None，返回URL为主页相对地址'''
+    site_url = settings.LOGIN_URL
+    if inner_url is None:
+        inner_url = '/welcome/'
+    if site_match(site_url, inner_url):
+        inner_url = urllib.parse.urlunparse(
+            ('', '') + urllib.parse.urlparse(inner_url)[2:])
+    url_parse = urllib.parse.urlparse(inner_url)
+    if url_parse.scheme or url_parse.netloc:
+        return False, inner_url
+    return True, inner_url
+    
+
 # 允许进行 cross site 授权时，return True
 def check_cross_site(request, arg_url):
     if arg_url is None:
@@ -366,6 +437,7 @@ def check_cross_site(request, arg_url):
 
 
 def get_url_params(request, html_display):
+    raise NotImplementedError
     full_path = request.get_full_path()
     if "?" in full_path:
         params = full_path.split["?"][1]
@@ -696,8 +768,6 @@ def message_url(context: Union[dict, list], url: str="/welcome/")-> str:
     - context: 包含`warn_code`和`warn_message`的字典或者二元数组
     - url: str, 可以包含GET参数
     '''
-    max
-    concat = '&' if '?' in url else '?'
     try:
         warn_code, warn_message = context["warn_code"], context["warn_message"]
     except:
@@ -706,7 +776,7 @@ def message_url(context: Union[dict, list], url: str="/welcome/")-> str:
             warn_code, warn_message = context
     # 如果不是以上的情况(即合法的字典或二元数组), 就报错吧, 别静默发生错误
     append_msg = f'warn_code={warn_code}&warn_message={warn_message}'
-    return url + concat + append_msg
+    return append_query(url, warn_code=warn_code, warn_message=warn_message)
 
 
 # 修改成员申请状态的操作函数, application为修改的对象，可以为None
