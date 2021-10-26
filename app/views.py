@@ -134,7 +134,7 @@ def index(request):
 
     if alert is not None:
         html_display["warn_code"] = 1
-        html_display["warn_message"] = "检测到恶意 URL，请与系统管理员进行联系。"
+        html_display["warn_message"] = "检测到异常行为，请联系系统管理员。"
         auth.logout(request)
         return render(request, "index.html", locals())
 
@@ -151,8 +151,9 @@ def index(request):
                 return render(request, 'index.html', locals())
             return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
             """
-    # 恶意的 origin
+    # 非法的 origin
     if not url_check(arg_origin):
+        request.session['alert_message'] = f"尝试跳转到非法 URL: {arg_origin}，跳转已取消。"
         return redirect("/index/?alert=1")
 
     if request.method == "POST" and request.POST:
