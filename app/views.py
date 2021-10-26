@@ -33,6 +33,7 @@ from app.models import (
 import app.utils as utils
 from app.forms import UserForm
 from app.utils import (
+    append_query,
     url_check, 
     check_cross_site, 
     get_person_or_org, 
@@ -207,12 +208,8 @@ def index(request):
             if not check_cross_site(request, arg_origin):
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
-                return redirect(
-                        "/welcome/"
-                        + "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]
-                        )
-                    )
+                return redirect(message_url(html_display))
+
             if not arg_origin.startswith("http"):  # 非外部链接，合法性已经检查过
                 return redirect(arg_origin)  # 不需要加密验证
 
@@ -221,16 +218,12 @@ def index(request):
             en_pw = hash_coder.encode(username + timeStamp)
             try:
                 userinfo = NaturalPerson.objects.get(person_id__username=username)
-                name = userinfo.name
-                return redirect(
-                    arg_origin
-                    + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}&name={name}"
-                )
+                arg_origin = append_query(arg_origin,
+                    Sid=username, timeStamp=timeStamp, Secret=en_pw, name=userinfo.name)
             except:
-                return redirect(
-                    arg_origin
-                    + f"?Sid={username}&timeStamp={timeStamp}&Secret={en_pw}"
-                )
+                arg_origin = append_query(arg_origin,
+                    Sid=username, timeStamp=timeStamp, Secret=en_pw)
+            return redirect(arg_origin)
 
     return render(request, "index.html", locals())
 
