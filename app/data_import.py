@@ -1,16 +1,27 @@
-from app.models import TransferRecord
-from app.models import Notification
+from app.constants import *
+from app.models import (
+    NaturalPerson,
+    Freshman,
+    Position,
+    Organization,
+    OrganizationType,
+    Activity,
+    TransferRecord,
+    Notification,
+    Help,
+)
 from app.utils import random_code_init
-import pandas as pd
+
 import os
-from app.models import NaturalPerson, Freshman, Position, Organization, OrganizationType, Activity, Help
-from django.contrib.auth.models import User
-from django.shortcuts import render, redirect
-from tqdm import tqdm
 import math
 import json
+import pandas as pd
+from tqdm import tqdm
 from datetime import datetime
+
 from boottest import local_dict
+from django.contrib.auth.models import User
+from django.shortcuts import render, redirect
 
 
 def load_file(file):
@@ -78,7 +89,6 @@ def load_org():
                     msg += '<br/>&emsp;&emsp;成功增加负责人：'+person
         except Exception as e:
             msg += '<br/>未能创建组织'+oname+',原因：'+str(e)
-    YQPoint_oname = local_dict.get('YQPoint_source_oname')
     if YQPoint_oname:
         username = 'zz00001'
         user, created = User.objects.get_or_create(username=username)

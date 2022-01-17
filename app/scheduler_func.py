@@ -1,4 +1,27 @@
-from threading import current_thread
+from app.models import (
+    User,
+    NaturalPerson, 
+    Organization,
+    YQPointDistribute,
+    TransferRecord,
+    Activity,
+    Participant,
+    Notification,
+    Position,
+)
+from app.activity_utils import calcu_activity_bonus
+from app.notification_utils import bulk_notification_create, notification_status_change
+from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
+from app import log
+from app.constants import *
+from app.forms import YQPointDistributionForm
+from boottest import local_dict
+
+import json
+import urllib.request
+from random import sample
+from numpy.random import choice
+
 from django.db.models import F, Sum
 from django.http import JsonResponse, HttpResponse, QueryDict  # Json响应
 from django.shortcuts import render, redirect  # 网页render & redirect
@@ -6,26 +29,8 @@ from django.urls import reverse
 from datetime import datetime, timedelta, timezone, time, date
 from django.db import transaction  # 原子化更改数据库
 
-from app.models import Organization, NaturalPerson, YQPointDistribute, TransferRecord, User, Activity, Participant, \
-    Notification, Position
-from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
-from app.forms import YQPointDistributionForm
-from boottest.hasher import MySHA256Hasher
-from app.notification_utils import bulk_notification_create, notification_status_change
-from boottest import local_dict
-
-from random import sample
-from numpy.random import choice
-
-from urllib import parse, request as urllib2
-import json
-
 # 引入定时任务还是放上面吧
-from app import log
-from app.utils import except_captured, calcu_activity_bonus
 from app.scheduler import scheduler
-
-YQPoint_oname = local_dict["YQPoint_source_oname"]
 
 
 def send_to_persons(title, message, url='/index/'):
@@ -685,13 +690,13 @@ except:
 
 # @scheduler.scheduled_job('interval', id="get weather per hour", hours=1)
 def get_weather():
-    # weather = urllib2.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
+    # weather = urllib.request.urlopen("http://www.weather.com.cn/data/cityinfo/101010100.html").read()
     try:
         city = "Haidian"
         key = local_dict["weather_api_key"]
         lang = "zh_cn"
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={key}&lang={lang}"
-        load_json = json.loads(urllib2.urlopen(url, timeout=5).read())  # 这里面信息太多了，不太方便传到前端
+        load_json = json.loads(urllib.request.urlopen(url, timeout=5).read())  # 这里面信息太多了，不太方便传到前端
         weather_dict = {
             "modify_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
             "description": load_json["weather"][0]["description"],

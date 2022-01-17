@@ -1,22 +1,30 @@
-from django.http import HttpResponseRedirect
+'''
+constants.py
+
+- 常量和设置
+- 读取设置的api
+- 可以全部导入而不必考虑命名空间冲突（仅包含get_setting和大写常量，详见__all__）
+
+@Date 2022-01-17
+'''
+# 对改动者：
+# 本文件是最基础的依赖文件，应当只加入跨架构的必要常量，而不导入其他文件
+# 与使用环境有关的内容应在对应文件中定义
 
 from boottest import local_dict
 from django.conf import settings
 
-WRONG, SUCCEED = 1, 2
+__all__ = [
+    'get_setting',
+    'DEBUG', 'MEDIA_URL', 'LOGIN_URL',
+    'WRONG', 'SUCCEED', 'SYSTEM_LOG',
+    'YQPoint_oname',
+]
+
 DEBUG = settings.DEBUG
-
-
-# 依赖于其他结构的HTTP重定向放在常量中预先定义是一个不好的结构
-# 目前仅是为了减小代码改动更好兼容
-try:
-    from app.global_messages import message_url, wrong
-    EXCEPT_REDIRECT = HttpResponseRedirect(message_url(wrong('出现意料之外的错误, 请联系管理员!')))
-except:
-    EXCEPT_REDIRECT = HttpResponseRedirect(
-        "/welcome/?warn_code={}&warn_message={}".format(
-            WRONG, '出现意料之外的错误, 请联系管理员!'))
-
+MEDIA_URL = settings.MEDIA_URL
+LOGIN_URL = settings.LOGIN_URL
+WRONG, SUCCEED = 1, 2
 
 # 寻找其他本地设置
 def get_setting(path: str='', default=None, trans_func=None,
