@@ -21,7 +21,8 @@ from urllib import parse, request as urllib2
 import json
 
 # 引入定时任务还是放上面吧
-from app.utils import operation_writer, except_captured, calcu_activity_bonus
+from app import log
+from app.utils import except_captured, calcu_activity_bonus
 from app.scheduler import scheduler
 
 YQPoint_oname = local_dict["YQPoint_source_oname"]
@@ -301,8 +302,8 @@ scheduler.add_job(changeActivityStatus, "date",
 活动变更为进行中时，更新报名成功人员状态
 """
 
-@except_captured(True, record_args=True, source='scheduler_func[changeActivityStatus]修改活动状态')
-@except_captured(True, AssertionError, record_args=True, status_code='Problem',
+@log.except_captured(True, record_args=True, source='scheduler_func[changeActivityStatus]修改活动状态')
+@log.except_captured(True, AssertionError, record_args=True, status_code='Problem',
                  record_user=False, record_request_args=False,
                  source='scheduler_func[changeActivityStatus]检查活动状态')
 def changeActivityStatus(aid, cur_status, to_status):
@@ -517,7 +518,7 @@ scheduler.add_job(notifyActivityStart, "date",
 """
 
 
-@except_captured(True, source='scheduler_func[notifyActivity]发送微信消息')
+@log.except_captured(True, source='scheduler_func[notifyActivity]发送微信消息')
 def notifyActivity(aid: int, msg_type: str, msg=""):
     try:
         activity = Activity.objects.get(id=aid)
@@ -701,13 +702,13 @@ def get_weather():
         with open("./weather.json", "w") as weather_json:
             json.dump(weather_dict, weather_json)
     except KeyError as e:
-        operation_writer(local_dict["system_log"], "天气更新异常,原因可能是local_dict中缺少weather_api_key:"+str(e), "scheduler_func[get_weather]", "Problem")        
+        log.operation_writer(local_dict["system_log"], "天气更新异常,原因可能是local_dict中缺少weather_api_key:"+str(e), "scheduler_func[get_weather]", "Problem")        
         return None
     except Exception as e:
-        operation_writer(local_dict["system_log"], "天气更新异常,未知错误", "scheduler_func[get_weather]", "Problem")
+        log.operation_writer(local_dict["system_log"], "天气更新异常,未知错误", "scheduler_func[get_weather]", "Problem")
         return default_weather
     else:
-        operation_writer(local_dict["system_log"], "天气更新成功", "scheduler_func[get_weather]")
+        log.operation_writer(local_dict["system_log"], "天气更新成功", "scheduler_func[get_weather]")
         return weather_dict
 
 
@@ -736,7 +737,7 @@ def start_scheduler(with_scheduled_job=True, debug=False):
             )
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"
-            operation_writer(local_dict["system_log"], info,
+            log.operation_writer(local_dict["system_log"], info,
                             "scheduler_func[start_scheduler]", "Error")
             if debug: print(info)
 
@@ -745,7 +746,7 @@ def start_scheduler(with_scheduled_job=True, debug=False):
         scheduler.start()
     except Exception as e:
         info = f"start scheduler failed, reason: {e}"
-        operation_writer(local_dict["system_log"], info,
+        log.operation_writer(local_dict["system_log"], info,
                         "scheduler_func[start_scheduler]", "Error")
         if debug: print(info)
         scheduler.shutdown(wait=False)
