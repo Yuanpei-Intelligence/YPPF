@@ -1,4 +1,3 @@
-from django.dispatch.dispatcher import receiver
 from app.models import (
     NaturalPerson,
     Organization,
@@ -10,23 +9,13 @@ from app.models import (
     ActivityPhoto,
     ReimbursementPhoto
 )
+from app.global_messages import (
+    wrong,
+    succeed,
+)
 import app.utils as utils
 from django.db import transaction
 from datetime import datetime
-
-# 在错误的情况下返回的字典,message为错误信息
-def wrong(message="检测到恶意的申请操作. 如有疑惑，请联系管理员!"):
-    context = dict()
-    context["warn_code"] = 1
-    context["warn_message"] = message
-    return context
-
-
-def succeed(message):
-    context = dict()
-    context["warn_code"] = 2
-    context["warn_message"] = message
-    return context
 
 
 # 修改成员申请状态的操作函数, application为修改的对象，可以为None
