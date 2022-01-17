@@ -1,11 +1,15 @@
+from app.utils_dependency import *
 from app.models import Notification
-from app.wechat_send import publish_notification, publish_notifications
+from app.wechat_send import (
+    publish_notification,
+    publish_notifications,
+    WechatApp,
+    WechatMessageLevel,
+)
 from boottest import local_dict
-from app import log
-from django.db import transaction
-from datetime import datetime, timedelta
-from boottest.hasher import MySHA256Hasher
+
 from random import random
+from datetime import datetime, timedelta
 
 hasher = MySHA256Hasher("")
 
@@ -308,5 +312,53 @@ def bulk_notification_create(
                         'notification_utils[bulk_notification_create]', 'Error')
     return success, bulk_identifier
 
+
+# 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
+# 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
+#用于报销的通知
+@log.except_captured(source='notification_utils[make_notification]')
+def make_notification(application, request,content,receiver):
+    # 考虑不同post_type的信息发送行为
+    post_type = request.POST.get("post_type")
+    feasible_post = ["new_submit", "modify_submit", "cancel_submit", "accept_submit", "refuse_submit"]
+
+
+    # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
+    URL = {
+        'modifyposition': f'/modifyPosition/?pos_id={application.id}',
+        'neworganization': f'/modifyOrganization/?org_id={application.id}',
+        'reimbursement': f'/modifyEndActivity/?reimb_id={application.id}',
+    }
+    sender = request.user
+    typename = Notification.Type.NEEDDO if post_type == 'new_submit' else Notification.Type.NEEDREAD
+    title = Notification.Title.VERIFY_INFORM if post_type != 'accept_submit' else Notification.Title.POSITION_INFORM
+
+    relate_instance = application if post_type == 'new_submit' else None
+    publish_to_wechat = True
+    publish_kws = {'app': WechatApp.AUDIT}
+    publish_kws['level'] = (WechatMessageLevel.IMPORTANT
+                            if post_type != 'cancel_submit'
+                            else WechatMessageLevel.INFO)
+    # TODO cancel是否要发送notification？是否发送微信？
+
+    # 正式创建notification
+    notification_create(
+        receiver=receiver,
+        sender=sender,
+        typename=typename,
+        title=title,
+        content=content[post_type],
+        URL=URL[application.typename],
+        relate_instance=relate_instance,
+        publish_to_wechat=publish_to_wechat,
+        publish_kws=publish_kws,
+    )
+    # 对于处理类通知的完成(done)，修改状态
+    # 这里的逻辑保证：所有的处理类通知的生命周期必须从“成员发起”开始，从“取消”“通过”“拒绝”结束。
+    if feasible_post.index(post_type) >= 2:
+        notification_status_change(
+            application.relate_notifications.get(status=Notification.Status.UNDONE).id,
+            Notification.Status.DONE
+        )
 
 

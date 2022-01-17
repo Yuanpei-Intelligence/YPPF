@@ -1,5 +1,7 @@
 """
-这个文件应该只被 /app/views.py 依赖
+activity_utils.py
+
+这个文件应该只被 /app/activity_views.py 依赖
 依赖于 /app/utils.py, /app/scheduler_func.py,
 
 scheduler_func 依赖于 wechat_send 依赖于 utils
@@ -7,50 +9,41 @@ scheduler_func 依赖于 wechat_send 依赖于 utils
 文件中参数存在 activity 的函数需要在 transaction.atomic() 块中进行。
 如果存在预期异常，抛出 ActivityException，否则抛出其他异常
 """
-from datetime import datetime, timedelta
-from app.utils import get_person_or_org, if_image, calcu_activity_bonus
-from app.notification_utils import(
-    notification_create,
-    bulk_notification_create,
-    notification_status_change,
-)
-from django.contrib.auth.models import User
-from app.wechat_send import WechatApp
+from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
     Position,
     Organization,
-    OrganizationType,
     Position,
     Activity,
     TransferRecord,
     Participant,
     Notification,
-    ModifyOrganization,
-    Comment,
-    CommentPhoto,
-    YQPointDistribute,
     ActivityPhoto
 )
-import qrcode
-import os
-from boottest.hasher import MySHA256Hasher
-from boottest.settings import MEDIA_ROOT, MEDIA_URL
-from boottest import local_dict
-from django.core.files import File
-from django.core.files.base import ContentFile
+from django.contrib.auth.models import User
+from app.utils import get_person_or_org, if_image
+from app.notification_utils import(
+    notification_create,
+    bulk_notification_create,
+    notification_status_change,
+)
+from app.wechat_send import WechatApp
 import io
+import os
 import base64
+import qrcode
+
+from datetime import datetime, timedelta
+from boottest import local_dict
 from django.db.models import Sum
 from app.scheduler import scheduler
 from app.scheduler_func import changeActivityStatus, notifyActivity
 from django.db.models import F
 
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
-YQPoint_oname = local_dict["YQPoint_source_oname"]
 
 def get_activity_QRcode(activity):
-
     auth_code = hash_coder.encode(str(activity.id))
     url_components = [local_dict["url"]["login_url"].strip("/"), "checkinActivity", f"{activity.id}?auth={auth_code}"]
     url = "/".join(url_components)
@@ -975,10 +968,33 @@ def withdraw_activity(request, activity):
     activity.save()
 
 
-
-
-
-
-
-
+def calcu_activity_bonus(activity):
+    hours = (activity.end - activity.start).seconds / 3600
+    try: 
+        invalid_hour = float(local_dict["thresholds"]["activity_point_invalid_hour"])
+    except: 
+        invalid_hour = 24.0
+    if hours > invalid_hour:
+        return 0.0
+    # 以标题筛选不记录积分的活动，包含筛选词时不记录积分
+    try:
+        invalid_letters = local_dict["thresholds"]["activity_point_invalid_titles"]
+        assert isinstance(invalid_letters, list)
+        for invalid_letter in invalid_letters:
+            if invalid_letter in activity.title:
+                return 0.0
+    except:
+        pass
+    
+    try: 
+        point_rate = float(local_dict["thresholds"]["activity_point_per_hour"])
+    except: 
+        point_rate = 1.0
+    point = point_rate * hours
+    # 单次活动记录的积分上限，默认6
+    try: 
+        max_point = float(local_dict["thresholds"]["activity_point"])
+    except: 
+        max_point = 6.0
+    return min(point, max_point)
 

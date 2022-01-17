@@ -1,3 +1,4 @@
+from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
     Organization,
@@ -6,12 +7,6 @@ from app.models import (
     ModifyPosition,
     Notification,
 )
-from app.global_messages import (
-    wrong,
-    succeed,
-)
-import app.utils as utils
-from django.db import transaction
 
 
 # 修改成员申请状态的操作函数, application为修改的对象，可以为None
