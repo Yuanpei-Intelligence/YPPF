@@ -52,7 +52,6 @@ YQPoint_oname = local_dict["YQPoint_source_oname"]
 def get_activity_QRcode(activity):
 
     auth_code = hash_coder.encode(str(activity.id))
-    # url = f"http://localhost:8000/checkinActivity/{activity.id}?auth={auth_code}"
     url_components = [local_dict["url"]["login_url"].strip("/"), "checkinActivity", f"{activity.id}?auth={auth_code}"]
     url = "/".join(url_components)
     qr=qrcode.QRCode(version = 2,error_correction = qrcode.constants.ERROR_CORRECT_L,box_size=5,border=5)
