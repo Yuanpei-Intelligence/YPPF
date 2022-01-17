@@ -1,14 +1,12 @@
-from django.dispatch.dispatcher import receiver
+from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
     Organization,
     Notification,
     QandA,
 )
-import app.utils as utils
-from django.db import transaction
-from datetime import datetime
 from app.notification_utils import notification_create
+from app import utils
 
 def QA_create(sender, receiver, Q_text, anonymous_flag=False):
     # sender: user

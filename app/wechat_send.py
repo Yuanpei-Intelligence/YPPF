@@ -12,7 +12,7 @@ import requests
 import json
 
 # 设置
-from django.conf import settings
+from app.constants import *
 from boottest import local_dict
 
 # 模型与加密模型
@@ -53,8 +53,8 @@ if USE_SCHEDULER:
         scheduler.start()
 
 # 全局变量 用来发送和确认默认的导航网址
-DEFAULT_URL = settings.LOGIN_URL
-THIS_URL = settings.LOGIN_URL  # 增加默认url前缀
+DEFAULT_URL = LOGIN_URL
+THIS_URL = LOGIN_URL  # 增加默认url前缀
 if THIS_URL[-1:] == "/" and THIS_URL[-2:] != "//":
     THIS_URL = THIS_URL[:-1]  # 去除尾部的/
 WECHAT_URL = local_dict["url"]["wechat_url"]

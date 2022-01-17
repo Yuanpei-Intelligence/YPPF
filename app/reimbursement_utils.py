@@ -1,3 +1,4 @@
+from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
     Organization,
@@ -9,11 +10,7 @@ from app.models import (
     ActivityPhoto,
     ReimbursementPhoto
 )
-from app.global_messages import (
-    wrong,
-    succeed,
-)
-import app.utils as utils
+from app import utils
 from django.db import transaction
 from datetime import datetime
 
