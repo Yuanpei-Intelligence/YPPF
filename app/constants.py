@@ -3,6 +3,20 @@ from django.http import HttpResponseRedirect
 from boottest import local_dict
 from django.conf import settings
 
+WRONG, SUCCEED = 1, 2
+DEBUG = settings.DEBUG
+
+
+# 依赖于其他结构的HTTP重定向放在常量中预先定义是一个不好的结构
+# 目前仅是为了减小代码改动更好兼容
+try:
+    from app.global_messages import message_url, wrong
+    EXCEPT_REDIRECT = HttpResponseRedirect(message_url(wrong('出现意料之外的错误, 请联系管理员!')))
+except:
+    EXCEPT_REDIRECT = HttpResponseRedirect(
+        "/welcome/?warn_code={}&warn_message={}".format(
+            WRONG, '出现意料之外的错误, 请联系管理员!'))
+
 
 # 寻找其他本地设置
 def get_setting(path: str='', default=None, trans_func=None,

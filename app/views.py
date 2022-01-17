@@ -31,15 +31,17 @@ from app.models import (
     ReimbursementPhoto
 )
 import app.utils as utils
-from app.utils import (
+from app.global_messages import (
+    wrong, 
+    succeed,
+    message_url,
     append_query,
+)
+from app.utils import (
     url_check, 
     check_cross_site, 
     get_person_or_org, 
     update_org_application, 
-    wrong, 
-    succeed,
-    message_url,
     escape_for_templates,
     record_modify_with_session,
     update_related_account_in_session,

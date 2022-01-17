@@ -14,6 +14,10 @@ from app.models import (
     Wishes,
     QandA,
 )
+from app.global_messages import (
+    wrong,
+    succeed,
+)
 from django.contrib.auth.models import User
 from django.contrib import auth
 from django.shortcuts import redirect
@@ -22,8 +26,6 @@ from django.http import HttpResponse
 from boottest import local_dict
 from datetime import datetime, timedelta
 from functools import wraps
-# 类型信息提示
-from typing import Union
 from app import log
 import re
 import imghdr
@@ -275,27 +277,6 @@ def url_check(arg_url):
             return True
     log.operation_writer(local_dict['system_log'], f'URL检查不合格: {arg_url}', 'utils[url_check]', 'Problem')
     return False
-
-
-def append_query(url, *, _query: str='', **querys):
-    '''
-    在URL末尾附加GET参数
-
-    关键字参数
-    - _query: str, 直接用于拼接的字符串
-
-    说明
-    - 已包含GET参数的URL将会以`&`连接
-    - _query开头无需包含`?`或`&`
-    - 基于字符串(`str`)拼接，URL不能包含段参数`#`
-    '''
-    concat = '&' if '?' in url else '?'
-    new_querys = []
-    if _query:
-        new_querys.append(_query.lstrip('?&'))
-    for k, v in querys.items():
-        new_querys.append(f'{k}={v}')
-    return url + concat + '&'.join(new_querys)
 
 
 def site_match(site, url, path_check_level=0, scheme_check=False):
@@ -670,39 +651,6 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
     # 修改申请状态
     ModifyOrganization.objects.filter(id=application.id).update(status=ModifyOrganization.Status.CONFIRMED)
     Wishes.objects.create(text=f"{org.otype.otype_name}“{org.oname}”刚刚成立啦！快点去关注一下吧！")
-
-# 在错误的情况下返回的字典,message为错误信息
-def wrong(message="检测到恶意的操作. 如有疑惑，请联系管理员!", context=None):
-    if context is None:
-        context = dict()
-    context["warn_code"] = 1
-    context["warn_message"] = message
-    return context
-
-
-def succeed(message="检测到恶意的操作. 如有疑惑，请联系管理员!", context=None):
-    if context is None:
-        context = dict()
-    context["warn_code"] = 2
-    context["warn_message"] = message
-    return context
-
-
-def message_url(context: Union[dict, list], url: str="/welcome/")-> str:
-    '''
-    提供要发送的信息体和原始URL，返回带提示信息的URL
-    - context: 包含`warn_code`和`warn_message`的字典或者二元数组
-    - url: str, 可以包含GET参数
-    '''
-    try:
-        warn_code, warn_message = context["warn_code"], context["warn_message"]
-    except:
-        # 即使报错，也可能是因为其中一项不存在，排除对len有影响的dict和str
-        if not isinstance(context, (str, dict)) and len(context) == 2:
-            warn_code, warn_message = context
-    # 如果不是以上的情况(即合法的字典或二元数组), 就报错吧, 别静默发生错误
-    append_msg = f'warn_code={warn_code}&warn_message={warn_message}'
-    return append_query(url, warn_code=warn_code, warn_message=warn_message)
 
 
 # 修改成员申请状态的操作函数, application为修改的对象，可以为None

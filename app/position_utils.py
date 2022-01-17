@@ -1,4 +1,3 @@
-from django.dispatch.dispatcher import receiver
 from app.models import (
     NaturalPerson,
     Organization,
@@ -7,23 +6,13 @@ from app.models import (
     ModifyPosition,
     Notification,
 )
+from app.global_messages import (
+    wrong,
+    succeed,
+)
 import app.utils as utils
 from django.db import transaction
 
-
-# 在错误的情况下返回的字典,message为错误信息
-def wrong(message="检测到恶意的申请操作. 如有疑惑，请联系管理员!"):
-    context = dict()
-    context["warn_code"] = 1
-    context["warn_message"] = message
-    return context
-
-
-def succeed(message):
-    context = dict()
-    context["warn_code"] = 2
-    context["warn_message"] = message
-    return context
 
 # 修改成员申请状态的操作函数, application为修改的对象，可以为None
 # me为操作者
@@ -106,7 +95,7 @@ def update_pos_application(application, me, user_type, applied_org, info):
                     except:
                         return wrong("修改职位出错！")
                 else:  # 非法操作
-                    return wrong()
+                    return wrong("检测到恶意的申请操作. 如有疑惑，请联系管理员!")
 
                 # 如果是新建申请, 则应该意味着me+applied_org的pending申请目前不存在
                 if post_type == "new_submit":
