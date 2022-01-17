@@ -23,7 +23,8 @@ from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from datetime import datetime, timedelta
 
 # 获取对象等操作
-from app.utils import get_person_or_org, except_captured
+from app.utils import get_person_or_org
+from app import log
 
 # 全局设置
 # 是否启用定时任务，请最好仅在服务器启用，如果不启用，后面的多个设置也会随之变化
@@ -286,7 +287,7 @@ def send_wechat(
             base_send_wechat(*args, **kws)  # 不使用定时任务请改为这句
 
 
-@except_captured(False, record_args=True, source='wechat_send[publish_notification]')
+@log.except_captured(False, record_args=True, source='wechat_send[publish_notification]')
 def publish_notification(notification_or_id,
                         app=None, level=None):
     """
@@ -366,7 +367,7 @@ def publish_notification(notification_or_id,
     return True
 
 
-@except_captured(False, record_args=True, source='wechat_send[publish_notifications]')
+@log.except_captured(False, record_args=True, source='wechat_send[publish_notifications]')
 def publish_notifications(
     notifications_or_ids=None, filter_kws=None, exclude_kws=None,
     app=None, level=None,

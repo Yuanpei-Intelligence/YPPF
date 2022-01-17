@@ -24,17 +24,14 @@ from datetime import datetime, timedelta
 from functools import wraps
 # 类型信息提示
 from typing import Union
+from app import log
 import re
 import imghdr
 import string
 import random
 import xlwt
-import traceback
 from io import BytesIO
 from django.db.models import F
-import traceback
-import json
-import hashlib
 import urllib.parse
 
 
@@ -68,77 +65,6 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
 
     return actual_decorator
 
-
-def except_captured(return_value=None, except_type=Exception,
-                    log=True, show_traceback=False, record_args=False, 
-                    record_user=False, record_request_args=False,
-                    source='utils[except_captured]', status_code='Error'):
-    """
-    Decorator that captures exception and log, raise or 
-    return specific value if `return_value` is assigned.
-    """
-
-    def actual_decorator(view_function):
-        @wraps(view_function)
-        def _wrapped_view(*args, **kwargs):
-            try:
-                return view_function(*args, **kwargs)
-            except except_type as e:
-                if log:
-                    msg = f'发生意外的错误：{e}'
-                    if record_args:
-                        msg += f', 参数为：{args=}, {kwargs=}'
-                    if record_user:
-                        try:
-                            user = None
-                            if not args:
-                                if 'request' in kwargs.keys():
-                                    user = kwargs["request"].user
-                                elif 'user' in kwargs.keys():
-                                    user = kwargs["user"]
-                            else:
-                                user = args[0].user
-                            msg += f', 用户为{user.username}'
-                            try: msg += f', 姓名: {user.naturalperson}'
-                            except: pass
-                            try: msg += f', 组织名: {user.organization}'
-                            except: pass
-                        except:
-                            msg += f', 尝试追踪用户, 但未能找到该参数'
-                    if record_request_args:
-                        try:
-                            request = None
-                            if not args:
-                                request = kwargs["request"]
-                            else:
-                                request = args[0]
-                            infos = []
-                            infos.append(f'请求方式: {request.method}, 请求地址: {request.path}')
-                            if request.GET:
-                                infos.append(
-                                    'GET参数: ' +
-                                    ';'.join([f'{k}: {v}' for k, v in request.GET.items()])
-                                )
-                            if request.POST:
-                                infos.append(
-                                    'POST参数: ' +
-                                    ';'.join([f'{k}: {v}' for k, v in request.POST.items()])
-                                )
-                            msg = msg + '\n' + '\n'.join(infos)
-                        except:
-                            msg += f'\n尝试记录请求体, 但未能找到该参数'
-                    if show_traceback:
-                        msg += '\n详细信息：\n\t'
-                        msg += traceback.format_exc().replace('\n', '\n\t')
-                    operation_writer(local_dict['system_log'],
-                        msg, source, status_code)
-                if return_value is not None:
-                    return return_value
-                raise
-
-        return _wrapped_view
-
-    return actual_decorator
 
 
 def get_person_or_org(user, user_type=None):
@@ -347,7 +273,7 @@ def url_check(arg_url):
         # print('base:', base)
         if re.match(base, arg_url):
             return True
-    operation_writer(local_dict['system_log'], f'URL检查不合格: {arg_url}', 'utils[url_check]', 'Problem')
+    log.operation_writer(local_dict['system_log'], f'URL检查不合格: {arg_url}', 'utils[url_check]', 'Problem')
     return False
 
 
@@ -893,86 +819,6 @@ def update_org_application(application, me, request):
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
 
 
-import threading
-import os
-# 线程锁，用于对文件写入的排他性
-lock = threading.RLock()
-# 文件操作体系
-log_root = "logstore"
-if not os.path.exists(log_root):
-    os.mkdir(log_root)
-log_root_path = os.path.join(os.getcwd(), log_root)
-log_user = "user_detail"
-if not os.path.exists(os.path.join(log_root_path, log_user)):
-    os.mkdir(os.path.join(log_root_path, log_user))
-log_user_path = os.path.join(log_root_path, log_user)
-
-
-# 通用日志写入程序 写入时间(datetime.now()),操作主体(Sid),操作说明(Str),写入函数(Str)
-# 参数说明：第一为Sid也是文件名，第二位消息，第三位来源的函数名（类别）
-# 如果是系统相关的 请写local_dict["system_log"]
-def operation_writer(user, message, source, status_code="OK"):
-    lock.acquire()
-    try:
-        timestamp = str(datetime.now())
-        source = str(source).ljust(30)
-        status = status_code.ljust(10)
-        message = f"{timestamp} {source}{status}: {message}\n"
-
-        with open(os.path.join(log_user_path, f"{str(user)}.log"), mode="a") as journal:
-            journal.write(message)
-
-        if status_code == "Error" and local_dict.get('debug_stuids'):
-            from app.wechat_send import send_wechat
-            receivers = list(local_dict['debug_stuids'])
-            if isinstance(receivers, str):
-                receivers = receivers.replace(' ', '').split(',')
-            receivers = list(map(str, receivers))
-            send_message = message
-            if len(send_message) > 400:
-                send_message = '\n'.join([
-                    send_message[:300],
-                    '...',
-                    send_message[-100:],
-                    '详情请查看log'
-                ])
-            send_wechat(receivers, 'YPPF发生异常\n' + send_message, card=len(message) < 200)
-    except Exception as e:
-        # 最好是发送邮件通知存在问题
-        # 待补充
-        print(e)
-
-    lock.release()
-
-
-log_detailed_path = os.path.join(log_root_path, "traceback_record")
-def record_traceback(request, e):
-    d = {}
-    d["time"] = datetime.now().strftime("%Y/%m/%d-%H%M")
-    d["username"] = request.user.username
-    d["request_path"] = request.path
-    if request.GET:
-        d["GET_Param"] = request.GET
-    if request.POST:
-        d["POST_Param"] = request.POST
-    d["traceback"] = traceback.format_exc()
-
-    hash_value = hashlib.sha1(json.dumps(d).encode()).digest().hex()
-    log_dir = os.path.join(log_detailed_path, request.user.username)
-    log_path = os.path.join(log_dir, hash_value + ".json")
-    os.makedirs(log_dir, exist_ok=True)
-    with open(log_path, "w") as f:
-        json.dump(d, f)
-
-    if local_dict.get('debug_stuids'):
-        from app.wechat_send import send_wechat
-        receivers = list(local_dict['debug_stuids'])
-        if isinstance(receivers, str):
-            receivers = receivers.replace(' ', '').split(',')
-        receivers = list(map(str, receivers))
-        message = f"错误类型：{type(e)}\n + 记录路径：{log_path}\n"
-        send_wechat(receivers, 'YPPF 记录到错误详情\n' + f"记录路径：{log_path}")
-
 
 # 导出Excel文件
 def export_activity(activity,inf_type):
@@ -1176,4 +1022,4 @@ def calcu_activity_bonus(activity):
     return min(point, max_point)
 
 
-operation_writer(local_dict["system_log"], "系统启动", "util_底部")
+log.operation_writer(local_dict["system_log"], "系统启动", "util_底部")
