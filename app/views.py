@@ -43,7 +43,6 @@ from app.utils import (
     escape_for_templates,
     record_modify_with_session,
     update_related_account_in_session,
-    record_traceback,
 )
 from app.activity_utils import (
     create_activity,
@@ -2108,7 +2107,7 @@ def viewActivity(request, aid=None):
             ]:
             return redirect(message_url(wrong('该活动暂不可见!')))
     except Exception as e:
-        record_traceback(request, e)
+        log.record_traceback(request, e)
         return EXCEPT_REDIRECT
 
     html_display = dict()
@@ -2136,7 +2135,7 @@ def viewActivity(request, aid=None):
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
             except Exception as e:
-                record_traceback(request, e)
+                log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
         elif option == "edit":
@@ -2170,7 +2169,7 @@ def viewActivity(request, aid=None):
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
             except Exception as e:
-                record_traceback(request, e)
+                log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
 
@@ -2194,7 +2193,7 @@ def viewActivity(request, aid=None):
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = str(e)
             except Exception as e:
-                record_traceback(request, e)
+                log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
         elif option == "payment":
@@ -2616,7 +2615,7 @@ def addActivity(request, aid=None):
             edit = True
         html_display["is_myself"] = True
     except Exception as e:
-        record_traceback(request, e)
+        log.record_traceback(request, e)
         return EXCEPT_REDIRECT
 
     # 处理 POST 请求
@@ -2633,7 +2632,7 @@ def addActivity(request, aid=None):
                             f'/viewActivity/{aid}'))
                     return redirect(f"/editActivity/{aid}")
             except Exception as e:
-                record_traceback(request, e)
+                log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
         # 仅这几个阶段可以修改
@@ -2671,7 +2670,7 @@ def addActivity(request, aid=None):
                 html_display["warn_code"] = 1
                 # return redirect(f"/viewActivity/{activity.id}")
             except Exception as e:
-                record_traceback(request, e)
+                log.record_traceback(request, e)
                 return EXCEPT_REDIRECT
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
@@ -2713,7 +2712,7 @@ def addActivity(request, aid=None):
                 # 不是三个可以评论的状态
                 commentable = front_check = False
         except Exception as e:
-            record_traceback(request, e)
+            log.record_traceback(request, e)
             return EXCEPT_REDIRECT
 
         # 决定状态的变量
