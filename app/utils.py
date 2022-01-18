@@ -269,7 +269,7 @@ def url_check(arg_url):
         # print('base:', base)
         if re.match(base, arg_url):
             return True
-    log.operation_writer(local_dict['system_log'], f'URL检查不合格: {arg_url}', 'utils[url_check]', 'Problem')
+    log.operation_writer(SYSTEM_LOG, f'URL检查不合格: {arg_url}', 'utils[url_check]', log.STATE_PROBLEM)
     return False
 
 
@@ -532,7 +532,7 @@ def set_nperson_quota_to(quota):
     activated_npeople.update(quota=quota)
     notification_content = f"学院已经将大家的元气值配额重新设定为{quota},祝您使用愉快！"
     title = Notification.Title.VERIFY_INFORM
-    YPcollege = Organization.objects.get(oname=YQPoint_oname)
+    YPcollege = Organization.objects.get(oname=YQP_ONAME)
 
     # 函数内导入是为了防止破坏utils的最高优先级，如果以后确定不会循环引用也可提到外面
     # 目前不发送到微信哦
@@ -963,4 +963,4 @@ def user_login_org(request, org):
     return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")
 
 
-log.operation_writer(local_dict["system_log"], "系统启动", "util_底部")
+log.operation_writer(SYSTEM_LOG, "系统启动", "util_底部")

@@ -555,12 +555,12 @@ def accept_activity(request, activity):
         organization = Organization.objects.select_for_update().get(id=organization_id)
         organization.YQPoint += activity.YQPoint
         organization.save()
-        YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-        YP.YQPoint -= activity.YQPoint
-        YP.save()
+        YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
+        YQP_center.YQPoint -= activity.YQPoint
+        YQP_center.save()
         amount = activity.YQPoint
         record = TransferRecord.objects.create(
-            proposer=YP.organization_id, 
+            proposer=YQP_center.organization_id, 
             recipient=organization.organization_id,
             rtype=TransferRecord.TransferType.ACTIVITY
         )
@@ -586,9 +586,9 @@ def accept_activity(request, activity):
             organization = Organization.objects.select_for_update().get(id=organization_id)
             organization.YQPoint += total_amount
             organization.save()
-            YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-            YP.YQPoint -= total_amount
-            YP.save()
+            YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
+            YQP_center.YQPoint -= total_amount
+            YQP_center.save()
             records.update(
                 status=TransferRecord.TransferStatus.ACCEPTED,
                 finish_time=datetime.now()
@@ -672,7 +672,6 @@ def applyActivity(request, activity):
     '''这个函数在正常情况下只应该抛出提示错误信息的ActivityException'''
     context = dict()
     context["success"] = False
-    CREATE = True
 
     payer = NaturalPerson.objects.select_for_update().get(
         person_id=request.user
@@ -688,10 +687,10 @@ def applyActivity(request, activity):
         participant = Participant.objects.select_for_update().get(
             activity_id=activity, person_id=payer
         )
-        CREATE = False
+        participated = True
     except:
-        pass
-    if CREATE == False:
+        participated = False
+    if participated:
         if (
             participant.status == Participant.AttendStatus.APLLYSUCCESS or
             participant.status == Participant.AttendStatus.APPLYING
@@ -756,9 +755,9 @@ def applyActivity(request, activity):
                 organization = Organization.objects.select_for_update().get(id=organization_id)
                 organization.YQPoint += amount
                 organization.save()
-                YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-                YP.YQPoint -= amount
-                YP.save()
+                YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
+                YQP_center.YQPoint -= amount
+                YQP_center.save()
                 record.status = TransferRecord.TransferStatus.ACCEPTED
             else:
                 record.status = TransferRecord.TransferStatus.PENDING
@@ -767,7 +766,7 @@ def applyActivity(request, activity):
             record.save()
 
 
-    if CREATE:
+    if not participated:
         participant = Participant.objects.create(
             activity_id=activity, person_id=payer
         )
@@ -814,12 +813,12 @@ def cancel_activity(request, activity):
         org.YQPoint -= activity.YQPoint
         org.save()
         # 这里加个悲观锁能提高性能吗 ？
-        YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-        YP.YQPoint += activity.YQPoint
-        YP.save()
+        YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
+        YQP_center.YQPoint += activity.YQPoint
+        YQP_center.save()
         # activity 上了悲观锁，这里不用锁
         record = TransferRecord.objects.get(
-            proposer=YP, 
+            proposer=YQP_center, 
             status=TransferRecord.TransferStatus.ACCEPTED, 
             corres_act=activity
         )
@@ -839,9 +838,9 @@ def cancel_activity(request, activity):
             if total_amount > 0:
                 org.YQPoint -= total_amount
                 org.save()
-                YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-                YP.YQPoint += total_amount
-                YP.save()
+                YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
+                YQP_center.YQPoint += total_amount
+                YQP_center.save()
                 person_list = User.objects.filter(id__in=records.values_list("proposer_id",flat=True))
                 # person_list = [record.proposer.id for record in records]
                 payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
@@ -939,9 +938,9 @@ def withdraw_activity(request, activity):
             record.status = TransferRecord.TransferStatus.REFUND
             record.save()
             np.YQPoint += amount
-            YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-            YP.YQPoint += amount
-            YP.save()
+            YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
+            YQP_center.YQPoint += amount
+            YQP_center.save()
         except:
             pass
 

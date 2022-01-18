@@ -61,7 +61,7 @@ def send_to_orgs(title, message, url='/index/'):
 def distribute_YQPoint_per_month():
     with transaction.atomic():
         recipients = NaturalPerson.objects.activated().select_for_update()
-        YP = Organization.objects.get(oname=YQPoint_oname)
+        YP = Organization.objects.get(oname=YQP_ONAME)
         trans_time = datetime.now()
         transfer_list = [TransferRecord(
                 proposer=YP.organization_id,
@@ -139,9 +139,9 @@ def distribute_YQPoint(distributer):
     per_to_dis = NaturalPerson.objects.activated().filter(
         YQPoint__lte=distributer.per_max_dis_YQP)
     org_to_dis = Organization.objects.activated().filter(
-        YQPoint__lte=distributer.org_max_dis_YQP).exclude(oname=YQPoint_oname)
+        YQPoint__lte=distributer.org_max_dis_YQP).exclude(oname=YQP_ONAME)
     # 由学院账号给大家发放
-    YPcollege = Organization.objects.get(oname=YQPoint_oname)
+    YPcollege = Organization.objects.get(oname=YQP_ONAME)
 
     distribute_YQPoint_to_users(proposer=YPcollege, recipients=per_to_dis, YQPoints=distributer.per_YQP,
                                 trans_time=trans_time)
@@ -308,7 +308,7 @@ scheduler.add_job(changeActivityStatus, "date",
 """
 
 @log.except_captured(True, record_args=True, source='scheduler_func[changeActivityStatus]修改活动状态')
-@log.except_captured(True, AssertionError, record_args=True, status_code='Problem',
+@log.except_captured(True, AssertionError, record_args=True, status_code=log.STATE_PROBLEM,
                  record_user=False, record_request_args=False,
                  source='scheduler_func[changeActivityStatus]检查活动状态')
 def changeActivityStatus(aid, cur_status, to_status):
@@ -372,7 +372,7 @@ def changeActivityStatus(aid, cur_status, to_status):
             #         organization = Organization.objects.select_for_update().get(id=organization_id)
             #         organization.YQPoint += total_amount
             #         organization.save()
-            #         YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
+            #         YP = Organization.objects.select_for_update().get(oname=YQP_ONAME)
             #         YP.YQPoint -= total_amount
             #         YP.save()
             #     records.update(
@@ -707,13 +707,13 @@ def get_weather():
         with open("./weather.json", "w") as weather_json:
             json.dump(weather_dict, weather_json)
     except KeyError as e:
-        log.operation_writer(local_dict["system_log"], "天气更新异常,原因可能是local_dict中缺少weather_api_key:"+str(e), "scheduler_func[get_weather]", "Problem")        
+        log.operation_writer(SYSTEM_LOG, "天气更新异常,原因可能是local_dict中缺少weather_api_key:"+str(e), "scheduler_func[get_weather]", log.STATE_PROBLEM)        
         return None
     except Exception as e:
-        log.operation_writer(local_dict["system_log"], "天气更新异常,未知错误", "scheduler_func[get_weather]", "Problem")
+        log.operation_writer(SYSTEM_LOG, "天气更新异常,未知错误", "scheduler_func[get_weather]", log.STATE_PROBLEM)
         return default_weather
     else:
-        log.operation_writer(local_dict["system_log"], "天气更新成功", "scheduler_func[get_weather]")
+        log.operation_writer(SYSTEM_LOG, "天气更新成功", "scheduler_func[get_weather]")
         return weather_dict
 
 
@@ -742,8 +742,8 @@ def start_scheduler(with_scheduled_job=True, debug=False):
             )
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"
-            log.operation_writer(local_dict["system_log"], info,
-                            "scheduler_func[start_scheduler]", "Error")
+            log.operation_writer(SYSTEM_LOG, info,
+                            "scheduler_func[start_scheduler]", log.STATE_ERROR)
             if debug: print(info)
 
     try:
@@ -751,8 +751,8 @@ def start_scheduler(with_scheduled_job=True, debug=False):
         scheduler.start()
     except Exception as e:
         info = f"start scheduler failed, reason: {e}"
-        log.operation_writer(local_dict["system_log"], info,
-                        "scheduler_func[start_scheduler]", "Error")
+        log.operation_writer(SYSTEM_LOG, info,
+                        "scheduler_func[start_scheduler]", log.STATE_ERROR)
         if debug: print(info)
         scheduler.shutdown(wait=False)
         if debug: print("successfully shutdown scheduler")
