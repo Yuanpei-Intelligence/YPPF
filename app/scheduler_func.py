@@ -175,16 +175,16 @@ def add_YQPoints_distribute(dtype):
                           weeks=distributer.type, next_run_time=distributer.start_time, args=[distributer])
 
 
-def all_YQPoint_Distributions(request):
+def all_YQPoint_distributions(request):
     '''
         一个页面，展现当前所有的YQPointDistribute类
     '''
     context = dict()
-    context['YQPoint_Distributions'] = YQPointDistribute.objects.all()
+    context['YQPoint_distributions'] = YQPointDistribute.objects.all()
     return render(request, "YQP_Distributions.html", context)
 
 
-def YQPoint_Distribution(request, dis_id):
+def YQPoint_distribution(request, dis_id):
     '''
         显示，也可以更改已经存在的YQPointDistribute类
         更改后，如果应用状态status为True，会完成该任务的注册
@@ -211,7 +211,7 @@ def YQPoint_Distribution(request, dis_id):
     return render(request, "YQP_Distribution.html", context)
 
 
-def new_YQP_distribute(request):
+def new_YQPoint_distribute(request):
     '''
         创建新的发放instance，如果status为True,会尝试注册
     '''
@@ -235,22 +235,22 @@ def new_YQP_distribute(request):
                     add_YQPoints_distribute(dis.type)
                 except:
                     print("注册定时任务失败，可能是有多个status为Yes的实例")
-        return redirect("YQPoint_Distributions")
+        return redirect("YQP_distributions")
     return render(request, "new_YQP_distribution.html", {"dis_form": dis_form})
 
 
-def YQPoint_Distributions(request):
+def YQPoint_distributions(request):
     if not request.user.is_superuser:
         message = "请先以超级账户登录后台后再操作！"
         return render(request, "debugging.html", {"message": message})
     dis_id = request.GET.get("dis_id", "")
     if dis_id == "":
-        return all_YQPoint_Distributions(request)
+        return all_YQPoint_distributions(request)
     elif dis_id == "new":
-        return new_YQP_distribute(request)
+        return new_YQPoint_distribute(request)
     else:
         dis_id = int(dis_id)
-        return YQPoint_Distribution(request, dis_id)
+        return YQPoint_distribution(request, dis_id)
 
 
 

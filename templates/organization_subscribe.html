@@ -264,7 +264,7 @@
         }
     }
     async function save_subscribe_status(status) {
-        const { success } = await fetch(`/save_subscribe_status`, {
+        const { success } = await fetch(`/saveSubscribeStatus`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
             body: JSON.stringify({ id: this.id.substring(0,this.id.indexOf('_')), status }),
@@ -274,7 +274,7 @@
         return success;
     }
     async function save_wechat_receive_level(level){
-        const { success } = await fetch(`/save_subscribe_status`, {
+        const { success } = await fetch(`/saveSubscribeStatus`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
             body: JSON.stringify({ level }),
@@ -289,7 +289,7 @@
         return success;
     }
     async function save_all(status){
-        const { success } = await fetch(`/save_subscribe_status`, {
+        const { success } = await fetch(`/saveSubscribeStatus`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
             body: JSON.stringify({ otype: this.id, status }),
