@@ -1257,7 +1257,7 @@ def org_spec(request, *args, **kwargs):
 
 @log.except_captured(source='views[get_stu_img]', record_user=True)
 def get_stu_img(request):
-    print("in get stu img")
+    if DEBUG: print("in get stu img")
     stuId = request.GET.get("stuId")
     if stuId is not None:
         try:
@@ -1701,7 +1701,7 @@ def transaction_page(request, rid=None):
                 )
 
                 # 接下来确定金额
-                if payer.oname != YQPoint_oname and payer.YQPoint < amount:
+                if payer.oname != YQP_ONAME and payer.YQPoint < amount:
                     html_display["warn_code"] = 1
                     html_display["warn_message"] = (
                             "现存元气值余额为"

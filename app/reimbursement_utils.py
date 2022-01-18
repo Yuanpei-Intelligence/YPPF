@@ -78,7 +78,6 @@ def update_reimb_application(application, me, user_type, request):
                     return wrong("报销说明不能为空，请完整填写。")
                 # 读取本小组和表单中的元气值，对元气值进行初始的合法性检查
                 org=Organization.objects.get(id=me.id)
-                YQP = org.YQPoint
                 try:
                     reimb_YQP = float(request.POST.get('YQP'))
                     if reimb_YQP < 0:
@@ -98,7 +97,7 @@ def update_reimb_application(application, me, user_type, request):
                 # 如果是新建申请,
                 if post_type == "new_submit":
                     #元气值合法性检查，新建和重新修改时的合法性检查不同
-                    if reimb_YQP > YQP:
+                    if reimb_YQP > org.YQPoint:
                         return wrong("申请失败，账户元气值不足！")
                     # 筛选出该小组未报销的活动
                     activities=utils.get_unreimb_activity(me)

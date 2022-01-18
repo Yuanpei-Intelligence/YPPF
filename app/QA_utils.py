@@ -85,42 +85,42 @@ def QA2Display(user):
     receiver_orgs = {userid: name for userid, name in receiver_orgs}
 
     for qa in instances['send']:
-        QA = dict()
-        QA['sender'] = my_name
+        send_QAs = dict()
+        send_QAs['sender'] = my_name
         if qa.anonymous_flag:
-            QA['sender'] += "(匿名)"
+            send_QAs['sender'] += "(匿名)"
         
         _, user_type, _ = utils.check_user_type(qa.receiver)
         if user_type == "Organization":
-            QA["receiver"] = receiver_orgs.get(qa.receiver_id)
+            send_QAs["receiver"] = receiver_orgs.get(qa.receiver_id)
         else:
-            QA["receiver"] = receiver_persons.get(qa.receiver_id)
+            send_QAs["receiver"] = receiver_persons.get(qa.receiver_id)
 
-        QA['Q_text'] = qa.Q_text
-        QA['A_text'] = qa.A_text
-        QA['Q_time'] = qa.Q_time
-        QA['A_time'] = qa.A_time
-        QA['id'] = qa.id
-        QA['anwser_flag'] = (len(qa.A_text) != 0)
-        all_instances['send'].append(QA)
+        send_QAs['Q_text'] = qa.Q_text
+        send_QAs['A_text'] = qa.A_text
+        send_QAs['Q_time'] = qa.Q_time
+        send_QAs['A_time'] = qa.A_time
+        send_QAs['id'] = qa.id
+        send_QAs['anwser_flag'] = (len(qa.A_text) != 0)
+        all_instances['send'].append(send_QAs)
 
     for qa in instances['receive']:
-        QA = dict()
+        receive_QAs = dict()
         if qa.anonymous_flag:
-            QA['sender'] = "匿名者"
+            receive_QAs['sender'] = "匿名者"
         else:
             _, user_type, _ = utils.check_user_type(qa.sender)
             if user_type == "Organization":
-                QA["sender"] = sender_orgs.get(qa.sender_id)
+                receive_QAs["sender"] = sender_orgs.get(qa.sender_id)
             else:
-                QA["sender"] = sender_persons.get(qa.sender_id)
+                receive_QAs["sender"] = sender_persons.get(qa.sender_id)
         
-        QA['receiver'] = my_name
-        QA['Q_text'] = qa.Q_text
-        QA['A_text'] = qa.A_text
-        QA['Q_time'] = qa.Q_time
-        QA['A_time'] = qa.A_time
-        QA['id'] = qa.id
-        QA['anwser_flag'] = (len(qa.A_text) != 0)
-        all_instances['receive'].append(QA)
+        receive_QAs['receiver'] = my_name
+        receive_QAs['Q_text'] = qa.Q_text
+        receive_QAs['A_text'] = qa.A_text
+        receive_QAs['Q_time'] = qa.Q_time
+        receive_QAs['A_time'] = qa.A_time
+        receive_QAs['id'] = qa.id
+        receive_QAs['anwser_flag'] = (len(qa.A_text) != 0)
+        all_instances['receive'].append(receive_QAs)
     return all_instances

@@ -89,7 +89,7 @@ def load_org():
                     msg += '<br/>&emsp;&emsp;成功增加负责人：'+person
         except Exception as e:
             msg += '<br/>未能创建组织'+oname+',原因：'+str(e)
-    if YQPoint_oname:
+    if YQP_ONAME:
         username = 'zz00001'
         user, created = User.objects.get_or_create(username=username)
         if created:
@@ -100,9 +100,9 @@ def load_org():
             org, mid = Organization.objects.get_or_create(
                 organization_id=user, otype=orgtype
             )
-            org.oname = YQPoint_oname
+            org.oname = YQP_ONAME
             org.save()
-            msg += '<br/>成功创建元气值发放组织：'+YQPoint_oname
+            msg += '<br/>成功创建元气值发放组织：'+YQP_ONAME
     return msg
 
 
