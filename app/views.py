@@ -507,8 +507,8 @@ def stuinfo(request, name=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[request_login_org]', record_user=True)
-def request_login_org(request, name=None):  # 特指个人希望通过个人账户登入小组账户的逻辑
+@log.except_captured(source='views[requestLoginOrg]', record_user=True)
+def requestLoginOrg(request, name=None):  # 特指个人希望通过个人账户登入小组账户的逻辑
     """
         这个函数的逻辑是，个人账户点击左侧的管理小组直接跳转登录到小组账户
         首先检查登录的user是个人账户，否则直接跳转orginfo
@@ -934,8 +934,8 @@ def homepage(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[account_setting]', record_user=True)
-def account_setting(request):
+@log.except_captured(source='views[accountSetting]', record_user=True)
+def accountSetting(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
     # 在这个页面 默认回归为自己的左边栏
@@ -1160,8 +1160,8 @@ def freshman(request):
 
 
 @login_required(redirect_field_name="origin")
-@log.except_captured(source='views[user_agreement]', record_user=True)
-def user_agreement(request):
+@log.except_captured(source='views[userAgreement]', record_user=True)
+def userAgreement(request):
     # 不要加check_user_access，因为本页面就是该包装器首次登录时的跳转页面之一
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
@@ -1180,8 +1180,8 @@ def user_agreement(request):
 
 
 
-@log.except_captured(source='views[auth_register]', record_user=True)
-def auth_register(request):
+@log.except_captured(source='views[authRegister]', record_user=True)
+def authRegister(request):
     if request.user.is_superuser:
         if request.method == "POST" and request.POST:
             name = request.POST["name"]
@@ -1392,8 +1392,8 @@ def search(request):
     return render(request, "search.html", locals())
 
 
-@log.except_captured(source='views[forget_password]', record_user=True)
-def forget_password(request):
+@log.except_captured(source='views[forgetPassword]', record_user=True)
+def forgetPassword(request):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
 
@@ -2021,7 +2021,7 @@ def subscribeOrganization(request):
     # bar_display["navbar_name"] = "我的订阅"  #
     # bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
 
-    subscribe_url = reverse("save_subscribe_status")
+    subscribe_url = reverse("saveSubscribeStatus")
 
     # all_number = NaturalPerson.objects.activated().all().count()    # 人数全体 优化查询
     return render(request, "organization_subscribe.html", locals())
@@ -2029,8 +2029,8 @@ def subscribeOrganization(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[save_show_position_status]', record_user=True)
-def save_show_position_status(request):
+@log.except_captured(source='views[saveShowPositionStatus]', record_user=True)
+def saveShowPositionStatus(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
     me = utils.get_person_or_org(request.user, user_type)
@@ -2055,8 +2055,8 @@ def save_show_position_status(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[save_subscribe_status]', record_user=True)
-def save_subscribe_status(request):
+@log.except_captured(source='views[saveSubscribeStatus]', record_user=True)
+def saveSubscribeStatus(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != 'Person':
         return JsonResponse({"success":False})

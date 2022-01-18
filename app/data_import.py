@@ -108,7 +108,7 @@ def load_org():
 
 
 
-def load_org_info(request):
+def load_org_data(request):
     if request.user.is_superuser:
         load_type = request.GET.get("loadtype", None)
         message = "加载失败！"
@@ -289,7 +289,7 @@ def load_notification_info(request):
     return render(request, "debugging.html", context)
 
 
-def load_stu_info(request):
+def load_stu_data(request):
     if not request.user.is_superuser:
         context = {"message": "请先以超级账户登录后台后再操作！"}
         return render(request, "debugging.html", context)
