@@ -32,7 +32,7 @@ views
 '''
 from app.constants import *
 from app.global_messages import (
-    wrong, 
+    wrong,
     succeed,
     message_url,
     append_query,

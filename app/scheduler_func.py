@@ -1,6 +1,6 @@
 from app.models import (
     User,
-    NaturalPerson, 
+    NaturalPerson,
     Organization,
     YQPointDistribute,
     TransferRecord,
@@ -38,7 +38,7 @@ def send_to_persons(title, message, url='/index/'):
     np = NaturalPerson.objects.all()
     receivers = User.objects.filter(id__in=np.values_list('person_id', flat=True))
     print(bulk_notification_create(
-        receivers, sender, 
+        receivers, sender,
         Notification.Type.NEEDREAD, title, message, url,
         publish_to_wechat=True,
         publish_kws={'level': WechatMessageLevel.IMPORTANT},
@@ -50,7 +50,7 @@ def send_to_orgs(title, message, url='/index/'):
     org = Organization.objects.all().exclude(otype__otype_id=0)
     receivers = User.objects.filter(id__in=org.values_list('organization_id', flat=True))
     bulk_notification_create(
-        receivers, sender, 
+        receivers, sender,
         Notification.Type.NEEDREAD, title, message, url,
         publish_to_wechat=True,
         publish_kws={'level': WechatMessageLevel.IMPORTANT},
@@ -87,7 +87,7 @@ def distribute_YQPoint_per_month():
         for recipient in recipients:
             amount = 30 + max(0, (30 - recipient.YQPoint))
             recipient.YQPoint += amount
-            recipient.YQPoint += recipient.YQPoint_Bonus 
+            recipient.YQPoint += recipient.YQPoint_Bonus
             recipient.YQPoint_Bonus = 0
             recipient.save()
 
@@ -268,7 +268,7 @@ def changeAllActivities():
         apply_end__lte=now,
     )
     for activity in applying_activities:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
             run_date=execute_time, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
         execute_time += timedelta(seconds=5)
 
@@ -277,7 +277,7 @@ def changeAllActivities():
         start__lte=now,
     )
     for activity in waiting_activities:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
             run_date=execute_time, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
         execute_time += timedelta(seconds=5)
 
@@ -287,7 +287,7 @@ def changeAllActivities():
         end__lte=now,
     )
     for activity in progressing_activities:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
             run_date=execute_time, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
         execute_time += timedelta(seconds=5)
 
@@ -295,7 +295,7 @@ def changeAllActivities():
 
 """
 使用方式：
-scheduler.add_job(changeActivityStatus, "date", 
+scheduler.add_job(changeActivityStatus, "date",
     id=f"activity_{aid}_{to_status}", run_date, args)
 注意：
     1、当 cur_status 不为 None 时，检查活动是否为给定状态
@@ -361,7 +361,7 @@ def changeActivityStatus(aid, cur_status, to_status):
             #     # 活动开始后，未审核自动通过
             #     activity.valid = True
             #     records = TransferRecord.objects.filter(
-            #         status=TransferRecord.TransferStatus.PENDING, 
+            #         status=TransferRecord.TransferStatus.PENDING,
             #         corres_act=activity,
             #     )
             #     total_amount = records.aggregate(nums=Sum('amount'))["nums"]
@@ -381,7 +381,7 @@ def changeActivityStatus(aid, cur_status, to_status):
             #     )
 
             #     notification = Notification.objects.get(
-            #         relate_instance=activity, 
+            #         relate_instance=activity,
             #         status=Notification.Status.UNDONE,
             #         title=Notification.Title.VERIFY_INFORM
             #     )
@@ -445,11 +445,11 @@ def draw_lots(activity):
             status=Participant.AttendStatus.APLLYSUCCESS
         ).values_list('person_id__person_id', flat=True)
     receivers = User.objects.filter(id__in=receivers)
-    sender=activity.organization_id.organization_id
+    sender = activity.organization_id.organization_id
     typename = Notification.Type.NEEDREAD
-    content=f'您好！您参与抽签的活动“{activity.title}”报名成功！请准时参加活动！'
-    URL=f'/viewActivity/{activity.id}'
-    if len(receivers)>0:
+    content = f'您好！您参与抽签的活动“{activity.title}”报名成功！请准时参加活动！'
+    URL = f'/viewActivity/{activity.id}'
+    if len(receivers) > 0:
         bulk_notification_create(
             receivers=receivers,
             sender=sender,
@@ -518,7 +518,7 @@ def weighted_draw_lots(activity):
 
 """
 使用方式：
-scheduler.add_job(notifyActivityStart, "date", 
+scheduler.add_job(notifyActivityStart, "date",
     id=f"activity_{aid}_{start_notification}", run_date, args)
 """
 

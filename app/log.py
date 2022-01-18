@@ -87,7 +87,7 @@ def operation_writer(user, message, source=None, status_code: str=STATE_OK):
 
 
 def except_captured(return_value=None, except_type=Exception,
-                    log=True, show_traceback=False, record_args=False, 
+                    log=True, show_traceback=False, record_args=False,
                     record_user=False, record_request_args=False,
                     source='utils[except_captured]', status_code=STATE_ERROR):
     """

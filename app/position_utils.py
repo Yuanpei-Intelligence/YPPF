@@ -96,7 +96,7 @@ def update_pos_application(application, me, user_type, applied_org, info):
                 if post_type == "new_submit":
                     if len(ModifyPosition.objects.filter(
                         person=me, status=ModifyPosition.Status.PENDING
-                    ))>=3:
+                    )) >= 3:
                         return wrong("审核中的成员变动申请的数目不能超过三个！")
                     if ModifyPosition.objects.filter(
                         person=me, org=applied_org, status=ModifyPosition.Status.PENDING

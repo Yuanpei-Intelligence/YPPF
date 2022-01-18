@@ -17,7 +17,7 @@ def notification_status_change(notification_or_id, to_status=None):
     """
     调用该函数以完成一项通知。对于知晓类通知，在接收到用户点击按钮后的post表单，该函数会被调用。
     对于需要完成的待处理通知，需要在对应的事务结束判断处，调用该函数。
-    notification_id是notification的主键:id
+    notification_id是notification的主键: id
     to_status是希望这条notification转变为的状态，包括
         DONE = (0, "已处理")
         UNDONE = (1, "待处理")
@@ -219,7 +219,7 @@ def bulk_notification_create(
             cur_status = '检查已存在通知'
             exist_note = Notification.objects.filter(
                 bulk_identifier=bulk_identifier,
-                start_time__gt=start_time-timedelta(minutes=5),
+                start_time__gt=start_time - timedelta(minutes=5),
                 )
             if exist_note.exists():
                 if duplicate_behavior == 'fail':
@@ -243,7 +243,7 @@ def bulk_notification_create(
                 if duplicate_behavior == 'remove':
                     cur_status = '移除已有接收者'
                     received_id_set = set(received_ids)
-                    receivers = [receiver for receiver in receivers 
+                    receivers = [receiver for receiver in receivers
                                     if receiver.id not in received_id_set]
                     log.operation_writer(SYSTEM_LOG,
                                     f'批量创建通知时通知已存在, 识别码为{bulk_identifier}'
@@ -317,7 +317,7 @@ def bulk_notification_create(
 # 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
 #用于报销的通知
 @log.except_captured(source='notification_utils[make_notification]')
-def make_notification(application, request,content,receiver):
+def make_notification(application, request, content, receiver):
     # 考虑不同post_type的信息发送行为
     post_type = request.POST.get("post_type")
     feasible_post = ["new_submit", "modify_submit", "cancel_submit", "accept_submit", "refuse_submit"]

@@ -27,7 +27,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
                 "fields": (
                     "stu_grade", "stu_class", "stu_dorm", "stu_major",
                     "show_gender", "show_email", "show_tel", "show_major", "show_dorm",
-                    "show_nickname", "show_birthday", 
+                    "show_nickname", "show_birthday",
                     ),
             },
         ],

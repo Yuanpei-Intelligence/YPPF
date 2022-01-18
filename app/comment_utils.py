@@ -54,7 +54,7 @@ def addComment(request, comment_base, receiver=None):
             return context
         if len(comment_images) > 0:
             for comment_image in comment_images:
-                if if_image(comment_image)!=2:
+                if if_image(comment_image) != 2:
                     context["warn_code"] = 1
                     context["warn_message"] = "评论中上传的附件只支持图片格式。"
                     return context

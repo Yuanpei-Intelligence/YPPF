@@ -23,7 +23,7 @@ from app.activity_utils import (
 )
 from app.comment_utils import addComment, showComment
 from app.utils import (
-    get_person_or_org, 
+    get_person_or_org,
     escape_for_templates,
 )
 
@@ -38,7 +38,7 @@ from django.db import transaction
 from django.db.models import Q, F
 
 __all__ = [
-    'viewActivity', 'getActivityInfo', 'checkinActivity', 
+    'viewActivity', 'getActivityInfo', 'checkinActivity',
     'addActivity', 'showActivity', 'examineActivity',
 ]
 
@@ -195,7 +195,7 @@ def viewActivity(request, aid=None):
                 return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
             except:
                 return redirect(f"/modifyEndActivity/")
-        elif option == "sign" or option == "enroll":#下载活动签到信息或者报名信息
+        elif option == "sign" or option == "enroll": #下载活动签到信息或者报名信息
             if not ownership:
                 return redirect(message_url(wrong('没有下载权限!'), request.path))
             return utils.export_activity(activity,option)
@@ -311,7 +311,7 @@ def viewActivity(request, aid=None):
     # 浏览次数，必须在render之前
     # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据
     Activity.objects.filter(id=activity.id).update(visit_times=F('visit_times')+1)
-    # activity.visit_times+=1
+    # activity.visit_times += 1
     # activity.save()
     return render(request, "activity_info.html", locals())
 
@@ -629,7 +629,7 @@ def addActivity(request, aid=None):
         # 仅这几个阶段可以修改
         if (
                 activity.status != Activity.Status.REVIEWING and
-                activity.status != Activity.Status.APPLYING and 
+                activity.status != Activity.Status.APPLYING and
                 activity.status != Activity.Status.WAITING
         ):
             return redirect(message_url(wrong('当前活动状态不允许修改!'),
@@ -665,7 +665,7 @@ def addActivity(request, aid=None):
                 return EXCEPT_REDIRECT
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
-    defaultpics = [{"src":"/static/assets/img/announcepics/"+str(i+1)+".JPG","id": "picture"+str(i+1) } for i in range(5)]
+    defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG", "id": f"picture{i+1}"} for i in range(5)]
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava() 
 

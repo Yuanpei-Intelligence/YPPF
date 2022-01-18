@@ -21,10 +21,10 @@ from app.models import (
     ReimbursementPhoto,
 )
 from app.utils import (
-    url_check, 
-    check_cross_site, 
-    get_person_or_org, 
-    update_org_application, 
+    url_check,
+    check_cross_site,
+    get_person_or_org,
+    update_org_application,
     escape_for_templates,
     record_modify_with_session,
     update_related_account_in_session,
@@ -111,7 +111,7 @@ def index(request):
         if request.user.is_authenticated:
             return redirect("/welcome/")
             """
-            valid, user_type , html_display = utils.check_user_type(request.user)
+            valid, user_type, html_display = utils.check_user_type(request.user)
             if not valid:
                 return render(request, 'index.html', locals())
             return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
@@ -156,7 +156,7 @@ def index(request):
             if arg_origin is None:
                 return redirect("/welcome/")
                 """
-                valid, user_type , html_display = utils.check_user_type(request.user)
+                valid, user_type, html_display = utils.check_user_type(request.user)
                 if not valid:
                     return render(request, 'index.html', locals())
                 return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
@@ -496,11 +496,11 @@ def stuinfo(request, name=None):
 
         if request.session.get('alert_message'):
             load_alert_message = request.session.pop('alert_message')
-        
+
         # 浏览次数，必须在render之前
         # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据
         NaturalPerson.objects.filter(id=person.id).update(visit_times=F('visit_times')+1)
-        # person.visit_times+=1
+        # person.visit_times += 1
         # person.save()
         return render(request, "stuinfo.html", locals())
 
@@ -568,7 +568,7 @@ def orginfo(request, name=None):
         return redirect("/logout/")
 
     me = utils.get_person_or_org(user, user_type)
-    
+
     if name is None:
         name = request.GET.get('name', None)
 
@@ -582,7 +582,7 @@ def orginfo(request, name=None):
 
         full_path = request.get_full_path()
         append_url = "" if ("?" not in full_path) else "&" + full_path.split("?")[1]
-            
+
         return redirect("/orginfo/?name=" + org.oname + append_url)
 
     try:  # 指定名字访问小组账号的，可以是自然人也可以是法人。在html里要注意区分！
@@ -632,7 +632,7 @@ def orginfo(request, name=None):
                     html_display["warn_message"] = "提问发送失败!请联系管理员!"
             return redirect(message_url(html_display, f"/orginfo/?name={organization_name}"))
 
-        
+
 
     # 该学年、该学期、该小组的 活动的信息,分为 未结束continuing 和 已结束ended ，按时间顺序降序展现
     continuing_activity_list = (
@@ -730,7 +730,7 @@ def orginfo(request, name=None):
 
     # 补充左边栏信息
 
-    
+
 
     # 再处理修改信息的回弹
     modpw_status = request.GET.get("modinfo", None)
@@ -752,7 +752,7 @@ def orginfo(request, name=None):
         subscribe_flag = True if (
             organization_name not in me.unsubscribe_list.values_list("oname", flat=True)) \
             else False
-    
+
     # 补充作为小组成员，选择是否展示的按钮
     show_post_change_button = False     # 前端展示“是否不展示我自己”的按钮，若为True则渲染这个按钮
     if user_type == 'Person':
@@ -760,15 +760,15 @@ def orginfo(request, name=None):
         if len(my_position):
             show_post_change_button = True
             my_position = my_position[0]
-    
+
 
     if request.session.get('alert_message'):
         load_alert_message = request.session.pop('alert_message')
-    
+
     # 浏览次数，必须在render之前
     # 为了防止发生错误的存储，让数据库直接更新浏览次数，并且不再显示包含本次浏览的数据
     Organization.objects.filter(id=org.id).update(visit_times=F('visit_times')+1)
-    # org.visit_times+=1
+    # org.visit_times += 1
     # org.save()
     return render(request, "orginfo.html", locals())
 
@@ -833,7 +833,7 @@ def homepage(request):
         dictmp["tobestart"] = (deadline - nowtime).total_seconds()//360/10
         signup_list.append(dictmp)
     signup_list.sort(key=lambda x:x["deadline"])
-    signup_list=signup_list[:10]
+    signup_list = signup_list[:10]
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:
         wishtext = request.POST.get("wish")
@@ -851,7 +851,7 @@ def homepage(request):
 
     # 心愿墙！！！！!最近一周的心愿，已经逆序排列，如果超过100个取前100个就可
     wishes = Wishes.objects.filter(
-        time__gt = nowtime-timedelta(days = 7)
+        time__gt = nowtime - timedelta(days = 7)
     )
     wishes = wishes[:100]
 
@@ -859,7 +859,7 @@ def homepage(request):
     colors = Wishes.COLORS
     backgroundpics = [
             {
-                "src":"/static/assets/img/backgroundpics/"+str(i+1)+".png",
+                "src": f"/static/assets/img/backgroundpics/{i+1}.png",
                 "color": color
             } for i, color in enumerate(colors)
         ]
@@ -893,9 +893,9 @@ def homepage(request):
                 break
     if photo_display:
         guidepics = guidepics[1:]   # 第一张只是封面图，如果有需要呈现的内容就不显示
-    
+
     """ 暂时不需要这些，目前逻辑是取photo_display的前四个，如果没有也没问题
-    if len(photo_display)==0: # 这个分类是为了前端显示的便利，就不采用append了
+    if len(photo_display) == 0: # 这个分类是为了前端显示的便利，就不采用append了
         homepagephoto = "/static/assets/img/taskboard.jpg"
     else:
         firstpic = photo_display[0]
@@ -979,7 +979,7 @@ def account_setting(request):
                             for attr in attr_check_list
                             if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr])]
             modify_info += [f'{show_attr}: {getattr(useroj, show_attr)}->{show_dict[show_attr]}'
-                            for show_attr in show_dict.keys() 
+                            for show_attr in show_dict.keys()
                             if getattr(useroj, show_attr) != show_dict[show_attr]]
 
             if attr_dict['gender'] != useroj.gender:
@@ -1149,10 +1149,10 @@ def freshman(request):
         except:
             err_msg = f"在{current}时意外发生了错误，请联系管理员"
             return render(request, html_path, locals())
-        
+
         # 发送企业微信邀请，不会报错
         invite(sid, multithread=True)
-        
+
         err_msg = "您的账号已成功注册，请尽快加入企业微信以接受后续通知！"
         return redirect("/freshman/?success=1&alert=" + err_msg)
 
@@ -1173,7 +1173,7 @@ def user_agreement(request):
             return redirect('/logout/')
         request.session['confirmed'] = 'yes'
         return redirect('/modpw/')
-    
+
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     bar_display = utils.get_sidebar_and_navbar(request.user, "用户须知")
     return render(request, 'user_agreement.html', locals())
@@ -1591,7 +1591,7 @@ def modpw(request):
         #     err_message = "两次输入的密码不匹配"
         # elif len(newpw) < min_length:
         #     err_code = 6
-            # err_message = f"新密码的长度不能少于{min_length}位"
+        # err_message = f"新密码的长度不能少于{min_length}位"
         else:
             # 在1、忘记密码 2、首次登录 3、验证旧密码正确 的前提下，可以修改
             if forgetpw or isFirst:
@@ -1654,13 +1654,14 @@ def transaction_page(request, rid=None):
     if html_display['warn_code']==1:
         if hasattr(recipient, "organization_id"):
             return redirect(
-                "/orginfo/?name={name}&warn_code=1&warn_message={message}".format(name=recipient.oname,
-                                                                                      message=html_display[
-                                                                                          'warn_message']))
+                "/orginfo/?name={name}&warn_code=1&warn_message={message}".format(
+                    name=recipient.oname,
+                    message=html_display['warn_message']))
         else:
             return  redirect(
-                "/stuinfo/?name={name}&warn_code=1&warn_message={message}".format(name=recipient.name,
-                                                                            message=html_display['warn_message']))
+                "/stuinfo/?name={name}&warn_code=1&warn_message={message}".format(
+                    name=recipient.name,
+                    message=html_display['warn_message']))
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # 如果希望前移，请联系YHT
     bar_display = utils.get_sidebar_and_navbar(request.user)
@@ -2034,7 +2035,7 @@ def save_show_position_status(request):
 
     me = utils.get_person_or_org(request.user, user_type)
     params = json.loads(request.body.decode("utf-8"))
-    
+
     with transaction.atomic():
         try:
             position = Position.objects.select_for_update().get(id=params["id"])
@@ -2044,8 +2045,10 @@ def save_show_position_status(request):
             position.show_post = True
         else:
             org = position.org
-            if len(Position.objects.filter(is_admin=True, org=org)) == 1 and position.pos==0:    #非法前端量修改
-                return JsonResponse({"success":False})
+            if len(Position.objects.filter(
+                    is_admin=True,
+                    org=org)) == 1 and position.pos == 0:  # 非法前端量修改
+                return JsonResponse({"success": False})
             position.show_post = False
         position.save()
     return JsonResponse({"success": True})
@@ -2060,7 +2063,7 @@ def save_subscribe_status(request):
 
     me = utils.get_person_or_org(request.user, user_type)
     params = json.loads(request.body.decode("utf-8"))
-    
+
     with transaction.atomic():
         if "id" in params.keys():
             try:
@@ -2269,7 +2272,7 @@ def notifications(request):
 
     me = utils.get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    
+
     notification_set = Notification.objects.activated().select_related(
         'sender').filter(receiver=request.user)
 
@@ -2295,11 +2298,9 @@ def showNewOrganization(request):
     if user_type == "Organization":
         html_display["warn_code"] = 1
         html_display["warn_message"] = "请不要使用小组账号申请新小组！"
-        return redirect(
-                        "/welcome/"+ "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]
-                        )
-                    )
+        return redirect("/welcome/" +
+                        "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]))
 
     me = utils.get_person_or_org(request.user, user_type)
 
@@ -2346,25 +2347,21 @@ def modifyPosition(request):
                 html_display=utils.user_login_org(request,application.org)
                 if html_display['warn_code']==1:
                     return redirect(
-                            "/welcome/"+ "?warn_code=1&warn_message={warn_message}".format(
-                                    warn_message=html_display["warn_message"]
-                                )
-                            )
+                        "/welcome/" +
+                        "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]))
                 else:
                     #防止后边有使用，因此需要赋值
-                    user_type="Organization"
+                    user_type = "Organization"
                     request.user=application.org.organization_id
-                    me = application.org    
+                    me = application.org
             assert (application.org == me) or (application.person == me)
         except: #恶意跳转
             html_display["warn_code"] = 1
             html_display["warn_message"] = "您没有权限访问该网址！"
-            return redirect(
-                        "/welcome/"
-                        + "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]
-                        )
-                    )
+            return redirect("/welcome/" +
+                            "?warn_code=1&warn_message={warn_message}".format(
+                                warn_message=html_display["warn_message"]))
         is_new_application = False # 前端使用量, 表示是老申请还是新的
         applied_org = application.org
 
@@ -2378,13 +2375,10 @@ def modifyPosition(request):
             # 非法的名字, 出现恶意修改参数的情况
             html_display["warn_code"] = 1
             html_display["warn_message"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入成员申请页面"
-            return redirect(
-                        "/welcome/"
-                        + "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]
-                        )
-                    )
-        
+            return redirect("/welcome/" +
+                            "?warn_code=1&warn_message={warn_message}".format(
+                                warn_message=html_display["warn_message"]))
+
         # 查找已经存在的审核中的申请
         try:
             application = ModifyPosition.objects.get(
@@ -2392,7 +2386,7 @@ def modifyPosition(request):
             is_new_application = False # 如果找到, 直接跳转老申请
         except:
             is_new_application = True
-        
+
     '''
         至此，如果是新申请那么application为None，否则为对应申请
         application = None只有在个人新建申请的时候才可能出现，对应位is_new_application
@@ -2404,10 +2398,10 @@ def modifyPosition(request):
 
     if request.method == "POST":
         # 如果是状态变更
-        if request.POST.get("post_type", None) is not None:            
+        if request.POST.get("post_type", None) is not None:
 
             # 主要操作函数，更新申请状态
-            context = update_pos_application(application, me, user_type, 
+            context = update_pos_application(application, me, user_type,
                     applied_org, request.POST)
 
             if context["warn_code"] == 2:   # 成功修改申请
@@ -2417,11 +2411,11 @@ def modifyPosition(request):
 
                 # 处理通知相关的操作，并根据情况发送微信
                 # 默认需要成功,失败也不是用户的问题，直接给管理员报错
-                make_relevant_notification(application, request.POST)    
+                make_relevant_notification(application, request.POST)
 
             elif context["warn_code"] != 1: # 没有返回操作提示
-                raise NotImplementedError("处理成员申请中出现未预见状态，请联系管理员处理！")   
-            
+                raise NotImplementedError("处理成员申请中出现未预见状态，请联系管理员处理！")
+
 
         else:   # 如果是新增评论
             # 权限检查
@@ -2467,7 +2461,7 @@ def modifyPosition(request):
             (1) 整个表单允不允许修改和评论
             (2) 变量的默认值[可以全部统一做]
     '''
-    
+
     # (1) 是否允许修改&允许评论
     # 用户写表格?
     allow_form_edit = True if (user_type == "Person") and (
@@ -2481,7 +2475,7 @@ def modifyPosition(request):
 
     # (2) 表单变量的默认值
 
-        # 首先禁用一些选项
+    # 首先禁用一些选项
 
     # 评论区
     commentable = allow_comment
@@ -2520,7 +2514,7 @@ def modifyPosition(request):
     else:
         position_name_list[-1]['selected'] = True   # 默认选中pos最低的！
 
-    
+
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="成员申请详情")
     return render(request, "modify_position.html", locals())
@@ -2662,12 +2656,9 @@ def modifyOrganization(request):
     if user_type == "Organization":
         html_display["warn_code"] = 1
         html_display["warn_message"] = "请不要使用小组账号申请新小组！"
-        return redirect(
-                        "/welcome/"
-                        + "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]
-                        )
-                    )
+        return redirect("/welcome/" +
+                        "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]))
 
     # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
 
@@ -2694,20 +2685,17 @@ def modifyOrganization(request):
         except: #恶意跳转
             html_display["warn_code"] = 1
             html_display["warn_message"] = "您没有权限访问该网址！"
-            return redirect(
-                        "/welcome/"
-                        + "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]
-                        )
-                    )
+            return redirect("/welcome/" +
+                            "?warn_code=1&warn_message={warn_message}".format(
+                                warn_message=html_display["warn_message"]))
         is_new_application = False # 前端使用量, 表示是老申请还是新的
 
-    else:   
+    else:
         # 如果不存在id, 是一个新建小组页面。
         # 已保证小组不可能访问，任何人都可以发起新建小组。
         application = None
         is_new_application = True
-        
+
     '''
         至此，如果是新申请那么application为None，否则为对应申请
         application = None只有在个人新建申请的时候才可能出现，对应位is_new_application
@@ -2718,7 +2706,7 @@ def modifyOrganization(request):
 
     if request.method == "POST":
         # 如果是状态变更
-        if request.POST.get("post_type", None) is not None:            
+        if request.POST.get("post_type", None) is not None:
 
             # 主要操作函数，更新申请状态 TODO
             context = update_org_application(application, me, request)
@@ -2727,7 +2715,7 @@ def modifyOrganization(request):
                 # 回传id 防止意外的锁操作
                 application = ModifyOrganization.objects.get(id = context["application_id"])
                 is_new_application = False #状态变更
-                if request.POST.get("post_type") == "new_submit":   
+                if request.POST.get("post_type") == "new_submit":
                     # 重要！因为该界面没有org_id，重新渲染新建界面
                     #is_new_application = True
                     # YWolfeee 不理解
@@ -2736,13 +2724,13 @@ def modifyOrganization(request):
                 # 处理通知相关的操作，并根据情况发送微信
                 # 默认需要成功,失败也不是用户的问题，直接给管理员报错 TODO
                 try:
-                    make_relevant_notification(application, request.POST)    
+                    make_relevant_notification(application, request.POST)
                 except:
                     raise NotImplementedError
 
             elif context["warn_code"] != 1: # 没有返回操作提示
-                raise NotImplementedError("处理小组申请中出现未预见状态，请联系管理员处理！")   
-            
+                raise NotImplementedError("处理小组申请中出现未预见状态，请联系管理员处理！")
+
 
         else:   # 如果是新增评论
             # 权限检查
@@ -2786,7 +2774,7 @@ def modifyOrganization(request):
             (1) 整个表单允不允许修改和评论
             (2) 变量的默认值[可以全部统一做]
     '''
-    
+
     # (1) 是否允许修改&允许评论
     # 用户写表格?
     allow_form_edit = True if (
@@ -2800,8 +2788,8 @@ def modifyOrganization(request):
 
     # (2) 表单变量的默认值
 
-        # 首先禁用一些选项
-    
+    # 首先禁用一些选项
+
     # 评论区
     commentable = allow_comment
     comments = showComment(application) if application is not None else None
@@ -2827,17 +2815,14 @@ def sendMessage(request):
     if user_type == "Person":
         html_display["warn_code"] = 1
         html_display["warn_message"] = "只有小组账号才能发送通知！"
-        return redirect(
-                        "/welcome/"
-                        + "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]
-                        )
-                    )
-    
+        return redirect("/welcome/" +
+                        "?warn_code=1&warn_message={warn_message}".format(
+                            warn_message=html_display["warn_message"]))
+
     if request.method == "POST":
         # 合法性检查
         context = send_message_check(me,request)
-        
+
         # 准备用户提示量
         html_display["warn_code"] = context["warn_code"]
         html_display["warn_message"] = context["warn_message"]
@@ -2868,7 +2853,7 @@ def sendMessage(request):
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="信息发送中心")
     return render(request, "sendMessage.html", locals())
 
-                
+
 @log.except_captured(source='views[send_message_check]')
 def send_message_check(me, request):
     # 已经检查了我的类型合法，并且确认是post
@@ -2880,17 +2865,17 @@ def send_message_check(me, request):
 
     if receiver_type is None:
         return wrong("发生了意想不到的错误：未接收到您选择的发送者类型！请联系管理员~")
-    
+
     if len(content) == 0:
         return wrong("请填写通知的内容！")
     elif len(content) > 225:
         return wrong("通知的长度不能超过225个字！你超过了！")
-    
+
     if len(title) == 0:
         return wrong("不能不写通知的标题！补起来！")
     elif len(title) > 10:
         return wrong("通知的标题不能超过10个字！不然发出来的通知会很丑！")
-    
+
     if len(url) == 0:
         url = None
     else:
@@ -2907,11 +2892,13 @@ def send_message_check(me, request):
     content = content
     typename = Notification.Type.NEEDREAD
     URL = url
-    before_time=datetime.now()-timedelta(minutes=1)
-    after_time=datetime.now()+timedelta(minutes=1)
-    recent_notifi=Notification.objects.filter(sender=sender,title=title).filter(Q(start_time__gte=before_time)
-                                                                                &Q(start_time__lte=after_time))
-    if len(recent_notifi)>0:
+    before_time = datetime.now() - timedelta(minutes=1)
+    after_time = datetime.now() + timedelta(minutes=1)
+    recent_notifi = Notification.objects.filter(
+        sender=sender, title=title).filter(
+            Q(start_time__gte=before_time)
+            & Q(start_time__lte=after_time))
+    if len(recent_notifi) > 0:
         return wrong("您1min前发送过相同的通知，请不要短时间内重复发送相同的通知！")
 
     try:
@@ -2948,7 +2935,7 @@ def send_message_check(me, request):
         assert publish_notifications(**wechat_kws)
     except:
         return wrong("发送微信的过程出现错误！请联系管理员！")
-    
+
     return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了!")
 
 @login_required(redirect_field_name='origin')
@@ -2997,7 +2984,7 @@ def QAcenter(request):
                     html_display["warn_code"] = 1
                     html_display["warn_message"] = "在设置提问状态为「忽略」的过程中出现了未知错误，请联系管理员！"
                     return JsonResponse({"success":False})
-        
+
 
     all_instances = QA2Display(request.user)
 
