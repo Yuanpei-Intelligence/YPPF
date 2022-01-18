@@ -181,7 +181,7 @@ def all_YQPoint_distributions(request):
     '''
     context = dict()
     context['YQPoint_distributions'] = YQPointDistribute.objects.all()
-    return render(request, "YQP_Distributions.html", context)
+    return render(request, "YQP_distributions.html", context)
 
 
 def YQPoint_distribution(request, dis_id):
@@ -208,7 +208,7 @@ def YQPoint_distribution(request, dis_id):
     context["dis"] = dis
     context["dis_form"] = dis_form
     context["start_time"] = str(dis.start_time).replace(" ", "T")
-    return render(request, "YQP_Distribution.html", context)
+    return render(request, "YQP_distribution.html", context)
 
 
 def new_YQPoint_distribute(request):
