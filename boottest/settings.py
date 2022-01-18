@@ -195,7 +195,7 @@ LOGGING = {
 import logging
 logging.basicConfig(
     filename=os.path.join(
-        os.path.join(BASE_DIR, 'logstore'), 
+        os.path.join(BASE_DIR, 'logstore'),
         'scheduler.log',
         ),
     filemode='a',

@@ -320,7 +320,7 @@ class PositionManager(models.Manager):
         with transaction.atomic():
             if apply_type == "JOIN":
                 apply_type = Position.ApplyType.JOIN
-                assert len(self.activated().filter(person=person, org=org))==0
+                assert len(self.activated().filter(person=person, org=org)) == 0
                 application, created = self.current().get_or_create(
                     person=person, org=org, apply_type=apply_type, apply_pos=apply_pos
                 )
@@ -482,14 +482,14 @@ class ActivityManager(models.Manager):
     def get_newlyended_activity(self):
         # 一周内结束的活动
         nowtime = datetime.now()
-        mintime = nowtime-timedelta(days = 7)
+        mintime = nowtime - timedelta(days = 7)
         return self.activated().filter(end__gt = mintime).filter(status=Activity.Status.END)
 
     def get_recent_activity(self):
         # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
         nowtime = datetime.now()
-        mintime = nowtime-timedelta(days = 7)
-        maxtime = nowtime+timedelta(days = 7)
+        mintime = nowtime - timedelta(days = 7)
+        maxtime = nowtime + timedelta(days = 7)
         return self.activated().filter(start__gt = mintime).filter(start__lt = maxtime).filter(
             status__in=[
                 Activity.Status.APPLYING,
@@ -502,7 +502,7 @@ class ActivityManager(models.Manager):
     def get_newlyreleased_activity(self):
         # 最新一周内发布的活动，按发布的时间逆序
         nowtime = datetime.now()
-        return self.activated().filter(publish_time__gt = nowtime-timedelta(days = 7)).filter(
+        return self.activated().filter(publish_time__gt = nowtime - timedelta(days = 7)).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -1093,22 +1093,22 @@ class ModifyPosition(CommentBase):
     def accept_submit(self): #同意申请，假设都是合法操作
         if self.apply_type == ModifyPosition.ApplyType.WITHDRAW:
             Position.objects.activated().filter(
-                org = self.org, person = self.person
-            ).update(status = Position.Status.DEPART)
+                org=self.org, person=self.person
+            ).update(status=Position.Status.DEPART)
         elif self.apply_type == ModifyPosition.ApplyType.JOIN:
             # 尝试获取已有的position
             if Position.objects.current().filter(
-                org = self.org, person = self.person).exists(): # 如果已经存在这个量了
-                Position.objects.current().filter(org = self.org, person = self.person
+                org=self.org, person=self.person).exists(): # 如果已经存在这个量了
+                Position.objects.current().filter(org=self.org, person=self.person
                 ).update(
-                    status = Position.Status.INSERVICE,
-                    pos = self.pos,
-                    is_admin = (self.pos<=self.org.otype.control_pos_threshold))
+                    status=Position.Status.INSERVICE,
+                    pos=self.pos,
+                    is_admin=(self.pos <= self.org.otype.control_pos_threshold))
             else: # 不存在 直接新建
-                Position.objects.create(pos=self.pos, person=self.person, org=self.org, is_admin = (self.pos<=self.org.otype.control_pos_threshold))
+                Position.objects.create(pos=self.pos, person=self.person, org=self.org, is_admin=(self.pos<=self.org.otype.control_pos_threshold))
         else:   # 修改 则必定存在这个量
-            Position.objects.activated().filter(org = self.org, person = self.person
-                ).update(pos = self.pos, is_admin = (self.pos<=self.org.otype.control_pos_threshold))
+            Position.objects.activated().filter(org=self.org, person=self.person
+                ).update(pos=self.pos, is_admin=(self.pos <= self.org.otype.control_pos_threshold))
         # 修改申请状态
         ModifyPosition.objects.filter(id=self.id).update(status=ModifyPosition.Status.CONFIRMED)
 
