@@ -1,4 +1,4 @@
-from utils_dependency import *
+from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
     Organization,
