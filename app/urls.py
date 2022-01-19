@@ -52,7 +52,7 @@ urlpatterns = [
     path("YQP_distributions/", YQPoint_views.YQPoint_distributions, name="YQP_distributions"),
     # path("YQP_distribution/<int:dis_id>", YQPoint_views.YQPoint_distribution, name="YQP_distribution"),
     # path("new_YQP_distribution", YQPoint_views.new_YQPoint_distribute, name="new_YQP_distribution"),
-    path("transPage/<str:rid>", views.transaction_page, name="transPage"),
+    path("transPage/<str:rid>", YQPoint_views.transaction_page, name="transPage"),
 ] + [
     # 活动与报销
     path("applyActivity/<str:aid>", activity_views.applyActivity, name="applyActivity"),
