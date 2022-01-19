@@ -49,7 +49,8 @@ def load_orgtype(debug=True):
         orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
         orgtype.otype_name = type_name
         # orgtype.otype_superior_id = type_superior_id
-        Nperson, mid = NaturalPerson.objects.get_or_create(name=incharge)
+        user, mid = User.objects.get_or_create(username=incharge)
+        Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
         orgtype.incharge = Nperson
         orgtype.job_name_list = otype_dict["job_name_list"]
         orgtype.control_pos_threshold = control_pos_threshold
