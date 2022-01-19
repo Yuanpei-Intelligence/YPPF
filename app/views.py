@@ -65,13 +65,13 @@ from django.db import transaction
 from django.db.models import Q, F
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
-"""
+
 
 # 定时任务不在views直接调用
 # 但是天气任务还是在这里弄吧，太奇怪了
 from app.scheduler_func import start_scheduler
 start_scheduler(with_scheduled_job=True, debug=True)
-"""
+
 
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
