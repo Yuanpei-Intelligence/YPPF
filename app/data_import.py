@@ -66,7 +66,7 @@ def load_org():
     for _, org_dict in org_df.iterrows():
         try:
             username = org_dict["organization_id"]
-            password = random_code_init(username)
+            password = 'YPPFtest'#random_code_init(username)
             if username[:2] == "zz":
                 oname = org_dict["oname"]
                 type_id = org_dict["otype_id"]
