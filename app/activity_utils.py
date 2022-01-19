@@ -1,8 +1,8 @@
 """
 activity_utils.py
 
-这个文件应该只被 /app/activity_views.py 依赖
-依赖于 /app/utils.py, /app/scheduler_func.py,
+这个文件应该只被 ./activity_views.py, ./scheduler_func.py 依赖
+依赖于 ./utils.py, ./wechat_send.py, ./notification_utils.py
 
 scheduler_func 依赖于 wechat_send 依赖于 utils
 
@@ -19,7 +19,7 @@ from app.models import (
     TransferRecord,
     Participant,
     Notification,
-    ActivityPhoto
+    ActivityPhoto,
 )
 from django.contrib.auth.models import User
 from app.utils import get_person_or_org, if_image
@@ -28,20 +28,411 @@ from app.notification_utils import(
     bulk_notification_create,
     notification_status_change,
 )
-from app.wechat_send import WechatApp
+from app.wechat_send import WechatApp, WechatMessageLevel
 import io
 import os
 import base64
 import qrcode
 
+from random import sample
 from datetime import datetime, timedelta
 from boottest import local_dict
 from django.db.models import Sum
-from app.scheduler import scheduler
-from app.scheduler_func import changeActivityStatus, notifyActivity
 from django.db.models import F
 
+from app.scheduler import scheduler
+
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
+
+
+"""
+使用方式：
+scheduler.add_job(changeActivityStatus, "date",
+    id=f"activity_{aid}_{to_status}", run_date, args)
+注意：
+    1、当 cur_status 不为 None 时，检查活动是否为给定状态
+    2、一个活动每一个目标状态最多保留一个定时任务
+允许的状态变换：
+    2、报名中 -> 等待中
+    3、等待中 -> 进行中
+    4、进行中 -> 已结束
+活动变更为进行中时，更新报名成功人员状态
+"""
+
+@log.except_captured(True, record_args=True, source='activity_utils[changeActivityStatus]修改活动状态')
+@log.except_captured(True, AssertionError, record_args=True, status_code=log.STATE_PROBLEM,
+                 record_user=False, record_request_args=False,
+                 source='activity_utils[changeActivityStatus]检查活动状态')
+def changeActivityStatus(aid, cur_status, to_status):
+    '''
+    幂等；可能发生异常；包装器负责处理异常
+    必须提供cur_status，则会在转换状态前检查前后状态，每次只能变更一个阶段
+    即：报名中->等待中->进行中->结束
+    状态不符合时，抛出AssertionError
+    '''
+    # print(f"Change Activity Job works: aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
+    with transaction.atomic():
+        activity = Activity.objects.select_for_update().get(id=aid)
+        if cur_status is not None:
+            assert cur_status == activity.status, f"希望的状态是{cur_status}，但实际状态为{activity.status}"
+            if cur_status == Activity.Status.APPLYING:
+                assert to_status == Activity.Status.WAITING, f"不能从{cur_status}变更到{to_status}"
+            elif cur_status == Activity.Status.WAITING:
+                assert to_status == Activity.Status.PROGRESSING, f"不能从{cur_status}变更到{to_status}"
+            elif cur_status == Activity.Status.PROGRESSING:
+                assert to_status == Activity.Status.END, f"不能从{cur_status}变更到{to_status}"
+        else:
+            raise AssertionError('未提供当前状态，不允许进行活动状态修改')
+
+        if to_status == Activity.Status.WAITING:
+            if activity.bidding:
+                """
+                投点时使用
+                if activity.source == Activity.YQPointSource.COLLEGE:
+                    draw_lots(activity)
+                else:
+                    weighted_draw_lots(activity)
+                """
+                draw_lots(activity)
+
+
+        # 活动变更为进行中时，修改参与人参与状态
+        elif to_status == Activity.Status.PROGRESSING:
+            if activity.need_checkin:
+                Participant.objects.filter(
+                    activity_id=aid,
+                    status=Participant.AttendStatus.APLLYSUCCESS
+                ).update(status=Participant.AttendStatus.UNATTENDED)
+            else:
+                Participant.objects.filter(
+                    activity_id=aid,
+                    status=Participant.AttendStatus.APLLYSUCCESS
+                ).update(status=Participant.AttendStatus.ATTENDED)
+
+            # if not activity.valid:
+            #     # 活动开始后，未审核自动通过
+            #     activity.valid = True
+            #     records = TransferRecord.objects.filter(
+            #         status=TransferRecord.TransferStatus.PENDING,
+            #         corres_act=activity,
+            #     )
+            #     total_amount = records.aggregate(nums=Sum('amount'))["nums"]
+            #     if total_amount is None:
+            #         total_amount = 0.0
+            #     if total_amount > 0:
+            #         organization_id = activity.organization_id_id
+            #         organization = Organization.objects.select_for_update().get(id=organization_id)
+            #         organization.YQPoint += total_amount
+            #         organization.save()
+            #         YP = Organization.objects.select_for_update().get(oname=YQP_ONAME)
+            #         YP.YQPoint -= total_amount
+            #         YP.save()
+            #     records.update(
+            #         status=TransferRecord.TransferStatus.ACCEPTED,
+            #         finish_time=datetime.now()
+            #     )
+
+            #     notification = Notification.objects.get(
+            #         relate_instance=activity,
+            #         status=Notification.Status.UNDONE,
+            #         title=Notification.Title.VERIFY_INFORM
+            #     )
+            #     notification_status_change(notification, Notification.Status.DONE)
+
+        # 结束，计算积分    
+        elif to_status == Activity.Status.END and activity.valid:
+            point = calcu_activity_bonus(activity)
+            participants = Participant.objects.filter(
+                activity_id=aid, status=Participant.AttendStatus.ATTENDED)
+            NaturalPerson.objects.filter(id__in=participants.values_list(
+                'person_id', flat=True)).update(
+                bonusPoint=F('bonusPoint') + point)
+
+        # 过早进行这个修改，将被写到activity待执行的保存中，导致失败后调用activity.save仍会调整状态
+        activity.status = to_status
+        activity.save()
+
+
+"""
+需要在 transaction 中使用
+所有涉及到 activity 的函数，都应该先锁 activity
+"""
+
+
+
+def draw_lots(activity):
+    participants_applying = Participant.objects.filter(activity_id=activity.id,
+                                                       status=Participant.AttendStatus.APPLYING)
+    l = len(participants_applying)
+
+    participants_applySuccess = Participant.objects.filter(
+        activity_id=activity.id,
+        status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.UNATTENDED, Participant.AttendStatus.ATTENDED]
+    )
+    engaged = len(participants_applySuccess)
+
+    leftQuota = activity.capacity - engaged
+
+    if l <= leftQuota:
+        Participant.objects.filter(
+            activity_id=activity.id,
+            status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYFAILED]
+        ).update(status=Participant.AttendStatus.APLLYSUCCESS)
+        activity.current_participants = engaged + l
+    else:
+        lucky_ones = sample(range(l), leftQuota)
+        activity.current_participants = activity.capacity
+        for i, participant in enumerate(Participant.objects.select_for_update().filter(
+                activity_id=activity.id,
+                status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYFAILED]
+        )):
+            if i in lucky_ones:
+                participant.status = Participant.AttendStatus.APLLYSUCCESS
+            else:
+                participant.status = Participant.AttendStatus.APLLYFAILED
+            participant.save()
+    #签到成功的转发通知和微信通知
+    receivers = Participant.objects.filter(
+            activity_id=activity.id,
+            status=Participant.AttendStatus.APLLYSUCCESS
+        ).values_list('person_id__person_id', flat=True)
+    receivers = User.objects.filter(id__in=receivers)
+    sender = activity.organization_id.organization_id
+    typename = Notification.Type.NEEDREAD
+    content = f'您好！您参与抽签的活动“{activity.title}”报名成功！请准时参加活动！'
+    URL = f'/viewActivity/{activity.id}'
+    if len(receivers) > 0:
+        bulk_notification_create(
+            receivers=receivers,
+            sender=sender,
+            typename=typename,
+            title=Notification.Title.ACTIVITY_INFORM,
+            content=content,
+            URL=URL,
+            publish_to_wechat=True,
+            publish_kws={
+                'app': WechatApp.TO_PARTICIPANT,
+                'level': WechatMessageLevel.IMPORTANT,
+            },
+        )
+    #抽签失败的同学发送通知
+    receivers = Participant.objects.filter(
+        activity_id=activity.id,
+        status=Participant.AttendStatus.APLLYFAILED
+    ).values_list('person_id__person_id', flat=True)
+    receivers = User.objects.filter(id__in=receivers)
+    content = f'很抱歉通知您，您参与抽签的活动“{activity.title}”报名失败！'
+    if len(receivers) > 0:
+        bulk_notification_create(
+            receivers=receivers,
+            sender=sender,
+            typename=typename,
+            title=Notification.Title.ACTIVITY_INFORM,
+            content=content,
+            URL=URL,
+            publish_to_wechat=True,
+            publish_kws={
+                'app': WechatApp.TO_PARTICIPANT,
+                'level': WechatMessageLevel.IMPORTANT,
+            },
+        )
+
+
+
+"""
+投点情况下的抽签，暂时不用
+需要在 transaction 中使用
+def weighted_draw_lots(activity):
+    participants = Participant.objects().select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)
+    l = len(participants)
+    if l <= activity.capacity:
+        for participant in participants:
+            participant.status = Participant.AttendStatus.APLLYSUCCESS
+            participant.save()
+    else:
+        weights = []
+        for participant in participants:
+            records = TransferRecord.objects(),filter(corres_act=activity, status=TransferRecord.TransferStatus.ACCEPTED, person_id=participant.proposer)
+            weight = 0
+            for record in records:
+                weight += record.amount
+            weights.append(weight)
+        total_weight = sum(weights)
+        d = [weight/total_weight for weight in weights]
+        lucky_ones = choice(l, activity.capacity, replacement=False, p=weights)
+        for i, participant in enumerate(participants):
+            if i in lucky_ones:
+                participant.status = Participant.AttendStatus.APLLYSUCCESS
+            else:
+                participant.status = Participant.AttendStatus.APLLYFAILED
+            participant.save()
+"""
+
+"""
+使用方式：
+scheduler.add_job(notifyActivityStart, "date",
+    id=f"activity_{aid}_{start_notification}", run_date, args)
+"""
+
+
+@log.except_captured(True, source='activity_utils[notifyActivity]发送微信消息')
+def notifyActivity(aid: int, msg_type: str, msg=""):
+    try:
+        activity = Activity.objects.get(id=aid)
+        inner = activity.inner
+        title = Notification.Title.ACTIVITY_INFORM
+        if msg_type == "newActivity":
+            title = activity.title
+            msg = f"您关注的小组{activity.organization_id.oname}发布了新的活动。"
+            msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
+            msg += f"\n活动地点: {activity.location}"
+            subscribers = NaturalPerson.objects.activated().exclude(
+                id__in=activity.organization_id.unsubscribers.all()
+            ).values_list('person_id', flat=True)
+            receivers = User.objects.filter(id__in=subscribers)
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER}  
+        elif msg_type == "remind":
+
+            with transaction.atomic():
+                activity = Activity.objects.select_for_update().get(id=aid)
+                nowtime = datetime.now()
+                notifications = Notification.objects.filter(
+                    relate_instance=activity,
+                    start_time__gt=nowtime + timedelta(seconds=60),
+                    title=Notification.Title.PENDING_INFORM,
+                )
+                if len(notifications) > 0:
+                    return False
+                else:
+                    msg = f"您参与的活动 <{activity.title}> 即将开始。"
+                    msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
+                    msg += f"\n活动地点: {activity.location}"
+                    participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
+                    receivers = participants.values_list('person_id__person_id', flat=True)
+                    receivers = User.objects.filter(id__in=receivers)
+                    # receivers = [participant.person_id.person_id for participant in participants]
+                    publish_kws = {"app": WechatApp.TO_PARTICIPANT}
+
+                    if inner and publish_kws.get('app') == WechatApp.TO_SUBSCRIBER:
+                        member_id_list = Position.objects.activated().filter(
+                            org=activity.organization_id).values_list(
+                                'person__person_id', flat=True)
+                        receivers = receivers.filter(id__in=member_id_list)
+
+                    success, _ = bulk_notification_create(
+                        receivers=list(receivers),
+                        sender=activity.organization_id.organization_id,
+                        typename=Notification.Type.NEEDREAD,
+                        title=title,
+                        content=msg,
+                        URL=f"/viewActivity/{aid}",
+                        relate_instance=activity,
+                        publish_to_wechat=True,
+                        publish_kws=publish_kws,
+                    )
+
+                    return success
+
+        elif msg_type == 'modification_sub':
+            subscribers = NaturalPerson.objects.activated().exclude(
+                id__in=activity.organization_id.unsubscribers.all()
+            ).values_list('person_id', flat=True)
+            receivers = User.objects.filter(id__in=subscribers)
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
+        elif msg_type == 'modification_par':
+            participants = Participant.objects.filter(
+                activity_id=aid,
+                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
+            )
+            receivers = participants.values_list('person_id__person_id', flat=True)
+            receivers = User.objects.filter(id__in=receivers)
+            # receivers = [participant.person_id.person_id for participant in participants]
+            publish_kws = {
+                "app": WechatApp.TO_PARTICIPANT,
+                "level": WechatMessageLevel.IMPORTANT,
+            }
+        elif msg_type == "modification_sub_ex_par":
+            '''
+                YWolfeee: 查询策略为，拿到NP list
+                拿到NP list中的person_id_id字段，作为一个list来操作
+                直接访问一次user表得到user list，而不是通过for循环每一个进行一次
+                要知道 [NP.user for NP in NP_list]的查询速度是O(xy),其中x是NP_list长度，y是User表长度
+                而 User.objects.filter(id__in = [NP_person_id_id_list])则是O(y)
+            '''
+            # ———————————————— 拿参与者的user_id ————————————————
+            participant_person_id = Participant.objects.filter(
+                activity_id=aid,
+                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
+            ).prefetch_related("person_id_id").values_list("person_id_id", flat=True) # 拿的是person_id
+            participant_user_id = NaturalPerson.objects.activated().filter(id__in = participant_person_id).values_list(
+                "person_id_id",flat=True)   # 这回拿到的是user_id
+
+            #  ———————————————— 拿订阅者的user_id ————————————————
+            subscribers_user_id = NaturalPerson.objects.activated().exclude(
+                id__in=activity.organization_id.unsubscribers.all()
+            ).values_list("person_id_id", flat=True )  # 拿的是user_id
+
+            # ———————————————— 获取对应的User QuerySet ————————————————
+            receiver_id_list = list(set(subscribers_user_id) - set(participant_user_id))
+            receivers = User.objects.filter(id__in = receiver_id_list)
+
+            # ↓这么写特别慢！
+            #receivers = list(set(subscribers) - set([participant.person_id for participant in participants]))
+            #receivers = [receiver.person_id for receiver in receivers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
+
+        # 应该用不到了，调用的时候分别发给 par 和 sub
+        # 主要发给两类用户的信息往往是不一样的
+        elif msg_type == 'modification_all':
+            # ———————————————— 拿参与者的user_id ————————————————
+            participant_person_id = Participant.objects.filter(
+                activity_id=aid,
+                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
+            ).values_list("person_id_id", flat=True) # 拿的是person_id
+            participant_user_id = NaturalPerson.objects.activated().filter(
+                id__in=participant_person_id).values_list(
+                    "person_id_id", flat=True)   # 这回拿到的是user_id
+
+            #  ———————————————— 拿订阅者的user_id ————————————————
+            subscribers_user_id = NaturalPerson.objects.activated().exclude(
+                id__in=activity.organization_id.unsubscribers.all()
+            ).values_list("person_id_id", flat=True )  # 拿的是user_id
+
+            # ———————————————— 获取对应的User QuerySet ————————————————
+            receiver_id_list = list(set(subscribers_user_id) | set(participant_user_id))
+            receivers = User.objects.filter(id__in = receiver_id_list)
+
+            # ↓这么写特别慢！
+            # receivers = set([participant.person_id for participant in participants]) | set(subscribers)
+            # receivers = [receiver.person_id for receiver in receivers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
+        else:
+            raise ValueError(f"msg_type参数错误: {msg_type}")
+        
+        # 现在必须保证到此处时receivers是一个queryset, 不过也有好处就是更统一了
+        # 参与者总是收到消息, 但订阅者消息只会发给内部
+        if inner and publish_kws.get('app') == WechatApp.TO_SUBSCRIBER:
+            member_id_list = Position.objects.activated().filter(
+                org=activity.organization_id).values_list(
+                    'person__person_id', flat=True)
+            receivers = receivers.filter(id__in=member_id_list)
+
+        success, _ = bulk_notification_create(
+            receivers=list(receivers),
+            sender=activity.organization_id.organization_id,
+            typename=Notification.Type.NEEDREAD,
+            title=title,
+            content=msg,
+            URL=f"/viewActivity/{aid}",
+            relate_instance=activity,
+            publish_to_wechat=True,
+            publish_kws=publish_kws,
+        )
+        assert success, "批量创建通知并发送时失败"
+
+    except Exception as e:
+        raise
+
 
 def get_activity_QRcode(activity):
     auth_code = hash_coder.encode(str(activity.id))

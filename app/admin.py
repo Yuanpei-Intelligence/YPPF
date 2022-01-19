@@ -396,7 +396,7 @@ class ActivityAdmin(admin.ModelAdmin):
                 request=request, message='一次只能修改一个活动状态!', level='error')
         activity = queryset[0]
         try:
-            from app.scheduler_func import changeActivityStatus
+            from app.activity_utils import changeActivityStatus
             changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
             try:
                 from app.scheduler_func import scheduler
@@ -421,7 +421,7 @@ class ActivityAdmin(admin.ModelAdmin):
                 request=request, message='一次只能修改一个活动状态!', level='error')
         activity = queryset[0]
         try:
-            from app.scheduler_func import changeActivityStatus
+            from app.activity_utils import changeActivityStatus
             changeActivityStatus(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
             try:
                 from app.scheduler_func import scheduler
@@ -446,7 +446,7 @@ class ActivityAdmin(admin.ModelAdmin):
                 request=request, message='一次只能修改一个活动状态!', level='error')
         activity = queryset[0]
         try:
-            from app.scheduler_func import changeActivityStatus
+            from app.activity_utils import changeActivityStatus
             changeActivityStatus(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
             try:
                 from app.scheduler_func import scheduler
