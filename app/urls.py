@@ -11,8 +11,8 @@
 """
 from django.urls import path, re_path
 from django.conf.urls.static import static
-from . import data_import, scheduler_func
-from . import views, activity_views, reimbursement_views
+from . import data_import
+from . import views, activity_views, reimbursement_views, YQPoint_views
 from django.conf import settings
 
 # 尽量不使用<type:arg>, 不支持
@@ -45,13 +45,13 @@ urlpatterns = [
     path("search/", views.search, name="search"),
     path("subscribeOrganization/", views.subscribeOrganization, name="subscribeOrganization"),
     path("saveSubscribeStatus", views.saveSubscribeStatus, name="saveSubscribeStatus"),
-    path("myYQPoint/", views.myYQPoint, name="myYQPoint"),
     path("QAcenter/", views.QAcenter, name="QAcenter"),
 ] + [
     # 元气值和后台操作
-    path("YQP_distributions/", scheduler_func.YQPoint_distributions, name="YQP_distributions"),
-    # path("YQP_distribution/<int:dis_id>", scheduler_func.YQPoint_distribution, name="YQP_distribution"),
-    # path("new_YQP_distribution", scheduler_func.new_YQPoint_distribute, name="new_YQP_distribution"),
+    path("myYQPoint/", YQPoint_views.myYQPoint, name="myYQPoint"),
+    path("YQP_distributions/", YQPoint_views.YQPoint_distributions, name="YQP_distributions"),
+    # path("YQP_distribution/<int:dis_id>", YQPoint_views.YQPoint_distribution, name="YQP_distribution"),
+    # path("new_YQP_distribution", YQPoint_views.new_YQPoint_distribute, name="new_YQP_distribution"),
     path("transPage/<str:rid>", views.transaction_page, name="transPage"),
 ] + [
     # 活动与报销

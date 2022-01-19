@@ -22,6 +22,8 @@ utils
 - 导入Django等复杂的依赖模块
 - 在以上导入完成后，声明文件内所需的全局变量
 
+- 推荐随后定义__all__列表，声明所有对外的接口
+
 依赖关系
 -------
 - 依赖于constants, log和global_messages
