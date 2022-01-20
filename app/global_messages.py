@@ -2,6 +2,14 @@
 from typing import Union
 from app.constants import WRONG, SUCCEED
 
+__all__ = [
+    'WRONG', 'SUCCEED',
+    'wrong', 'succeed',
+    'append_query', 'message_url',
+    'get_global_message',
+    'read_GET', 'read_POST',
+]
+
 # 在错误的情况下返回的字典, message为错误信息
 def wrong(message, context=None):
     '''
@@ -67,7 +75,7 @@ def message_url(context: Union[dict, list], url: str='/welcome/')-> str:
 
 def get_global_message(request):
     '''
-    解析失败时返回None, 
+    解析失败时返回None,
     成功时返回(warn_code, warn_message)
     '''
     try:
@@ -77,3 +85,40 @@ def get_global_message(request):
         return warn_code, warn_message
     except:
         return None
+
+
+def _read_request(content, key, default, trans_func, raise_exception):
+    try:
+        result = content[key]
+        return result if trans_func is None else trans_func(result)
+    except Exception as e:
+        if raise_exception:
+            raise
+        return default
+    
+
+def read_GET(request, key: str, default=None, trans_func=None, raise_exception=False):
+    '''
+    读取GET参数
+
+    - key: 待读取的键值
+    - default: 键不存在时的返回值, 默认为`None`
+    - trans_func: 可选, 键存在时, 结果的类型转换函数, 如`int`, `str`
+    - raise_exception: 键不存在时是否抛出异常, 默认不抛出
+    - 调用者保证`request`是一个请求，否则行为未定义
+    '''
+    return _read_request(request.GET, key, default, trans_func, raise_exception)
+
+
+def read_POST(request, key: str, default=None, trans_func=None, raise_exception=False):
+    '''
+    读取POST参数
+
+    - key: 待读取的键值
+    - default: 键不存在时的返回值, 默认为`None`
+    - trans_func: 可选, 键存在时, 结果的类型转换函数, 如`int`, `str`
+    - raise_exception: 键不存在时是否抛出异常, 默认不抛出
+    - 调用者保证`request`是一个请求，否则行为未定义
+    '''
+    return _read_request(request.POST, key, default, trans_func, raise_exception)
+
