@@ -66,7 +66,7 @@ def load_org():
     for _, org_dict in org_df.iterrows():
         try:
             username = org_dict["organization_id"]
-            password = 'YPPFtest'#random_code_init(username)
+            password = 'YPPFtest' if DEBUG else random_code_init(username)
             if username[:2] == "zz":
                 oname = org_dict["oname"]
                 type_id = org_dict["otype_id"]
@@ -305,6 +305,7 @@ def load_stu_data(request):
     failed_list = []
     Char2Gender = {"男": NaturalPerson.Gender.MALE, "女": NaturalPerson.Gender.FEMALE}
     username = 'null'
+    fail_info = None
     for _, stu_dict in tqdm(stu_df.iterrows()):
         total += 1
         try:
@@ -350,7 +351,8 @@ def load_stu_data(request):
                     telephone=tel,
                 )
             )
-        except:
+        except Exception as e:
+            fail_info = str(e)
             failed_list.append(username)
             continue
     NaturalPerson.objects.bulk_create(stu_list)
@@ -363,6 +365,7 @@ def load_stu_data(request):
                     ','.join(exist_list),
                     f"失败{len(failed_list)}人，名单为",
                     ','.join(failed_list),
+                    f'最后一次失败原因为: {fail_info}' if fail_info is not None else '',
                     ))
         }
     return render(request, "debugging.html", context)
