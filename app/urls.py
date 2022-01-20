@@ -12,7 +12,13 @@
 from django.urls import path, re_path
 from django.conf.urls.static import static
 from . import data_import
-from . import views, activity_views, reimbursement_views, YQPoint_views
+from . import (
+    views,
+    org_views,
+    activity_views,
+    reimbursement_views,
+    YQPoint_views,
+)
 from django.conf import settings
 
 # 尽量不使用<type:arg>, 不支持
@@ -67,12 +73,12 @@ urlpatterns = [
     path("modifyEndActivity/", reimbursement_views.modifyEndActivity, name="modifyEndActivity"),
 ] + [
     # 组织相关操作
-    path("saveShowPositionStatus", views.saveShowPositionStatus, name="saveShowPositionStatus"),
-    path("showNewOrganization/", views.showNewOrganization, name="showNewOrganization"),
-    path('showPosition/', views.showPosition, name="showPosition"),
-    path("modifyPosition/", views.modifyPosition, name="modifyPosition"),
-    path("modifyOrganization/", views.modifyOrganization, name="modifyOrganization"),
-    path("sendMessage/", views.sendMessage, name="sendMessage"),
+    path("saveShowPositionStatus", org_views.saveShowPositionStatus, name="saveShowPositionStatus"),
+    path("showNewOrganization/", org_views.showNewOrganization, name="showNewOrganization"),
+    path('showPosition/', org_views.showPosition, name="showPosition"),
+    path("modifyPosition/", org_views.modifyPosition, name="modifyPosition"),
+    path("modifyOrganization/", org_views.modifyOrganization, name="modifyOrganization"),
+    path("sendMessage/", org_views.sendMessage, name="sendMessage"),
     # path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"), 弃用多年
 ] + [
     # 数据导入
