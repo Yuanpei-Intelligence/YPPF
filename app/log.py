@@ -9,7 +9,7 @@ import json
 import hashlib
 
 __all__ = [
-    'STATE_DEBUG', 'STATE_OK', 'STATE_PROBLEM', 'STATE_ERROR',
+    'STATE_DEBUG', 'STATE_INFO', 'STATE_WARNING', 'STATE_ERROR',
     'operation_writer',
     'except_captured',
     'record_traceback',
@@ -17,15 +17,15 @@ __all__ = [
 
 # 状态常量
 STATE_DEBUG = 'Debug'
-STATE_OK = 'OK'
-STATE_PROBLEM = 'Problem'
+STATE_INFO = 'Info'
+STATE_WARNING = 'Warning'
 STATE_ERROR = 'Error'
 
 
 # 线程锁，用于对文件写入的排他性
 __lock = threading.RLock()
 # 记录最低等级
-__log_level = STATE_OK
+__log_level = STATE_INFO
 # 文件操作体系
 __log_root = "logstore"
 if not os.path.exists(__log_root):
@@ -39,7 +39,7 @@ __log_detailed_path = os.path.join(__log_root_path, "traceback_record")
 
 def status_enabled(status_code: str):
     # 待完善，半成品
-    level_up = [STATE_DEBUG, STATE_OK, STATE_PROBLEM, STATE_ERROR]
+    level_up = [STATE_DEBUG, STATE_INFO, STATE_WARNING, STATE_ERROR]
     try:
         return level_up.index(status_code) >= level_up.index(__log_level)
     except:
@@ -49,7 +49,7 @@ def status_enabled(status_code: str):
 # 通用日志写入程序 写入时间(datetime.now()),操作主体(Sid),操作说明(Str),写入函数(Str)
 # 参数说明：第一为Sid也是文件名，第二位消息，第三位来源的函数名（类别）
 # 如果是系统相关的 请写local_dict["system_log"]
-def operation_writer(user, message, source=None, status_code: str=STATE_OK):
+def operation_writer(user, message, source=None, status_code: str=STATE_INFO):
     if not status_enabled(status_code):
         return
     
