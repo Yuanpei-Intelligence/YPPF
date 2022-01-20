@@ -269,7 +269,7 @@ def url_check(arg_url):
         # print('base:', base)
         if re.match(base, arg_url):
             return True
-    log.operation_writer(SYSTEM_LOG, f'URL检查不合格: {arg_url}', 'utils[url_check]', log.STATE_PROBLEM)
+    log.operation_writer(SYSTEM_LOG, f'URL检查不合格: {arg_url}', 'utils[url_check]', log.STATE_WARNING)
     return False
 
 

@@ -235,7 +235,7 @@ def bulk_notification_create(
                 
                 cur_status = '重复处理'
                 if duplicate_behavior in ['report', 'log']:
-                    status_code = log.STATE_ERROR if duplicate_behavior == 'report' else log.STATE_PROBLEM
+                    status_code = log.STATE_ERROR if duplicate_behavior == 'report' else log.STATE_WARNING
                     log.operation_writer(SYSTEM_LOG,
                                     f'批量创建通知时通知已存在, 识别码为{bulk_identifier}'
                                     + f'：尝试创建{len(receiver_ids)}个，已有{received_ids[:3]}等{len(received_ids)}个，共存在{len(exist_userids)}个',
@@ -248,7 +248,7 @@ def bulk_notification_create(
                     log.operation_writer(SYSTEM_LOG,
                                     f'批量创建通知时通知已存在, 识别码为{bulk_identifier}'
                                     + f'：已移除{received_ids[:3]}等{len(received_ids)}个已通知用户，剩余{len(receivers)}个',
-                                    'notification_utils[bulk_notification_create]', log.STATE_PROBLEM)
+                                    'notification_utils[bulk_notification_create]', log.STATE_WARNING)
                     if not receivers:
                         return True, bulk_identifier
             
