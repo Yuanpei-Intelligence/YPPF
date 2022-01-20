@@ -160,6 +160,15 @@
                                                                     onclick="window.location='{%if is_teacher %}{{audit_link}}{%else%}{{link}}{% endif %}{% if query_field %}{{instance.id}}{% endif %}'">
                                                                     {{btn_name}}
                                                                 </a>
+
+                                                                {% if not is_teacher %}
+                                                                <a href="#" class="btn btn-primary my-3 my-sm-2" tabindex="-1"
+                                                                    role="button"
+                                                                    onclick="window.location='/addActivity/?template={{instance.id}}'">
+                                                                    导入
+                                                                </a>
+                                                                {% endif %}
+
                                                             </h5>
                                                         </div>
 

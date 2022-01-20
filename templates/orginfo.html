@@ -70,7 +70,7 @@
 
                         <div class="text-center user-info">
                             <img src={{ org_avatar_path }} height="90px" width="90px" alt="avatar">
-                            <p class="">{{ organization_name }}</p>
+                            <p style="color: #0e1726;">{{ organization_name }}</p>
                             {% if is_person %}
                             <div class="custom-control custom-switch">
                                 {% if subscribe_flag %}
@@ -423,7 +423,9 @@
                                                                 {% else %}
                                                                 {% if rec.act.status == "审核中" %}
                                                                 <span class="flex badge badge-pill badge-secondary">
-                                                                {% elif rec.act.status == "未过审" or rec.act.status == "已取消" or rec.act.status == "已撤销" or rec.act.status == "已结束" %}
+                                                                {% elif rec.act.status == "已取消" %}
+                                                                <span class="badge badge-pill badge-dark">
+                                                                {% elif rec.act.status == "未过审" or rec.act.status == "已撤销" or rec.act.status == "已结束" %}
                                                                 <span class="badge badge-pill badge-danger">
                                                                 {% elif rec.act.status == "报名中" %}
                                                                 <span class="badge badge-pill badge-info">
@@ -530,7 +532,11 @@
                                                             <h5
                                                                 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
 
+                                                                {% if rec.act.status == "已取消" %}
+                                                                <span class="badge badge-pill badge-dark">
+                                                                {% else %}
                                                                 <span class="badge badge-pill badge-danger">
+                                                                {% endif %}
                                                                     {{ rec.act.status }}
                                                                 </span>
 
@@ -648,7 +654,7 @@
         }
     }
     async function save_subscribe_status(status) {
-        const { success } = await fetch(`/save_subscribe_status`, {
+        const { success } = await fetch(`/saveSubscribeStatus`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
             body: JSON.stringify({ id: '{{org.organization_id.username}}', status }),
@@ -658,7 +664,7 @@
         return success;
     }
     async function save_show_position_status(status) {
-        const { success } = await fetch(`/save_show_position_status`, {
+        const { success } = await fetch(`/saveShowPositionStatus`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
             body: JSON.stringify({ id: '{{my_position.id}}', status }),

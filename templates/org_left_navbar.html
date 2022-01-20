@@ -155,6 +155,47 @@
                         </a>
                     </li>
 
+
+                    {% if request.session.Incharge or request.session.NP %}
+                    <li class="menu">
+                        <a href="#dashboard2" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                            <div class="">
+                                <!-- repeat -->
+                                <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2"
+                                    fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1">
+                                    <polyline points="17 1 21 5 17 9"></polyline>
+                                    <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                                    <polyline points="7 23 3 19 7 15"></polyline>
+                                    <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+                                </svg> <span>账号切换</span>
+                            </div>
+                            <div>
+                                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
+                                    stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                    class="feather feather-chevron-right">
+                                    <polyline points="9 18 15 12 9 6"></polyline>
+                                </svg>
+                            </div>
+                        </a>
+                        <ul class="collapse submenu list-unstyled" id="dashboard2" data-parent="#accordionExample">
+                            {% if request.session.NP %}
+                            <li>
+                                <a href="/shiftAccount/">个人账号</a>
+                            </li>
+                            {% endif %}
+                            {% if request.session.Incharge %}
+                            {% for oname in request.session.Incharge %}
+                            <li>
+                                <!-- TODO   Onclick 添加 origin  但是由于个人和组织能看的页面并不统一，暂且不加了 -->
+                                <a href="/shiftAccount/?oname={{oname}}"> {{oname}}</a>
+                            </li>
+                            {% endfor %}
+                            {% endif %}
+                        </ul>
+                    </li>
+                    {% endif %}
+
+
                     <li class="menu nav-item">
                         <a href="#info" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle nav-link active">
                             <div class="">
@@ -170,7 +211,7 @@
                         </a>
                         <ul class="collapse submenu list-unstyled" id="info" data-parent="#accordionExample">
                             <li>
-                                <a href="/user_account_setting/"> 信息与隐私 </a>
+                                <a href="/userAccountSetting/"> 信息与隐私 </a>
                             </li>
                             <li>
                                 <a href="/modpw/">修改密码</a>

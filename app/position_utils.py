@@ -1,4 +1,4 @@
-from django.dispatch.dispatcher import receiver
+from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
     Organization,
@@ -7,23 +7,7 @@ from app.models import (
     ModifyPosition,
     Notification,
 )
-import app.utils as utils
-from django.db import transaction
 
-
-# 在错误的情况下返回的字典,message为错误信息
-def wrong(message="检测到恶意的申请操作. 如有疑惑，请联系管理员!"):
-    context = dict()
-    context["warn_code"] = 1
-    context["warn_message"] = message
-    return context
-
-
-def succeed(message):
-    context = dict()
-    context["warn_code"] = 2
-    context["warn_message"] = message
-    return context
 
 # 修改成员申请状态的操作函数, application为修改的对象，可以为None
 # me为操作者
@@ -91,7 +75,8 @@ def update_pos_application(application, me, user_type, applied_org, info):
                 elif apply_type == "退出小组":
                     if not Position.objects.activated().filter(person=me, org=applied_org).exists():
                         return wrong("退出小组出错, 请联系管理员!")
-                    if len(Position.objects.activated().filter(org=applied_org, is_admin=True)) == 1:
+                    managers = Position.objects.activated().filter(org=applied_org, is_admin=True)
+                    if len(managers) == 1 and managers[0].person == me:
                         return wrong("作为小组唯一的老大，你不能退出！")
                     # 退出小组不应该有apply_pos
                     apply_pos = None
@@ -105,13 +90,13 @@ def update_pos_application(application, me, user_type, applied_org, info):
                     except:
                         return wrong("修改职位出错！")
                 else:  # 非法操作
-                    return wrong()
+                    return wrong("检测到恶意的申请操作. 如有疑惑，请联系管理员!")
 
                 # 如果是新建申请, 则应该意味着me+applied_org的pending申请目前不存在
                 if post_type == "new_submit":
                     if len(ModifyPosition.objects.filter(
                         person=me, status=ModifyPosition.Status.PENDING
-                    ))>=3:
+                    )) >= 3:
                         return wrong("审核中的成员变动申请的数目不能超过三个！")
                     if ModifyPosition.objects.filter(
                         person=me, org=applied_org, status=ModifyPosition.Status.PENDING
@@ -119,7 +104,7 @@ def update_pos_application(application, me, user_type, applied_org, info):
                         return wrong("向该小组的申请已存在，请不要重复申请！")
                     # 至此可以新建申请, 创建一个空申请
                     application = ModifyPosition.objects.create(
-                        typename="ModifyPosition", pos=apply_pos, person=me, org=applied_org, apply_type=apply_type, reason=apply_reason)
+                        pos=apply_pos, person=me, org=applied_org, apply_type=apply_type, reason=apply_reason)
                     context = succeed("成功发起向" + applied_org.oname + "的申请!")
                     context["application_id"] = application.id
                     return context

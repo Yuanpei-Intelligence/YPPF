@@ -1,4 +1,4 @@
-from django.db import transaction
+from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
     Organization,
@@ -14,25 +14,24 @@ from app.models import (
     Wishes,
     QandA,
 )
-from django.contrib.auth.models import User
-from django.dispatch.dispatcher import receiver
-from django.contrib import auth
-from django.shortcuts import redirect
-from django.conf import settings
-from django.http import HttpResponse
 from boottest import local_dict
-from datetime import datetime, timedelta
-from functools import wraps
+
 import re
 import imghdr
 import string
 import random
 import xlwt
 from io import BytesIO
+import urllib.parse
+
+from datetime import datetime, timedelta
+from functools import wraps
+from django.contrib.auth.models import User
+from django.contrib import auth
+from django.shortcuts import redirect
+from django.http import HttpResponse
 from django.db.models import F
 
-
-YQPoint_oname = local_dict["YQPoint_source_oname"]
 
 def check_user_access(redirect_url="/logout/", is_modpw=False):
     """
@@ -63,34 +62,6 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
     return actual_decorator
 
 
-def except_captured(return_value=None, except_type=Exception,
-                    log=True, record_args=False,
-                    source='utils[except_captured]', status_code='Error'):
-    """
-    Decorator that captures exception and log, raise or 
-    return specific value if `return_value` is assigned.
-    """
-
-    def actual_decorator(view_function):
-        @wraps(view_function)
-        def _wrapped_view(*args, **kwargs):
-            try:
-                return view_function(*args, **kwargs)
-            except except_type as e:
-                if log:
-                    msg = f'发生错误：{e}'
-                    if record_args:
-                        msg += f', 参数为：{args=}, {kwargs=}'
-                    operation_writer(local_dict['system_log'],
-                        msg, source, status_code)
-                if return_value is not None:
-                    return return_value
-                raise
-
-        return _wrapped_view
-
-    return actual_decorator
-
 
 def get_person_or_org(user, user_type=None):
     if user_type is None:
@@ -110,7 +81,15 @@ def get_person_or_org(user, user_type=None):
 # 同步开启一个html_display，方便拓展前端逻辑的呈现
 def check_user_type(user):
     html_display = {}
-    if user.is_superuser:
+    if user.is_superuser or user.is_staff:
+        if user.is_staff:
+            for user_type, model_name in [
+                ("Organization", "organization"),
+                ("Person", "naturalperson"),
+                ]:
+                if hasattr(user, model_name):
+                    html_display["user_type"] = user_type
+                    return True, user_type, html_display
         return False, "", html_display
     if user.username[:2] == "zz":
         user_type = "Organization"
@@ -129,18 +108,18 @@ def get_user_ava(obj, user_type):
         ava = ""
     if not ava:
         if user_type == "Person":
-            return settings.MEDIA_URL + "avatar/person_default.jpg"
+            return MEDIA_URL + "avatar/person_default.jpg"
         else:
-            return settings.MEDIA_URL + "avatar/org_default.png"
+            return MEDIA_URL + "avatar/org_default.png"
     else:
-        return settings.MEDIA_URL + str(ava)
+        return MEDIA_URL + str(ava)
 
 
 def get_user_wallpaper(person, user_type):
     if user_type == "Person":
-        return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/person_wall_default.jpg")
+        return MEDIA_URL + (str(person.wallpaper) or "wallpaper/person_wall_default.jpg")
     else:
-        return settings.MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.jpg")
+        return MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.jpg")
 
 # 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
 def get_user_left_navbar(person, is_myself, html_display):
@@ -201,6 +180,8 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     me = get_person_or_org(user)  # 获得对应的对象
     _, user_type, _ = check_user_type(user)
     bar_display["user_type"] = user_type
+    if user.is_staff:
+        bar_display["is_staff"] = True
 
     # 接下来填补各种前端呈现信息
 
@@ -222,13 +203,12 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         bar_display["underground_url"] = local_dict["url"]["base_url"]
 
         # 个人所管理的小组列表
-        my_org_id_list = Position.objects.activated().filter(person=me, is_admin=True).select_related("org")
-        bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
-        bar_display["my_org_len"] = len(bar_display["my_org_list"])
+        # my_org_id_list = Position.objects.activated().filter(person=me, is_admin=True).select_related("org")
+        # bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
+        # bar_display["my_org_len"] = len(bar_display["my_org_list"])
         
         
-        bar_display['is_auditor'] = True if me.person_id.username == local_dict[
-            "audit_teacher"]["Funds"] else False
+        bar_display['is_auditor'] = me.identity == NaturalPerson.Identity.TEACHER
     
     else:
         bar_display["profile_name"] = "小组主页"
@@ -277,19 +257,70 @@ def check_ac_request(request):
 
 
 def url_check(arg_url):
-    if settings.DEBUG:  # DEBUG默认通过
+    if DEBUG:  # DEBUG默认通过
         return True
     if arg_url is None:
         return True
     if re.match("^/[^/?]*/", arg_url):  # 相对地址
         return True
     for url in local_dict["url"].values():
-        base = re.findall("^https?://[^/]*/?", url)[0]
+        base = re.findall("^https?://([^/]*)/?", url)[0]
+        base = f'^https?://{base}/?'
         # print('base:', base)
         if re.match(base, arg_url):
             return True
+    log.operation_writer(SYSTEM_LOG, f'URL检查不合格: {arg_url}', 'utils[url_check]', log.STATE_PROBLEM)
     return False
 
+
+def site_match(site, url, path_check_level=0, scheme_check=False):
+    '''检查是否是同一个域名，也可以检查路径是否相同
+    - path_check_level: 0-2, 不检查/忽视末尾斜杠/完全相同
+    - scheme_check: bool, 协议是否相同
+    '''
+    site = urllib.parse.urlparse(site)
+    url = urllib.parse.urlparse(url)
+    if site.netloc != url.netloc:
+        return False
+    if scheme_check and site.scheme != url.scheme:
+        return False
+    if path_check_level:
+        spath, upath = site.path, url.path
+        if path_check_level > 1:
+            spath, upath = spath.rstrip('/'), upath.rstrip('/')
+        if spath != upath:
+            return False
+    return True
+
+def get_std_underground_url(underground_url):
+    '''检查是否是地下室网址，返回(is_underground, standard_url)
+    - 如果是，规范化网址，否则返回原URL
+    - 如果参数为None，返回URL为地下室网址'''
+    site_url = local_dict["url"]["base_url"]
+    if underground_url is None:
+        underground_url = site_url
+    if site_match(site_url, underground_url):
+        underground_url = urllib.parse.urlunparse(
+            urllib.parse.urlparse(site_url)[:2]
+            + urllib.parse.urlparse(underground_url)[2:])
+        return True, underground_url
+    return False, underground_url
+
+def get_std_inner_url(inner_url):
+    '''检查是否是内部网址，返回(is_inner, standard_url)
+    - 如果是，规范化网址，否则返回原URL
+    - 如果参数为None，返回URL为主页相对地址'''
+    site_url = LOGIN_URL
+    if inner_url is None:
+        inner_url = '/welcome/'
+    if site_match(site_url, inner_url):
+        inner_url = urllib.parse.urlunparse(
+            ('', '') + urllib.parse.urlparse(inner_url)[2:])
+    url_parse = urllib.parse.urlparse(inner_url)
+    if url_parse.scheme or url_parse.netloc:
+        return False, inner_url
+    return True, inner_url
+    
 
 # 允许进行 cross site 授权时，return True
 def check_cross_site(request, arg_url):
@@ -297,7 +328,8 @@ def check_cross_site(request, arg_url):
         return True
     # 这里 base_url 最好可以改一下
     appointment = local_dict["url"]["base_url"]
-    appointment_base = re.findall("^https?://[^/]*/", appointment)[0]
+    appointment_base = re.findall("^https?://([^/]*)/", appointment)[0]
+    appointment_base = f"^https?://{appointment_base}/"
     if re.match(appointment_base, arg_url):
         valid, user_type, html_display = check_user_type(request.user)
         if not valid or user_type == "Organization":
@@ -306,6 +338,7 @@ def check_cross_site(request, arg_url):
 
 
 def get_url_params(request, html_display):
+    raise NotImplementedError
     full_path = request.get_full_path()
     if "?" in full_path:
         params = full_path.split["?"][1]
@@ -315,7 +348,7 @@ def get_url_params(request, html_display):
             if key not in html_display.keys():  # 禁止覆盖
                 html_display[key] = value
 
-# 检查neworg request参数的合法性 ,用在modifyorganization函数中
+# 检查neworg request参数的合法性, 用在modifyorganization函数中
 def check_neworg_request(request, org=None):
     context = dict()
     context["warn_code"] = 0
@@ -382,9 +415,9 @@ def check_neworg_request(request, org=None):
         context["warn_code"] = 1
         context["warn_message"] = "申请理由不能为空"
     return context
-# 检查neworg request参数的合法性 ,用在modifyoranization函数中
+# 检查neworg request参数的合法性, 用在modifyoranization函数中
 
-def check_newpos_request(request,prepos=None):
+def check_newpos_request(request, prepos=None):
 
     context = dict()
     context['warn_code'] = 0
@@ -392,7 +425,7 @@ def check_newpos_request(request,prepos=None):
         oname = str(request.POST['oname'])
     else:
         oname = prepos.position.org.oname
-    context['apply_pos'] = int(request.POST.get('apply_pos',10))
+    context['apply_pos'] = int(request.POST.get('apply_pos', 10))
     context['apply_type'] = str(request.POST.get('apply_type',"加入小组"))
     if len(oname) >= 32:
         context['warn_code'] = 1
@@ -499,7 +532,7 @@ def set_nperson_quota_to(quota):
     activated_npeople.update(quota=quota)
     notification_content = f"学院已经将大家的元气值配额重新设定为{quota},祝您使用愉快！"
     title = Notification.Title.VERIFY_INFORM
-    YPcollege = Organization.objects.get(oname=YQPoint_oname)
+    YPcollege = Organization.objects.get(oname=YQP_ONAME)
 
     # 函数内导入是为了防止破坏utils的最高优先级，如果以后确定不会循环引用也可提到外面
     # 目前不发送到微信哦
@@ -515,7 +548,7 @@ def set_nperson_quota_to(quota):
     )
     return success
 
-def check_account_setting(request,user_type):
+def check_account_setting(request, user_type):
     if user_type == 'Person':
         html_display = dict()
         attr_dict = dict()
@@ -580,11 +613,8 @@ def get_unreimb_activity(org):
     """
     reimbursed_act_ids = (
         Reimbursement.objects.all()
-            .exclude(
-            status=Reimbursement.ReimburseStatus.CANCELED  # 未取消报销的
-            # 未被拒绝的
-        )
-            .exclude(status=Reimbursement.ReimburseStatus.REFUSED)
+            .exclude(status=Reimbursement.ReimburseStatus.CANCELED)  # 未取消的
+            .exclude(status=Reimbursement.ReimburseStatus.REFUSED)   # 未被拒绝的
             .values_list("related_activity_id", flat=True)
     )
     activities = (
@@ -592,13 +622,14 @@ def get_unreimb_activity(org):
             .filter(organization_id=org)  # 本部门小组的
             .filter(status=Activity.Status.END)  # 已结束的
             .exclude(id__in=reimbursed_act_ids))  # 还没有报销的
-    activities.len=len(activities)
+    activities.len = len(activities)
     return activities
+
 def accept_modifyorg_submit(application): #同意申请，假设都是合法操作
     # 新建一系列东西
     username = find_max_oname()
     user = User.objects.create(username=username)
-    password=random_code_init(user.id)
+    password = random_code_init(user.id)
     user.set_password(password)
     user.save()
     org = Organization.objects.create(organization_id=user, oname=application.oname, \
@@ -608,24 +639,10 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
         org.unsubscribers.add(person)
     org.save()
     charger = get_person_or_org(application.pos)
-    pos = Position.objects.create(person=charger,org=org,pos=0,status=Position.Status.INSERVICE,is_admin = True)
+    pos = Position.objects.create(person=charger, org=org, pos=0, status=Position.Status.INSERVICE, is_admin=True)
     # 修改申请状态
     ModifyOrganization.objects.filter(id=application.id).update(status=ModifyOrganization.Status.CONFIRMED)
-    Wishes.objects.create(text="学生小组“"+str(org.oname)+"”刚刚成立啦！快点去关注一下吧！")
-
-# 在错误的情况下返回的字典,message为错误信息
-def wrong(message="检测到恶意的申请操作. 如有疑惑，请联系管理员!"):
-    context = dict()
-    context["warn_code"] = 1
-    context["warn_message"] = message
-    return context
-
-
-def succeed(message="检测到恶意的申请操作. 如有疑惑，请联系管理员!"):
-    context = dict()
-    context["warn_code"] = 2
-    context["warn_message"] = message
-    return context
+    Wishes.objects.create(text=f"{org.otype.otype_name}“{org.oname}”刚刚成立啦！快点去关注一下吧！")
 
 
 # 修改成员申请状态的操作函数, application为修改的对象，可以为None
@@ -643,7 +660,7 @@ def update_org_application(application, me, request):
         info = request.POST
         if application is not None:
             application = ModifyOrganization.objects.select_for_update().get(id=application.id)
-            user_type = 'pos' if me.person_id==application.pos else 'incharge'
+            user_type = 'pos' if me.person_id == application.pos else 'incharge'
         else:
             user_type = 'pos'
         # 首先确定申请状态
@@ -742,52 +759,9 @@ def update_org_application(application, me, request):
                     return wrong("出现系统意料之外的行为，请联系管理员处理!")
 
 
-import threading
-import os
-# 线程锁，用于对文件写入的排他性
-lock = threading.RLock()
-# 文件操作体系
-log_root = "logstore"
-if not os.path.exists(log_root):
-    os.mkdir(log_root)
-log_root_path = os.path.join(os.getcwd(), log_root)
-log_user = "user_detail"
-if not os.path.exists(os.path.join(log_root_path, log_user)):
-    os.mkdir(os.path.join(log_root_path, log_user))
-log_user_path = os.path.join(log_root_path, log_user)
-
-
-# 通用日志写入程序 写入时间(datetime.now()),操作主体(Sid),操作说明(Str),写入函数(Str)
-# 参数说明：第一为Sid也是文件名，第二位消息，第三位来源的函数名（类别）
-# 如果是系统相关的 请写local_dict["system_log"]
-def operation_writer(user, message, source, status_code="OK"):
-    lock.acquire()
-    try:
-        timestamp = str(datetime.now())
-        source = str(source).ljust(30)
-        status = status_code.ljust(10)
-        message = f"{timestamp} {source}{status}: {message}\n"
-
-        with open(os.path.join(log_user_path, f"{str(user)}.log"), mode="a") as journal:
-            journal.write(message)
-
-        if status_code == "Error" and local_dict.get('debug_stuids'):
-            from app.wechat_send import send_wechat
-            receivers = list(local_dict['debug_stuids'])
-            if isinstance(receivers, str):
-                receivers = receivers.replace(' ', '').split(',')
-            receivers = list(map(str, receivers))
-            send_wechat(receivers, 'YPPF发生异常\n' + message)
-    except Exception as e:
-        # 最好是发送邮件通知存在问题
-        # 待补充
-        print(e)
-
-    lock.release()
-
 
 # 导出Excel文件
-def export_activity(activity,inf_type):
+def export_activity(activity, inf_type):
 
     # 设置HTTPResponse的类型
     response = HttpResponse(content_type='application/vnd.ms-excel')
@@ -823,7 +797,7 @@ def export_activity(activity,inf_type):
             Sno = participant.person_id.person_id.username
             grade = str(participant.person_id.stu_grade) + '级' + str(participant.person_id.stu_class) + '班'
             if inf_type == "enroll":
-                status=participant.status
+                status = participant.status
                 w.write(excel_row, 3, status)
             # 写入每一行对应的数据
             w.write(excel_row, 0, name)
@@ -862,7 +836,7 @@ def export_orgpos_info(org):
         for participant in participants:
             name = participant.person.name
             Sno = participant.person.person_id.username
-            pos=org.otype.job_name_list[participant.pos]
+            pos = org.otype.get_name(participant.pos)
             # 写入每一行对应的数据
             w.write(excel_row, 0, name)
             w.write(excel_row, 1, Sno)
@@ -925,5 +899,66 @@ def record_modify_with_session(request, info=""):
     except:
         pass
 
+def update_related_account_in_session(request, username, shift=False, oname=""):
+    """
+    外层保证 username 是一个自然人的 username 并且合法
 
-operation_writer(local_dict["system_log"], "系统启动", "util_底部")
+    登录时 shift 为 false，切换时为 True
+    切换到某个组织时 oname 不为空，否则都是空
+    """
+
+    try:
+        np = NaturalPerson.objects.activated().get(person_id__username=username)
+    except:
+        return False
+    orgs = list(Position.objects.activated().filter(
+        is_admin=True, person=np).values_list("org__oname", flat=True))
+
+    if oname:
+        if oname not in orgs:
+            return False
+        orgs.remove(oname)
+        user = Organization.objects.get(oname=oname).organization_id
+    else:
+        user = np.person_id
+
+    if shift:
+        auth.logout(request)
+        auth.login(request, user)
+
+    request.session["Incharge"] = orgs
+    request.session["NP"] = username
+
+    return True
+
+
+@log.except_captured(source='utils[user_login_org]', record_user=True)
+def user_login_org(request, org):
+    '''
+    令人疑惑的函数，需要整改
+    尝试从用户登录到org指定的组织，如果不满足权限，则会返回wrong
+    返回wrong或succeed
+    '''
+    user = request.user
+    valid, user_type, html_display = check_user_type(request.user)
+
+    try:
+        me = NaturalPerson.objects.activated().get(person_id=user)
+    except:  # 找不到合法的用户
+        return wrong("您没有权限访问该网址！请用对应小组账号登陆。")
+    #是小组一把手
+    try:
+        position = Position.objects.activated().filter(org=org, person=me)
+        assert len(position) == 1
+        position = position[0]
+        assert position.is_admin == True
+    except:
+        return wrong("没有登录到该小组账户的权限!")
+    # 到这里, 是本人小组并且有权限登录
+    auth.logout(request)
+    auth.login(request, org.organization_id)  # 切换到小组账号
+    update_related_account_in_session(request, user.username, oname=org.oname)
+    return succeed("成功切换到小组账号处理该事务，建议事务处理完成后退出小组账号。")
+
+
+log.operation_writer(SYSTEM_LOG, "系统启动", "util_底部")

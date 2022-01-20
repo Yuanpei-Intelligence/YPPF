@@ -33,8 +33,14 @@
         "icon": "01d"
     },
     "thresholds": {
-        "activity_budget": 500,
         "注释": "下面这些都可以不写",
+        "activity_point_per_hour": 1,
+        "activity_point": 6,
+        "activity_point_invalid_hour": 12,
+        "activity_point_invalid_titles": [
+            "选课",
+            "补选"
+        ],
         "wechat_send_number": "500",
         "wechat_send_batch": "500"
     },
@@ -69,7 +75,7 @@
     },
     "help_message": {
         "个人主页": "将其在微信中打开，就可以在聊天/朋友圈中分享你自己啦",
-        "团体主页": "将其在微信中打开，就可以在聊天/朋友圈中分享你自己啦",
+        "小组主页": "将其在微信中打开，就可以在聊天/朋友圈中分享你自己啦",
         "近期要闻": "",
         "通知信箱": "信箱会自动收集和您相关的信息，包括各类通知和回执~常来看看吧",
         "我的元气值person": "元气值是<strong>Yuanpei Profile</strong>的意愿点系统。个人参与活动可能需要使用元气值，元气值额度会每月更新，你也可以参与志愿活动获得元气！",

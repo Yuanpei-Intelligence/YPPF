@@ -50,7 +50,7 @@
                                     <div class="bio-skill-box">
                                         <div id="undone-list" class="row">
                                             {% for QA in all_instances.receive %}
-                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="undone={{QA.id}}">
 
                                                 <div class=" b-skills">
 
@@ -63,8 +63,23 @@
                                                         {% if not QA.anwser_flag %}
                                                         <div>
                                                             <h5>
-                                                                <a href="#myModal" class="btn-sm btn-outline-primary" tabindex="-1" data-toggle="modal"
-                                                                    role="button">回答</a>
+                                                                <div class="btn-group">
+                                                                    <div style="margin-left: 8px; ">
+                                                                        <div class="btn-group">
+                                                                            <button type="button"
+                                                                                class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split"
+                                                                                data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                                                                操作
+                                                                            </button>
+                                                                            <div class="dropdown-menu">
+                                                                                <button href="#myModal" class="dropdown-item" tabindex="-1" data-toggle="modal"
+                                                                                    role="button">回答</button>
+                                                                                <button class="dropdown-item"
+                                                                                    id={{QA.id}} onclick="if(confirm('你确定要忽略这条消息?')){ignore_receiver.call(this);this.blur();}">忽略</button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             </h5>
                                                             <!-- BEGIN MODAL-->
                                                             <div class="modal fade" id="myModal">
@@ -94,6 +109,26 @@
                                                                 </div>
                                                             </div>
                                                             <!-- END MODAL -->
+                                                        </div>
+                                                        {% else %}
+                                                        <div>
+                                                            <h5>
+                                                                <div class="btn-group">
+                                                                    <div style="margin-left: 8px; ">
+                                                                        <div class="btn-group">
+                                                                            <button type="button"
+                                                                                class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split"
+                                                                                data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                                                                操作
+                                                                            </button>
+                                                                            <div class="dropdown-menu">
+                                                                                <button class="dropdown-item"
+                                                                                    id={{QA.id}} onclick="if(confirm('你确定要删除这条消息?你自己删除了，对方还能看到哦！')){ignore_receiver.call(this);this.blur();}">删除</button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </h5>
                                                         </div>
                                                         {% endif %}
                                                     </div>
@@ -126,7 +161,7 @@
                                     <div class="bio-skill-box">
                                         <div id="done-list" class="row">
                                             {% for QA in all_instances.send %}
-                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="undone={{QA.id}}">
 
                                                 <div class=" b-skills">
 
@@ -134,6 +169,29 @@
                                                         <div>
                                                             <h5 style="color: rgb(66, 67, 68);">
                                                                 <span class="ml-1">发送给&nbsp;<b>{{QA.receiver}}</b>&nbsp;的提问</span>
+                                                            </h5>
+                                                        </div>
+                                                        <div>
+                                                            <h5>
+                                                                <div class="btn-group">
+                                                                    <div style="margin-left: 8px; ">
+                                                                        <div class="btn-group">
+                                                                            <button type="button"
+                                                                                class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split"
+                                                                                data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                                                                操作
+                                                                            </button>
+                                                                            <div class="dropdown-menu">
+                                                                                {% if not QA.anwser_flag %}
+                                                                                <button class="dropdown-item"
+                                                                                    id={{QA.id}} onclick="if(confirm('你确定要撤回这条提问?注意：撤回后你们双方都将看不见这条提问。')){cancel.call(this);this.blur();}">撤回</button>
+                                                                                {% endif %}
+                                                                                    <button class="dropdown-item"
+                                                                                    id={{QA.id}} onclick="if(confirm('你确定要删除这条提问?注意：删除后，对方还能看到这条提问！而且你永远收不到回答了！')){ignore_sender.call(this);this.blur();}">删除</button>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
                                                             </h5>
                                                         </div>
                                                     </div>
@@ -201,5 +259,33 @@
         document.querySelector(`#done-empty`).style.display = (document.querySelector(`#done-list`).querySelectorAll(`:scope > :not([hidden])`).length === 0) ? `block` : `none`;
     }
     setTimeout(refresh, 0);
+    async function cancel() {
+        const success = await save_read.call(this,"cancel");
+        if (success) {
+            document.getElementById("undone="+String(this.id)).hidden = true;
+        }
+    }
+    async function ignore_sender() {
+        const success = await save_read.call(this,"sender");
+        if (success) {
+            document.getElementById("undone="+String(this.id)).hidden = true;
+        }
+    }
+    async function ignore_receiver() {
+        const success = await save_read.call(this,"receiver");
+        if (success) {
+            document.getElementById("undone="+String(this.id)).hidden = true;
+        }
+    }
+    async function save_read(func) {
+        const { success } = await fetch(`/QAcenter/`, {
+            headers: { "Content-Type": `text/plain` },
+            method: `POST`,
+            body: JSON.stringify({ id: this.id, function: func}),
+        })
+            .then((res) => res.json())
+            .catch(() => { success: false });
+        return success;
+    }
 </script>
 {% endblock %}

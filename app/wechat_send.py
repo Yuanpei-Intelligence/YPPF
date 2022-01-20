@@ -12,18 +12,19 @@ import requests
 import json
 
 # 设置
-from django.conf import settings
+from app.constants import *
 from boottest import local_dict
 
 # 模型与加密模型
-from app.models import NaturalPerson, Organization, Activity, Notification, Participant
+from app.models import NaturalPerson, Organization, Activity, Notification, Position
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 # 日期与定时任务
 from datetime import datetime, timedelta
 
 # 获取对象等操作
-from app.utils import get_person_or_org, except_captured
+from app.utils import get_person_or_org
+from app import log
 
 # 全局设置
 # 是否启用定时任务，请最好仅在服务器启用，如果不启用，后面的多个设置也会随之变化
@@ -52,8 +53,8 @@ if USE_SCHEDULER:
         scheduler.start()
 
 # 全局变量 用来发送和确认默认的导航网址
-DEFAULT_URL = settings.LOGIN_URL
-THIS_URL = settings.LOGIN_URL  # 增加默认url前缀
+DEFAULT_URL = LOGIN_URL
+THIS_URL = LOGIN_URL  # 增加默认url前缀
 if THIS_URL[-1:] == "/" and THIS_URL[-2:] != "//":
     THIS_URL = THIS_URL[:-1]  # 去除尾部的/
 WECHAT_URL = local_dict["url"]["wechat_url"]
@@ -80,11 +81,11 @@ except:
 SEND_LIMIT = 500  # 上限1000
 SEND_BATCH = 500
 try:
-    SEND_LIMIT = min(1000, int(local_dict["threholds"]["wechat_send_number"]))
+    SEND_LIMIT = min(1000, int(local_dict["thresholds"]["wechat_send_number"]))
 except:
     pass
 try:
-    SEND_BATCH = min(1000, int(local_dict["threholds"]["wechat_send_batch"]))
+    SEND_BATCH = min(1000, int(local_dict["thresholds"]["wechat_send_batch"]))
 except:
     pass
 
@@ -184,9 +185,11 @@ def base_send_wechat(users, message, app='default',
     post_url = app2absolute_url(app)
 
     if RECEIVER_SET is not None:
-        users = list((set(users) & RECEIVER_SET) - BLACKLIST_SET)
+        users = sorted((set(users) & RECEIVER_SET) - BLACKLIST_SET)
+    elif BLACKLIST_SET is not None and BLACKLIST_SET:
+        users = sorted(set(users) - BLACKLIST_SET)
     else:
-        users = list(set(users) - BLACKLIST_SET)
+        users = sorted(users)
     user_num = len(users)
     if user_num == 0:
         print("没有合法的用户")
@@ -284,7 +287,7 @@ def send_wechat(
             base_send_wechat(*args, **kws)  # 不使用定时任务请改为这句
 
 
-@except_captured(False, record_args=True, source='wechat_send[publish_notification]')
+@log.except_captured(False, record_args=True, source='wechat_send[publish_notification]')
 def publish_notification(notification_or_id,
                         app=None, level=None):
     """
@@ -349,7 +352,8 @@ def publish_notification(notification_or_id,
     else:  # 小组
         # 转发小组消息给其负责人
         message += f'\n消息来源：{str(receiver)}，请切换到该小组账号进行操作。'
-        wechat_receivers = receiver.position_set.filter(is_admin=True)
+        wechat_receivers = Position.objects.activated().filter(
+            org=receiver, is_admin=True)
         if check_block:
             wechat_receivers = wechat_receivers.filter(
                 person__wechat_receive_level__lte=level)    # 不小于接收等级
@@ -363,7 +367,7 @@ def publish_notification(notification_or_id,
     return True
 
 
-@except_captured(False, record_args=True, source='wechat_send[publish_notifications]')
+@log.except_captured(False, record_args=True, source='wechat_send[publish_notifications]')
 def publish_notifications(
     notifications_or_ids=None, filter_kws=None, exclude_kws=None,
     app=None, level=None,
@@ -492,8 +496,10 @@ def publish_notifications(
 
     # 接下来是发送给小组的部分
     org_receivers = Organization.objects.filter(organization_id__in=receiver_ids)
+    activate_positions = Position.objects.activated()
     for org in org_receivers:
-        managers = org.position_set.filter(is_admin=True)
+        managers = activate_positions.filter(
+            org=org, is_admin=True)
         if check_block:    # 屏蔽时，不小于接收等级
             managers = managers.filter(person__wechat_receive_level__lte=level)
         managers = managers.values_list("person__person_id__username", flat=True)
@@ -582,6 +588,7 @@ def send_wechat_captcha(stu_id: str or int, captcha: str, url='/forgetpw/'):
                 "YPPF登录验证\n"
                 "您的账号正在进行企业微信验证\n本次请求的验证码为："
                 f"<div class=\"highlight\">{captcha}</div>"
+                f"发送时间：{datetime.now().strftime('%m月%d日 %H:%M:%S')}"
             )
     if url:
         kws["url"] = url

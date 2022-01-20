@@ -69,7 +69,27 @@
 
                         <div class="text-center user-info">
                             <img src={{ context.avatar_path }} height="90px" width="90px" alt="avatar">
-                            <p class="">{{ context.person.name }}</p>
+                            <p class="">
+                                {% if person.show_gender == False %}
+                                <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="" data-original-title="性别未公开">
+                                    <span style="color: #0e1726;">{{ context.person.name }}</span>
+                                </a>
+                                {% else %}
+
+                                {% if person.gender == 0 %}
+                                <span style="color: #4064bf;">
+                                    {{ context.person.name }}
+                                    <i class="fa fa-mars"></i>
+                                </span>
+                                {% else %}
+                                <span style="color: #c95e90;">
+                                    {{ context.person.name }}
+                                    <i class="fa fa-venus"></i>
+                                </span>
+                                {% endif %}
+
+                                {% endif %}
+                            </p>
                         </div>
 
                         <div class="user-info-list">
@@ -506,7 +526,7 @@
                             {% if html_display.activity_info is None %}
                             <p class="w-100" style="text-align: center;">没有参与的活动</p>
                             {% else %}
-                            <p id="custom-activity-none" style="display: none; text-align: center;">没有共同的活动</p>
+                            <p class="w-100" id="custom-activity-none" style="display: none; text-align: center;">没有共同的活动</p>
                             {% for act, same in html_display.activity_info %}
                             <div class="col-sm-12 col-md-6 mb-3 custom-activity-card custom-activity-issame-{{ same }}">
                                 <a href="/viewActivity/{{ act.id }}">
@@ -521,7 +541,9 @@
                                                     {% else %}
                                                     {% if act.status == "审核中" %}
                                                     <span class="flex badge badge-pill badge-secondary">
-                                                    {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                                    {% elif act.status == "已取消" %}
+                                                    <span class="badge badge-pill badge-dark">
+                                                    {% elif act.status == "未过审" or act.status == "已撤销" or act.status == "已结束" %}
                                                     <span class="badge badge-pill badge-danger">
                                                     {% elif act.status == "报名中" %}
                                                     <span class="badge badge-pill badge-info">
@@ -591,7 +613,7 @@
             const label = document.querySelector(`#${type}-show-same-label`);
             label.innerHTML = `${prefix}${labelName}`;
 
-            const hasSame = false;
+            let hasSame = false;
             cards.forEach((card) => {
                 const same = card.classList.contains(`custom-${type}-issame-True`);
                 if (!same) card.style.display = 'none';

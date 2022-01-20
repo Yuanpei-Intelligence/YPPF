@@ -16,10 +16,11 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-from boottest import local_dict
+from boottest import local_dict, get_setting
 
 # LOGIN_URL，未登录时重定向到的 URL
-LOGIN_URL = local_dict["url"]["login_url"]
+LOGIN_URL = get_setting('url/login_url')
+# LOGIN_URL = local_dict["url"]["login_url"]
 # LOGIN_URL = 'http:localhost:8000/'
 
 
@@ -98,14 +99,15 @@ DATABASES = {
     # create database underground charset='utf8mb4';
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": local_dict["database"]["NAME"],
+        "NAME": get_setting('database/NAME'), # local_dict["database"]["NAME"],
         "HOST": "127.0.0.1",
         "PORT": 3306,
-        "USER": local_dict["database"]["USER"],
-        "PASSWORD": local_dict["database"]["PASSWORD"],
-        # 'OPTIONS': {
+        "USER": get_setting('database/USER'), # local_dict["database"]["USER"],
+        "PASSWORD": get_setting('database/PASSWORD'), # local_dict["database"]["PASSWORD"],
+        'OPTIONS': {
+            'charset': 'utf8mb4',
         #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
-        # }
+        },
     }
 }
 
@@ -144,6 +146,13 @@ TIME_ZONE = "Asia/Shanghai"
 
 USE_I18N = True
 
+# 是否启用数据的本地化格式，如果开启将会导致django以他认为的本地格式显示后台数据
+# 主要表现为时间的呈现形式变为年/月/日 小时:分钟 关闭时则为yyyy-mm-dd HH:MM:SS
+# 关闭后，后台才能正常显示秒并进行修改
+# 本地化有其他副作用，比如其他前端呈现的兼容
+# 不想关闭可以调整django/conf/locale/zh_Hans/format.py中的TIME_INPUT_FORMATS顺序
+# 而该文件中的其它变量被证明对后台呈现无效
+# https://docs.djangoproject.com/zh-hans/3.1/ref/settings/#use-i18n
 USE_L10N = True
 
 # USE_TZ限制了Datetime等时间Field被存入数据库时是否必须包含时区信息
@@ -182,3 +191,15 @@ LOGGING = {
     },
 }
 '''
+
+import logging
+logging.basicConfig(
+    filename=os.path.join(
+        os.path.join(BASE_DIR, 'logstore'),
+        'scheduler.log',
+        ),
+    filemode='a',
+    format='%(asctime)s,%(msecs)d in %(funcName)s - %(levelname)s: %(message)s',
+    datefmt='%m-%d %H:%M:%S',
+    level=logging.INFO,
+)

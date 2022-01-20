@@ -1,19 +1,22 @@
 from django.db import models, transaction
-from django.db.models.fields import related
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
-from django.dispatch import receiver
 from datetime import datetime, timedelta
 from boottest import local_dict
 from django.conf import settings
+from random import choice
+
+
+def current_year()-> int:
+    return int(datetime.now().strftime("%Y"))
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
 
     def autoset_status_annually(self):  # 修改毕业状态，每年调用一次
-        year = int(datetime.now().strftime("%Y")) - 4
+        year = current_year() - 4
         self.activated().filter(stu_grade=str(year)).update(GraduateStatus=1)
 
     def set_status(self, **kwargs):  # 延毕情况后续实现
@@ -288,8 +291,17 @@ class Organization(models.Model):
             avatar = "avatar/org_default.png"
         return settings.MEDIA_URL + str(avatar)
     
-    def get_subscriber_num(self):
+    def get_subscriber_num(self, activated=True):
+        if activated:
+            return NaturalPerson.objects.activated().exclude(
+                id__in=self.unsubscribers.all()).count()
         return NaturalPerson.objects.all().count() - self.unsubscribers.count()
+
+    def get_neg_unsubscriber_num(self, activated=True):
+        if activated:
+            return -NaturalPerson.objects.activated().filter(
+                id__in=self.unsubscribers.all()).count()
+        return -self.unsubscribers.count()
 
 
 class PositionManager(models.Manager):
@@ -303,11 +315,12 @@ class PositionManager(models.Manager):
         return self.current().filter(status=Position.Status.INSERVICE)
 
     def create_application(self, person, org, apply_type, apply_pos):
+        raise NotImplementedError('该函数已废弃')
         warn_duplicate_message = "There has already been an application of this state!"
         with transaction.atomic():
             if apply_type == "JOIN":
                 apply_type = Position.ApplyType.JOIN
-                assert len(self.activated().filter(person=person, org=org))==0
+                assert len(self.activated().filter(person=person, org=org)) == 0
                 application, created = self.current().get_or_create(
                     person=person, org=org, apply_type=apply_type, apply_pos=apply_pos
                 )
@@ -383,7 +396,7 @@ class Position(models.Model):
     show_post = models.BooleanField(default=True)
 
     # 表示是这个小组哪一年、哪个学期的成员
-    in_year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
+    in_year = models.IntegerField("当前学年", default=current_year)
     in_semester = models.CharField(
         "当前学期", choices=Semester.choices, default=Semester.ANNUAL, max_length=15
     )
@@ -432,7 +445,7 @@ class Course(models.Model):
     cid = models.OneToOneField(to=Organization, on_delete=models.CASCADE)
 
     # 课程周期
-    year = models.IntegerField("当前学年", default=int(datetime.now().strftime("%Y")))
+    year = models.IntegerField("当前学年", default=current_year)
     semester = models.CharField("当前学期", choices=Semester.choices, max_length=15)
 
     scheduler = models.CharField("上课时间", max_length=25)
@@ -445,9 +458,14 @@ class Course(models.Model):
 
 
 class ActivityManager(models.Manager):
-    def activated(self):
+    def activated(self, only_displayable=True):
         # 选择学年相同，并且学期相同或者覆盖的
-        return self.displayable().filter(year=int(local_dict["semester_data"]["year"])).filter(
+        # 请保证query_range是一个queryset，将manager的行为包装在query_range计算完之前
+        if only_displayable:
+            query_range = self.displayable()
+        else:
+            query_range = self.all()
+        return query_range.filter(year=int(local_dict["semester_data"]["year"])).filter(
             semester__contains=local_dict["semester_data"]["semester"]
         )
 
@@ -460,24 +478,18 @@ class ActivityManager(models.Manager):
             Activity.Status.ABORT,
             Activity.Status.REJECT
         ])
-    
-    def all_activated(self):
-        # 选择学年相同，并且学期相同或者覆盖的，保持任何状态的活动都可见
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
-            semester__contains=local_dict["semester_data"]["semester"]
-        )
 
     def get_newlyended_activity(self):
         # 一周内结束的活动
         nowtime = datetime.now()
-        mintime = nowtime-timedelta(days = 7)
+        mintime = nowtime - timedelta(days = 7)
         return self.activated().filter(end__gt = mintime).filter(status=Activity.Status.END)
 
     def get_recent_activity(self):
         # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
         nowtime = datetime.now()
-        mintime = nowtime-timedelta(days = 7)
-        maxtime = nowtime+timedelta(days = 7)
+        mintime = nowtime - timedelta(days = 7)
+        maxtime = nowtime + timedelta(days = 7)
         return self.activated().filter(start__gt = mintime).filter(start__lt = maxtime).filter(
             status__in=[
                 Activity.Status.APPLYING,
@@ -490,7 +502,7 @@ class ActivityManager(models.Manager):
     def get_newlyreleased_activity(self):
         # 最新一周内发布的活动，按发布的时间逆序
         nowtime = datetime.now()
-        return self.activated().filter(publish_time__gt = nowtime-timedelta(days = 7)).filter(
+        return self.activated().filter(publish_time__gt = nowtime - timedelta(days = 7)).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -574,7 +586,7 @@ class Activity(CommentBase):
         on_delete=models.CASCADE,
     )
 
-    year = models.IntegerField("活动年份", default=int(local_dict["semester_data"]["year"]))
+    year = models.IntegerField("活动年份", default=current_year)
 
     semester = models.CharField(
         "活动学期",
@@ -621,7 +633,7 @@ class Activity(CommentBase):
 
     visit_times = models.IntegerField("浏览次数",default=0)
 
-    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
     # recorded 其实是冗余，但用着方便，存了吧,activity_show.html用到了
     recorded = models.BooleanField("是否预报备", default=False)
     valid = models.BooleanField("是否已审核", default=False)
@@ -666,6 +678,30 @@ class Activity(CommentBase):
         self.YQPoint = round(self.YQPoint, 1)
         self.typename = "activity"
         super().save(*args, **kwargs)
+    
+    def popular_level(self, any_status=False):
+        if not any_status and not self.status in [
+            Activity.Status.WAITING,
+            Activity.Status.PROGRESSING,
+            Activity.Status.END,
+        ]:
+            return 0
+        if self.current_participants >= self.capacity:
+            return 2
+        if (self.current_participants >= 30
+            or (self.capacity >= 10 and self.current_participants >= self.capacity * 0.85)
+            ):
+            return 1
+        return 0
+
+    def has_tag(self):
+        if self.need_checkin or self.inner:
+            return True
+        if self.status == Activity.Status.APPLYING:
+            return True
+        if self.popular_level():
+            return True
+        return False
 
 class ActivityPhoto(models.Model):
     class Meta:
@@ -731,6 +767,17 @@ class TransferRecord(models.Model):
         super(TransferRecord, self).save(*args, **kwargs)
 
 
+class ParticipantManager(models.Manager):
+    def activated(self, no_unattend=False):
+        '''返回成功报名的参与信息'''
+        exclude_status = [
+            Participant.AttendStatus.CANCELED,
+            Participant.AttendStatus.APLLYFAILED,
+        ]
+        if no_unattend:
+            exclude_status.append(Participant.AttendStatus.UNATTENDED)
+        return self.exclude(status__in=exclude_status)
+
 class Participant(models.Model):
     class Meta:
         verbose_name = "活动参与情况"
@@ -754,6 +801,7 @@ class Participant(models.Model):
         default=AttendStatus.APPLYING,
         max_length=32,
     )
+    objects = ParticipantManager()
 
 
 class YQPointDistribute(models.Model):
@@ -783,7 +831,11 @@ class YQPointDistribute(models.Model):
         verbose_name_plural = verbose_name
 
 class QandAManager(models.Manager):
-    def activated(self):
+    def activated(self, sender_flag=False, receiver_flag=False):
+        if sender_flag:
+            return self.exclude(status__in=[QandA.Status.IGNORE_SENDER,QandA.Status.DELETE])
+        if receiver_flag:
+            return self.exclude(status__in=[QandA.Status.IGNORE_RECEIVER,QandA.Status.DELETE])
         return self.exclude(status=QandA.Status.DELETE)
 
 class QandA(models.Model):
@@ -805,6 +857,8 @@ class QandA(models.Model):
         DONE = (0, "已回答")
         UNDONE = (1, "待回答")
         DELETE = (2, "已删除")
+        IGNORE_SENDER = (3, "发送者忽略")
+        IGNORE_RECEIVER = (4, "接收者忽略")
     
     status = models.SmallIntegerField(choices=Status.choices, default=1)
     
@@ -845,18 +899,19 @@ class Notification(models.Model):
         TRANSFER_FEEDBACK = "转账回执"
         NEW_ORGANIZATION = "新建小组通知"
         YQ_DISTRIBUTION = "元气值发放通知"
+        PENDING_INFORM = "事务开始通知"
 
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
     title = models.CharField("通知标题", blank=True, null=True, max_length=50)
-    content = models.CharField("通知内容", max_length=225, blank=True)
+    content = models.TextField("通知内容", blank=True)
     start_time = models.DateTimeField("通知发出时间", auto_now_add=True)
     finish_time = models.DateTimeField("通知处理时间", blank=True, null=True)
     typename = models.SmallIntegerField(choices=Type.choices, default=0)
     URL = models.URLField("相关网址", null=True, blank=True, max_length=1024)
     bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
                                         db_index=True)
-    anonymous_flag = models.BooleanField("接收者是否匿名", default=False)
+    anonymous_flag = models.BooleanField("是否匿名", default=False)
     relate_TransferRecord = models.ForeignKey(
         TransferRecord,
         related_name="transfer_notification",
@@ -866,13 +921,6 @@ class Notification(models.Model):
     )
     relate_instance = models.ForeignKey(
         CommentBase,
-        related_name="relate_notifications",
-        on_delete=models.CASCADE,
-        blank=True,
-        null=True,
-    )
-    relate_QandA = models.ForeignKey(
-        QandA,
         related_name="relate_notifications",
         on_delete=models.CASCADE,
         blank=True,
@@ -891,7 +939,7 @@ class Comment(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["-time"]
 
-    commentator = models.ForeignKey(User, on_delete=models.CASCADE)
+    commentator = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="评论者")
     commentbase = models.ForeignKey(
         CommentBase, related_name="comments", on_delete=models.CASCADE
     )
@@ -973,7 +1021,7 @@ class ModifyOrganization(CommentBase):
         return settings.MEDIA_URL + str(avatar)
         
     def is_pending(self):   #表示是不是pending状态
-            return self.status == ModifyOrganization.Status.PENDING
+        return self.status == ModifyOrganization.Status.PENDING
 
 
 class ModifyPosition(CommentBase):
@@ -1045,22 +1093,22 @@ class ModifyPosition(CommentBase):
     def accept_submit(self): #同意申请，假设都是合法操作
         if self.apply_type == ModifyPosition.ApplyType.WITHDRAW:
             Position.objects.activated().filter(
-                org = self.org, person = self.person
-            ).update(status = Position.Status.DEPART)
+                org=self.org, person=self.person
+            ).update(status=Position.Status.DEPART)
         elif self.apply_type == ModifyPosition.ApplyType.JOIN:
             # 尝试获取已有的position
             if Position.objects.current().filter(
-                org = self.org, person = self.person).exists(): # 如果已经存在这个量了
-                Position.objects.current().filter(org = self.org, person = self.person
+                org=self.org, person=self.person).exists(): # 如果已经存在这个量了
+                Position.objects.current().filter(org=self.org, person=self.person
                 ).update(
-                    status = Position.Status.INSERVICE,
-                    pos = self.pos,
-                    is_admin = (self.pos<=self.org.otype.control_pos_threshold))
+                    status=Position.Status.INSERVICE,
+                    pos=self.pos,
+                    is_admin=(self.pos <= self.org.otype.control_pos_threshold))
             else: # 不存在 直接新建
-                Position.objects.create(pos=self.pos, person=self.person, org=self.org, is_admin = (self.pos<=self.org.otype.control_pos_threshold))
+                Position.objects.create(pos=self.pos, person=self.person, org=self.org, is_admin=(self.pos<=self.org.otype.control_pos_threshold))
         else:   # 修改 则必定存在这个量
-            Position.objects.activated().filter(org = self.org, person = self.person
-                ).update(pos = self.pos, is_admin = (self.pos<=self.org.otype.control_pos_threshold))
+            Position.objects.activated().filter(org=self.org, person=self.person
+                ).update(pos=self.pos, is_admin=(self.pos <= self.org.otype.control_pos_threshold))
         # 修改申请状态
         ModifyPosition.objects.filter(id=self.id).update(status=ModifyPosition.Status.CONFIRMED)
 
@@ -1094,10 +1142,8 @@ class Reimbursement(CommentBase):
     message = models.TextField("备注信息", default="", blank=True)
     pos = models.ForeignKey(User, on_delete=models.CASCADE)#报销的小组
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
-    record=models.ForeignKey(TransferRecord, on_delete=models.CASCADE)#转账信息的记录
-    summary_image=models.ImageField(upload_to=f"activity/photo/%Y/%m/",
-                                    verbose_name="活动总结图片",null=True, blank=True)
-    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    record = models.ForeignKey(TransferRecord, on_delete=models.CASCADE) #转账信息的记录
+    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
         
@@ -1118,9 +1164,23 @@ class Reimbursement(CommentBase):
         if self.message:
             display.append(('备注', self.message))
         return display
-    def is_pending(self):   #表示是不是pending状态
-            return self.status == Reimbursement.ReimburseStatus.WAITING
 
+    def is_pending(self):   #表示是不是pending状态
+        return self.status == Reimbursement.ReimburseStatus.WAITING
+
+class ReimbursementPhoto(models.Model):
+    class Meta:
+        verbose_name = "报销相关图片"
+        verbose_name_plural = verbose_name
+        ordering = ["-time"]
+    class PhotoType(models.IntegerChoices):
+        MATERIAL = (0, "报销材料")  #如账单信息等
+        SUMMARY = (1, "总结图片")   #待审核的活动总结图片
+    type = models.SmallIntegerField(choices=PhotoType.choices)
+    image = models.ImageField(upload_to=f"reimbursement/photo/%Y/%m/", verbose_name=u'报销相关图片', null=True, blank=True)
+    related_reimb = models.ForeignKey(Reimbursement, related_name="reimbphotos", on_delete=models.CASCADE)
+    time = models.DateTimeField("上传时间", auto_now_add=True)
+    
 
 class Help(models.Model):
     '''
@@ -1141,9 +1201,18 @@ class Wishes(models.Model):
         verbose_name = "心愿"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
+    
+    COLORS = [
+        "#FDAFAB","#FFDAC1","#FAF1D6",
+        "#B6E3E9","#B5EAD7","#E2F0CB",
+    ]
+    # 不要随便删 admin.py也依赖本随机函数
+    def rand_color():
+        return choice(Wishes.COLORS)
+
     text = models.TextField("心愿内容", default="", blank=True)
     time = models.DateTimeField("发布时间", auto_now_add=True)
-    background = models.TextField("颜色编码", default="")
+    background = models.TextField("颜色编码", default=rand_color)
 
 
 class ModifyRecord(models.Model):

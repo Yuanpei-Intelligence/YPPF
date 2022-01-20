@@ -70,12 +70,13 @@
                         </div>
                     </div>
                     {% for otype in otype_list %}
-                    <div id="tableDropdown{{otype.otype_id}}" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+                    {% with type_id=otype.otype_id %}
+                    <div id="tableDropdown{{type_id}}" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
                         <div class="statbox widget box box-shadow">
                             <div class="widget-header">
                                 <div class="row">
                                     <div class="col-xl-12 col-md-12 col-sm-12 col-12">
-                                        <div data-toggle="collapse" href="#orgsearch{{otype.otype_id}}" role="button"
+                                        <div data-toggle="collapse" href="#orgsearch{{type_id}}" role="button"
                                             aria-expanded="false" aria-controls="collapseExample">
                                             <div class="d-flex justify-content-between">
                                                 <div>
@@ -91,14 +92,14 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="collapse show" id="orgsearch{{otype.otype_id}}">
+                            <div class="collapse show" id="orgsearch{{type_id}}">
                                 <div class="widget-content widget-content-area">
                                     {% if otype.allow_unsubscribe %}
                                     <div>
-                                        <button type="button" class="btn btn-outline-primary" id="{{otype.otype_id}}"
+                                        <button type="button" class="btn btn-outline-primary" id="{{type_id}}"
                                             onclick="turn_on_all.call(this);this.blur();">全部开启</button>
                                         &nbsp;
-                                        <button type="button" class="btn btn-outline-primary" id="{{otype.otype_id}}"
+                                        <button type="button" class="btn btn-outline-primary" id="{{type_id}}"
                                             onclick="turn_off_all.call(this);this.blur();">全部关闭</button>
                                         </br></br>
                                     </div>
@@ -113,11 +114,11 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {% for org, ava in orgava_list%}
+                                                {% for org in org_list%}
                                                 {% if org.otype.otype_name == otype.otype_name %}
                                                 <tr>
                                                     <td>
-                                                        <u><a href="/orginfo/?name={{org.oname}}"><img src="{{ava}}" width="18px" height="18px" style="margin-top: -2px; margin-right: 5px; border-radius: 9px;"><span>{{org.oname}}</span></a></u>
+                                                        <u><a href="/orginfo/?name={{org.oname}}"><img src="{{org.get_user_ava}}" width="18px" height="18px" style="margin-top: -2px; margin-right: 5px; border-radius: 9px;"><span>{{org.oname}}</span></a></u>
                                                         {% with org.get_subscriber_num as subscribers %}
                                                         [<span class="num_sub">{{ subscribers }}</span>关注]
                                                         {% endwith %}
@@ -125,35 +126,37 @@
                                                     <!--<td>
                                                         {{org.otype.otype_name}}
                                                     </td>-->
-                                                    {%if org.organization_id.username in subscribe_list%}
-                                                    <td bgColor="F3FDFF" , id="td{{org.organization_id.username}}_{{otype.otype_id}}">
+                                                    {% with username=org.organization_id.username %}
+                                                    {%if not username in unsubscribe_list%}
+                                                    <td bgColor="F3FDFF" , id="td{{username}}_{{type_id}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
-                                                                id="{{org.organization_id.username}}_{{otype.otype_id}}"
+                                                                id="{{username}}_{{type_id}}"
                                                                 onclick="change_status.call(this);this.blur();" checked {% if not otype.allow_unsubscribe %} disabled {% endif %}>
                                                             <label class="custom-control-label"
-                                                                for="{{org.organization_id.username}}_{{otype.otype_id}}"
-                                                                id="checkbox2{{org.organization_id.username}}_{{otype.otype_id}}">
+                                                                for="{{username}}_{{type_id}}"
+                                                                id="checkbox2{{username}}_{{type_id}}">
                                                                 <font color="5F747B"
-                                                                    id="font{{org.organization_id.username}}_{{otype.otype_id}}">已订阅</font>
+                                                                    id="font{{username}}_{{type_id}}">已订阅</font>
                                                             </label>
                                                         </div>
                                                     </td>
                                                     {%else%}
-                                                    <td bgColor="FFFFFF" , id="td{{org.organization_id.username}}_{{otype.otype_id}}">
+                                                    <td bgColor="FFFFFF" , id="td{{username}}_{{type_id}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
-                                                                id="{{org.organization_id.username}}_{{otype.otype_id}}"
+                                                                id="{{username}}_{{type_id}}"
                                                                 onclick="change_status.call(this);this.blur();">
                                                             <label class="custom-control-label"
-                                                                for="{{org.organization_id.username}}_{{otype.otype_id}}"
-                                                                id="checkbox2{{org.organization_id.username}}_{{otype.otype_id}}">
+                                                                for="{{username}}_{{type_id}}"
+                                                                id="checkbox2{{username}}_{{type_id}}">
                                                                 <font color="E1E1E1"
-                                                                    id="font{{org.organization_id.username}}_{{otype.otype_id}}">未订阅</font>
+                                                                    id="font{{username}}_{{type_id}}">未订阅</font>
                                                             </label>
                                                         </div>
                                                     </td>
                                                     {%endif%}
+                                                    {% endwith %}
                                                 </tr>
                                                 {% endif %}
                                                 {% endfor %}
@@ -164,6 +167,7 @@
                             </div>
                         </div>
                     </div>
+                    {% endwith %}
                     {% endfor %}
 
                     <!-- <a onclick="save_subscribe_status()" class="btn btn-success btn-block mb-4 mr-2">保存修改</a> -->
@@ -260,7 +264,7 @@
         }
     }
     async function save_subscribe_status(status) {
-        const { success } = await fetch(`/save_subscribe_status`, {
+        const { success } = await fetch(`/saveSubscribeStatus`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
             body: JSON.stringify({ id: this.id.substring(0,this.id.indexOf('_')), status }),
@@ -270,7 +274,7 @@
         return success;
     }
     async function save_wechat_receive_level(level){
-        const { success } = await fetch(`/save_subscribe_status`, {
+        const { success } = await fetch(`/saveSubscribeStatus`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
             body: JSON.stringify({ level }),
@@ -285,7 +289,7 @@
         return success;
     }
     async function save_all(status){
-        const { success } = await fetch(`/save_subscribe_status`, {
+        const { success } = await fetch(`/saveSubscribeStatus`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
             body: JSON.stringify({ otype: this.id, status }),

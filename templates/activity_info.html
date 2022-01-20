@@ -33,7 +33,7 @@
 
         <!--  BEGIN BLURRED BG  -->
         {% if summary_photo_exists %}
-        <div class="w-100" id="bg" style="background-image: url({{ summary_photo }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
+        <div class="w-100" id="bg" style="background-image: url({{ firstpic }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
         {% else %}
         <div class="w-100" id="bg" style="background-image: url({{ firstpic }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
         {% endif %}
@@ -50,11 +50,29 @@
 
             <!--  BEGIN PHOTO  -->
             <div id="front-photo" style="position: absolute; width: 66%; height: 30vh; margin-left: 17%; margin-right: 17%; padding-left: 80px; padding-right: 80px;">
-                {% if summary_photo_exists %}
-                <img style="width: 100%; height: 100%; object-fit: cover;" src={{ summary_photo }}></img>
-                {% else %}
-                <img style="width: 100%; height: 100%; object-fit: cover;" src={{ firstpic }}></img>
-                {% endif %}
+                <div id="style1" class="carousel slide style-custom-1 h-100" data-ride="carousel">
+                    <div class="carousel-inner h-100">
+                        <div class="h-100 carousel-item active">
+                            <img class="d-block w-100 slide-image" style="width: 100%; height: 100%; object-fit: cover;" src={{ firstpic }}></img>
+                        </div>
+                        {% if summary_photo_exists %}
+                                {%for summary_photo in summary_photos.all %}
+                                <div class="h-100 carousel-item">
+                                    <img class="d-block w-100 slide-image" style="width: 100%; height: 100%; object-fit: cover;" src="/media/{{ summary_photo.image }}"></img>
+                                </div>
+                                
+                                {%endfor%}
+                        {% endif %}
+                    </div>
+                    <a class="carousel-control-prev" href="#style1" role="button" data-slide="prev">
+                           <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                           <span class="sr-only">Previous</span>
+                    </a>
+                   <a class="carousel-control-next" href="#style1" role="button" data-slide="next">
+                           <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                           <span class="sr-only">Next</span>
+                   </a> 
+               </div>
             </div>
             <!--  END PHOTO  -->
             
@@ -99,7 +117,9 @@
                             {% else %}
                             {% if status == "审核中" %}
                             <span class="flex badge badge-pill badge-secondary">
-                            {% elif status == "未过审" or status == "已取消" or status == "已撤销" or status == "已结束" %}
+                            {% elif status == "已取消" %}
+                            <span class="badge badge-pill badge-dark">
+                            {% elif status == "未过审" or status == "已撤销" or status == "已结束" %}
                             <span class="badge badge-pill badge-danger">
                             {% elif status == "报名中" %}
                             <span class="badge badge-pill badge-info">
@@ -356,7 +376,7 @@
                                     {% if not not_inner %}
                                     <form method="POST">
                                         <input type="hidden" name="option" value="apply">
-                                        <button class="btn btn-primary btn-block mb-2">立即报名</button>
+                                        <button class="btn btn-primary btn-block mb-2" onclick="return confirm('确认报名？')">立即报名</button>
                                     </form>
                                     {% else %}
                                         <button class="btn btn-primary btn-block mb-2" disabled>立即报名
@@ -374,7 +394,10 @@
                                     {% elif pStatus == "申请中" or pStatus == "已报名" %}
                                     <form method="POST">
                                         <input type="hidden" name="option" value="quit">
-                                        <button class="btn btn-danger btn-block mb-2">退出活动</button>
+                                        <button class="btn btn-danger btn-block mb-2"
+                                            onclick="return confirm('确认退出活动？{% if activity.source == "学生" and activity.YQPoint > 0 %}{% if status != "报名中" %}当前状态将无法取回全部元气值！{% else %}用于报名的元气值将被退回至您的账户。{% endif %}{% endif %}')">
+                                            退出活动
+                                        </button>
                                     </form>
 
                                     {% endif %}
@@ -384,7 +407,7 @@
                                 {% if ownership %}
                                     {% if status == "进行中" or status == "报名中" or status == "等待中" or status == "已结束" %}
                                         <button class="btn btn-primary btn-block mb-2" id="export_enroll_excel" type="button">
-                                            下载报名信息
+                                            下载报名&签到信息
                                         </button>
                                     {% endif %}
                                     <!-- ---------------------------- begin summary ---------------------------- -->
@@ -408,9 +431,6 @@
                                             <button type="submit" class="btn btn-primary btn-block mb-2">确认上传</button>
                                         </div>
                                     </form>-->
-                                    <button class="btn btn-primary btn-block mb-2" id="export_sign_excel" type="button">
-                                        下载签到信息
-                                    </button>
                                     <form method="POST">
                                         <input type="hidden" name="option" value="payment">
                                         <button class="btn btn-primary btn-block mb-2">申请活动结项</button>
@@ -567,32 +587,6 @@
 {% endblock %}
 {% block add_js_file %}
 <script>
-    $("#export_sign_excel").click(function () {
-     const req = new XMLHttpRequest();
-     var url='/viewActivity/'+"{{aid}}"
-     req.open('POST', url, true);
-     req.responseType = 'blob';
-     req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
-     req.send("option="+"sign"); //输入参数
-    req.onload = function() {
-       const data = req.response;
-       const a = document.createElement('a');
-       const blob = new Blob([data]);
-       const blobUrl = window.URL.createObjectURL(blob);
-       downloadsign(blobUrl) ;
-     };
-   });
-   function downloadsign(blobUrl) {
-     const a = document.createElement('a');
-     a.style.display = 'none';
-     var name="{{activity.title}}({{activity.start.month}}月{{activity.start.day}}日)签到信息统计.xls"
-     a.download = name;
-     a.href = blobUrl;
-     a.click();
-     document.body.removeChild(a);
-    }
-</script>
-<script>
     $("#export_enroll_excel").click(function () {
      const req = new XMLHttpRequest();
      var url='/viewActivity/'+"{{aid}}"
@@ -611,7 +605,7 @@
    function downloadenroll(blobUrl) {
      const a = document.createElement('a');
      a.style.display = 'none';
-     var name="{{activity.title}}({{activity.start.month}}月{{activity.start.day}}日)报名信息统计.xls"
+     var name="{{activity.title}}({{activity.start.month}}月{{activity.start.day}}日)报名&签到信息统计.xls"
      a.download = name;
      a.href = blobUrl;
      a.click();
