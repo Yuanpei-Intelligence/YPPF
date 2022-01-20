@@ -13,6 +13,13 @@ from datetime import datetime, timedelta
 
 hasher = MySHA256Hasher("")
 
+__all__ = [
+    'notification_status_change',
+    'notification_create',
+    'bulk_notification_create',
+    'notification2Display',
+]
+
 def notification_status_change(notification_or_id, to_status=None):
     """
     调用该函数以完成一项通知。对于知晓类通知，在接收到用户点击按钮后的post表单，该函数会被调用。
@@ -362,3 +369,48 @@ def make_notification(application, request, content, receiver):
         )
 
 
+@log.except_captured(source='notification_utils[notification2Display]')
+def notification2Display(notification_set):
+    from app.models import NaturalPerson, Organization
+    from app.utils import check_user_type
+    displays = []
+    sender_userids = notification_set.values_list('sender_id', flat=True)
+    sender_persons = NaturalPerson.objects.filter(
+        person_id__in=sender_userids).values_list('person_id', 'name')
+    sender_persons = {userid: name for userid, name in sender_persons}
+    sender_orgs = Organization.objects.filter(
+        organization_id__in=sender_userids).values_list('organization_id', 'oname')
+    sender_orgs = {userid: name for userid, name in sender_orgs}
+    # 储存这个列表中所有record的元气值的和
+    for notification in notification_set:
+        note_display = {}
+
+        # id
+        note_display["id"] = notification.id
+
+        # 时间
+        note_display["start_time"] = notification.start_time.strftime("%Y-%m-%d %H:%M")
+        if notification.finish_time is not None:
+            note_display["finish_time"] = notification.finish_time.strftime("%Y-%m-%d %H:%M")
+
+        # 留言
+        note_display["content"] = notification.content
+
+        # 状态
+        note_display["status"] = notification.get_status_display()
+        note_display["URL"] = notification.URL
+        note_display["type"] = notification.get_typename_display()
+        note_display["title"] = notification.get_title_display()
+
+
+        _, user_type, _ = check_user_type(notification.sender)
+        if user_type == "Organization":
+            note_display["sender"] = sender_orgs.get(
+                notification.sender_id
+            ) if not notification.anonymous_flag else "匿名者"
+        else:
+            note_display["sender"] = sender_persons.get(
+                notification.sender_id
+            ) if not notification.anonymous_flag else "匿名者"
+        displays.append(note_display)
+    return displays

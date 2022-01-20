@@ -9,10 +9,10 @@ from app.models import (
 )
 from app.org_utils import (
     update_org_application,
+    update_pos_application,
     make_relevant_notification,
     send_message_check,
 )
-from app.position_utils import update_pos_application
 from app.comment_utils import addComment, showComment
 from app.utils import (
     get_person_or_org,
