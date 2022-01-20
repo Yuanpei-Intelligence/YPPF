@@ -1,16 +1,27 @@
-from app.models import TransferRecord
-from app.models import Notification
+from app.constants import *
+from app.models import (
+    NaturalPerson,
+    Freshman,
+    Position,
+    Organization,
+    OrganizationType,
+    Activity,
+    TransferRecord,
+    Notification,
+    Help,
+)
 from app.utils import random_code_init
-import pandas as pd
+
 import os
-from app.models import NaturalPerson, Freshman, Position, Organization, OrganizationType, Activity, Help
-from django.contrib.auth.models import User
-from django.shortcuts import render, redirect
-from tqdm import tqdm
 import math
 import json
+import pandas as pd
+from tqdm import tqdm
 from datetime import datetime
+
 from boottest import local_dict
+from django.contrib.auth.models import User
+from django.shortcuts import render, redirect
 
 
 def load_file(file):
@@ -38,7 +49,11 @@ def load_orgtype(debug=True):
         orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
         orgtype.otype_name = type_name
         # orgtype.otype_superior_id = type_superior_id
-        Nperson, mid = NaturalPerson.objects.get_or_create(name=incharge)
+        try:
+            Nperson, mid = NaturalPerson.objects.get(name=incharge)
+        except:
+            user, mid = User.objects.get_or_create(username=incharge)
+            Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
         orgtype.incharge = Nperson
         orgtype.job_name_list = otype_dict["job_name_list"]
         orgtype.control_pos_threshold = control_pos_threshold
@@ -51,7 +66,7 @@ def load_org():
     for _, org_dict in org_df.iterrows():
         try:
             username = org_dict["organization_id"]
-            password = random_code_init(username)
+            password = 'YPPFtest'#random_code_init(username)
             if username[:2] == "zz":
                 oname = org_dict["oname"]
                 type_id = org_dict["otype_id"]
@@ -78,8 +93,7 @@ def load_org():
                     msg += '<br/>&emsp;&emsp;成功增加负责人：'+person
         except Exception as e:
             msg += '<br/>未能创建组织'+oname+',原因：'+str(e)
-    YQPoint_oname = local_dict.get('YQPoint_source_oname')
-    if YQPoint_oname:
+    if YQP_ONAME:
         username = 'zz00001'
         user, created = User.objects.get_or_create(username=username)
         if created:
@@ -90,15 +104,15 @@ def load_org():
             org, mid = Organization.objects.get_or_create(
                 organization_id=user, otype=orgtype
             )
-            org.oname = YQPoint_oname
+            org.oname = YQP_ONAME
             org.save()
-            msg += '<br/>成功创建元气值发放组织：'+YQPoint_oname
+            msg += '<br/>成功创建元气值发放组织：'+YQP_ONAME
     return msg
 
 
 
 
-def load_org_info(request):
+def load_org_data(request):
     if request.user.is_superuser:
         load_type = request.GET.get("loadtype", None)
         message = "加载失败！"
@@ -279,7 +293,7 @@ def load_notification_info(request):
     return render(request, "debugging.html", context)
 
 
-def load_stu_info(request):
+def load_stu_data(request):
     if not request.user.is_superuser:
         context = {"message": "请先以超级账户登录后台后再操作！"}
         return render(request, "debugging.html", context)

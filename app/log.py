@@ -8,9 +8,17 @@ import traceback
 import json
 import hashlib
 
+__all__ = [
+    'STATE_DEBUG', 'STATE_OK', 'STATE_PROBLEM', 'STATE_ERROR',
+    'operation_writer',
+    'except_captured',
+    'record_traceback',
+]
+
 # 状态常量
 STATE_DEBUG = 'Debug'
 STATE_OK = 'OK'
+STATE_PROBLEM = 'Problem'
 STATE_ERROR = 'Error'
 
 
@@ -31,7 +39,7 @@ __log_detailed_path = os.path.join(__log_root_path, "traceback_record")
 
 def status_enabled(status_code: str):
     # 待完善，半成品
-    level_up = [STATE_DEBUG, STATE_OK, STATE_ERROR]
+    level_up = [STATE_DEBUG, STATE_OK, STATE_PROBLEM, STATE_ERROR]
     try:
         return level_up.index(status_code) >= level_up.index(__log_level)
     except:
@@ -79,7 +87,7 @@ def operation_writer(user, message, source=None, status_code: str=STATE_OK):
 
 
 def except_captured(return_value=None, except_type=Exception,
-                    log=True, show_traceback=False, record_args=False, 
+                    log=True, show_traceback=False, record_args=False,
                     record_user=False, record_request_args=False,
                     source='utils[except_captured]', status_code=STATE_ERROR):
     """
