@@ -9,6 +9,7 @@ from random import choice
 
 
 __all__ = [
+    'User',
     'NaturalPerson',
     'Freshman',
     'OrganizationType',
