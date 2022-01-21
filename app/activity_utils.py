@@ -60,7 +60,7 @@ scheduler.add_job(changeActivityStatus, "date",
 """
 
 @log.except_captured(True, record_args=True, source='activity_utils[changeActivityStatus]修改活动状态')
-@log.except_captured(True, AssertionError, record_args=True, status_code=log.STATE_PROBLEM,
+@log.except_captured(True, AssertionError, record_args=True, status_code=log.STATE_WARNING,
                  record_user=False, record_request_args=False,
                  source='activity_utils[changeActivityStatus]检查活动状态')
 def changeActivityStatus(aid, cur_status, to_status):
