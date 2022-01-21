@@ -8,6 +8,35 @@ from django.conf import settings
 from random import choice
 
 
+__all__ = [
+    'User',
+    'NaturalPerson',
+    'Freshman',
+    'OrganizationType',
+    # 'Semester',
+    'Organization',
+    'Position',
+    'Course',
+    'CommentBase',
+    'Activity',
+    'ActivityPhoto',
+    'TransferRecord',
+    'Participant',
+    'YQPointDistribute',
+    'QandA',
+    'Notification',
+    'Comment',
+    'CommentPhoto',
+    'ModifyOrganization',
+    'ModifyPosition',
+    'Reimbursement',
+    'ReimbursementPhoto',
+    'Help',
+    'Wishes',
+    'ModifyRecord',
+]
+
+
 def current_year()-> int:
     return int(datetime.now().strftime("%Y"))
 
