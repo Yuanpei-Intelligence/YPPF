@@ -12,19 +12,6 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 
 import os
 from boottest import local_dict, get_setting
-# Not a good choice. As there could be other modules using this package
-import logging
-
-# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
-BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-STATIC_DIR = BASE_DIR
-LOG_DIR = BASE_DIR
-
-# LOGIN_URL，未登录时重定向到的 URL
-LOGIN_URL = get_setting('url/login_url')
-# LOGIN_URL = local_dict["url"]["login_url"]
-# LOGIN_URL = 'http:localhost:8000/'
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
@@ -34,6 +21,33 @@ SECRET_KEY = "k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9"
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
+
+# Build paths inside the project like this: os.path.join(BASE_DIR, ...)
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+__STATIC_DIR = BASE_DIR
+__LOG_DIR = BASE_DIR
+
+if os.getenv("YPPF_ENV", "") == "PRODUCT":
+    # Set cookie session domain to allow two sites share the session
+    SESSION_COOKIE_DOMAIN = ".yuanpei.life"
+
+    __STATIC_DIR = os.environ["YPPF_STATIC_DIR"]
+    __LOG_DIR = os.environ["YPPF_LOG_DIR"]
+    SECRET_KEY = os.environ["YPPF_SECRET_KEY"]
+
+elif os.getenv("YPPF_ENV", "") == "TEST":
+    
+    SESSION_COOKIE_DOMAIN = ".yuanpei.life"
+
+    __STATIC_DIR = os.getenv("YPPF_STATIC_DIR", BASE_DIR)
+    __LOG_DIR = os.getenv("YPPF_LOG_DIR", BASE_DIR)
+
+
+# LOGIN_URL，未登录时重定向到的 URL
+LOGIN_URL = base_get_setting('url/login_url')
+# LOGIN_URL = local_dict["url"]["login_url"]
+# LOGIN_URL = 'http:localhost:8000/'
+
 
 ALLOWED_HOSTS = ["*"]
 
@@ -101,11 +115,11 @@ DATABASES = {
     # create database underground charset='utf8mb4';
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": get_setting('database/NAME'), # local_dict["database"]["NAME"],
+        "NAME": base_get_setting('database/NAME'), # local_dict["database"]["NAME"],
         "HOST": "127.0.0.1",
         "PORT": 3306,
-        "USER": get_setting('database/USER'), # local_dict["database"]["USER"],
-        "PASSWORD": get_setting('database/PASSWORD'), # local_dict["database"]["PASSWORD"],
+        "USER": base_get_setting('database/USER'), # local_dict["database"]["USER"],
+        "PASSWORD": base_get_setting('database/PASSWORD'), # local_dict["database"]["PASSWORD"],
         'OPTIONS': {
             'charset': 'utf8mb4',
         #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
@@ -169,10 +183,10 @@ USE_TZ = False
 # STATIC_ROOT = os.path.join(BASE_DIR, "static")
 STATIC_URL = "/static/"
 
-STATICFILES_DIRS = (os.path.join(STATIC_DIR, "static"),)
+STATICFILES_DIRS = (os.path.join(__STATIC_DIR, "static"),)
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(STATIC_DIR, "media/")
+MEDIA_ROOT = os.path.join(__STATIC_DIR, "media/")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -194,27 +208,11 @@ LOGGING = {
 }
 '''
 
-if os.getenv("YPPF_ENV", "") == "PRODUCT":
-    # Set cookie session domain to allow two sites share the session
-    SESSION_COOKIE_DOMAIN = ".yuanpei.life"
 
-    DEBUG = False
-    STATIC_DIR = os.environ["YPPF_STATIC_DIR"]
-    LOG_DIR = os.environ["YPPF_LOG_DIR"]
-    SECRET_KEY = os.environ["YPPF_SECRET_KEY"]
-    LOG_LEVEL = logging.INFO
-
-elif os.getenv("YPPF_ENV", "") == "TEST":
-    
-    SESSION_COOKIE_DOMAIN = ".yuanpei.life"
-
-    STATIC_DIR = os.getenv("YPPF_STATIC_DIR", BASE_DIR)
-    LOG_DIR = os.getenv("YPPF_LOG_DIR", BASE_DIR)
-    LOG_LEVEL = logging.DEBUG
-
-
+# Not a good choice. As there could be other modules using this package
+import logging
 logging.basicConfig(
-    filename=os.path.join(LOG_DIR, 'scheduler.log'),
+    filename=os.path.join(__LOG_DIR, 'scheduler.log'),
     filemode='a',
     format='%(asctime)s,%(msecs)d in %(funcName)s - %(levelname)s: %(message)s',
     datefmt='%m-%d %H:%M:%S',
