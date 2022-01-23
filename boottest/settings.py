@@ -169,8 +169,8 @@ __LOG_DIR = BASE_DIR
 
 if os.getenv("YPPF_ENV") in ["PRODUCT", "TEST"]:
     # Set cookie session domain to allow two sites share the session
-    SESSION_COOKIE_DOMAIN = ".yuanpei.life"
-    
+    SESSION_COOKIE_DOMAIN = os.environ["SESSION_COOKIE_DOMAIN"]
+
     __IS_PRODUCT = os.getenv("YPPF_ENV") == "PRODUCT"
     if __IS_PRODUCT:
         SECRET_KEY = os.environ["YPPF_SECRET_KEY"]
