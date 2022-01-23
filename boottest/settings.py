@@ -214,7 +214,7 @@ elif os.getenv("YPPF_ENV", "") == "TEST":
 
 
 logging.basicConfig(
-    filename=os.path.join(LOG_DIR, 'logstore', 'scheduler.log'),
+    filename=os.path.join(LOG_DIR, 'scheduler.log'),
     filemode='a',
     format='%(asctime)s,%(msecs)d in %(funcName)s - %(levelname)s: %(message)s',
     datefmt='%m-%d %H:%M:%S',
