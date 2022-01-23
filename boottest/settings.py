@@ -11,12 +11,11 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
-from boottest import local_dict, get_setting
-# Not a good choice. As there could be other modules using this package
-import logging
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+from boottest import local_dict, get_setting
+
 STATIC_DIR = BASE_DIR
 LOG_DIR = BASE_DIR
 
@@ -198,14 +197,12 @@ if os.getenv("YPPF_ENV", "") == "PRODUCT":
     # Set cookie session domain to allow two sites share the session
     SESSION_COOKIE_DOMAIN = ".yuanpei.life"
 
-    DEBUG = False
     STATIC_DIR = os.environ["YPPF_STATIC_DIR"]
     LOG_DIR = os.environ["YPPF_LOG_DIR"]
     SECRET_KEY = os.environ["YPPF_SECRET_KEY"]
     LOG_LEVEL = logging.INFO
 
 elif os.getenv("YPPF_ENV", "") == "TEST":
-    
     SESSION_COOKIE_DOMAIN = ".yuanpei.life"
 
     STATIC_DIR = os.getenv("YPPF_STATIC_DIR", BASE_DIR)
@@ -213,6 +210,8 @@ elif os.getenv("YPPF_ENV", "") == "TEST":
     LOG_LEVEL = logging.DEBUG
 
 
+# Not a good choice. As there could be other modules using this package
+import logging
 logging.basicConfig(
     filename=os.path.join(LOG_DIR, 'scheduler.log'),
     filemode='a',
@@ -220,11 +219,3 @@ logging.basicConfig(
     datefmt='%m-%d %H:%M:%S',
     level=logging.INFO,
 )
-
-
-
-
-
-
-
-
