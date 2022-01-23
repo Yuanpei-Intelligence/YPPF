@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 import os
 from boottest import local_dict, get_setting
 
+
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/2.1/howto/deployment/checklist/
 
@@ -208,7 +209,6 @@ LOGGING = {
 }
 '''
 
-
 # Not a good choice. As there could be other modules using this package
 import logging
 logging.basicConfig(
@@ -218,11 +218,3 @@ logging.basicConfig(
     datefmt='%m-%d %H:%M:%S',
     level=logging.INFO,
 )
-
-
-
-
-
-
-
-
