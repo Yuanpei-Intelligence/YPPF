@@ -1,9 +1,38 @@
-import json
-
 from boottest import base_get_setting
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
+from django.conf import settings
+
 __PREFIX = 'underground/'
+
+DEBUG = settings.DEBUG
+
+
+def get_setting(path: str='', default=None, trans_func=None,
+               fuzzy_lookup=False, raise_exception=True):
+    '''
+    默认值更宽松的`get_setting`, 适合可选本地设置
+
+    提供/或\\分割的setting路径，尝试寻找对应路径的设置，失败时返回default
+    - 如果某级目录未找到且设置了fuzzy_lookup，会依次尝试其小写、大写版本，并忽略空目录
+    - 可选的trans_func标识了结果转换函数，可以是int str等
+    - 也可以判断结果类型，在范围外抛出异常，从而得到设定的default值
+    '''
+    return base_get_setting(
+        __PREFIX + path, default, trans_func, fuzzy_lookup, raise_exception)
+
+def get_config(path: str='', default=None, trans_func=None,
+               fuzzy_lookup=False, raise_exception=False):
+    '''
+    默认值更宽松的`get_setting`, 适合可选本地设置
+
+    提供/或\\分割的setting路径，尝试寻找对应路径的设置，失败时返回default
+    - 如果某级目录未找到且设置了fuzzy_lookup，会依次尝试其小写、大写版本，并忽略空目录
+    - 可选的trans_func标识了结果转换函数，可以是int str等
+    - 也可以判断结果类型，在范围外抛出异常，从而得到设定的default值
+    '''
+    return base_get_setting(
+        __PREFIX + path, default, trans_func, fuzzy_lookup, raise_exception)
 
 
 class LocalSetting():
@@ -15,27 +44,17 @@ class LocalSetting():
             raise IOError("Can not found json settings.")
         
         self.json = load_json
-        
-        try:
-            self.login_url = load_json['url']['login_url']     # 由陈子维学长提供的统一登录入口
-            self.img_url = load_json['url']['img_url']         # 跳过DNS解析的秘密访问入口,帮助加速头像
-            self.wechat_url = load_json['url']['wechat_url']   # 访问企业微信封装层的接口
-            self.system_log = load_json['url']['system_log']
-        except:
-            raise IndexError("Can not find necessary field, please check your json file.")
 
-        # 读取敏感密码参数
-        #try:
-        #    load_file = open("token.json",'r')
-        #except:
-        #    raise IOError("Can not found token.json. Please use local debug mode instead.")
+        if DEBUG: print('Loading necessary field...')
+        self.login_url = get_setting('url/login_url')       # 由陈子维学长提供的统一登录入口
+        self.img_url = get_setting('url/img_url')           # 跳过DNS解析的秘密访问入口,帮助加速头像
+        self.wechat_url = get_setting('url/wechat_url')     # 访问企业微信封装层的接口
+        self.system_log = get_setting('url/system_log')
 
-        try:
-            self.YPPF_salt = load_json['token']['YPPF_salt']
-            self.wechat_salt = load_json['token']['wechat_salt']
-            self.display_token = load_json['token']['display']
-        except:
-            raise IndexError("Can not find token field, please check your json file.")
+        if DEBUG: print('Loading token field...')
+        self.YPPF_salt = get_setting('token/YPPF_salt')
+        self.wechat_salt = get_setting('token/wechat_salt')
+        self.display_token = get_setting('token/display')
 
         # 设置全局参数
         # added by wxy 人数检查
@@ -56,7 +75,7 @@ class LocalSetting():
 
         # 是否开启登录系统，默认为开启
         try:
-            self.debug_stuids = load_json['debug']['wechat_receivers']
+            self.debug_stuids = get_setting('debug/wechat_receivers')
             if isinstance(self.debug_stuids, str):
                 self.debug_stuids = self.debug_stuids.replace(' ', '').split(',')
             self.debug_stuids = list(map(str, self.debug_stuids))
