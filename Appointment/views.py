@@ -1,5 +1,5 @@
 # 数据库模型与操作
-import os as os
+import os
 import pypinyin  # 支持拼音搜索系统
 from Appointment.models import Participant, Room, Appoint, College_Announcement
 from django.db.models import Q  # modified by wxy
@@ -67,27 +67,25 @@ wklist = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 def identity_check(request):    # 判断用户是否是本人
     # 是否需要检测
 
-    # if global_info.account_auth:
-
-    #     try:
-    #         return request.session['authenticated']
-    #     except:
-    #         pass
-
-    #     try:
-    #         # 认证通过
-    #         d = datetime.utcnow()
-    #         t = mktime(datetime.timetuple(d))
-    #         assert float(t) - float(request.session['timeStamp']) < 3600.0
-    #         assert hash_identity_coder.verify(request.session['Sid'] + request.session['timeStamp'],
-    #                                           request.session['Secret']) is True
-    #         request.session['authenticated'] = True
-    #         return True
-
-    #     except:
-    #         return False
-    # else:
+    if not global_info.account_auth:
         return True
+
+    if request.session.get('authenticated') is not None:
+        return request.session['authenticated']
+
+    try:
+        Sid = request.session['Sid']
+        secret = request.session['Secret']
+        timeStamp = request.session['timeStamp']
+        # 认证通过
+        d = datetime.utcnow()
+        t = mktime(datetime.timetuple(d))
+        assert float(t) - float(timeStamp) < 3600.0
+        # assert hash_identity_coder.verify(Sid + timeStamp, secret)
+        request.session['authenticated'] = True
+        return True
+    except:
+        return False
 
 # 重定向到登录网站
 
@@ -1107,7 +1105,7 @@ def summary(request):  # 主页
                 # 认证通过
                 t = datetime.utcnow().timestamp()
                 assert float(t) - float(timeStamp) < 3600.0
-                assert hash_identity_coder.verify(Sid + timeStamp, secret)
+                # assert hash_identity_coder.verify(Sid + timeStamp, secret)
 
             else:  # POST 说明是display的修改,但是没登陆,自动错误
                 raise SystemError
