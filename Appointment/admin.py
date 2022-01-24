@@ -26,9 +26,9 @@ class ParticipantAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
     search_fields = ('Sid', 'Sname', 'pinyin')
-    list_display = ('Sid', 'Sname', 'Scredit', 'superuser')
+    list_display = ('Sid', 'Sname', 'Scredit')
     list_display_links = ('Sid', 'Sname')
-    list_editable = ('Scredit', 'superuser')
+    list_editable = ('Scredit', )
     list_filter = ('Scredit', )
     fieldsets = (['基本信息', {
         'fields': (
@@ -39,7 +39,7 @@ class ParticipantAdmin(admin.ModelAdmin):
         '显示全部', {
             'classes': ('collapse', ),
             'description': '默认信息，不建议修改！',
-            'fields': ('Scredit', 'superuser', 'pinyin'),
+            'fields': ('Scredit', 'pinyin'),
         }
     ])
 

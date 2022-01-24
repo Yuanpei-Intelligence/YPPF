@@ -27,7 +27,6 @@ class Participant(models.Model):
     Sid = models.CharField('学号', max_length=10, primary_key=True)
     Sname = models.CharField('姓名', max_length=64)
     Scredit = models.IntegerField('信用分', default=3)
-    superuser = models.IntegerField('超级用户', default=0)
     pinyin = models.CharField('拼音', max_length=20, null=True)
 
     class Meta:

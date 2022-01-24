@@ -196,7 +196,9 @@ def get_student_chosen_list(request, get_all=False):
     js_stu_list = []
     Stu_all = Participant.objects.all()
     for stu in Stu_all:
-        if stu.Sid != request.session['Sid'] and (stu.superuser != 1 or get_all == True):
+        # 曾经是`(stu.superuser != 1 or get_all == True)`
+        # 因superuser只有不显示的作用，合并后舍弃
+        if stu.Sid != request.session['Sid'] and (True or get_all == True):
             js_stu_list.append({
                 "id": stu.Sid,
                 "text": stu.Sname + "_" + stu.Sid[:2],
