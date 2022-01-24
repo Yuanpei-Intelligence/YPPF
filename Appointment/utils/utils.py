@@ -4,7 +4,7 @@ import requests as requests
 import json
 from Appointment import global_info, hash_wechat_coder
 import threading
-from Appointment.models import Student, Room, Appoint, CardCheckInfo  # 数据库模型
+from Appointment.models import Participant, Room, Appoint, CardCheckInfo  # 数据库模型
 from django.db import transaction  # 原子化更改数据库
 from datetime import datetime, timedelta
 from django.http import JsonResponse
@@ -458,8 +458,8 @@ def operation_writer(user, message, source, status_code="OK"):
     lock.release()
 
 
-def cardcheckinfo_writer(Student, Room, real_status, should_status, message=None):
-    CardCheckInfo.objects.create(Cardroom=Room, Cardstudent=Student,
+def cardcheckinfo_writer(Participant, Room, real_status, should_status, message=None):
+    CardCheckInfo.objects.create(Cardroom=Room, Cardstudent=Participant,
                                  CardStatus=real_status, ShouldOpenStatus=should_status, Message=message)
 
 

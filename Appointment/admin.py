@@ -1,4 +1,4 @@
-from Appointment.models import Student, Room, Appoint, College_Announcement, CardCheckInfo
+from Appointment.models import Participant, Room, Appoint, College_Announcement, CardCheckInfo
 from django.contrib import admin, messages
 import string
 from django.utils.safestring import mark_safe
@@ -21,8 +21,8 @@ admin.site.site_header = '元培地下室 - 管理后台'
 admin.site.register(College_Announcement)
 
 
-@admin.register(Student)
-class StudentAdmin(admin.ModelAdmin):
+@admin.register(Participant)
+class ParticipantAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
     search_fields = ('Sid', 'Sname', 'pinyin')
@@ -52,7 +52,7 @@ class StudentAdmin(admin.ModelAdmin):
                                      level=messages.WARNING)
         try:
             with transaction.atomic():
-                stu_all = Student.objects.all()
+                stu_all = Participant.objects.all()
                 for stu in stu_all:
                     if stu.Scredit <= 2:
                         print(stu)
@@ -143,7 +143,7 @@ class AppointAdmin(admin.ModelAdmin):
         # 'Afinish',
         # 'Atime',  # 'Ausage',
         'major_student_display',
-        'Students',
+        'Participants',
         # 'total_display',
         'usage_display',
         'check_display',
@@ -178,13 +178,13 @@ class AppointAdmin(admin.ModelAdmin):
 
     list_filter = ('Astart', 'Atime', 'Astatus', ActivateFilter, 'Atemp_flag')
 
-    def Students(self, obj):
+    def Participants(self, obj):
         students = [(obj.major_student.Sname, )]
         students += [(stu.Sname, ) for stu in obj.students.all()
                                     if stu != obj.major_student]
         return format_html_join('\n', '<li>{}</li>', students)
 
-    Students.short_description = '参与人'
+    Participants.short_description = '参与人'
 
     def usage_display(self, obj):
         batch = 6
