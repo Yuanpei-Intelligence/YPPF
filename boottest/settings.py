@@ -16,7 +16,7 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-from boottest import local_dict, base_get_setting
+from boottest import local_dict, global_info, base_get_setting
 
 # LOGIN_URL，未登录时重定向到的 URL
 LOGIN_URL = base_get_setting('url/login_url')
@@ -47,13 +47,14 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "django_apscheduler",
     "app",
+    "Appointment",
 ]
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
-    #'django.middleware.csrf.CsrfViewMiddleware',
+    # 'django.middleware.csrf.CsrfViewMiddleware',
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -169,7 +170,7 @@ __LOG_DIR = BASE_DIR
 
 if os.getenv("YPPF_ENV") in ["PRODUCT", "TEST"]:
     # Set cookie session domain to allow two sites share the session
-    SESSION_COOKIE_DOMAIN = os.environ["SESSION_COOKIE_DOMAIN"]
+    SESSION_COOKIE_DOMAIN = os.environ["YPPF_SESSION_COOKIE_DOMAIN"]
 
     __IS_PRODUCT = os.getenv("YPPF_ENV") == "PRODUCT"
     if __IS_PRODUCT:

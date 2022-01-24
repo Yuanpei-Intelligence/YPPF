@@ -1,0 +1,16 @@
+{
+    "url":{
+        "login_url":    "$本地的yppf服务地址$",
+        "img_url":      "无所谓",
+        "this_url":     "$这个服务运行的地址$",
+        "wechat_url":   "$微信服务的运行地址，考虑到发不了可以不写$",
+        "system_log":   "Appoint_Sys"
+    },
+    "token":{
+        "YPPF_salt":        "$yppf_salt$",
+        "wechat_salt":      "$wechat_salt$"
+    },
+    "debug":{
+        "wechat_receivers": []
+    }
+}
