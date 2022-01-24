@@ -22,7 +22,7 @@ import random
 import threading
 
 # 全局参数读取
-from YPUnderground import global_info, hash_identity_coder
+from boottest import global_info
 
 # utils对接工具
 from Appointment.utils.utils import send_wechat_message, appoint_violate, doortoroom, iptoroom, operation_writer, write_before_delete, cardcheckinfo_writer, check_temp_appoint, set_appoint_reason
@@ -67,26 +67,26 @@ wklist = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 def identity_check(request):    # 判断用户是否是本人
     # 是否需要检测
 
-    if global_info.account_auth:
+    # if global_info.account_auth:
 
-        try:
-            return request.session['authenticated']
-        except:
-            pass
+    #     try:
+    #         return request.session['authenticated']
+    #     except:
+    #         pass
 
-        try:
-            # 认证通过
-            d = datetime.utcnow()
-            t = mktime(datetime.timetuple(d))
-            assert float(t) - float(request.session['timeStamp']) < 3600.0
-            assert hash_identity_coder.verify(request.session['Sid'] + request.session['timeStamp'],
-                                              request.session['Secret']) is True
-            request.session['authenticated'] = True
-            return True
+    #     try:
+    #         # 认证通过
+    #         d = datetime.utcnow()
+    #         t = mktime(datetime.timetuple(d))
+    #         assert float(t) - float(request.session['timeStamp']) < 3600.0
+    #         assert hash_identity_coder.verify(request.session['Sid'] + request.session['timeStamp'],
+    #                                           request.session['Secret']) is True
+    #         request.session['authenticated'] = True
+    #         return True
 
-        except:
-            return False
-    else:
+    #     except:
+    #         return False
+    # else:
         return True
 
 # 重定向到登录网站
