@@ -1,17 +1,18 @@
 import json
 
+from boottest import base_get_setting
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
+
+__PREFIX = 'underground/'
 
 
 class LocalSetting():
     def __init__(self):
         # 读取json文件, 包括url地址、输入输出位置等
         try:
-            load_file = open("load_setting.json",'r')
-            load_json = json.load(load_file)
-            load_file.close()
+            load_json = base_get_setting(__PREFIX[:-1])
         except:
-            raise IOError("Can not found load_setting.json.")
+            raise IOError("Can not found json settings.")
         
         self.json = load_json
         
@@ -31,10 +32,9 @@ class LocalSetting():
         #    raise IOError("Can not found token.json. Please use local debug mode instead.")
 
         try:
-            #load_json = json.load(load_file)
-            #load_file.close()
             self.YPPF_salt = load_json['token']['YPPF_salt']
             self.wechat_salt = load_json['token']['wechat_salt']
+            self.display_token = load_json['token']['display']
         except:
             raise IndexError("Can not find token field, please check your json file.")
 
