@@ -16,7 +16,7 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-from boottest import local_dict, global_info, base_get_setting
+from boottest import local_dict, base_get_setting
 
 # LOGIN_URL，未登录时重定向到的 URL
 LOGIN_URL = base_get_setting('url/login_url')
