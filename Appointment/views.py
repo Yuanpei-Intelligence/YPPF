@@ -317,7 +317,7 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
                     'message': 'invalid params',
                 }},
                 status=400)
-        if display_token != "display_from_underground":
+        if display_token != global_info.display_token:
             return JsonResponse(
                 {'statusInfo': {
                     'message': 'invalid token:'+str(display_token),
@@ -371,7 +371,8 @@ def admin_index(request):   # 我的账户也主函数
     img_path, valid_path = web_func.img_get_func(request)
     if valid_path:
         request.session['img_path'] = img_path
-    #img_path = global_info.this_url +  reverse("Appointment:web_func.img_get_func") + "?Sid=" + Sid
+    #img_path = request.build_absolute_uri(
+    # reverse("Appointment:web_func.img_get_func") + "?Sid=" + Sid)
 
     # 分成两类,past future
     # 直接从数据库筛选两类预约
@@ -419,7 +420,8 @@ def admin_credit(request):
     if valid_path:
         request.session['img_path'] = img_path
 
-    #img_path = global_info.this_url +  reverse("Appointment:web_func.img_get_func") + "?Sid=" + Sid
+    #img_path = request.build_absolute_uri(
+    # reverse("Appointment:web_func.img_get_func") + "?Sid=" + Sid)
 
     contents = {'Sid': str(Sid)}
     vio_list = json.loads(web_func.getViolated_2(contents).content).get('data')
