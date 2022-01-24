@@ -23,7 +23,7 @@ class College_Announcement(models.Model):
         verbose_name_plural = verbose_name
 
 
-class Student(models.Model):
+class Participant(models.Model):
     Sid = models.CharField('学号', max_length=10, primary_key=True)
     Sname = models.CharField('姓名', max_length=64)
     Scredit = models.IntegerField('信用分', default=3)
@@ -117,9 +117,9 @@ class Appoint(models.Model):
                              on_delete=models.SET_NULL,
                              verbose_name='房间号')
     students = models.ManyToManyField(
-        Student, related_name='appoint_list', db_index=True)
+        Participant, related_name='appoint_list', db_index=True)
     major_student = models.ForeignKey(
-        Student, on_delete=models.CASCADE, verbose_name='Appointer', null=True)
+        Participant, on_delete=models.CASCADE, verbose_name='Appointer', null=True)
 
     class Status(models.IntegerChoices):
         CANCELED = 0  # 已取消
@@ -232,7 +232,7 @@ class Appoint(models.Model):
                 {
                     'Sname': student.Sname,  # 参与人姓名
                     'Sid': student.Sid,
-                } for student in self.students.all() if Student.Sid != self.major_student.Sid
+                } for student in self.students.all() if Participant.Sid != self.major_student.Sid
             ]
         }
         try:
@@ -255,7 +255,7 @@ class CardCheckInfo(models.Model):
                                  on_delete=models.SET_NULL,
                                  verbose_name='房间号')
     Cardstudent = models.ForeignKey(
-        Student, on_delete=models.CASCADE, verbose_name='刷卡者', null=True, blank=True, db_index=True)
+        Participant, on_delete=models.CASCADE, verbose_name='刷卡者', null=True, blank=True, db_index=True)
     Cardtime = models.DateTimeField('刷卡时间', auto_now_add=True)
 
     class Status(models.IntegerChoices):

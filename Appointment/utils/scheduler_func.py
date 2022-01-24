@@ -5,7 +5,7 @@ from apscheduler.schedulers.background import BackgroundScheduler
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
 
 
-from Appointment.models import Student, Room, Appoint, College_Announcement
+from Appointment.models import Participant, Room, Appoint, College_Announcement
 from django.http import JsonResponse, HttpResponse  # Json响应
 from django.shortcuts import render, redirect  # 网页render & redirect
 from django.urls import reverse
@@ -311,7 +311,7 @@ def addAppoint(contents):  # 添加预约, main function
             status=400)
     # 再检查学号对不对
     students_id = contents['students']  # 存下学号列表
-    students = Student.objects.filter(
+    students = Participant.objects.filter(
         Sid__in=students_id).distinct()  # 获取学生objects
     try:
         assert len(students) == len(
@@ -419,7 +419,7 @@ def addAppoint(contents):  # 添加预约, main function
 
             # 获取预约发起者,确认预约状态
             try:
-                major_student = Student.objects.get(Sid=contents['Sid'])
+                major_student = Participant.objects.get(Sid=contents['Sid'])
             except:
                 return JsonResponse(
                     {

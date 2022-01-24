@@ -1,7 +1,7 @@
 # 数据库模型与操作
 import os as os
 import pypinyin  # 支持拼音搜索系统
-from Appointment.models import Student, Room, Appoint, College_Announcement
+from Appointment.models import Participant, Room, Appoint, College_Announcement
 from django.db.models import Q  # modified by wxy
 from django.db import transaction  # 原子化更改数据库
 
@@ -453,7 +453,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
     Sid, Rid = request.GET.get("Sid", None), request.GET.get("Rid", None)
     student, room, now_time, min15 = None, None, datetime.now(), timedelta(minutes=15)
     try:
-        student = Student.objects.get(Sid=Sid)
+        student = Participant.objects.get(Sid=Sid)
         all_Rid = [room.Rid for room in Room.objects.all()]
         Rid = doortoroom(Rid)
         if Rid[:4] in all_Rid:  # 表示增加了一个未知的A\B号
@@ -644,7 +644,7 @@ def index(request):  # 主页
 
                 # 至此获得了登录的授权 但是这个人可能不存在 加判断
             try:
-                request.session['Sname'] = Student.objects.get(
+                request.session['Sname'] = Participant.objects.get(
                     Sid=request.session['Sid']).Sname
                 # modify by pht: 自动更新姓名
                 if request.session['Sname'] == '未命名' and request.GET.get('name'):
@@ -656,7 +656,7 @@ def index(request):  # 主页
 
                     # 更新数据库和session
                     with transaction.atomic():
-                        Student.objects.select_for_update().filter(
+                        Participant.objects.select_for_update().filter(
                             Sid=request.session['Sid']).update(
                             Sname=given_name, pinyin=szm)
                     request.session['Sname'] = given_name
@@ -679,7 +679,7 @@ def index(request):  # 主页
                             given_name, style=pypinyin.NORMAL)
                         szm = ''.join([w[0][0] for w in pinyin_list])
 
-                        student = Student(
+                        student = Participant(
                             Sid=request.session['Sid'],
                             Sname=given_name,
                             Scredit=3,
@@ -696,14 +696,14 @@ def index(request):  # 主页
                 else:  # 学生不存在
                     request.session['Sid'] = "0000000000"
                     request.session['Secret'] = ""  # 清空信息
-                    # request.session['Sname'] = Student.objects.get(
+                    # request.session['Sname'] = Participant.objects.get(
                     # Sid=request.session['Sid']).Sname
                     warn_code = 1
                     warn_message = "数据库不存在学生信息,请联系管理员添加!在此之前,您只能查看实时人数."
 
     else:
         request.session['Sid'] = global_info.debug_stuid
-        request.session['Sname'] = Student.objects.get(
+        request.session['Sname'] = Participant.objects.get(
             Sid=request.session['Sid']).Sname
 
     #--------- 前端变量 ---------#
@@ -1007,9 +1007,9 @@ def check_out(request):  # 预约表单提交
                     appoint_params['Rmin'] = min(
                         global_info.today_min, room_object.Rmin)
         appoint_params['Sid'] = request.session['Sid']
-        appoint_params['Sname'] = Student.objects.get(
+        appoint_params['Sname'] = Participant.objects.get(
             Sid=appoint_params['Sid']).Sname
-        Stu_all = Student.objects.all()
+        Stu_all = Participant.objects.all()
 
     except:
         return redirect(reverse('Appointment:index'))

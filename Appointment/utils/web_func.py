@@ -1,6 +1,6 @@
 import requests as requests
 from Appointment import global_info
-from Appointment.models import Student, Room, Appoint, College_Announcement
+from Appointment.models import Participant, Room, Appoint, College_Announcement
 from django.db.models import Q  # modified by wxy
 from datetime import datetime, timedelta, timezone, time, date
 import Appointment.utils.utils as utils
@@ -194,7 +194,7 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
 # 用于前端显示支持拼音搜索的人员列表
 def get_student_chosen_list(request, get_all=False):
     js_stu_list = []
-    Stu_all = Student.objects.all()
+    Stu_all = Participant.objects.all()
     for stu in Stu_all:
         if stu.Sid != request.session['Sid'] and (stu.superuser != 1 or get_all == True):
             js_stu_list.append({
@@ -224,7 +224,7 @@ def time2datetime(year, month, day, t):
 # modified by wxy
 def getViolated_2(contents):
     try:
-        student = Student.objects.get(Sid=contents['Sid'])
+        student = Participant.objects.get(Sid=contents['Sid'])
     except Exception as e:
         return JsonResponse(
             {'statusInfo': {
@@ -241,7 +241,7 @@ def getViolated_2(contents):
 def getStudent_2_classification(contents):
     #print('contents', contents)
     try:
-        student = Student.objects.get(Sid=contents['Sid'])
+        student = Participant.objects.get(Sid=contents['Sid'])
     except Exception as e:
         return JsonResponse(
             {'statusInfo': {
@@ -338,7 +338,7 @@ def get_dayrange(span=7):   # 获取用户的违约预约
 # added by wxy
 def getStudentInfo(contents):   # 抓取学生信息的通用包
     try:
-        student = Student.objects.get(Sid=contents['Sid'])
+        student = Participant.objects.get(Sid=contents['Sid'])
     except Exception as e:
         return JsonResponse(
             {'statusInfo': {
