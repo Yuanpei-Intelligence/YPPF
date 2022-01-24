@@ -268,7 +268,7 @@ def cameracheck(request):   # 摄像头post的后端函数
                     minutes=15) and content.Astatus == Appoint.Status.APPOINTED:
                 status, tempmessage = set_appoint_reason(
                     content, Appoint.Reason.R_LATE)
-                    # 该函数只是把appoint标记为迟到(填写reason)并修改状态为进行中，不发送微信提醒
+                # 该函数只是把appoint标记为迟到(填写reason)并修改状态为进行中，不发送微信提醒
                 if not status:
                     operation_writer(global_info.system_log, "预约"+str(content.Aid) +
                                      "设置为迟到时的返回值异常 "+tempmessage, "views.cameracheck", "Error")
@@ -523,7 +523,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
             start = datetime(now_time.year, now_time.month, now_time.day,
                              now_time.hour, now_time.minute, 0)  # 需要剥离秒级以下的数据，否则admin-index无法正确渲染
             timeid = web_func.get_time_id(room, time(start.hour, start.minute))
-            
+
             # 房间未开放
             if timeid < 0:
                 message = f"该时段房间未开放！别熬夜了，回去睡觉！"
@@ -872,9 +872,10 @@ def arrange_talk_room(request):
         check_type = str(request.GET.get("type"))
         assert check_type in {"russ", "talk"}
         re_time = datetime(year, month, day)  # 如果有bug 直接跳转
-        if re_time.date() < datetime.now().date() or re_time.date(
-        ) - datetime.now().date() > timedelta(days=6):  # 这种就是乱改url
-            return redirect(reverse("Appointment:idnex"))
+        if (re_time.date() < datetime.now().date()
+                or re_time.date() - datetime.now().date() > timedelta(days=6)):
+            # 这种就是乱改url
+            return redirect(reverse("Appointment:index"))
         # 接下来判断时间
     except:
         return redirect(reverse("Appointment:index"))
@@ -1207,11 +1208,11 @@ def summary(request):  # 主页
         # print(zqgj)
         zqgj.insert(6, Rid_list[zqgj[5]])
         zqgj_num = 109
-    
+
     # page 11 未雨绸缪
     wycm = myinfo['wycm']
     wycm_num = 44
-    
+
     # page 12 极限操作
     jxcz = myinfo['jxcz']
     if jxcz:
@@ -1222,7 +1223,7 @@ def summary(request):  # 主页
     # page 13 元培鸽王
     ypgw = myinfo['ypgw']
     ypgw_num = 22
-    
+
     # page 14 新功能预告
 
 
