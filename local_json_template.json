@@ -25,19 +25,12 @@
         "$STUID2$"
     ],
     "underground": {
+        "system_log":   "Appoint_Sys",
         "url":{
-            "login_url":    "http://$THIS_IP$",
-            "img_url":      "http://$THIS_IP$/$IMG_PATH$",
-            "wechat_url":   "http://$OUTER_IP$",
-            "system_log":   "Appoint_Sys"
+            "img_url":      "http://$THIS_IP$/$IMG_PATH$"
         },
         "token":{
-            "YPPF_salt":        "debug_hasher_salt",
-            "wechat_salt":      "debug_hasher_salt",
             "display":      "$DISPLAY_TOKEN$"
-        },
-        "debug":{
-            "wechat_receivers": []
         }
     },
     "weather_api_key": "$API_KEY$",

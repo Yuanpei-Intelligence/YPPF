@@ -46,14 +46,14 @@ class LocalSetting():
         self.json = load_json
 
         if DEBUG: print('Loading necessary field...')
-        self.login_url = get_setting('url/login_url')       # 由陈子维学长提供的统一登录入口
+        self.login_url = settings.LOGIN_URL                 # 由陈子维学长提供的统一登录入口
         self.img_url = get_setting('url/img_url')           # 跳过DNS解析的秘密访问入口,帮助加速头像
-        self.wechat_url = get_setting('url/wechat_url')     # 访问企业微信封装层的接口
-        self.system_log = get_setting('url/system_log')
+        self.wechat_url = base_get_setting('url/wechat_url')# 访问企业微信封装层的接口
+        self.system_log = get_setting('system_log')
 
         if DEBUG: print('Loading token field...')
-        self.YPPF_salt = get_setting('token/YPPF_salt')
-        self.wechat_salt = get_setting('token/wechat_salt')
+        self.YPPF_salt = base_get_setting('hash/base_hasher')
+        self.wechat_salt = base_get_setting('hash/wechat')
         self.display_token = get_setting('token/display')
 
         # 设置全局参数
@@ -75,7 +75,7 @@ class LocalSetting():
 
         # 是否开启登录系统，默认为开启
         try:
-            self.debug_stuids = get_setting('debug/wechat_receivers')
+            self.debug_stuids = base_get_setting('debug_stuids')
             if isinstance(self.debug_stuids, str):
                 self.debug_stuids = self.debug_stuids.replace(' ', '').split(',')
             self.debug_stuids = list(map(str, self.debug_stuids))
