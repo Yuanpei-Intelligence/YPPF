@@ -57,3 +57,7 @@ logstore/
 # Python #
 __pycache__/
 *.py[cod]
+
+# OPS Files *
+*.ini
+*.sh

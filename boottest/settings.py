@@ -16,10 +16,10 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 
-from boottest import local_dict, get_setting
+from boottest import local_dict, base_get_setting
 
 # LOGIN_URL，未登录时重定向到的 URL
-LOGIN_URL = get_setting('url/login_url')
+LOGIN_URL = base_get_setting('url/login_url')
 # LOGIN_URL = local_dict["url"]["login_url"]
 # LOGIN_URL = 'http:localhost:8000/'
 
@@ -99,11 +99,11 @@ DATABASES = {
     # create database underground charset='utf8mb4';
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": get_setting('database/NAME'), # local_dict["database"]["NAME"],
+        "NAME": base_get_setting('database/NAME'), # local_dict["database"]["NAME"],
         "HOST": "127.0.0.1",
         "PORT": 3306,
-        "USER": get_setting('database/USER'), # local_dict["database"]["USER"],
-        "PASSWORD": get_setting('database/PASSWORD'), # local_dict["database"]["PASSWORD"],
+        "USER": base_get_setting('database/USER'), # local_dict["database"]["USER"],
+        "PASSWORD": base_get_setting('database/PASSWORD'), # local_dict["database"]["PASSWORD"],
         'OPTIONS': {
             'charset': 'utf8mb4',
         #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
@@ -164,13 +164,31 @@ USE_TZ = False
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
+__STATIC_DIR = BASE_DIR
+__LOG_DIR = BASE_DIR
+
+if os.getenv("YPPF_ENV") in ["PRODUCT", "TEST"]:
+    # Set cookie session domain to allow two sites share the session
+    SESSION_COOKIE_DOMAIN = os.environ["SESSION_COOKIE_DOMAIN"]
+
+    __IS_PRODUCT = os.getenv("YPPF_ENV") == "PRODUCT"
+    if __IS_PRODUCT:
+        SECRET_KEY = os.environ["YPPF_SECRET_KEY"]
+
+    try:
+        __STATIC_DIR = os.environ["YPPF_STATIC_DIR"]
+        __LOG_DIR = os.environ["YPPF_LOG_DIR"]
+    except:
+        if __IS_PRODUCT:
+            raise
+
 # STATIC_ROOT = os.path.join(BASE_DIR, "static")
 STATIC_URL = "/static/"
 
-STATICFILES_DIRS = (os.path.join(BASE_DIR, "static"),)
+STATICFILES_DIRS = (os.path.join(__STATIC_DIR, "static"),)
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(BASE_DIR, "media/")
+MEDIA_ROOT = os.path.join(__STATIC_DIR, "media/")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -195,7 +213,7 @@ LOGGING = {
 import logging
 logging.basicConfig(
     filename=os.path.join(
-        os.path.join(BASE_DIR, 'logstore'),
+        __LOG_DIR,  # os.path.join(BASE_DIR, 'logstore'),
         'scheduler.log',
         ),
     filemode='a',
