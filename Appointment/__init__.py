@@ -39,7 +39,8 @@ class LocalSetting():
     def __init__(self):
         # 读取json文件, 包括url地址、输入输出位置等
         try:
-            load_json = base_get_setting(__PREFIX[:-1])
+            # TODO: task 0 pht 2022-01-24 等待base_get_setting可以正确获取文件夹
+            load_json = get_setting(fuzzy_lookup=True)
         except:
             raise IOError("Can not found json settings.")
         
