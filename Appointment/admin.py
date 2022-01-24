@@ -9,7 +9,7 @@ from django.db import transaction  # 原子化更改数据库
 from Appointment.utils.scheduler_func import addAppoint, scheduler
 import Appointment.utils.scheduler_func as scheduler_func
 from Appointment.utils.utils import operation_writer, send_wechat_message
-from boottest import global_info
+from Appointment import global_info
 
 
 import pypinyin

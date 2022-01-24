@@ -1,9 +1,8 @@
 # store some funcitons
 
-from boottest import hash_wechat_coder
 import requests as requests
 import json
-from boottest import global_info
+from Appointment import global_info, hash_wechat_coder
 import threading
 from Appointment.models import Student, Room, Appoint, CardCheckInfo  # 数据库模型
 from django.db import transaction  # 原子化更改数据库

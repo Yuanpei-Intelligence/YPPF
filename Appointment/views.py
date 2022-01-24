@@ -22,7 +22,7 @@ import random
 import threading
 
 # 全局参数读取
-from boottest import global_info
+from Appointment import global_info
 
 # utils对接工具
 from Appointment.utils.utils import send_wechat_message, appoint_violate, doortoroom, iptoroom, operation_writer, write_before_delete, cardcheckinfo_writer, check_temp_appoint, set_appoint_reason
