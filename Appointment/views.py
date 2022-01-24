@@ -683,7 +683,6 @@ def index(request):  # 主页
                             Sid=request.session['Sid'],
                             Sname=given_name,
                             Scredit=3,
-                            superuser=0,
                             pinyin=szm)
 
                         student.save()
