@@ -131,7 +131,7 @@
                                                     <td bgColor="F3FDFF" , id="td{{username}}_{{type_id}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
-                                                                id="{{username}}_{{type_id}}"
+                                                                id="{{username}}_{{type_id}}" name="{{type_id}}"
                                                                 onclick="change_status.call(this);this.blur();" checked {% if not otype.allow_unsubscribe %} disabled {% endif %}>
                                                             <label class="custom-control-label"
                                                                 for="{{username}}_{{type_id}}"
@@ -145,7 +145,7 @@
                                                     <td bgColor="FFFFFF" , id="td{{username}}_{{type_id}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
-                                                                id="{{username}}_{{type_id}}"
+                                                                id="{{username}}_{{type_id}}" name="{{type_id}}"
                                                                 onclick="change_status.call(this);this.blur();">
                                                             <label class="custom-control-label"
                                                                 for="{{username}}_{{type_id}}"
@@ -209,14 +209,14 @@
 </script>
 <script>
     async function turn_off_all() {
-        lst = document.getElementsByClassName('custom-control-input');
+        lst = document.getElementsByName(this.id);
         const success = await save_all.call(this,false);
         for (var i = 0; i < lst.length; i += 1) {
-            if (lst[i].checked && this.id == lst[i].id.substring(lst[i].id.indexOf("_")+1)) {
+            if (lst[i].checked) {
                 if (success) {
-                    document.getElementById(`td${lst[i].id}`).bgColor = "FFFFFF";
-                    document.getElementById(`font${lst[i].id}`).color = "E1E1E1";
-                    document.getElementById(`font${lst[i].id}`).innerHTML = "未订阅";
+                    lst[i].parentNode.parentNode.bgColor = "FFFFFF";
+                    lst[i].nextElementSibling.childNodes[1].color = "E1E1E1";
+                    lst[i].nextElementSibling.childNodes[1].innerHTML = "未订阅";
                     const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
                     num.textContent = Number(num.textContent) - 1;
                     lst[i].checked = false;
@@ -225,14 +225,14 @@
         }
     }
     async function turn_on_all() {
-        lst = document.getElementsByClassName('custom-control-input');
+        lst = document.getElementsByName(this.id);
         const success = await save_all.call(this,true);
         for (var i = 0; i < lst.length; i += 1) {
-            if (!lst[i].checked && this.id == lst[i].id.substring(lst[i].id.indexOf("_")+1)) {
+            if (!lst[i].checked) {
                 if (success) {
-                    document.getElementById(`td${lst[i].id}`).bgColor = "F3FDFF";
-                    document.getElementById(`font${lst[i].id}`).color = "5F747B";
-                    document.getElementById(`font${lst[i].id}`).innerHTML = "已订阅";
+                    lst[i].parentNode.parentNode.bgColor = "F3FDFF";
+                    lst[i].nextElementSibling.childNodes[1].color = "5F747B";
+                    lst[i].nextElementSibling.childNodes[1].innerHTML = "已订阅";
                     const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
                     num.textContent = Number(num.textContent) + 1;
                     lst[i].checked = true;
@@ -246,18 +246,18 @@
         if (!this.checked) {
             const success = await save_subscribe_status.call(this, false);
             if (success) {
-                document.getElementById(`td${this.id}`).bgColor = "FFFFFF";
-                document.getElementById(`font${this.id}`).color = "E1E1E1";
-                document.getElementById(`font${this.id}`).innerHTML = "未订阅";
+                this.parentNode.parentNode.bgColor = "FFFFFF";
+                this.nextElementSibling.childNodes[1].color = "E1E1E1";
+                this.nextElementSibling.childNodes[1].innerHTML = "未订阅";
                 num.textContent = Number(num.textContent) - 1;
             }
             else this.checked = true;
         } else {
             const success = await save_subscribe_status.call(this, true);
             if (success) {
-                document.getElementById(`td${this.id}`).bgColor = "F3FDFF";
-                document.getElementById(`font${this.id}`).color = "5F747B";
-                document.getElementById(`font${this.id}`).innerHTML = "已订阅";
+                this.parentNode.parentNode.bgColor = "F3FDFF";
+                this.nextElementSibling.childNodes[1].color = "5F747B";
+                this.nextElementSibling.childNodes[1].innerHTML = "已订阅";
                 num.textContent = Number(num.textContent) + 1;
             }
             else this.checked = false;
