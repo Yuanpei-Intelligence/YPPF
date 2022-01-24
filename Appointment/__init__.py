@@ -19,7 +19,6 @@ class LocalSetting():
         try:
             self.login_url = load_json['url']['login_url']     # 由陈子维学长提供的统一登录入口
             self.img_url = load_json['url']['img_url']         # 跳过DNS解析的秘密访问入口,帮助加速头像
-            self.this_url = load_json['url']['this_url']       # 跳过DNS解析的秘密访问入口,帮助加速头像
             self.wechat_url = load_json['url']['wechat_url']   # 访问企业微信封装层的接口
             self.system_log = load_json['url']['system_log']
         except:
