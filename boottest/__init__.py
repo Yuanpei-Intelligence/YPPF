@@ -10,9 +10,7 @@ def load_local_json(path="./local_json.json"):
         local_dict = json.load(f)
     return local_dict
 
-
 local_dict = load_local_json()
-
 
 # settings是懒惰的，所以可以提前导入并读取正确的值，导入boottest.settings则会错误
 from django.conf import settings
@@ -50,3 +48,4 @@ def base_get_setting(path: str='', default=None, trans_func=None,
             else:
                 print(f'{e}, returning {default} instead')
         return default
+
