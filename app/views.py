@@ -170,13 +170,12 @@ def index(request):
                 html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                 return redirect(message_url(html_display))
 
-            is_inner, arg_origin = utils.get_std_inner_url(arg_origin)
-            if is_inner:  # 非外部链接，合法性已经检查过
-                return redirect(arg_origin)  # 不需要加密验证
-
             is_underground, arg_origin = utils.get_std_underground_url(arg_origin)
+            is_inner, arg_origin = utils.get_std_inner_url(arg_origin)
+            if is_inner and not is_underground:
+                return redirect(arg_origin)  # 是内部链接且不是地下室链接
             if not is_underground:
-                return redirect(arg_origin)
+                return redirect(arg_origin)  #实际上只要不是地下室链接就行
 
             timeStamp = str(int(datetime.utcnow().timestamp())) # UTC 统一服务器
             username = request.user.username    # session["username"] 已废弃
