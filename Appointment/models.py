@@ -1,4 +1,5 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 from django.db.models.signals import pre_delete
 from django.dispatch import receiver
@@ -25,6 +26,17 @@ class College_Announcement(models.Model):
 
 class Participant(models.Model):
     Sid = models.CharField('学号', max_length=10, primary_key=True)
+    '''
+    # 合并后的模型主键，合并后删除
+    Sid = models.ForeignKey(
+        User,
+        related_name='+',
+        on_delete=models.CASCADE,
+        to_field='username',
+        verbose_name='学号',
+        primary_key=True,
+    )
+    '''
     Sname = models.CharField('姓名', max_length=64)
     Scredit = models.IntegerField('信用分', default=3)
     pinyin = models.CharField('拼音', max_length=20, null=True)
