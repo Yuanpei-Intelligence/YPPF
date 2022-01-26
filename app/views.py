@@ -170,26 +170,28 @@ def index(request):
                 html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                 return redirect(message_url(html_display))
 
-            is_underground, arg_origin = utils.get_std_underground_url(arg_origin)
+            # TODO: task 1 qwn 2022-1-26: 
+            #       调试时可以先注释以下两个redirect
+            #       将来需要在Appointment.views中改变获取用户信息的方式。
             is_inner, arg_origin = utils.get_std_inner_url(arg_origin)
-            if is_inner: # and not is_underground:
-                return redirect(arg_origin)  # 是内部链接
-            # TODO: task 1 qwn 2022-1-26: 注释掉下面部分后运行可能出错，是因为url中不再有用户信息，
-            #                           需要在Appointment.views中改变获取用户信息的方式。
-            # if not is_underground:
-            #     return redirect(arg_origin)  #实际上只要不是地下室链接就行
-            
-            # timeStamp = str(int(datetime.utcnow().timestamp())) # UTC 统一服务器
-            # username = request.user.username    # session["username"] 已废弃
-            # en_pw = hash_coder.encode(username + timeStamp)
-            # try:
-            #     userinfo = NaturalPerson.objects.get(person_id__username=username)
-            #     arg_origin = append_query(arg_origin,
-            #         Sid=username, timeStamp=timeStamp, Secret=en_pw, name=userinfo.name)
-            # except:
-            #     arg_origin = append_query(arg_origin,
-            #         Sid=username, timeStamp=timeStamp, Secret=en_pw)
-            # return redirect(arg_origin)
+            if is_inner:  # 非外部链接，合法性已经检查过
+                return redirect(arg_origin)  # 不需要加密验证
+
+            is_underground, arg_origin = utils.get_std_underground_url(arg_origin)
+            if not is_underground:
+                return redirect(arg_origin)
+
+            timeStamp = str(int(datetime.utcnow().timestamp())) # UTC 统一服务器
+            username = request.user.username    # session["username"] 已废弃
+            en_pw = hash_coder.encode(username + timeStamp)
+            try:
+                userinfo = NaturalPerson.objects.get(person_id__username=username)
+                arg_origin = append_query(arg_origin,
+                    Sid=username, timeStamp=timeStamp, Secret=en_pw, name=userinfo.name)
+            except:
+                arg_origin = append_query(arg_origin,
+                    Sid=username, timeStamp=timeStamp, Secret=en_pw)
+            return redirect(arg_origin)
 
     return render(request, "index.html", locals())
 
