@@ -67,6 +67,11 @@ Views.py 使用说明
 
 # 一些固定值
 wklist = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+# identity_check现在用于判断：
+# （1）是否需要身份认证
+# （2）session中是否存有authenticated的信息(之后将被废弃)
+# （3）判断数据库中是否有这个人
 def identity_check(request):    # 判断用户是否是本人
     # 是否需要检测
 
@@ -77,22 +82,60 @@ def identity_check(request):    # 判断用户是否是本人
         return request.session['authenticated']
 
     try:
-        Sid = request.session['Sid']
-        secret = request.session['Secret']
-        timeStamp = request.session['timeStamp']
-        # 认证通过
-        d = datetime.utcnow()
-        t = mktime(datetime.timetuple(d))
-        assert float(t) - float(timeStamp) < 3600.0
-        # assert hash_identity_coder.verify(Sid + timeStamp, secret)
-        request.session['authenticated'] = True
+        request.session['Sname'] = Participant.objects.get(
+            Sid=request.user.username).Sname
         return True
     except:
         return False
 
+    # try:
+    #     Sid = request.session['Sid']
+    #     secret = request.session['Secret']
+    #     timeStamp = request.session['timeStamp']
+    #     # 认证通过
+    #     d = datetime.utcnow()
+    #     t = mktime(datetime.timetuple(d))
+    #     assert float(t) - float(timeStamp) < 3600.0
+    #     # assert hash_identity_coder.verify(Sid + timeStamp, secret)
+    #     request.session['authenticated'] = True
+    #     return True
+    # except:
+    #     return False
+
+# 创建账户
+def create_account(request):
+    with transaction.atomic():
+        success = 1
+        try:
+            given_name = request.GET['name']
+        except:
+            operation_writer(global_info.system_log,
+                            f"创建未命名用户:学号为{request.session['Sid']}",
+                                "views.index",
+                                "Problem")
+            given_name = "未命名"
+            success = 0
+        # 设置首字母
+        pinyin_list = pypinyin.pinyin(
+            given_name, style=pypinyin.NORMAL)
+        szm = ''.join([w[0][0] for w in pinyin_list])
+
+        student = Participant(
+            Sid=request.session['Sid'],
+            Sname=given_name,
+            Scredit=3,
+            pinyin=szm)
+
+        student.save()
+        request.session['Sname'] = given_name
+        warn_code = 1
+        if success == 1:
+            warn_message = "数据库不存在学生信息,已为您自动创建!"
+        else:
+            warn_message = "数据库不存在学生信息,已为您自动创建,请联系管理员修改您的姓名!"
+
 # 重定向到登录网站
-
-
+# 这个函数似乎在加入login_required装饰器后已经改变作用，变成重定向到预约主页面了
 def direct_to_login(request, islogout=False):
     params = request.build_absolute_uri('index')
     urls = global_info.login_url + "?origin=" + params
@@ -640,8 +683,8 @@ def index(request):  # 主页
                     request.session['Sid'] = stu_id_ming
                     request.session['Secret'] = stu_id_code
                     request.session['timeStamp'] = timeStamp
-                    assert identity_check(request) is True
-
+                    # assert identity_check(request) is True  # 修改identity_check之后需要去掉
+                    # TODO: task 1 qwn 2022-1-26 废除程序内的session部分，修改为通过request.user获取信息
                 else:  # POST 说明是display的修改,但是没登陆,自动错误
                     raise SystemError
             except:
@@ -668,35 +711,7 @@ def index(request):  # 主页
             except:
                 # 没有这个人 自动添加并提示
                 if global_info.allow_newstu_appoint:
-                    with transaction.atomic():
-                        success = 1
-                        try:
-                            given_name = request.GET['name']
-                        except:
-                            operation_writer(global_info.system_log,
-                                            f"创建未命名用户:学号为{request.session['Sid']}",
-                                             "views.index",
-                                             "Problem")
-                            given_name = "未命名"
-                            success = 0
-                        # 设置首字母
-                        pinyin_list = pypinyin.pinyin(
-                            given_name, style=pypinyin.NORMAL)
-                        szm = ''.join([w[0][0] for w in pinyin_list])
-
-                        student = Participant(
-                            Sid=request.session['Sid'],
-                            Sname=given_name,
-                            Scredit=3,
-                            pinyin=szm)
-
-                        student.save()
-                        request.session['Sname'] = given_name
-                        warn_code = 1
-                        if success == 1:
-                            warn_message = "数据库不存在学生信息,已为您自动创建!"
-                        else:
-                            warn_message = "数据库不存在学生信息,已为您自动创建,请联系管理员修改您的姓名!"
+                    create_account(request)
                 else:  # 学生不存在
                     request.session['Sid'] = "0000000000"
                     request.session['Secret'] = ""  # 清空信息
