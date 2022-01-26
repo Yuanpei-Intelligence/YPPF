@@ -37,6 +37,9 @@ import Appointment.utils.scheduler_func as scheduler_func
 # 验证时间戳
 from time import mktime
 
+# login_required装饰器
+from django.contrib.auth.decorators import login_required
+
 # 注册启动以上schedule任务
 register_events(scheduler)
 scheduler.start()
@@ -292,6 +295,7 @@ def cameracheck(request):   # 摄像头post的后端函数
 
 @require_POST
 @csrf_exempt
+@login_required(redirect_field_name='origin')
 def cancelAppoint(request):
     # 身份确认检查
     if not identity_check(request):
@@ -349,6 +353,7 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
 
 # modified by wxy
 # tag searchadmin_index
+@login_required(redirect_field_name='origin')
 def admin_index(request):   # 我的账户也主函数
     # 用户校验
     login_url = global_info.login_url
@@ -406,6 +411,7 @@ def admin_index(request):   # 我的账户也主函数
 
 # modified by wxy
 # tag searchadmin_credit
+@login_required(redirect_field_name='origin')
 def admin_credit(request):
     login_url = global_info.login_url
     if not identity_check(request):
@@ -604,6 +610,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
 
 
 @csrf_exempt
+@login_required(redirect_field_name='origin')
 def index(request):  # 主页
     search_code = 0
     warn_code = 0
@@ -782,7 +789,7 @@ def index(request):  # 主页
 
 # tag searcharrange_time
 
-
+@login_required(redirect_field_name='origin')
 def arrange_time(request):
     if not identity_check(request):
         return redirect(direct_to_login(request))
@@ -857,7 +864,7 @@ def arrange_time(request):
 
 # tag searcharrange_talk
 
-
+@login_required(redirect_field_name='origin')
 def arrange_talk_room(request):
 
     if not identity_check(request):
@@ -957,7 +964,7 @@ def arrange_talk_room(request):
 
 # tag searchcheck_out
 
-
+@login_required(redirect_field_name='origin')
 def check_out(request):  # 预约表单提交
     if not identity_check(request):
         return redirect(direct_to_login(request))
@@ -1094,6 +1101,7 @@ def logout(request):    # 登出系统
 ########################################
 
 @csrf_exempt
+@login_required(redirect_field_name='origin')
 def summary(request):  # 主页
     Sid = ""
     if not identity_check(request):
