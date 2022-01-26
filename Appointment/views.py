@@ -68,8 +68,8 @@ Views.py 使用说明
 # 一些固定值
 wklist = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-# 创建账户
 def create_account(request):
+    '''创建账户'''
     with transaction.atomic():
         try:
             given_name = ''
@@ -96,9 +96,8 @@ def create_account(request):
         student.save()
         # request.session['Sname'] = given_name
     
-# identity_check目前的作用：
-# 总是返回True，但如果数据库没有这个人就创建账户
 def identity_check(request):    # 判断用户是否是本人
+    '''目前的作用: 判断数据库有没有这个人'''
     # 是否需要检测
 
     if not global_info.account_auth:
@@ -111,8 +110,7 @@ def identity_check(request):    # 判断用户是否是本人
         Pname = Participant.objects.get(Sid=request.user.username).Sname
         return True
     except:
-        create_account(request)
-        return True
+        return False
 
     # try:
     #     Sid = request.session['Sid']
@@ -128,9 +126,9 @@ def identity_check(request):    # 判断用户是否是本人
     # except:
     #     return False
 
-# 重定向到登录网站
 # TODO：task 1 qwn 2022-1-26 修改逻辑后可以废弃direct_to_login
 def direct_to_login(request, islogout=False):
+    '''重定向到登录网站'''
     params = request.build_absolute_uri('index')
     urls = global_info.login_url + "?origin=" + params
     #urls = 'http://localhost:8000/' + "?origin=" + params
