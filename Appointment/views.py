@@ -68,10 +68,36 @@ Views.py 使用说明
 # 一些固定值
 wklist = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
-# identity_check现在用于判断：
-# （1）是否需要身份认证
-# （2）session中是否存有authenticated的信息(之后将被废弃)
-# （3）判断数据库中是否有这个人
+# 创建账户
+def create_account(request):
+    with transaction.atomic():
+        try:
+            given_name = ''
+            # TODO: task 3 qwn 2022-1-26 这里本来是request.GET['name']，现在需要通过数据库查找
+        except:
+            operation_writer(global_info.system_log,
+                            f"创建未命名用户:学号为{request.session['Sid']}",
+                                "views.index",
+                                "Problem")
+            given_name = "未命名"
+            raise
+            # TODO: task 4 qwn 2022-1-26 这里可以加“处理数据库异常”的部分
+        # 设置首字母
+        pinyin_list = pypinyin.pinyin(
+            given_name, style=pypinyin.NORMAL)
+        szm = ''.join([w[0][0] for w in pinyin_list])
+
+        student = Participant(
+            Sid=request.session['Sid'],
+            Sname=given_name,
+            Scredit=3,
+            pinyin=szm)
+
+        student.save()
+        # request.session['Sname'] = given_name
+    
+# identity_check目前的作用：
+# 总是返回True，但如果数据库没有这个人就创建账户
 def identity_check(request):    # 判断用户是否是本人
     # 是否需要检测
 
@@ -85,7 +111,8 @@ def identity_check(request):    # 判断用户是否是本人
         Pname = Participant.objects.get(Sid=request.user.username).Sname
         return True
     except:
-        return False
+        create_account(request)
+        return True
 
     # try:
     #     Sid = request.session['Sid']
@@ -101,41 +128,8 @@ def identity_check(request):    # 判断用户是否是本人
     # except:
     #     return False
 
-# 创建账户
-def create_account(request):
-    with transaction.atomic():
-        success = 1
-        try:
-            given_name = ''
-            # TODO: task 3 qwn 2022-1-26 这里本来是request.GET['name']，现在需要通过数据库查找
-        except:
-            operation_writer(global_info.system_log,
-                            f"创建未命名用户:学号为{request.session['Sid']}",
-                                "views.index",
-                                "Problem")
-            given_name = "未命名"
-            success = 0
-        # 设置首字母
-        pinyin_list = pypinyin.pinyin(
-            given_name, style=pypinyin.NORMAL)
-        szm = ''.join([w[0][0] for w in pinyin_list])
-
-        student = Participant(
-            Sid=request.session['Sid'],
-            Sname=given_name,
-            Scredit=3,
-            pinyin=szm)
-
-        student.save()
-        # request.session['Sname'] = given_name
-        warn_code = 1
-        if success == 1:
-            warn_message = "数据库不存在学生信息,已为您自动创建!"
-        else:
-            warn_message = "数据库不存在学生信息,已为您自动创建,请联系管理员修改您的姓名!"
-
 # 重定向到登录网站
-# 这个函数似乎在加入login_required装饰器后已经改变作用，变成重定向到预约主页面了
+# TODO：task 5 qwn 2022-1-26 修改逻辑后可以废弃direct_to_login
 def direct_to_login(request, islogout=False):
     params = request.build_absolute_uri('index')
     urls = global_info.login_url + "?origin=" + params
@@ -692,15 +686,14 @@ def index(request):  # 主页
 
                 # 至此获得了登录的授权 但是这个人可能不存在 加判断
             try:
-                Pname = Participant.objects.get(Sid=request.session['Sid']).Sname
-                # modify by pht: 自动更新姓名
-                if Pname == '未命名' and request.GET.get('name'):
-                    # 获取姓名和首字母
-                    given_name = ''
-                    # TODO: task 4 qwn 2022-1-26 这里本来是request.GET['name']，现在需要通过数据库查找
-                    pinyin_list = pypinyin.pinyin(
-                        given_name, style=pypinyin.NORMAL)
-                    szm = ''.join([w[0][0] for w in pinyin_list])
+                # Pname = Participant.objects.get(Sid=request.session['Sid']).Sname
+                # # modify by pht: 自动更新姓名
+                # if Pname == '未命名' and request.GET.get('name'):
+                #     # 获取姓名和首字母
+                #     given_name = ''
+                #     pinyin_list = pypinyin.pinyin(
+                #         given_name, style=pypinyin.NORMAL)
+                #     szm = ''.join([w[0][0] for w in pinyin_list])
 
                     # 更新数据库和session
                     with transaction.atomic():
@@ -712,6 +705,8 @@ def index(request):  # 主页
                 # 没有这个人 自动添加并提示
                 if global_info.allow_newstu_appoint:
                     create_account(request)
+                    warn_code = 1
+                    warn_message = "数据库不存在学生信息,已为您自动创建!"
                 else:  # 学生不存在
                     request.session['Sid'] = "0000000000"
                     # request.session['Secret'] = ""  # 清空信息
