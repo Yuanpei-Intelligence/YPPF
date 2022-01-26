@@ -27,7 +27,10 @@
                     <div class="widget-header">
                         <div class="d-flex justify-content-between">
                             <div>
-                                <h4>课程添加</h4>
+                                <h4>
+                                    课程开设
+
+                                </h4>
                             </div>
                             <div>
                                 <h4>
@@ -42,7 +45,90 @@
                     </div>
                     <div class="widget-content widget-content-area">
                         <form>
-                            
+                            <p>
+                                <b>基本信息</b>
+                            </p>
+                            <div class="form-group">
+                                <label>课程名称</label>
+                                <input type="text" id="title" name="title" class="form-control"  
+                                       maxlength="50" onclick="fill_value(this)" required="required"
+                                       placeholder="在这里写下您要开设的课程名称吧~（必填）" >
+                            </div>
+                            <div class="form-group">
+                                <label>上课地点</label>
+                                <input type="text" id="location" name="location" class="form-control"  
+                                       maxlength="50" onclick="fill_value(this)" required="required"
+                                       placeholder="要让上课的同学能找到地点哦~（必填）" >
+                            </div>
+                            <div class="form-group">
+                                <label>课程预算</label>
+                                <input type="text" id="budget" name="budget" class="form-control"  
+                                       maxlength="50" required="required"
+                                       placeholder="填写的是学期预算/单次课程预算，请注意哦！（必填）" >
+                            </div>
+                            <div class="form-group">
+                                <label>审核老师</label>
+                                <select name="examine_teacher" id="examine_teacher" name="examine_teacher"
+                                        class="form-control selectpicker">
+                                    <option value="" selected disabled>
+                                        选择审核老师
+                                    </option>
+                                    <option value="刘欣悦">刘欣悦</option>
+                                </select>
+                            </div>
+                            <p>
+                                <b>上课时间</b>
+                                <div class="form-group">
+                                    <div class="input-group mb-3">
+                                        <div class="input-group-prepended">
+                                            <button class="btn btn-outline-primary dropdown-toggle"
+                                                    type="button" data-toggle="dropdown" aria-haspopup="true"
+                                                    aria-expanded="false" id="period">
+                                                    <i class="fas fa-caret-down"></i>
+                                                    开课周期
+                                            </button>
+                                            <div class="dropdown-menu">
+                                                <a class="dropdown-item" onclick="selectPeriod($(this).text())"
+                                                    name="get" value="get">一周一次</a>
+                                                <a class="dropdown-item" onclick="selectPeriod($(this).text())"
+                                                    id="college" name="college" value="college">两周一次</a>
+                                                <a class="dropdown-item" onclick="selectPeriod($(this).text())"
+                                                    id="college" name="college" value="college">一周两次</a>
+                                                <a class="dropdown-item" onclick="selectPeriod($(this).text())"
+                                                id="college" name="college" value="college">临时一次</a>
+                                            
+                                            </div>
+                                            
+                                        </div>
+                                    </div>
+                                </div>
+                            </p>
+                            <div class="form-group">
+                                <label>开课时间</label>
+                                <div class="row">
+                                    <div class="col">
+                                        <input type="text" class="form-control" id="datetimepicker3"
+                                            name="actstart" placeholder="开始时间" required="required" onclick="fill_value(this)"/>
+                                    </div>
+                                    <div class="col">
+                                        <input type="text" class="form-control" id="datetimepicker4"
+                                            name="actend" placeholder="结束时间" required="required" onclick="fill_value(this)"/>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group fade in">
+                                <label>开课时间</label>
+                                <div class="row">
+                                    <div class="col">
+                                        <input type="text" class="form-control" id="datetimepicker3"
+                                            name="actstart" placeholder="开始时间" required="required" onclick="fill_value(this)"/>
+                                    </div>
+                                    <div class="col">
+                                        <input type="text" class="form-control" id="datetimepicker4"
+                                            name="actend" placeholder="结束时间" required="required" onclick="fill_value(this)"/>
+                                    </div>
+                                </div>
+                            </div>
                         </form>
                     </div>
                 </div>
@@ -50,4 +136,19 @@
         </div>
     </div>  
 </div>
+{% endblock %}
+
+{% block add_js_file %}
+    <script>
+        function selectPeriod(period) {
+            console.log(period);
+            $("#period").text(period);
+            if(period !== "一周两次") {
+                
+            }
+            else {
+
+            }
+        }
+    </script>
 {% endblock %}
