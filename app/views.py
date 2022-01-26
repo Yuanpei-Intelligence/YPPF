@@ -170,6 +170,9 @@ def index(request):
                 html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
                 return redirect(message_url(html_display))
 
+            # TODO: task 1 qwn 2022-1-26: 
+            #       调试时可以先注释以下两个redirect
+            #       将来需要在Appointment.views中改变获取用户信息的方式。
             is_inner, arg_origin = utils.get_std_inner_url(arg_origin)
             if is_inner:  # 非外部链接，合法性已经检查过
                 return redirect(arg_origin)  # 不需要加密验证

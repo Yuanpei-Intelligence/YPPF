@@ -37,6 +37,9 @@ import Appointment.utils.scheduler_func as scheduler_func
 # 验证时间戳
 from time import mktime
 
+# login_required装饰器
+from django.contrib.auth.decorators import login_required
+
 # 注册启动以上schedule任务
 register_events(scheduler)
 scheduler.start()
@@ -64,33 +67,77 @@ Views.py 使用说明
 
 # 一些固定值
 wklist = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+
+def create_account(request):
+    '''
+    根据请求信息创建账户, 根据创建结果返回生成的对象或者`None`, noexcept
+    '''
+    if not global_info.allow_newstu_appoint:
+        return None
+
+    try:
+        with transaction.atomic():
+            try:
+                # 一切信息读取，如学号和姓名，应当包含数据库查询
+                given_name = None
+                raise OSError
+                # TODO: task 1 qwn 2022-1-26 应从request.GET['name']改为数据库查找
+            except:
+                # TODO: task 1 pht 2022-1-26 将来仍无法读取信息应当报错
+                operation_writer(global_info.system_log,
+                                f"创建未命名用户:学号为{request.session['Sid']}",
+                                    "views.index",
+                                    "Problem")
+                given_name = "未命名"
+
+            # 设置首字母
+            pinyin_list = pypinyin.pinyin(given_name, style=pypinyin.NORMAL)
+            pinyin_init = ''.join([w[0][0] for w in pinyin_list])
+
+            account = Participant.objects.create(
+                Sid=request.session['Sid'],
+                Sname=given_name,
+                Scredit=3,
+                pinyin=pinyin_init,
+            )
+            return account
+    except:
+        return None
+
 def identity_check(request):    # 判断用户是否是本人
+    '''目前的作用: 判断数据库有没有这个人'''
     # 是否需要检测
 
     if not global_info.account_auth:
         return True
 
-    if request.session.get('authenticated') is not None:
-        return request.session['authenticated']
+    # if request.session.get('authenticated') is not None:
+    #     return request.session['authenticated']
 
     try:
-        Sid = request.session['Sid']
-        secret = request.session['Secret']
-        timeStamp = request.session['timeStamp']
-        # 认证通过
-        d = datetime.utcnow()
-        t = mktime(datetime.timetuple(d))
-        assert float(t) - float(timeStamp) < 3600.0
-        # assert hash_identity_coder.verify(Sid + timeStamp, secret)
-        request.session['authenticated'] = True
+        Pname = Participant.objects.get(Sid=request.user.username).Sname
         return True
     except:
         return False
 
-# 重定向到登录网站
+    # try:
+    #     Sid = request.session['Sid']
+    #     secret = request.session['Secret']
+    #     timeStamp = request.session['timeStamp']
+    #     # 认证通过
+    #     d = datetime.utcnow()
+    #     t = mktime(datetime.timetuple(d))
+    #     assert float(t) - float(timeStamp) < 3600.0
+    #     # assert hash_identity_coder.verify(Sid + timeStamp, secret)
+    #     request.session['authenticated'] = True
+    #     return True
+    # except:
+    #     return False
 
 
+# TODO：task 1 qwn 2022-1-26 修改逻辑后可以废弃direct_to_login
 def direct_to_login(request, islogout=False):
+    '''重定向到登录网站'''
     params = request.build_absolute_uri('index')
     urls = global_info.login_url + "?origin=" + params
     #urls = 'http://localhost:8000/' + "?origin=" + params
@@ -292,6 +339,7 @@ def cameracheck(request):   # 摄像头post的后端函数
 
 @require_POST
 @csrf_exempt
+@login_required(redirect_field_name='origin')
 def cancelAppoint(request):
     # 身份确认检查
     if not identity_check(request):
@@ -349,6 +397,7 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
 
 # modified by wxy
 # tag searchadmin_index
+@login_required(redirect_field_name='origin')
 def admin_index(request):   # 我的账户也主函数
     # 用户校验
     login_url = global_info.login_url
@@ -406,6 +455,7 @@ def admin_index(request):   # 我的账户也主函数
 
 # modified by wxy
 # tag searchadmin_credit
+@login_required(redirect_field_name='origin')
 def admin_credit(request):
     login_url = global_info.login_url
     if not identity_check(request):
@@ -604,6 +654,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
 
 
 @csrf_exempt
+@login_required(redirect_field_name='origin')
 def index(request):  # 主页
     search_code = 0
     warn_code = 0
@@ -627,72 +678,45 @@ def index(request):  # 主页
         if not identity_check(request):
             try:
                 if request.method == "GET":
+                    # TODO: task 1 qwn 2022-1-26 将session和request.GET改为request.user的信息
                     stu_id_ming = request.GET['Sid']
-                    stu_id_code = request.GET['Secret']
-                    timeStamp = request.GET['timeStamp']
+                    # stu_id_code = request.GET['Secret']
+                    # timeStamp = request.GET['timeStamp']
                     request.session['Sid'] = stu_id_ming
-                    request.session['Secret'] = stu_id_code
-                    request.session['timeStamp'] = timeStamp
-                    assert identity_check(request) is True
-
+                    # request.session['Secret'] = stu_id_code
+                    # request.session['timeStamp'] = timeStamp
+                    # assert identity_check(request) is True  # 修改identity_check之后需要去掉
                 else:  # POST 说明是display的修改,但是没登陆,自动错误
                     raise SystemError
             except:
                 return redirect(direct_to_login(request))
 
-                # 至此获得了登录的授权 但是这个人可能不存在 加判断
+            # 至此获得了登录的授权 但是这个人可能不存在 加判断
             try:
-                request.session['Sname'] = Participant.objects.get(
-                    Sid=request.session['Sid']).Sname
+                Pname = Participant.objects.get(Sid=request.session['Sid']).Sname
                 # modify by pht: 自动更新姓名
-                if request.session['Sname'] == '未命名' and request.GET.get('name'):
+                if Pname == '未命名' and request.GET.get('name'):
                     # 获取姓名和首字母
                     given_name = request.GET['name']
                     pinyin_list = pypinyin.pinyin(
                         given_name, style=pypinyin.NORMAL)
-                    szm = ''.join([w[0][0] for w in pinyin_list])
+                    pinyin_init = ''.join([w[0][0] for w in pinyin_list])
 
                     # 更新数据库和session
                     with transaction.atomic():
+                        # TODO: task 1 qwn 2022-1-26 session和Participant应同步修改
                         Participant.objects.select_for_update().filter(
                             Sid=request.session['Sid']).update(
-                            Sname=given_name, pinyin=szm)
-                    request.session['Sname'] = given_name
+                            Sname=given_name, pinyin=pinyin_init)
+                    # request.session['Sname'] = given_name
             except:
                 # 没有这个人 自动添加并提示
-                if global_info.allow_newstu_appoint:
-                    with transaction.atomic():
-                        success = 1
-                        try:
-                            given_name = request.GET['name']
-                        except:
-                            operation_writer(global_info.system_log,
-                                            f"创建未命名用户:学号为{request.session['Sid']}",
-                                             "views.index",
-                                             "Problem")
-                            given_name = "未命名"
-                            success = 0
-                        # 设置首字母
-                        pinyin_list = pypinyin.pinyin(
-                            given_name, style=pypinyin.NORMAL)
-                        szm = ''.join([w[0][0] for w in pinyin_list])
-
-                        student = Participant(
-                            Sid=request.session['Sid'],
-                            Sname=given_name,
-                            Scredit=3,
-                            pinyin=szm)
-
-                        student.save()
-                        request.session['Sname'] = given_name
-                        warn_code = 1
-                        if success == 1:
-                            warn_message = "数据库不存在学生信息,已为您自动创建!"
-                        else:
-                            warn_message = "数据库不存在学生信息,已为您自动创建,请联系管理员修改您的姓名!"
-                else:  # 学生不存在
+                if create_account(request) is not None:
+                    warn_code = 1
+                    warn_message = "数据库不存在学生信息,已为您自动创建!"
+                else:  # 创建失败
                     request.session['Sid'] = "0000000000"
-                    request.session['Secret'] = ""  # 清空信息
+                    # request.session['Secret'] = ""  # 清空信息
                     # request.session['Sname'] = Participant.objects.get(
                     # Sid=request.session['Sid']).Sname
                     warn_code = 1
@@ -700,8 +724,8 @@ def index(request):  # 主页
 
     else:
         request.session['Sid'] = global_info.debug_stuid
-        request.session['Sname'] = Participant.objects.get(
-            Sid=request.session['Sid']).Sname
+        # request.session['Sname'] = Participant.objects.get(
+        #     Sid=request.session['Sid']).Sname
 
     #--------- 前端变量 ---------#
 
@@ -782,7 +806,7 @@ def index(request):  # 主页
 
 # tag searcharrange_time
 
-
+@login_required(redirect_field_name='origin')
 def arrange_time(request):
     if not identity_check(request):
         return redirect(direct_to_login(request))
@@ -857,7 +881,7 @@ def arrange_time(request):
 
 # tag searcharrange_talk
 
-
+@login_required(redirect_field_name='origin')
 def arrange_talk_room(request):
 
     if not identity_check(request):
@@ -957,7 +981,7 @@ def arrange_talk_room(request):
 
 # tag searchcheck_out
 
-
+@login_required(redirect_field_name='origin')
 def check_out(request):  # 预约表单提交
     if not identity_check(request):
         return redirect(direct_to_login(request))
@@ -1094,18 +1118,19 @@ def logout(request):    # 登出系统
 ########################################
 
 @csrf_exempt
+@login_required(redirect_field_name='origin')
 def summary(request):  # 主页
     Sid = ""
     if not identity_check(request):
         try:
             if request.method == "GET":
                 Sid = request.GET['Sid']
-                secret = request.GET['Secret']
-                timeStamp = request.GET['timeStamp']
-
+                # secret = request.GET['Secret']
+                # timeStamp = request.GET['timeStamp']
+                # TODO: task 1 qwn 2022-1-26 这里的request.GET也需要修改
                 # 认证通过
-                t = datetime.utcnow().timestamp()
-                assert float(t) - float(timeStamp) < 3600.0
+                # t = datetime.utcnow().timestamp()
+                # assert float(t) - float(timeStamp) < 3600.0
                 # assert hash_identity_coder.verify(Sid + timeStamp, secret)
 
             else:  # POST 说明是display的修改,但是没登陆,自动错误
