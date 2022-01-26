@@ -45,6 +45,7 @@ weather*.json
 migrations/
 test_data/
 comment/
+course/
 avatar/
 wallpaper/
 activity/

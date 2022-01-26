@@ -712,6 +712,26 @@ class TransferRecordAdmin(admin.ModelAdmin):
                     "corres_act__title",)
     list_filter = ("status", "rtype", "start_time", "finish_time",)
 
+
+@admin.register(Course)
+class CourseAdmin(admin.ModelAdmin):
+    list_display = [
+        "name", "organization", "classroom", "teacher", "bidding", 
+        "status", "capacity", "current_participants"
+    ]
+
+    class CourseTimeInline(admin.StackedInline):
+        model = CourseTime
+        extra = 1
+
+    inlines = [CourseTimeInline]
+
+
+@admin.register(CourseParticipant)
+class CourseParticipantAdmin(admin.ModelAdmin):
+    list_display = ["course_id", "person_id", "status"]
+    search_fields = ("course_id__name", "person_id__name")
+
+
 admin.site.register(YQPointDistribute)
 admin.site.register(QandA)
-
