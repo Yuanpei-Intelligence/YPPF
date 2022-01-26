@@ -73,7 +73,7 @@ def create_account(request):
     with transaction.atomic():
         try:
             given_name = ''
-            # TODO: task 3 qwn 2022-1-26 这里本来是request.GET['name']，现在需要通过数据库查找
+            # TODO: task 1 qwn 2022-1-26 这里本来是request.GET['name']，现在需要通过数据库查找
         except:
             operation_writer(global_info.system_log,
                             f"创建未命名用户:学号为{request.session['Sid']}",
@@ -81,7 +81,7 @@ def create_account(request):
                                 "Problem")
             given_name = "未命名"
             raise
-            # TODO: task 4 qwn 2022-1-26 这里可以加“处理数据库异常”的部分
+            # TODO: task 1 qwn 2022-1-26 这里可以加“处理数据库异常”的部分
         # 设置首字母
         pinyin_list = pypinyin.pinyin(
             given_name, style=pypinyin.NORMAL)
@@ -129,7 +129,7 @@ def identity_check(request):    # 判断用户是否是本人
     #     return False
 
 # 重定向到登录网站
-# TODO：task 5 qwn 2022-1-26 修改逻辑后可以废弃direct_to_login
+# TODO：task 1 qwn 2022-1-26 修改逻辑后可以废弃direct_to_login
 def direct_to_login(request, islogout=False):
     params = request.build_absolute_uri('index')
     urls = global_info.login_url + "?origin=" + params
@@ -699,6 +699,8 @@ def index(request):  # 主页
                     with transaction.atomic():
                         Participant.objects.select_for_update().filter(
                             Sid=request.session['Sid']).update(
+                        # TODO: task 1 qwn 2022-1-26 Participant表在改动之后，Sid字段是user类型，
+                        #                            和session['Sid']的str类型不同，需要调整
                             Sname=given_name, pinyin=szm)
                     # request.session['Sname'] = given_name
             except:
@@ -1120,7 +1122,7 @@ def summary(request):  # 主页
                 Sid = request.GET['Sid']
                 # secret = request.GET['Secret']
                 # timeStamp = request.GET['timeStamp']
-                # TODO: task 2 qwn 2022-1-26 这里的request.GET也需要修改
+                # TODO: task 1 qwn 2022-1-26 这里的request.GET也需要修改
                 # 认证通过
                 # t = datetime.utcnow().timestamp()
                 # assert float(t) - float(timeStamp) < 3600.0
