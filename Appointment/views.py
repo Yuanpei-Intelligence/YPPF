@@ -90,6 +90,7 @@ def create_account(request):
                 else:
                     given_name = userinfo[0].name
             except:
+                # TODO: task 1 pht 2022-1-26 将来仍无法读取信息应当报错
                 operation_writer(global_info.system_log,
                                 f"创建未命名用户:学号为{username}",
                                     "views.index",
@@ -714,7 +715,7 @@ def index(request):  # 主页
                     with transaction.atomic():
                         # TODO: task 1 qwn 2022-1-26 session和Participant应同步修改
                         Participant.objects.select_for_update().filter(
-                            Sid=request.user,username).update(
+                            Sid=request.user.username).update(
                             Sname=given_name, pinyin=pinyin_init)
                     # request.session['Sname'] = given_name
             except:
@@ -992,7 +993,6 @@ def arrange_talk_room(request):
 def check_out(request):  # 预约表单提交
     if not identity_check(request):
         create_account(request)
-    identity_check(request)
     temp_time = datetime.now()
     warn_code = 0
     try:
