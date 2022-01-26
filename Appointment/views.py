@@ -106,7 +106,8 @@ def create_account(request):
     with transaction.atomic():
         success = 1
         try:
-            given_name = request.GET['name']
+            given_name = ''
+            # TODO: task 3 qwn 2022-1-26 这里本来是request.GET['name']，现在需要通过数据库查找
         except:
             operation_writer(global_info.system_log,
                             f"创建未命名用户:学号为{request.session['Sid']}",
@@ -695,7 +696,8 @@ def index(request):  # 主页
                 # modify by pht: 自动更新姓名
                 if Pname == '未命名' and request.GET.get('name'):
                     # 获取姓名和首字母
-                    given_name = request.GET['name']
+                    given_name = ''
+                    # TODO: task 4 qwn 2022-1-26 这里本来是request.GET['name']，现在需要通过数据库查找
                     pinyin_list = pypinyin.pinyin(
                         given_name, style=pypinyin.NORMAL)
                     szm = ''.join([w[0][0] for w in pinyin_list])
