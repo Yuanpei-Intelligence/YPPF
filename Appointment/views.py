@@ -2,6 +2,7 @@
 import os
 import pypinyin  # 支持拼音搜索系统
 from Appointment.models import Participant, Room, Appoint, College_Announcement
+from app.models import NaturalPerson, Organization
 from django.db.models import Q  # modified by wxy
 from django.db import transaction  # 原子化更改数据库
 
@@ -68,6 +69,7 @@ Views.py 使用说明
 # 一些固定值
 wklist = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
+@login_required(redirect_field_name='origin')
 def create_account(request):
     '''
     根据请求信息创建账户, 根据创建结果返回生成的对象或者`None`, noexcept
@@ -77,15 +79,19 @@ def create_account(request):
 
     try:
         with transaction.atomic():
+            username = request.user.username
             try:
-                # 一切信息读取，如学号和姓名，应当包含数据库查询
-                given_name = None
-                raise OSError
-                # TODO: task 1 qwn 2022-1-26 应从request.GET['name']改为数据库查找
+                # 查找账号是否在NaturalPerson或Organization数据库中
+                userinfo = NaturalPerson.objects.filter(person_id__username=username)
+                if len(userinfo) == 0:
+                    org = Organization.objects.get(organization_id__username=username)  
+                    # 如果get不到，就是账号不在数据库中
+                    given_name = org.oname
+                else:
+                    given_name = userinfo[0].name
             except:
-                # TODO: task 1 pht 2022-1-26 将来仍无法读取信息应当报错
                 operation_writer(global_info.system_log,
-                                f"创建未命名用户:学号为{request.session['Sid']}",
+                                f"创建未命名用户:学号为{username}",
                                     "views.index",
                                     "Problem")
                 given_name = "未命名"
@@ -95,7 +101,7 @@ def create_account(request):
             pinyin_init = ''.join([w[0][0] for w in pinyin_list])
 
             account = Participant.objects.create(
-                Sid=request.session['Sid'],
+                Sid=username,
                 Sname=given_name,
                 Scredit=3,
                 pinyin=pinyin_init,
@@ -104,6 +110,7 @@ def create_account(request):
     except:
         return None
 
+@login_required(redirect_field_name='origin')
 def identity_check(request):    # 判断用户是否是本人
     '''目前的作用: 判断数据库有没有这个人'''
     # 是否需要检测
@@ -134,8 +141,8 @@ def identity_check(request):    # 判断用户是否是本人
     # except:
     #     return False
 
-
-# TODO：task 1 qwn 2022-1-26 修改逻辑后可以废弃direct_to_login
+# 废弃direct_to_login
+"""
 def direct_to_login(request, islogout=False):
     '''重定向到登录网站'''
     params = request.build_absolute_uri('index')
@@ -144,7 +151,7 @@ def direct_to_login(request, islogout=False):
     if islogout:
         urls = urls + "&is_logout=1"
     return urls
-
+"""
 
 def obj2json(obj):
     return list(obj.values())
@@ -343,7 +350,7 @@ def cameracheck(request):   # 摄像头post的后端函数
 def cancelAppoint(request):
     # 身份确认检查
     if not identity_check(request):
-        return redirect(direct_to_login(request))
+        create_account(request)
     return scheduler_func.cancelFunction(request)
 
 
@@ -402,15 +409,14 @@ def admin_index(request):   # 我的账户也主函数
     # 用户校验
     login_url = global_info.login_url
     if not identity_check(request):
-        print(direct_to_login(request))
-        return redirect(direct_to_login(request))
+        create_account(request)
     warn_code = 0
     if request.GET.get("warn_code", None) is not None:
         warn_code = int(request.GET['warn_code'])
         warning = request.GET['warning']
 
     # 学生基本信息
-    Sid = request.session['Sid']
+    Sid = request.user.username
     contents = {'Sid': str(Sid), 'kind': 'future'}
     my_info = web_func.getStudentInfo(contents)
 
@@ -459,9 +465,9 @@ def admin_index(request):   # 我的账户也主函数
 def admin_credit(request):
     login_url = global_info.login_url
     if not identity_check(request):
-        return redirect(direct_to_login(request))
+        create_account(request)
 
-    Sid = request.session['Sid']
+    Sid = request.user.username
 
     # 头像信息
     img_path, valid_path = web_func.img_get_func(request)
@@ -676,6 +682,8 @@ def index(request):  # 主页
     if global_info.account_auth:
         # print("check", identity_check(request))
         if not identity_check(request):
+            # 这一部分判断是否登陆，可废弃
+            """
             try:
                 if request.method == "GET":
                     # TODO: task 1 qwn 2022-1-26 将session和request.GET改为request.user的信息
@@ -690,10 +698,10 @@ def index(request):  # 主页
                     raise SystemError
             except:
                 return redirect(direct_to_login(request))
-
-            # 至此获得了登录的授权 但是这个人可能不存在 加判断
+            """
+                # 至此获得了登录的授权 但是这个人可能不存在 加判断
             try:
-                Pname = Participant.objects.get(Sid=request.session['Sid']).Sname
+                Pname = Participant.objects.get(Sid=request.user.username).Sname
                 # modify by pht: 自动更新姓名
                 if Pname == '未命名' and request.GET.get('name'):
                     # 获取姓名和首字母
@@ -706,7 +714,7 @@ def index(request):  # 主页
                     with transaction.atomic():
                         # TODO: task 1 qwn 2022-1-26 session和Participant应同步修改
                         Participant.objects.select_for_update().filter(
-                            Sid=request.session['Sid']).update(
+                            Sid=request.user,username).update(
                             Sname=given_name, pinyin=pinyin_init)
                     # request.session['Sname'] = given_name
             except:
@@ -809,7 +817,7 @@ def index(request):  # 主页
 @login_required(redirect_field_name='origin')
 def arrange_time(request):
     if not identity_check(request):
-        return redirect(direct_to_login(request))
+        create_account(request)
     if request.method == 'GET':
         try:
             Rid = request.GET.get('Rid')
@@ -883,9 +891,8 @@ def arrange_time(request):
 
 @login_required(redirect_field_name='origin')
 def arrange_talk_room(request):
-
     if not identity_check(request):
-        return redirect(direct_to_login(request))
+        create_account(request)
     # search_time = request.POST.get('search_time')
     try:
         assert request.method == "GET"
@@ -984,7 +991,8 @@ def arrange_talk_room(request):
 @login_required(redirect_field_name='origin')
 def check_out(request):  # 预约表单提交
     if not identity_check(request):
-        return redirect(direct_to_login(request))
+        create_account(request)
+    identity_check(request)
     temp_time = datetime.now()
     warn_code = 0
     try:
@@ -1028,7 +1036,7 @@ def check_out(request):  # 预约表单提交
                 if datetime.now().strftime("%a") == appoint_params['weekday']:
                     appoint_params['Rmin'] = min(
                         global_info.today_min, room_object.Rmin)
-        appoint_params['Sid'] = request.session['Sid']
+        appoint_params['Sid'] = request.user.username
         appoint_params['Sname'] = Participant.objects.get(
             Sid=appoint_params['Sid']).Sname
         Stu_all = Participant.objects.all()
@@ -1107,7 +1115,8 @@ def check_out(request):  # 预约表单提交
 def logout(request):    # 登出系统
     if global_info.account_auth:
         request.session.flush()
-        return redirect(direct_to_login(request, True))
+        return redirect(global_info.login_url + "?origin=&is_logout=1")
+        # 废弃direct_to_login
         # return redirect(reverse("Appointment:index"))
     else:
         return redirect(reverse("Appointment:index"))
@@ -1122,6 +1131,9 @@ def logout(request):    # 登出系统
 def summary(request):  # 主页
     Sid = ""
     if not identity_check(request):
+        create_account(request)
+        # 这一部分判断是否登陆，可废弃
+        """
         try:
             if request.method == "GET":
                 Sid = request.GET['Sid']
@@ -1138,12 +1150,11 @@ def summary(request):  # 主页
         except:
             return redirect(direct_to_login(request).replace(
                 reverse('Appointment:index'), reverse('Appointment:summary')))
-
+        """
             # 至此获得了登录的授权 但是这个人可能不存在 加判断
-
     try:
         if not Sid:
-            Sid = request.session['Sid']
+            Sid = request.user.username
         with open(f'Appointment/summary_info/{Sid}.txt','r',encoding='utf-8') as fp:
             myinfo = json.load(fp)
     except:
