@@ -708,7 +708,6 @@ def index(request):  # 主页
                         Participant.objects.select_for_update().filter(
                             Sid=request.session['Sid']).update(
                             Sname=given_name, pinyin=pinyin_init)
-                    # request.session['Sname'] = given_name
             except:
                 # 没有这个人 自动添加并提示
                 if create_account(request) is not None:
@@ -717,15 +716,11 @@ def index(request):  # 主页
                 else:  # 创建失败
                     request.session['Sid'] = "0000000000"
                     # request.session['Secret'] = ""  # 清空信息
-                    # request.session['Sname'] = Participant.objects.get(
-                    # Sid=request.session['Sid']).Sname
                     warn_code = 1
                     warn_message = "数据库不存在学生信息,请联系管理员添加!在此之前,您只能查看实时人数."
 
     else:
-        request.session['Sid'] = global_info.debug_stuid
-        # request.session['Sname'] = Participant.objects.get(
-        #     Sid=request.session['Sid']).Sname
+        request.session['Sid'] = "0000000000"
 
     #--------- 前端变量 ---------#
 
