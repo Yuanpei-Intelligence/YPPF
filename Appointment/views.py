@@ -69,33 +69,41 @@ Views.py 使用说明
 wklist = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 def create_account(request):
-    '''创建账户'''
-    with transaction.atomic():
-        try:
-            given_name = ''
-            # TODO: task 1 qwn 2022-1-26 这里本来是request.GET['name']，现在需要通过数据库查找
-        except:
-            operation_writer(global_info.system_log,
-                            f"创建未命名用户:学号为{request.session['Sid']}",
-                                "views.index",
-                                "Problem")
-            given_name = "未命名"
-            raise
-            # TODO: task 1 qwn 2022-1-26 这里可以加“处理数据库异常”的部分
-        # 设置首字母
-        pinyin_list = pypinyin.pinyin(
-            given_name, style=pypinyin.NORMAL)
-        szm = ''.join([w[0][0] for w in pinyin_list])
+    '''
+    根据请求信息创建账户, 根据创建结果返回生成的对象或者`None`, noexcept
+    '''
+    if not global_info.allow_newstu_appoint:
+        return None
 
-        student = Participant(
-            Sid=request.session['Sid'],
-            Sname=given_name,
-            Scredit=3,
-            pinyin=szm)
+    try:
+        with transaction.atomic():
+            try:
+                # 一切信息读取，如学号和姓名，应当包含数据库查询
+                given_name = None
+                raise OSError
+                # TODO: task 1 qwn 2022-1-26 应从request.GET['name']改为数据库查找
+            except:
+                # TODO: task 1 pht 2022-1-26 将来仍无法读取信息应当报错
+                operation_writer(global_info.system_log,
+                                f"创建未命名用户:学号为{request.session['Sid']}",
+                                    "views.index",
+                                    "Problem")
+                given_name = "未命名"
 
-        student.save()
-        # request.session['Sname'] = given_name
-    
+            # 设置首字母
+            pinyin_list = pypinyin.pinyin(given_name, style=pypinyin.NORMAL)
+            pinyin_init = ''.join([w[0][0] for w in pinyin_list])
+
+            account = Participant.objects.create(
+                Sid=request.session['Sid'],
+                Sname=given_name,
+                Scredit=3,
+                pinyin=pinyin_init,
+            )
+            return account
+    except:
+        return None
+
 def identity_check(request):    # 判断用户是否是本人
     '''目前的作用: 判断数据库有没有这个人'''
     # 是否需要检测
@@ -125,6 +133,7 @@ def identity_check(request):    # 判断用户是否是本人
     #     return True
     # except:
     #     return False
+
 
 # TODO：task 1 qwn 2022-1-26 修改逻辑后可以废弃direct_to_login
 def direct_to_login(request, islogout=False):
@@ -669,6 +678,7 @@ def index(request):  # 主页
         if not identity_check(request):
             try:
                 if request.method == "GET":
+                    # TODO: task 1 qwn 2022-1-26 将session和request.GET改为request.user的信息
                     stu_id_ming = request.GET['Sid']
                     # stu_id_code = request.GET['Secret']
                     # timeStamp = request.GET['timeStamp']
@@ -676,38 +686,35 @@ def index(request):  # 主页
                     # request.session['Secret'] = stu_id_code
                     # request.session['timeStamp'] = timeStamp
                     # assert identity_check(request) is True  # 修改identity_check之后需要去掉
-                    # TODO: task 1 qwn 2022-1-26 废除程序内的session和request.GET，修改为通过request.user获取信息
                 else:  # POST 说明是display的修改,但是没登陆,自动错误
                     raise SystemError
             except:
                 return redirect(direct_to_login(request))
 
-                # 至此获得了登录的授权 但是这个人可能不存在 加判断
+            # 至此获得了登录的授权 但是这个人可能不存在 加判断
             try:
-                # Pname = Participant.objects.get(Sid=request.session['Sid']).Sname
-                # # modify by pht: 自动更新姓名
-                # if Pname == '未命名' and request.GET.get('name'):
-                #     # 获取姓名和首字母
-                #     given_name = ''
-                #     pinyin_list = pypinyin.pinyin(
-                #         given_name, style=pypinyin.NORMAL)
-                #     szm = ''.join([w[0][0] for w in pinyin_list])
+                Pname = Participant.objects.get(Sid=request.session['Sid']).Sname
+                # modify by pht: 自动更新姓名
+                if Pname == '未命名' and request.GET.get('name'):
+                    # 获取姓名和首字母
+                    given_name = request.GET['name']
+                    pinyin_list = pypinyin.pinyin(
+                        given_name, style=pypinyin.NORMAL)
+                    pinyin_init = ''.join([w[0][0] for w in pinyin_list])
 
                     # 更新数据库和session
                     with transaction.atomic():
+                        # TODO: task 1 qwn 2022-1-26 session和Participant应同步修改
                         Participant.objects.select_for_update().filter(
                             Sid=request.session['Sid']).update(
-                        # TODO: task 1 qwn 2022-1-26 Participant表在改动之后，Sid字段是user类型，
-                        #                            和session['Sid']的str类型不同，需要调整
-                            Sname=given_name, pinyin=szm)
+                            Sname=given_name, pinyin=pinyin_init)
                     # request.session['Sname'] = given_name
             except:
                 # 没有这个人 自动添加并提示
-                if global_info.allow_newstu_appoint:
-                    create_account(request)
+                if create_account(request) is not None:
                     warn_code = 1
                     warn_message = "数据库不存在学生信息,已为您自动创建!"
-                else:  # 学生不存在
+                else:  # 创建失败
                     request.session['Sid'] = "0000000000"
                     # request.session['Secret'] = ""  # 清空信息
                     # request.session['Sname'] = Participant.objects.get(
