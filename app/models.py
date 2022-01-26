@@ -35,6 +35,9 @@ __all__ = [
     'Wishes',
     'ModifyRecord',
     'CourseRecord',
+    'Course',
+    'CourseTime',
+    'CourseParticipant',
 ]
 
 
@@ -464,27 +467,6 @@ class Position(models.Model):
 
     def get_pos_number(self): #返回对应的pos number 并作超出处理
         return min(len(self.org.otype.job_name_list), self.pos)
-
-
-
-class Course(models.Model):
-    class Meta:
-        verbose_name = "课程"
-        verbose_name_plural = verbose_name
-
-    cid = models.OneToOneField(to=Organization, on_delete=models.CASCADE)
-
-    # 课程周期
-    year = models.IntegerField("当前学年", default=current_year)
-    semester = models.CharField("当前学期", choices=Semester.choices, max_length=15)
-
-    scheduler = models.CharField("上课时间", max_length=25)
-    classroom = models.CharField("上课地点", max_length=25)
-    evaluation_manner = models.CharField("考核方式", max_length=225)
-    education_plan = models.CharField("教学计划", max_length=225)
-
-    def __str__(self):
-        return str(self.cid)
 
 
 class ActivityManager(models.Manager):
@@ -1299,3 +1281,165 @@ class CourseRecord(models.Model):
             return str(self.course)
         return self.extra_name
     get_course_name.short_description = "课程名"
+class CourseManager(models.Manager):
+    def activated(self):
+        # 选择当前学期的开设课程
+        # 不显示已撤销的课程信息
+        return self.filter(
+            year=int(local_dict["semester_data"]["year"]),
+            semester=local_dict["semester_data"]["semester"]).exclude(
+                status=Course.Status.ABORT)
+
+    def selected(self, person: NaturalPerson):
+        # 返回当前学生所选的所有课程
+        return self.activated().filter(participant__person_id=person,
+                                       participant__status__in=
+                                       [CourseParticipant.Status.SELECT,
+                                        CourseParticipant.Status.SUCCESS])
+
+    def unselected(self, person: NaturalPerson):
+        # 返回当前学生没选或失败的所有课程
+        return self.activated().filter(participant__person_id=person,
+                                       participant__status__in=
+                                       [CourseParticipant.Status.UNSELECT,
+                                        CourseParticipant.Status.FAILED])
+
+
+class Course(models.Model):
+    """
+    助教发布课程需要填写的信息
+
+    1、开课组织
+    2、课程名称
+    3、开课年份 + 学期
+    4、每周上课时间、地点 + 上课次数
+    5、授课老师
+    6、课程简介 + 宣传图片
+    7、需要投的意愿点数量
+    8、状态：未开始选课、正在预选、正在补退选、选课结束
+    9、四个时间节点：预选开始、预选结束、补退选开始、补退选结束
+    10、课程容量 + 已选课人数
+    """
+    class Meta:
+        verbose_name = "课程"
+        verbose_name_plural = verbose_name
+        ordering = ["stage1_start", "stage1_end", "stage2_start", "stage2_end"]
+
+    name = models.CharField("课程名称", max_length=60, default="")
+    organization = models.ForeignKey(
+        Organization,
+        on_delete=models.CASCADE,
+        verbose_name="开课组织",
+    )
+
+    year = models.IntegerField("开课年份", default=current_year)
+
+    semester = models.CharField("开课学期",
+                                choices=Semester.choices,
+                                max_length=15,
+                                default=Semester.get(
+                                    local_dict["semester_data"]["semester"]))
+    
+    # 课程开设的周数
+    times = models.SmallIntegerField("课程开设周数", default=7)
+    classroom = models.CharField("预期上课地点", max_length=60, default="")
+    teacher = models.CharField("授课教师", max_length=48, default="")
+
+    # 不确定能否统一选课的情况，先用最保险的方法
+    stage1_start = models.DateTimeField("预选开始时间",
+                                        blank=True,
+                                        default=datetime.now)
+    stage1_end = models.DateTimeField("预选结束时间",
+                                      blank=True,
+                                      default=datetime.now)
+    stage2_start = models.DateTimeField("补退选开始时间",
+                                        blank=True,
+                                        default=datetime.now)
+    stage2_end = models.DateTimeField("补退选结束时间",
+                                      blank=True,
+                                      default=datetime.now)
+
+    bidding = models.IntegerField("意愿点价格", default=0)
+
+    introduction = models.TextField("课程简介", max_length=600, blank=True)
+
+    # 假定课程已经进行线下审核，暂定不需要二次审核
+
+    class Status(models.IntegerChoices):
+        # 预选前和预选结束到补退选开始都是WAITING状态
+        ABORT = (0, "已撤销")
+        WAITING = (1, "未开始选课")
+        STAGE1 = (2, "预选")
+        STAGE2 = (3, "补退选")
+        END = (4, "已结束")
+
+    status = models.SmallIntegerField(
+        "开课状态",
+        choices=Status.choices,
+        default=Status.WAITING,
+    )
+
+    capacity = models.IntegerField("课程容量", default=100)
+    current_participants = models.IntegerField("当前选课人数", default=0)
+
+    # 暂时只允许上传一张图片，如果需要上传多张图片，则要另外建表
+    photo = models.ImageField(verbose_name="宣传图片",
+                              upload_to=f"course/photo/%Y/",
+                              blank=True)
+
+    objects = CourseManager()
+    
+    def __str__(self):
+        return self.name
+
+    def time_list(self):
+        """
+        返回一个list，每个元素是一个tuple，表示课程的开始时间和结束时间
+        """
+        t_list = []
+        for course_time in self.time.all():
+            t_list.append((course_time.start, course_time.end))
+                 
+        return t_list
+
+
+class CourseTime(models.Model):
+    """
+    记录课程每周的上课时间，同一课程可以对应多个上课时间
+    """
+    class Meta:
+        verbose_name = "首周上课时间"
+        verbose_name_plural = verbose_name
+
+    course_id = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="time")
+    start = models.DateTimeField("开始时间", blank=True, default=datetime.now)
+    end = models.DateTimeField("结束时间", blank=True, default=datetime.now)
+
+
+class CourseParticipant(models.Model):
+    """
+    学生的选课情况
+    """
+    class Meta:
+        verbose_name = "课程报名情况"
+        verbose_name_plural = verbose_name
+
+    # 保证不出现冲突的选课状态
+    course_id = models.OneToOneField(Course, 
+                                  on_delete=models.CASCADE, 
+                                  related_name="participant")
+    person_id = models.ForeignKey(NaturalPerson, 
+                                  on_delete=models.CASCADE, 
+                                  related_name="course")
+
+    class Status(models.IntegerChoices):
+        SELECT = (0, "已选课")
+        UNSELECT = (1, "未选课")
+        SUCCESS = (2, "选课成功")
+        FAILED = (3, "选课失败")
+
+    status = models.SmallIntegerField(
+        "选课状态",
+        choices=Status.choices,
+        default=Status.UNSELECT,
+    )
