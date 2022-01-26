@@ -140,7 +140,6 @@ def direct_to_login(request, islogout=False):
     '''重定向到登录网站'''
     params = request.build_absolute_uri('index')
     urls = global_info.login_url + "?origin=" + params
-    #urls = 'http://localhost:8000/' + "?origin=" + params
     if islogout:
         urls = urls + "&is_logout=1"
     return urls
@@ -674,7 +673,6 @@ def index(request):  # 主页
 
     # 用户校验
     if global_info.account_auth:
-        # print("check", identity_check(request))
         if not identity_check(request):
             try:
                 if request.method == "GET":
@@ -949,10 +947,11 @@ def arrange_talk_room(request):
         finish_id = int(
             ((web_func.time2datetime(year, month, day, room.Rfinish) -
               timedelta(minutes=1)) - t_start).total_seconds()) // 1800
-        #print(start_id,",", finish_id)
+
         for time_id in range(start_id, finish_id + 1):
             rooms_time_list[sequence][time_id]['status'] = 0
         print("in arrange talk room，present_time_id", present_time_id)
+
         # case 2
         for time_id in range(min(present_time_id + 1, t_range)):
             rooms_time_list[sequence][time_id]['status'] = 1
@@ -964,7 +963,7 @@ def arrange_talk_room(request):
                     (appointment.Astart - t_start).total_seconds()) // 1800
                 finish_id = int(((appointment.Afinish - timedelta(minutes=1)) -
                                  t_start).total_seconds()) // 1800
-                #print(start_id,",,,", finish_id)
+
                 for time_id in range(start_id, finish_id + 1):
                     rooms_time_list[sequence][time_id]['status'] = 1
 
@@ -1117,24 +1116,7 @@ def logout(request):    # 登出系统
 def summary(request):  # 主页
     Sid = ""
     if not identity_check(request):
-        try:
-            if request.method == "GET":
-                Sid = request.GET['Sid']
-                # secret = request.GET['Secret']
-                # timeStamp = request.GET['timeStamp']
-                # TODO: task 1 qwn 2022-1-26 这里的request.GET也需要修改
-                # 认证通过
-                # t = datetime.utcnow().timestamp()
-                # assert float(t) - float(timeStamp) < 3600.0
-                # assert hash_identity_coder.verify(Sid + timeStamp, secret)
-
-            else:  # POST 说明是display的修改,但是没登陆,自动错误
-                raise SystemError
-        except:
-            return redirect(direct_to_login(request).replace(
-                reverse('Appointment:index'), reverse('Appointment:summary')))
-
-            # 至此获得了登录的授权 但是这个人可能不存在 加判断
+        return redirect(direct_to_login(request))
 
     try:
         if not Sid:
