@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block add_css_file %}
+
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker-standalone.css" %} rel="stylesheet" type="text/css" />
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker.css" %} rel="stylesheet" type="text/css" />
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker.min.css" %} rel="stylesheet" type="text/css" />
+
+<style class="text/css">
+    h5{
+        font-family: 'Nunito', sans-serif;
+        font-size: 1rem;
+        font-weight: bold;
+    }
+</style>
+
+{% endblock %}
+
+{% block mainpage %}
+<div class="main-content pb-3" id="content">
+    <div class="container">
+        <div class="row layout-top-spacing">
+            <div class="col-12 layout-spacing mb-4">
+                <div class="widget box box-shadow">
+                    <div class="widget-header">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>课程添加</h4>
+                            </div>
+                            <div>
+                                <h4>
+                                <img src="/media/avatar/org_default.png" width="24" height="24" alt="avatar">                
+                                <a href='/orginfo/?name=青年志愿者协会'>
+                                    <u>青年志愿者协会</u>
+                                </a>
+                                </h4>
+                            </div>
+                        </div>
+                        
+                    </div>
+                    <div class="widget-content widget-content-area">
+                        <form>
+                            
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>  
+</div>
+{% endblock %}
