@@ -78,12 +78,11 @@ def identity_check(request):    # 判断用户是否是本人
     if not global_info.account_auth:
         return True
 
-    if request.session.get('authenticated') is not None:
-        return request.session['authenticated']
+    # if request.session.get('authenticated') is not None:
+    #     return request.session['authenticated']
 
     try:
-        request.session['Sname'] = Participant.objects.get(
-            Sid=request.user.username).Sname
+        Pname = Participant.objects.get(Sid=request.user.username).Sname
         return True
     except:
         return False
@@ -127,7 +126,7 @@ def create_account(request):
             pinyin=szm)
 
         student.save()
-        request.session['Sname'] = given_name
+        # request.session['Sname'] = given_name
         warn_code = 1
         if success == 1:
             warn_message = "数据库不存在学生信息,已为您自动创建!"
@@ -678,13 +677,13 @@ def index(request):  # 主页
             try:
                 if request.method == "GET":
                     stu_id_ming = request.GET['Sid']
-                    stu_id_code = request.GET['Secret']
-                    timeStamp = request.GET['timeStamp']
+                    # stu_id_code = request.GET['Secret']
+                    # timeStamp = request.GET['timeStamp']
                     request.session['Sid'] = stu_id_ming
-                    request.session['Secret'] = stu_id_code
-                    request.session['timeStamp'] = timeStamp
+                    # request.session['Secret'] = stu_id_code
+                    # request.session['timeStamp'] = timeStamp
                     # assert identity_check(request) is True  # 修改identity_check之后需要去掉
-                    # TODO: task 1 qwn 2022-1-26 废除程序内的session部分，修改为通过request.user获取信息
+                    # TODO: task 1 qwn 2022-1-26 废除程序内的session和request.GET，修改为通过request.user获取信息
                 else:  # POST 说明是display的修改,但是没登陆,自动错误
                     raise SystemError
             except:
@@ -692,10 +691,9 @@ def index(request):  # 主页
 
                 # 至此获得了登录的授权 但是这个人可能不存在 加判断
             try:
-                request.session['Sname'] = Participant.objects.get(
-                    Sid=request.session['Sid']).Sname
+                Pname = Participant.objects.get(Sid=request.session['Sid']).Sname
                 # modify by pht: 自动更新姓名
-                if request.session['Sname'] == '未命名' and request.GET.get('name'):
+                if Pname == '未命名' and request.GET.get('name'):
                     # 获取姓名和首字母
                     given_name = request.GET['name']
                     pinyin_list = pypinyin.pinyin(
@@ -707,14 +705,14 @@ def index(request):  # 主页
                         Participant.objects.select_for_update().filter(
                             Sid=request.session['Sid']).update(
                             Sname=given_name, pinyin=szm)
-                    request.session['Sname'] = given_name
+                    # request.session['Sname'] = given_name
             except:
                 # 没有这个人 自动添加并提示
                 if global_info.allow_newstu_appoint:
                     create_account(request)
                 else:  # 学生不存在
                     request.session['Sid'] = "0000000000"
-                    request.session['Secret'] = ""  # 清空信息
+                    # request.session['Secret'] = ""  # 清空信息
                     # request.session['Sname'] = Participant.objects.get(
                     # Sid=request.session['Sid']).Sname
                     warn_code = 1
@@ -722,8 +720,8 @@ def index(request):  # 主页
 
     else:
         request.session['Sid'] = global_info.debug_stuid
-        request.session['Sname'] = Participant.objects.get(
-            Sid=request.session['Sid']).Sname
+        # request.session['Sname'] = Participant.objects.get(
+        #     Sid=request.session['Sid']).Sname
 
     #--------- 前端变量 ---------#
 
@@ -1123,12 +1121,12 @@ def summary(request):  # 主页
         try:
             if request.method == "GET":
                 Sid = request.GET['Sid']
-                secret = request.GET['Secret']
-                timeStamp = request.GET['timeStamp']
-
+                # secret = request.GET['Secret']
+                # timeStamp = request.GET['timeStamp']
+                # TODO: task 2 qwn 2022-1-26 这里的request.GET也需要修改
                 # 认证通过
-                t = datetime.utcnow().timestamp()
-                assert float(t) - float(timeStamp) < 3600.0
+                # t = datetime.utcnow().timestamp()
+                # assert float(t) - float(timeStamp) < 3600.0
                 # assert hash_identity_coder.verify(Sid + timeStamp, secret)
 
             else:  # POST 说明是display的修改,但是没登陆,自动错误
