@@ -27,7 +27,7 @@ from Appointment import global_info
 # utils对接工具
 from Appointment.utils.utils import send_wechat_message, appoint_violate, doortoroom, iptoroom, operation_writer, write_before_delete, cardcheckinfo_writer, check_temp_appoint, set_appoint_reason
 import Appointment.utils.web_func as web_func
-from Appointment.utils.identity import _get_userinfo, get_name, get_avatar
+from Appointment.utils.identity import get_name, get_avatar
 
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
@@ -79,9 +79,7 @@ def create_account(request):
     try:
         with transaction.atomic():
             try:
-                # 获取request.user对应的(object, type)二元组
-                userinfo = _get_userinfo(request.user)
-                given_name = get_name(userinfo[0][0])
+                given_name = get_name(request.user)
             except:
                 # TODO: task 1 pht 2022-1-26 将来仍无法读取信息应当报错
                 operation_writer(global_info.system_log,
@@ -675,28 +673,27 @@ def index(request):  # 主页
     # 用户校验
     if global_info.account_auth:
         if not identity_check(request):
-            try:
-                if request.method == "GET":
-                    # TODO: task 1 qwn 2022-1-26 将session和request.GET改为request.user的信息
-                    stu_id_ming = request.GET['Sid']
+            # try:
+            #     if request.method == "GET":
+                    # stu_id_ming = request.GET['Sid']
                     # stu_id_code = request.GET['Secret']
                     # timeStamp = request.GET['timeStamp']
-                    request.session['Sid'] = stu_id_ming
+                    # request.session['Sid'] = stu_id_ming
                     # request.session['Secret'] = stu_id_code
                     # request.session['timeStamp'] = timeStamp
                     # assert identity_check(request) is True  # 修改identity_check之后需要去掉
-                else:  # POST 说明是display的修改,但是没登陆,自动错误
-                    raise SystemError
-            except:
-                return redirect(direct_to_login(request))
+            #     else:  # POST 说明是display的修改,但是没登陆,自动错误
+            #         raise SystemError
+            # except:
+            #     return redirect(direct_to_login(request))
 
             # 至此获得了登录的授权 但是这个人可能不存在 加判断
             try:
                 Pname = Participant.objects.get(Sid=request.user.username).Sname
                 # modify by pht: 自动更新姓名
-                if Pname == '未命名' and request.GET.get('name'):
+                if Pname == '未命名':
                     # 获取姓名和首字母
-                    given_name = request.GET['name']
+                    given_name = get_name(request.user)
                     pinyin_list = pypinyin.pinyin(
                         given_name, style=pypinyin.NORMAL)
                     pinyin_init = ''.join([w[0][0] for w in pinyin_list])
