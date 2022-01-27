@@ -78,21 +78,31 @@
                                     <b>详细信息</b>                                
                                 </p>
                                 <div class="form-group">
-                                    <label>开课周期</label>
-                                    <select name="period" id="period"
-                                            class="form-control selectpicker"
-                                            onchange="selectPeriod($(this).val())">
-                                        <option value="" selected disabled>
-                                            选择开课周期
-                                        </option>
-                                        <option value="一周一次" >一周一次</option>
-                                        <option value="两周一次" >两周一次</option>
-                                        <option value="一周两次" >一周两次</option>
-                                        <option value="临时一次" >临时一次</option>
-                                    </select>
+                                    <div class="row">
+                                        <div class="col-sm-12">
+                                            <label>开课周期</label>
+                                            <select name="period" id="period"
+                                                    class="form-control selectpicker"
+                                                    onchange="selectPeriod($(this).val())">
+                                                <option value="" selected disabled>
+                                                    选择开课周期
+                                                </option>
+                                                <option value="一周一次" >一周一次</option>
+                                                <option value="两周一次" >两周一次</option>
+                                                <option value="一周两次" >一周两次</option>
+                                                <option value="临时一次" >临时一次</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-sm-12">
+                                            <label>结课时间</label>
+                                            <input type="text" class="form-control" id="datetimepicker5"
+                                                   name="final" placeholder="填写最后一次课程的时间即可~" required="required" 
+                                                   onclick="fill_value(this)"/>
+                                        </div>
+                                    </div>
+                                    
                                 </div>
                                 <div class="form-group">
-                                    <label>开课时间</label>
                                     <div class="row">
                                         <div class="col-lg-4 col-md-12 col-sm-12 col-xs-12">
                                             <label>上课地点</label>
@@ -254,6 +264,11 @@ $(function () {
         minDate: new Date(),
     });
     $("#datetimepicker4").datetimepicker({
+        format: "YYYY-MM-DD HH:mm",
+        sideBySide: true,
+        minDate: new Date(),
+    });
+    $("#datetimepicker5").datetimepicker({
         format: "YYYY-MM-DD HH:mm",
         sideBySide: true,
         minDate: new Date(),
