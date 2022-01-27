@@ -710,13 +710,13 @@ def index(request):  # 主页
                     warn_code = 1
                     warn_message = "数据库不存在学生信息,已为您自动创建!"
                 else:  # 创建失败
-                    request.session['Sid'] = "0000000000"
+                    # request.session['Sid'] = "0000000000"
                     # request.session['Secret'] = ""  # 清空信息
                     warn_code = 1
                     warn_message = "数据库不存在学生信息,请联系管理员添加!在此之前,您只能查看实时人数."
 
-    else:
-        request.session['Sid'] = "0000000000"
+    # else:
+    #     request.session['Sid'] = "0000000000"
 
     #--------- 前端变量 ---------#
 
