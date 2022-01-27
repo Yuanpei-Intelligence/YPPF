@@ -24,15 +24,9 @@ from app.utils import (
     url_check,
     check_cross_site,
     get_person_or_org,
-    update_org_application,
-    escape_for_templates,
     record_modify_with_session,
     update_related_account_in_session,
 )
-from app.position_utils import(
-    update_pos_application,
-)
-from app.comment_utils import addComment, showComment
 from app.wechat_send import(
     publish_notification,
     publish_notifications,
@@ -45,6 +39,7 @@ from app.notification_utils import(
     notification_create,
     bulk_notification_create,
     notification_status_change,
+    notification2Display,
 )
 from app.QA_utils import (
     QA2Display,
@@ -54,9 +49,9 @@ from app.QA_utils import (
     QA_ignore,
 )
 import json
-from datetime import date, datetime, timedelta
 import random
 import requests  # 发送验证码
+from datetime import date, datetime, timedelta
 
 from boottest import local_dict
 from django.contrib import auth, messages
@@ -148,7 +143,7 @@ def index(request):
             if not valid:
                 return redirect("/logout/")
             if user_type == "Person":
-                me = utils.get_person_or_org(userinfo, user_type)
+                me = get_person_or_org(userinfo, user_type)
                 if me.first_time_login:
                     # 不管有没有跳转，这个逻辑都应该是优先的
                     # TODO：应该在修改密码之后做一个跳转
@@ -277,7 +272,7 @@ def stuinfo(request, name=None):
     user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
 
-    oneself = utils.get_person_or_org(user, user_type)
+    oneself = get_person_or_org(user, user_type)
 
     if name is None:
         name = request.GET.get('name', None)
@@ -568,7 +563,7 @@ def orginfo(request, name=None):
     if not valid:
         return redirect("/logout/")
 
-    me = utils.get_person_or_org(user, user_type)
+    me = get_person_or_org(user, user_type)
 
     if name is None:
         name = request.GET.get('name', None)
@@ -780,7 +775,7 @@ def orginfo(request, name=None):
 def homepage(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = True if user_type == "Person" else False
-    me = utils.get_person_or_org(request.user, user_type)
+    me = get_person_or_org(request.user, user_type)
     myname = me.name if is_person else me.oname
 
     # 直接储存在html_display中
@@ -942,7 +937,7 @@ def accountSetting(request):
     # 在这个页面 默认回归为自己的左边栏
     html_display["is_myself"] = True
     user = request.user
-    me = utils.get_person_or_org(user, user_type)
+    me = get_person_or_org(user, user_type)
     former_img = utils.get_user_ava(me, user_type)
 
     # 补充网页呈现所需信息
@@ -1382,7 +1377,7 @@ def search(request):
     # 活动要呈现的内容
     activity_field = ["活动名称", "承办小组", "状态"]
 
-    me = utils.get_person_or_org(request.user, user_type)
+    me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
@@ -1548,7 +1543,7 @@ def modpw(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
         return redirect("/index/")
-    me = utils.get_person_or_org(request.user, user_type)
+    me = get_person_or_org(request.user, user_type)
     isFirst = me.first_time_login
     # 在其他界面，如果isFirst为真，会跳转到这个页面
     # 现在，请使用@utils.check_user_access(redirect_url)包装器完成用户检查
@@ -1638,7 +1633,7 @@ def subscribeOrganization(request):
     if user_type != 'Person':
         return redirect('/welcome/?warn_code=1&warn_message=小组账号不支持订阅！')
 
-    me = utils.get_person_or_org(request.user, user_type)
+    me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
     org_list = list(Organization.objects.all().select_related("organization_id","otype"))
     #orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
@@ -1661,31 +1656,6 @@ def subscribeOrganization(request):
     return render(request, "organization_subscribe.html", locals())
 
 
-@login_required(redirect_field_name="origin")
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[saveShowPositionStatus]', record_user=True)
-def saveShowPositionStatus(request):
-    valid, user_type, html_display = utils.check_user_type(request.user)
-
-    me = utils.get_person_or_org(request.user, user_type)
-    params = json.loads(request.body.decode("utf-8"))
-
-    with transaction.atomic():
-        try:
-            position = Position.objects.select_for_update().get(id=params["id"])
-        except:
-            return JsonResponse({"success":False})
-        if params["status"]:
-            position.show_post = True
-        else:
-            org = position.org
-            if len(Position.objects.filter(
-                    is_admin=True,
-                    org=org)) == 1 and position.pos == 0:  # 非法前端量修改
-                return JsonResponse({"success": False})
-            position.show_post = False
-        position.save()
-    return JsonResponse({"success": True})
 
 
 @login_required(redirect_field_name="origin")
@@ -1696,7 +1666,7 @@ def saveSubscribeStatus(request):
     if user_type != 'Person':
         return JsonResponse({"success":False})
 
-    me = utils.get_person_or_org(request.user, user_type)
+    me = get_person_or_org(request.user, user_type)
     params = json.loads(request.body.decode("utf-8"))
 
     with transaction.atomic():
@@ -1763,7 +1733,7 @@ def apply_position(request, oid=None):
     if user_type != "Person":
         return redirect("/index/")
 
-    me = utils.get_person_or_org(request.user, user_type)
+    me = get_person_or_org(request.user, user_type)
     user = User.objects.get(id=int(oid))
     org = Organization.objects.get(organization_id=user)
 
@@ -1804,51 +1774,6 @@ def apply_position(request, oid=None):
     )
     return redirect("/notifications/")
 '''
-
-
-
-
-@log.except_captured(source='views[notification2Display]')
-def notification2Display(notification_set):
-    lis = []
-    sender_userids = notification_set.values_list('sender_id', flat=True)
-    sender_persons = NaturalPerson.objects.filter(person_id__in=sender_userids).values_list('person_id', 'name')
-    sender_persons = {userid: name for userid, name in sender_persons}
-    sender_orgs = Organization.objects.filter(organization_id__in=sender_userids).values_list('organization_id', 'oname')
-    sender_orgs = {userid: name for userid, name in sender_orgs}
-    # 储存这个列表中所有record的元气值的和
-    for notification in notification_set:
-        note_display = {}
-
-        # id
-        note_display["id"] = notification.id
-
-        # 时间
-        note_display["start_time"] = notification.start_time.strftime("%Y-%m-%d %H:%M")
-        if notification.finish_time is not None:
-            note_display["finish_time"] = notification.finish_time.strftime("%Y-%m-%d %H:%M")
-
-        # 留言
-        note_display["content"] = notification.content
-
-        # 状态
-        note_display["status"] = notification.get_status_display()
-        note_display["URL"] = notification.URL
-        note_display["type"] = notification.get_typename_display()
-        note_display["title"] = notification.get_title_display()
-
-
-        _, user_type, _ = utils.check_user_type(notification.sender)
-        if user_type == "Organization":
-            note_display["sender"] = sender_orgs.get(
-                notification.sender_id
-            ) if not notification.anonymous_flag else "匿名者"
-        else:
-            note_display["sender"] = sender_persons.get(
-                notification.sender_id
-            ) if not notification.anonymous_flag else "匿名者"
-        lis.append(note_display)
-    return lis
 
 
 @login_required(redirect_field_name="origin")
@@ -1905,7 +1830,7 @@ def notifications(request):
                 html_display["warn_message"] = "修改通知状态的过程出现错误！请联系管理员。"
                 return JsonResponse({"success":False})
 
-    me = utils.get_person_or_org(request.user, user_type)
+    me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
     notification_set = Notification.objects.activated().select_related(
@@ -1921,657 +1846,6 @@ def notifications(request):
 
 
 
-@login_required(redirect_field_name='origin')
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[showNewOrganization]', record_user=True)
-def showNewOrganization(request):
-    """
-    YWolfeee: modefied on Aug 24 1:33 a.m. UTC-8
-    新建小组的聚合界面
-    """
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    if user_type == "Organization":
-        html_display["warn_code"] = 1
-        html_display["warn_message"] = "请不要使用小组账号申请新小组！"
-        return redirect("/welcome/" +
-                        "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]))
-
-    me = utils.get_person_or_org(request.user, user_type)
-
-    # 拉取我负责管理申请的小组，这部分由我审核
-    charge_org = ModifyOrganization.objects.filter(otype__in=me.incharge.all()).values_list("id",flat=True)
-
-    # 拉去由我发起的申请，这部分等待审核
-    applied_org = ModifyOrganization.objects.filter(pos=request.user).values_list("id",flat=True)
-    all_instances = ModifyOrganization.objects.filter(id__in = list(set(charge_org) | set(applied_org)))
-    # 排序整合，用于前端呈现
-    all_instances = {
-        "undone": all_instances.filter(status=ModifyOrganization.Status.PENDING).order_by("-modify_time", "-time"),
-        "done"  : all_instances.exclude(status=ModifyOrganization.Status.PENDING).order_by("-modify_time", "-time")
-    }
-
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="新建小组账号")
-    return render(request, "neworganization_show.html", locals())
-
-
-# YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
-@login_required(redirect_field_name='origin')
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[modifyPosition]', record_user=True)
-def modifyPosition(request):
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    me = utils.get_person_or_org(request.user)  # 获取自身
-
-    # 前端使用量user_type，表示观察者是小组还是个人
-
-    # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
-
-    # 设置application为None, 如果非None则自动覆盖
-    application = None
-
-    # 根据是否有newid来判断是否是第一次
-    position_id = request.GET.get("pos_id", None)
-    if position_id is not None: # 如果存在对应小组
-        try:
-            application = ModifyPosition.objects.get(id = position_id)
-            # 接下来检查是否有权限check这个条目
-            # 至少应该是申请人或者被申请小组之一
-            if user_type == "Person" and application.person != me:
-                # 尝试获取已经新建的Position
-                html_display=utils.user_login_org(request,application.org)
-                if html_display['warn_code']==1:
-                    return redirect(
-                        "/welcome/" +
-                        "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]))
-                else:
-                    #防止后边有使用，因此需要赋值
-                    user_type = "Organization"
-                    request.user=application.org.organization_id
-                    me = application.org
-            assert (application.org == me) or (application.person == me)
-        except: #恶意跳转
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "您没有权限访问该网址！"
-            return redirect("/welcome/" +
-                            "?warn_code=1&warn_message={warn_message}".format(
-                                warn_message=html_display["warn_message"]))
-        is_new_application = False # 前端使用量, 表示是老申请还是新的
-        applied_org = application.org
-
-    else:   # 如果不存在id, 默认应该传入org_name参数
-        org_name = request.GET.get("org_name", None)
-        try:
-            applied_org = Organization.objects.activated().get(oname=org_name)
-            assert user_type == "Person" # 只有个人能看到这个新建申请的界面
-
-        except:
-            # 非法的名字, 出现恶意修改参数的情况
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "网址遭到篡改，请检查网址的合法性或尝试重新进入成员申请页面"
-            return redirect("/welcome/" +
-                            "?warn_code=1&warn_message={warn_message}".format(
-                                warn_message=html_display["warn_message"]))
-
-        # 查找已经存在的审核中的申请
-        try:
-            application = ModifyPosition.objects.get(
-                org = applied_org, person = me, status = ModifyPosition.Status.PENDING)
-            is_new_application = False # 如果找到, 直接跳转老申请
-        except:
-            is_new_application = True
-
-    '''
-        至此，如果是新申请那么application为None，否则为对应申请
-        application = None只有在个人新建申请的时候才可能出现，对应位is_new_application
-        applied_org为对应的小组
-        接下来POST
-    '''
-
-    # ———————— Post操作，分为申请变更以及添加评论   ————————
-
-    if request.method == "POST":
-        # 如果是状态变更
-        if request.POST.get("post_type", None) is not None:
-
-            # 主要操作函数，更新申请状态
-            context = update_pos_application(application, me, user_type,
-                    applied_org, request.POST)
-
-            if context["warn_code"] == 2:   # 成功修改申请
-                # 回传id 防止意外的锁操作
-                application = ModifyPosition.objects.get(id = context["application_id"])
-                is_new_application = False  #状态变更
-
-                # 处理通知相关的操作，并根据情况发送微信
-                # 默认需要成功,失败也不是用户的问题，直接给管理员报错
-                make_relevant_notification(application, request.POST)
-
-            elif context["warn_code"] != 1: # 没有返回操作提示
-                raise NotImplementedError("处理成员申请中出现未预见状态，请联系管理员处理！")
-
-
-        else:   # 如果是新增评论
-            # 权限检查
-            allow_comment = True if (not is_new_application) and (
-                application.is_pending()) else False
-            if not allow_comment:   # 存在不合法的操作
-                return redirect(
-                    "/welcome/?warn_code=1&warn_message=存在不合法操作,请与管理员联系!")
-            context = addComment(request, application, application.org.organization_id if user_type == 'Person' else application.person.person_id)
-
-        # 准备用户提示量
-        html_display["warn_code"] = context["warn_code"]
-        html_display["warn_message"] = context["warn_message"]
-
-    # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
-
-    # 首先是写死的前端量
-    # 申请的职务类型, 对应ModifyPosition.ApplyType
-    apply_type_list = {
-        w:{
-                    # 对应的status设置, 属于ApplyType
-            'display' : str(w),  # 前端呈现的使用量
-            'disabled' : False,  # 是否禁止选择这个量
-            'selected' : False   # 是否默认选中这个量
-        }
-        for w in ModifyPosition.ApplyType
-    }
-    # 申请的职务等级
-    position_name_list = [
-        {
-            'display' : applied_org.otype.get_name(i),  #名称
-            'disabled' : False,  # 是否禁止选择这个量
-            'selected' : False,   # 是否默认选中这个量
-        }
-        for i in range(applied_org.otype.get_length())
-    ]
-
-    '''
-        个人：可能是初次申请或者是修改申请
-        小组：可能是审核申请
-        # TODO 也可能是两边都想自由的查看这个申请
-        区别：
-            (1) 整个表单允不允许修改和评论
-            (2) 变量的默认值[可以全部统一做]
-    '''
-
-    # (1) 是否允许修改&允许评论
-    # 用户写表格?
-    allow_form_edit = True if (user_type == "Person") and (
-                is_new_application or application.is_pending()) else False
-    # 小组审核?
-    allow_audit_submit = True if (not user_type == "Person") and (not is_new_application) and (
-                application.is_pending()) else False
-    # 评论区?
-    allow_comment = True if (not is_new_application) and (application.is_pending()) \
-                    else False
-
-    # (2) 表单变量的默认值
-
-    # 首先禁用一些选项
-
-    # 评论区
-    commentable = allow_comment
-    comments = showComment(application) if application is not None else None
-    # 用于前端展示：如果是新申请，申请人即“me”，否则从application获取。
-    apply_person = me if is_new_application else application.person
-    app_avatar_path = apply_person.get_user_ava()
-    org_avatar_path = applied_org.get_user_ava()
-    # 获取个人与小组[在当前学年]的关系
-    current_pos_list = Position.objects.current().filter(person=apply_person, org=applied_org)
-    # 应当假设只有至多一个类型
-
-    # 检查该同学是否已经属于这个小组
-    whether_belong = True if len(current_pos_list) and \
-        current_pos_list[0].status == Position.Status.INSERVICE else False
-    if whether_belong:
-        # 禁用掉加入小组
-        apply_type_list[ModifyPosition.ApplyType.JOIN]['disabled'] = True
-        # 禁用掉修改职位中的自己的那个等级
-        position_name_list[current_pos_list[0].get_pos_number()]["disabled"] = True
-        #current_pos_name = applied_org.otype.get_name(current_pos_list[0].pos)
-    else:   #不属于小组, 只能选择加入小组
-        apply_type_list[ModifyPosition.ApplyType.WITHDRAW]['disabled'] = True
-        apply_type_list[ModifyPosition.ApplyType.TRANSFER]['disabled'] = True
-
-    # TODO: 设置默认值
-    if not is_new_application:
-        apply_type_list[application.apply_type]['selected'] = True
-        if application.pos is not None:
-            position_name_list[application.pos]['selected'] = True
-        #未通过时，不能修改，但是需要呈现变量。
-        if application.status != ModifyPosition.Status.PENDING:  # 未通过
-            apply_type_list[application.apply_type]['disabled'] = False
-            if not application.apply_type == ModifyPosition.ApplyType.WITHDRAW:
-                position_name_list[application.pos]["disabled"] = False
-    else:
-        position_name_list[-1]['selected'] = True   # 默认选中pos最低的！
-
-
-
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="成员申请详情")
-    return render(request, "modify_position.html", locals())
-
-
-@login_required(redirect_field_name='origin')
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[showPosition]', record_user=True)
-def showPosition(request):
-    '''
-    成员的聚合界面
-    '''
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    me = utils.get_person_or_org(request.user)
-
-    # 查看成员聚合页面：拉取个人或小组相关的申请
-    if user_type == "Person":
-        #shown_instances = ModifyPosition.objects.filter(person=me)
-        all_instances = {
-            "undone": ModifyPosition.objects.filter(person=me, status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
-            "done": ModifyPosition.objects.filter(person=me).exclude(status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time')
-        }
-        all_org = Organization.objects.activated().exclude(
-            id__in = all_instances["undone"].values_list("org_id",flat=True))
-    else:
-        all_instances = {
-            "undone": ModifyPosition.objects.filter(org=me,status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time'),
-            "done": ModifyPosition.objects.filter(org=me).exclude(status=ModifyPosition.Status.PENDING).order_by('-modify_time', '-time')
-        }
-    #shown_instances = shown_instances.order_by('-modify_time', '-time')
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="成员申请")
-    return render(request, 'showPosition.html', locals())
-
-
-# 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
-# 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
-@log.except_captured(source='views[make_relevant_notification]')
-def make_relevant_notification(application, info):
-    # 考虑不同post_type的信息发送行为
-    post_type = info.get("post_type")
-    feasible_post = ["new_submit", "modify_submit", "cancel_submit", "accept_submit", "refuse_submit"]
-
-    # 统一该函数：判断application的类型
-    application_type = type(application)
-    # 准备呈现使用的变量与信息
-
-    # 先准备一些复杂变量(只是为了写起来方便所以先定义，不然一大个插在后面的操作里很丑)
-    if application_type == ModifyPosition:
-        try:
-            position_name = application.org.otype.get_name(application.pos)  # 职位名称
-        except:
-            position_name = "退出小组"
-    elif application_type == ModifyOrganization:
-        apply_person = NaturalPerson.objects.get(person_id=application.pos)
-        inchage_person = application.otype.incharge
-        try:
-            new_org = Organization.objects.get(oname=application.oname)
-        except:
-            new_org = None
-
-    # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
-    if application_type == ModifyPosition:
-        if post_type == 'new_submit':
-            content = f'{application.person.name}发起小组成员变动申请，职位申请：{position_name}，请审核~'
-        elif post_type == 'modify_submit':
-            content = f'{application.person.name}修改了成员申请信息，请审核~'
-        elif post_type == 'cancel_submit':
-            content = f'{application.person.name}取消了成员申请信息。'
-        elif post_type == 'accept_submit':
-            content = f'恭喜，您申请的成员变动：{application.org.oname}，审核已通过！申请职位：{position_name}。'
-        elif post_type == 'refuse_submit':
-            content = f'抱歉，您申请的成员变动：{application.org.oname}，审核未通过！申请职位：{position_name}。'
-        else:
-            raise NotImplementedError
-        applyer_id = application.person.person_id
-        applyee_id = application.org.organization_id
-        not_type = Notification.Title.POSITION_INFORM
-        URL = f'/modifyPosition/?pos_id={application.id}'
-    elif application_type == ModifyOrganization:
-        if post_type == 'new_submit':
-            content = f'{apply_person.name}发起新建小组申请，新建小组：{application.oname}，请审核～'
-        elif post_type == 'modify_submit':
-            content = f'{apply_person.name}修改了小组申请信息，请审核～'
-        elif post_type == 'cancel_submit':
-            content = f'{apply_person.name}取消了小组{application.oname}的申请。'
-        elif post_type == 'accept_submit':
-            content = f'恭喜，您申请的小组：{application.oname}，审核已通过！小组编号为{new_org.organization_id.username}，\
-                初始密码为{utils.random_code_init(new_org.organization_id.id)}，请尽快登录修改密码。登录方式：(1)在负责人账户点击左侧「切换账号」；(2)从登录页面用小组编号或小组名称以及密码登录。\
-                你可以把小组的主页转发到微信群或朋友圈，邀请更多朋友订阅关注。这样大家就能及时收到活动消息啦！使用愉快～'
-        elif post_type == 'refuse_submit':
-            content = f'抱歉，您申请的小组：{application.oname}，审核未通过！'
-        else:
-            raise NotImplementedError
-        applyer_id = apply_person.person_id
-        applyee_id = inchage_person.person_id
-        not_type = Notification.Title.NEW_ORGANIZATION
-        URL = f'/modifyOrganization/?org_id={application.id}'
-
-    sender = applyer_id if feasible_post.index(post_type) < 3 else applyee_id
-    receiver = applyee_id if feasible_post.index(post_type) < 3 else applyer_id
-    typename = Notification.Type.NEEDDO if post_type == 'new_submit' else Notification.Type.NEEDREAD
-    title = Notification.Title.VERIFY_INFORM if post_type != 'accept_submit' else not_type
-    relate_instance = application if post_type == 'new_submit' else None
-    publish_to_wechat = True
-    publish_kws = {'app': WechatApp.AUDIT}
-    publish_kws['level'] = (WechatMessageLevel.IMPORTANT
-                            if post_type != 'cancel_submit'
-                            else WechatMessageLevel.INFO)
-    # TODO cancel是否要发送notification？是否发送微信？
-
-    # 正式创建notification
-    notification_create(
-        receiver=receiver,
-        sender=sender,
-        typename=typename,
-        title=title,
-        content=content,
-        URL=URL,
-        relate_instance=relate_instance,
-        publish_to_wechat=publish_to_wechat,
-        publish_kws=publish_kws,
-    )
-
-    # 对于处理类通知的完成(done)，修改状态
-    # 这里的逻辑保证：所有的处理类通知的生命周期必须从“成员发起”开始，从“取消”“通过”“拒绝”结束。
-    if feasible_post.index(post_type) >= 2:
-        notification_status_change(
-            application.relate_notifications.get(status=Notification.Status.UNDONE).id
-        )
-
-
-# YWolfeee: 重构小组申请页面 Aug 24 12:30 UTC-8
-@login_required(redirect_field_name='origin')
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[modifyOrganization]', record_user=True)
-def modifyOrganization(request):
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    me = utils.get_person_or_org(request.user)  # 获取自身
-    if user_type == "Organization":
-        html_display["warn_code"] = 1
-        html_display["warn_message"] = "请不要使用小组账号申请新小组！"
-        return redirect("/welcome/" +
-                        "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]))
-
-    # ———————————————— 读取可能存在的申请 为POST和GET做准备 ————————————————
-
-    # 设置application为None, 如果非None则自动覆盖
-    application = None
-
-    # 根据是否有newid来判断是否是第一次
-    org_id = request.GET.get("org_id", None)
-
-    # 获取前端页面中可能存在的提示
-    try:
-        if request.GET.get("warn_code", None) is not None:
-            html_display["warn_code"] = int(request.GET.get("warn_code"))
-            html_display["warn_message"] = request.GET.get("warn_message")
-    except:
-        pass
-
-    if org_id is not None: # 如果存在对应申请
-        try:    # 尝试获取已经新建的Position
-            application = ModifyOrganization.objects.get(id = org_id)
-            # 接下来检查是否有权限check这个条目
-            # 至少应该是申请人或者审核老师
-            assert (application.pos == request.user) or (application.otype.incharge == me)
-        except: #恶意跳转
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "您没有权限访问该网址！"
-            return redirect("/welcome/" +
-                            "?warn_code=1&warn_message={warn_message}".format(
-                                warn_message=html_display["warn_message"]))
-        is_new_application = False # 前端使用量, 表示是老申请还是新的
-
-    else:
-        # 如果不存在id, 是一个新建小组页面。
-        # 已保证小组不可能访问，任何人都可以发起新建小组。
-        application = None
-        is_new_application = True
-
-    '''
-        至此，如果是新申请那么application为None，否则为对应申请
-        application = None只有在个人新建申请的时候才可能出现，对应位is_new_application
-        接下来POST
-    '''
-
-    # ———————— Post操作，分为申请变更以及添加评论   ————————
-
-    if request.method == "POST":
-        # 如果是状态变更
-        if request.POST.get("post_type", None) is not None:
-
-            # 主要操作函数，更新申请状态 TODO
-            context = update_org_application(application, me, request)
-
-            if context["warn_code"] == 2:   # 成功修改申请
-                # 回传id 防止意外的锁操作
-                application = ModifyOrganization.objects.get(id = context["application_id"])
-                is_new_application = False #状态变更
-                if request.POST.get("post_type") == "new_submit":
-                    # 重要！因为该界面没有org_id，重新渲染新建界面
-                    #is_new_application = True
-                    # YWolfeee 不理解
-                    pass
-
-                # 处理通知相关的操作，并根据情况发送微信
-                # 默认需要成功,失败也不是用户的问题，直接给管理员报错 TODO
-                try:
-                    make_relevant_notification(application, request.POST)
-                except:
-                    raise NotImplementedError
-
-            elif context["warn_code"] != 1: # 没有返回操作提示
-                raise NotImplementedError("处理小组申请中出现未预见状态，请联系管理员处理！")
-
-
-        else:   # 如果是新增评论
-            # 权限检查
-            allow_comment = True if (not is_new_application) and (
-                application.is_pending()) else False
-            if not allow_comment:   # 存在不合法的操作
-                return redirect(message_url(wrong('存在不合法操作,请与管理员联系!')))
-            context = addComment(request, application, \
-                application.otype.incharge.person_id if me.person_id == application.pos \
-                    else application.pos)
-
-        # 准备用户提示量
-        # html_display["warn_code"] = context["warn_code"]
-        # html_display["warn_message"] = context["warn_message"]
-        # warn_code, warn_message = context["warn_code"], context["warn_message"]
-
-        # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
-        if application is None:
-            return redirect(message_url(context, '/modifyOrganization/'))
-        else:
-            return redirect(message_url(context, f'/modifyOrganization/?org_id={application.id}'))
-
-    # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
-
-    # 首先是写死的前端量
-    org_type_list = {
-        w:{
-            'value'   : str(w),
-            'display' : str(w)+"(负责老师:"+str(w.incharge)+")",  # 前端呈现的使用量
-            'disabled' : False,  # 是否禁止选择这个量
-            'selected' : False   # 是否默认选中这个量
-        }
-        for w in OrganizationType.objects.all()
-    }
-
-    '''
-        个人：可能是初次申请或者是修改申请
-        小组：可能是审核申请
-        # TODO 也可能是两边都想自由的查看这个申请
-        区别：
-            (1) 整个表单允不允许修改和评论
-            (2) 变量的默认值[可以全部统一做]
-    '''
-
-    # (1) 是否允许修改&允许评论
-    # 用户写表格?
-    allow_form_edit = True if (
-                is_new_application or (application.pos == me.person_id and application.is_pending())) else False
-    # 小组审核?
-    allow_audit_submit = True if (not is_new_application) and (
-                application.is_pending()) and (application.otype.incharge == me) else False
-    # 评论区?
-    allow_comment = True if (not is_new_application) and (application.is_pending()) \
-                    else False
-
-    # (2) 表单变量的默认值
-
-    # 首先禁用一些选项
-
-    # 评论区
-    commentable = allow_comment
-    comments = showComment(application) if application is not None else None
-    # 用于前端展示
-    apply_person = me if is_new_application else NaturalPerson.objects.get(person_id=application.pos)
-    app_avatar_path = apply_person.get_user_ava()
-    org_avatar_path = utils.get_user_ava(application, "Organization")
-    org_types = OrganizationType.objects.order_by("-otype_id").all()  # 当前小组类型，前端展示需要
-    former_img = Organization().get_user_ava()
-    if not is_new_application:
-        org_type_list[application.otype]['selected'] = True
-
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="小组申请详情")
-    return render(request, "modify_organization.html", locals())
-
-# YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
-@login_required(redirect_field_name='origin')
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[sendMessage]', record_user=True)
-def sendMessage(request):
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    me = utils.get_person_or_org(request.user)  # 获取自身
-    if user_type == "Person":
-        html_display["warn_code"] = 1
-        html_display["warn_message"] = "只有小组账号才能发送通知！"
-        return redirect("/welcome/" +
-                        "?warn_code=1&warn_message={warn_message}".format(
-                            warn_message=html_display["warn_message"]))
-
-    if request.method == "POST":
-        # 合法性检查
-        context = send_message_check(me,request)
-
-        # 准备用户提示量
-        html_display["warn_code"] = context["warn_code"]
-        html_display["warn_message"] = context["warn_message"]
-
-
-    # 前端展示量
-    receiver_type_list = {
-        w:{
-            'display' : w,  # 前端呈现的使用量
-            'disabled' : False,  # 是否禁止选择这个量
-            'selected' : False   # 是否默认选中这个量
-        }
-        for w in ['订阅用户','小组成员']
-    }
-
-    # 设置默认量
-    if request.POST.get('receiver_type', None) is not None:
-        receiver_type_list[request.POST.get('receiver_type')]['selected'] = True
-    if request.POST.get('url', None) is not None:
-        url = request.POST.get('url', None)
-    if request.POST.get('content', None) is not None:
-        content = request.POST.get('content', None)
-    if request.POST.get('title', None) is not None:
-        title = request.POST.get('title', None)
-
-
-
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="信息发送中心")
-    return render(request, "sendMessage.html", locals())
-
-
-@log.except_captured(source='views[send_message_check]')
-def send_message_check(me, request):
-    # 已经检查了我的类型合法，并且确认是post
-    # 设置默认量
-    receiver_type = request.POST.get('receiver_type', None)
-    url = request.POST.get('url', "")
-    content = request.POST.get('content', "")
-    title = request.POST.get('title', "")
-
-    if receiver_type is None:
-        return wrong("发生了意想不到的错误：未接收到您选择的发送者类型！请联系管理员~")
-
-    if len(content) == 0:
-        return wrong("请填写通知的内容！")
-    elif len(content) > 225:
-        return wrong("通知的长度不能超过225个字！你超过了！")
-
-    if len(title) == 0:
-        return wrong("不能不写通知的标题！补起来！")
-    elif len(title) > 10:
-        return wrong("通知的标题不能超过10个字！不然发出来的通知会很丑！")
-
-    if len(url) == 0:
-        url = None
-    else:
-        try:
-            if url[0:4].upper()!="HTTP":
-                return wrong("URL应当以http或https开头！")
-        except:
-            return wrong("请输入正确的链接地址！")
-
-    not_list = []
-    sender = me.organization_id
-    status = Notification.Status.UNDONE
-    title = title
-    content = content
-    typename = Notification.Type.NEEDREAD
-    URL = url
-    before_time = datetime.now() - timedelta(minutes=1)
-    after_time = datetime.now() + timedelta(minutes=1)
-    recent_notifi = Notification.objects.filter(
-        sender=sender, title=title).filter(
-            Q(start_time__gte=before_time)
-            & Q(start_time__lte=after_time))
-    if len(recent_notifi) > 0:
-        return wrong("您1min前发送过相同的通知，请不要短时间内重复发送相同的通知！")
-
-    try:
-        if receiver_type == "订阅用户":
-            receivers = NaturalPerson.objects.activated().exclude(
-                id__in=me.unsubscribers.all()).select_related('person_id')
-            receivers = [receiver.person_id for receiver in receivers]
-        else:   # 检查过逻辑了，不可能是其他的
-            receivers = NaturalPerson.objects.activated().filter(
-                id__in=me.position_set.values_list('person_id', flat=True)
-                ).select_related('person_id')
-            receivers = [receiver.person_id for receiver in receivers]
-
-        # 创建通知
-        success, bulk_identifier = bulk_notification_create(
-                receivers=receivers,
-                sender=sender,
-                typename=typename,
-                title=title,
-                content=content,
-                URL=URL,
-                publish_to_wechat=False,
-            )
-        assert success
-    except:
-        return wrong("创建通知的时候出现错误！请联系管理员！")
-    try:
-        wechat_kws = {}
-        if receiver_type == "订阅用户":
-            wechat_kws['app'] = WechatApp.TO_SUBSCRIBER
-        else:   # 小组成员
-            wechat_kws['app'] = WechatApp.TO_MEMBER
-        wechat_kws['filter_kws'] = {'bulk_identifier': bulk_identifier}
-        assert publish_notifications(**wechat_kws)
-    except:
-        return wrong("发送微信的过程出现错误！请联系管理员！")
-
-    return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了!")
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
@@ -2583,7 +1857,7 @@ def QAcenter(request):
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
 
-    me = utils.get_person_or_org(request.user, user_type)
+    me = get_person_or_org(request.user, user_type)
 
     if request.method == "POST":
         if request.POST.get("anwser") is not None:
