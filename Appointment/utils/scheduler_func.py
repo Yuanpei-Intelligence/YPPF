@@ -136,7 +136,7 @@ def cancelFunction(request):  # 取消预约
             str(warn_code) + "&warning=" + warning)
 
     try:
-        assert appoint.major_student.Sid == request.session['Sid']
+        assert appoint.major_student.Sid == request.user.username
     except:
         warn_code = 1
         warning = "请不要恶意尝试取消不是自己发起的预约！"

@@ -27,6 +27,7 @@ from Appointment import global_info
 # utils对接工具
 from Appointment.utils.utils import send_wechat_message, appoint_violate, doortoroom, iptoroom, operation_writer, write_before_delete, cardcheckinfo_writer, check_temp_appoint, set_appoint_reason
 import Appointment.utils.web_func as web_func
+from Appointment.utils.identity import get_name, get_avatar
 
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
@@ -78,14 +79,11 @@ def create_account(request):
     try:
         with transaction.atomic():
             try:
-                # 一切信息读取，如学号和姓名，应当包含数据库查询
-                given_name = None
-                raise OSError
-                # TODO: task 1 qwn 2022-1-26 应从request.GET['name']改为数据库查找
+                given_name = get_name(request.user)
             except:
                 # TODO: task 1 pht 2022-1-26 将来仍无法读取信息应当报错
                 operation_writer(global_info.system_log,
-                                f"创建未命名用户:学号为{request.session['Sid']}",
+                                f"创建未命名用户:学号为{request.user.username}",
                                     "views.index",
                                     "Problem")
                 given_name = "未命名"
@@ -95,7 +93,7 @@ def create_account(request):
             pinyin_init = ''.join([w[0][0] for w in pinyin_list])
 
             account = Participant.objects.create(
-                Sid=request.session['Sid'],
+                Sid=request.user.username,
                 Sname=given_name,
                 Scredit=3,
                 pinyin=pinyin_init,
@@ -409,14 +407,15 @@ def admin_index(request):   # 我的账户也主函数
         warning = request.GET['warning']
 
     # 学生基本信息
-    Sid = request.session['Sid']
+    Sid = request.user.username
     contents = {'Sid': str(Sid), 'kind': 'future'}
     my_info = web_func.getStudentInfo(contents)
 
     # 头像信息
-    img_path, valid_path = web_func.img_get_func(request)
-    if valid_path:
-        request.session['img_path'] = img_path
+    # img_path, valid_path = web_func.img_get_func(request)
+    # if valid_path:
+    #     request.session['img_path'] = img_path
+    img_path = get_avatar(request.user)
     #img_path = request.build_absolute_uri(
     # reverse("Appointment:web_func.img_get_func") + "?Sid=" + Sid)
 
@@ -460,13 +459,13 @@ def admin_credit(request):
     if not identity_check(request):
         return redirect(direct_to_login(request))
 
-    Sid = request.session['Sid']
+    Sid = request.user.username
 
     # 头像信息
-    img_path, valid_path = web_func.img_get_func(request)
-    if valid_path:
-        request.session['img_path'] = img_path
-
+    # img_path, valid_path = web_func.img_get_func(request)
+    # if valid_path:
+    #     request.session['img_path'] = img_path
+    img_path = get_avatar(request.user)
     #img_path = request.build_absolute_uri(
     # reverse("Appointment:web_func.img_get_func") + "?Sid=" + Sid)
 
@@ -674,28 +673,27 @@ def index(request):  # 主页
     # 用户校验
     if global_info.account_auth:
         if not identity_check(request):
-            try:
-                if request.method == "GET":
-                    # TODO: task 1 qwn 2022-1-26 将session和request.GET改为request.user的信息
-                    stu_id_ming = request.GET['Sid']
+            # try:
+            #     if request.method == "GET":
+                    # stu_id_ming = request.GET['Sid']
                     # stu_id_code = request.GET['Secret']
                     # timeStamp = request.GET['timeStamp']
-                    request.session['Sid'] = stu_id_ming
+                    # request.session['Sid'] = stu_id_ming
                     # request.session['Secret'] = stu_id_code
                     # request.session['timeStamp'] = timeStamp
                     # assert identity_check(request) is True  # 修改identity_check之后需要去掉
-                else:  # POST 说明是display的修改,但是没登陆,自动错误
-                    raise SystemError
-            except:
-                return redirect(direct_to_login(request))
+            #     else:  # POST 说明是display的修改,但是没登陆,自动错误
+            #         raise SystemError
+            # except:
+            #     return redirect(direct_to_login(request))
 
             # 至此获得了登录的授权 但是这个人可能不存在 加判断
             try:
-                Pname = Participant.objects.get(Sid=request.session['Sid']).Sname
+                Pname = Participant.objects.get(Sid=request.user.username).Sname
                 # modify by pht: 自动更新姓名
-                if Pname == '未命名' and request.GET.get('name'):
+                if Pname == '未命名':
                     # 获取姓名和首字母
-                    given_name = request.GET['name']
+                    given_name = get_name(request.user)
                     pinyin_list = pypinyin.pinyin(
                         given_name, style=pypinyin.NORMAL)
                     pinyin_init = ''.join([w[0][0] for w in pinyin_list])
@@ -704,7 +702,7 @@ def index(request):  # 主页
                     with transaction.atomic():
                         # TODO: task 1 qwn 2022-1-26 session和Participant应同步修改
                         Participant.objects.select_for_update().filter(
-                            Sid=request.session['Sid']).update(
+                            Sid=request.user.username).update(
                             Sname=given_name, pinyin=pinyin_init)
             except:
                 # 没有这个人 自动添加并提示
@@ -712,13 +710,13 @@ def index(request):  # 主页
                     warn_code = 1
                     warn_message = "数据库不存在学生信息,已为您自动创建!"
                 else:  # 创建失败
-                    request.session['Sid'] = "0000000000"
+                    # request.session['Sid'] = "0000000000"
                     # request.session['Secret'] = ""  # 清空信息
                     warn_code = 1
                     warn_message = "数据库不存在学生信息,请联系管理员添加!在此之前,您只能查看实时人数."
 
-    else:
-        request.session['Sid'] = "0000000000"
+    # else:
+    #     request.session['Sid'] = "0000000000"
 
     #--------- 前端变量 ---------#
 
@@ -1022,7 +1020,7 @@ def check_out(request):  # 预约表单提交
                 if datetime.now().strftime("%a") == appoint_params['weekday']:
                     appoint_params['Rmin'] = min(
                         global_info.today_min, room_object.Rmin)
-        appoint_params['Sid'] = request.session['Sid']
+        appoint_params['Sid'] = request.user.username
         appoint_params['Sname'] = Participant.objects.get(
             Sid=appoint_params['Sid']).Sname
         Stu_all = Participant.objects.all()
@@ -1120,7 +1118,7 @@ def summary(request):  # 主页
 
     try:
         if not Sid:
-            Sid = request.session['Sid']
+            Sid = request.user.username
         with open(f'Appointment/summary_info/{Sid}.txt','r',encoding='utf-8') as fp:
             myinfo = json.load(fp)
     except:
