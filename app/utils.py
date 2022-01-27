@@ -5,14 +5,11 @@ from app.models import (
     OrganizationType,
     Position,
     Notification,
-    ModifyOrganization,
     Activity,
     Help,
     Reimbursement,
     Participant,
     ModifyRecord,
-    Wishes,
-    QandA,
 )
 from boottest import local_dict
 
@@ -121,8 +118,9 @@ def get_user_wallpaper(person, user_type):
     else:
         return MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.jpg")
 
-# 获取左边栏的内容，is_myself表示是否是自己, person表示看的人
+
 def get_user_left_navbar(person, is_myself, html_display):
+    '''已废弃；获取左边栏的内容，is_myself表示是否是自己, person表示看的人'''
     # assert (
     #        "is_myself" in html_display.keys()
     # ), "Forget to tell the website whether this is the user itself!"
@@ -138,6 +136,7 @@ def get_user_left_navbar(person, is_myself, html_display):
 
 
 def get_org_left_navbar(org, is_myself, html_display):
+    '''已废弃'''
     # assert (
     #        "is_myself" in html_display.keys()
     # ), "Forget to tell the website whether this is the user itself!"
@@ -163,18 +162,20 @@ def get_inform_share(me, is_myself=True):
     return False, alert_message
 
 
-# YWolfeee Aug 16
-# 修改left siderbar的逻辑，统一所有个人和所有小组的左边栏，不随界面而改变
-# 这个函数负责统一get sidebar和navbar的内容，解决了信箱条数显示的问题
-# user对象是request.user对象直接转移
-# 内容存储在bar_display中
-# Attention: 本函数请在render前的最后时刻调用
-
-# added by syb, 8.23:
-# 在函数中添加了title_name和navbar_name参数，根据这两个参数添加帮助信息
-# 现在最推荐的调用方式是：在views的函数中，写
-# bar_display = utils.get_sidebar_and_navbar(user, title_name, navbar_name)
 def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None):
+    '''
+    YWolfeee Aug 16
+    修改left siderbar的逻辑，统一所有个人和所有小组的左边栏，不随界面而改变
+    这个函数负责统一get sidebar和navbar的内容，解决了信箱条数显示的问题
+    user对象是request.user对象直接转移
+    内容存储在bar_display中
+    Attention: 本函数请在render前的最后时刻调用
+
+    added by syb, 8.23:
+    在函数中添加了title_name和navbar_name参数，根据这两个参数添加帮助信息
+    现在最推荐的调用方式是：在views的函数中，写
+    bar_display = utils.get_sidebar_and_navbar(user, title_name, navbar_name)
+    '''
     if bar_display is None:
         bar_display = {}  # 默认参数只会初始化一次，所以不应该设置为{}
     me = get_person_or_org(user)  # 获得对应的对象
@@ -269,7 +270,7 @@ def url_check(arg_url):
         # print('base:', base)
         if re.match(base, arg_url):
             return True
-    log.operation_writer(SYSTEM_LOG, f'URL检查不合格: {arg_url}', 'utils[url_check]', log.STATE_PROBLEM)
+    log.operation_writer(SYSTEM_LOG, f'URL检查不合格: {arg_url}', 'utils[url_check]', log.STATE_WARNING)
     return False
 
 
@@ -348,74 +349,6 @@ def get_url_params(request, html_display):
             if key not in html_display.keys():  # 禁止覆盖
                 html_display[key] = value
 
-# 检查neworg request参数的合法性, 用在modifyorganization函数中
-def check_neworg_request(request, org=None):
-    context = dict()
-    context["warn_code"] = 0
-    oname = str(request.POST["oname"])
-    if len(oname) >= 32:
-        return wrong("小组的名字不能超过32字")
-    if oname == "":
-        return wrong("小组的名字不能为空")
-    if org is not None and oname == org.oname:
-        if (
-            len(
-                ModifyOrganization.objects.exclude(
-                    status=ModifyOrganization.Status.CANCELED
-                )
-                .exclude(status=ModifyOrganization.Status.REFUSED)
-                .filter(oname=oname)
-            )
-            > 1
-            or len(Organization.objects.filter(oname=oname)) != 0
-        ):
-            context["warn_code"] = 1
-            context["warn_message"] = "小组的名字不能与正在申请的或者已存在的小组的名字重复"
-            return context
-    else:
-        if (
-            len(
-                ModifyOrganization.objects.exclude(
-                    status=ModifyOrganization.Status.CANCELED
-                )
-                .exclude(status=ModifyOrganization.Status.REFUSED)
-                .filter(oname=oname)
-            )
-            != 0
-            or len(Organization.objects.filter(oname=oname)) != 0
-        ):
-            context["warn_code"] = 1
-            context["warn_message"] = "小组的名字不能与正在申请的或者已存在的小组的名字重复"
-            return context
-
-    try:
-        otype = str(request.POST.get("otype"))
-        context["otype"] = OrganizationType.objects.get(otype_name=otype)
-    except:
-        context["warn_code"] = 1
-        # user can't see it . we use it for debugging
-        context["warn_message"] = "数据库没有小组的所在类型，请联系管理员！"
-        return context
-
-    context["avatar"] = request.FILES.get("avatar")
-    if context["avatar"] is not None:
-        if if_image(context["avatar"]) == 1:
-            context["warn_code"] = 1
-            context["warn_message"] = "小组的头像应当为图片格式！"
-            return context
-
-    context["oname"] = oname  # 小组名字
-    # 小组类型，必须有
-    context["pos"] = request.user  # 负责人，必须有滴
-    context["introduction"] = str(request.POST.get("introduction", ""))  # 小组介绍，可能为空
-
-    context["application"] = str(request.POST.get("application", ""))  # 申请理由
-
-    if context["application"] == "":
-        context["warn_code"] = 1
-        context["warn_message"] = "申请理由不能为空"
-    return context
-# 检查neworg request参数的合法性, 用在modifyoranization函数中
 
 def check_newpos_request(request, prepos=None):
 
@@ -431,7 +364,7 @@ def check_newpos_request(request, prepos=None):
         context['warn_code'] = 1
         context['warn_msg'] = "小组的名字不能超过32字节"
         return context
-    if oname=="":
+    if oname == "":
         context['warn_code'] = 1
         context['warn_msg'] = "小组的名字不能为空"
         return context
@@ -446,21 +379,8 @@ def check_newpos_request(request, prepos=None):
     return context
 
 
-# 查询小组代号的最大值+1 用于modifyOrganization()函数，新建小组
-def find_max_oname():
-    organizations = Organization.objects.filter(
-        organization_id__username__startswith="zz"
-    ).order_by("-organization_id__username")
-    max_org = organizations[0]
-    max_oname = str(max_org.organization_id.username)
-    max_oname = int(max_oname[2:]) + 1
-    prefix = "zz"
-    max_oname = prefix + str(max_oname).zfill(5)
-    return max_oname
-
-
-# 判断是否为图片
 def if_image(image):
+    '''判断是否为图片'''
     if image == None:
         return 0
     imgType_list = {"jpg", "bmp", "png", "jpeg", "rgb", "tif"}
@@ -470,8 +390,8 @@ def if_image(image):
     return 1  # 不是图片
 
 
-# 用于新建小组时，生成6位随机密码
 def random_code_init(seed):
+    '''用于新建小组时，生成6位随机密码'''
     b = string.digits + string.ascii_letters  # 构建密码池
     password = ""
     random.seed(seed)
@@ -514,6 +434,7 @@ def set_captcha_session(request, username, captcha):
     request.session["captcha_create_time"] = utcnow.strftime("%Y-%m-%d %H:%M:%S")
     request.session["captcha"] = captcha
 
+
 def clear_captcha_session(request):
     '''noexcept'''
     request.session.pop("captcha")
@@ -547,6 +468,7 @@ def set_nperson_quota_to(quota):
         notification_content,
     )
     return success
+
 
 def check_account_setting(request, user_type):
     if user_type == 'Person':
@@ -624,140 +546,6 @@ def get_unreimb_activity(org):
             .exclude(id__in=reimbursed_act_ids))  # 还没有报销的
     activities.len = len(activities)
     return activities
-
-def accept_modifyorg_submit(application): #同意申请，假设都是合法操作
-    # 新建一系列东西
-    username = find_max_oname()
-    user = User.objects.create(username=username)
-    password = random_code_init(user.id)
-    user.set_password(password)
-    user.save()
-    org = Organization.objects.create(organization_id=user, oname=application.oname, \
-        otype=application.otype, YQPoint=0.0, introduction=application.introduction, avatar=application.avatar)
-    
-    for person in NaturalPerson.objects.all():
-        org.unsubscribers.add(person)
-    org.save()
-    charger = get_person_or_org(application.pos)
-    pos = Position.objects.create(person=charger, org=org, pos=0, status=Position.Status.INSERVICE, is_admin=True)
-    # 修改申请状态
-    ModifyOrganization.objects.filter(id=application.id).update(status=ModifyOrganization.Status.CONFIRMED)
-    Wishes.objects.create(text=f"{org.otype.otype_name}“{org.oname}”刚刚成立啦！快点去关注一下吧！")
-
-
-# 修改成员申请状态的操作函数, application为修改的对象，可以为None
-# me为操作者
-# info为前端POST字典
-# 返回值为context, warn_code = 1表示失败, 2表示成功; 错误信息在context["warn_message"]
-# 如果成功context会返回update之后的application,
-
-def update_org_application(application, me, request):
-    # 关于这个app和我的关系已经完成检查
-    # 确定info中有post_type且不为None
-
-    # 首先上锁
-    with transaction.atomic():
-        info = request.POST
-        if application is not None:
-            application = ModifyOrganization.objects.select_for_update().get(id=application.id)
-            user_type = 'pos' if me.person_id == application.pos else 'incharge'
-        else:
-            user_type = 'pos'
-        # 首先确定申请状态
-        post_type = info.get("post_type")
-        feasible_post = ["new_submit", "modify_submit",
-                         "cancel_submit", "accept_submit", "refuse_submit"]
-        if post_type not in feasible_post:
-            return wrong("申请状态异常！")
-
-        # 接下来确定访问的老师 和 个人是否在干分内的事
-        if (user_type == "pos" and feasible_post.index(post_type) >= 3) or (
-                user_type == "incharge" and feasible_post.index(post_type) <= 2):
-            return wrong("您无权进行此操作. 如有疑惑, 请联系管理员")
-        
-        if feasible_post.index(post_type) <= 2: # 个人操作，新建、修改、删除
-            
-            # 如果是取消申请
-            if post_type == "cancel_submit":
-                if not application.is_pending():    # 如果不在pending状态, 可能是重复点击
-                    return wrong("该申请已经完成或被取消!")
-                # 接下来可以进行取消操作
-                ModifyOrganization.objects.filter(id=application.id).update(status=ModifyOrganization.Status.CANCELED)
-                context = succeed("成功取消小组" + application.oname + "的申请!")
-                context["application_id"] = application.id
-                return context
-            else:
-                # 无论是新建还是修改, 都需要检查所有参数的合法性
-                context = check_neworg_request(request, application)
-                if context['warn_code'] == 1:
-                    return context
-                
-                otype = OrganizationType.objects.get(otype_name=info.get('otype'))
-                    
-                # 写入数据库
-                if post_type == 'new_submit':
-                    application = ModifyOrganization.objects.create(
-                        oname=info.get('oname'),
-                        otype=otype,
-                        pos=me.person_id,
-                        introduction=info.get('introduction'),
-                        application=info.get('application')
-                    )
-                    if context["avatar"] is not None:
-                        application.avatar = context['avatar'];
-                        application.save()
-                    context = succeed("成功发起小组“"+info.get("oname")+"”的新建申请，请耐心等待"+str(otype.incharge.name)+"老师审核!")
-                    context['application_id'] = application.id
-                    return context
-                else: # modify_submit
-                    if not application.is_pending():
-                        return wrong("不能修改状态不为“申请中”的申请！")
-                    # 如果是修改申请, 不能够修改小组类型
-                    if application.otype != otype:
-                        return wrong("修改申请时不允许修改小组类型。如确需修改，请取消后重新申请!")
-                    if application.oname == info.get("oname") and \
-                            application.introduction == info.get('introduction') and \
-                                application.avatar == info.get('avatar', None) and \
-                                    application.application == info.get('application'):
-                                    return wrong("没有检测到修改！")
-                    # 至此可以发起修改
-                    ModifyOrganization.objects.filter(id=application.id).update(
-                        oname=info.get('oname'),
-                        #otype=OrganizationType.objects.get(otype_name=info.get('otype')),
-                        introduction=info.get('introduction'),
-                        application=info.get('application'))
-                    if context["avatar"] is not None:
-                        application.avatar = context['avatar']
-                        application.save()
-                    context = succeed("成功修改小组“" + info.get('oname') + "”的新建申请!")
-                    context["application_id"] = application.id
-                    return context
-        else: # 是老师审核的操作, 通过\拒绝
-            # 已经确定 me == application.otype.inchage 了
-            # 只需要确定状态是否匹配
-            if not application.is_pending():
-                return wrong("无法操作, 该申请已经完成或被取消!")
-            # 否则，应该直接完成状态修改
-            if post_type == "refuse_submit":
-                ModifyOrganization.objects.filter(id=application.id).update(status=ModifyOrganization.Status.REFUSED)
-                context = succeed("成功拒绝来自" + NaturalPerson.objects.get(person_id=application.pos).name + "的申请!")
-                context["application_id"] = application.id
-                return context
-            else:   # 通过申请
-                '''
-                    注意，在这个申请发起、修改的时候，都应该保证这条申请的合法地位
-                    例如不存在冲突申请、职位的申请是合理的等等
-                    否则就不应该通过这条创建
-                '''
-                try:
-                    with transaction.atomic():
-                        accept_modifyorg_submit(application)
-                        context = succeed("成功通过来自" +  NaturalPerson.objects.get(person_id=application.pos).name + "的申请!")
-                        context["application_id"] = application.id
-                        return context
-                except:
-                    return wrong("出现系统意料之外的行为，请联系管理员处理!")
-
 
 
 # 导出Excel文件
@@ -866,6 +654,7 @@ def record_modification(user, info=""):
     except:
         return None
 
+
 def get_modify_rank(user):
     try:
         _, usertype, _ = check_user_type(user)
@@ -880,6 +669,7 @@ def get_modify_rank(user):
         return rank
     except:
         return -1
+
 
 def record_modify_with_session(request, info=""):
     try:
@@ -898,6 +688,7 @@ def record_modify_with_session(request, info=""):
                 request.session['alert_message'] = msg
     except:
         pass
+
 
 def update_related_account_in_session(request, username, shift=False, oname=""):
     """
