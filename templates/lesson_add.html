@@ -43,7 +43,7 @@
                         
                     </div>
                     <div class="widget-content widget-content-area">
-                        <form>
+                        <form method="POST" onsubmit="check_inputs()">
                             <div id="basic-info">
                                 <p>
                                     <b>基本信息</b>
@@ -131,7 +131,7 @@
                                         <div class="col-lg-4 col-md-12 col-sm-12 col-xs-12">
                                             <label>上课地点2</label>
                                             <input type="text" id="location2" name="location2" class="form-control"  
-                                                   maxlength="50" onclick="fill_value(this)" required="required"
+                                                   maxlength="50" onclick="fill_value(this)"
                                                    placeholder="要让上课的同学能找到地点哦~（必填）" >        
                                         </div>
                                         <div class="col-lg-8 col-md-12 col-sm-12 col-xs-12">
@@ -139,12 +139,12 @@
                                             <div class="row">
                                                 <div class="col">
                                                     <input type="text" class="form-control" id="datetimepicker3"
-                                                           name="lesson_start2" placeholder="开始时间" required="required" onclick="fill_value(this)"
+                                                           name="lesson_start2" placeholder="开始时间" onclick="fill_value(this)"
                                                            />
                                                 </div>
                                                 <div class="col">
                                                     <input type="text" class="form-control" id="datetimepicker4"
-                                                           name="lesson_end2" placeholder="结束时间" required="required" onclick="fill_value(this)"
+                                                           name="lesson_end2" placeholder="结束时间" onclick="fill_value(this)"
                                                            />
                                                 </div>
                                             </div>
@@ -215,7 +215,9 @@
                                         </div>
                                     </div>   
                                 </div>
-
+                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认提交活动申请？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
+                                    发起活动
+                                </button>
 
                             </div>
                             
@@ -236,14 +238,22 @@
     $(document).ready(function() {
         $("#lesson2").hide();
     })
-    $("#option1").click(selectPeriod);
     function selectPeriod(period) {
         console.log(period);
         if(period === "一周两次") {
             $("#lesson2").show();
+            let lesson2Inputs = $("#lesson2")[0].querySelectorAll("input");
+            for(let i = 0; i < lesson2Inputs.length; i++) {
+                lesson2Inputs[i].required = true;
+            }
         }
         else {
             $("#lesson2").hide();
+            let lesson2Inputs = $("#lesson2")[0].querySelectorAll("input");
+            for(let i = 0; i < lesson2Inputs.length; i++) {
+                console.log(lesson2Inputs[i].textContent);
+                lesson2Inputs[i].required = false;
+            }
         }
     }
 </script>
