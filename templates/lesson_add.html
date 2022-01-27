@@ -1,0 +1,279 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block add_css_file %}
+
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker-standalone.css" %} rel="stylesheet" type="text/css" />
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker.css" %} rel="stylesheet" type="text/css" />
+<link href={% static "datetimepicker/css/bootstrap-datetimepicker.min.css" %} rel="stylesheet" type="text/css" />
+
+<style class="text/css">
+    h5{
+        font-family: 'Nunito', sans-serif;
+        font-size: 1rem;
+        font-weight: bold;
+    }
+</style>
+
+{% endblock %}
+
+{% block mainpage %}
+<div class="main-content pb-3" id="content">
+    <div class="container">
+        <div class="row layout-top-spacing">
+            <div class="col-12 layout-spacing mb-4">
+                <div class="widget box box-shadow">
+                    <div class="widget-header">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4>
+                                    课程开设
+                                </h4>
+                            </div>
+                            <div>
+                                <h4>
+                                <img src="/media/avatar/org_default.png" width="24" height="24" alt="avatar">                
+                                <a href='/orginfo/?name=青年志愿者协会'>
+                                    <u>青年志愿者协会</u>
+                                </a>
+                                </h4>
+                            </div>
+                        </div>
+                        
+                    </div>
+                    <div class="widget-content widget-content-area">
+                        <form>
+                            <div id="basic-info">
+                                <p>
+                                    <b>基本信息</b>
+                                </p>
+                                <div class="form-group">
+                                    <label>课程名称</label>
+                                    <input type="text" id="title" name="title" class="form-control"  
+                                           maxlength="50" onclick="fill_value(this)" required="required"
+                                           placeholder="在这里写下您要开设的课程名称吧~（必填）" >
+                                </div>
+                                <div class="form-group">
+                                 </div>
+                                <div class="form-group">
+                                    <label>课程预算</label>
+                                    <input type="text" id="budget" name="budget" class="form-control"  
+                                           maxlength="50" required="required"
+                                           placeholder="填写的是学期预算/单次课程预算，请注意哦！（必填）" >
+                                </div>
+                                <div class="form-group">
+                                    <label>审核老师</label>
+                                    <select name="examine_teacher" id="examine_teacher" name="examine_teacher"
+                                            class="form-control selectpicker">
+                                        <option value="" selected disabled>
+                                            选择审核老师
+                                        </option>
+                                        <option value="刘欣悦">刘欣悦</option>
+                                    </select>
+                                </div>    
+                            </div>
+                            <div id="lesson-info">
+                                <p>
+                                    <b>详细信息</b>                                
+                                </p>
+                                <div class="form-group">
+                                    <div class="row">
+                                        <div class="col-sm-12">
+                                            <label>开课周期</label>
+                                            <select name="period" id="period"
+                                                    class="form-control selectpicker"
+                                                    onchange="selectPeriod($(this).val())">
+                                                <option value="" selected disabled>
+                                                    选择开课周期
+                                                </option>
+                                                <option value="一周一次" >一周一次</option>
+                                                <option value="两周一次" >两周一次</option>
+                                                <option value="一周两次" >一周两次</option>
+                                                <option value="临时一次" >临时一次</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-sm-12">
+                                            <label>结课时间</label>
+                                            <input type="text" class="form-control" id="datetimepicker5"
+                                                   name="final" placeholder="填写最后一次课程的时间即可~" required="required" 
+                                                   onclick="fill_value(this)"/>
+                                        </div>
+                                    </div>
+                                    
+                                </div>
+                                <div class="form-group">
+                                    <div class="row">
+                                        <div class="col-lg-4 col-md-12 col-sm-12 col-xs-12">
+                                            <label>上课地点</label>
+                                            <input type="text" id="location" name="location" class="form-control"  
+                                                   maxlength="50" onclick="fill_value(this)" required="required"
+                                                   placeholder="要让上课的同学能找到地点哦~（必填）" >        
+                                        </div>
+                                        <div class="col-lg-8 col-md-12 col-sm-12 col-xs-12">
+                                            <label>上课时间</label>
+                                            <div class="row">
+                                                <div class="col">
+                                                    <input type="text" class="form-control" id="datetimepicker1"
+                                                        name="lesson_start" placeholder="开始时间" required="required" onclick="fill_value(this)"/>
+                                                </div>
+                                                <div class="col">
+                                                    <input type="text" class="form-control" id="datetimepicker2"
+                                                        name="lesson_end" placeholder="结束时间" required="required" onclick="fill_value(this)"/>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                    </div>
+                                </div>
+                                <div class="form-group" id="lesson2" style="display: none;">
+                                    <div class="row">
+                                        <div class="col-lg-4 col-md-12 col-sm-12 col-xs-12">
+                                            <label>上课地点2</label>
+                                            <input type="text" id="location2" name="location2" class="form-control"  
+                                                   maxlength="50" onclick="fill_value(this)" required="required"
+                                                   placeholder="要让上课的同学能找到地点哦~（必填）" >        
+                                        </div>
+                                        <div class="col-lg-8 col-md-12 col-sm-12 col-xs-12">
+                                            <label>上课时间2</label>
+                                            <div class="row">
+                                                <div class="col">
+                                                    <input type="text" class="form-control" id="datetimepicker3"
+                                                           name="lesson_start2" placeholder="开始时间" required="required" onclick="fill_value(this)"
+                                                           />
+                                                </div>
+                                                <div class="col">
+                                                    <input type="text" class="form-control" id="datetimepicker4"
+                                                           name="lesson_end2" placeholder="结束时间" required="required" onclick="fill_value(this)"
+                                                           />
+                                                </div>
+                                            </div>
+                                        </div> 
+                                    </div>
+                                </div>
+                                
+                            </div>
+                            <div id="propoganda">
+                                <p><b>宣传信息</b></p>
+                                <div class="form-group">
+                                    <label for="aintro">课程简介</label>
+                                    <textarea id="aintro" name="introduction" class="form-control" rows="3"
+                                        placeholder="(必填)简介会随课程基本信息一同推送至订阅者的微信" onclick="fill_value(this)" 
+                                        required="required" maxlength=225></textarea>
+                                </div>  
+
+                                <div class="form-group">
+                                    <label for="aintro">
+                                        课程推送链接
+                                        <a data-toggle="tooltip" data-placement="bottom" title="获取链接的方式：在推送中，点击右上角在默认浏览器中打开，然后复制链接填在此处即可。注意，如果是外网链接，请使用以http或https开头的绝对地址。这一项可以在任何时间修改。">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                <path
+                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                            </svg>
+                                        </a>
+                                    </label>
+                                    <textarea id="URL" name="URL" class="form-control" rows="3" placeholder="推送链接会和活动通知一起发送；外网链接请使用以http或https开头的绝对地址" onclick="fill_value(this)"></textarea>
+                                </div>                                
+
+                                <div class="form-group">
+                                    <label>
+                                        课程预告图片
+                                        <a data-toggle="tooltip" data-placement="bottom" title="可以选择默认的图片；如果推送中包含图片的话，也可以选取推送中包含的图片；这一项在审核通过后不可修改">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                <path
+                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                            </svg>
+                                        </a>
+                                    </label><br/>
+                                    <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12">
+                                        {% if use_template %}
+                                        <input type="hidden" id="template_id" name="template_id" value="{{template_id}}">
+                                        {% endif %}
+                                        <input onchange="showFilenameLocal(this.files)" type="file" 
+                                                class="custom-file-input" id="images" name="images" 
+                                                accept="image/*" data-max-file-size="4096K">
+                                        <label id="upload_annouce_photo" name="upload_annouce_photo" class="custom-file-label" 
+                                                for="customFile"> 选择历史活动图片或海报或以下默认图片之一 </label>
+                                    </div>
+                                </div>
+    
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <div class="row">
+                                        {% for pic in defaultpics %}
+                                        <div class="col-xl-4 col-lg-4 col-md-4 mb-5">
+                                            <input class="form-check-input" type="checkbox"
+                                                value={{pic.src}}
+                                                id={{pic.id}} name={{pic.id}}>
+                                            <label class="form-check-label" for="defaultCheck1">
+                                                <img src={{pic.src}} class="img-fluid">
+                                            </label>
+                                        </div>
+                                        {% endfor %}
+                                        </div>
+                                    </div>   
+                                </div>
+
+
+                            </div>
+                            
+
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>  
+</div>
+{% endblock %}
+
+{% block add_js_file %}
+<script src={% static "datetimepicker/js/bootstrap-datetimepicker.min.js" %}></script>
+
+<script>
+    $(document).ready(function() {
+        $("#lesson2").hide();
+    })
+    $("#option1").click(selectPeriod);
+    function selectPeriod(period) {
+        console.log(period);
+        if(period === "一周两次") {
+            $("#lesson2").show();
+        }
+        else {
+            $("#lesson2").hide();
+        }
+    }
+</script>
+
+<script type="text/javascript">
+$(function () {
+    $("#datetimepicker1").datetimepicker({
+        format: "YYYY-MM-DD HH:mm",
+        sideBySide: true,
+    });
+    $("#datetimepicker2").datetimepicker({
+        format: "YYYY-MM-DD HH:mm",
+        sideBySide: true
+    });
+    $("#datetimepicker3").datetimepicker({
+        format: "YYYY-MM-DD HH:mm",
+        sideBySide: true,
+        minDate: new Date(),
+    });
+    $("#datetimepicker4").datetimepicker({
+        format: "YYYY-MM-DD HH:mm",
+        sideBySide: true,
+        minDate: new Date(),
+    });
+    $("#datetimepicker5").datetimepicker({
+        format: "YYYY-MM-DD HH:mm",
+        sideBySide: true,
+        minDate: new Date(),
+    });
+});
+</script>
+
+{% endblock %}
