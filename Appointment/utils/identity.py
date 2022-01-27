@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-def user2participant(user, update=False):
+def user2participant(user: User, update=False):
     '''通过User对象获取对应的参与人对象, noexcept
 
     Args:
@@ -32,8 +32,10 @@ def user2participant(user, update=False):
 
     Returns:
     - participant: 满足participant.Sid=user, 不存在时返回`None`
-    ''' 
+    '''
     try:
+        # TODO: task 2 pht 修改模型字段后删除下行
+        user = user.username
         return Participant.objects.get(Sid=user)
     except:
         return None
@@ -80,7 +82,7 @@ def get_name(participant: Union[Participant, User]):
         return obj.name
 
 
-def get_avatar(participant: Participant):
+def get_avatar(participant: Union[Participant, User]):
     '''返回participant的头像'''
     obj, user_type = _get_userinfo(_arg2user(participant))
     return get_user_ava(obj, user_type)
