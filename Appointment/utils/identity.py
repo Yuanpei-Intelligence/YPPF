@@ -14,7 +14,6 @@ from app.utils import (
 )
 from typing import Union
 from django.contrib.auth.models import User
-from app.models import *
 
 __all__ = [
     'user2participant',
@@ -38,13 +37,6 @@ def user2participant(user, update=False):
         return Participant.objects.get(Sid=user)
     except:
         return None
-
-
-def user2info(user: User):
-    '''返回User对象对应的(object, type)二元组'''
-    user_type = check_user_type(user)[1]
-    obj = get_person_or_org(user, user_type)
-    return obj, user_type
 
 
 def _arg2user(participant: Union[Participant, User]):
@@ -92,9 +84,3 @@ def get_avatar(participant: Participant):
     '''返回participant的头像'''
     obj, user_type = _get_userinfo(_arg2user(participant))
     return get_user_ava(obj, user_type)
-
-
-
-
-
-
