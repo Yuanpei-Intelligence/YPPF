@@ -114,8 +114,7 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {% for org in org_list%}
-                                                {% if org.otype.otype_name == otype.otype_name %}
+                                                {% for org in org_list[otype] %}
                                                 <tr>
                                                     <td>
                                                         <u><a href="/orginfo/?name={{org.oname}}"><img src="{{org.get_user_ava}}" width="18px" height="18px" style="margin-top: -2px; margin-right: 5px; border-radius: 9px;"><span>{{org.oname}}</span></a></u>
