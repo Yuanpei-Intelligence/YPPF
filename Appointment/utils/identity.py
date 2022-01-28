@@ -30,14 +30,11 @@ __all__ = [
     'get_avatar',
     'identity_check',
     'get_participant',
-    'create_account'
-
-
 ]
 
 class identity_check(object):
 
-    def __init__(self, auth_func=None):
+    def __init__(self, auth_func=lambda x: True):
         self.auth_func = auth_func
 
     def __call__(self, view_function):
@@ -49,6 +46,7 @@ class identity_check(object):
                 cur_part = create_account(request)
             if not cur_part:
                 # TODO: by lzp, log it and notify admin
+                # yppf 那边这一块的逻辑也挺怪的，之后也得改
                 yppf_netloc = urllib.parse.urlparse(global_info.login_url).netloc
                 request.session['alert_message'] = f"数据库中未找到您的详情信息，管理员会尽快处理此问题。"
                 return redirect(inner_url_export(yppf_netloc, "/index/?alert=1"))
@@ -70,7 +68,6 @@ def get_participant(user: Union[User, str], update=False, raise_except=False):
     Returns:
     - participant: 满足participant.Sid=user, 不存在时返回`None`
     '''
-    # LZP: 我建议把创建表项直接整合进这个函数
     try:
         # TODO: task 2 pht 修改模型字段后删除下行
         if isinstance(user, User): user = user.username
