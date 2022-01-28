@@ -29,6 +29,26 @@ from django.shortcuts import redirect
 from django.http import HttpResponse
 from django.db.models import F
 
+class login_required(object):
+
+    def __init__(self, redirect_field_name='origin'):
+        self.redirect_field_name = redirect_field_name
+
+    def __call__(self, view_function):
+        @wraps(view_function)
+        def _wrapped_view(request, *args, **kwargs):
+            if request.user.is_authenticated:
+                return view_function(request, *args, **kwargs)
+            login_url = local_dict['url']['login_url']
+            origin_url = request.get_full_path()
+            forwarded_host = request.headers.get('X-Forwarded-Host', '')
+            if forwarded_host:
+                origin_url = inner_url_export(forwarded_host, origin_url)
+            return redirect(f"{login_url}?{self.redirect_field_name}={origin_url}")
+        return _wrapped_view
+                
+
+
 
 def check_user_access(redirect_url="/logout/", is_modpw=False):
     """
@@ -348,6 +368,24 @@ def get_url_params(request, html_display):
             key, value = param.split["="][0], param.split["="][1]
             if key not in html_display.keys():  # 禁止覆盖
                 html_display[key] = value
+
+
+# Accept an host and url, then transfer url to the one can be accessed via that host
+# Hard coded rules, No Error Handling.
+def inner_url_export(target_host, inner_url):
+    underground_netloc = urllib.parse.urlparse(local_dict["url"]["base_url"]).netloc
+    yppf_netloc = urllib.parse.urlparse(local_dict["url"]["login_url"]).netloc
+    parsed_url = urllib.parse.urlparse(inner_url)
+    if target_host == yppf_netloc:
+        return urllib.parse.urlunparse(
+            ('https', yppf_netloc, parsed_url.path.lstrip('/yppf')) + parsed_url[3:]
+        )
+    elif target_host == underground_netloc:
+        return urllib.parse.urlunparse(
+            ('https', underground_netloc, parsed_url.path.lstrip('/underground')) + parsed_url[3:]
+        )
+    raise ValueError(f"Unexpected Proxy Host: {forwarded_host}")
+
 
 
 def check_newpos_request(request, prepos=None):
