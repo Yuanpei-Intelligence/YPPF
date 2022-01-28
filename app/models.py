@@ -1267,11 +1267,10 @@ class CourseRecord(models.Model):
     person = models.ForeignKey(
         NaturalPerson, related_name="person", on_delete=models.CASCADE,default=''
     )
-    choosed_course = models.ForeignKey(
+    course = models.ForeignKey(
         Organization, related_name="choosed_course", on_delete=models.CASCADE,default=''
     )
     attend_times = models.IntegerField("参加课程次数")
-    # total_hours = models.IntegerChoices("总计参加学时")
     class_year = models.IntegerField("课程所在学年", default=current_year)
     class_semester = models.CharField(
         "课程所在学期", choices=Semester.choices, default=Semester.ANNUAL, max_length=15
@@ -1280,3 +1279,4 @@ class CourseRecord(models.Model):
 
     def __str__(self):
         return str(self.person.name)
+    
