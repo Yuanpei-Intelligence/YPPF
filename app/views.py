@@ -1638,7 +1638,7 @@ def subscribeOrganization(request):
     # org_list = list(Organization.objects.all().select_related("organization_id","otype"))
     #orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
     otype_list = list(OrganizationType.objects.all().order_by('-otype_id'))
-    org_list = {otype: list(otype.otype_org.all().select_related("organization_id","otype"))
+    org_list = {otype: list(otype.org_set.all().select_related("organization_id","otype"))
                 for otype in otype_list}
     unsubscribe_list = list(me.unsubscribe_list.values_list("organization_id__username", flat=True))
     # 获取不订阅列表（数据库里的是不订阅列表）

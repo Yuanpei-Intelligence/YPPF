@@ -289,7 +289,7 @@ class Organization(models.Model):
 
     organization_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
     oname = models.CharField(max_length=32, unique=True)
-    otype = models.ForeignKey(OrganizationType, related_name=otype_org, on_delete=models.CASCADE)
+    otype = models.ForeignKey(OrganizationType, related_name="org_set", on_delete=models.CASCADE)
     status = models.BooleanField("激活状态", default=True)  # 表示一个小组是否上线(或者是已经被下线)
 
     objects = OrganizationManager()
