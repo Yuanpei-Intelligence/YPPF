@@ -214,9 +214,11 @@
         for (var i = 0; i < lst.length; i += 1) {
             if (lst[i].checked) {
                 if (success) {
-                    lst[i].parentNode.parentNode.bgColor = "FFFFFF";
-                    lst[i].nextElementSibling.childNodes[1].color = "E1E1E1";
-                    lst[i].nextElementSibling.childNodes[1].innerHTML = "未订阅";
+                    const sub_status_td = lst[i].parentNode.parentNode;  //订阅状态所在单元格的td标签
+                    const sub_status_font = lst[i].nextElementSibling.childNodes[1];  //订阅状态的font标签，标记颜色与内容
+                    sub_status_td.bgColor = "FFFFFF";
+                    sub_status_font.color = "E1E1E1";
+                    sub_status_font.innerHTML = "未订阅";
                     const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
                     num.textContent = Number(num.textContent) - 1;
                     lst[i].checked = false;
@@ -230,9 +232,11 @@
         for (var i = 0; i < lst.length; i += 1) {
             if (!lst[i].checked) {
                 if (success) {
-                    lst[i].parentNode.parentNode.bgColor = "F3FDFF";
-                    lst[i].nextElementSibling.childNodes[1].color = "5F747B";
-                    lst[i].nextElementSibling.childNodes[1].innerHTML = "已订阅";
+                    const sub_status_td = lst[i].parentNode.parentNode;  //订阅状态所在单元格的td标签
+                    const sub_status_font = lst[i].nextElementSibling.childNodes[1];  //订阅状态的font标签，标记颜色与内容
+                    sub_status_td.bgColor = "F3FDFF";
+                    sub_status_font.color = "5F747B";
+                    sub_status_font.innerHTML = "已订阅";
                     const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
                     num.textContent = Number(num.textContent) + 1;
                     lst[i].checked = true;
@@ -243,21 +247,23 @@
     async function change_status() {
         // alert(this.checked);
         const num = this.parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
+        const sub_status_td = this.parentNode.parentNode;  //订阅状态所在单元格的td标签
+        const sub_status_font = this.nextElementSibling.childNodes[1];  //订阅状态的font标签，标记颜色与内容
         if (!this.checked) {
             const success = await save_subscribe_status.call(this, false);
             if (success) {
-                this.parentNode.parentNode.bgColor = "FFFFFF";
-                this.nextElementSibling.childNodes[1].color = "E1E1E1";
-                this.nextElementSibling.childNodes[1].innerHTML = "未订阅";
+                sub_status_td.bgColor = "FFFFFF";
+                sub_status_font.color = "E1E1E1";
+                sub_status_font.innerHTML = "未订阅";
                 num.textContent = Number(num.textContent) - 1;
             }
             else this.checked = true;
         } else {
             const success = await save_subscribe_status.call(this, true);
             if (success) {
-                this.parentNode.parentNode.bgColor = "F3FDFF";
-                this.nextElementSibling.childNodes[1].color = "5F747B";
-                this.nextElementSibling.childNodes[1].innerHTML = "已订阅";
+                sub_status_td.bgColor = "F3FDFF";
+                sub_status_font.color = "5F747B";
+                sub_status_font.innerHTML = "已订阅";
                 num.textContent = Number(num.textContent) + 1;
             }
             else this.checked = false;
