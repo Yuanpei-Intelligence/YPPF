@@ -43,7 +43,8 @@ from app import utils
 # 内部加密用，不同views文件不共享，如果依赖的utils使用了，尽量从utils导入
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
-from django.contrib.auth.decorators import login_required
+# from django.contrib.auth.decorators import login_required
+from app.utils import login_required
 from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse
