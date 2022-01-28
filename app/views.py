@@ -173,8 +173,7 @@ def index(request):
             is_inner, arg_origin = utils.get_std_inner_url(arg_origin)
             if is_inner:  # 非外部链接，合法性已经检查过
                 return redirect(arg_origin)  # 不需要加密验证
-            '''
-            特判地下室的部分废弃
+
             is_underground, arg_origin = utils.get_std_underground_url(arg_origin)
             if not is_underground:
                 return redirect(arg_origin)
@@ -189,7 +188,6 @@ def index(request):
             except:
                 arg_origin = append_query(arg_origin,
                     Sid=username, timeStamp=timeStamp, Secret=en_pw)
-            '''
             return redirect(arg_origin)
 
     return render(request, "index.html", locals())
