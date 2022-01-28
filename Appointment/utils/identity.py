@@ -16,7 +16,7 @@ from typing import Union
 from django.contrib.auth.models import User
 
 __all__ = [
-    'user2participant',
+    'get_participant',
     'is_org',
     'is_person',
     'get_name',
@@ -24,20 +24,29 @@ __all__ = [
 ]
 
 
-def user2participant(user: User, update=False):
-    '''通过User对象获取对应的参与人对象, noexcept
+def get_participant(user: Union[User, str], update=False, raise_except=False):
+    '''通过User对象或学号获取对应的参与人对象
 
     Args:
-    - update: 获取带更新锁的对象, 暂不需要支持
+    - update: 获取带更新锁的对象
+    - raise_except: 失败时是否抛出异常，默认不抛出
 
     Returns:
     - participant: 满足participant.Sid=user, 不存在时返回`None`
     '''
     try:
         # TODO: task 2 pht 修改模型字段后删除下行
-        user = user.username
-        return Participant.objects.get(Sid=user)
+        if isinstance(user, User): user = user.username
+        if update:
+            par_all = Participant.objects.select_for_update().all()
+        else:
+            par_all = Participant.objects.all()
+
+        # TODO: task 2 pht 修改模型字段后增加一行如果是str，则改为__username获取
+        return par_all.get(Sid=user)
     except:
+        if raise_except:
+            raise
         return None
 
 

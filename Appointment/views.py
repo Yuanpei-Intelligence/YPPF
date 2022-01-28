@@ -27,7 +27,7 @@ from Appointment import global_info
 # utils对接工具
 from Appointment.utils.utils import send_wechat_message, appoint_violate, doortoroom, iptoroom, operation_writer, write_before_delete, cardcheckinfo_writer, check_temp_appoint, set_appoint_reason
 import Appointment.utils.web_func as web_func
-from Appointment.utils.identity import get_name, get_avatar
+from Appointment.utils.identity import get_name, get_avatar, get_participant
 
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
@@ -92,6 +92,7 @@ def create_account(request):
             pinyin_list = pypinyin.pinyin(given_name, style=pypinyin.NORMAL)
             pinyin_init = ''.join([w[0][0] for w in pinyin_list])
 
+            # TODO: task 1 pht 2022-1-28 模型修改时需要调整
             account = Participant.objects.create(
                 Sid=request.user.username,
                 Sname=given_name,
@@ -112,11 +113,12 @@ def identity_check(request):    # 判断用户是否是本人
     # if request.session.get('authenticated') is not None:
     #     return request.session['authenticated']
 
-    try:
-        Pname = Participant.objects.get(Sid=request.user.username).Sname
-        return True
-    except:
+    participant = get_participant(request.user)
+
+    if participant is None:
         return False
+
+    return True
 
     # try:
     #     Sid = request.session['Sid']
@@ -499,7 +501,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
     Sid, Rid = request.GET.get("Sid", None), request.GET.get("Rid", None)
     student, room, now_time, min15 = None, None, datetime.now(), timedelta(minutes=15)
     try:
-        student = Participant.objects.get(Sid=Sid)
+        student = get_participant(Sid, raise_except=True)
         all_Rid = [room.Rid for room in Room.objects.all()]
         Rid = doortoroom(Rid)
         if Rid[:4] in all_Rid:  # 表示增加了一个未知的A\B号
@@ -689,7 +691,7 @@ def index(request):  # 主页
 
             # 至此获得了登录的授权 但是这个人可能不存在 加判断
             try:
-                Pname = Participant.objects.get(Sid=request.user.username).Sname
+                Pname = get_participant(request.user).Sname
                 # modify by pht: 自动更新姓名
                 if Pname == '未命名':
                     # 获取姓名和首字母
@@ -700,16 +702,18 @@ def index(request):  # 主页
 
                     # 更新数据库和session
                     with transaction.atomic():
-                        # TODO: task 1 qwn 2022-1-26 session和Participant应同步修改
-                        Participant.objects.select_for_update().filter(
-                            Sid=request.user.username).update(
-                            Sname=given_name, pinyin=pinyin_init)
+                        # TODO: task 1 qwn 2022-1-26 Participant字段变化应同步修改
+                        participant = get_participant(
+                            request.user, update=True, raise_except=True)
+                        participant.Sname = given_name
+                        participant.pinyin = pinyin_init
+                        participant.save()
             except:
                 # 没有这个人 自动添加并提示
                 if create_account(request) is not None:
                     warn_code = 1
                     warn_message = "数据库不存在学生信息,已为您自动创建!"
-                else:  # 创建失败
+                else:  # 创建失败或不允许创建
                     # request.session['Sid'] = "0000000000"
                     # request.session['Secret'] = ""  # 清空信息
                     warn_code = 1
@@ -731,7 +735,7 @@ def index(request):  # 主页
         room_appointments[appointment.Room.Rid] = min(
             room_appointments[appointment.Room.Rid] or timedelta(1), appointment.Astart - now)
 
-    def format(delta):  # 格式化timedelta，隐去0h
+    def format_time(delta):  # 格式化timedelta，隐去0h
         if delta is None:
             return None
         hour, rem = divmod(delta.seconds, 3600)
@@ -752,7 +756,7 @@ def index(request):  # 主页
     #--------- 地下室状态：right tab ---------#
     talk_room_list = room_list.filter(                                              # 研讨室（展示临时预约）
         Rtitle__icontains="研讨").filter(Rstatus=Room.Status.PERMITTED).order_by('Rmin', 'Rid')
-    room_info = [(room, {'Room': room.Rid} in occupied_rooms, format(               # 研讨室占用情况
+    room_info = [(room, {'Room': room.Rid} in occupied_rooms, format_time(          # 研讨室占用情况
         room_appointments[room.Rid])) for room in talk_room_list]
 
     #--------- 3 俄文楼部分 ---------#
@@ -1020,9 +1024,9 @@ def check_out(request):  # 预约表单提交
                 if datetime.now().strftime("%a") == appoint_params['weekday']:
                     appoint_params['Rmin'] = min(
                         global_info.today_min, room_object.Rmin)
+        # TODO: task 3 pht 2022-1-28 模型修改时同步修改
         appoint_params['Sid'] = request.user.username
-        appoint_params['Sname'] = Participant.objects.get(
-            Sid=appoint_params['Sid']).Sname
+        appoint_params['Sname'] = get_participant(appoint_params['Sid']).Sname
         Stu_all = Participant.objects.all()
 
     except:
