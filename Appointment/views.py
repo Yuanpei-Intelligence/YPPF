@@ -582,9 +582,11 @@ def index(request):  # 主页
             # print("无法顺利呈现公告，原因可能是没有将状态设置为YES或者超过一条状态被设置为YES")
 
     # 
-    if request.GET.get("alert", ""):
+    if request.GET.get("warn", ""):
         warn_code = 1
-        warn_message = request.session['alert_message']
+        warn_message = request.session.pop('warn_message')
+        
+
 
     #--------- 前端变量 ---------#
 
@@ -958,7 +960,7 @@ def check_out(request):  # 预约表单提交
 
 
 def logout(request):    # 登出系统
-    return redirect("/logout/")
+    return redirect(inner_url_export('/logout/', global_info.base_url, 'underground'))
     # if global_info.account_auth:
     #     request.session.flush()
     #     return redirect(direct_to_login(request, True))

@@ -12,6 +12,7 @@ from app.utils import (
     check_user_type,
     get_person_or_org,
     get_user_ava,
+    inner_url_export
 )
 from typing import Union
 from django.contrib.auth.models import User
@@ -50,7 +51,7 @@ class identity_check(object):
                     request.session['alert_message'] = "创建地下室账户失败，管理员会尽快为您解决。在此之前，您可以查看实时人数。"
                 else:
                     request.session['alert_message'] = "您的账号访问了未授权页面。如有疑问，请联系管理员。"
-                return redirect(inner_url_export(underground_netloc, "/index/?alert=1"))
+                return redirect(inner_url_export("/index/?warn=1", global_info.base_url, 'underground'))
 
             return view_function(request, *args, **kwargs)
         return _wrapped_view
@@ -154,8 +155,8 @@ def create_account(request):
     '''
     根据请求信息创建账户, 根据创建结果返回生成的对象或者`None`, noexcept
     '''
-    # if not global_info.allow_newstu_appoint:
-    #     return None
+    if not global_info.allow_newstu_appoint:
+        return None
 
     try:
         with transaction.atomic():
