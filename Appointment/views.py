@@ -66,14 +66,6 @@ Views.py 使用说明
 wklist = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 
-def obj2json(obj):
-    return list(obj.values())
-
-
-# def getToken(request):
-#    return JsonResponse({'token': get_token(request)})
-
-
 @csrf_exempt
 def getAppoint(request):    # 班牌机对接程序
     if request.method == 'POST':  # 获取所有预约信息
@@ -586,7 +578,6 @@ def index(request):  # 主页
     if request.GET.get("warn") is not None:
         warn_code, warn_message = 1, request.session.pop('warn_message')
 
-
     #--------- 前端变量 ---------#
 
     room_list = Room.objects.all()
@@ -961,7 +952,6 @@ def check_out(request):  # 预约表单提交
 def logout(request):    # 登出系统
     auth.logout(request)
     return redirect(reverse('Appointment:index'))
-
 
 
 ########################################
