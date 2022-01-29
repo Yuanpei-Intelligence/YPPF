@@ -12,12 +12,11 @@ from app.utils import (
     check_user_type,
     get_person_or_org,
     get_user_ava,
-    inner_url_export,
 )
 from typing import Union
 from django.contrib.auth.models import User
 from django.shortcuts import redirect
-from app.utils import login_required
+from django.contrib.auth.decorators import login_required
 from functools import wraps
 import pypinyin
 

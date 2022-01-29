@@ -173,6 +173,8 @@ def index(request):
 @login_required(redirect_field_name="origin")
 @log.except_captured(source='views[shiftAccount]', record_user=True)
 def shiftAccount(request):
+    t = request.get_full_path()
+    raise ValueError
 
     username = request.session.get("NP")
     if not username:

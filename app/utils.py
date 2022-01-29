@@ -30,26 +30,6 @@ from django.http import HttpResponse
 from django.db.models import F
 
 
-def login_required(redirect_field_name='origin'):
-
-    def decorator(view_function):
-        @wraps(view_function)
-        def _wrapped_view(request, *args, **kwargs):
-            if request.user.is_authenticated:
-                return view_function(request, *args, **kwargs)
-            login_url = local_dict['url']['login_url']
-            origin_url = request.get_full_path()
-            forwarded_host = request.headers.get('X-Forwarded-Host', '')
-            if forwarded_host:
-                target_url = inner_url_export(forwarded_host, origin_url)
-            else:
-                # Used for develop
-                target_url = get_relative_url(origin_url)
-            return redirect(f"{login_url}?{redirect_field_name}={target_url}")
-        return _wrapped_view
-    return decorator
-
-
 def check_user_access(redirect_url="/logout/", is_modpw=False):
     """
     Decorator for views that checks that the user is valid, redirecting
@@ -338,28 +318,6 @@ def get_url_params(request, html_display):
             key, value = param.split["="][0], param.split["="][1]
             if key not in html_display.keys():  # 禁止覆盖
                 html_display[key] = value
-
-
-# Accept an host and url, then transfer url to the one can be accessed via that host
-# Hard coded rules, No Error Handling.
-def inner_url_export(target_host, inner_url):
-    underground_netloc = url2site(local_dict["url"]["base_url"])
-    yppf_netloc = url2site(local_dict["url"]["login_url"])
-    parsed_url = urllib.parse.urlparse(inner_url)
-    if target_host == underground_netloc:
-        return urllib.parse.urlunparse(
-            ('https', underground_netloc, parsed_url.path.lstrip('/underground')) + parsed_url[3:]
-        )
-    return urllib.parse.urlunparse(
-        ('https', yppf_netloc, parsed_url.path.lstrip('/yppf')) + parsed_url[3:]
-    )
-
-
-def get_relative_url(url):
-    parsed_url = urllib.parse.urlparse(url)
-    return urllib.parse.urlunparse(("", "") + parsed_url[2:])
-
-
 
 
 def check_newpos_request(request, prepos=None):
