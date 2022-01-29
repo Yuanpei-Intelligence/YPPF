@@ -34,6 +34,9 @@ from django_apscheduler.jobstores import DjangoJobStore, register_events, regist
 from Appointment.utils.scheduler_func import scheduler
 import Appointment.utils.scheduler_func as scheduler_func
 
+# 构建 url，用于 logout
+from app.utils import inner_url_export
+
 
 # 注册启动以上schedule任务
 register_events(scheduler)
@@ -960,13 +963,8 @@ def check_out(request):  # 预约表单提交
 
 
 def logout(request):    # 登出系统
-    return redirect(inner_url_export('/logout/', global_info.base_url, 'underground'))
-    # if global_info.account_auth:
-    #     request.session.flush()
-    #     return redirect(direct_to_login(request, True))
-    #     # return redirect(reverse("Appointment:index"))
-    # else:
-    #     return redirect(reverse("Appointment:index"))
+    return redirect(inner_url_export('/logout/', global_info.login_url, '/yppf'))
+
 
 
 ########################################
