@@ -214,11 +214,7 @@
         for (var i = 0; i < lst.length; i += 1) {
             if (lst[i].checked) {
                 if (success) {
-                    const sub_status_td = lst[i].parentNode.parentNode;  //订阅状态所在单元格的td标签
-                    const sub_status_font = lst[i].nextElementSibling.childNodes[1];  //订阅状态的font标签，标记颜色与内容
-                    sub_status_td.bgColor = "FFFFFF";
-                    sub_status_font.color = "E1E1E1";
-                    sub_status_font.innerHTML = "未订阅";
+                    change_single_status(lst[i], "FFFFFF", "E1E1E1", "未订阅")
                     const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
                     num.textContent = Number(num.textContent) - 1;
                     lst[i].checked = false;
@@ -232,11 +228,7 @@
         for (var i = 0; i < lst.length; i += 1) {
             if (!lst[i].checked) {
                 if (success) {
-                    const sub_status_td = lst[i].parentNode.parentNode;  //订阅状态所在单元格的td标签
-                    const sub_status_font = lst[i].nextElementSibling.childNodes[1];  //订阅状态的font标签，标记颜色与内容
-                    sub_status_td.bgColor = "F3FDFF";
-                    sub_status_font.color = "5F747B";
-                    sub_status_font.innerHTML = "已订阅";
+                    change_single_status(lst[i], "F3FDFF", "5F747B", "已订阅")
                     const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
                     num.textContent = Number(num.textContent) + 1;
                     lst[i].checked = true;
@@ -247,23 +239,17 @@
     async function change_status() {
         // alert(this.checked);
         const num = this.parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
-        const sub_status_td = this.parentNode.parentNode;  //订阅状态所在单元格的td标签
-        const sub_status_font = this.nextElementSibling.childNodes[1];  //订阅状态的font标签，标记颜色与内容
         if (!this.checked) {
             const success = await save_subscribe_status.call(this, false);
             if (success) {
-                sub_status_td.bgColor = "FFFFFF";
-                sub_status_font.color = "E1E1E1";
-                sub_status_font.innerHTML = "未订阅";
+                change_single_status(this, "FFFFFF", "E1E1E1", "未订阅")
                 num.textContent = Number(num.textContent) - 1;
             }
             else this.checked = true;
         } else {
             const success = await save_subscribe_status.call(this, true);
             if (success) {
-                sub_status_td.bgColor = "F3FDFF";
-                sub_status_font.color = "5F747B";
-                sub_status_font.innerHTML = "已订阅";
+                change_single_status(this, "F3FDFF", "5F747B", "已订阅")
                 num.textContent = Number(num.textContent) + 1;
             }
             else this.checked = false;
@@ -306,6 +292,13 @@
     }
     function disable(id){
         document.getElementById(id).disabled = 'disabled'
+    }
+    function change_single_status(cell, bgcol, col, stat) {
+        const sub_status_td = cell.parentNode.parentNode;  //订阅状态所在单元格的td标签
+        const sub_status_font = cell.nextElementSibling.childNodes[1];  //订阅状态的font标签，标记颜色与内容
+        sub_status_td.bgColor = bgcol;
+        sub_status_font.color = col;
+        sub_status_font.innerHTML = stat;
     }
 </script>
 {% endblock %}
