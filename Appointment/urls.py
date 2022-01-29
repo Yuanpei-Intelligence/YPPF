@@ -35,7 +35,7 @@ urlpatterns = [
 
     # csrf验证操作（待完善）
     #path('get-csrf', views.getToken, name='getToken'),
-    path('',views.index,name="index"),
+    path('',views.index,name="root"),
     path('index',views.index,name="index"),
     path('arrange_time',views.arrange_time,name='arrange_time'),
     path('check_out',views.check_out,name='check_out'),
