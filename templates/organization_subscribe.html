@@ -214,7 +214,7 @@
         for (var i = 0; i < lst.length; i += 1) {
             if (lst[i].checked) {
                 if (success) {
-                    change_single_status(lst[i], "FFFFFF", "E1E1E1", "未订阅")
+                    change_single_status(lst[i], "FFFFFF", "E1E1E1", "未订阅");
                     const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
                     num.textContent = Number(num.textContent) - 1;
                     lst[i].checked = false;
@@ -228,7 +228,7 @@
         for (var i = 0; i < lst.length; i += 1) {
             if (!lst[i].checked) {
                 if (success) {
-                    change_single_status(lst[i], "F3FDFF", "5F747B", "已订阅")
+                    change_single_status(lst[i], "F3FDFF", "5F747B", "已订阅");
                     const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
                     num.textContent = Number(num.textContent) + 1;
                     lst[i].checked = true;
@@ -242,14 +242,14 @@
         if (!this.checked) {
             const success = await save_subscribe_status.call(this, false);
             if (success) {
-                change_single_status(this, "FFFFFF", "E1E1E1", "未订阅")
+                change_single_status(this, "FFFFFF", "E1E1E1", "未订阅");
                 num.textContent = Number(num.textContent) - 1;
             }
             else this.checked = true;
         } else {
             const success = await save_subscribe_status.call(this, true);
             if (success) {
-                change_single_status(this, "F3FDFF", "5F747B", "已订阅")
+                change_single_status(this, "F3FDFF", "5F747B", "已订阅");
                 num.textContent = Number(num.textContent) + 1;
             }
             else this.checked = false;
@@ -296,9 +296,9 @@
     function change_single_status(cell, bgcol, col, stat) {
         const sub_status_td = cell.parentNode.parentNode;  //订阅状态所在单元格的td标签
         const sub_status_font = cell.nextElementSibling.childNodes[1];  //订阅状态的font标签，标记颜色与内容
-        sub_status_td.bgColor = bgcol;
-        sub_status_font.color = col;
-        sub_status_font.innerHTML = stat;
+        sub_status_td.bgColor = bgcol;      //改变单元格的背景色
+        sub_status_font.color = col;        //改变字体颜色(已订阅/未订阅字体颜色不同)
+        sub_status_font.innerHTML = stat;   //改变已订阅/未订阅的状态显示
     }
 </script>
 {% endblock %}
