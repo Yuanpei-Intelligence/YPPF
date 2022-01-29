@@ -10,6 +10,7 @@ from django.views.decorators.http import require_POST
 from django.http import JsonResponse, HttpResponse  # Json响应
 from django.shortcuts import render, redirect  # 网页render & redirect
 from django.urls import reverse
+from django.contrib import auth
 import json  # 读取Json请求
 
 # csrf 检测和完善
@@ -34,8 +35,6 @@ from django_apscheduler.jobstores import DjangoJobStore, register_events, regist
 from Appointment.utils.scheduler_func import scheduler
 import Appointment.utils.scheduler_func as scheduler_func
 
-# 构建 url，用于 logout
-from app.utils import inner_url_export
 
 
 # 注册启动以上schedule任务
@@ -584,11 +583,8 @@ def index(request):  # 主页
             message_code = 0
             # print("无法顺利呈现公告，原因可能是没有将状态设置为YES或者超过一条状态被设置为YES")
 
-    # 
-    if request.GET.get("warn", ""):
-        warn_code = 1
-        warn_message = request.session.pop('warn_message')
-        
+    if request.GET.get("warn") is not None:
+        warn_code, warn_message = 1, request.session.pop('warn_message')
 
 
     #--------- 前端变量 ---------#
@@ -963,7 +959,8 @@ def check_out(request):  # 预约表单提交
 
 
 def logout(request):    # 登出系统
-    return redirect(inner_url_export('/logout/', global_info.login_url, '/yppf'))
+    auth.logout(request)
+    return redirect(reverse('Appointment:index'))
 
 
 
