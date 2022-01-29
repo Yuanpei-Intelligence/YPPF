@@ -374,7 +374,7 @@ def get_std_inner_url(inner_url):
     if url_parse.scheme or url_parse.netloc:
         return False, inner_url
     return True, inner_url
-
+    
 
 # 允许进行 cross site 授权时，return True
 def check_cross_site(request, arg_url):
