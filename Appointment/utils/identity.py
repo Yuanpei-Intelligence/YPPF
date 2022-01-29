@@ -21,8 +21,6 @@ from django.shortcuts import redirect
 from django.urls import reverse
 from django.contrib.auth.decorators import login_required
 
-import pypinyin
-
 __all__ = [
     'get_participant',
     'is_org',
@@ -147,6 +145,7 @@ def _create_account(request):
 
 
 def _update_name(user: Union[Participant, User, str]):
+    import pypinyin
     from django.db import transaction
     
     participant = user
