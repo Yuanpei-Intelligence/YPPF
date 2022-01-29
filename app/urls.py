@@ -79,6 +79,7 @@ urlpatterns = [
     path("modifyPosition/", org_views.modifyPosition, name="modifyPosition"),
     path("modifyOrganization/", org_views.modifyOrganization, name="modifyOrganization"),
     path("sendMessage/", org_views.sendMessage, name="sendMessage"),
+    path("viewActivity/", org_views.viewActivity, name="viewActivity")
     # path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"), 弃用多年
 ] + [
     # 数据导入

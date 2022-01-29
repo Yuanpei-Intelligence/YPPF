@@ -28,6 +28,7 @@ __all__ = [
     'saveShowPositionStatus',
     'modifyPosition',
     'sendMessage',
+    'viewActivity',
 ]
 
 
@@ -523,3 +524,30 @@ def sendMessage(request):
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="信息发送中心")
     return render(request, "sendMessage.html", locals())
+
+
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(source='org_views[viewActivity]', record_user=True)
+def viewActivity(request):
+    # TODO: Aggregation page (assigned to dsx & syj)
+    # 1. Show all future activities. (need pass the list of future activities to html page)
+    # 2. Support jumping to "Start long-term activity" page in the html page.
+    # 3. Support jumping to "Start short-term activity" page in the html page.
+    # 4. Support jumping to "Manual check-in" page in the html page.
+
+    # Sanity check and start a html_display.
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = get_person_or_org(request.user)  # 获取自身
+    
+    if user_type == "Person":
+        # TODO: This aggregation page is for organization only.
+        pass
+
+    # TODO: Prepare html_diplay and receiver_type_list.
+    # The most important part is get the list of future activities from the database.
+
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的活动")
+
+    return render(request, "org_activity.html", locals())
+    
