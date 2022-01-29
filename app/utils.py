@@ -314,35 +314,6 @@ def site_match(site, url, path_check_level=0, scheme_check=False):
         if spath != upath:
             return False
     return True
-
-# def get_std_underground_url(underground_url):
-#     '''检查是否是地下室网址，返回(is_underground, standard_url)
-#     - 如果是，规范化网址，否则返回原URL
-#     - 如果参数为None，返回URL为地下室网址'''
-#     site_url = local_dict["url"]["base_url"]
-#     if underground_url is None:
-#         underground_url = site_url
-#     if site_match(site_url, underground_url):
-#         underground_url = urllib.parse.urlunparse(
-#             urllib.parse.urlparse(site_url)[:2]
-#             + urllib.parse.urlparse(underground_url)[2:])
-#         return True, underground_url
-#     return False, underground_url
-
-# def get_std_inner_url(inner_url):
-#     '''检查是否是内部网址，返回(is_inner, standard_url)
-#     - 如果是，规范化网址，否则返回原URL
-#     - 如果参数为None，返回URL为主页相对地址'''
-#     site_url = LOGIN_URL
-#     if inner_url is None:
-#         inner_url = '/welcome/'
-#     if site_match(site_url, inner_url):
-#         inner_url = urllib.parse.urlunparse(
-#             ('', '') + urllib.parse.urlparse(inner_url)[2:])
-#     url_parse = urllib.parse.urlparse(inner_url)
-#     if url_parse.scheme or url_parse.netloc:
-#         return False, inner_url
-#     return True, inner_url
     
 
 # 允许进行 cross site 授权时，return True
@@ -354,7 +325,6 @@ def check_cross_site(request, arg_url):
         return True
     if netloc in [url2site(local_dict["url"]["base_url"]), url2site(local_dict["url"]["login_url"])]:
         return True
-    raise ValueError(arg_url)
     return False
 
 
