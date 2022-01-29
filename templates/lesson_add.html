@@ -55,14 +55,6 @@
                                            placeholder="在这里写下您要开设的课程名称吧~（必填）" >
                                 </div>
                                 <div class="form-group">
-                                 </div>
-                                <div class="form-group">
-                                    <label>课程预算</label>
-                                    <input type="text" id="budget" name="budget" class="form-control"  
-                                           maxlength="50" required="required"
-                                           placeholder="填写的是学期预算/单次课程预算，请注意哦！（必填）" >
-                                </div>
-                                <div class="form-group">
                                     <label>审核老师</label>
                                     <select name="examine_teacher" id="examine_teacher" name="examine_teacher"
                                             class="form-control selectpicker">
@@ -100,7 +92,6 @@
                                                    onclick="fill_value(this)"/>
                                         </div>
                                     </div>
-                                    
                                 </div>
                                 <div class="form-group">
                                     <div class="row">
@@ -153,74 +144,10 @@
                                 </div>
                                 
                             </div>
-                            <div id="propoganda">
-                                <p><b>宣传信息</b></p>
-                                <div class="form-group">
-                                    <label for="aintro">课程简介</label>
-                                    <textarea id="aintro" name="introduction" class="form-control" rows="3"
-                                        placeholder="(必填)简介会随课程基本信息一同推送至订阅者的微信" onclick="fill_value(this)" 
-                                        required="required" maxlength=225></textarea>
-                                </div>  
-
-                                <div class="form-group">
-                                    <label for="aintro">
-                                        课程推送链接
-                                        <a data-toggle="tooltip" data-placement="bottom" title="获取链接的方式：在推送中，点击右上角在默认浏览器中打开，然后复制链接填在此处即可。注意，如果是外网链接，请使用以http或https开头的绝对地址。这一项可以在任何时间修改。">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                <path
-                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                            </svg>
-                                        </a>
-                                    </label>
-                                    <textarea id="URL" name="URL" class="form-control" rows="3" placeholder="推送链接会和活动通知一起发送；外网链接请使用以http或https开头的绝对地址" onclick="fill_value(this)"></textarea>
-                                </div>                                
-
-                                <div class="form-group">
-                                    <label>
-                                        课程预告图片
-                                        <a data-toggle="tooltip" data-placement="bottom" title="可以选择默认的图片；如果推送中包含图片的话，也可以选取推送中包含的图片；这一项在审核通过后不可修改">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                <path
-                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                            </svg>
-                                        </a>
-                                    </label><br/>
-                                    <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12">
-                                        {% if use_template %}
-                                        <input type="hidden" id="template_id" name="template_id" value="{{template_id}}">
-                                        {% endif %}
-                                        <input onchange="showFilenameLocal(this.files)" type="file" 
-                                                class="custom-file-input" id="images" name="images" 
-                                                accept="image/*" data-max-file-size="4096K">
-                                        <label id="upload_annouce_photo" name="upload_annouce_photo" class="custom-file-label" 
-                                                for="customFile"> 选择历史活动图片或海报或以下默认图片之一 </label>
-                                    </div>
-                                </div>
-    
-                                <div class="form-group">
-                                    <div class="form-check">
-                                        <div class="row">
-                                        {% for pic in defaultpics %}
-                                        <div class="col-xl-4 col-lg-4 col-md-4 mb-5">
-                                            <input class="form-check-input" type="checkbox"
-                                                value={{pic.src}}
-                                                id={{pic.id}} name={{pic.id}}>
-                                            <label class="form-check-label" for="defaultCheck1">
-                                                <img src={{pic.src}} class="img-fluid">
-                                            </label>
-                                        </div>
-                                        {% endfor %}
-                                        </div>
-                                    </div>   
-                                </div>
-                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认提交活动申请？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
-                                    发起活动
-                                </button>
-
-                            </div>
                             
+                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认修改活动信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
+                                开设课程
+                            </button>
 
                         </form>
                     </div>
@@ -252,9 +179,21 @@
             let lesson2Inputs = $("#lesson2")[0].querySelectorAll("input");
             for(let i = 0; i < lesson2Inputs.length; i++) {
                 console.log(lesson2Inputs[i].textContent);
+                lesson2Inputs[i].textContent = "";
                 lesson2Inputs[i].required = false;
             }
         }
+    }
+
+    function check_inputs() {
+        // 检查课程开始时间、结束时间、结课时间
+        let start1 = $("#datetimepicker1").val(), start2 = $("#datetimepicker3").val(), 
+            end1   = $("#datetimepicker2").val(), end2   = $("#datetimepicker4").val(), 
+            final  = $("#datetimepicker5").val();
+        start1 = new Date(start1), start2 = new Date(start2);
+        end1   = new Date(end1),   end2   = new Date(end2);
+        final  = new Date(final);
+
     }
 </script>
 
@@ -263,10 +202,12 @@ $(function () {
     $("#datetimepicker1").datetimepicker({
         format: "YYYY-MM-DD HH:mm",
         sideBySide: true,
+        minDate: new Date(),
     });
     $("#datetimepicker2").datetimepicker({
         format: "YYYY-MM-DD HH:mm",
-        sideBySide: true
+        sideBySide: true,
+        minDate: new Date(),
     });
     $("#datetimepicker3").datetimepicker({
         format: "YYYY-MM-DD HH:mm",
