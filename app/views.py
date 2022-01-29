@@ -164,7 +164,7 @@ def index(request):
     # 所有跳转，现在不管是不是post了
     if arg_origin is not None and request.user.is_authenticated:
         if not check_cross_site(request, arg_origin):
-            return redirect(message_url(wrong('非法的目标域名！请不要点开陌生链接。')))
+            return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
         return redirect(arg_origin)
 
     return render(request, "index.html", locals())
