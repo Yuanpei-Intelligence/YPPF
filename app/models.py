@@ -1292,17 +1292,20 @@ class CourseManager(models.Manager):
 
     def selected(self, person: NaturalPerson):
         # 返回当前学生所选的所有课程
-        return self.activated().filter(participant__person_id=person,
-                                       participant__status__in=
-                                       [CourseParticipant.Status.SELECT,
-                                        CourseParticipant.Status.SUCCESS])
+        # participant_set是对CourseParticipant的反向查询
+        return self.activated().filter(participant_set__person=person,
+                                       participant_set__status__in=[
+                                           CourseParticipant.Status.SELECT,
+                                           CourseParticipant.Status.SUCCESS,
+                                       ])
 
     def unselected(self, person: NaturalPerson):
         # 返回当前学生没选或失败的所有课程
-        return self.activated().filter(participant__person_id=person,
-                                       participant__status__in=
-                                       [CourseParticipant.Status.UNSELECT,
-                                        CourseParticipant.Status.FAILED])
+        return self.activated().filter(participant_set__person=person,
+                                       participant_set__status__in=[
+                                           CourseParticipant.Status.UNSELECT,
+                                           CourseParticipant.Status.FAILED,
+                                       ])
 
 
 class Course(models.Model):
@@ -1319,13 +1322,14 @@ class Course(models.Model):
     8、状态：未开始选课、正在预选、正在补退选、选课结束
     9、四个时间节点：预选开始、预选结束、补退选开始、补退选结束
     10、课程容量 + 已选课人数
+    11、课程类别（德/智/体/美/劳）
     """
     class Meta:
-        verbose_name = "课程"
+        verbose_name = "书院课程"
         verbose_name_plural = verbose_name
-        ordering = ["stage1_start", "stage1_end", "stage2_start", "stage2_end"]
+        ordering = ["id"]
 
-    name = models.CharField("课程名称", max_length=60, default="")
+    name = models.CharField("课程名称", max_length=60)
     organization = models.ForeignKey(
         Organization,
         on_delete=models.CASCADE,
@@ -1339,27 +1343,22 @@ class Course(models.Model):
                                 max_length=15,
                                 default=Semester.get(
                                     local_dict["semester_data"]["semester"]))
-    
+
     # 课程开设的周数
     times = models.SmallIntegerField("课程开设周数", default=7)
-    classroom = models.CharField("预期上课地点", max_length=60, default="")
-    teacher = models.CharField("授课教师", max_length=48, default="")
+    classroom = models.CharField("预期上课地点",
+                                 max_length=60,
+                                 default="",
+                                 blank=True)
+    teacher = models.CharField("授课教师", max_length=48, default="", blank=True)
 
     # 不确定能否统一选课的情况，先用最保险的方法
-    stage1_start = models.DateTimeField("预选开始时间",
-                                        blank=True,
-                                        default=datetime.now)
-    stage1_end = models.DateTimeField("预选结束时间",
-                                      blank=True,
-                                      default=datetime.now)
-    stage2_start = models.DateTimeField("补退选开始时间",
-                                        blank=True,
-                                        default=datetime.now)
-    stage2_end = models.DateTimeField("补退选结束时间",
-                                      blank=True,
-                                      default=datetime.now)
+    stage1_start = models.DateTimeField("预选开始时间", blank=True, null=True)
+    stage1_end = models.DateTimeField("预选结束时间", blank=True, null=True)
+    stage2_start = models.DateTimeField("补退选开始时间", blank=True, null=True)
+    stage2_end = models.DateTimeField("补退选结束时间", blank=True, null=True)
 
-    bidding = models.IntegerField("意愿点价格", default=0)
+    bidding = models.FloatField("意愿点价格", default=0.0)
 
     introduction = models.TextField("课程简介", max_length=600, blank=True)
 
@@ -1379,28 +1378,34 @@ class Course(models.Model):
         default=Status.WAITING,
     )
 
+    class CourseType(models.IntegerChoices):
+        # 课程类型
+        MORAL = (0, "德")
+        INTELLECTUAL = (1, "智")
+        PHYSICAL = (2, "体")
+        AESTHETICS = (3, "美")
+        LABOUR = (4, "劳")
+
+    type = models.SmallIntegerField("课程类型",
+                                    choices=CourseType.choices,
+                                    default=CourseType.MORAL)
+
     capacity = models.IntegerField("课程容量", default=100)
     current_participants = models.IntegerField("当前选课人数", default=0)
 
-    # 暂时只允许上传一张图片，如果需要上传多张图片，则要另外建表
+    # 暂时只允许上传一张图片
     photo = models.ImageField(verbose_name="宣传图片",
                               upload_to=f"course/photo/%Y/",
                               blank=True)
 
     objects = CourseManager()
-    
+
+    def save(self, *args, **kwargs):
+        self.bidding = round(self.bidding, 1)
+        super().save(*args, **kwargs)
+
     def __str__(self):
         return self.name
-
-    def time_list(self):
-        """
-        返回一个list，每个元素是一个tuple，表示课程的开始时间和结束时间
-        """
-        t_list = []
-        for course_time in self.time.all():
-            t_list.append((course_time.start, course_time.end))
-                 
-        return t_list
 
 
 class CourseTime(models.Model):
@@ -1408,12 +1413,17 @@ class CourseTime(models.Model):
     记录课程每周的上课时间，同一课程可以对应多个上课时间
     """
     class Meta:
-        verbose_name = "首周上课时间"
+        verbose_name = "上课时间"
         verbose_name_plural = verbose_name
+        ordering = ["start"]
 
-    course_id = models.ForeignKey(Course, on_delete=models.CASCADE, related_name="time")
-    start = models.DateTimeField("开始时间", blank=True, default=datetime.now)
-    end = models.DateTimeField("结束时间", blank=True, default=datetime.now)
+    course = models.ForeignKey(Course,
+                               on_delete=models.CASCADE,
+                               related_name="time_set")
+
+    # 开始时间和结束时间指的是一次课程的上课时间和下课时间
+    start = models.DateTimeField("开始时间", blank=True, null=True)
+    end = models.DateTimeField("结束时间", blank=True, null=True)
 
 
 class CourseParticipant(models.Model):
@@ -1425,12 +1435,12 @@ class CourseParticipant(models.Model):
         verbose_name_plural = verbose_name
 
     # 保证不出现冲突的选课状态
-    course_id = models.OneToOneField(Course, 
-                                  on_delete=models.CASCADE, 
-                                  related_name="participant")
-    person_id = models.ForeignKey(NaturalPerson, 
-                                  on_delete=models.CASCADE, 
-                                  related_name="course")
+    course = models.OneToOneField(Course,
+                                  on_delete=models.CASCADE,
+                                  related_name="participant_set")
+    person = models.ForeignKey(NaturalPerson,
+                               on_delete=models.CASCADE,
+                               related_name="registration_set")
 
     class Status(models.IntegerChoices):
         SELECT = (0, "已选课")
