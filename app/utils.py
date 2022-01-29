@@ -293,11 +293,57 @@ def site_match(site, url, path_check_level=0, scheme_check=False):
             return False
     return True
 
+
+def get_std_url(arg_url: str, site_url: str, path_dir=None, match_func=None):
+    '''
+    检查是否匹配，返回(is_match, standard_url)，匹配时规范化url，否则返回原url
+
+    Args
+    ----
+    - arg_url: 需要判断的url或者None，后者返回(False, site_url)
+    - site_url: 规范的网址，其scheme, netloc和path部分被用于参考
+    - path_dir: 需要保持一致的路径部分，默认为空
+    - match_func: 检查匹配的函数，默认为site_match(site_url, arg_url)
+    '''
+    if match_func is None:
+        match_func = lambda x: site_match(site_url, x)
+
+    if arg_url is None:
+        return False, site_url
+
+    if match_func(arg_url):
+        site_parse = urllib.parse.urlparse(site_url)
+        arg_parse = urllib.parse.urlparse(arg_url)
+        
+        def in_dir(path, path_dir):
+            return path.startswith(path_dir) or path == path_dir.rstrip('/')
+        
+        std_path = arg_parse.path
+        if path_dir:
+            if (in_dir(site_parse.path, path_dir) and not in_dir(std_path, path_dir)):
+                std_path = path_dir.rstrip('/') + std_path
+            elif (not in_dir(site_parse.path, path_dir) and in_dir(std_path, path_dir)):
+                std_path = std_path.split(path_dir.rstrip('/'), 1)[1]
+    
+        std_parse = [
+            site_parse.scheme,
+            site_parse.netloc,
+            std_path,
+            arg_parse.params,
+            arg_parse.query,
+            arg_parse.fragment,
+        ]
+        arg_url = urllib.parse.urlunparse(std_parse)
+        return True, arg_url
+    return False, arg_url
+
+
 def get_std_underground_url(underground_url):
     '''检查是否是地下室网址，返回(is_underground, standard_url)
     - 如果是，规范化网址，否则返回原URL
     - 如果参数为None，返回URL为地下室网址'''
     site_url = local_dict["url"]["base_url"]
+    return get_std_url(underground_url, site_url)
     if underground_url is None:
         underground_url = site_url
     if site_match(site_url, underground_url):
@@ -312,6 +358,11 @@ def get_std_inner_url(inner_url):
     - 如果是，规范化网址，否则返回原URL
     - 如果参数为None，返回URL为主页相对地址'''
     site_url = LOGIN_URL
+    return get_std_url(
+        inner_url, '/welcome/',
+        match_func=lambda x: (site_match(site_url, x)
+                           or site_match('', x, scheme_check=True)),
+    )
     if inner_url is None:
         inner_url = '/welcome/'
     if site_match(site_url, inner_url):
