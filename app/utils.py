@@ -28,6 +28,7 @@ from django.contrib import auth
 from django.shortcuts import redirect
 from django.http import HttpResponse
 from django.db.models import F
+from django.urls import reverse
 
 
 def check_user_access(redirect_url="/logout/", is_modpw=False):
@@ -376,7 +377,8 @@ def get_std_inner_url(inner_url):
     return True, inner_url
 
 def inner_url_export(inner_url, ref_url, ref_dir):
-    return get_std_url(inner, ref_url, reverse(ref_dir), lambda x: True)
+    _, ret = get_std_url(inner_url, ref_url, ref_dir, lambda x: True)
+    return ret
 
 
 # 允许进行 cross site 授权时，return True
