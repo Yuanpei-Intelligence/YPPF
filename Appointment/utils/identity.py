@@ -12,13 +12,15 @@ from app.utils import (
     check_user_type,
     get_person_or_org,
     get_user_ava,
-    inner_url_export
 )
 from typing import Union
 from django.contrib.auth.models import User
-from django.shortcuts import redirect
-from django.contrib.auth.decorators import login_required
+
 from functools import wraps
+from django.shortcuts import redirect
+from django.urls import reverse
+from django.contrib.auth.decorators import login_required
+
 import pypinyin
 
 __all__ = [
@@ -29,33 +31,6 @@ __all__ = [
     'get_avatar',
     'identity_check',
 ]
-
-class identity_check(object):
-
-    def __init__(self, auth_func=lambda x: x is not None, redirect_field_name='origin', allow_create=True):
-        self.auth_func = auth_func
-        self.redirect_field_name = redirect_field_name
-        self.allow_create = allow_create
-
-    def __call__(self, view_function):
-        @login_required(redirect_field_name=self.redirect_field_name)
-        @wraps(view_function)
-        def _wrapped_view(request, *args, **kwargs):
-
-            cur_part = get_participant(user=request.user.username)
-            if not cur_part and self.allow_create:
-                cur_part = create_account(request)
-            if not self.auth_func(cur_part):
-                # TODO: by lzp, log it and notify admin
-                if not cur_part:
-                    request.session['alert_message'] = "创建地下室账户失败，管理员会尽快为您解决。在此之前，您可以查看实时人数。"
-                else:
-                    request.session['alert_message'] = "您的账号访问了未授权页面。如有疑问，请联系管理员。"
-                return redirect(inner_url_export("/index/?warn=1", global_info.base_url, 'underground'))
-
-            return view_function(request, *args, **kwargs)
-        return _wrapped_view
-
 
 def get_participant(user: Union[User, str], update=False, raise_except=False):
     '''通过User对象或学号获取对应的参与人对象
@@ -95,7 +70,7 @@ def _arg2user(participant: Union[Participant, User]):
 
 # 获取用户身份
 def _is_org_type(usertype):
-    return usertype == "Organization"
+    return usertype == 'Organization'
 
 def is_org(participant: Union[Participant, User]):
     '''返回participant对象是否是组织'''
@@ -123,27 +98,6 @@ def get_name(participant: Union[Participant, User]):
     else:
         return obj.name
 
-def update_name(username):
-    participant = get_participant(username)
-    if not participant:
-        return False
-    if participant.Sname == '未命名':
-        # 获取姓名和首字母
-        given_name = get_name(request.user)
-        pinyin_list = pypinyin.pinyin(
-            given_name, style=pypinyin.NORMAL)
-        pinyin_init = ''.join([w[0][0] for w in pinyin_list])
-
-        # 更新数据库和session
-        with transaction.atomic():
-            # TODO: task 1 qwn 2022-1-26 Participant字段变化应同步修改
-            participant = get_participant(
-                username, update=True, raise_except=True)
-            participant.Sname = given_name
-            participant.pinyin = pinyin_init
-            participant.save()
-    return True
-
 
 def get_avatar(participant: Union[Participant, User]):
     '''返回participant的头像'''
@@ -151,24 +105,30 @@ def get_avatar(participant: Union[Participant, User]):
     return get_user_ava(obj, user_type)
 
 
-def create_account(request):
+# 用户验证、创建和更新
+def _create_account(request):
     '''
     根据请求信息创建账户, 根据创建结果返回生成的对象或者`None`, noexcept
     '''
     if not global_info.allow_newstu_appoint:
         return None
 
+    if not request.user.is_authenticated:
+        return None
+
+    from django.db import transaction
     try:
         with transaction.atomic():
             try:
                 given_name = get_name(request.user)
             except:
                 # TODO: task 1 pht 2022-1-26 将来仍无法读取信息应当报错
+                from Appointment.utils.utils import operation_writer
                 operation_writer(global_info.system_log,
-                                f"创建未命名用户:学号为{request.user.username}",
-                                    "views.index",
-                                    "Problem")
-                given_name = "未命名"
+                                f'创建未命名用户:学号为{request.user.username}',
+                                'identity._create_account',
+                                'Problem')
+                given_name = '未命名'
 
             # 设置首字母
             pinyin_list = pypinyin.pinyin(given_name, style=pypinyin.NORMAL)
@@ -184,3 +144,65 @@ def create_account(request):
             return account
     except:
         return None
+
+
+def _update_name(user: Union[Participant, User, str]):
+    from django.db import transaction
+    
+    participant = user
+    if not isinstance(user, Participant):
+        participant = get_participant(user)
+        if participant is None:
+            return False
+
+    # 获取姓名, 只更新不同的
+    given_name = get_name(participant)
+    if given_name == participant.Sname:
+        return False
+
+    # 获取首字母
+    pinyin_list = pypinyin.pinyin(given_name, style=pypinyin.NORMAL)
+    pinyin_init = ''.join([w[0][0] for w in pinyin_list])
+
+    # 更新数据库和session
+    with transaction.atomic():
+        # TODO: task 1 qwn 2022-1-26 Participant字段变化应同步修改
+        participant = get_participant(participant.Sid, update=True, raise_except=True)
+        participant.Sname = given_name
+        participant.pinyin = pinyin_init
+        participant.save()
+    return True
+
+
+def identity_check(
+    auth_func=lambda x: x is not None,
+    redirect_field_name='origin',
+    allow_create=True,
+    update_name=True,
+    ):
+
+    def decorator(view_function):
+        @login_required(redirect_field_name=redirect_field_name)
+        @wraps(view_function)
+        def _wrapped_view(request, *args, **kwargs):
+
+            cur_part = get_participant(request.user)
+
+            if cur_part.Sname == '未命名' and update_name:
+                _update_name(cur_part)
+                
+            if cur_part is None and allow_create:
+                cur_part = _create_account(request)
+
+            if not auth_func(cur_part):
+                # TODO: task 0 lzp, log it and notify admin
+                if not cur_part:
+                    request.session['warn_message'] = ('创建地下室账户失败，请联系管理员为您解决。'
+                                                       '在此之前，您可以查看实时人数。')
+                else:
+                    request.session['warn_message'] = ('您访问了未授权的页面，如需访问请先登录。')
+                return redirect(reverse('Appointment:index') + '?warn=1')
+
+            return view_function(request, *args, **kwargs)
+        return _wrapped_view
+    return decorator
