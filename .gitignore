@@ -61,6 +61,3 @@ __pycache__/
 # OPS Files *
 *.ini
 *.sh
-
-# my develop
-*course*.py
