@@ -35,13 +35,6 @@ from Appointment.utils.scheduler_func import scheduler
 import Appointment.utils.scheduler_func as scheduler_func
 
 
-# 验证时间戳
-from time import mktime
-
-# login_required装饰器
-# from django.contrib.auth.decorators import login_required
-# from app.utils import login_required
-
 # 注册启动以上schedule任务
 register_events(scheduler)
 scheduler.start()
@@ -266,10 +259,6 @@ def cameracheck(request):   # 摄像头post的后端函数
 @csrf_exempt
 @identity_check(redirect_field_name='origin')
 def cancelAppoint(request):
-    # 身份确认检查
-    # if not identity_check(request):
-    #     create_account(request)
-    #     return redirect(direct_to_login(request))
     return scheduler_func.cancelFunction(request)
 
 
@@ -325,11 +314,7 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
 # tag searchadmin_index
 @identity_check(redirect_field_name='origin')
 def admin_index(request):   # 我的账户也主函数
-    # 用户校验
-    # login_url = global_info.login_url
-    # if not identity_check(request):
-    #     print(direct_to_login(request))
-    #     return redirect(direct_to_login(request))
+
     warn_code = 0
     if request.GET.get("warn_code", None) is not None:
         warn_code = int(request.GET['warn_code'])
@@ -384,9 +369,6 @@ def admin_index(request):   # 我的账户也主函数
 # tag searchadmin_credit
 @identity_check(redirect_field_name='origin')
 def admin_credit(request):
-    # login_url = global_info.login_url
-    # if not identity_check(request):
-    #     return redirect(direct_to_login(request))
 
     Sid = request.user.username
 
@@ -685,8 +667,6 @@ def index(request):  # 主页
 
 @identity_check(redirect_field_name='origin')
 def arrange_time(request):
-    # if not identity_check(request):
-    #     return redirect(direct_to_login(request))
     if request.method == 'GET':
         try:
             Rid = request.GET.get('Rid')
@@ -761,9 +741,6 @@ def arrange_time(request):
 @identity_check(redirect_field_name='origin')
 def arrange_talk_room(request):
 
-    # if not identity_check(request):
-    #     return redirect(direct_to_login(request))
-    # search_time = request.POST.get('search_time')
     try:
         assert request.method == "GET"
         year = int(request.GET.get("year"))
@@ -861,8 +838,6 @@ def arrange_talk_room(request):
 
 @identity_check(redirect_field_name='origin')
 def check_out(request):  # 预约表单提交
-    # if not identity_check(request):
-    #     return redirect(direct_to_login(request))
     temp_time = datetime.now()
     warn_code = 0
     try:
@@ -983,12 +958,13 @@ def check_out(request):  # 预约表单提交
 
 
 def logout(request):    # 登出系统
-    if global_info.account_auth:
-        request.session.flush()
-        return redirect(direct_to_login(request, True))
-        # return redirect(reverse("Appointment:index"))
-    else:
-        return redirect(reverse("Appointment:index"))
+    return redirect("/logout/")
+    # if global_info.account_auth:
+    #     request.session.flush()
+    #     return redirect(direct_to_login(request, True))
+    #     # return redirect(reverse("Appointment:index"))
+    # else:
+    #     return redirect(reverse("Appointment:index"))
 
 
 ########################################
@@ -999,8 +975,6 @@ def logout(request):    # 登出系统
 @identity_check(redirect_field_name='origin')
 def summary(request):  # 主页
     Sid = ""
-    # if not identity_check(request):
-    #     return redirect(direct_to_login(request))
 
     try:
         if not Sid:
