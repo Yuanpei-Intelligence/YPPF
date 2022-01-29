@@ -40,7 +40,7 @@ from time import mktime
 
 # login_required装饰器
 # from django.contrib.auth.decorators import login_required
-from app.utils import login_required
+# from app.utils import login_required
 
 # 注册启动以上schedule任务
 register_events(scheduler)
@@ -264,8 +264,7 @@ def cameracheck(request):   # 摄像头post的后端函数
 
 @require_POST
 @csrf_exempt
-@login_required(redirect_field_name='origin')
-@identity_check()
+@identity_check(redirect_field_name='origin')
 def cancelAppoint(request):
     # 身份确认检查
     # if not identity_check(request):
@@ -324,8 +323,7 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
 
 # modified by wxy
 # tag searchadmin_index
-@login_required(redirect_field_name='origin')
-@identity_check()
+@identity_check(redirect_field_name='origin')
 def admin_index(request):   # 我的账户也主函数
     # 用户校验
     # login_url = global_info.login_url
@@ -384,8 +382,7 @@ def admin_index(request):   # 我的账户也主函数
 
 # modified by wxy
 # tag searchadmin_credit
-@login_required(redirect_field_name='origin')
-@identity_check()
+@identity_check(redirect_field_name='origin')
 def admin_credit(request):
     # login_url = global_info.login_url
     # if not identity_check(request):
@@ -584,8 +581,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
 
 
 @csrf_exempt
-@login_required(redirect_field_name='origin')
-@identity_check()
+@identity_check(redirect_field_name='origin', auth_func=lambda x: True)
 def index(request):  # 主页
     search_code = 0
     warn_code = 0
@@ -603,39 +599,10 @@ def index(request):  # 主页
             message_code = 0
             # print("无法顺利呈现公告，原因可能是没有将状态设置为YES或者超过一条状态被设置为YES")
 
-    # # 用户校验
-    # if not identity_check(request):
-
-    # try:
-    Pname = get_participant(request.user).Sname
-    # modify by pht: 自动更新姓名
-    # lzp: 建议直接更新一遍数据库，然后去掉这个 if block
-    if Pname == '未命名':
-        # 获取姓名和首字母
-        given_name = get_name(request.user)
-        pinyin_list = pypinyin.pinyin(
-            given_name, style=pypinyin.NORMAL)
-        pinyin_init = ''.join([w[0][0] for w in pinyin_list])
-
-        # 更新数据库和session
-        with transaction.atomic():
-            # TODO: task 1 qwn 2022-1-26 Participant字段变化应同步修改
-            participant = get_participant(
-                request.user, update=True, raise_except=True)
-            participant.Sname = given_name
-            participant.pinyin = pinyin_init
-            participant.save()
-        # except:
-        #     # 没有这个人 自动添加并提示
-        #     if create_account(request) is not None:
-        #         warn_code = 1
-        #         warn_message = "数据库不存在学生信息,已为您自动创建!"
-        #     else:  # 创建失败或不允许创建
-        #         warn_code = 1
-        #         warn_message = "数据库不存在学生信息,请联系管理员添加!在此之前,您只能查看实时人数."
-
-    # else:
-    #     request.session['Sid'] = "0000000000"
+    # 
+    if request.GET.get("alert", ""):
+        warn_code = 1
+        warn_message = request.session['alert_message']
 
     #--------- 前端变量 ---------#
 
@@ -716,8 +683,7 @@ def index(request):  # 主页
 
 # tag searcharrange_time
 
-@login_required(redirect_field_name='origin')
-@identity_check()
+@identity_check(redirect_field_name='origin')
 def arrange_time(request):
     # if not identity_check(request):
     #     return redirect(direct_to_login(request))
@@ -792,8 +758,7 @@ def arrange_time(request):
 
 # tag searcharrange_talk
 
-@login_required(redirect_field_name='origin')
-@identity_check()
+@identity_check(redirect_field_name='origin')
 def arrange_talk_room(request):
 
     # if not identity_check(request):
@@ -894,8 +859,7 @@ def arrange_talk_room(request):
 
 # tag searchcheck_out
 
-@login_required(redirect_field_name='origin')
-@identity_check()
+@identity_check(redirect_field_name='origin')
 def check_out(request):  # 预约表单提交
     # if not identity_check(request):
     #     return redirect(direct_to_login(request))
@@ -1032,8 +996,7 @@ def logout(request):    # 登出系统
 ########################################
 
 @csrf_exempt
-@login_required(redirect_field_name='origin')
-@identity_check()
+@identity_check(redirect_field_name='origin')
 def summary(request):  # 主页
     Sid = ""
     # if not identity_check(request):

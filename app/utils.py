@@ -29,12 +29,10 @@ from django.shortcuts import redirect
 from django.http import HttpResponse
 from django.db.models import F
 
-class login_required(object):
 
-    def __init__(self, redirect_field_name='origin'):
-        self.redirect_field_name = redirect_field_name
+def login_required(redirect_field_name='origin'):
 
-    def __call__(self, view_function):
+    def decorator(view_function):
         @wraps(view_function)
         def _wrapped_view(request, *args, **kwargs):
             if request.user.is_authenticated:
@@ -43,11 +41,13 @@ class login_required(object):
             origin_url = request.get_full_path()
             forwarded_host = request.headers.get('X-Forwarded-Host', '')
             if forwarded_host:
-                origin_url = inner_url_export(forwarded_host, origin_url)
-            return redirect(f"{login_url}?{self.redirect_field_name}={origin_url}")
+                target_url = inner_url_export(forwarded_host, origin_url)
+            else:
+                # Used for develop
+                target_url = get_relative_url(origin_url)
+            return redirect(f"{login_url}?{redirect_field_name}={target_url}")
         return _wrapped_view
-                
-
+    return decorator
 
 
 def check_user_access(redirect_url="/logout/", is_modpw=False):
@@ -293,6 +293,8 @@ def url_check(arg_url):
     log.operation_writer(SYSTEM_LOG, f'URL检查不合格: {arg_url}', 'utils[url_check]', log.STATE_WARNING)
     return False
 
+def url2site(url):
+    return urllib.parse.urlparse(url).netloc
 
 def site_match(site, url, path_check_level=0, scheme_check=False):
     '''检查是否是同一个域名，也可以检查路径是否相同
@@ -313,49 +315,47 @@ def site_match(site, url, path_check_level=0, scheme_check=False):
             return False
     return True
 
-def get_std_underground_url(underground_url):
-    '''检查是否是地下室网址，返回(is_underground, standard_url)
-    - 如果是，规范化网址，否则返回原URL
-    - 如果参数为None，返回URL为地下室网址'''
-    site_url = local_dict["url"]["base_url"]
-    if underground_url is None:
-        underground_url = site_url
-    if site_match(site_url, underground_url):
-        underground_url = urllib.parse.urlunparse(
-            urllib.parse.urlparse(site_url)[:2]
-            + urllib.parse.urlparse(underground_url)[2:])
-        return True, underground_url
-    return False, underground_url
+# def get_std_underground_url(underground_url):
+#     '''检查是否是地下室网址，返回(is_underground, standard_url)
+#     - 如果是，规范化网址，否则返回原URL
+#     - 如果参数为None，返回URL为地下室网址'''
+#     site_url = local_dict["url"]["base_url"]
+#     if underground_url is None:
+#         underground_url = site_url
+#     if site_match(site_url, underground_url):
+#         underground_url = urllib.parse.urlunparse(
+#             urllib.parse.urlparse(site_url)[:2]
+#             + urllib.parse.urlparse(underground_url)[2:])
+#         return True, underground_url
+#     return False, underground_url
 
-def get_std_inner_url(inner_url):
-    '''检查是否是内部网址，返回(is_inner, standard_url)
-    - 如果是，规范化网址，否则返回原URL
-    - 如果参数为None，返回URL为主页相对地址'''
-    site_url = LOGIN_URL
-    if inner_url is None:
-        inner_url = '/welcome/'
-    if site_match(site_url, inner_url):
-        inner_url = urllib.parse.urlunparse(
-            ('', '') + urllib.parse.urlparse(inner_url)[2:])
-    url_parse = urllib.parse.urlparse(inner_url)
-    if url_parse.scheme or url_parse.netloc:
-        return False, inner_url
-    return True, inner_url
+# def get_std_inner_url(inner_url):
+#     '''检查是否是内部网址，返回(is_inner, standard_url)
+#     - 如果是，规范化网址，否则返回原URL
+#     - 如果参数为None，返回URL为主页相对地址'''
+#     site_url = LOGIN_URL
+#     if inner_url is None:
+#         inner_url = '/welcome/'
+#     if site_match(site_url, inner_url):
+#         inner_url = urllib.parse.urlunparse(
+#             ('', '') + urllib.parse.urlparse(inner_url)[2:])
+#     url_parse = urllib.parse.urlparse(inner_url)
+#     if url_parse.scheme or url_parse.netloc:
+#         return False, inner_url
+#     return True, inner_url
     
 
 # 允许进行 cross site 授权时，return True
 def check_cross_site(request, arg_url):
-    if arg_url is None:
+
+    netloc = url2site(arg_url)
+    if not netloc:
+        # Same site, allowed
         return True
-    # 这里 base_url 最好可以改一下
-    appointment = local_dict["url"]["base_url"]
-    appointment_base = re.findall("^https?://([^/]*)/", appointment)[0]
-    appointment_base = f"^https?://{appointment_base}/"
-    if re.match(appointment_base, arg_url):
-        valid, user_type, html_display = check_user_type(request.user)
-        if not valid or user_type == "Organization":
-            return False
-    return True
+    if netloc in [url2site(local_dict["url"]["base_url"]), url2site(local_dict["url"]["login_url"])]:
+        return True
+    raise ValueError(arg_url)
+    return False
 
 
 def get_url_params(request, html_display):
@@ -373,18 +373,22 @@ def get_url_params(request, html_display):
 # Accept an host and url, then transfer url to the one can be accessed via that host
 # Hard coded rules, No Error Handling.
 def inner_url_export(target_host, inner_url):
-    underground_netloc = urllib.parse.urlparse(local_dict["url"]["base_url"]).netloc
-    yppf_netloc = urllib.parse.urlparse(local_dict["url"]["login_url"]).netloc
+    underground_netloc = url2site(local_dict["url"]["base_url"])
+    yppf_netloc = url2site(local_dict["url"]["login_url"])
     parsed_url = urllib.parse.urlparse(inner_url)
-    if target_host == yppf_netloc:
-        return urllib.parse.urlunparse(
-            ('https', yppf_netloc, parsed_url.path.lstrip('/yppf')) + parsed_url[3:]
-        )
-    elif target_host == underground_netloc:
+    if target_host == underground_netloc:
         return urllib.parse.urlunparse(
             ('https', underground_netloc, parsed_url.path.lstrip('/underground')) + parsed_url[3:]
         )
-    raise ValueError(f"Unexpected Proxy Host: {forwarded_host}")
+    return urllib.parse.urlunparse(
+        ('https', yppf_netloc, parsed_url.path.lstrip('/yppf')) + parsed_url[3:]
+    )
+
+
+def get_relative_url(url):
+    parsed_url = urllib.parse.urlparse(url)
+    return urllib.parse.urlunparse(("", "") + parsed_url[2:])
+
 
 
 

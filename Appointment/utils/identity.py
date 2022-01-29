@@ -17,10 +17,9 @@ from app.utils import (
 from typing import Union
 from django.contrib.auth.models import User
 from django.shortcuts import redirect
+from app.utils import login_required
 from functools import wraps
-import urllib.parse
 import pypinyin
-import os
 
 __all__ = [
     'get_participant',
@@ -29,31 +28,31 @@ __all__ = [
     'get_name',
     'get_avatar',
     'identity_check',
-    'get_participant',
 ]
 
 class identity_check(object):
 
-    def __init__(self, auth_func=lambda x: True):
+    def __init__(self, auth_func=lambda x: x is not None, redirect_field_name='origin', allow_create=True):
         self.auth_func = auth_func
+        self.redirect_field_name = redirect_field_name
+        self.allow_create = allow_create
 
     def __call__(self, view_function):
+        @login_required(redirect_field_name=self.redirect_field_name)
         @wraps(view_function)
         def _wrapped_view(request, *args, **kwargs):
 
             cur_part = get_participant(user=request.user.username)
-            if not cur_part:
+            if not cur_part and self.allow_create:
                 cur_part = create_account(request)
-            if not cur_part:
+            if not self.auth_func(cur_part):
                 # TODO: by lzp, log it and notify admin
-                # yppf 那边这一块的逻辑也挺怪的，之后也得改
-                yppf_netloc = urllib.parse.urlparse(global_info.login_url).netloc
-                request.session['alert_message'] = f"数据库中未找到您的详情信息，管理员会尽快处理此问题。"
-                return redirect(inner_url_export(yppf_netloc, "/index/?alert=1"))
-            elif not self.auth_func(cur_part):
-                request.session['alert_message'] = f"您的账号访问了未授权页面。如有疑问，请联系管理员。"
-                yppf_netloc = urllib.parse.urlparse(global_info.login_url).netloc 
-                return redirect(os.path.join(yppf_netloc, "/index/?alert=1"))
+                if not cur_part:
+                    request.session['alert_message'] = "创建地下室账户失败，管理员会尽快为您解决。在此之前，您可以查看实时人数。"
+                else:
+                    request.session['alert_message'] = "您的账号访问了未授权页面。如有疑问，请联系管理员。"
+                return redirect(inner_url_export(underground_netloc, "/index/?alert=1"))
+
             return view_function(request, *args, **kwargs)
         return _wrapped_view
 
@@ -124,6 +123,27 @@ def get_name(participant: Union[Participant, User]):
     else:
         return obj.name
 
+def update_name(username):
+    participant = get_participant(username)
+    if not participant:
+        return False
+    if participant.Sname == '未命名':
+        # 获取姓名和首字母
+        given_name = get_name(request.user)
+        pinyin_list = pypinyin.pinyin(
+            given_name, style=pypinyin.NORMAL)
+        pinyin_init = ''.join([w[0][0] for w in pinyin_list])
+
+        # 更新数据库和session
+        with transaction.atomic():
+            # TODO: task 1 qwn 2022-1-26 Participant字段变化应同步修改
+            participant = get_participant(
+                username, update=True, raise_except=True)
+            participant.Sname = given_name
+            participant.pinyin = pinyin_init
+            participant.save()
+    return True
+
 
 def get_avatar(participant: Union[Participant, User]):
     '''返回participant的头像'''
@@ -135,8 +155,8 @@ def create_account(request):
     '''
     根据请求信息创建账户, 根据创建结果返回生成的对象或者`None`, noexcept
     '''
-    if not global_info.allow_newstu_appoint:
-        return None
+    # if not global_info.allow_newstu_appoint:
+    #     return None
 
     try:
         with transaction.atomic():
@@ -164,17 +184,3 @@ def create_account(request):
             return account
     except:
         return None
-
-# def identity_check(request):    # 判断用户是否是本人
-#     '''目前的作用: 判断数据库有没有这个人'''
-#     # 是否需要检测
-
-#     if not global_info.account_auth:
-#         return True
-
-#     participant = get_participant(request.user)
-
-#     if participant is None:
-#         return False
-
-#     return True
