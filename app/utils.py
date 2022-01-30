@@ -273,6 +273,8 @@ def url_check(arg_url):
     log.operation_writer(SYSTEM_LOG, f'URL检查不合格: {arg_url}', 'utils[url_check]', log.STATE_WARNING)
     return False
 
+def url2site(url):
+    return urllib.parse.urlparse(url).netloc
 
 def site_match(site, url, path_check_level=0, scheme_check=False):
     '''检查是否是同一个域名，也可以检查路径是否相同
@@ -376,16 +378,13 @@ def get_std_inner_url(inner_url):
 
 # 允许进行 cross site 授权时，return True
 def check_cross_site(request, arg_url):
-    if arg_url is None:
-        return True
-    # 这里 base_url 最好可以改一下
-    appointment = local_dict["url"]["base_url"]
-    appointment_base = re.findall("^https?://([^/]*)/", appointment)[0]
-    appointment_base = f"^https?://{appointment_base}/"
-    if re.match(appointment_base, arg_url):
-        valid, user_type, html_display = check_user_type(request.user)
-        if not valid or user_type == "Organization":
-            return False
+    netloc = url2site(arg_url)
+    if netloc not in [
+        '',  # 内部相对地址
+        url2site(local_dict["url"]["base_url"]),  # 地下室
+        url2site(LOGIN_URL),  # yppf
+    ]:
+        return False
     return True
 
 
