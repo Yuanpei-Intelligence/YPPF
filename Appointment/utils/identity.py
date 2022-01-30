@@ -186,7 +186,7 @@ def identity_check(
 
             cur_part = get_participant(request.user)
 
-            if cur_part.Sname == '未命名' and update_name:
+            if cur_part is not None and cur_part.Sname == '未命名' and update_name:
                 _update_name(cur_part)
                 
             if cur_part is None and allow_create:
