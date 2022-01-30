@@ -1635,13 +1635,12 @@ def subscribeOrganization(request):
 
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    #org_list = list(Organization.objects.all().select_related("organization_id","otype"))
-    #orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
+    # orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
     otype_list = list(OrganizationType.objects.all().order_by('-otype_id'))
     org_list = []
     for otype in otype_list:
         org_list.append(list(Organization.objects.filter(
-            otype=otype).select_related("organization_id","otype")))
+            otype=otype).select_related("organization_id")))
     org_zip = list(zip(otype_list, org_list))   
     unsubscribe_list = list(me.unsubscribe_list.values_list("organization_id__username", flat=True))
     # 获取不订阅列表（数据库里的是不订阅列表）
