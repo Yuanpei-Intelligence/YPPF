@@ -111,11 +111,10 @@ def _create_account(request):
     if not global_info.allow_newstu_appoint:
         return None
 
-    if not request.user.is_authenticated:
-        return None
-
+    import pypinyin
     from django.db import transaction
     try:
+        assert request.user.is_authenticated
         with transaction.atomic():
             try:
                 given_name = get_name(request.user)
