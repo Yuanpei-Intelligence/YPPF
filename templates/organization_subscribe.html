@@ -294,11 +294,18 @@
         document.getElementById(id).disabled = 'disabled'
     }
     function change_single_status(cell, bgcol, col, stat) {
+        /*
+        该函数用于在用户切换订阅状态时，改变前端的呈现。
+            cell：订阅状态单元格所在的input标签
+            bgcol：订阅状态单元格的背景色
+            col：订阅状态单元格中字体的颜色
+            stat：订阅状态单元格中的内容(已订阅/未订阅)
+        */
         const sub_status_td = cell.parentNode.parentNode;  //订阅状态所在单元格的td标签
         const sub_status_font = cell.nextElementSibling.childNodes[1];  //订阅状态的font标签，标记颜色与内容
-        sub_status_td.bgColor = bgcol;      //改变单元格的背景色
-        sub_status_font.color = col;        //改变字体颜色(已订阅/未订阅字体颜色不同)
-        sub_status_font.innerHTML = stat;   //改变已订阅/未订阅的状态显示
+        sub_status_td.bgColor = bgcol;      
+        sub_status_font.color = col;      
+        sub_status_font.innerHTML = stat;   
     }
 </script>
 {% endblock %}
