@@ -563,7 +563,7 @@ def checkinActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='views[addActivity]', record_user=True)
+# @log.except_captured(EXCEPT_REDIRECT, source='views[addActivity]', record_user=True)
 def addActivity(request, aid=None):
     """
     发起活动与修改活动页
@@ -668,7 +668,7 @@ def addActivity(request, aid=None):
     defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG", "id": f"picture{i+1}"} for i in range(5)]
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava() 
-
+    tid = Activity.objects.filter(organization_id=me).last().id
     use_template = False
     if request.method == "GET" and request.GET.get("template"):
         use_template = True
@@ -753,7 +753,6 @@ def addActivity(request, aid=None):
             photo = os.path.basename(photo)
         else:
             photo_id = "picture" + os.path.basename(photo).split(".")[0]
-
 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     if not edit:
