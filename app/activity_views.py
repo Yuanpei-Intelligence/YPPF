@@ -563,7 +563,7 @@ def checkinActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-# @log.except_captured(EXCEPT_REDIRECT, source='views[addActivity]', record_user=True)
+@log.except_captured(EXCEPT_REDIRECT, source='views[addActivity]', record_user=True)
 def addActivity(request, aid=None):
     """
     发起活动与修改活动页
