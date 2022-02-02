@@ -520,10 +520,16 @@
                                                 <button type="submit" class="btn btn-primary btn-block" value="" onclick="return confirm('确认提交活动申请？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
                                                     发起活动
                                                 </button>
-                                                <button id="getTemplate" class="btn btn-success btn-block mb-4 mr-2" onclick="getAutoFillInfo()">
+                                                <button id="getTemplate" class="btn btn-success btn-block mb-4 mr-2" onclick="redirectToAutoFill()">
                                                     点我自动填充!
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="自动填充将使用组织账号中上一次发起的活动信息来填充表格~记得写好新的活动时间哦！">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                            <path
+                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                        </svg>
+                                                    </a>
                                                 </button>
-                                                
                                                 {% endif %}
                                             {% endif %}
                                         </form>
@@ -701,7 +707,7 @@
 
 
 <script type="text/javascript">
-    function autoFill() {
+    function fillForms() {
         document.getElementById("title").value = "{{title | safe}}";
         document.getElementById("location").value = "{{location | safe}}";
         document.getElementById("budget").value = "{{budget}}";   
@@ -719,13 +725,13 @@
         }
         
         document.getElementById("pricebutton").innerHTML = "&nbsp;&nbsp;{{signscheme}}&nbsp;&nbsp;";
-        if ("{{signscheme}}" == "先到先得") {
+        if ("{{signscheme}}" === "先到先得") {
             document.getElementById("signscheme").value = "0";
         } else {
             document.getElementById("signscheme").value = "1";
         }
         document.getElementById("yq_source").innerHTML = "{{yq_source}}";
-        if ("{{yq_source}}" == "向学生收取") {
+        if ("{{yq_source}}" === "向学生收取") {
             document.getElementById("from_college").value = "0";
         } else {
             document.getElementById("from_college").value = "1";
@@ -743,7 +749,7 @@
         if("{{inner}}" === "True")
             document.getElementById("inner").checked = true; 
         document.getElementById("aintro").value = "{{introduction | safe}}";
-        if("{{yq_source}}" == "向学院申请") {
+        if("{{yq_source}}" === "向学院申请") {
             document.getElementById("apply_reason").value = "{{apply_reason | safe}}";
             document.getElementById("reason_block").style.display = "";
         }
@@ -757,12 +763,19 @@
             document.getElementById("{{photo_id}}").checked = true;
         }
     }
-    {% if use_template %}
-        autoFill();
+    function autoFill() {
+        fillForms();
         let btn = document.getElementById("getTemplate");
         btn.disabled = true;
+    }
+    {% if use_template %}
+        autoFill();
     {% endif %}
-    function getAutoFillInfo() {
+    if("{{tid}}" === "None") {
+        let btn = document.getElementById("getTemplate");
+        btn.disabled = true;
+    }
+    function redirectToAutoFill() {
         let url = window.location.href;
         if(url.indexOf("template") === -1){
             window.location.href = url + "?template={{tid}}";
