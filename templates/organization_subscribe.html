@@ -51,7 +51,7 @@
                                         <p>仅影响系统消息和内部通知，不影响订阅消息</p>
                                         <button type="button" class="btn btn-outline-primary" 
                                             onclick="save_wechat_receive_level('more');this.blur();">接收全部消息</button>
-                                        &nbsp;
+                                        &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
                                         <button type="button" class="btn btn-outline-primary" 
                                             onclick="save_wechat_receive_level('less');this.blur();">
                                             仅重要通知
@@ -98,7 +98,7 @@
                                     <div>
                                         <button type="button" class="btn btn-outline-primary" id="{{type_id}}"
                                             onclick="turn_on_all.call(this);this.blur();">全部开启</button>
-                                        &nbsp;
+                                        &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp&nbsp
                                         <button type="button" class="btn btn-outline-primary" id="{{type_id}}"
                                             onclick="turn_off_all.call(this);this.blur();">全部关闭</button>
                                         </br></br>
@@ -188,6 +188,13 @@
 {% block add_js_file %}
 
 <script>
+    const UNSUBSCRIBED_BGCOLOR = "FFFFFF"; //未订阅背景颜色
+    const UNSUBSCRIBED_COLOR = "E1E1E1";   //未订阅字体颜色
+    const SUBSCRIBED_BGCOLOR = "F3FDFF";   //已订阅背景颜色
+    const SUBSCRIBED_COLOR = "000079";     //已订阅字体颜色
+</script>
+
+<script>
     $('.nav-tabs').on('shown.bs.tab', 'a', function (e) {
         if (e.relatedTarget) {
             $(e.relatedTarget).removeClass('active');
@@ -214,7 +221,7 @@
         for (var i = 0; i < lst.length; i += 1) {
             if (lst[i].checked) {
                 if (success) {
-                    change_single_status(lst[i], "FFFFFF", "E1E1E1", "未订阅");
+                    change_single_status(lst[i], UNSUBSCRIBED_BGCOLOR, UNSUBSCRIBED_COLOR, "未订阅");
                     const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
                     num.textContent = Number(num.textContent) - 1;
                     lst[i].checked = false;
@@ -228,7 +235,7 @@
         for (var i = 0; i < lst.length; i += 1) {
             if (!lst[i].checked) {
                 if (success) {
-                    change_single_status(lst[i], "F3FDFF", "5F747B", "已订阅");
+                    change_single_status(lst[i], SUBSCRIBED_BGCOLOR, SUBSCRIBED_COLOR, "已订阅");
                     const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
                     num.textContent = Number(num.textContent) + 1;
                     lst[i].checked = true;
@@ -242,14 +249,14 @@
         if (!this.checked) {
             const success = await save_subscribe_status.call(this, false);
             if (success) {
-                change_single_status(this, "FFFFFF", "E1E1E1", "未订阅");
+                change_single_status(this, UNSUBSCRIBED_BGCOLOR, UNSUBSCRIBED_COLOR, "未订阅");
                 num.textContent = Number(num.textContent) - 1;
             }
             else this.checked = true;
         } else {
             const success = await save_subscribe_status.call(this, true);
             if (success) {
-                change_single_status(this, "F3FDFF", "5F747B", "已订阅");
+                change_single_status(this, SUBSCRIBED_BGCOLOR, SUBSCRIBED_COLOR, "已订阅");
                 num.textContent = Number(num.textContent) + 1;
             }
             else this.checked = false;
