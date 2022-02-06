@@ -1,19 +1,21 @@
-from app.views_dependency import *
-from app.models import (
-    NaturalPerson,
-    Activity,
-)
-from app.course_utils import (
-    create_single_course_activity,
-    modify_course_activity,
-    cancel_course_activity,
-)
-from app.utils import (
-    get_person_or_org,
-)
+"""
+course_views.py 
 
+主要包含学生选课和选课结果的界面
+"""
+import json
 from datetime import datetime, timedelta
+
 from django.db import transaction
+
+from app.course_utils import *
+from app.course_utils import (course2Display, create_single_course_activity,
+                              modify_course_activity, registrationStatusChange,
+                              registrationStatusCreate)
+from app.models import (Activity, Course, CourseParticipant, NaturalPerson,
+                        Organization, OrganizationType, Position)
+from app.utils import get_person_or_org
+from app.views_dependency import *
 
 __all__ = [
     'editCourseActivity', 
@@ -223,3 +225,95 @@ def showCourseActivity(request):
             return redirect(message_url(wrong(error)), request.path)
 
     return render(request, "org_show_course_activity.html", locals())
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(record_user=True,
+                     record_request_args=True,
+                     source='views[showCourseStudent]')
+def showCourse(request):
+    """
+    学生选课的聚合页面，包括：
+    1. 所有（通过审核的）开放课程的选课信息
+    2. 在不同的选课阶段，呈现不一样的按钮名称
+       临时的处理为：助教确定几个选课阶段的时间，所以每个课的状态可能不同
+    3. 分别展示未选的课、已选的课（类似选课网）
+    4. 区分学生、助教、组织账号（细节需要讨论，比如助教怎么选课？）
+    TODO：非选课阶段的情况待讨论
+    TODO：课程内容的呈现和前端提示内容待讨论
+    """
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    is_person = True if user_type == "Person" else False
+    me = NaturalPerson.objects.get(person_id=request.user)
+
+    if not is_person:
+        # TODO: 修改成小组开课的界面，需要对接
+        redirect(message_url(wrong("非学生账号不能选课！")))
+
+    # 创建选课状态
+    # ? 一定都要创建状态吗
+    registrationStatusCreate(me)
+
+    # 发生选课状态变化
+    if request.method == 'POST':
+        # 用json导入数据
+        # 需要的数据：课程id，操作action：select/cancel
+        # TODO：和前端对接传递的内容，可能用数字来表示action
+        post_args = json.loads(request.body.decode("utf-8"))
+        try:
+            course_id = int(post_args["id"])
+        except:
+            html_display["warn_code"] = 1  # 失败
+            html_display["warn_message"] = "请不要恶意发送post请求！"
+            return JsonResponse({"success": False})
+        try:
+            func = post_args["action"]
+            assert func == "select" or func == "cancel"
+        except:
+            html_display["warn_code"] = 1  # 失败
+            html_display["warn_message"] = "请不要恶意发送post请求！！"
+            return JsonResponse({"success": False})
+        try:
+            Course.objects.activated().get(id=course_id,
+                                           participant_set__person=me)
+        except:
+            html_display["warn_code"] = 1  # 失败
+            html_display["warn_message"] = "请不要恶意发送post请求！！"
+            return JsonResponse({"success": False})
+        try:
+            # 不是一定能选上，如果意愿点不够就不能选
+            context = registrationStatusChange(course_id, me, func)
+            html_display["warn_code"] = context["warn_code"]
+            html_display["warn_message"] = context["warn_message"]
+            if context["warn_code"] == 1:
+                return JsonResponse({"success": False})
+            else:  # 成功更新选课状态
+                return JsonResponse({"success": True})
+        except:
+            html_display["warn_code"] = 1  # 失败
+            html_display["warn_message"] = "选课过程出现错误！请联系管理员。"
+            return JsonResponse({"success": False})
+
+    html_display["is_myself"] = True
+    """
+    未选的课在前端呈现的按钮状态有：预选、等待中/抽签中（未激活的按钮）、补选
+    已选的课在前端呈现的按钮状态有：取消、抽签中（未激活的按钮）
+    
+    传递给前端的量：两个列表，和unselected_course/selected_course顺序对应。
+
+    只负责显示内容，在发布课程的时候就要完成正确性检查
+    
+    """
+
+    unselected_course = Course.objects.unselected(me)
+    selected_course = Course.objects.selected(me)
+
+    # 方便前端显示
+    unselected_display = course2Display(unselected_course, me)
+    selected_display = course2Display(selected_course, me)
+
+    bar_display = utils.get_sidebar_and_navbar(request.user, "书院课程")
+
+    # TODO 和前端对接
+    return JsonResponse({**unselected_display, **selected_display})
