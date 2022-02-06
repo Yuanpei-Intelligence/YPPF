@@ -703,6 +703,15 @@ class Activity(CommentBase):
 
     objects = ActivityManager()
 
+    class ActivityCategory(models.IntegerChoices):
+        NORMAL = (0, "普通活动")
+        COURSE = (1, "课程活动")
+        ELECTION = (2, "选课活动") # 不一定会使用到
+    
+    category = models.SmallIntegerField(
+        "活动类别", choices=ActivityCategory.choices, default=0
+    )
+
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
         self.typename = "activity"
