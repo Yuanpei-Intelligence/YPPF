@@ -1276,7 +1276,7 @@ class CourseRecord(models.Model):
         NaturalPerson, on_delete=models.CASCADE,
     )
     course = models.ForeignKey(
-        Organization, on_delete=models.CASCADE, 
+        Course, on_delete=models.CASCADE, 
     )
     attend_times = models.IntegerField("参加课程次数")
     year = models.IntegerField("课程所在学年", default=current_year)
