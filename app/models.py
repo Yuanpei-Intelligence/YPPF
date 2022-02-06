@@ -34,10 +34,10 @@ __all__ = [
     'Help',
     'Wishes',
     'ModifyRecord',
-    'CourseRecord',
     'Course',
     'CourseTime',
     'CourseParticipant',
+    'CourseRecord',
 ]
 
 
@@ -1251,36 +1251,6 @@ class ModifyRecord(models.Model):
     time = models.DateTimeField('修改时间', auto_now_add=True)
 
 
-class CourseRecord(models.Model):
-    class Meta:
-        verbose_name = "学时表"
-        verbose_name_plural = verbose_name
-    # TODO: task 5 hjb(Toseic) 2022/2/6 related_name后续可能还需要添加
-    
-    person = models.ForeignKey(
-        NaturalPerson, on_delete=models.CASCADE,
-    )
-    course = models.ForeignKey(
-        Course, on_delete=models.SET_NULL, null=True, blank=True,
-    )
-    # 长度兼容组织和课程名
-    extra_name = models.CharField("课程名称额外标注", max_length=60, blank=True)
-    
-    year = models.IntegerField("课程所在学年", default=current_year)
-    semester = models.CharField(
-        "课程所在学期",
-        choices=Semester.choices, 
-        default=Semester.get(local_dict["semester_data"]["semester"]), 
-        max_length=15,
-    )
-    total_hours = models.FloatField("总计参加学时")
-    attend_times = models.IntegerField("参加课程次数", default=0)
-
-    def get_course_name(self):
-        if self.course is not None:
-            return str(self.course)
-        return self.extra_name
-    get_course_name.short_description = "课程名"
 class CourseManager(models.Manager):
     def activated(self):
         # 选择当前学期的开设课程
@@ -1311,18 +1281,6 @@ class CourseManager(models.Manager):
 class Course(models.Model):
     """
     助教发布课程需要填写的信息
-
-    1、开课组织
-    2、课程名称
-    3、开课年份 + 学期
-    4、每周上课时间、地点 + 上课次数
-    5、授课老师
-    6、课程简介 + 宣传图片
-    7、需要投的意愿点数量
-    8、状态：未开始选课、正在预选、正在补退选、选课结束
-    9、四个时间节点：预选开始、预选结束、补退选开始、补退选结束
-    10、课程容量 + 已选课人数
-    11、课程类别（德/智/体/美/劳）
     """
     class Meta:
         verbose_name = "书院课程"
@@ -1330,11 +1288,9 @@ class Course(models.Model):
         ordering = ["id"]
 
     name = models.CharField("课程名称", max_length=60)
-    organization = models.ForeignKey(
-        Organization,
-        on_delete=models.CASCADE,
-        verbose_name="开课组织",
-    )
+    organization = models.ForeignKey(Organization,
+                                     on_delete=models.CASCADE,
+                                     verbose_name="开课组织")
 
     year = models.IntegerField("开课年份", default=current_year)
 
@@ -1353,6 +1309,7 @@ class Course(models.Model):
     teacher = models.CharField("授课教师", max_length=48, default="", blank=True)
 
     # 不确定能否统一选课的情况，先用最保险的方法
+    # 如果由助教填写，表单验证时要着重检查这一部分。预选结束时间和补退选开始时间不应该相隔太近。
     stage1_start = models.DateTimeField("预选开始时间", blank=True, null=True)
     stage1_end = models.DateTimeField("预选结束时间", blank=True, null=True)
     stage2_start = models.DateTimeField("补退选开始时间", blank=True, null=True)
@@ -1360,7 +1317,7 @@ class Course(models.Model):
 
     bidding = models.FloatField("意愿点价格", default=0.0)
 
-    introduction = models.TextField("课程简介", max_length=600, blank=True)
+    introduction = models.TextField("课程简介", blank=True, default="这里暂时没有介绍哦~")
 
     # 假定课程已经进行线下审核，暂定不需要二次审核
 
@@ -1372,11 +1329,9 @@ class Course(models.Model):
         STAGE2 = (3, "补退选")
         END = (4, "已结束")
 
-    status = models.SmallIntegerField(
-        "开课状态",
-        choices=Status.choices,
-        default=Status.WAITING,
-    )
+    status = models.SmallIntegerField("开课状态",
+                                      choices=Status.choices,
+                                      default=Status.WAITING)
 
     class CourseType(models.IntegerChoices):
         # 课程类型
@@ -1386,9 +1341,7 @@ class Course(models.Model):
         AESTHETICS = (3, "美")
         LABOUR = (4, "劳")
 
-    type = models.SmallIntegerField("课程类型",
-                                    choices=CourseType.choices,
-                                    default=CourseType.MORAL)
+    type = models.SmallIntegerField("课程类型", choices=CourseType.choices)
 
     capacity = models.IntegerField("课程容量", default=100)
     current_participants = models.IntegerField("当前选课人数", default=0)
@@ -1422,8 +1375,9 @@ class CourseTime(models.Model):
                                related_name="time_set")
 
     # 开始时间和结束时间指的是一次课程的上课时间和下课时间
-    start = models.DateTimeField("开始时间", blank=True, null=True)
-    end = models.DateTimeField("结束时间", blank=True, null=True)
+    # 需要提醒助教，填写的时间是第一周上课的时间，这影响到课程活动的统一开设。
+    start = models.DateTimeField("开始时间")
+    end = models.DateTimeField("结束时间")
 
 
 class CourseParticipant(models.Model):
@@ -1434,13 +1388,10 @@ class CourseParticipant(models.Model):
         verbose_name = "课程报名情况"
         verbose_name_plural = verbose_name
 
-    # 保证不出现冲突的选课状态
-    course = models.OneToOneField(Course,
-                                  on_delete=models.CASCADE,
-                                  related_name="participant_set")
-    person = models.ForeignKey(NaturalPerson,
+    course = models.ForeignKey(Course,
                                on_delete=models.CASCADE,
-                               related_name="registration_set")
+                               related_name="participant_set")
+    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
 
     class Status(models.IntegerChoices):
         SELECT = (0, "已选课")
@@ -1453,3 +1404,35 @@ class CourseParticipant(models.Model):
         choices=Status.choices,
         default=Status.UNSELECT,
     )
+
+
+class CourseRecord(models.Model):
+    class Meta:
+        verbose_name = "学时表"
+        verbose_name_plural = verbose_name
+    # TODO: task 5 hjb(Toseic) 2022/2/6 related_name后续可能还需要添加
+    
+    person = models.ForeignKey(
+        NaturalPerson, on_delete=models.CASCADE,
+    )
+    course = models.ForeignKey(
+        Course, on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    # 长度兼容组织和课程名
+    extra_name = models.CharField("课程名称额外标注", max_length=60, blank=True)
+    
+    year = models.IntegerField("课程所在学年", default=current_year)
+    semester = models.CharField(
+        "课程所在学期",
+        choices=Semester.choices, 
+        default=Semester.get(local_dict["semester_data"]["semester"]), 
+        max_length=15,
+    )
+    total_hours = models.FloatField("总计参加学时")
+    attend_times = models.IntegerField("参加课程次数", default=0)
+
+    def get_course_name(self):
+        if self.course is not None:
+            return str(self.course)
+        return self.extra_name
+    get_course_name.short_description = "课程名"
