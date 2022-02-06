@@ -1272,15 +1272,20 @@ class CourseRecord(models.Model):
     class Meta:
         verbose_name = "学时表"
         verbose_name_plural = verbose_name
+    # TODO: task 5 hjb(Toseic) 2022/2/6 related_name后续可能还需要添加
+    
     person = models.ForeignKey(
         NaturalPerson, on_delete=models.CASCADE,
     )
     course = models.ForeignKey(
         Course, on_delete=models.CASCADE, 
     )
-    attend_times = models.IntegerField("参加课程次数")
     year = models.IntegerField("课程所在学年", default=current_year)
     semester = models.CharField(
-        "课程所在学期", choices=Semester.choices, default=Semester.ANNUAL, max_length=15
+        "课程所在学期",
+        choices=Semester.choices, 
+        default=Semester.get(local_dict["semester_data"]["semester"]), 
+        max_length=15,
     )
+    attend_times = models.IntegerField("参加课程次数", default=0)
     total_hours = models.FloatField("总计参加学时")
