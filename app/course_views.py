@@ -1,7 +1,8 @@
 """
-course_views.py 
+course_views.py
 
-主要包含学生选课和选课结果的界面
+选课页面: selectCourse
+课程详情页面: viewCourse
 """
 import json
 from datetime import datetime, timedelta
@@ -231,35 +232,44 @@ def showCourseActivity(request):
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(record_user=True,
                      record_request_args=True,
-                     source='views[showCourseStudent]')
-def showCourse(request):
+                     source='views[selectCourse]')
+def selectCourse(request):
     """
-    学生选课的聚合页面，包括：
-    1. 所有（通过审核的）开放课程的选课信息
-    2. 在不同的选课阶段，呈现不一样的按钮名称
-       临时的处理为：助教确定几个选课阶段的时间，所以每个课的状态可能不同
-    3. 分别展示未选的课、已选的课（类似选课网）
-    4. 区分学生、助教、组织账号（细节需要讨论，比如助教怎么选课？）
-    TODO：非选课阶段的情况待讨论
-    TODO：课程内容的呈现和前端提示内容待讨论
+    学生选课的聚合页面，包括: 
+    1. 所有开放课程的选课信息，分开显示已选和未选的课程
+    2. 在预选和补退选阶段，学生可以通过点击课程对应的按钮实现选课或者退选，
+    且点击后页面显示发生相应的变化。（可参考学校选课网）
+    3. 显示选课结果（最好通过分页实现，不需要再新增url）
+    
+    用户权限: 组织账号不应该进入该页面；学生/老师账号可以进入，但是老师账号没有选课功能。
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = True if user_type == "Person" else False
-    me = NaturalPerson.objects.get(person_id=request.user)
 
     if not is_person:
-        # TODO: 修改成小组开课的界面，需要对接
+        # 组织账号不应该进入这个页面
         redirect(message_url(wrong("非学生账号不能选课！")))
 
-    # 创建选课状态
-    # ? 一定都要创建状态吗
-    registrationStatusCreate(me)
+    me = NaturalPerson.objects.get(person_id=request.user)
 
-    # 发生选课状态变化
+    # TODO: task 10 ljy 2022-02-07
+    # 和编写开课页面的同学对接，尽量在开课的同时完成状态创建，不要每次访问都检查一遍。
+
+    if not me.is_staff:
+        registration_status_create(me)  # 创建选课状态
+        html_display["willing_point"] = remaining_willingness_point(me)
+    else:
+        html_display["is_staff"] = True
+
+    # 学生选课或者取消选课
+
     if request.method == 'POST':
-        # 用json导入数据
-        # 需要的数据：课程id，操作action：select/cancel
-        # TODO：和前端对接传递的内容，可能用数字来表示action
+
+        # TODO: task 10 ljy 2022-02-07
+        # 和前端对接，统一传递的参数内容
+
+        # 需要的参数: 课程id，操作action: select/cancel（json格式）
+
         post_args = json.loads(request.body.decode("utf-8"))
         try:
             course_id = int(post_args["id"])
@@ -282,8 +292,8 @@ def showCourse(request):
             html_display["warn_message"] = "请不要恶意发送post请求！！"
             return JsonResponse({"success": False})
         try:
-            # 不是一定能选上，如果意愿点不够就不能选
-            context = registrationStatusChange(course_id, me, func)
+            # 对学生的选课状态进行变更
+            context = registration_status_change(course_id, me, func)
             html_display["warn_code"] = context["warn_code"]
             html_display["warn_message"] = context["warn_message"]
             if context["warn_code"] == 1:
@@ -291,29 +301,66 @@ def showCourse(request):
             else:  # 成功更新选课状态
                 return JsonResponse({"success": True})
         except:
-            html_display["warn_code"] = 1  # 失败
+            html_display["warn_code"] = 1  # 意外失败
             html_display["warn_message"] = "选课过程出现错误！请联系管理员。"
             return JsonResponse({"success": False})
 
     html_display["is_myself"] = True
-    """
-    未选的课在前端呈现的按钮状态有：预选、等待中/抽签中（未激活的按钮）、补选
-    已选的课在前端呈现的按钮状态有：取消、抽签中（未激活的按钮）
     
-    传递给前端的量：两个列表，和unselected_course/selected_course顺序对应。
-
-    只负责显示内容，在发布课程的时候就要完成正确性检查
-    
-    """
+    # 当前用户已选和未选的课，已选对应的状态有: SELECT和SUCCESS，未选对应的状态有UNSELECT和FAILED
 
     unselected_course = Course.objects.unselected(me)
     selected_course = Course.objects.selected(me)
 
-    # 方便前端显示
-    unselected_display = course2Display(unselected_course, me)
-    selected_display = course2Display(selected_course, me)
+    # 前端用于显示的内容: 两个list，list中每个元素是一个dict，包含课程的具体信息。
+    # 两个list的顺序都和课程id一致。
+
+    unselected_display = course2Display(unselected_course, me, detail=True)
+    selected_display = course2Display(selected_course, me, detail=True)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "书院课程")
 
-    # TODO 和前端对接
-    return JsonResponse({**unselected_display, **selected_display})
+    # TODO: task 10 ljy 2022-02-07
+    # 和前端对接: 
+    # 1、点击课程名跳转到课程详情页（viewCourse对应的页面）
+    # 2、根据选课阶段的不同，每门课对应的按钮要改变。例如某门课处于非选课阶段，
+    # 那么它对应的按钮应该处于非活跃状态。
+    # 3、（暂定）对于老师账号，可以进入该页面，但是不显示按钮。
+
+    return HttpResponse()
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(record_user=True,
+                     record_request_args=True,
+                     source='views[courseDetail]')
+def viewCourse(request):
+    """
+    展示一门课程的详细信息
+    
+    功能: 
+    1、不区分用户类型，都呈现课程的详细信息。正常情况下，组织账号不会进入这里。
+    2、可以直接返回到选课页面
+
+    GET参数: ?courseid=<int>
+    """
+
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    course_id = int(request.GET.get("courseid", None))
+    try:
+        course = Course.objects.filter(id=course_id)
+    except:
+        context = {}
+        context["warn_code"] = 1
+        context["warn_message"] = f"课程{course_id}不存在"
+        return EXCEPT_REDIRECT
+
+    me = utils.get_person_or_org(request.user, user_type)
+    course_display = course2Display(course, me, detail=True)
+
+    # TODO: task 10 ljy 2022-02-07 
+    # 和前端对接: 按返回按钮可以redirect到selectCourse页面
+
+    return HttpResponse()
