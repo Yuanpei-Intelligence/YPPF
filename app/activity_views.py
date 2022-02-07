@@ -207,6 +207,7 @@ def viewActivity(request, aid=None):
             return redirect(message_url(wrong('无效的请求!'), request.path))
         
     elif request.method == "GET":
+        
         warn_code = request.GET.get("warn_code")
         warn_msg = request.GET.get("warn_message")
         if warn_code and warn_msg:
@@ -214,7 +215,6 @@ def viewActivity(request, aid=None):
                 return redirect(message_url(wrong('非法的状态码，请勿篡改URL!'), request.path))
             html_display["warn_code"] = int(warn_code)
             html_display["warn_message"] = warn_msg
-
 
     # 下面这些都是展示前端页面要用的
     title = activity.title
@@ -262,7 +262,6 @@ def viewActivity(request, aid=None):
             pStatus = "未参与"
         if pStatus == "放弃":
             pStatus = "未参与"
-
     # 签到
     need_checkin = activity.need_checkin
     show_QRcode = activity.need_checkin and activity.status in [
@@ -278,13 +277,11 @@ def viewActivity(request, aid=None):
 
     if ownership and need_checkin:
         aQRcode = get_activity_QRcode(activity)
-
     # 活动宣传图片 ( 一定存在 )
     photo = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
     firstpic = str(photo.image)
     if firstpic[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
         firstpic = MEDIA_URL + firstpic
-
     # 总结图片，不一定存在
     summary_photo_exists = False
     if activity.status == Activity.Status.END:

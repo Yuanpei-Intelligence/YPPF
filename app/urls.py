@@ -75,6 +75,7 @@ urlpatterns = [
 ] + [
     # 书院课程活动（开设单次、修改单次）
     path("addSingleCourseActivity/", course_activity_views.addSingleCourseActivity, name="addSingleCourseActivity"),
+    path("editCourseActivity/<str:aid>", course_activity_views.editCourseActivity, name="editCourseActivity"),
 
 ] + [
     # 组织相关操作

@@ -73,7 +73,6 @@ def editCourseActivity(request, aid):
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewactivity，可以不设计bar_display
     if request.method == "POST" and request.POST:
-
         # 仅这几个阶段可以修改 # FIXME: ?
         if (
                 activity.status != Activity.Status.REVIEWING and
@@ -82,7 +81,6 @@ def editCourseActivity(request, aid):
         ):
             return redirect(message_url(wrong('当前活动状态不允许修改!'),
                                         f'/viewActivity/{activity.id}')) # FIXME: 跳转聚合页面
-
         # 处理 comment # FIXME: ??
         if request.POST.get("comment_submit"):
             # 创建活动只能在审核时添加评论
@@ -100,6 +98,7 @@ def editCourseActivity(request, aid):
                     activity = Activity.objects.select_for_update().get(id=aid)
                     org = get_person_or_org(request.user, "Organization")
                     assert activity.organization_id == org
+                    print("HERE???")
                     modify_course_activity(request, activity)
                 html_display["warn_msg"] = "修改成功。"
                 html_display["warn_code"] = 2
@@ -114,10 +113,8 @@ def editCourseActivity(request, aid):
     defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG", "id": f"picture{i+1}"} for i in range(5)]
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava() 
-
     try:
         org = get_person_or_org(request.user, "Organization")
-
         # 没过审，可以编辑评论区
         if not activity.valid:
             commentable = True
@@ -149,17 +146,15 @@ def editCourseActivity(request, aid):
     # commentable ( 是否可以评论 )
 
     # 下面是前端展示的变量,FIXME: 注释了一些用不上的
-
     title = utils.escape_for_templates(activity.title)
-    budget = activity.budget
+    # budget = activity.budget
     location = utils.escape_for_templates(activity.location)
-    apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
+    # apply_end = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     # apply_end_for_js = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     start = activity.start.strftime("%Y-%m-%d %H:%M")
     end = activity.end.strftime("%Y-%m-%d %H:%M")
-    introduction = escape_for_templates(activity.introduction)
-    url = utils.escape_for_templates(activity.URL)
-
+    # introduction = escape_for_templates(activity.introduction) # TODO
+    # url = utils.escape_for_templates(activity.URL)
     # endbefore = activity.endbefore
     # bidding = activity.bidding
     # amount = activity.YQPoint
@@ -176,26 +171,25 @@ def editCourseActivity(request, aid):
     examine_teacher = activity.examine_teacher.name
     status = activity.status
     available_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
-    need_checkin = activity.need_checkin
-    inner = activity.inner
-    apply_reason = utils.escape_for_templates(activity.apply_reason)
-    
-    comments = showComment(activity)
-    photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image)
-    uploaded_photo = False
-    if str(photo).startswith("activity"):
-        uploaded_photo = True
-        photo_path = photo
-        photo = os.path.basename(photo)
-    else:
-        photo_id = "picture" + os.path.basename(photo).split(".")[0]
+    # need_checkin = activity.need_checkin # TODO
+    # inner = activity.inner
+    # apply_reason = utils.escape_for_templates(activity.apply_reason)
+    # comments = showComment(activity) # TODO
+    # photo = str(activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE).image) # TODO
+    # uploaded_photo = False
+    # if str(photo).startswith("activity"):
+    #     uploaded_photo = True
+    #     photo_path = photo
+    #     photo = os.path.basename(photo)
+    # else:
+    #     photo_id = "picture" + os.path.basename(photo).split(".")[0]
 
 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     
     bar_display = utils.get_sidebar_and_navbar(request.user, "修改单次课程活动")
 
-    return render(request, "lesson_modify.html", locals())
+    return render(request, "lesson_add.html", locals())
     
 
 @login_required(redirect_field_name="origin")
@@ -250,15 +244,15 @@ def addSingleCourseActivity(request):
     available_teachers = NaturalPerson.objects.teachers()
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     bar_display = utils.get_sidebar_and_navbar(request.user, "发起单次课程活动")
-
+    
     return render(request, "lesson_add.html", locals())
     
     
-'''
+
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='views[cancelCourseActivity]', record_user=True)
-def cancelCourseActivity(request, aid=None): # FIXME: 放到聚合页面里？
+def cancelCourseActivity(request, aid): # FIXME: 放到聚合页面里？
     """
     取消单次书院课程活动，若活动已发布，同时通知所有选课学生
     ---------------
@@ -312,4 +306,3 @@ def cancelCourseActivity(request, aid=None): # FIXME: 放到聚合页面里？
         except Exception as e:
             log.record_traceback(request, e)
             return EXCEPT_REDIRECT
-'''
