@@ -128,26 +128,26 @@
                                                     </td>-->
                                                     {% with username=org.organization_id.username %}
                                                     {%if not username in unsubscribe_list%}
-                                                    <td bgColor="F3FDFF">
+                                                    <td id="td{{ username }}_{{ type_id }}">
                                                         <div class="custom-control custom-switch">
-                                                            <input type="checkbox" class="custom-control-input"
+                                                            <input type="checkbox" class="bgy custom-control-input"
                                                                 id="{{username}}_{{type_id}}" name="{{type_id}}"
                                                                 onclick="change_status.call(this);this.blur();" checked {% if not otype.allow_unsubscribe %} disabled {% endif %}>
                                                             <label class="custom-control-label"
                                                                 for="{{username}}_{{type_id}}">
-                                                                <font color="000079">已订阅</font>
+                                                                <font id="font{{ username }}_{{ type_id }}">已订阅</font>
                                                             </label>
                                                         </div>
                                                     </td>
                                                     {%else%}
-                                                    <td bgColor="FFFFFF">
+                                                    <td id="td{{ username }}_{{ type_id }}">
                                                         <div class="custom-control custom-switch">
-                                                            <input type="checkbox" class="custom-control-input"
+                                                            <input type="checkbox" class="bgw custom-control-input"
                                                                 id="{{username}}_{{type_id}}" name="{{type_id}}"
                                                                 onclick="change_status.call(this);this.blur();">
                                                             <label class="custom-control-label"
                                                                 for="{{username}}_{{type_id}}">
-                                                                <font color="E1E1E1">未订阅</font>
+                                                                <font id="font{{ username }}_{{ type_id }}">未订阅</font>
                                                             </label>
                                                         </div>
                                                     </td>
@@ -188,6 +188,19 @@
     const UNSUBSCRIBED_COLOR = "E1E1E1";   //未订阅字体颜色
     const SUBSCRIBED_BGCOLOR = "F3FDFF";   //已订阅背景颜色
     const SUBSCRIBED_COLOR = "000079";     //已订阅字体颜色
+
+    //默认情况下已订阅和未订阅的字体和背景颜色
+    lst1 = document.getElementsByClassName('bgy');
+    lst2 = document.getElementsByClassName('bgw');
+    for (var i = 0; i < lst1.length; i += 1){
+        document.getElementById(`td${lst1[i].id}`).bgColor = SUBSCRIBED_BGCOLOR;
+        document.getElementById(`font${lst1[i].id}`).color = SUBSCRIBED_COLOR;
+    }
+    for (var i = 0; i < lst2.length; i += 1){
+        document.getElementById(`td${lst2[i].id}`).bgColor = UNSUBSCRIBED_BGCOLOR;
+        document.getElementById(`font${lst2[i].id}`).color = UNSUBSCRIBED_COLOR;
+    }
+    
 </script>
 
 <script>
