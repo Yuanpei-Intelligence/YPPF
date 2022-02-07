@@ -105,3 +105,4 @@ def add_courseRecord(df):
             )
 
     return 0
+    
