@@ -1,4 +1,5 @@
 from app.views_dependency import *
+from django.views import View
 from app.models import (
     NaturalPerson,
     Freshman,
@@ -19,6 +20,7 @@ from app.models import (
     Wishes,
     QandA,
     ReimbursementPhoto,
+    CourseRecord
 )
 from app.utils import (
     url_check,
@@ -48,6 +50,12 @@ from app.QA_utils import (
     QA_delete,
     QA_ignore,
 )
+from app.record_add import (
+    CheckGetinFile,
+    add_courseRecord,
+)
+
+
 import json
 import random
 import requests  # 发送验证码
@@ -60,7 +68,7 @@ from django.db import transaction
 from django.db.models import Q, F
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
-
+import pandas as pd
 
 # 定时任务不在views直接调用
 # 但是天气任务还是在这里弄吧，太奇怪了
@@ -1899,3 +1907,61 @@ def QAcenter(request):
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="问答中心")
     return render(request, "QandA_center.html", locals())
+
+class course_record(View):
+    def __init__(self):
+        self.error = [
+        u'错误：表格内容为空或格式错误!',
+        u'错误：表格单元格内容错误!',
+        u'错误：未查询到部分学生或课程!',
+        u'未选择要上传的文件！'
+        ]
+        self.course_info = {
+            'course' : u'手工课',
+            'year' : '2022',
+            'semester' : 'Spring'
+        }
+
+        self.record_list = CourseRecord.objects.filter(
+            course__cid__oname = self.course_info['course'],
+            year = self.course_info['year'],
+            semester = self.course_info['semester'],
+        )
+    def get(self, request):
+        bar_display = utils.get_sidebar_and_navbar(request.user, "课程学时")
+        record_list = self.record_list
+        course_info = self.course_info
+        # course = self.course
+        # print(record_list)
+        return render(request, "course_record.html", locals())
+
+    def post(self, request):
+        # if request.POST.get("add_courseRecord") is not None:
+        bar_display = utils.get_sidebar_and_navbar(request.user, "课程学时")        
+        record_list = self.record_list
+        course_info = self.course_info
+        html_display={
+            "upload_success":False,
+            'error':'',
+            'type' : 2, #1 =>warning; 2=>error;
+            }
+        xlsx_file = request.FILES.getlist("xlsx_file")
+        if xlsx_file == []:
+            html_display["error"]=self.error[3]
+            html_display['type'] = 1
+            return render(request, "course_record.html", locals())
+        file = xlsx_file[0]
+        df = pd.read_excel(file)
+        
+        file_check = CheckGetinFile(df)
+        if (file_check != -1):
+            html_display["error"]=self.error[file_check]
+            return render(request, "course_record.html", locals())
+        if (add_courseRecord(df)==1):
+            html_display["error"]=self.error[2]
+            return render(request, "course_record.html", locals())
+        else:
+            html_display["upload_success"]=True
+        
+
+        return render(request, "course_record.html", locals())

@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+
+{% block add_css_file %}
+<style type='text/css'>
+  a1 {
+    font-size: 12px;
+  }
+  a1:hover{
+    font-size: 14px;
+    color: rgb(0, 132, 255);
+    cursor:pointer;
+  }
+  #input_{
+    height:12px;
+    text-align:center;
+    width:100px;
+    margin:0 auto;
+    vertical-align:middel;  
+  }
+  </style>
+
+{% endblock %}
+
+{% block mainpage %}
+
+
+  <div id="content" class="main-content">      
+    <!-- <div class="layout-px-spacing"> -->
+        {% if html_display.upload_success %}
+        <div id='UploadSuccess' class="alert alert-success  text-center">学时手动导入成功
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span></button></div>
+        <!-- TODO:设置自动消失 ,目前是可以点击删除-->
+        {% endif %}
+        {% if not html_display.upload_success and html_display.error != none and html_display.type == 2 %}        
+        <div id='UploadFail' class="alert alert-danger  text-center">{{html_display.error}}
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+          <span aria-hidden="true">&times;</span></button></div>
+        {% endif %}
+        {% if html_display.type == 1 and not html_display.upload_success%}        
+        <div id='UploadWarn' class="alert alert-warning text-center">{{html_display.error}}
+          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span></button></div>
+        {% endif %}    
+        
+      <!-- </div> -->
+    <div class="container">
+      <div class="layout-top-spacing" style="text-align:center">
+
+        <h3 class="text-primary" >课程学时记录
+          <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="" data-original-title="双击可修改表格中的参与次数与学时，另外也可通过excel表格手动导入，请注意要求的表格格式。">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle-fill" viewBox="0 0 22 22" style="color:rgba(0, 0, 0, 0.404);">
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"></path>
+            </svg></h3>
+        </a>
+        <br>
+        
+        <div class="col-12 row layout-spacing" style="text-align: left;">
+          <div class="col-xl-3 col-lg-3 col-md-3 col-sm-0"></div>
+          <div class="input-group mb-3 col-xl-6 col-lg-6 col-md-6 col-sm-12">
+          
+                <form action="" method="post" enctype="multipart/form-data">
+                  {% csrf_token %}   
+                  <table><tr><td>
+              <div class="custom-file" style="
+            border:2px solid rgb(107, 107, 255);
+            border-radius:4px; ">
+            <input type="file" name="xlsx_file" class="custom-file-input" id="inputGroupFile01" 
+              style="margin:12px; height:15px; width:190px; overflow: visible; ">  
+
+              <label class="custom-file-label" for="inputGroupFile01"
+              style="color:rgba(0, 0, 0, 0.363); height:38px;">选择文件</label> </div>
+              <!-- <div class="input-group-text text-primary" id="inputGroupFileAddon01" style="font-weight: bolder;"> -->
+              </td><td><button class="btn btn-primary " style="position:relative; left:5px; height:40px;">上传</button></td>
+            <!-- </div> --></tr></table>
+          </form>   
+           
+          </div> 
+          
+        </div>
+        <div style="text-align:left;">&nbsp;&nbsp;&nbsp;&nbsp;课程：{{course_info.course}} &nbsp;&nbsp; 所在学年：{{course_info.year}}   
+          {% if course_info.semester == "Fall" %}
+          秋季
+          {% endif %} {% if course_info.semester == "Spring" %}
+          春季
+          {% endif %}
+        </div>
+        <div class="col-12 layout-spacing">
+          <table class="table table-striped table-active">
+    
+            <thead>
+              <tr>
+                <th scope="col" width="17%">姓名</th>
+                <th scope="col" width="26%">学号</th>
+                <th scope="col" width="20%">参加次数</th>
+                <th scope="col" >总计时长</th>
+              </tr>
+            </thead>
+            <tbody class="table">
+              {% for record in record_list %}
+              <tr>
+                <th scope="row">{{record.person.name}}</th>
+                <td>{{record.person.person_id}}</td>
+                <td><a1>{{record.attend_times}}</a1></td>
+                <td><a1>{{record.total_hours}}</a1></td>
+              </tr>
+              {% endfor %}
+
+
+
+            </tbody>
+          </table>
+        </div>
+
+        <div class="col-12 row layout-spacing">
+          <div class="col-6" style="text-align: center;">
+            <button type="button" class="btn btn-danger btn-lg" >取消保存</button>
+          </div>          
+          <div class="col-6" style="text-align: center;">
+            <button type="button" class="btn btn-primary btn-lg" >提交修改</button>
+          </div>
+
+        </div>
+  
+      </div>
+    </div>
+  </div> 
+
+{% endblock %}
+
+
+{% block add_js_file %}
+
+<!--
+<script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js"></script> 这里你是不是直接从菜鸟教程上copy的呀？
+-->
+
+<script>
+  $(document).ready(function(){
+
+    $("a1").dblclick(function(){
+      // $(this).hide();
+      var th = $(this);
+      // th.text("");
+      var text = th.text();
+      var txt = $('<input id="input_" type="text" class="form-control">').val(text);
+      txt.blur(function(){
+        var newtxt = $(this).val();
+        $(this).remove();
+        th.text(newtxt);
+      });
+      txt.keydown(function(e){
+        if (e.keyCode == 13) {
+          var newtxt = $(this).val();
+          // if (newtxt=='') {alert('请勿输入空值')}
+          // else {
+        //     if (newtxt == '' || newtxt == undefined || newtxt == null){
+        // //alert("请输入姓名");
+        //   $("#newtxt").css('borderColor','red'); //添加css样式
+        //   }else {
+        //   $("#newtxt").css('borderColor',''); //取消css样式
+        //   }            
+          $(this).remove();
+            th.text(newtxt);
+
+          // }
+        }
+      });
+      th.text("");
+      th.append(txt);
+      txt.focus();
+    });
+    
+
+    
+    var name=$("#input_").val();
+    if (name == '' || name == undefined || name == null){
+        //alert("请输入姓名");
+        $("#name").css('borderColor','red'); //添加css样式
+    }else {
+        $("#name").css('borderColor',''); //取消css样式
+    }
+
+    // $("a1").hover(
+    //   function(){
+    //     $(this).css("font-size","14px");
+    //     // $(this).css("background-color","red");
+    //   },
+    //   function(){
+    //     $(this).css("font-size","12px");
+    //   }
+    // );
+    });
+</script>
+
+{% endblock %}
