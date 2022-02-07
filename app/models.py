@@ -1293,7 +1293,7 @@ class CourseRecord(models.Model):
     attend_times = models.IntegerField("参加课程次数", default=0)
     def get_name(self):
         if self.course:
-            return self.course
+            return self.course.cid__oname
         elif self.extra_name:
             return self.extra_name
         else:
