@@ -34,6 +34,7 @@ __all__ = [
     'Help',
     'Wishes',
     'ModifyRecord',
+    'CourseRecord',
 ]
 
 
@@ -1266,3 +1267,35 @@ class ModifyRecord(models.Model):
     name = models.CharField('名称', max_length=32, default='', blank=True)
     info = models.TextField('相关信息', default='', blank=True)
     time = models.DateTimeField('修改时间', auto_now_add=True)
+
+
+class CourseRecord(models.Model):
+    class Meta:
+        verbose_name = "学时表"
+        verbose_name_plural = verbose_name
+    # TODO: task 5 hjb(Toseic) 2022/2/6 related_name后续可能还需要添加
+    
+    person = models.ForeignKey(
+        NaturalPerson, on_delete=models.CASCADE,
+    )
+    course = models.ForeignKey(
+        Course, on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    # 长度兼容组织和课程名
+    extra_name = models.CharField("课程名称额外标注", max_length=60, blank=True)
+    
+    year = models.IntegerField("课程所在学年", default=current_year)
+    semester = models.CharField(
+        "课程所在学期",
+        choices=Semester.choices, 
+        default=Semester.get(local_dict["semester_data"]["semester"]), 
+        max_length=15,
+    )
+    total_hours = models.FloatField("总计参加学时")
+    attend_times = models.IntegerField("参加课程次数", default=0)
+
+    def get_course_name(self):
+        if self.course is not None:
+            return str(self.course)
+        return self.extra_name
+    get_course_name.short_description = "课程名"
