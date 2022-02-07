@@ -1899,3 +1899,11 @@ def QAcenter(request):
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="问答中心")
     return render(request, "QandA_center.html", locals())
+
+
+def add_lesson(request):
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="1234")
+    if request.method == "POST":
+        context = request.POST
+        print(context)
+    return render(request, "lesson_add.html", locals())
