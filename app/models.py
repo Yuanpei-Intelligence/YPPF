@@ -34,6 +34,7 @@ __all__ = [
     'Help',
     'Wishes',
     'ModifyRecord',
+    'CourseRecord',
 ]
 
 
@@ -1278,9 +1279,10 @@ class CourseRecord(models.Model):
         NaturalPerson, on_delete=models.CASCADE,
     )
     course = models.ForeignKey(
-        Course, on_delete=models.CASCADE, blank=True
+        Course, on_delete=models.SET_NULL, null=True, blank=True,
     )
-    extra_name = models.CharField("课程名称额外标注", max_length=30, blank=True, null=True)
+    # 长度兼容组织和课程名
+    extra_name = models.CharField("课程名称额外标注", max_length=60, blank=True)
     
     year = models.IntegerField("课程所在学年", default=current_year)
     semester = models.CharField(
@@ -1291,10 +1293,9 @@ class CourseRecord(models.Model):
     )
     total_hours = models.FloatField("总计参加学时")
     attend_times = models.IntegerField("参加课程次数", default=0)
-    def get_name(self):
-        if self.course:
-            return self.course.cid__oname
-        elif self.extra_name:
-            return self.extra_name
-        else:
-            raise LookupError("课程填写名称为空")
+
+    def get_course_name(self):
+        if self.course is not None:
+            return str(self.course)
+        return self.extra_name
+    get_course_name.short_description = "课程名"
