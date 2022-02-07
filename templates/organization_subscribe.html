@@ -69,7 +69,7 @@
                             </div>
                         </div>
                     </div>
-                    {% for otype, orgs_list in org_zip %}
+                    {% for otype, org_list in otype_infos %}
                     {% with type_id=otype.otype_id %}
                     <div id="tableDropdown{{type_id}}" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
                         <div class="statbox widget box box-shadow">
@@ -114,7 +114,7 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {% for org in orgs_list %}
+                                                {% for org in org_list %}
                                                 <tr>
                                                     <td>
                                                         <u><a href="/orginfo/?name={{org.oname}}"><img src="{{org.get_user_ava}}" width="18px" height="18px" style="margin-top: -2px; margin-right: 5px; border-radius: 9px;"><span>{{org.oname}}</span></a></u>
