@@ -876,7 +876,7 @@ def check_out(request):  # 预约表单提交
                         global_info.today_min, room_object.Rmin)
         # TODO: task 3 pht 2022-1-28 模型修改时同步修改
         appoint_params['Sid'] = request.user.username
-        appoint_params['Sname'] = get_participant(appoint_params['Sid']).Sname
+        appoint_params['Sname'] = get_participant(appoint_params['Sid']).name
         Stu_all = Participant.objects.all()
 
     except:

@@ -201,7 +201,7 @@ def get_student_chosen_list(request, get_all=False):
         if stu.Sid != request.user.username and (True or get_all == True):
             js_stu_list.append({
                 "id": stu.Sid,
-                "text": stu.Sname + "_" + stu.Sid[:2],
+                "text": stu.name + "_" + stu.Sid[:2],
                 "pinyin": stu.pinyin
             })
     return js_stu_list
@@ -348,7 +348,7 @@ def getStudentInfo(contents):   # 抓取学生信息的通用包
                 'detail': str(e)
             }}, status=400)  # 好像需要再改一下...
     return {
-        'Sname': student.Sname,
+        'Sname': student.name,
         'Sid': str(student.Sid),
         'Scredit': str(student.Scredit)
     }

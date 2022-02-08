@@ -134,7 +134,7 @@ def _create_account(request):
             # TODO: task 1 pht 2022-1-28 模型修改时需要调整
             account = Participant.objects.create(
                 Sid=request.user.username,
-                Sname=given_name,
+                name=given_name,
                 Scredit=3,
                 pinyin=pinyin_init,
             )
@@ -155,7 +155,7 @@ def _update_name(user: Union[Participant, User, str]):
 
     # 获取姓名, 只更新不同的
     given_name = get_name(participant)
-    if given_name == participant.Sname:
+    if given_name == participant.name:
         return False
 
     # 获取首字母
@@ -166,7 +166,7 @@ def _update_name(user: Union[Participant, User, str]):
     with transaction.atomic():
         # TODO: task 1 qwn 2022-1-26 Participant字段变化应同步修改
         participant = get_participant(participant.Sid, update=True, raise_except=True)
-        participant.Sname = given_name
+        participant.name = given_name
         participant.pinyin = pinyin_init
         participant.save()
     return True
@@ -186,7 +186,7 @@ def identity_check(
 
             cur_part = get_participant(request.user)
 
-            if cur_part is not None and cur_part.Sname == '未命名' and update_name:
+            if cur_part is not None and cur_part.name == '未命名' and update_name:
                 _update_name(cur_part)
                 
             if cur_part is None and allow_create:

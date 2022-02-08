@@ -25,15 +25,15 @@ admin.site.register(College_Announcement)
 class ParticipantAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
-    search_fields = ('Sid', 'Sname', 'pinyin')
-    list_display = ('Sid', 'Sname', 'Scredit')
-    list_display_links = ('Sid', 'Sname')
+    search_fields = ('Sid', 'name', 'pinyin')
+    list_display = ('Sid', 'name', 'Scredit')
+    list_display_links = ('Sid', 'name')
     list_editable = ('Scredit', )
     list_filter = ('Scredit', )
     fieldsets = (['基本信息', {
         'fields': (
             'Sid',
-            'Sname',
+            'name',
         ),
     }], [
         '显示全部', {
@@ -71,7 +71,7 @@ class ParticipantAdmin(admin.ModelAdmin):
 
     def renew_pinyin(self, request, queryset):
         for stu in queryset:
-            pinyin_list = pypinyin.pinyin(stu.Sname, style=pypinyin.NORMAL)
+            pinyin_list = pypinyin.pinyin(stu.name, style=pypinyin.NORMAL)
             stu.pinyin = ''.join([w[0][0] for w in pinyin_list])
             stu.save()
         return self.message_user(request=request,
@@ -133,7 +133,7 @@ class AppointAdmin(admin.ModelAdmin):
     actions_on_bottom = True
     LETTERS = set(string.digits + string.ascii_letters + string.punctuation)
     search_fields = ('Aid', 'Room__Rtitle',
-                     'major_student__Sname', 'Room__Rid', "students__Sname",
+                     'major_student__name', 'Room__Rid', "students__name",
                      'major_student__pinyin', # 仅发起者缩写，方便搜索者区分发起者和参与者
                      )
     list_display = (
@@ -179,8 +179,8 @@ class AppointAdmin(admin.ModelAdmin):
     list_filter = ('Astart', 'Atime', 'Astatus', ActivateFilter, 'Atemp_flag')
 
     def Participants(self, obj):
-        students = [(obj.major_student.Sname, )]
-        students += [(stu.Sname, ) for stu in obj.students.all()
+        students = [(obj.major_student.name, )]
+        students += [(stu.name, ) for stu in obj.students.all()
                                     if stu != obj.major_student]
         return format_html_join('\n', '<li>{}</li>', students)
 
@@ -213,7 +213,7 @@ class AppointAdmin(admin.ModelAdmin):
     total_display.short_description = "总人数"
 
     def major_student_display(self, obj):
-        return obj.major_student.Sname
+        return obj.major_student.name
 
     major_student_display.short_description = "发起人"
 
@@ -262,7 +262,7 @@ class AppointAdmin(admin.ModelAdmin):
                                                 appoint.Astart,  # start_time
                                                 appoint.Room,     # room
                                                 "confirm_admin_w2c",  # message_type
-                                                appoint.major_student.Sname,  # major_student
+                                                appoint.major_student.name,  # major_student
                                                 appoint.Ausage,  # usage
                                                 appoint.Aannouncement,
                                                 appoint.Ayp_num + appoint.Anon_yp_num,
@@ -287,7 +287,7 @@ class AppointAdmin(admin.ModelAdmin):
                                                 appoint.Astart,  # start_time
                                                 appoint.Room,     # room
                                                 "confirm_admin_v2j",  # message_type
-                                                appoint.major_student.Sname,  # major_student
+                                                appoint.major_student.name,  # major_student
                                                 appoint.Ausage,  # usage
                                                 appoint.Aannouncement,
                                                 appoint.Ayp_num + appoint.Anon_yp_num,
@@ -350,7 +350,7 @@ class AppointAdmin(admin.ModelAdmin):
                                         appoint.Astart,  # start_time
                                         appoint.Room,     # room
                                         "violate_admin",  # message_type
-                                        appoint.major_student.Sname,  # major_student
+                                        appoint.major_student.name,  # major_student
                                         appoint.Ausage,  # usage
                                         appoint.Aannouncement,
                                         appoint.Ayp_num + appoint.Anon_yp_num,
@@ -484,7 +484,7 @@ class AppointAdmin(admin.ModelAdmin):
                                   appoint.Astart,  # start_time
                                   appoint.Room,     # room
                                   "longterm",  # message_type
-                                  appoint.major_student.Sname,  # major_student
+                                  appoint.major_student.name,  # major_student
                                   appoint.Ausage,  # usage
                                   appoint.Aannouncement,
                                   len(stuid_list) + appoint.Anon_yp_num,
@@ -524,12 +524,12 @@ class CardCheckInfoAdmin(admin.ModelAdmin):
     list_display = ('id', 'Cardroom', 'student_display', 'Cardtime',
                     'CardStatus', 'ShouldOpenStatus', 'Message')  # 'is_delete'
     search_fields = ('Cardroom__Rtitle',
-                     'Cardstudent__Sname', 'Cardroom__Rid', "id")
+                     'Cardstudent__name', 'Cardroom__Rid', "id")
     list_filter = ('CardStatus', 'ShouldOpenStatus')
     
     def student_display(self, obj):
         try:
-            return obj.Cardstudent.Sname
+            return obj.Cardstudent.name
         except:
             return '-'
 

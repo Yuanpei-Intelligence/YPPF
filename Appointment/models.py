@@ -37,7 +37,7 @@ class Participant(models.Model):
         primary_key=True,
     )
     '''
-    Sname = models.CharField('姓名', max_length=64)
+    name = models.CharField('姓名', max_length=64)
     Scredit = models.IntegerField('信用分', default=3)
     pinyin = models.CharField('拼音', max_length=20, null=True)
 
@@ -236,12 +236,12 @@ class Appoint(models.Model):
             self.Anon_yp_num,  # 外院人数
             'major_student':
             {
-                "Sname": self.major_student.Sname,  # 发起预约人
+                "Sname": self.major_student.name,  # 发起预约人
                 "Sid": self.major_student.Sid,
             },
             'students': [  # 参与人
                 {
-                    'Sname': student.Sname,  # 参与人姓名
+                    'Sname': student.name,  # 参与人姓名
                     'Sid': student.Sid,
                 } for student in self.students.all() if Participant.Sid != self.major_student.Sid
             ]

@@ -362,7 +362,7 @@ def appoint_violate(input_appoint, reason):  # 将一个aid设为违约 并根�
                     major_sid = str(appoint.major_student.Sid)
                     astart = appoint.Astart
                     aroom = str(appoint.Room)
-                    major_name = str(appoint.major_student.Sname)
+                    major_name = str(appoint.major_student.name)
                     usage = str(appoint.Ausage)
                     announce = str(appoint.Aannouncement)
                     number = str(appoint.Ayp_num+appoint.Anon_yp_num)
