@@ -467,7 +467,7 @@ def load_CouRecord(request):
         course_found = False
         
         course_get = Course.objects.filter( 
-            cid__oname = course,
+            name = course,
             year = year, 
             semester = semester,
         )        
@@ -521,7 +521,7 @@ def load_CouRecord(request):
                 year = year,
                 semester = Semester.get(semester),
             )
-            record_search_course = record_search.filter(course__cid__oname= course,)
+            record_search_course = record_search.filter(course__name= course,)
             record_search_extra = record_search.filter(extra_name = course,)
             if (not record_search_course.exists()) and (not record_search_extra.exists()):
                 newrecord = CourseRecord.objects.create(
