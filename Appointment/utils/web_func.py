@@ -71,7 +71,7 @@ def get_adjusted_qualified_rate(original_qualified_rate, appoint) -> float:
     if appoint.Areason == Appoint.Reason.R_LATE:    # 迟到需要额外保证使用率
         original_qualified_rate += 0.05             # 建议在0.2-0.4之间 极端可考虑0.5 目前仅测试
     if appoint.Atemp_flag == 1:                     # 对于临时预约，不检查摄像头 by lhw（2021.7.13）
-        original_qualified_rate = 0             
+        original_qualified_rate = 0
     if appoint.Room.Rid in {'B109A', 'B207'}:       # 公共区域
         original_qualified_rate = 0
     if appoint.Room.Rid[:1] == 'R':                 # 俄文楼
@@ -91,7 +91,7 @@ def startAppoint(Aid):  # 开始预约时的定时程序
         appoint.save()
         utils.operation_writer(
             global_info.system_log, f"预约{str(Aid)}成功开始: 状态变为进行中", "web_func.startAppoint")
-    
+
     elif appoint.Astatus == Appoint.Status.PROCESSING:  # 已经开始
         utils.operation_writer(
             global_info.system_log, f"预约{str(Aid)}在检查时已经开始", "web_func.startAppoint")
@@ -115,11 +115,11 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
     except:
         utils.operation_writer(
             global_info.system_log, f"预约{str(Aid)}意外消失", "web_func.finishAppoint", "Error")
-    
-    
+
+
     # 避免直接使用全局变量! by pht
     adjusted_camera_qualified_check_rate = global_info.camera_qualified_check_rate
-    
+
     # --- add by pht: 终止状态 --- #
     TERMINATE_STATUSES = [
         Appoint.Status.CONFIRMED,
@@ -155,7 +155,7 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
                 original_qualified_rate=adjusted_camera_qualified_check_rate,
                 appoint=appoint
             )
-            
+
             if appoint.Acamera_ok_num < appoint.Acamera_check_num * adjusted_camera_qualified_check_rate - 0.01:  # 人数不足
                 # add by lhw ： 迟到的预约通知在这里处理。如果迟到不扣分，删掉这个if的内容即可，让下面那个camera check的if判断是否违规。
                 if appoint.Areason == Appoint.Reason.R_LATE:
@@ -192,6 +192,7 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
 
 
 # 用于前端显示支持拼音搜索的人员列表
+# TODO: task 0 pht 2022-02-08 模型修改时同步修改，原来是session读的
 def get_student_chosen_list(request, get_all=False):
     js_stu_list = []
     Stu_all = Participant.objects.all()
@@ -223,60 +224,43 @@ def get_talkroom_timerange(talk_room_list):
 def time2datetime(year, month, day, t):
     return datetime(year, month, day, t.hour, t.minute, t.second)
 
-# modified by wxy
-def getViolated_2(contents):
-    try:
-        student = Participant.objects.get(Sid=contents['Sid'])
-    except Exception as e:
-        return JsonResponse(
-            {'statusInfo': {
-                'message': '学号不存在',
-                'detail': str(e)
-            }}, status=400)
-    appoints = student.appoint_list.filter(Astatus=Appoint.Status.VIOLATED,
-                                           major_student_id=student.Sid)
-    data = [appoint.toJson() for appoint in appoints]
-    return JsonResponse({'data': data}, status=200)
-
 
 # added by wxy
-def getStudent_2_classification(contents):
-    #print('contents', contents)
+# TODO: task 0 pht 2022-02-08 模型修改时同步修改
+def student2appoints(Sid, kind, major=False):
+    '''
+    - kind: `'future'`, `'past'` or `'violate'`
+    - returns: {data: objs.toJson() form} or {statusInfo: infos}
+    '''
     try:
-        student = Participant.objects.get(Sid=contents['Sid'])
+        student = Participant.objects.get(Sid=Sid)
     except Exception as e:
-        return JsonResponse(
-            {'statusInfo': {
-                'message': '学号不存在',
-                'detail': str(e)
-            }}, status=400)
+        return {'statusInfo': {'message': '学号不存在', 'detail': str(e)}}
 
     present_day = datetime.now()
     seven_days_before = present_day - timedelta(7)
-    appoints = []
-    if contents['kind'] == 'future':
-        appoints = student.appoint_list.filter(
-            Astatus=Appoint.Status.APPOINTED).filter(Astart__gte=present_day)
-    elif contents['kind'] == 'past':
-        appoints = student.appoint_list.filter(
-            (Q(Astart__lte=present_day) & Q(Astart__gte=seven_days_before))
-            | (Q(Astart__gte=present_day)
-               & ~Q(Astatus=Appoint.Status.APPOINTED)))
-    elif contents['kind'] == 'today':
-        appoints = student.appoint_list.filter(
-            Astart__gte=present_day - timedelta(1),
-            Astart__lte=present_day + timedelta(1))
+
+    appoints = student.appoint_list.all()
+    if major:
+        appoints = appoints.filter(major_student=student)
+
+    if kind == 'future':
+        appoints = appoints.filter(Astatus=Appoint.Status.APPOINTED,
+                                   Astart__gte=present_day)
+    elif kind == 'past':
+        appoints = appoints.filter((Q(Astart__lte=present_day)
+                                    & Q(Astart__gte=seven_days_before))
+                                   | (Q(Astart__gte=present_day)
+                                      & ~Q(Astatus=Appoint.Status.APPOINTED)))
+    elif kind == 'today':
+        appoints = appoints.filter(Astart__gte=present_day - timedelta(1),
+                                   Astart__lte=present_day + timedelta(1))
+    elif kind == 'violate':
+        appoints = appoints.filter(Astatus=Appoint.Status.VIOLATED)
     else:
-        return JsonResponse(
-            {
-                'statusInfo': {
-                    'message': '参数错误，kind取值应为past或future',
-                    'detail': ''
-                }
-            },
-            status=400)
+        return {'statusInfo': {'message': '参数错误', 'detail': f'kind非法: {kind}'}}
     data = [appoint.toJson() for appoint in appoints]
-    return JsonResponse({'data': data}, status=200)
+    return {'data': data}
 
 
 # 对一个从Astart到Afinish的预约,考虑date这一天,返回被占用的时段
@@ -338,17 +322,15 @@ def get_dayrange(span=7):   # 获取用户的违约预约
     return timerange_list
 
 # added by wxy
-def getStudentInfo(contents):   # 抓取学生信息的通用包
+# TODO: task 0 pht 2022-02-08 模型修改时同步修改
+def getStudentInfo(Sid):
+    '''抓取学生信息的通用包，成功返回包含Sid, Sname, Scredit的字典'''
     try:
-        student = Participant.objects.get(Sid=contents['Sid'])
+        student = Participant.objects.get(Sid=Sid)
     except Exception as e:
-        return JsonResponse(
-            {'statusInfo': {
-                'message': '学号不存在',
-                'detail': str(e)
-            }}, status=400)  # 好像需要再改一下...
+        return {'statusInfo': {'message': '学号不存在', 'detail': str(e)}}
     return {
         'Sname': student.name,
-        'Sid': str(student.Sid),
-        'Scredit': str(student.credit)
+        'Sid': student.Sid,
+        'Scredit': student.credit,
     }
