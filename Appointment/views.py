@@ -68,6 +68,7 @@ wklist = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
 
 @csrf_exempt
 def getAppoint(request):    # 班牌机对接程序
+    raise NotImplementedError
     if request.method == 'POST':  # 获取所有预约信息
         appoints = Appoint.objects.not_canceled()
         data = [appoint.toJson() for appoint in appoints]
