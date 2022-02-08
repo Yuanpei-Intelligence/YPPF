@@ -5,11 +5,11 @@ course_views.py的依赖函数
 
 registration_status_check: 检查学生选课状态变化的合法性
 registration_status_change: 改变学生选课状态
-registration_status_create: 创建学生选课状态（临时用，待对接后废弃）
+registration_status_create（临时用，待对接后废弃）: 创建学生选课状态
 course2Display: 把课程信息转换为方便前端呈现的形式
 draw_lots: 预选阶段结束时执行抽签
 change_course_status: 改变课程的选课阶段
-remaining_willingness_point: 计算学生剩余的意愿点数
+remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 """
 from datetime import datetime, timedelta
@@ -17,11 +17,10 @@ from random import sample
 
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Sum
 
 from app.activity_utils import (changeActivityStatus, check_ac_time,
                                 notifyActivity)
-                                
 from app.models import (Activity, ActivityPhoto, Course, CourseParticipant,
                         NaturalPerson, Notification, Participant, Position)
 from app.notification_utils import (bulk_notification_create,
@@ -254,16 +253,20 @@ def remaining_willingness_point(user):
     """
     计算剩余的意愿点
     """
+    raise NotImplementedError("暂时不使用意愿点")
+    # 当前用户已经预选的课
     courses = Course.objects.filter(
         participant_set__person=user,
         participant_set__status=CourseParticipant.Status.SELECT)
 
     initial_point = 99  # 初始意愿点
-    cost_point = 0  # 已经使用的意愿点
-    for course in courses:
-        cost_point += course.bidding
+    cost_point = courses.aggregate(Sum('bidding'))  # 已经使用的意愿点
 
-    return initial_point - cost_point
+    if cost_point:
+        # cost_point可能为None
+        return initial_point - cost_point['bidding__sum']
+    else:
+        return initial_point
 
 
 def registration_status_check(course_status, cur_status, to_status):
@@ -352,27 +355,38 @@ def registration_status_change(course_id, user, action=None):
         context["warn_message"] = "非法的选课状态修改"
         return context
 
-    if remaining_willingness_point(user) < course.bidding:
-        context["warn_message"] = "剩余意愿点不足"
+    # 暂时不使用意愿点选课
+
+    # if (course_status == Course.Status.STAGE1
+    #         and remaining_willingness_point(user) < course.bidding):
+    #     context["warn_message"] = "剩余意愿点不足"
 
     # 更新选课状态
-
     try:
         with transaction.atomic():
-            # 这个更新应该不存在并发的可能，因为不同用户之间不会互相干扰
-            CourseParticipant.objects.filter(
-                course__id=course_id, person=user).update(status=to_status)
             if to_status == CourseParticipant.Status.UNSELECT:
-                # 加锁（可能两个人同时选择一门课）
                 Course.objects.filter(id=course_id).select_for_update().update(
                     current_participants=F("current_participants") - 1)
+                CourseParticipant.objects.filter(
+                    course__id=course_id, person=user).update(status=to_status)
                 context["warn_code"] = 2
                 context["warn_message"] = "成功取消选课"
             else:
-                Course.objects.filter(id=course_id).update(
-                    current_participants=F("current_participants") + 1)
-                context["warn_code"] = 2
-                context["warn_message"] = "选课成功"
+                # 处理并发问题
+                course = Course.objects.select_for_update().get(id=course_id)
+                if course.current_participants < course.capacity:
+                    course.current_participants = course.current_participants + 1
+                    course.save()
+
+                    # 由于不同用户之间的状态不共享，这个更新应该可以不加锁
+                    CourseParticipant.objects.filter(
+                        course__id=course_id,
+                        person=user).update(status=to_status)
+                    context["warn_code"] = 2
+                    context["warn_message"] = "选课成功"
+                else:
+                    context["warn_code"] = 1
+                    context["warn_message"] = "选课人数已满"
     except:
         return context
     return context
@@ -433,9 +447,17 @@ def course2Display(courses, user, detail=False):
 
         course_info["status"] = course.get_status_display()  # 课程所处的选课阶段
 
-        if not user.is_staff:
+        if user.identity == NaturalPerson.Identity.STUDENT:
+            # 当前学生的选课状态
             course_info["student_status"] = course.participant_set.get(
-                course=course, person=user).get_status_display()  # 当前学生的选课状态
+                course=course, person=user).get_status_display()
+
+            # 课程是否选满
+            # TODO task 10 ljy 2022-02-08
+            # 和前端对接，如果课程已经选满，应该禁用对应的选课按钮
+
+            course_info["is_full"] = (True if course.current_participants >=
+                                      course.capacity else False)
 
         course_time = []
         for time in course.time_set.all():
