@@ -19,6 +19,7 @@ long_request = requests.session()
 
 # 获取用户头像的函数,返回路径&是否得到真正头像
 def img_get_func(request):
+    raise NotImplementedError
     if request.session.get("img_path", None) is not None:
         # 有缓存
         return request.session['img_path'], False
@@ -35,8 +36,8 @@ def img_get_func(request):
             img_get = long_request.post(url=urls, verify=False, timeout=3)
 
             if img_get.status_code == 200:  # 接收到了学生信息
-                img_path = eval(
-                    img_get.content.decode('unicode-escape'))['path']
+                import json
+                img_path = json.loads(img_get.content)['path']
                 img_path = global_info.login_url + img_path
                 # 存入缓存
                 request.session['img_path'] = img_path

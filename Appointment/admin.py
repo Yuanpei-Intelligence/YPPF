@@ -447,9 +447,8 @@ class AppointAdmin(admin.ModelAdmin):
                             0
                         })
                         if feedback.status_code != 200:  # 成功预约
-                            warning = eval(
-                                feedback.content.decode(
-                                    'unicode-escape'))['statusInfo']['message']
+                            import json
+                            warning = json.loads(feedback.content)['statusInfo']['message']
                             print(warning)
                             raise Exception(warning)
                         '''
