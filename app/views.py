@@ -442,43 +442,95 @@ def stuinfo(request, name=None):
         #学生学时查询
         if user_type == "Person":
             course_me = CourseRecord.objects.filter(person_id=oneself)
+            # 把当前学期的活动去除
             course_me_past = (
                 course_me.exclude(
                     year=int(local_dict["semester_data"]["year"]), 
                     semester=local_dict["semester_data"]["semester"])
-            ) # 把当前学期的活动去除
+            )
+
+            # 无效学时，在前端呈现
+            course_no_use = (
+                course_me_past
+                .filter(total_hours__lt = 8)
+                .exclude(year = 20, semester = "Fall", total_hours__gte = 6)
+                .exclude(year = 21, semester = "Spring", total_hours__gte = 6)
+            )
+            
+            # 特判，需要一定时长才能计入总学时
+            course_me_past = (
+                course_me_past
+                .exclude(year = 20, semester = "Fall", total_hours__lt = 6)
+                .exclude(year = 21, semester = "Spring", total_hours__lt = 6)
+                .exclude(year = 21, semester = "Fall", total_hours__lt = 8) # 21秋开始，需要至少8学时
+                .exclude(year__gt = 21, total_hours__lt = 8)
+            )
+
+            # 计算总学时
             total_hours_me = course_me_past.aggregate(hours_me=Sum('total_hours'))
             course_me_past = course_me_past.order_by('year','semester')
             total_hours_sum = total_hours_me['hours_me']
             if total_hours_sum == None:
                 total_hours_sum = 0
 
-            hour_MORAL = course_me_past.filter(course__type = Course.CourseType.MORAL).aggregate(hours_me=Sum('total_hours'))
+            # 计算没有对应Course的学时
+            hour_NOTYPE = (
+                course_me_past
+                .filter(course__isnull = True)
+                .aggregate(hours_me=Sum('total_hours'))
+            )
+            if hour_NOTYPE['hours_me'] == None:
+                hour_NOTYPE['hours_me'] = 0
+            total_hours_NOTYPE = hour_NOTYPE['hours_me']
+
+            # 分别计算德智体美劳每个类型的学时
+            hour_MORAL = (
+                course_me_past
+                .filter(course__type = Course.CourseType.MORAL)
+                .aggregate(hours_me=Sum('total_hours'))
+            )
             if hour_MORAL['hours_me'] == None:
                 hour_MORAL['hours_me'] = 0
             total_hours_MORAL = hour_MORAL['hours_me']
 
-            hour_INTELLECTUAL = course_me_past.filter(course__type = Course.CourseType.INTELLECTUAL).aggregate(hours_me=Sum('total_hours'))
+            hour_INTELLECTUAL = (
+                course_me_past
+                .filter(course__type = Course.CourseType.INTELLECTUAL)
+                .aggregate(hours_me=Sum('total_hours'))
+            )
             if hour_INTELLECTUAL['hours_me'] == None:
                 hour_INTELLECTUAL['hours_me'] = 0
             total_hours_INTELLECTUAL = hour_INTELLECTUAL['hours_me']
 
-            hour_PHYSICAL = course_me_past.filter(course__type = Course.CourseType.PHYSICAL).aggregate(hours_me=Sum('total_hours'))
+            hour_PHYSICAL = (
+                course_me_past
+                .filter(course__type = Course.CourseType.PHYSICAL)
+                .aggregate(hours_me=Sum('total_hours'))
+            )
             if hour_PHYSICAL['hours_me'] == None:
                 hour_PHYSICAL['hours_me'] = 0
             total_hours_PHYSICAL = hour_PHYSICAL['hours_me']
 
-            hour_AESTHETICS = course_me_past.filter(course__type = Course.CourseType.AESTHETICS).aggregate(hours_me=Sum('total_hours'))
+            hour_AESTHETICS = (
+                course_me_past
+                .filter(course__type = Course.CourseType.AESTHETICS)
+                .aggregate(hours_me=Sum('total_hours'))
+            )
             if hour_AESTHETICS['hours_me'] == None:
                 hour_AESTHETICS['hours_me'] = 0
             total_hours_AESTHETICS = hour_AESTHETICS['hours_me']
 
-            hour_LABOUR = course_me_past.filter(course__type = Course.CourseType.LABOUR).aggregate(hours_me=Sum('total_hours'))
+            hour_LABOUR = (
+                course_me_past
+                .filter(course__type = Course.CourseType.LABOUR)
+                .aggregate(hours_me=Sum('total_hours'))
+            )
             if hour_LABOUR['hours_me'] == None:
                 hour_LABOUR['hours_me'] = 0
             total_hours_LABOUR = hour_LABOUR['hours_me']
 
-            if int(oneself.stu_grade) == 2019: # 每个人的规定学时，按年级讨论
+            # 每个人的规定学时，按年级讨论
+            if int(oneself.stu_grade) == 2019:
                 ruled_hours = 32
             elif int(oneself.stu_grade) <= 2018:
                 ruled_hours = 0
@@ -490,24 +542,28 @@ def stuinfo(request, name=None):
                 actual_total_hours = ruled_hours # 用于算百分比的实际总学时（考虑到可能会超学时）
             # 如果actual_total_hours=0，说明一个课程也没有参加
 
-            if actual_total_hours == 0:
+            if actual_total_hours == 0: # 防止除零出现
                 progress_MORAL = 0
                 progress_INTELLECTUAL = 0
                 progress_PHYSICAL = 0
                 progress_AESTHETICS = 0
                 progress_LABOUR = 0
-            else:
+                progress_NOTYPE = 0
+            else: # 计算进度
                 progress_MORAL = total_hours_MORAL / actual_total_hours
                 progress_INTELLECTUAL = total_hours_INTELLECTUAL / actual_total_hours
                 progress_PHYSICAL = total_hours_PHYSICAL / actual_total_hours
                 progress_AESTHETICS = total_hours_AESTHETICS / actual_total_hours
                 progress_LABOUR = total_hours_LABOUR / actual_total_hours
+                progress_NOTYPE = total_hours_NOTYPE / actual_total_hours
             
+            # 换成百分比
             progress_MORAL = progress_MORAL * 100
             progress_INTELLECTUAL = progress_INTELLECTUAL * 100
             progress_PHYSICAL = progress_PHYSICAL * 100
             progress_AESTHETICS = progress_AESTHETICS * 100
             progress_LABOUR = progress_LABOUR * 100
+            progress_NOTYPE = progress_NOTYPE * 100
         
         
         participants = Participant.objects.activated().filter(person_id=person)

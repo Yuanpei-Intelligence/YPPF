@@ -537,6 +537,10 @@
                                  aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"
                                  style="width: {{progress_LABOUR}}%; border-radius:0; background-color:#f29c9c;">
                             </div>
+                            <div class="progress-bar progress-bar-info" role="progressbar"
+                                 aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"
+                                 style="width: {{progress_NOTYPE}}%; border-radius:0; background-color:#9E9EA3;">
+                            </div>
                         </div>
                         <!-- <div class="progress">
                             <div class="progress-bar" role="progressbar" aria-valuenow="60" 
@@ -544,7 +548,7 @@
                                 <span class="sr-only">{{progress_me}}% 完成</span>
                             </div>
                         </div> -->
-                        {% if course_me_past %}
+                        {% if course_me_past or course_no_use %}
                             <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js">
                             </script>
                             <script>
@@ -555,7 +559,7 @@
                             });
                             </script>
                             <p class="text-left">
-                                已有学时 / 规定学时 ： {{total_hours_sum}} / {{ruled_hours}} 
+                                已有学时 / 规定学时 ： {{total_hours_sum|floatformat:-1}} / {{ruled_hours}} 
                             </p>
                             <p class="text-right">
                                 <button type="button" class="btn btn-info mb-4 mr-2">隐藏/显示详细学时</button>
@@ -565,16 +569,26 @@
                                     <th style='text-align: center;'>课程名称</th>
                                     <th style='text-align: center;'>学年</th>
                                     <th style='text-align: center;'>学期</th>
+                                    <th style='text-align: center;'>参与次数</th>
                                     <th style='text-align: center;'>获得学时</th>
                                     <th style='text-align: center;'>课程类型</th>
                                 </thead>
                                 <tbody>
                                     {% for c in course_me_past %}
                                         <tr>
-                                            <td style='text-align: center;'>{{c.course.name}}</td>
+                                            {% if c.course == null %}
+                                                <td style='text-align: center;'>{{c.extra_name}}</td>
+                                            {% else %}
+                                                <td style='text-align: center;'>{{c.course.name}}</td>
+                                            {% endif %}
                                             <td style='text-align: center;'>{{c.year}}</td>
-                                            <td style='text-align: center;'>{{c.semester}}</td>
-                                            <td style='text-align: center;'>{{c.total_hours}}</td>
+                                            {% if c.semester == "Spring" %}
+                                                <td style='text-align: center;'>春季</td>
+                                            {% else %}
+                                                <td style='text-align: center;'>秋季</td>
+                                            {% endif %}
+                                            <td style='text-align: center;'>{{c.attend_times}}</td>
+                                            <td style='text-align: center;'>{{c.total_hours|floatformat:-1}}</td>
                                             {% if c.course.type == 0 %}
                                                 <td style="text-align: center; color:#0092c7;">{{c.course.get_type_display}}</td>
                                             {% endif %}
@@ -590,10 +604,32 @@
                                             {% if c.course.type == 4 %}
                                                 <td style="text-align: center; color:#f29c9c;">{{c.course.get_type_display}}</td>
                                             {% endif %}
+                                            {% if c.course == null %}
+                                                <td style="text-align: center; color:#9E9EA3;">未分类</td>
+                                            {% endif %}
                                         </tr>
+                                    {% endfor %}
+                                    {% for c in course_no_use %}
+                                    <tr bgcolor = "#F1F3F4">
+                                        {% if c.course == null %}
+                                                <td style='text-align: center; color:grey;'>{{c.extra_name}}</td>
+                                            {% else %}
+                                            <td style='text-align: center; color:grey;'>{{c.course.name}}</td>
+                                        {% endif %}
+                                        <td style='text-align: center; color:grey;'>{{c.year}}</td>
+                                        {% if c.semester == "Spring" %}
+                                                <td style='text-align: center; color:grey;'>春季</td>
+                                        {% else %}
+                                                <td style='text-align: center; color:grey;'>秋季</td>
+                                        {% endif %}
+                                        <td style='text-align: center;color:grey;'>{{c.attend_times}}</td>
+                                        <td style='text-align: center; color:grey;'>{{c.total_hours|floatformat:-1}}</td>
+                                        <td style='text-align: center; color:grey;'>无效学时</td>
+                                    </tr>
                                     {% endfor %}
                                 </tbody>
                             </table>
+                            <p>注：根据学院规定，同一门书院课程须完成8学时及以上，才可以认定时长（20秋及21春为6学时及以上）。</p>
                             <br>
                         {% else %}
                             <p class="text-left"> 已有学时 / 规定学时 ： {{total_hours_sum}} / {{ruled_hours}} </p>
