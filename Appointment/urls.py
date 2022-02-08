@@ -25,7 +25,7 @@ urlpatterns = [
     # 预约操作
     #path('add-appoint', views.addAppoint, name='addAppoint'),
     path('cancel-appoint', views.cancelAppoint, name='cancelAppoint'),
-    path('get-appoint', views.getAppoint, name='getAppoint'),
+    # path('get-appoint', views.getAppoint, name='getAppoint'),
     #path('get-violated', views.getViolated, name='getViolated'),
     #path('check-time', views.checkTime, name='checkTime'),
 
