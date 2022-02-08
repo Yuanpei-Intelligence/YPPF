@@ -9,7 +9,7 @@ from app.models import (
     Participant,
     Reimbursement,
 )
-from app.course_activity_utils import (
+from app.course_utils import (
     ActivityException,
     create_single_course_activity,
     modify_course_activity,
@@ -67,7 +67,7 @@ def editCourseActivity(request, aid):
         return EXCEPT_REDIRECT
 
     if request.method == "POST" and request.POST:
-        # 仅这几个阶段可以修改 # FIXME: ?
+        # 仅这几个阶段可以修改？
         if (
                 activity.status != Activity.Status.REVIEWING and
                 activity.status != Activity.Status.APPLYING and
@@ -148,13 +148,13 @@ def addSingleCourseActivity(request):
                 if not created:
                     return redirect(message_url(
                         succeed('存在信息相同的课程活动，已为您自动跳转!'),
-                        f'/viewActivity/{aid}')) # 可以重定向到书院课程聚合页面?
+                        f'/viewActivity/{aid}')) # 可以重定向到书院课程聚合页面
                 return redirect(f"/editCourseActivity/{aid}")
         except Exception as e:
             log.record_traceback(request, e)
             return EXCEPT_REDIRECT
     
-    # 下面的操作基本如无特殊说明，都是准备前端使用量
+    # 前端使用量
     defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG", "id": f"picture{i+1}"} for i in range(5)]
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava() 
@@ -162,5 +162,6 @@ def addSingleCourseActivity(request):
     available_teachers = NaturalPerson.objects.teachers()
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     bar_display = utils.get_sidebar_and_navbar(request.user, "发起单次课程活动")
+    edit = False # 前端据此区分是编辑还是创建
     
     return render(request, "lesson_add.html", locals())

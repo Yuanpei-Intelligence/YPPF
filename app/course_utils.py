@@ -2,20 +2,17 @@ from unicodedata import category
 from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
-    Position,
     Organization,
-    Position,
     Activity,
-    TransferRecord,
-    Participant,
     Notification,
     ActivityPhoto,
+    Position,
+    Participant,
 )
 from django.contrib.auth.models import User
 from app.utils import get_person_or_org, if_image
 from app.notification_utils import(
     notification_create,
-    bulk_notification_create,
     notification_status_change,
 )
 from app.wechat_send import WechatApp, WechatMessageLevel
@@ -25,16 +22,8 @@ from app.activity_utils import (
     check_ac_time,
     notifyActivity,
 )
-import io
-import os
-import base64
-import qrcode
 
-from random import sample
 from datetime import datetime, timedelta
-from boottest import local_dict
-from django.db.models import Sum
-from django.db.models import F
 
 from app.scheduler import scheduler
 
@@ -49,8 +38,6 @@ def course_activity_base_check(request):
     assert len(context["title"]) > 0
     # assert len(context["introduction"]) > 0 # 暂定不需要简介
     assert len(context["location"]) > 0
-
-    context["examine_teacher"] = request.POST.get("examine_teacher")
 
     # 时间
     act_start = datetime.strptime(request.POST["lesson_start"], "%Y-%m-%d %H:%M")  # 活动开始时间
@@ -87,9 +74,9 @@ def create_single_course_activity(request):
     if len(old_ones):
         assert len(old_ones) == 1, "创建活动时，已存在的相似活动不唯一"
         return old_ones[0].id, False
-    # 审批老师存在
+    # 默认刘欣悦老师审核
     examine_teacher = NaturalPerson.objects.get(
-        name=context["examine_teacher"], identity=NaturalPerson.Identity.TEACHER)
+        name='刘欣悦', identity=NaturalPerson.Identity.TEACHER)
     # 检查完毕，创建活动
     org = get_person_or_org(request.user, "Organization")
 
@@ -106,6 +93,35 @@ def create_single_course_activity(request):
                     # apply_reason, inner, source, end_before均为default
                 )
     activity.need_checkin = True # 默认需要签到
+
+    activity.recorded = True
+    activity.status = Activity.Status.APPLYING
+
+    # 让课程小组成员参与本活动
+    
+    positions = Position.objects.activated().filter(org=activity.organization_id)
+    for p in positions:
+        activity.current_participants += 1
+        person = p.person
+        participant = Participant.objects.create(
+            activity_id=activity, person_id=person
+        )
+        participant.status = Participant.AttendStatus.APLLYSUCCESS
+        participant.save()
+    participant
+    activity.save()
+
+    notifyActivity(activity.id, "newActivity")
+
+    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
+        run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
+    # 活动状态修改
+    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+        run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
+    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
+        run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
+    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
+        run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
     activity.save()
 
     # 使用一张默认图片以便viewActivity, examineActivity等页面展示

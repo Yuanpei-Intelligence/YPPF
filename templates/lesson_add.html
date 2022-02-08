@@ -63,25 +63,6 @@
                                     <input type="text" id="title" name="title" class="form-control"  
                                            maxlength="50" onclick="fill_value(this)" required="required"
                                            placeholder="在这里写下您要开设的课程名称吧~（必填）" >
-                                </div>
-                                <div class="form-group">
-                                    <label>审核老师</label>
-                                    <select name="examine_teacher" id="examine_teacher" name="examine_teacher"
-                                            class="form-control selectpicker">
-                                        <option value="" selected disabled>
-                                            选择审核老师
-                                        </option>
-                                        <option value="刘欣悦">刘欣悦</option>
-                                    </select>
-                                </div> 
-                                <div class="form-check"
-                                    style="align-content: center; vertical-align: middle;">
-                                    <input class="form-check-input" type="checkbox"
-                                        value="true" id="need_checkin"
-                                        name="need_checkin" checked="true">
-                                    <label class="form-check-label" for="defaultCheck1">
-                                        需要签到?
-                                    </label>
                                 </div>   
                             </div>
                             <div id="lesson-info">
@@ -163,11 +144,17 @@
                                 </div>
                                 
                             </div>
-                            
+                            {% if edit %}
                             <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" 
                                     onclick="return confirm('确认修改活动信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
                                 修改课程信息
                             </button>
+                            {% else %}
+                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" 
+                                    onclick="return confirm('确认创建活动？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
+                                创建单次课程活动
+                            </button> 
+                            {% endif %}
 
                         </form>
                     </div>

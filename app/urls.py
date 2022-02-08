@@ -18,7 +18,7 @@ from . import (
     activity_views,
     reimbursement_views,
     YQPoint_views,
-    course_activity_views, 
+    course_views, 
 )
 from django.conf import settings
 
@@ -74,8 +74,8 @@ urlpatterns = [
     path("modifyEndActivity/", reimbursement_views.modifyEndActivity, name="modifyEndActivity"),
 ] + [
     # 书院课程活动（开设单次、修改单次）
-    path("addSingleCourseActivity/", course_activity_views.addSingleCourseActivity, name="addSingleCourseActivity"),
-    path("editCourseActivity/<str:aid>", course_activity_views.editCourseActivity, name="editCourseActivity"),
+    path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
+    path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
 
 ] + [
     # 组织相关操作
