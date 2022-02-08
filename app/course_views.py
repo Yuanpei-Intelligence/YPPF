@@ -252,14 +252,17 @@ def selectCourse(request):
 
     me = NaturalPerson.objects.get(person_id=request.user)
 
+    # 判断用户是否为教师
+    is_staff = (True
+                if me.identity == NaturalPerson.Identity.TEACHER else False)
+    html_display["is_staff"] = is_staff
+
     # TODO: task 10 ljy 2022-02-07
     # 和编写开课页面的同学对接，尽量在开课的同时完成状态创建，不要每次访问都检查一遍。
 
-    if not me.is_staff:
+    if not is_staff:
         registration_status_create(me)  # 创建选课状态
-        html_display["willing_point"] = remaining_willingness_point(me)
-    else:
-        html_display["is_staff"] = True
+        # html_display["willing_point"] = remaining_willingness_point(me)
 
     # 学生选课或者取消选课
 
@@ -306,7 +309,7 @@ def selectCourse(request):
             return JsonResponse({"success": False})
 
     html_display["is_myself"] = True
-    
+
     # 当前用户已选和未选的课，已选对应的状态有: SELECT和SUCCESS，未选对应的状态有UNSELECT和FAILED
 
     unselected_course = Course.objects.unselected(me)
@@ -321,7 +324,7 @@ def selectCourse(request):
     bar_display = utils.get_sidebar_and_navbar(request.user, "书院课程")
 
     # TODO: task 10 ljy 2022-02-07
-    # 和前端对接: 
+    # 和前端对接:
     # 1、点击课程名跳转到课程详情页（viewCourse对应的页面）
     # 2、根据选课阶段的不同，每门课对应的按钮要改变。例如某门课处于非选课阶段，
     # 那么它对应的按钮应该处于非活跃状态。
@@ -360,7 +363,7 @@ def viewCourse(request):
     me = utils.get_person_or_org(request.user, user_type)
     course_display = course2Display(course, me, detail=True)
 
-    # TODO: task 10 ljy 2022-02-07 
+    # TODO: task 10 ljy 2022-02-07
     # 和前端对接: 按返回按钮可以redirect到selectCourse页面
 
     return HttpResponse()
