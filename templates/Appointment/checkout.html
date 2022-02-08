@@ -8,41 +8,41 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
 
     <!-- Favicons -->
-    <link href="{% static 'assets/img/yp_favicon.png' %}" rel="icon">
+    <link href="{% static 'Appointment/assets/img/yp_favicon.png' %}" rel="icon">
 
     <!-- Bootstrap CSS -->
-    <link rel="stylesheet" href="{% static 'assets/css/bootstrap.min.css' %}"><!--http://cdn.bootstrapmb.com/bootstrap/4.4.0/css/bootstrap.min.css-->
+    <link rel="stylesheet" href="{% static 'Appointment/assets/css/bootstrap.min.css' %}"><!--http://cdn.bootstrapmb.com/bootstrap/4.4.0/css/bootstrap.min.css-->
 
     <!-- Fontawesome CSS -->
-    <link rel="stylesheet" href="{% static 'assets/plugins/fontawesome/css/fontawesome.min.css' %}">
-    <link rel="stylesheet" href="{% static 'assets/plugins/fontawesome/css/all.min.css' %}">
+    <link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fontawesome/css/fontawesome.min.css' %}">
+    <link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fontawesome/css/all.min.css' %}">
 
 
     <!-- Main CSS -->
-    <link rel="stylesheet" href="{% static 'assets/css/style.css' %}">
+    <link rel="stylesheet" href="{% static 'Appointment/assets/css/style.css' %}">
 
     <!-- jQuery -->
-    <script src="{% static 'assets/js/jquery.min.js' %}"></script>
+    <script src="{% static 'Appointment/assets/js/jquery.min.js' %}"></script>
 
     <!-- Bootstrap Core JS -->
-    <script src="{% static 'assets/js/popper.min.js' %}"></script>
-    <script src="{% static 'assets/js/bootstrap.min.js' %}"></script><!--http://cdn.bootstrapmb.com/bootstrap/4.4.0/js/bootstrap.min.js-->
+    <script src="{% static 'Appointment/assets/js/popper.min.js' %}"></script>
+    <script src="{% static 'Appointment/assets/js/bootstrap.min.js' %}"></script><!--http://cdn.bootstrapmb.com/bootstrap/4.4.0/js/bootstrap.min.js-->
 
     <!-- Sticky Sidebar JS -->
-    <script src="{% static 'assets/plugins/theia-sticky-sidebar/ResizeSensor.js' %}"></script>
-    <script src="{% static 'assets/plugins/theia-sticky-sidebar/theia-sticky-sidebar.js' %}"></script>
+    <script src="{% static 'Appointment/assets/plugins/theia-sticky-sidebar/ResizeSensor.js' %}"></script>
+    <script src="{% static 'Appointment/assets/plugins/theia-sticky-sidebar/theia-sticky-sidebar.js' %}"></script>
 
     <!-- Custom JS -->
-    <script src="{% static 'assets/js/script.js' %}"></script>
+    <script src="{% static 'Appointment/assets/js/script.js' %}"></script>
     <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
     <!--[if lt IE 9]>
-			<script src="{% static 'assets/js/html5shiv.min.js' %}"></script>
-			<script src="{% static 'assets/js/respond.min.js' %}"></script>
+			<script src="{% static 'Appointment/assets/js/html5shiv.min.js' %}"></script>
+			<script src="{% static 'Appointment/assets/js/respond.min.js' %}"></script>
 		<![endif]-->
 
     <!-- Multiselect CSS-->
-    <link href="{% static 'assets/select2/css/select2.min.css' %}" rel="stylesheet" />
-    <script src="{% static 'assets/select2/js/select2.min.js' %}"></script>
+    <link href="{% static 'Appointment/assets/select2/css/select2.min.css' %}" rel="stylesheet" />
+    <script src="{% static 'Appointment/assets/select2/js/select2.min.js' %}"></script>
     <script text="text/javascript">
         $.fn.select2.defaults.set("theme", "classic");
         var stu_data = {{ js_stu_list| safe}};
@@ -77,11 +77,11 @@
     <!--<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/js/select2.min.js"></script>
 	-->
-    <!--<script type="text/javascript" src="{% static 'assets/js/jquery-2.1.3.min.js' %}"></script>
-    <script type="text/javascript" src="{% static 'assets/js/bootstrap-3.3.2.min.js' %}"></script>
+    <!--<script type="text/javascript" src="{% static 'Appointment/assets/js/jquery-2.1.3.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'Appointment/assets/js/bootstrap-3.3.2.min.js' %}"></script>
 	-->
-    <!--<link rel="stylesheet" href="{% static 'assets/css/bootstrap-multiselect.css' %}" type="text/css" />
-    <script type="text/javascript" src="{% static 'assets/js/bootstrap-multiselect.js' %}"></script>
+    <!--<link rel="stylesheet" href="{% static 'Appointment/assets/css/bootstrap-multiselect.css' %}" type="text/css" />
+    <script type="text/javascript" src="{% static 'Appointment/assets/js/bootstrap-multiselect.js' %}"></script>
 	-->
 
 </head>
@@ -133,13 +133,13 @@
                                 <div class="booking-doc-info">
 
                                     <a href="" class="booking-doc-img">
-                                        <img src="{% static 'assets/img/RoomIcon/' %}{{room_object.Rid}}.png"
+                                        <img src="{% static 'Appointment/assets/img/RoomIcon/' %}{{room_object.Rid}}.png"
                                             alt="User Image">
                                     </a>
 
                                     <!--
                                     <div class="doctor-img">
-											<img src="{% static 'assets/img/RoomIcon/' %}{{room_object.Rid}}.png"
+											<img src="{% static 'Appointment/assets/img/RoomIcon/' %}{{room_object.Rid}}.png"
 												class="img-fluid" alt="User Image">
                                         </div>
                                         -->
@@ -309,7 +309,7 @@
                     <div class="row">
                         <div class=" col-lg-1">
                             <div class="footer-logo">
-                                <img src="{% static 'assets/img/yuan_logo_white.png' %} " alt="logo">
+                                <img src="{% static 'Appointment/assets/img/yuan_logo_white.png' %} " alt="logo">
                             </div>
 
                         </div>
