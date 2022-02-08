@@ -139,6 +139,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 # TIME_ZONE = 'UTC'
 
+
 LANGUAGE_CODE = "zh-Hans"
 
 TIME_ZONE = "Asia/Shanghai"
