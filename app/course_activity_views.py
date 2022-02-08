@@ -184,7 +184,8 @@ def editCourseActivity(request, aid):
     # else:
     #     photo_id = "picture" + os.path.basename(photo).split(".")[0]
 
-
+    # print(title, location, status, examine_teacher)
+    edit = True
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     
     bar_display = utils.get_sidebar_and_navbar(request.user, "修改单次课程活动")
@@ -246,8 +247,7 @@ def addSingleCourseActivity(request):
     bar_display = utils.get_sidebar_and_navbar(request.user, "发起单次课程活动")
     
     return render(request, "lesson_add.html", locals())
-    
-    
+
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")

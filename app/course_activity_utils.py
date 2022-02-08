@@ -210,13 +210,13 @@ def modify_course_activity(request, activity):
 
     old_title = activity.title
     activity.title = context["title"]
-    activity.introduction = context["introduction"]
+    # activity.introduction = context["introduction"]
     old_location = activity.location
     activity.location = context["location"]
     # activity.capacity = context["capacity"]
 
-    activity.URL = context["url"]
-    activity.budget = context["budget"]
+    # activity.URL = context["url"]
+    # activity.budget = context["budget"]
     old_start = activity.start
     activity.start = context["start"]
     old_end = activity.end
@@ -238,6 +238,7 @@ def modify_course_activity(request, activity):
     #     activity.inner = True
     # else:
     #     activity.inner = False
+    print(activity.location)
     activity.save()
 
     # 图片
@@ -283,3 +284,45 @@ def modify_course_activity(request, activity):
     '''
 
     notifyActivity(activity.id, "modification_par", "\n".join(to_participants)) # TODO: 通知
+
+def cancel_course_activity(request, activity):
+
+    if activity.status == Activity.Status.REVIEWING:
+        activity.status = Activity.Status.ABORT
+        activity.save()
+        # 修改老师的通知
+        notification = Notification.objects.get(
+            relate_instance=activity,
+            status=Notification.Status.UNDONE
+        )
+        notification_status_change(notification, Notification.Status.DELETE)
+        return
+
+    if activity.status == Activity.Status.PROGRESSING:
+        if activity.start.day == datetime.now().day and datetime.now() < activity.start + timedelta(days=1):
+            pass
+        else:
+            raise ActivityException("活动已于一天前开始，不能取消。")
+
+    if activity.status == Activity.Status.CANCELED:
+        raise ActivityException("活动已取消。")
+
+    org = Organization.objects.select_for_update().get(
+                organization_id=request.user
+            )
+
+    activity.status = Activity.Status.CANCELED
+    notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
+    notification = Notification.objects.get(
+        relate_instance=activity,
+        typename=Notification.Type.NEEDDO
+    )
+    notification_status_change(notification, Notification.Status.DELETE)
+
+    scheduler.remove_job(f"activity_{activity.id}_remind")
+    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
+    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
+    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+
+    activity.save()
+
