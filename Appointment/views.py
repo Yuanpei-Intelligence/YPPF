@@ -115,9 +115,11 @@ def cameracheck(request):   # 摄像头post的后端函数
 
     # 获取摄像头信号，得到rid,最小人数
     try:
+        # TODO: task 0 服务器的安全性检查
         ip = request.META.get("REMOTE_ADDR")
         temp_stu_num = int(
-            eval(request.body.decode('unicode-escape'))['body']['people_num'])
+            # eval(request.body.decode('unicode-escape'))['body']['people_num'])
+            json.loads(request.body)['body']['people_num'])
         rid = iptoroom(ip.split(".")[3])  # !!!!!
         # rid = 'B221'  # just for debug
         room = Room.objects.get(Rid=rid)  # 获取摄像头信号
@@ -509,7 +511,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
                     return JsonResponse({"code": 0, "openDoor": "true"}, status=200)
 
                 else:   # 无法预约（比如没信用分了）
-                    message = json.loads(response.content.decode())[
+                    message = json.loads(response.content)[
                         "statusInfo"]["message"]
                     cardcheckinfo_writer(
                         student, room, False, False, f"刷卡拒绝：临时预约失败（{message}）")
@@ -930,8 +932,7 @@ def check_out(request):  # 预约表单提交
                 ) + "?warn_code=2&warning=预约" + room_object.Rtitle + "成功!"
                 return redirect(urls)
             else:
-                add_dict = eval(
-                    response.content.decode('unicode-escape'))['statusInfo']
+                add_dict = json.loads(response.content)['statusInfo']
                 warn_code = 1
                 warning = add_dict['message']
 
