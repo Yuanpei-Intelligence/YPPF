@@ -23,6 +23,7 @@ from app.activity_utils import (
     changeActivityStatus, 
     ActivityException, 
     check_ac_time,
+    notifyActivity,
 )
 import io
 import os
@@ -38,107 +39,48 @@ from django.db.models import F
 from app.scheduler import scheduler
 
 def course_activity_base_check(request):
-    '''正常情况下检查出错误会抛出不含错误信息的AssertionError，不抛出ActivityException
-    基本完工'''
+    '''检查课程活动，是activity_base_check的简化版'''
 
     context = dict()
 
-    # title, introduction, location 创建时不能为空
     context["title"] = request.POST["title"]
-    # context["introduction"] = request.POST["introduction"] # TODO
+    # context["introduction"] = request.POST["introduction"] # 暂定不需要简介
     context["location"] = request.POST["location"]
     assert len(context["title"]) > 0
-    # assert len(context["introduction"]) > 0 # TODO
+    # assert len(context["introduction"]) > 0 # 暂定不需要简介
     assert len(context["location"]) > 0
 
-    
-
-    # url，就不支持了 http 了，真的没必要
-    # context["url"] = request.POST["URL"]
-    # if context["url"] != "":
-    #     assert context["url"].startswith("http://") or context["url"].startswith("https://")
-
-    # 预算
-    # 在审核通过后不可修改
-    # context["budget"] = float(request.POST["budget"]) # FIXME:??
-    
-    # 向学院申请元气值 # FIXME:??
-    # from_college = request.POST["from_college"]
-    # if from_college == "1":
-    #     context["from_college"] = True
-    # elif from_college == "0":
-    #     context["from_college"] = False
-
-    # examine_teacher 需要特殊检查
     context["examine_teacher"] = request.POST.get("examine_teacher")
-    # 申请理由 # FIXME:??
-    # context["apply_reason"] = request.POST.get("apply_reason", "")
-    # if context["from_college"]:
-    #     assert len(context["apply_reason"]) > 0
 
     # 时间
-    act_start = datetime.strptime(request.POST["lesson_start"], "%Y-%m-%d %H:%M")  # 活动报名时间（？应该是活动开始时间）
-    act_end = datetime.strptime(request.POST["lesson_end"], "%Y-%m-%d %H:%M")  # 活动报名结束时间（？应该是活动结束时间）
+    act_start = datetime.strptime(request.POST["lesson_start"], "%Y-%m-%d %H:%M")  # 活动开始时间
+    act_end = datetime.strptime(request.POST["lesson_end"], "%Y-%m-%d %H:%M")  # 活动结束时间
     context["start"] = act_start
     context["end"] = act_end
     assert check_ac_time(act_start, act_end)
-    # 需要签到
-    if request.POST.get("need_checkin"):
-        context["need_checkin"] = True
 
-    # 价格 # FIXME:??
-    # aprice = float(request.POST["aprice"])
-    # assert int(aprice * 10) / 10 == aprice
-    # assert aprice >= 0
-    # context["aprice"] = aprice
-
-    # 图片 优先使用上传的图片 # FIXME:??
-    # announcephoto = request.FILES.getlist("images")
-    # if len(announcephoto) > 0:
-    #     pic = announcephoto[0]
-    #     assert if_image(pic) == 2
-    # else:
-    #     if request.POST.get("picture1"):
-    #         pic = request.POST.get("picture1")
-    #     elif request.POST.get("picture2"):
-    #         pic = request.POST.get("picture2")
-    #     elif request.POST.get("picture3"):
-    #         pic = request.POST.get("picture3")
-    #     elif request.POST.get("picture4"):
-    #         pic = request.POST.get("picture4")
-    #     else:
-    #         pic = request.POST.get("picture5")
-
-    # context["pic"] = pic
-
+    context["need_checkin"] = True # 默认需要签到
 
     return context
 
 
 def create_single_course_activity(request):
     '''
-    检查活动，合法时寻找该活动，不存在时创建
-    返回(activity.id, created)
-
-    ---
-    检查不合格时抛出AssertionError
-    - 不再假设ActivityException特定语义，暂不抛出该类异常
-
-    基本完工
+    创建单次课程活动，是create_activity的简化版
     '''
     context = course_activity_base_check(request)
     # 查找是否有类似活动存在
     old_ones = Activity.objects.activated().filter(
         title=context["title"],
         start=context["start"],
-        # introduction=context["introduction"], # TODO
+        # introduction=context["introduction"], # 暂定不需要简介
         location=context["location"]
     )
     if len(old_ones) == 0:
         old_ones = Activity.objects.filter(
             title = context["title"],
             start = context["start"],
-            # introduction = context["introduction"], # TODO
+            # introduction = context["introduction"], # 暂定不需要简介
             location = context["location"],
             status = Activity.Status.REVIEWING,
         )
@@ -155,35 +97,28 @@ def create_single_course_activity(request):
                     title=context["title"],
                     organization_id=org,
                     examine_teacher=examine_teacher,
-                    # introduction=context["introduction"],# TODO
+                    # introduction=context["introduction"],# 暂定不需要简介
                     location=context["location"],
-                    # capacity=context["capacity"], # FIXME: 是多少无所谓？
-                    # URL=context["url"],# FIXME: 需要吗？
-                    # budget=context["budget"],# FIXME: 需要吗？
                     start=context["start"],
                     end=context["end"],
-                    # YQPoint=context["aprice"], # FIXME: 需要吗？
-                    # bidding=False, # FIXME: 需要吗？
-                    # apply_reason=context["apply_reason"], # FIXME: 需要吗？
-                    # inner=context["inner"], # FIXME: 需要吗？
                     category=1,
+                    # capacity, URL, budget, YQPoint, bidding, 
+                    # apply_reason, inner, source, end_before均为default
                 )
-    print("AFTER INSERTION")
-    # if context["from_college"]: # FIXME: 需要吗？
-    #     activity.source = Activity.YQPointSource.COLLEGE
-    # activity.endbefore = context["endbefore"] # FIXME: 需要吗？
-    if context.get("need_checkin"):
-        activity.need_checkin = True
+    activity.need_checkin = True # 默认需要签到
     activity.save()
-    print("AFTER SAVE")
-    # ActivityPhoto.objects.create(image=context["pic"], type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity) # FIXME: 需要吗？
+
+    # 使用一张默认图片以便viewActivity, examineActivity等页面展示
+    tmp_pic = '/static/assets/img/announcepics/1.JPG'
+    ActivityPhoto.objects.create(image=tmp_pic, type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
+
     notification_create(
         receiver=examine_teacher.person_id,
         sender=request.user,
         typename=Notification.Type.NEEDDO,
         title=Notification.Title.VERIFY_INFORM,
         content="您有一个单次课程活动待审批",
-        URL=f"/examineActivity/{activity.id}", # FIXME:??
+        URL=f"/examineActivity/{activity.id}",
         relate_instance=activity,
         publish_to_wechat=True,
         publish_kws={"app": WechatApp.AUDIT},
@@ -194,62 +129,34 @@ def create_single_course_activity(request):
 
 def modify_course_activity(request, activity):
     '''
-    修改单次活动信息
-
-    ---
-
-    基本完工，还差通知和scheduler的部分
+    修改单次课程活动信息，是modify_activity的简化版
     '''
-    if activity.status not in [ # FIXME: ??
-        Activity.Status.APPLYING, Activity.Status.WAITING, 
-        Activity.Status.REVIEWING
-    ]:
-        raise ValueError
+    
+    # 是否需要检查活动的status？
+    # if activity.status not in [
+    #     Activity.Status.APPLYING, Activity.Status.WAITING, 
+    #     Activity.Status.REVIEWING
+    # ]:
+    #     raise ValueError
     
     context = course_activity_base_check(request)
 
     old_title = activity.title
     activity.title = context["title"]
-    # activity.introduction = context["introduction"]
+    # activity.introduction = context["introduction"]# 暂定不需要简介
     old_location = activity.location
     activity.location = context["location"]
-    # activity.capacity = context["capacity"]
-
-    # activity.URL = context["url"]
-    # activity.budget = context["budget"]
+    
     old_start = activity.start
     activity.start = context["start"]
     old_end = activity.end
     activity.end = context["end"]
 
-    # activity.YQPoint = context["aprice"]
-    # activity.bidding = context["bidding"]
-    # activity.apply_reason = context["apply_reason"]
-    # old_source = activity.source
-    # if context["from_college"]:
-    #     activity.source = Activity.YQPointSource.COLLEGE
-    # else:
-    #     activity.source = Activity.YQPointSource.STUDENT
-    if context.get("need_checkin"):
-        activity.need_checkin = True
-    else:
-        activity.need_checkin = False
-    # if context.get("inner"):
-    #     activity.inner = True
-    # else:
-    #     activity.inner = False
-    print(activity.location)
     activity.save()
 
-    # 图片
-    if context.get("pic") is not None:
-        pic = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
-        pic.image = context["pic"]
-        pic.save()
-    
-
-    if activity.status != Activity.Status.APPLYING and activity.status != Activity.Status.WAITING: # FIXME: ??
-        return
+    # 目前只要编辑了活动信息，无论活动处于什么状态，都通知全体选课同学
+    # if activity.status != Activity.Status.APPLYING and activity.status != Activity.Status.WAITING:
+    #     return
     
     to_participants = [f"您参与的书院课程活动{old_title}发生变化"] # FIXME: 目前是审核前后都允许修改title，也可以改成都不允许
     if old_title != activity.title:
@@ -257,21 +164,11 @@ def modify_course_activity(request, activity):
     if old_location != request.POST["location"]:
         to_participants.append("活动地点修改为" + request.POST["location"])
 
-    # 不是学院来源时，价格可能会变 # FIXME：需要吗？
-    # if activity.source != Activity.YQPointSource.COLLEGE:
-    #     aprice = float(request.POST["aprice"])
-    #     assert int(aprice * 10) / 10 == aprice
-    #     assert aprice >= 0
-    #     if activity.YQPoint != aprice:
-    #         to_participants.append("活动价格调整为" + str(aprice))
-    #         activity.YQPoint = aprice
-
     # 时间改变
     if activity.start != old_start:
         to_participants.append(f"活动开始时间调整为{activity.start.strftime('%Y-%m-%d %H:%M')}")
 
-    '''
-    # TODO：这些是在做什么？有必要吗？
+    
     if activity.status == Activity.Status.APPLYING:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
             run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
@@ -281,9 +178,8 @@ def modify_course_activity(request, activity):
         run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
         run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
-    '''
 
-    notifyActivity(activity.id, "modification_par", "\n".join(to_participants)) # TODO: 通知
+    notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
 
 def cancel_course_activity(request, activity):
 
@@ -302,17 +198,19 @@ def cancel_course_activity(request, activity):
         if activity.start.day == datetime.now().day and datetime.now() < activity.start + timedelta(days=1):
             pass
         else:
-            raise ActivityException("活动已于一天前开始，不能取消。")
+            raise ActivityException("课程活动已于一天前开始，不能取消。")
 
     if activity.status == Activity.Status.CANCELED:
-        raise ActivityException("活动已取消。")
+        raise ActivityException("课程活动已取消。")
 
     org = Organization.objects.select_for_update().get(
                 organization_id=request.user
             )
 
     activity.status = Activity.Status.CANCELED
-    notifyActivity(activity.id, "modification_par", f"您报名的活动{activity.title}已取消。")
+    # 目前只要取消了活动信息，无论活动处于什么状态，都通知全体选课同学
+    notifyActivity(activity.id, "modification_par", 
+    f"您报名的书院课程活动{activity.title}已取消（活动原定开始于{activity.start.strftime('%Y-%m-%d %H:%M')}）。")
     notification = Notification.objects.get(
         relate_instance=activity,
         typename=Notification.Type.NEEDDO
