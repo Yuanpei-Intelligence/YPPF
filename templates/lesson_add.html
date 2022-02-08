@@ -215,10 +215,13 @@
         }
         const succId = "#success_msg", warnId = "#warn_msg";
         
-        let all_inputs = document.getElementsByTagName("input");
-        for(let i = 0; i < all_inputs.length; i++){
-            fill_value(all_inputs[i]);
+        if ("{{edit}}" === "True") {
+            let all_inputs = document.getElementsByTagName("input");
+            for(let i = 0; i < all_inputs.length; i++){
+                fill_value(all_inputs[i]);
+            }
         }
+        
         
         // 检查单次课程课程开始时间、结束时间
         let start1 = $("#datetimepicker1").val(), end1 = $("#datetimepicker2").val();
