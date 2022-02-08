@@ -517,8 +517,18 @@
                                                     确认修改
                                                 </button>
                                                 {% else %}
-                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认提交活动申请？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
+                                                <button type="submit" class="btn btn-primary btn-block" value="" onclick="return confirm('确认提交活动申请？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
                                                     发起活动
+                                                </button>
+                                                <button id="getTemplate" class="btn btn-success btn-block mb-4 mr-2" onclick="redirectToAutoFill()">
+                                                    点我自动填充!
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="自动填充将使用组织账号中上一次发起的活动信息来填充表格~记得写好新的活动时间哦！">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                            <path
+                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                        </svg>
+                                                    </a>
                                                 </button>
                                                 {% endif %}
                                             {% endif %}
@@ -696,64 +706,85 @@
 </script>
 
 
-{% if use_template %}
 <script type="text/javascript">
-    document.getElementById("title").value = "{{title | safe}}";
-    document.getElementById("location").value = "{{location | safe}}";
-    document.getElementById("budget").value = "{{budget}}";   
-    document.getElementById("datetimepicker3").value="{{start}}";
-    document.getElementById("datetimepicker4").value="{{end}}";
-    document.getElementById("examine_teacher").value="{{examine_teacher}}";
-    {% if activity.recorded %}
-    document.getElementById("recorded").checked = true;
-    document.getElementById("yq_source").innerHTML = "向学生收取";
-    document.getElementById("college").style.display = "none";
-    document.getElementById("from_college").value = "0";
-    document.getElementById("reason_block").style.display = "none";
-    document.getElementById("apply_reason").required = "";
-    document.getElementById("aprice").placeholder = "参与活动元气值价格";
-    {% endif %}
-    document.getElementById("pricebutton").innerHTML = "&nbsp;&nbsp;{{signscheme}}&nbsp;&nbsp;";
-    if ("{{signscheme}}" == "先到先得") {
-        document.getElementById("signscheme").value = "0";
-    } else {
-        document.getElementById("signscheme").value = "1";
-    }
-    document.getElementById("yq_source").innerHTML = "{{yq_source}}";
-    if ("{{yq_source}}" == "向学生收取") {
-        document.getElementById("from_college").value = "0";
-    } else {
-        document.getElementById("from_college").value = "1";
-    }
-    document.getElementById("aprice").value = "{{amount}}";
-    {% if no_limit %}
-    document.getElementById("unlimited_capacity").checked = true;
-    document.getElementById("maxpeople").disabled = true;
-    {% else %}
-    document.getElementById("maxpeople").value = "{{capacity}}";
-    {% endif %}
-    {% if need_checkin %}
-    document.getElementById("need_checkin").checked = true;
-    {% endif %}
-    {% if inner %}
-    document.getElementById("inner").checked = true;
-    {% endif %}  
-    document.getElementById("aintro").value = "{{introduction | safe}}";
-    {% if yq_source == "向学院申请" %}
-    document.getElementById("apply_reason").value = "{{apply_reason | safe}}";
-    document.getElementById("reason_block").style.display = "";
-    {% endif %}
-    document.getElementById("inputState").value = {{endbefore}};
-    document.getElementById("URL").placeholder = "{{url | safe}}";
+    function fillForms() {
+        document.getElementById("title").value = "{{title | safe}}";
+        document.getElementById("location").value = "{{location | safe}}";
+        document.getElementById("budget").value = "{{budget}}";   
+        // document.getElementById("datetimepicker3").value="{{start}}";
+        // document.getElementById("datetimepicker4").value="{{end}}";
+        document.getElementById("examine_teacher").value="{{examine_teacher}}";
+        if("{{activity.recorded}}" === "True") {
+            document.getElementById("recorded").checked = true;
+            document.getElementById("yq_source").innerHTML = "向学生收取";
+            document.getElementById("college").style.display = "none";
+            document.getElementById("from_college").value = "0";
+            document.getElementById("reason_block").style.display = "none";
+            document.getElementById("apply_reason").required = "";
+            document.getElementById("aprice").placeholder = "参与活动元气值价格";
+        }
+        
+        document.getElementById("pricebutton").innerHTML = "&nbsp;&nbsp;{{signscheme}}&nbsp;&nbsp;";
+        if ("{{signscheme}}" === "先到先得") {
+            document.getElementById("signscheme").value = "0";
+        } else {
+            document.getElementById("signscheme").value = "1";
+        }
+        document.getElementById("yq_source").innerHTML = "{{yq_source}}";
+        if ("{{yq_source}}" === "向学生收取") {
+            document.getElementById("from_college").value = "0";
+        } else {
+            document.getElementById("from_college").value = "1";
+        }
+        document.getElementById("aprice").value = "{{amount}}";
+        if("{{no_limit}}" === "True") {
+            document.getElementById("unlimited_capacity").checked = true;
+            document.getElementById("maxpeople").disabled = true;
+        }
+        else {
+            document.getElementById("maxpeople").value = "{{capacity}}";
+        }
+        if("{{need_checkin}}" === "True")
+            document.getElementById("need_checkin").checked = true;
+        if("{{inner}}" === "True")
+            document.getElementById("inner").checked = true; 
+        document.getElementById("aintro").value = "{{introduction | safe}}";
+        if("{{yq_source}}" === "向学院申请") {
+            document.getElementById("apply_reason").value = "{{apply_reason | safe}}";
+            document.getElementById("reason_block").style.display = "";
+        }
+        document.getElementById("inputState").value = "{{endbefore}}";
+        document.getElementById("URL").placeholder = "{{url | safe}}";
 
-    {% if uploaded_photo %}
-    document.getElementById("upload_annouce_photo").innerHTML = "{{photo}}";
-    {% else %}
-    document.getElementById("{{photo_id}}").checked = true;
+        if("{{uploaded_photo}}") {
+            document.getElementById("upload_annouce_photo").innerHTML = "{{photo}}";
+        }
+        else {
+            document.getElementById("{{photo_id}}").checked = true;
+        }
+    }
+    function autoFill() {
+        fillForms();
+        let btn = document.getElementById("getTemplate");
+        btn.disabled = true;
+    }
+    {% if use_template %}
+        autoFill();
     {% endif %}
+    if("{{tid}}" === "None") {
+        let btn = document.getElementById("getTemplate");
+        btn.disabled = true;
+    }
+    function redirectToAutoFill() {
+        let url = window.location.href;
+        if(url.indexOf("template") === -1){
+            window.location.href = url + "?template={{tid}}";
+        }
+        else {
+            alert("已经自动填充过啦！");
+        }
+    }
 </script>
-
-{% endif %}
 
 <!-- 请求为 edit 或 examine 时执行的脚本， -->
 {% if edit or examine %}

@@ -1899,3 +1899,5 @@ def QAcenter(request):
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="问答中心")
     return render(request, "QandA_center.html", locals())
+
+
