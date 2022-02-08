@@ -350,5 +350,5 @@ def getStudentInfo(contents):   # 抓取学生信息的通用包
     return {
         'Sname': student.name,
         'Sid': str(student.Sid),
-        'Scredit': str(student.Scredit)
+        'Scredit': str(student.credit)
     }

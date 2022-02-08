@@ -350,8 +350,8 @@ def appoint_violate(input_appoint, reason):  # 将一个aid设为违约 并根�
                 really_deduct = False
 
                 if real_credit_point and appoint.Astatus != Appoint.Status.VIOLATED:  # 不出现负分；如果已经是violated了就不重复扣分了
-                    if appoint.major_student.Scredit > 0:  # 这个时候需要扣分
-                        appoint.major_student.Scredit -= 1
+                    if appoint.major_student.credit > 0:  # 这个时候需要扣分
+                        appoint.major_student.credit -= 1
                         really_deduct = True
                     appoint.Astatus = Appoint.Status.VIOLATED
                     appoint.Areason = reason
@@ -369,7 +369,7 @@ def appoint_violate(input_appoint, reason):  # 将一个aid设为违约 并根�
                     status = str(appoint.get_status())
                     aid = str(appoint.Aid)
                     areason = str(appoint.get_Areason_display())
-                    credit = str(appoint.major_student.Scredit)
+                    credit = str(appoint.major_student.credit)
 
         if operation_succeed:  # 本任务执行成功
             send_wechat_message([major_sid],
@@ -381,7 +381,7 @@ def appoint_violate(input_appoint, reason):  # 将一个aid设为违约 并根�
                                 announce,
                                 number,
                                 status,
-                                #appoint.major_student.Scredit,
+                                #appoint.major_student.credit,
                                 )  # totest: only main_student
             str_pid = str(os.getpid())
             operation_writer(major_sid, "预约" + str(aid) + "出现违约:" +
@@ -448,7 +448,7 @@ def operation_writer(user, message, source, status_code="OK"):
                 announcement="",
                 num=1,
                 reason=message,
-                # credit=appoint.major_student.Scredit,
+                # credit=appoint.major_student.credit,
             )
     except Exception as e:
         # 最好是发送邮件通知存在问题

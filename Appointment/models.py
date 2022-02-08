@@ -38,7 +38,7 @@ class Participant(models.Model):
     )
     '''
     name = models.CharField('姓名', max_length=64)
-    Scredit = models.IntegerField('信用分', default=3)
+    credit = models.IntegerField('信用分', default=3)
     pinyin = models.CharField('拼音', max_length=20, null=True)
 
     class Meta:

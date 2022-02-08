@@ -135,7 +135,7 @@ def _create_account(request):
             account = Participant.objects.create(
                 Sid=request.user.username,
                 name=given_name,
-                Scredit=3,
+                credit=3,
                 pinyin=pinyin_init,
             )
             return account
