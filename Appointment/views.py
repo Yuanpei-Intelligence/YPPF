@@ -317,8 +317,7 @@ def admin_index(request):   # 我的账户也主函数
 
     # 学生基本信息
     Sid = request.user.username
-    contents = {'Sid': str(Sid), 'kind': 'future'}
-    my_info = web_func.getStudentInfo(contents)
+    my_info = web_func.getStudentInfo(Sid)
 
     # 头像信息
     # img_path, valid_path = web_func.img_get_func(request)
@@ -330,11 +329,8 @@ def admin_index(request):   # 我的账户也主函数
 
     # 分成两类,past future
     # 直接从数据库筛选两类预约
-    appoint_list_future = json.loads(
-        web_func.getStudent_2_classification(contents).content).get('data')
-    contents['kind'] = 'past'
-    appoint_list_past = json.loads(
-        web_func.getStudent_2_classification(contents).content).get('data')
+    appoint_list_future = web_func.student2appoints(Sid, 'future').get('data')
+    appoint_list_past = web_func.student2appoints(Sid, 'past').get('data')
 
     # temptime.append(datetime.now())
     for x in appoint_list_future:
@@ -375,8 +371,7 @@ def admin_credit(request):
     #img_path = request.build_absolute_uri(
     # reverse("Appointment:web_func.img_get_func") + "?Sid=" + Sid)
 
-    contents = {'Sid': str(Sid)}
-    vio_list = json.loads(web_func.getViolated_2(contents).content).get('data')
+    vio_list = web_func.student2appoints(Sid, 'violate', major=True).get('data')
     vio_list_in_7_days = []
     present_day = datetime.now()
     seven_days_before = present_day - timedelta(7)
@@ -391,7 +386,7 @@ def admin_credit(request):
                     x['Astart'], "%Y-%m-%dT%H:%M:%S") >= seven_days_before:
             vio_list_in_7_days.append(x)
     vio_list_in_7_days.sort(key=lambda k: k['Astart'])
-    my_info = web_func.getStudentInfo(contents)
+    my_info = web_func.getStudentInfo(Sid)
     return render(request, 'Appointment/admin-credit.html', locals())
 
 
