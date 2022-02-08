@@ -26,10 +26,10 @@ class ParticipantAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
     search_fields = ('Sid', 'name', 'pinyin')
-    list_display = ('Sid', 'name', 'Scredit')
+    list_display = ('Sid', 'name', 'credit')
     list_display_links = ('Sid', 'name')
-    list_editable = ('Scredit', )
-    list_filter = ('Scredit', )
+    list_editable = ('credit', )
+    list_filter = ('credit', )
     fieldsets = (['基本信息', {
         'fields': (
             'Sid',
@@ -39,7 +39,7 @@ class ParticipantAdmin(admin.ModelAdmin):
         '显示全部', {
             'classes': ('collapse', ),
             'description': '默认信息，不建议修改！',
-            'fields': ('Scredit', 'pinyin'),
+            'fields': ('credit', 'pinyin'),
         }
     ])
 
@@ -54,9 +54,9 @@ class ParticipantAdmin(admin.ModelAdmin):
             with transaction.atomic():
                 stu_all = Participant.objects.all()
                 for stu in stu_all:
-                    if stu.Scredit <= 2:
+                    if stu.credit <= 2:
                         print(stu)
-                        stu.Scredit += 1
+                        stu.credit += 1
                         stu.save()
                 return self.message_user(request, '操作成功!')
             return self.message_user(request=request,
@@ -267,7 +267,7 @@ class AppointAdmin(admin.ModelAdmin):
                                                 appoint.Aannouncement,
                                                 appoint.Ayp_num + appoint.Anon_yp_num,
                                                 appoint.get_status(),  # reason
-                                                # appoint.major_student.Scredit,
+                                                # appoint.major_student.credit,
                                                 ],
                                           id=f'{appoint.Aid}_confirm_admin_wechat',
                                           next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
@@ -276,8 +276,8 @@ class AppointAdmin(admin.ModelAdmin):
                     elif appoint.Astatus == Appoint.Status.VIOLATED:
                         appoint.Astatus = Appoint.Status.JUDGED
                         # for stu in appoint.students.all():
-                        if appoint.major_student.Scredit < 3:
-                            appoint.major_student.Scredit += 1
+                        if appoint.major_student.credit < 3:
+                            appoint.major_student.credit += 1
                             appoint.major_student.save()
                         appoint.save()
                         have_success = 1
@@ -292,7 +292,7 @@ class AppointAdmin(admin.ModelAdmin):
                                                 appoint.Aannouncement,
                                                 appoint.Ayp_num + appoint.Anon_yp_num,
                                                 appoint.get_status(),  # reason
-                                                #appoint.major_student.Scredit,
+                                                #appoint.major_student.credit,
                                                 ],
                                           id=f'{appoint.Aid}_confirm_admin_wechat',
                                           next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
@@ -336,11 +336,11 @@ class AppointAdmin(admin.ModelAdmin):
                 # 已违规时不扣除信用分，仅提示用户
                 if appoint.Astatus != Appoint.Status.VIOLATED:
                     appoint.Astatus = Appoint.Status.VIOLATED
-                    appoint.major_student.Scredit -= 1  # 只扣除发起人
+                    appoint.major_student.credit -= 1  # 只扣除发起人
                     appoint.major_student.save()
                 appoint.Areason = Appoint.Reason.R_ELSE
                 # for stu in appoint.students.all():
-                #    stu.Scredit -= 1
+                #    stu.credit -= 1
                 #    stu.save()
                 appoint.save()
 
@@ -355,7 +355,7 @@ class AppointAdmin(admin.ModelAdmin):
                                         appoint.Aannouncement,
                                         appoint.Ayp_num + appoint.Anon_yp_num,
                                         f'原状态：{ori_status}',  # reason
-                                        #appoint.major_student.Scredit,
+                                        #appoint.major_student.credit,
                                         ],
                                   id=f'{appoint.Aid}_violate_admin_wechat',
                                   next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
@@ -489,7 +489,7 @@ class AppointAdmin(admin.ModelAdmin):
                                   appoint.Aannouncement,
                                   len(stuid_list) + appoint.Anon_yp_num,
                                   week_num,  # reason, 这里用作表示持续周数
-                                  #appoint.major_student.Scredit,
+                                  #appoint.major_student.credit,
                               ],
                               id=f'{appoint.Aid}_new_wechat',
                               next_run_time=datetime.now() + timedelta(seconds=5))  # 2s足够了

@@ -185,7 +185,7 @@ def cancelFunction(request):  # 取消预约
                                 appoint.Aannouncement,
                                 appoint.Anon_yp_num+appoint.Ayp_num,
                                 '',
-                                #appoint.major_student.Scredit,
+                                #appoint.major_student.credit,
                                 ],
                           id=f'{appoint.Aid}_cancel_wechat',
                           next_run_time=datetime.now() + timedelta(seconds=5))
@@ -229,7 +229,7 @@ def set_start_wechat(appoint, students_id=None, notify_new=True):
                                     appoint.Aannouncement,
                                     appoint.Anon_yp_num+appoint.Ayp_num,
                                     '',
-                                    # appoint.major_student.Scredit,
+                                    # appoint.major_student.credit,
                                     ],
                                 id=f'{appoint.Aid}_start_wechat',
                                 replace_existing=True,
@@ -251,7 +251,7 @@ def set_start_wechat(appoint, students_id=None, notify_new=True):
                                     appoint.Aannouncement,
                                     appoint.Anon_yp_num+appoint.Ayp_num,
                                     '',
-                                    # appoint.major_student.Scredit,
+                                    # appoint.major_student.credit,
                                     ],
                                 id=f'{appoint.Aid}_new_wechat',
                                 replace_existing=True,
@@ -266,7 +266,7 @@ def set_start_wechat(appoint, students_id=None, notify_new=True):
                                 appoint.Aannouncement,
                                 appoint.Ayp_num+appoint.Anon_yp_num,
                                 '',
-                                # appoint.major_student.Scredit,
+                                # appoint.major_student.credit,
                                 ],
                             id=f'{appoint.Aid}_start_wechat',
                             replace_existing=True,
@@ -283,7 +283,7 @@ def set_start_wechat(appoint, students_id=None, notify_new=True):
                                 appoint.Aannouncement,
                                 appoint.Anon_yp_num+appoint.Ayp_num,
                                 '',
-                                # appoint.major_student.Scredit,
+                                # appoint.major_student.credit,
                                 ],
                             id=f'{appoint.Aid}_start_wechat',
                             replace_existing=True,
@@ -462,7 +462,7 @@ def addAppoint(contents):  # 添加预约, main function
 
             # 确认信用分符合要求
             try:
-                assert major_student.Scredit > 0
+                assert major_student.credit > 0
             except:
                 return JsonResponse(
                     {'statusInfo': {
