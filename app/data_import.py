@@ -536,7 +536,6 @@ def load_CouRecord(request):
             elif sid is numpy.nan: 
                 info_show["stuID miss"].append(\
                     str(course)+' '+str(sid)+' '+str(name)+' '+str(times)+' '+str(hours))
-                continue
             else: 
                 person_get = person_get.filter(person_id__username = str(int(sid)))
 
