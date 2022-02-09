@@ -319,7 +319,7 @@ class Organization(models.Model):
     inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
         
     #组织类型标签，一个组织可能同时有多个标签
-    tag = models.ManyToManyField(OrganizationTag, blank=False)
+    tag = models.ManyToManyField(OrganizationTag)
 
     def __str__(self):
         return str(self.oname)
