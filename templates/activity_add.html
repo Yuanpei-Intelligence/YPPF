@@ -73,7 +73,7 @@
                                                 </a>
                                                 </h4>
                                                 {% else %}
-                                                <h4>活动发起</h4>
+                                                <h4>开课信息</h4>
                                                 {% endif %}
                                             </div>
                                             <div >
@@ -93,8 +93,8 @@
 
                                         <form role="form" method="POST" enctype="multipart/form-data" onsubmit="return check_inputs()">
                                             <p>
-                                                活动信息
-                                                <a data-toggle="tooltip" data-placement="bottom" title="填写活动的基本信息；注意：预算、名称在审核通过后不能修改">
+                                                编辑课程信息
+                                                <a data-toggle="tooltip" data-placement="bottom" title="填写课程的基本信息；注意：课程名称在审核通过后不能修改">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                         class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                         <path
@@ -102,34 +102,143 @@
                                                     </svg>
                                                 </a>
                                             </p>
+
+
                                             <div class="form-group">
-                                                <label>活动名称</label>
-                                                <input type="text" id="title" name="title" class="form-control"
-                                                    aria-label="Default" placeholder="取一个贴切的活动名称吧~" required="required" 
+                                                <label>课程名称</label>
+                                                <input type="text" id="name" name="name" class="form-control"
+                                                    aria-label="Default" placeholder="取一个有趣的课程名称吧~" required="required" 
                                                     maxlength=50 onclick="fill_value(this)">
                                             </div>
+
+                                            
+                                            <!-- 注释:课程类型这一段,不知道自己的数据传输写的对不对(因为不知道数据库是如何存储的) -->
                                             <div class="form-group">
-                                                <label>活动地点</label>
-                                                <input type="text" id="location" name="location" class="form-control"
-                                                    aria-label="Default" placeholder="要让参加活动的同学能找到活动地点哦~" required="required" maxlength=200 onclick="fill_value(this)">
-                                            </div>
-                                            <div class="form-group">
-                                                <label>预算总额</label>
-                                                <a data-toggle="tooltip" data-placement="bottom" title="预算对审批和报销都很重要，请慎重填写，预算详细说明请在提交后点击“修改活动”，并于最下方评论区进行文字描述或上传表格图片。">
+                                                <label>课程类型</label> 
+                                                <a data-toggle="tooltip" data-placement="bottom" title="请在德、智、体、美、劳中选一项">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                         class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                         <path
                                                             d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
                                                     </svg>
                                                 </a>
-                                                <input type="number" id="budget" name="budget" class="form-control"
-                                                    aria-label="Default" placeholder="预算对报销和审批都很重要，请慎重填写" required="required" 
-                                                    step="0.1" min="0" max="100000" onclick="fill_value(this)">
+                                            </div>
+                                            <div class="form-group">
+                                                <div class="input-group mb-2">
+                                                    <div class="input-group-prepend">
+                                                        <button class="btn btn-outline-primary dropdown-toggle"
+                                                            type="button" data-toggle="dropdown" aria-haspopup="true"
+                                                            aria-expanded="false" id="pricebutton">&nbsp;&nbsp;选择课程类型&nbsp;&nbsp;
+                                                        </button>
+                                                        <div class="dropdown-menu">
+                                                            <a class="dropdown-item" onclick="shows($(this).text())" 
+                                                                id="de" name="de" value="de">&nbsp;&nbsp;德&nbsp;&nbsp;</a>
+                                                            <a class="dropdown-item" onclick="shows($(this).text())"
+                                                                id="zhi" name="zhi" value="bid">&nbsp;&nbsp;智&nbsp;&nbsp;</a>
+                                                            <a class="dropdown-item" onclick="shows($(this).text())"
+                                                                id="ti" name="ti" value="bid">&nbsp;&nbsp;体&nbsp;&nbsp;</a>
+                                                            <a class="dropdown-item" onclick="shows($(this).text())"
+                                                                id="mei" name="mei" value="bid">&nbsp;&nbsp;美&nbsp;&nbsp;</a>
+                                                            <a class="dropdown-item" onclick="shows($(this).text())"
+                                                                id="lao" name="lao" value="bid">&nbsp;&nbsp;劳&nbsp;&nbsp;</a>
+                                                        </div>
+                                                        <input type="hidden" id="signscheme" name="type"
+                                                            value="" />
+                                                    </div>
+                                                </div>
+                                            </div>
+
+
+                                            <div class="form-group">
+                                                <label>授课教师</label>
+                                                <input type="text" id="teacher" name="teacher" class="form-control"
+                                                    aria-label="Default" placeholder="请在此处填写授课教师姓名" required="required" 
+                                                    maxlength=50 onclick="fill_value(this)">
                                             </div>
 
                                             <div class="form-group">
-                                                <label>活动时间</label>
-                                                <a data-toggle="tooltip" data-placement="bottom" title="请选择合理的活动时间，持续时间过长将导致参与者无法获取积分！">
+                                                <label>课程容量</label>
+                                                <a data-toggle="tooltip" data-placement="bottom" title="请在下方填写课程的最大学生数量（1~200之间的整数）">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path
+                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                                <input type="number" id="capacity" name="capacity" class="form-control"
+                                                    aria-label="Default" required="required" 
+                                                    step="1" min="1" max="200" onclick="fill_value(this)">
+                                            </div>
+
+
+                                            <div class="form-group">
+                                                <label>上课地点</label>
+                                                <input type="text" id="classroom" name="classroom" class="form-control"
+                                                    aria-label="Default" placeholder="如尚未确定上课地点，可填写“待定”" required="required" maxlength=200 onclick="fill_value(this)">
+                                            </div>
+
+                                            
+                                            <div class="form-group">
+                                                <label>开课周数（请填写1~16之间的整数）</label>
+                                                <a data-toggle="tooltip" data-placement="bottom" title="例：如本课程预计于期中左右结课，可设置开课周数为8">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path
+                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                                <input type="number" id="times" name="times" class="form-control"
+                                                    aria-label="Default" required="required" 
+                                                    step="1" min="1" max="16" onclick="fill_value(this)">
+                                            </div>
+
+
+                                            <div class="form-group">
+                                                <label>第一周的上课时间（必填，多项填空）</label>
+                                                <a data-toggle="tooltip" data-placement="bottom" title="请尽可能多地填写您方便的上课时间，以方便系统进行排课；若方便的开课时间不足3个，请重复填写以补齐3个">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path
+                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                                <!-- 暂时没有改下面的name，因为没找到Course里对应到Coursetime的外键列 -->
+                                                <div class="row">
+                                                    <div class="col">
+                                                        <input type="text" class="form-control" id="datetimepicker3"
+                                                            name="stage1_start" placeholder="第一周的上课时间 No.1" required="required" onclick="fill_value(this)"/>
+                                                    </div>
+                                                    <div class="col">
+                                                        <input type="text" class="form-control" id="datetimepicker4"
+                                                            name="stage1_end" placeholder="第一周的下课时间 No.1" required="required" onclick="fill_value(this)"/>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col">
+                                                        <input type="text" class="form-control" id="datetimepicker3"
+                                                            name="stage1_start" placeholder="第一周的上课时间 No.2" required="required" onclick="fill_value(this)"/>
+                                                    </div>
+                                                    <div class="col">
+                                                        <input type="text" class="form-control" id="datetimepicker4"
+                                                            name="stage1_end" placeholder="第一周的下课时间 No.2" required="required" onclick="fill_value(this)"/>
+                                                    </div>
+                                                </div>
+                                                <div class="row">
+                                                    <div class="col">
+                                                        <input type="text" class="form-control" id="datetimepicker3"
+                                                            name="stage1_start" placeholder="第一周的上课时间 No.3" required="required" onclick="fill_value(this)"/>
+                                                    </div>
+                                                    <div class="col">
+                                                        <input type="text" class="form-control" id="datetimepicker4"
+                                                            name="stage1_end" placeholder="第一周的下课时间 No.3" required="required" onclick="fill_value(this)"/>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+
+                                            <div class="form-group">
+                                                <label>课程预选起止时间</label>
+                                                <a data-toggle="tooltip" data-placement="bottom" title="请选择课程预选起止时间">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                         class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                         <path
@@ -139,331 +248,63 @@
                                                 <div class="row">
                                                     <div class="col">
                                                         <input type="text" class="form-control" id="datetimepicker3"
-                                                            name="actstart" placeholder="开始时间" required="required" onclick="fill_value(this)"/>
+                                                            name="stage1_start" placeholder="预选开始时间" required="required" onclick="fill_value(this)"/>
                                                     </div>
                                                     <div class="col">
                                                         <input type="text" class="form-control" id="datetimepicker4"
-                                                            name="actend" placeholder="结束时间" required="required" onclick="fill_value(this)"/>
+                                                            name="stage1_end" placeholder="预选结束时间" required="required" onclick="fill_value(this)"/>
                                                     </div>
                                                 </div>
                                             </div>
-                                            
-                                            <!-- TOCHECK: edit 的时候填值，并且 disable 掉 -->
-                                            {% if not examine %}
+
+
                                             <div class="form-group">
-                                                <label>审核老师</label>
-                                                <select id="examine_teacher" name="examine_teacher" class="form-control selectpicker" >
-                                                    <option value="" selected disabled>选择审核老师</option>
-                                                    {% for avialable_teacher in available_teachers %}
-                                                        <option value="{{avialable_teacher.name}}">{{avialable_teacher.name}}</option>
-                                                    {% endfor %}
-                                                </select>
-
-                                            </div>
-                                            {% endif %}
-
-
-                                            <div class="form-check"
-                                                style="align-content: center; vertical-align: middle;">
-                                                <input class="form-check-input" type="checkbox"
-                                                    value="1" id="recorded"
-                                                    name="recorded">
-                                                <label class="form-check-label" for="defaultCheck1">
-                                                    已审核
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="已审核活动指学期初已上报学院且获准的活动, 擅自勾选有可能导致小组无法报销或者小组被禁止登录！如果向学院申请元气值，需要二次审核，故不要勾选此选项。">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                            <path
-                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                        </svg>
-                                                    </a>
-                                                </label>
-
-                                            </div>
-
-
-                                            <hr>
-                                            <p>
-                                                元气值
-                                                <a data-toggle="tooltip" data-placement="bottom" title="点击元气值来源来选择不同的元气值来源（如向同学收取）。在活动通过审核之后，此项不能修改。">
+                                                <label>课程补退选起止时间</label>
+                                                <a data-toggle="tooltip" data-placement="bottom" title="请选择课程补退选起止时间">
                                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                         class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                         <path
                                                             d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
                                                     </svg>
                                                 </a>
-                                            </p>
-                                            <div class="form-group">
-                                                <div class="input-group mb-3">
-                                                    {% if not edit and not examine or full_editable %}
-
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary dropdown-toggle"
-                                                            type="button" data-toggle="dropdown" aria-haspopup="true"
-                                                            aria-expanded="false" id="yq_source">元气值来源
-                                                        </button>
-                                                        <div class="dropdown-menu">
-                                                            <a class="dropdown-item" onclick="another_shows($(this).text())"
-                                                                name="get" value="get">向学生收取</a>
-                                                            <a class="dropdown-item" onclick="another_shows($(this).text())"
-                                                                id="college" name="college" value="college">向学院申请</a>
-                                                        </div>
-                                                        <input type="hidden" id="from_college" name="from_college"
-                                                            value="" />
-                                                    </div>
-                                                    {% else %}
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary"
-                                                            type="button" id="yq_source"
-                                                            aria-expanded="false">{{yq_source}}
-                                                        </button>
-                                                    </div>
-                                                    {% endif %}
-
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary"
-                                                            type="button"
-                                                            aria-expanded="false">元气值数量
-                                                        </button>
-                                                    </div>
-
-                                                    <!-- TOCHECK: 如果是 applying 记得设成 disable -->
-                                                    <input type="number" class="form-control"
-                                                        aria-label="Text input with dropdown button" id="aprice"
-                                                        name="aprice" placeholder="精度 0.1" step="0.1" min="0" required="required" 
-                                                        οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')" onclick="fill_value(this)">
-
-                                                </div>
-                                            </div>
-                                            <div class="form-group" id="reason_block" style="display: none">
-                                                <label>元气值申请理由 ( 必填 )</label>
-                                                <textarea id="apply_reason" name="apply_reason" class="form-control" rows="3"
-                                                    placeholder="申请理由将作为老师审核的依据，请仔细填写~" onclick="fill_value(this)" maxlength=225></textarea>
-                                            </div>
-
-
-
-
-
-                                            <hr>
-                                            <p>
-                                                报名信息
-                                                <a data-toggle="tooltip" data-placement="bottom" title="点击报名模式按钮以调整报名模式（如先到先得）。在活动通过审核之后，此项不能修改。">
-                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                        <path
-                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                    </svg>
-                                                </a>
-                                            </p>
-                                            <div class="form-group">
-                                                <div class="input-group mb-3">
-                                                    {% if not edit and not examine or full_editable %}
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary dropdown-toggle"
-                                                            type="button" data-toggle="dropdown" aria-haspopup="true"
-                                                            aria-expanded="false" id="pricebutton">&nbsp;&nbsp;报名模式&nbsp;&nbsp;
-                                                        </button>
-                                                        <div class="dropdown-menu">
-                                                            <a class="dropdown-item" onclick="shows($(this).text())"
-                                                                name="get" value="get">&nbsp;&nbsp;先到先得&nbsp;&nbsp;</a>
-                                                            <a class="dropdown-item" onclick="shows($(this).text())"
-                                                                id="bid" name="bid" value="bid">&nbsp;&nbsp;抽签模式&nbsp;&nbsp;</a>
-                                                        </div>
-                                                        <input type="hidden" id="signscheme" name="signscheme"
-                                                            value="" />
-                                                    </div>
-                                                    {% else %}
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary"
-                                                            type="button" id="pricebutton"
-                                                            aria-expanded="false">&nbsp;&nbsp;{{signscheme}}&nbsp;&nbsp;
-                                                        </button>
-                                                    </div>
-                                                    {% endif %}
-                                                    <div class="input-group-prepend">
-                                                        <button class="btn btn-outline-primary"
-                                                            type="button"
-                                                            aria-expanded="false">&nbsp;&nbsp;人数上限&nbsp;&nbsp;
-                                                        </button>
-                                                    </div>
-
-
-
-                                                    <!-- TOCHECK: 如果是 applying 记得设成 disable -->
-                                                    <input type="number" id="maxpeople" name="maxpeople"
-                                                        class="form-control" aria-label="Default" step="1" min="0" 
-                                                        placeholder="人数上限">
-
-                                                </div>
-                                            </div>
-
-                                            <div class="form-group">
                                                 <div class="row">
                                                     <div class="col">
-                                                        <div class="form-check"
-                                                            style="align-content: center; vertical-align: middle;">
-                                                            <input class="form-check-input" type="checkbox"
-                                                                value="1" id="unlimited_capacity"
-                                                                name="unlimited_capacity">
-                                                            <label class="form-check-label" for="defaultCheck1">
-                                                                无人数限制
-                                                                <a data-toggle="tooltip" data-placement="bottom" title="无报名人数上限，如面试报名、观赛报名等；可以通过更改人数限制的方式来截止报名">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                                        <path
-                                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                                    </svg>
-                                                                </a>
-                                                            </label>
-                                                        </div>
+                                                        <input type="text" class="form-control" id="datetimepicker3"
+                                                            name="stage2_start" placeholder="补退选开始时间" required="required" onclick="fill_value(this)"/>
                                                     </div>
                                                     <div class="col">
-                                                        <div class="form-check"
-                                                            style="align-content: center; vertical-align: middle;">
-                                                            <input class="form-check-input" type="checkbox"
-                                                                value="1" id="inner"
-                                                                name="inner">
-                                                            <label class="form-check-label" for="defaultCheck1">
-                                                                内部活动?
-                                                                <a data-toggle="tooltip" data-placement="bottom" title="内部活动对所有同学可见，但只有小组内部成员可以报名，且通知只会发送到内部成员。此选项改变时，已有的报名不受影响。">
-                                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                                        <path
-                                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                                    </svg>
-                                                                </a>
-                                                            </label>
-                                                        </div>
+                                                        <input type="text" class="form-control" id="datetimepicker4"
+                                                            name="stage2_end" placeholder="补退选结束时间" required="required" onclick="fill_value(this)"/>
                                                     </div>
                                                 </div>
                                             </div>
-                                      
-                                            <div class="form-group">
-                                                <label for="aintro">
-                                                    报名截止于
-                                                        <a data-toggle="tooltip" data-placement="bottom" title="在短期内将要开展的活动可以将报名截止时间设定的晚一些，如活动开始前1小时在报名开始后；如果报名人员会经历变动，可以设为1/3天，然后根据情况延长至1小时(系统会重新开放报名)。可以修改截止时间来延长报名">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                            <path
-                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                        </svg>
-                                                    </a>
-                                                </label>
-                                                {% if examine %}
-                                                    <input name="examine_apply_end" class="form-control selectpicker" placeholder="{{apply_end}}" disabled>
-                                                {% else %}
-                                                    {% if not edit %}
-                                                    <select id="inputState" name="prepare_scheme" class="form-control selectpicker" >
-                                                        <option value="0">活动开始前1小时</option>
-                                                        <option value="1" selected>活动开始前1天</option>
-                                                        <option value="2">活动开始前3天</option>
-                                                        <option value="3">活动开始前1周</option>
-                                                    </select>
-                                                    {% else %}
-                                                    <p>当前报名截止时间为 {{apply_end}}</p>
-                                                    <!-- TOCHECK: !(accepted) 时，不能修改-->
-                                                    <div class="row">
-                                                        <div class="col">
-                                                        <select id="inputState" name="prepare_scheme" class="form-control selectpicker">
-                                                            <option value="0">活动开始前1小时</option>
-                                                            <option value="1" selected>活动开始前1天</option>
-                                                            <option value="2">活动开始前3天</option>
-                                                            <option value="3">活动开始前1周</option>
-                                                        </select>
-                                                        </div>
-                                                        <div class="col" 
-                                                            style="display: flex; flex-direction: column;justify-content: center;text-align: center;">
-                                                                <div class="form-check"
-                                                                    style="align-content: center; vertical-align: middle;">
-                                                                    <input class="form-check-input" type="checkbox"
-                                                                        value="1" id="adjust_apply_ddl"
-                                                                        name="adjust_apply_ddl">
-                                                                    <label class="form-check-label" for="defaultCheck1">
-                                                                        调整报名时间
-                                                                        <a data-toggle="tooltip" data-placement="bottom" title="勾选此项才可以更改报名时间">
-                                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                                                class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                                                <path
-                                                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                                            </svg>
-                                                                        </a>
-                                                                    </label>
+                                           
 
-                                                                </div>
-                                                        </div>
-                                                    </div>
-                                                    {% endif %}
-                                                {% endif %}
-                                            </div>
-
-                                            <div class="row">
-                                                <div class="col">
-                                                    <div class="form-check"
-                                                        style="align-content: center; vertical-align: middle;">
-                                                        <input class="form-check-input" type="checkbox"
-                                                            value="1" id="need_checkin"
-                                                            name="need_checkin">
-                                                        <label class="form-check-label" for="defaultCheck1">
-                                                            需要签到?
-                                                            <a data-toggle="tooltip" data-placement="bottom" title="若勾选此项，会自动生成在仅活动进行时可用、仅允许活动举办小组在活动页面查看或下载的签到二维码。活动进行时，需要将该二维码展示给同学扫码签到。">
-                                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                                    class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                                    <path
-                                                                        d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                                </svg>
-                                                            </a>
-                                                        </label>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <!--
-                                            <div class="form-check">
-                                                <input class="form-check-input" type="checkbox" value=""
-                                                    id="whether_record" name="whether_record">
-                                                
-                                                <label class="form-check-label" for="defaultCheck1">
-                                                    活动已备案?
-                                                </label>
-                                                
-                                            </div>
-                                            -->
                                             <hr>
+                                            <p>课程宣传信息
+                                                <a data-toggle="tooltip" data-placement="bottom" title="填写课程介绍并上传课程图片，吸引更多同学来选课吧~">
+                                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                        <path
+                                                            d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                    </svg>
+                                                </a>
+                                            </p>
 
-                                            <p>宣传信息</p>
                                             <div class="form-group">
-                                                <label for="aintro">活动简介</label>
+                                                <label for="aintro">课程简介</label>
                                                 <textarea id="aintro" name="introduction" class="form-control" rows="3"
-                                                    placeholder="(必填)简介会随活动基本信息一同推送至订阅者的微信" onclick="fill_value(this)" 
+                                                    placeholder="在这里简要介绍一下课程内容和亮点..." onclick="fill_value(this)" 
                                                     required="required" maxlength=225></textarea>
-                                            </div>
-                                            <div class="form-group">
-                                                <label for="aintro">
-                                                    活动推送链接
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="获取链接的方式：在推送中，点击右上角在默认浏览器中打开，然后复制链接填在此处即可。注意，如果是外网链接，请使用以http或https开头的绝对地址。这一项可以在任何时间修改。">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                                                            <path
-                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                        </svg>
-                                                    </a>
-                                                </label>
-                                                {% if not examine %}
-                                                <textarea id="URL" name="URL" class="form-control" rows="3" placeholder="推送链接会和活动通知一起发送；外网链接请使用以http或https开头的绝对地址" onclick="fill_value(this)"></textarea>
-                                                {% else %}
-                                                <a href="{{url}}"> {{url}} </a>
-                                                {% endif %}
                                             </div>
 
 
                                             {% if not examine and not edit or full_editable %}
-                                            <div class="form-group">
+
+                                            <!-- <div class="form-group">
                                                 <label>
-
-                                                    活动预告图片
-
-                                                    <a data-toggle="tooltip" data-placement="bottom" title="可以选择默认的图片；如果推送中包含图片的话，也可以选取推送中包含的图片；这一项在审核通过后不可修改">
+                                                    课程微信群二维码 （这一段暂且注释，因为数据库里暂时还没有相应的二维码列）
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="如有需要，请在这里上传课程微信群二维码（选填）">
                                                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                                             <path
@@ -479,7 +320,31 @@
                                                            class="custom-file-input" id="images" name="images" 
                                                            accept="image/*" data-max-file-size="4096K">
                                                     <label id="upload_annouce_photo" name="upload_annouce_photo" class="custom-file-label" 
-                                                           for="customFile"> 选择历史活动图片或海报或以下默认图片之一 </label>
+                                                           for="customFile"> 上传本地图片 </label>
+                                                </div>                                                
+                                            </div> -->
+
+
+                                            <div class="form-group">
+                                                <label>
+                                                    课程预告图片
+                                                    <a data-toggle="tooltip" data-placement="bottom" title="可以选择默认的图片；也可以自行上传本地图片；这一项在审核通过后不可修改">
+                                                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                            <path
+                                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                        </svg>
+                                                    </a>
+                                                </label><br/>
+                                                <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12">
+                                                    {% if use_template %}
+                                                    <input type="hidden" id="template_id" name="template_id" value="{{template_id}}">
+                                                    {% endif %}
+                                                    <input onchange="showFilenameLocal(this.files)" type="file" 
+                                                           class="custom-file-input" id="photo" name="photo" 
+                                                           accept="image/*" data-max-file-size="4096K">
+                                                    <label id="upload_annouce_photo" name="upload_annouce_photo" class="custom-file-label" 
+                                                           for="customFile"> 选择本地照片或以下默认图片之一 </label>
 
                                                 </div>
                                                 
@@ -510,23 +375,23 @@
                                             {% if not examine %}
                                                 {% if edit and not accepted %}
                                                 <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" disabled>
-                                                    活动{{status}}
+                                                    课程{{status}}
                                                 </button>
                                                 {% elif edit %}
-                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认修改活动？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
+                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认修改课程信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
                                                     确认修改
                                                 </button>
                                                 {% else %}
-                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认提交活动申请？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
-                                                    发起活动
+                                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" onclick="return confirm('确认提交开课信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
+                                                    申请开课
                                                 </button>
                                                 {% endif %}
                                             {% endif %}
                                         </form>
                                         {% if examine %}
-                                        <!-- 活动图片 -->
+                                        <!-- 课程图片 -->
                                         <div class="form-group">
-                                            <label for="aintro">活动介绍图片</label>
+                                            <label for="aintro">课程介绍图片</label>
                                             <div class="widget-content widget-content-area">
                                                 <img class="d-block w-100" id="examine_pic" src="{{intro_pic}}" alt="Third slide">
                                             </div>
@@ -762,7 +627,7 @@
     /* 提示上传预算信息 */
     if (document.referrer.endsWith("/addActivity/")) {
         document.getElementById("warn_msg").style.display = "";
-        document.getElementById("warn_msg").innerHTML = "活动发起成功！如需申请预算，请在评论区上传预算明细。";
+        document.getElementById("warn_msg").innerHTML = "成功！如需申请预算，请在评论区上传预算明细。";
     }
 
     /* 将 palceholder 全部换为旧值，很长很啰嗦 */
