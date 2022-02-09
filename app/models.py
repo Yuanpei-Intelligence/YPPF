@@ -13,6 +13,7 @@ __all__ = [
     'NaturalPerson',
     'Freshman',
     'OrganizationType',
+    'OrganizationTag',
     # 'Semester',
     'Organization',
     'Position',
@@ -146,6 +147,9 @@ class NaturalPerson(models.Model):
         choices=ReceiveLevel.choices, default=0,
         help_text='允许微信接收的最低消息等级，更低等级的通知类消息将被屏蔽'
         )
+    
+    promote_accept = models.BooleanField(default=True) #是否接受推广消息
+    active_score = models.FloatField("活跃度", default=0)  #用户活跃度
 
     def __str__(self):
         return str(self.name)
@@ -285,6 +289,16 @@ class OrganizationManager(models.Manager):
     def activated(self):
         return self.exclude(status=False)
 
+class OrganizationTag(models.Model):
+    class Meta:
+        verbose_name = "组织类型标签"
+        verbose_name_plural = verbose_name
+    
+    game = models.BooleanField("游戏", default=False)
+    sports = models.BooleanField("运动", default=False)
+    music = models.BooleanField("音乐", default=False)
+    reading = models.BooleanField("阅读", default=False)
+    others = models.BooleanField("其它", default=False)
 
 class Organization(models.Model):
     class Meta:
@@ -306,7 +320,10 @@ class Organization(models.Model):
     visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
 
     first_time_login = models.BooleanField(default=True)  # 是否第一次登录
-    inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
+    inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助\
+        
+    #组织类型标签，一个组织可能同时有多个标签
+    tag = models.ManyToManyField(OrganizationTag, blank=False)
 
     def __str__(self):
         return str(self.oname)
