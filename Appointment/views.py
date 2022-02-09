@@ -312,10 +312,13 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
 @identity_check(redirect_field_name='origin')
 def admin_index(request):   # 我的账户也主函数
 
-    warn_code = 0
+    render_context = {}
+    render_context.update(login_url=global_info.login_url)
+
     if request.GET.get("warn_code", None) is not None:
         warn_code = int(request.GET['warn_code'])
         warning = request.GET['warning']
+        render_context.update(warn_code=warn_code, warning=warning)
 
     # 学生基本信息
     Sid = request.user.username
@@ -328,13 +331,13 @@ def admin_index(request):   # 我的账户也主函数
     img_path = get_avatar(request.user)
     #img_path = request.build_absolute_uri(
     # reverse("Appointment:web_func.img_get_func") + "?Sid=" + Sid)
+    render_context.update(my_info=my_info, img_path=img_path)
 
     # 分成两类,past future
     # 直接从数据库筛选两类预约
     appoint_list_future = web_func.student2appoints(Sid, 'future').get('data')
     appoint_list_past = web_func.student2appoints(Sid, 'past').get('data')
 
-    # temptime.append(datetime.now())
     for x in appoint_list_future:
         x['Astart_hour_minute'] = datetime.strptime(
             x['Astart'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
@@ -344,18 +347,19 @@ def admin_index(request):   # 我的账户也主函数
         major_id = str(appoint.major_student_id)
         x['check_major'] = (Sid == major_id)
 
-    # temptime.append(datetime.now())
-
     for x in appoint_list_past:
         x['Astart_hour_minute'] = datetime.strptime(
             x['Astart'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
         x['Afinish_hour_minute'] = datetime.strptime(
             x['Afinish'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
+
     appoint_list_future.sort(key=lambda k: k['Astart'])
     appoint_list_past.sort(key=lambda k: k['Astart'])
     appoint_list_past.reverse()
+    render_context.update(appoint_list_future=appoint_list_future,
+                          appoint_list_past=appoint_list_past)
 
-    return render(request, 'Appointment/admin-index.html', locals())
+    return render(request, 'Appointment/admin-index.html', render_context)
 
 
 # modified by wxy
@@ -557,24 +561,23 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
 @csrf_exempt
 @identity_check(redirect_field_name='origin', auth_func=lambda x: True)
 def index(request):  # 主页
-    search_code = 0
-    warn_code = 0
-    message_code = 0
-    login_url = global_info.login_url
+    render_context = {}
+    render_context.update(login_url=global_info.login_url)
     # 处理学院公告
     if (College_Announcement.objects.all()):
         try:
             message_item = College_Announcement.objects.get(
                 show=College_Announcement.Show_Status.Yes)
-            show_message = message_item.announcement
-            message_code = 1
+            render_context.update(message_code=1, show_message=message_item.announcement)
             # 必定只有一个才能继续
         except:
-            message_code = 0
+            render_context.update(message_code=0)
             # print("无法顺利呈现公告，原因可能是没有将状态设置为YES或者超过一条状态被设置为YES")
 
     if request.GET.get("warn") is not None:
-        warn_code, warn_message = 1, request.session.pop('warn_message')
+        render_context.update(warn_code=1,
+                              warn_message=request.session.pop('warn_message'))
+        
 
     #--------- 前端变量 ---------#
 
@@ -618,6 +621,14 @@ def index(request):  # 主页
     russian_room_list = room_list.filter(Rstatus=Room.Status.PERMITTED).filter(     # 俄文楼
         Rid__icontains="R").order_by('Rid')
     russ_len = len(russian_room_list)
+
+    render_context.update(
+        function_room_list=function_room_list,
+        statistics_info=statistics_info,
+        talk_room_list=talk_room_list, room_info=room_info,
+        russian_room_list=russian_room_list, russ_len=russ_len,
+    )
+
     if request.method == "POST":
 
         # YHT: added for Russian search
@@ -630,28 +641,28 @@ def index(request):  # 主页
         elif request_time is not None and russ_request_time is None:
             check_type = "talk"
         else:
-            return render(request, 'Appointment/index.html', locals())
+            return render(request, 'Appointment/index.html', render_context)
 
         if request_time != None and request_time != "":  # 初始加载或者不选时间直接搜索则直接返回index页面，否则进行如下反查时间
             day, month, year = int(request_time[:2]), int(
                 request_time[3:5]), int(request_time[6:10])
             re_time = datetime(year, month, day)  # 获取目前request时间的datetime结构
             if re_time.date() < datetime.now().date():  # 如果搜过去时间
-                search_code = 1
-                search_message = "请不要搜索已经过去的时间!"
-                return render(request, 'Appointment/index.html', locals())
+                render_context.update(search_code=1, 
+                                      search_message="请不要搜索已经过去的时间!")
+                return render(request, 'Appointment/index.html', render_context)
             elif re_time.date() - datetime.now().date() > timedelta(days=6):
                 # 查看了7天之后的
-                search_code = 1
-                search_message = "只能查看最近7天的情况!"
-                return render(request, 'Appointment/index.html', locals())
+                render_context.update(search_code=1, 
+                                      search_message="只能查看最近7天的情况!")
+                return render(request, 'Appointment/index.html', render_context)
             # 到这里 搜索没问题 进行跳转
             urls = reverse("Appointment:arrange_talk") + "?year=" + str(
                 year) + "&month=" + str(month) + "&day=" + str(day) + "&type=" + check_type
             # YHT: added for Russian search
             return redirect(urls)
 
-    return render(request, 'Appointment/index.html', locals())
+    return render(request, 'Appointment/index.html', render_context)
 
 # tag searcharrange_time
 
@@ -828,7 +839,6 @@ def arrange_talk_room(request):
 
 @identity_check(redirect_field_name='origin')
 def check_out(request):  # 预约表单提交
-    temp_time = datetime.now()
     warn_code = 0
     try:
         if request.method == "GET":
@@ -874,7 +884,6 @@ def check_out(request):  # 预约表单提交
         # TODO: task 3 pht 2022-1-28 模型修改时同步修改
         appoint_params['Sid'] = request.user.username
         appoint_params['Sname'] = get_participant(appoint_params['Sid']).name
-        Stu_all = Participant.objects.all()
 
     except:
         return redirect(reverse('Appointment:index'))
@@ -938,8 +947,6 @@ def check_out(request):  # 预约表单提交
 
         # 到这里说明预约失败 补充一些已有信息,避免重复填写
         js_stu_list = web_func.get_student_chosen_list(request)
-        # selected_stu_list = Stu_all.filter(
-        #    Sid__in=contents['students']).exclude(Sid=contents['Sid'])
         selected_stu_list = [
             w for w in js_stu_list if w['id'] in contents['students']]
         no_clause = True
@@ -1069,6 +1076,4 @@ def summary(request):  # 主页
     ypgw_num = 22
 
     # page 14 新功能预告
-
-
     return render(request, 'Appointment/summary.html', locals())
