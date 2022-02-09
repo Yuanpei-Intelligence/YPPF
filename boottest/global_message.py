@@ -29,7 +29,7 @@ def succeed(message, _context):
     在成功的情况下返回的字典, message为提示信息
     如果提供了context，则向其中添加信息
     '''
-    _context = _context.update(
+    _context.update(
         warn_code=SUCCEED,
         warn_message=message,
     )
