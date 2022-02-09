@@ -198,10 +198,12 @@
         }
         const succId = "#success_msg", warnId = "#warn_msg";
         
-        let all_inputs = document.getElementsByTagName("input");
-        for(let i = 0; i < all_inputs.length; i++){
-            if(all_inputs[i].value == "") {
-                all_inputs[i].value = all_inputs[i].placeholder;
+        if ("{{edit}}" === "True") {
+            let all_inputs = document.getElementsByTagName("input");
+            for(let i = 0; i < all_inputs.length; i++){
+                if(all_inputs[i].value == "") {
+                    all_inputs[i].value = all_inputs[i].placeholder;
+                }
             }
         }
         
@@ -248,8 +250,8 @@
 
     if ("{{edit}}" === "True") {
         fillForms();
-        var all_inputs = document.getElementsByTagName("input");
-        for(var i = 0; i < all_inputs.length; i++){
+        let all_inputs = document.getElementsByTagName("input");
+        for(let i = 0; i < all_inputs.length; i++){
             all_inputs[i].required="";
         }
     }
