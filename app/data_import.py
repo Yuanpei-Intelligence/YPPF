@@ -446,11 +446,11 @@ def load_CouRecord(request):
         semester = 'Spring'
 
     course_type_all = {
-       "德" : 0 ,
-       "智" : 1 , 
-       "体" : 2 ,
-       "美" : 3 ,
-       "劳" : 4 ,
+       "德" : Course.CourseType.MORAL ,
+       "智" : Course.CourseType.INTELLECTUAL , 
+       "体" : Course.CourseType.PHYSICAL ,
+       "美" : Course.CourseType.AESTHETICS,
+       "劳" : Course.CourseType.LABOUR,
     }
     course_info = courserecord_file['info'] #info这个sheet
     info_height ,info_width = course_info.shape 
