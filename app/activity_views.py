@@ -1,3 +1,4 @@
+from json import JSONDecodeError
 from app.views_dependency import *
 from app.models import (
     NaturalPerson,
@@ -764,6 +765,21 @@ def addActivity(request, aid=None):
     else:
         bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
 
+    if use_template:
+        # response_dict 为前端使用量，用于自动填充
+        response_dict = activity.__dict__.copy()
+        del response_dict["_state"] # 如果不删去这个的话JSONResponce会报错
+        response_dict["examine_teacher"] = activity.examine_teacher.name
+        response_dict["yq_source"] = yq_source
+        response_dict["signscheme"] = signscheme
+        response_dict["apply_reason"] = apply_reason
+        response_dict["uploaded_photo"] = uploaded_photo
+        response_dict["photo"] = photo
+        response_dict["photo_id"] = photo_id
+        try:
+            return JsonResponse(response_dict, status=200)
+        except Exception as e:
+            print(e)
     return render(request, "activity_add.html", locals())
 
 

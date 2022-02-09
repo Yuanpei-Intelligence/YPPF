@@ -707,82 +707,78 @@
 
 
 <script type="text/javascript">
-    function fillForms() {
-        document.getElementById("title").value = "{{title | safe}}";
-        document.getElementById("location").value = "{{location | safe}}";
-        document.getElementById("budget").value = "{{budget}}";   
-        // document.getElementById("datetimepicker3").value="{{start}}";
-        // document.getElementById("datetimepicker4").value="{{end}}";
-        document.getElementById("examine_teacher").value="{{examine_teacher}}";
-        if("{{activity.recorded}}" === "True") {
-            document.getElementById("recorded").checked = true;
-            document.getElementById("yq_source").innerHTML = "向学生收取";
-            document.getElementById("college").style.display = "none";
-            document.getElementById("from_college").value = "0";
-            document.getElementById("reason_block").style.display = "none";
-            document.getElementById("apply_reason").required = "";
-            document.getElementById("aprice").placeholder = "参与活动元气值价格";
-        }
-        
-        document.getElementById("pricebutton").innerHTML = "&nbsp;&nbsp;{{signscheme}}&nbsp;&nbsp;";
-        if ("{{signscheme}}" === "先到先得") {
-            document.getElementById("signscheme").value = "0";
-        } else {
-            document.getElementById("signscheme").value = "1";
-        }
-        document.getElementById("yq_source").innerHTML = "{{yq_source}}";
-        if ("{{yq_source}}" === "向学生收取") {
-            document.getElementById("from_college").value = "0";
-        } else {
-            document.getElementById("from_college").value = "1";
-        }
-        document.getElementById("aprice").value = "{{amount}}";
-        if("{{no_limit}}" === "True") {
-            document.getElementById("unlimited_capacity").checked = true;
-            document.getElementById("maxpeople").disabled = true;
-        }
-        else {
-            document.getElementById("maxpeople").value = "{{capacity}}";
-        }
-        if("{{need_checkin}}" === "True")
-            document.getElementById("need_checkin").checked = true;
-        if("{{inner}}" === "True")
-            document.getElementById("inner").checked = true; 
-        document.getElementById("aintro").value = "{{introduction | safe}}";
-        if("{{yq_source}}" === "向学院申请") {
-            document.getElementById("apply_reason").value = "{{apply_reason | safe}}";
-            document.getElementById("reason_block").style.display = "";
-        }
-        document.getElementById("inputState").value = "{{endbefore}}";
-        document.getElementById("URL").placeholder = "{{url | safe}}";
-
-        if("{{uploaded_photo}}") {
-            document.getElementById("upload_annouce_photo").innerHTML = "{{photo}}";
-        }
-        else {
-            document.getElementById("{{photo_id}}").checked = true;
-        }
-    }
-    function autoFill() {
-        fillForms();
-        let btn = document.getElementById("getTemplate");
-        btn.disabled = true;
-    }
-    {% if use_template %}
-        autoFill();
-    {% endif %}
     if("{{tid}}" === "None") {
         let btn = document.getElementById("getTemplate");
         btn.disabled = true;
     }
     function redirectToAutoFill() {
         let url = window.location.href;
-        if(url.indexOf("template") === -1){
-            window.location.href = url + "?template={{tid}}";
+        let fillForms = function(activityInfo, status) {
+            if (status !== "success") { // 自动填充失败，提示错误信息
+                document.getElementById("success_msg").style.display = "none";
+                document.getElementById("warn_msg").style.display = "";
+                document.getElementById("warn_msg").innerHTML = "自动填充失败，请联系管理员！";
+                return;
+            }
+            $("#title").val(activityInfo.title); 
+            $("#location").val(activityInfo.location);
+            $("#budget").val(activityInfo.budget);
+            $("#examine_teacher").val(activityInfo.examine_teacher);
+            $("#aintro").val(activityInfo.introduction);
+            document.getElementById("aprice").value = activityInfo.YQPoint;
+            console.log(activityInfo.recorded);
+            if(activityInfo.recorded === true) {
+                document.getElementById("recorded").checked = true;
+                document.getElementById("yq_source").innerHTML = "向学生收取";
+                document.getElementById("college").style.display = "none";
+                document.getElementById("from_college").value = "0";
+                document.getElementById("reason_block").style.display = "none";
+                document.getElementById("apply_reason").required = "";
+                document.getElementById("aprice").placeholder = "参与活动元气值价格";
+            }
+            else {
+                document.getElementById("yq_source").innerHTML = activityInfo.yq_source;
+                if (activityInfo.yq_source === "向学生收取") {
+                    document.getElementById("from_college").value = "0";
+                } else {
+                    document.getElementById("from_college").value = "1";
+                }
+            }
+            if(activityInfo.yq_source === "向学院申请") {
+                document.getElementById("apply_reason").value = activityInfo.apply_reason;
+                document.getElementById("reason_block").style.display = "";
+            }
+            if(activityInfo.capacity === 10000) {
+                document.getElementById("unlimited_capacity").checked = true;
+                document.getElementById("maxpeople").disabled = true;
+            }
+            else {
+                document.getElementById("maxpeople").value = activityInfo.capacity;
+            }
+            document.getElementById("pricebutton").innerHTML = "&nbsp;&nbsp;" + activityInfo.signscheme + "&nbsp;&nbsp;";
+            if (activityInfo.signscheme === "先到先得") {
+                document.getElementById("signscheme").value = "0";
+            } else {
+                document.getElementById("signscheme").value = "1";
+            }
+            if(activityInfo.need_checkin) {
+                document.getElementById("need_checkin").checked = true;
+            }  
+            if(activityInfo.inner){
+                document.getElementById("inner").checked = true; 
+            }  
+            document.getElementById("URL").placeholder = activityInfo.URL;
+            document.getElementById("inputState").value = activityInfo.endbefore;
+            if(activityInfo.uploaded_photo) {
+                document.getElementById("upload_annouce_photo").innerHTML = activityInfo.photo;
+            }
+            else {
+                document.getElementById(activityInfo.photo_id).checked = true;
+            }
+            let btn = document.getElementById("getTemplate");
+            btn.disabled = true;
         }
-        else {
-            alert("已经自动填充过啦！");
-        }
+        $.get(url + "?template=" + "{{tid}}", fillForms);
     }
 </script>
 
