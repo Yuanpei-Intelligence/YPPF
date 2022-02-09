@@ -24,6 +24,7 @@ from app.activity_utils import (
 )
 
 from datetime import datetime, timedelta
+from boottest import local_dict
 
 from app.scheduler import scheduler
 
@@ -76,7 +77,7 @@ def create_single_course_activity(request):
         return old_ones[0].id, False
     # 默认刘欣悦老师审核
     examine_teacher = NaturalPerson.objects.get(
-        name='刘欣悦', identity=NaturalPerson.Identity.TEACHER)
+        name=local_dict['default_course_examiner'], identity=NaturalPerson.Identity.TEACHER)
     # 检查完毕，创建活动
     org = get_person_or_org(request.user, "Organization")
 
@@ -95,7 +96,8 @@ def create_single_course_activity(request):
     activity.need_checkin = True # 默认需要签到
 
     activity.recorded = True
-    activity.status = Activity.Status.APPLYING
+    # 因为目前没有报名环节，活动状态在活动开始前默认都是WAITING
+    activity.status = Activity.Status.WAITING
 
     # 让课程小组成员参与本活动
     
@@ -115,9 +117,7 @@ def create_single_course_activity(request):
 
     scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
         run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
-    # 活动状态修改
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-        run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
+    # 活动状态修改（初始时是WAITING）
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
         run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
@@ -183,11 +183,7 @@ def modify_course_activity(request, activity):
     # 时间改变
     if activity.start != old_start:
         to_participants.append(f"活动开始时间调整为{activity.start.strftime('%Y-%m-%d %H:%M')}")
-
     
-    if activity.status == Activity.Status.APPLYING:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-            run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
     scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
         run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
     scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
@@ -234,7 +230,6 @@ def cancel_course_activity(request, activity):
     notification_status_change(notification, Notification.Status.DELETE)
 
     scheduler.remove_job(f"activity_{activity.id}_remind")
-    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.WAITING}")
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
 

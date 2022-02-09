@@ -92,5 +92,6 @@
     "test_info": {
         "stu_name": "YPadmin"
     },
-    "YQPoint_source_oname": "元培元气值中心"
+    "YQPoint_source_oname": "元培元气值中心",
+    "default_course_examiner": "刘欣悦"
 }

@@ -135,7 +135,7 @@ def addSingleCourseActivity(request):
         if user_type != "Organization":
             return redirect(message_url(wrong('书院课程小组账号才能开设课程活动!')))
         if me.oname == YQP_ONAME:
-            return redirect("/showActivity") # 可以重定向到书院课程聚合页面
+            return redirect("/showActivity") # TODO: 可以重定向到书院课程聚合页面
         html_display["is_myself"] = True
     except Exception as e:
         log.record_traceback(request, e)
