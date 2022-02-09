@@ -3,7 +3,7 @@
 {% block mainpage %}
 
 <!-- TODO: Link to related pages -->
-{% with title='我的活动' link1='' btn_name1='新建课程' link2='' btn_name2='发起选课' %}
+{% with title='我的课程' link1='' btn_name1='新建课程' link2='' btn_name2='发起选课' %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -30,8 +30,6 @@
                                     onclick="location.href = '{{link2}}';">{{btn_name2}}
                                 </button>
                             </div>
-
-
                         </div>
                         <!-- END HEADER -->
 
@@ -39,10 +37,11 @@
                         <div class="row">
                             <div class="col-12 layout-top-spacing bio">
                                 <ul id="Tab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                    <!-- BEGIN NAV HEADER -->
                                     <li class="nav-item">
                                         <b class="nav-link active" data-toggle="tab" role="tab" href="#futureActivity">
                                             未开始的活动
-                                            <a data-toggle="tooltip" data-placement="bottom" title="待补充：“未开始的活动”具体说明">
+                                            <a data-toggle="tooltip" data-placement="bottom" title="本学期还未开始的课程活动">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                                                     fill="currentColor" class="bi bi-question-circle-fill"
                                                     viewBox="0 0 22 22">
@@ -56,7 +55,7 @@
                                     <li class="nav-item">
                                         <b class="nav-link" data-toggle="tab" role="tab" href="#finishedActivity">
                                             已结束的活动
-                                            <a data-toggle="tooltip" data-placement="bottom" title="待补充：“已结束的活动”具体说明">
+                                            <a data-toggle="tooltip" data-placement="bottom" title="本学期已结束的课程活动">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                                                     fill="currentColor" class="bi bi-question-circle-fill"
                                                     viewBox="0 0 22 22">
@@ -66,6 +65,7 @@
                                             </a>
                                         </b>
                                     </li>
+                                    <!-- END NAV HEADER -->
                                 </ul>
 
                                 <div class="tab-content" id="activityTabContent">
@@ -73,11 +73,11 @@
                                         <div class="bio-skill-box layout-top-spacing"
                                             style="max-height: 75vh; overflow: scroll;">
                                             {% if future_activity_list|length == 0 %}
-                                            <p style="text-align: center;">没有未开始的活动！</p>
+                                            <p style="text-align: center;">没有未开始的课程活动！</p>
                                             {% endif %}
                                             <div class="row w-100 m-0">
                                                 {% for act in future_activity_list %}
-                                                
+                                                    <!-- BEGIN ACTIVITY DISPLAY -->
                                                     <div class="col-xm-12 col-md-6 mb-xl-5 mb-5 ">
                                                         <div class="dropdown">
                                                         <div class="d-flex b-skills" role="button" data-toggle="dropdown">
@@ -119,26 +119,29 @@
                                                                 <p
                                                                     style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                                     <i class="fa fa-clock" style="width: 20px;"></i>
-                                                                    <span class="ml-1">{{ act.time }}&nbsp;</span>
+                                                                    <span class="ml-1">活动开始时间：{{ act.start }}&nbsp;</span>
                                                                 </p>
 
                                                                 <p
                                                                     style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                                     <i class="fa fa-location-arrow"
                                                                         style="width: 20px;"></i>
-                                                                    <span class="ml-1">{{ act.place }}&nbsp;</span>
+                                                                    <span class="ml-1">{{ act.location }}&nbsp;</span>
                                                                 </p>
 
                                                             </div>
 
                                                         </div>
-                                                    
+                                                        
+                                                        <!-- BEGIN DROPDOWN MENU -->
                                                         <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
                                                             <a class="dropdown-item" href="#">修改活动</a>
                                                             <a class="dropdown-item" href="#">取消活动</a>
                                                         </div>
+                                                        <!-- END DROPDOWN MENU -->
 
                                                     </div>
+                                                    <!-- END ACTIVITY DISPLAY -->
                                                 </div>
                                                 {% endfor %}
                                             </div>
@@ -150,11 +153,11 @@
                                         <div class="bio-skill-box layout-top-spacing"
                                             style="max-height: 75vh; overflow: scroll;">
                                             {% if finished_activity_list|length == 0 %}
-                                            <p style="text-align: center;">没有已结束的活动！</p>
+                                            <p style="text-align: center;">没有已结束的课程活动！</p>
                                             {% endif %}
                                             <div class="row w-100 m-0">
                                                 {% for act in finished_activity_list %}
-                                                
+                                                    <!-- BEGIN ACTIVITY DISPLAY -->
                                                     <div class="col-xm-12 col-md-6 mb-xl-5 mb-5 ">
                                                         <div class="dropdown">
                                                         <div class="d-flex b-skills" role="button" data-toggle="dropdown">
@@ -196,25 +199,28 @@
                                                                 <p
                                                                     style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                                     <i class="fa fa-clock" style="width: 20px;"></i>
-                                                                    <span class="ml-1">{{ act.time }}&nbsp;</span>
+                                                                    <span class="ml-1">结束时间：{{ act.end }}&nbsp;</span>
                                                                 </p>
 
                                                                 <p
                                                                     style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                                     <i class="fa fa-location-arrow"
                                                                         style="width: 20px;"></i>
-                                                                    <span class="ml-1">{{ act.place }}&nbsp;</span>
+                                                                    <span class="ml-1">{{ act.location }}&nbsp;</span>
                                                                 </p>
 
                                                             </div>
 
                                                         </div>
                                                     
+                                                        <!-- BEGIN DROPDOWN MENU -->
                                                         <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
                                                             <a class="dropdown-item" href="#">手工签到</a>
                                                         </div>
+                                                        <!-- END DROPDOWN MENU -->
 
                                                     </div>
+                                                    <!-- END ACTIVITY DISPLAY -->
                                                 </div>
                                                 {% endfor %}
                                             </div>
