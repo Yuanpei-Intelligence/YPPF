@@ -1,5 +1,6 @@
 from app.views_dependency import *
 from app.models import (
+    Activity,
     NaturalPerson,
     Position,
     Organization,
@@ -20,6 +21,7 @@ from app.utils import (
 
 import json
 from django.db import transaction
+from boottest import local_dict
 
 __all__ = [
     'showNewOrganization',
@@ -545,25 +547,55 @@ def viewActivity(request):
     # 4. Support jumping to "Manual check-in" page in the html page.
 
     # Sanity check and start a html_display.
+    user = request.user
     valid, user_type, html_display = utils.check_user_type(request.user)
-    me = get_person_or_org(request.user)  # 获取自身
+    me = get_person_or_org(user, user_type)  # 获取自身
+
     
     if user_type == "Person":
-        # TODO: This aggregation page is for organization only.
-        pass
+        return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
+
+    type_name = me.otype.otype_name
+    if type_name != "书院课程":
+        return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
 
     # TODO: Prepare html_diplay and receiver_type_list.
     # The most important part is get the list of future activities from the database.
 
+    all_activity_list = (
+        Activity.objects
+        .filter(organization_id=me)
+        .order_by("-start")
+    )
+
+    future_activity_list = (
+        all_activity_list.filter(
+            status__in=[
+                Activity.Status.REVIEWING,
+                Activity.Status.APPLYING,
+                Activity.Status.WAITING,
+                Activity.Status.PROGRESSING,
+            ]
+        )
+    )
+
+    finished_activity_list = (
+        all_activity_list
+        .filter(status = Activity.Status.END)
+        .filter(year=int(local_dict["semester_data"]["year"]))
+        .filter(semester__contains=local_dict["semester_data"]["semester"])
+        .order_by("-end")
+    ) # 本学期的已结束活动 
+
     # TODO: Just pseudo Exampls for front end preview.
-    future_activity_list = [
-        testActivity('dancing', '进行中', 'test', '2022.2.2', '俄文楼201'), 
-        testActivity('singing', '审核中', 'test', '2022.2.2', 'B209')
-    ]
-    finished_activity_list = [
-        testActivity('dancing', '进行中', 'test', '2022.2.2', '俄文楼201'), 
-        testActivity('singing', '审核中', 'test', '2022.2.2', 'B209')
-    ]
+    # future_activity_list = [
+    #     testActivity('dancing', '进行中', 'test', '2022.2.2', '俄文楼201'), 
+    #     testActivity('singing', '审核中', 'test', '2022.2.2', 'B209')
+    # ]
+    # finished_activity_list = [
+    #     testActivity('dancing', '进行中', 'test', '2022.2.2', '俄文楼201'), 
+    #     testActivity('singing', '审核中', 'test', '2022.2.2', 'B209')
+    # ]
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的活动")
 
