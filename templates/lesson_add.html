@@ -64,25 +64,7 @@
                                            maxlength="50" onclick="fill_value(this)" required="required"
                                            placeholder="在这里写下您要开设的课程名称吧~（必填）" >
                                 </div>
-                                <div class="form-group">
-                                    <label>审核老师</label>
-                                    <select name="examine_teacher" id="examine_teacher" name="examine_teacher"
-                                            class="form-control selectpicker">
-                                        <option value="" selected disabled>
-                                            选择审核老师
-                                        </option>
-                                        <option value="刘欣悦">刘欣悦</option>
-                                    </select>
-                                </div> 
-                                <div class="form-check"
-                                    style="align-content: center; vertical-align: middle;">
-                                    <input class="form-check-input" type="checkbox"
-                                        value="true" id="need_checkin"
-                                        name="need_checkin" checked="true">
-                                    <label class="form-check-label" for="defaultCheck1">
-                                        需要签到?
-                                    </label>
-                                </div>   
+                                
                             </div>
                             <div id="lesson-info">
                                 <p>
@@ -118,7 +100,7 @@
                                             <label>上课地点</label>
                                             <input type="text" id="location" name="location" class="form-control"  
                                                    maxlength="50" onclick="fill_value(this)" required="required"
-                                                   placeholder="要让上课的同学能找到地点哦~（必填）" >        
+                                                   placeholder="要让上课的同学能找到地点哦~（必填）" aria-label="Default">        
                                         </div>
                                         <div class="col-lg-8 col-md-12 col-sm-12 col-xs-12">
                                             <label>上课时间</label>
@@ -136,7 +118,7 @@
                                         
                                     </div>
                                 </div>
-                                <div class="form-group" id="lesson2" style="display: none;">
+                                <!-- <div class="form-group" id="lesson2" style="display: none;">
                                     <div class="row">
                                         <div class="col-lg-4 col-md-12 col-sm-12 col-xs-12">
                                             <label>上课地点2</label>
@@ -160,7 +142,7 @@
                                             </div>
                                         </div> 
                                     </div>
-                                </div>
+                                </div> -->
                                 
                             </div>
                             
@@ -202,9 +184,10 @@
             }
         }
     }
-
+    console.log("out");
     function checkInputs() {
         // 一些函数和变量
+        console.log("check inputs");
         function showMessage(msgElemId, msgContent) {
             let msg = document.querySelector(msgElemId);
             msg.textContent = msgContent;
@@ -217,7 +200,9 @@
         
         let all_inputs = document.getElementsByTagName("input");
         for(let i = 0; i < all_inputs.length; i++){
-            fill_value(all_inputs[i]);
+            if(all_inputs[i].value == "") {
+                all_inputs[i].value = all_inputs[i].placeholder;
+            }
         }
         
         // 检查单次课程课程开始时间、结束时间
@@ -238,7 +223,7 @@
             return false;
         }
 
-        return true;
+        return false;
     }
 
     function fill_value(a) {
@@ -263,6 +248,10 @@
 
     if ("{{edit}}" === "True") {
         fillForms();
+        var all_inputs = document.getElementsByTagName("input");
+        for(var i = 0; i < all_inputs.length; i++){
+            all_inputs[i].required="";
+        }
     }
 </script>
 
