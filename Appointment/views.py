@@ -316,6 +316,7 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
 def admin_index(request):   # 我的账户也主函数
 
     warn_code, warn_message, alert_message = get_global_message()
+    # context = get_global_message()
 
     # 学生基本信息
     Sid = request.user.username
