@@ -17,8 +17,8 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "person_id", "name", "nickname", "gender", "identity", "status",
-                    "YQPoint", "YQPoint_Bonus", "bonusPoint", "wechat_receive_level",
-                    "stu_id_dbonly",
+                    "YQPoint", "YQPoint_Bonus", "bonusPoint", "active_score",
+                    "wechat_receive_level", "stu_id_dbonly",
                     ),
             }
         ],
@@ -737,4 +737,8 @@ class CourseParticipantAdmin(admin.ModelAdmin):
 
 admin.site.register(YQPointDistribute)
 admin.site.register(QandA)
-admin.site.register(OrganizationTag)
+
+@admin.register(OrganizationTag)
+class OrganizationTagAdmin(admin.ModelAdmin):
+    list_display = ["name",]
+    search_fields = ("name",)

@@ -4,6 +4,7 @@ from app.models import (
     Freshman,
     Position,
     Organization,
+    OrganizationTag,
     OrganizationType,
     Activity,
     TransferRecord,
@@ -420,4 +421,25 @@ def load_help(request):
         new_help.content = content
         new_help.save()
     context = {"message": "成功导入帮助信息！"}
+    return render(request, "debugging.html", context)
+
+def load_org_tag(request):
+    if not request.user.is_superuser:
+        context = {"message": "请先以超级账户登录后台后再操作！"}
+        return render(request, "debugging.html", context)
+    try:
+        org_tag_def = load_file("orgtag.csv")
+    except:
+        context = {"message": "没有找到orgtag.csv,请确认该文件已经在test_data中。"}
+        return render(request, "debugging.html", context)
+    tag_list = []
+    for _, tag_dict in org_tag_def.iterrows():
+        tag_name = tag_dict["name"]
+        tag_list.append(
+            OrganizationTag(
+                name=tag_name,
+            )
+        )
+    OrganizationTag.objects.bulk_create(tag_list)
+    context = {"message": "导入组织类型标签信息成功！"}
     return render(request, "debugging.html", context)
