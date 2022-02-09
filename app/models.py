@@ -294,11 +294,7 @@ class OrganizationTag(models.Model):
         verbose_name = "组织类型标签"
         verbose_name_plural = verbose_name
     
-    game = models.BooleanField("游戏", default=False)
-    sports = models.BooleanField("运动", default=False)
-    music = models.BooleanField("音乐", default=False)
-    reading = models.BooleanField("阅读", default=False)
-    others = models.BooleanField("其它", default=False)
+    name = models.CharField("标签名", blank=False)
 
 class Organization(models.Model):
     class Meta:
