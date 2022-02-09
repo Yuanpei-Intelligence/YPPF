@@ -320,7 +320,7 @@ class Organization(models.Model):
     visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
 
     first_time_login = models.BooleanField(default=True)  # 是否第一次登录
-    inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助\
+    inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
         
     #组织类型标签，一个组织可能同时有多个标签
     tag = models.ManyToManyField(OrganizationTag, blank=False)
