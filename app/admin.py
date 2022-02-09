@@ -737,3 +737,4 @@ class CourseParticipantAdmin(admin.ModelAdmin):
 
 admin.site.register(YQPointDistribute)
 admin.site.register(QandA)
+admin.site.register(OrganizationTag)

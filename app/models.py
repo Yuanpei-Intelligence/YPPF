@@ -294,7 +294,7 @@ class OrganizationTag(models.Model):
         verbose_name = "组织类型标签"
         verbose_name_plural = verbose_name
     
-    name = models.CharField("标签名", blank=False)
+    name = models.CharField("标签名", max_length=10, blank=False)
 
 class Organization(models.Model):
     class Meta:
