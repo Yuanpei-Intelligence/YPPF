@@ -440,7 +440,9 @@ def stuinfo(request, name=None):
 
         # ----------------------------------- 活动卡片 ----------------------------------- #
 
-        #学生学时查询
+        # ------------------ 学时查询 ------------------ #
+
+        # 只有是自己的主页时才显示学时
         if is_myself:
             course_me = CourseRecord.objects.filter(person_id=oneself)
             # 把当前学期的活动去除
@@ -467,57 +469,45 @@ def stuinfo(request, name=None):
                 .exclude(year__gt=21, total_hours__lt=8)
             )
 
-            # 计算总学时
-            total_hours_sum = (
-                course_me_past
-                .aggregate(Sum('total_hours'))
-            )['total_hours__sum'] or 0
-            course_me_past = course_me_past.order_by('year','-semester')
+            course_me_past = course_me_past.order_by('year', '-semester')
+            course_no_use = course_no_use.order_by('year', '-semester')
 
-            # 每个人的规定学时，按年级讨论
-            if int(oneself.stu_grade) == 2019:
-                ruled_hours = 32
-            elif int(oneself.stu_grade) <= 2018:
-                ruled_hours = 0
-            else:
-                ruled_hours = 64
-
-            actual_total_hours = max(total_hours_sum, ruled_hours)
-            # 用于算百分比的实际总学时（考虑到可能会超学时）
-            # 如果actual_total_hours=0，说明一个课程也没有参加
-
-            #计算每个类别的学时
             progress_list = []
-            TYPE_LIST = [
-                Course.CourseType.MORAL, 
-                Course.CourseType.INTELLECTUAL,
-                Course.CourseType.PHYSICAL,
-                Course.CourseType.AESTHETICS,
-                Course.CourseType.LABOUR,
-            ]
 
-            for course_type in TYPE_LIST:
-                hours = (
+            # 计算每个类别的学时
+            for course_type in list(Course.CourseType): # CourseType.values亦可
+                progress_list.append((
                     course_me_past
                     .filter(course__type=course_type)
                     .aggregate(Sum('total_hours'))
-                )['total_hours__sum']or 0
-
-                if actual_total_hours > 0: # 防止除零出现
-                    hours = hours / actual_total_hours * 100
-                progress_list.append(hours)
+                )['total_hours__sum'] or 0)
 
             # 计算没有对应Course的学时
-            hours_NOTYPE = (
+            progress_list.append((
                 course_me_past
                 .filter(course__isnull=True)
                 .aggregate(Sum('total_hours'))
-            )['total_hours__sum'] or 0
+            )['total_hours__sum'] or 0)
+
+            # 每个人的规定学时，按年级讨论
+            if int(oneself.stu_grade) <= 2018:
+                ruled_hours = 0
+            elif int(oneself.stu_grade) == 2019:
+                ruled_hours = 32
+            else:
+                ruled_hours = 64
+
+            # 计算总学时
+            total_hours_sum = sum(progress_list)
+            # 用于算百分比的实际总学时（考虑到可能会超学时），仅后端使用
+            actual_total_hours = max(total_hours_sum, ruled_hours)
             if actual_total_hours > 0:
-                hours_NOTYPE = hours_NOTYPE / actual_total_hours * 100
-            progress_list.append(hours_NOTYPE)
+                progress_list = [
+                    hour / actual_total_hours * 100 for hour in progress_list
+                ]
 
 
+        # ------------------ 活动参与 ------------------ #
         
         participants = Participant.objects.activated().filter(person_id=person)
         activities = Activity.objects.activated().filter(
