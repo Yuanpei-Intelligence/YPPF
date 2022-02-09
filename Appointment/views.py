@@ -35,6 +35,9 @@ from django_apscheduler.jobstores import DjangoJobStore, register_events, regist
 from Appointment.utils.scheduler_func import scheduler
 import Appointment.utils.scheduler_func as scheduler_func
 
+# boottest 相关工具
+from boottest.global_message import *
+
 
 
 # 注册启动以上schedule任务
@@ -312,10 +315,7 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
 @identity_check(redirect_field_name='origin')
 def admin_index(request):   # 我的账户也主函数
 
-    warn_code = 0
-    if request.GET.get("warn_code", None) is not None:
-        warn_code = int(request.GET['warn_code'])
-        warning = request.GET['warning']
+    warn_code, warn_message, alert_message = get_global_message()
 
     # 学生基本信息
     Sid = request.user.username

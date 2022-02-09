@@ -95,9 +95,9 @@
 		<div class="content">
 			<div class="container-fluid">
 				{% if warn_code == 1 %}
-				<div class="alert alert-warning  text-center">{{ warning }}</div>
+				<div class="alert alert-warning  text-center">{{ warn_message }}</div>
 				{% elif warn_code == 2 %}
-				<div class="alert alert-success  text-center">{{ warning }}</div>
+				<div class="alert alert-success  text-center">{{ warn_message }}</div>
 				{% endif %}
 				<div class="row">
 					<div class="col-md-5 col-lg-4 col-xl-3 theiaStickySidebar">
