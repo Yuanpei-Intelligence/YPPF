@@ -712,14 +712,7 @@
         btn.disabled = true;
     }
     function redirectToAutoFill() {
-        let url = window.location.href;
         let fillForms = function(activityInfo, status) {
-            if (status !== "success") { // 自动填充失败，提示错误信息
-                document.getElementById("success_msg").style.display = "none";
-                document.getElementById("warn_msg").style.display = "";
-                document.getElementById("warn_msg").innerHTML = "自动填充失败，请联系管理员！";
-                return;
-            }
             $("#title").val(activityInfo.title); 
             $("#location").val(activityInfo.location);
             $("#budget").val(activityInfo.budget);
@@ -778,7 +771,20 @@
             let btn = document.getElementById("getTemplate");
             btn.disabled = true;
         }
-        $.get(url + "?template=" + "{{tid}}", fillForms);
+        $.ajax({
+            type: 'GET',
+            url: window.location.href,
+            data: {"template": "{{tid}}"},
+            success: fillForms,
+            error: function (response) {
+                // 自动填充失败，描述错误信息
+                document.getElementById("success_msg").style.display = "none";
+                document.getElementById("warn_msg").style.display = "";
+                document.getElementById("warn_msg").innerHTML = response.responseJSON.error_msg;
+                document.body.scrollTop = document.documentElement.scrollTop = 0;
+                return;
+            },
+        });
     }
 </script>
 
