@@ -559,7 +559,6 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
 @identity_check(redirect_field_name='origin', auth_func=lambda x: True)
 def index(request):  # 主页
     search_code = 0
-    warn_code = 0
     message_code = 0
     login_url = global_info.login_url
     # 处理学院公告
@@ -574,8 +573,7 @@ def index(request):  # 主页
             message_code = 0
             # print("无法顺利呈现公告，原因可能是没有将状态设置为YES或者超过一条状态被设置为YES")
 
-    if request.GET.get("warn") is not None:
-        warn_code, warn_message = 1, request.session.pop('warn_message')
+    warn_code, warn_message, alert_message = get_global_message(request)
 
     #--------- 前端变量 ---------#
 
@@ -897,13 +895,11 @@ def check_out(request):  # 预约表单提交
                 contents['non_yp_num'] = int(contents['non_yp_num'])
                 assert contents['non_yp_num'] >= 0
             except:
-                warn_code = 1
-                warning = "外院人数有误,请按要求输入!"
+                warn_code, warn_message = 1, "外院人数有误,请按要求输入!"
                 # return render(request, "Appointment/checkout.html", locals())
         # 处理用途未填写
         if contents['Ausage'] == "":
-            warn_code = 1
-            warning = "请输入房间用途!"
+            warn_code, warn_message = 1, "请输入房间用途!"
             # return render(request, "Appointment/checkout.html", locals())
         # 处理单人预约
         if "students" not in contents.keys():
@@ -934,8 +930,7 @@ def check_out(request):  # 预约表单提交
                 return redirect(urls)
             else:
                 add_dict = json.loads(response.content)['statusInfo']
-                warn_code = 1
-                warning = add_dict['message']
+                warn_code, warn_message = 1, add_dict['message']
 
         # 到这里说明预约失败 补充一些已有信息,避免重复填写
         js_stu_list = web_func.get_student_chosen_list(request)

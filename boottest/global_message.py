@@ -17,20 +17,24 @@ def wrong(message, _context):
     在错误的情况下返回的字典, message为错误信息
     如果提供了context，则向其中添加信息
     '''
-    return _context.update(
+    _context.update(
         warn_code=WRONG,
         warn_message=message,
     )
+
+    return _context
 
 def succeed(message, _context):
     '''
     在成功的情况下返回的字典, message为提示信息
     如果提供了context，则向其中添加信息
     '''
-    return _context.update(
+    _context = _context.update(
         warn_code=SUCCEED,
         warn_message=message,
     )
+
+    return _context
 
 def set_global_info(request, **kwargs):
     request.session.update(**kwargs)
