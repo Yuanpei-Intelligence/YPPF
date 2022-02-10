@@ -6,7 +6,7 @@ course_views.py的依赖函数
 registration_status_check: 检查学生选课状态变化的合法性
 registration_status_change: 改变学生选课状态
 registration_status_create（临时用，待对接后废弃）: 创建学生选课状态
-course2Display: 把课程信息转换为方便前端呈现的形式
+course_to_display: 把课程信息转换为方便前端呈现的形式
 draw_lots: 预选阶段结束时执行抽签
 change_course_status: 改变课程的选课阶段
 remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
@@ -15,6 +15,7 @@ process_time: 把datetime对象转换成人类可读的时间表示
 from datetime import datetime, timedelta
 from random import sample
 
+from boottest import local_dict
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import F, Sum
@@ -22,7 +23,8 @@ from django.db.models import F, Sum
 from app.activity_utils import (changeActivityStatus, check_ac_time,
                                 notifyActivity)
 from app.models import (Activity, ActivityPhoto, Course, CourseParticipant,
-                        NaturalPerson, Notification, Participant, Position)
+                        NaturalPerson, Notification, Participant, Position,
+                        Semester)
 from app.notification_utils import (bulk_notification_create,
                                     notification_create,
                                     notification_status_change)
@@ -345,6 +347,17 @@ def registration_status_change(course_id, user, action=None):
         else:
             to_status = CourseParticipant.Status.SUCCESS
 
+        # 选课不能超过6门
+        if CourseParticipant.objects.filter(
+                course=course,
+                person=user,
+                status__in=[
+                    CourseParticipant.Status.SELECT,
+                    CourseParticipant.Status.SUCCESS,
+                ]).count() >= 6:
+            context["warn_message"] = "最多只能选择6门课程～"
+            return context
+
     # 如果action为取消预选或退选，to_status直接使用初始值即可
 
     # 检查当前选课状态、选课阶段和操作的一致性
@@ -402,7 +415,7 @@ def process_time(start, end) -> str:
     return f"每周{chinese_display[start.weekday()]} {start_time}-{end_time}"
 
 
-def course2Display(courses, user, detail=False):
+def course_to_display(courses, user, detail=False):
     """
     方便前端呈现课程信息
 
@@ -414,7 +427,7 @@ def course2Display(courses, user, detail=False):
         返回一个列表，列表中的每个元素是一个课程信息的字典，字典的key同model中的字段名
     """
     display = []
-    courses = courses.prefetch_related("participant_set")  # 预取，减少数据库查询次数
+    courses = courses.prefetch_related("participant_set", "organization")  # 预取，减少数据库查询次数
 
     # 获取课程的基本信息
 
@@ -422,14 +435,14 @@ def course2Display(courses, user, detail=False):
         course_info = {}
         course_info["id"] = course.id
         course_info["name"] = course.name
-        course_info["classroom"] = course.classroom
-        course_info["teacher"] = course.teacher
-        course_info["bidding"] = int(course.bidding)  # 不显示小数
+        course_info["organization"] = course.organization
         course_info["current_participants"] = course.current_participants
         course_info["capacity"] = course.capacity
+        course_info["times"] = course.times  # 课程周数
+        course_info["type"] = course.get_type_display()  # 课程类型
+        course_info["status"] = course.get_status_display()  # 课程所处的选课阶段
 
-        # 选课阶段的四个时间点
-
+        # TODO: 可能要去掉
         if course.stage1_start:
             course_info["stage1_start"] = course.stage1_start.strftime(
                 "%Y-%m-%d %H:%M")
@@ -443,10 +456,6 @@ def course2Display(courses, user, detail=False):
             course_info["stage2_end"] = course.stage2_end.strftime(
                 "%Y-%m-%d %H:%M")
 
-        course_info["type"] = course.get_type_display()  # 课程类型
-
-        course_info["status"] = course.get_status_display()  # 课程所处的选课阶段
-
         if user.identity == NaturalPerson.Identity.STUDENT:
             # 当前学生的选课状态
             course_info["student_status"] = course.participant_set.get(
@@ -458,7 +467,9 @@ def course2Display(courses, user, detail=False):
 
             course_info["is_full"] = (True if course.current_participants >=
                                       course.capacity else False)
-
+        
+        # 每周的上课时间
+        # TODO：暂时认为前端需要显示每周的上课时间，需要讨论
         course_time = []
         for time in course.time_set.all():
             course_time.append(process_time(time.start, time.end))
@@ -467,8 +478,13 @@ def course2Display(courses, user, detail=False):
         # 在课程详情页才展示的信息
 
         if detail:
+            course_info["classroom"] = course.classroom
+            course_info["teacher"] = course.teacher
             course_info["introduction"] = course.introduction
             course_info["photo"] = course.photo.name  # 图片在media文件夹内的路径
+
+            # 暂时不启用意愿点机制
+            # course_info["bidding"] = int(course.bidding)
 
         display.append(course_info)
 
@@ -668,4 +684,21 @@ def change_course_status(course_id, cur_status, to_status):
     # 如果选课结束，需要根据上课时间批量开设整个学期的课程活动
 
     if to_status == Course.Status.END:
-        pass
+        # 将选课成功的同学批量加入小组
+        participants = CourseParticipant.objects.filter(
+            course=course,
+            status=CourseParticipant.Status.SUCCESS).select_related('person')
+        organization = course.organization
+        positions = []
+        for participant in participants:
+            if not Position.objects.filter(person=participant.person,
+                                           org=organization).exists():
+                position = Position(
+                    person=participant.person,
+                    org=organization,
+                    in_semester=Semester.get(
+                        local_dict["semester_data"]["semester"]))
+                positions.append(position)
+        if positions:
+            with transaction.atomic():
+                Position.objects.bulk_create(positions)
