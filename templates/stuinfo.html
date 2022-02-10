@@ -539,23 +539,13 @@
                                 {% endfor %}
                             </div>
                             {% if course_me_past or course_no_use %}
-                                <script src="https://cdn.staticfile.org/jquery/1.10.2/jquery.min.js">
-                                </script>
-                                <script>
-                                    $(document).ready(function(){
-                                        $("table").hide();
-                                        $("button").click(function(){
-                                            $("table").toggle();
-                                        });
-                                    });
-                                </script>
                                 <p class="text-left">
                                     已有学时 / 规定学时 ： {{total_hours_sum|floatformat:-1}} / {{ruled_hours}} 
                                 </p>
                                 <p class="text-right">
-                                    <button type="button" class="btn btn-info mb-4 mr-2">显示/隐藏详细学时</button>
+                                    <button id="course_record" type="button" class="btn btn-info mb-4 mr-2">显示/隐藏详细学时</button>
                                 </p>
-                                <table class="table">
+                                <table id="course_show" class="table">
                                     <thead>
                                         <th style='text-align: center;'>课程名称</th>
                                         <th style='text-align: center;'>学年</th>
@@ -715,6 +705,16 @@
 {% endblock %}
 
 {% block add_js_file %}
+{% if html_display.is_myself %}
+    <script>
+        $(document).ready(function(){
+            $("#course_show").hide();
+            $("#course_record").click(function(){
+                $("#course_show").toggle();
+            });
+        });
+    </script>
+{% endif %}
 <script type="text/javascript">
     window.addEventListener(`load`, (event) => {
         const hash = window.location.pathname.match(/&(.*)$/);
