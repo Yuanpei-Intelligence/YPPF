@@ -318,8 +318,9 @@ def selectCourse(request):
     # 前端用于显示的内容: 两个list，list中每个元素是一个dict，包含课程的具体信息。
     # 两个list的顺序都和课程id一致。
 
-    unselected_display = course2Display(unselected_course, me, detail=True)
-    selected_display = course2Display(selected_course, me, detail=True)
+    # 不一定需要，也可以先prefetch，然后让前端直接取
+    unselected_display = course_to_display(unselected_course, me)
+    selected_display = course_to_display(selected_course, me)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "书院课程")
 
@@ -355,13 +356,11 @@ def viewCourse(request):
     try:
         course = Course.objects.filter(id=course_id)
     except:
-        context = {}
-        context["warn_code"] = 1
-        context["warn_message"] = f"课程{course_id}不存在"
+        # 课程id不存在
         return EXCEPT_REDIRECT
 
     me = utils.get_person_or_org(request.user, user_type)
-    course_display = course2Display(course, me, detail=True)
+    course_display = course_to_display(course, me, detail=True)
 
     # TODO: task 10 ljy 2022-02-07
     # 和前端对接: 按返回按钮可以redirect到selectCourse页面
