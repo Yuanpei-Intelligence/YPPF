@@ -19,6 +19,9 @@ from app.models import (
     Wishes,
     QandA,
     ReimbursementPhoto,
+    Course,
+    CourseRecord,
+    Semester,
 )
 from app.utils import (
     url_check,
@@ -57,7 +60,7 @@ from boottest import local_dict
 from django.contrib import auth, messages
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import transaction
-from django.db.models import Q, F
+from django.db.models import Q, F, Sum
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
@@ -437,6 +440,75 @@ def stuinfo(request, name=None):
 
         # ----------------------------------- 活动卡片 ----------------------------------- #
 
+        # ------------------ 学时查询 ------------------ #
+
+        # 只有是自己的主页时才显示学时
+        if is_myself:
+            course_me = CourseRecord.objects.filter(person_id=oneself)
+            # 把当前学期的活动去除
+            course_me_past = (
+                course_me.exclude(
+                    year=int(local_dict["semester_data"]["year"]), 
+                    semester=local_dict["semester_data"]["semester"])
+            )
+
+            # 无效学时，在前端呈现
+            course_no_use = (
+                course_me_past
+                .filter(total_hours__lt=8)
+                .exclude(year=20, semester=Semester.FALL, total_hours__gte=6)
+                .exclude(year=21, semester=Semester.SPRING, total_hours__gte=6)
+            )
+            
+            # 特判，需要一定时长才能计入总学时
+            course_me_past = (
+                course_me_past
+                .exclude(year=20, semester=Semester.FALL, total_hours__lt=6)
+                .exclude(year=21, semester=Semester.SPRING, total_hours__lt=6)
+                .exclude(year=21, semester=Semester.FALL, total_hours__lt=8) # 21秋开始，需要至少8学时
+                .exclude(year__gt=21, total_hours__lt=8)
+            )
+
+            course_me_past = course_me_past.order_by('year', '-semester')
+            course_no_use = course_no_use.order_by('year', '-semester')
+
+            progress_list = []
+
+            # 计算每个类别的学时
+            for course_type in list(Course.CourseType): # CourseType.values亦可
+                progress_list.append((
+                    course_me_past
+                    .filter(course__type=course_type)
+                    .aggregate(Sum('total_hours'))
+                )['total_hours__sum'] or 0)
+
+            # 计算没有对应Course的学时
+            progress_list.append((
+                course_me_past
+                .filter(course__isnull=True)
+                .aggregate(Sum('total_hours'))
+            )['total_hours__sum'] or 0)
+
+            # 每个人的规定学时，按年级讨论
+            if int(oneself.stu_grade) <= 2018:
+                ruled_hours = 0
+            elif int(oneself.stu_grade) == 2019:
+                ruled_hours = 32
+            else:
+                ruled_hours = 64
+
+            # 计算总学时
+            total_hours_sum = sum(progress_list)
+            # 用于算百分比的实际总学时（考虑到可能会超学时），仅后端使用
+            actual_total_hours = max(total_hours_sum, ruled_hours)
+            if actual_total_hours > 0:
+                progress_list = [
+                    hour / actual_total_hours * 100 for hour in progress_list
+                ]
+
+
+        # ------------------ 活动参与 ------------------ #
+        
         participants = Participant.objects.activated().filter(person_id=person)
         activities = Activity.objects.activated().filter(
             Q(id__in=participants.values("activity_id")),
