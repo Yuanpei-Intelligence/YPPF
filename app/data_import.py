@@ -427,6 +427,7 @@ def load_help(request):
     context = {"message": "成功导入帮助信息！"}
     return render(request, "debugging.html", context)
 
+
 def load_CouRecord(request):
     if not request.user.is_superuser:
         context = {"message": "请先以超级账户登录后台后再操作！"}
@@ -626,6 +627,7 @@ def load_CouRecord(request):
             context['message']+= '<div style="color:rgb(86, 170, 142);">'+'表格内容: '+stu+'</div>'
 
     return render(request, "debugging.html", context)
+
 
 def load_org_tag(request):
     if not request.user.is_superuser:
