@@ -427,7 +427,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             relate_instance=activity,
             publish_to_wechat=True,
             publish_kws=publish_kws,
-        )
+        )   
         assert success, "批量创建通知并发送时失败"
 
     except Exception as e:
