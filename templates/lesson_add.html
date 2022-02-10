@@ -202,13 +202,12 @@
         }
         const succId = "#success_msg", warnId = "#warn_msg";
         
-        if ("{{edit}}" === "True") {
-            let all_inputs = document.getElementsByTagName("input");
-            for(let i = 0; i < all_inputs.length; i++){
-                fill_value(all_inputs[i]);
-            }
+        {% if edit %}
+        let all_inputs = document.getElementsByTagName("input");
+        for(let i = 0; i < all_inputs.length; i++){
+            fill_value(all_inputs[i]);
         }
-        
+        {% endif %}
         
         // 检查单次课程课程开始时间、结束时间
         let start1 = $("#datetimepicker1").val(), end1 = $("#datetimepicker2").val();
@@ -242,19 +241,19 @@
         }
     }
 
+    {% if edit %}
     function fillForms() {
         document.getElementById("title").placeholder = "{{title | safe}}";
         document.getElementById("location").placeholder = "{{location | safe}}";
         document.getElementById("datetimepicker1").placeholder="{{start}}";
         document.getElementById("datetimepicker2").placeholder="{{end}}";
-        if ("{{need_checkin}}" === "True")
+        {% if need_checkin %}
             document.getElementById("need_checkin").checked = true;
+        {% endif %}
         document.getElementById("examine_teacher").value="{{examine_teacher}}";
     }
-
-    if ("{{edit}}" === "True") {
-        fillForms();
-    }
+    fillForms();
+    {% endif %}
 
     if (document.referrer.endsWith("/addActivity/")) {
         document.getElementById("warn_msg").style.display = "";
