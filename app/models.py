@@ -148,7 +148,6 @@ class NaturalPerson(models.Model):
         help_text='允许微信接收的最低消息等级，更低等级的通知类消息将被屏蔽'
         )
     
-    promote_accept = models.BooleanField(default=True) #是否接受推广消息
     active_score = models.FloatField("活跃度", default=0)  #用户活跃度
 
     def __str__(self):
