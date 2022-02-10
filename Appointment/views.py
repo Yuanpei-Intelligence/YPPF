@@ -308,7 +308,6 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
 
 
 # modified by wxy
-# tag searchadmin_index
 @identity_check(redirect_field_name='origin')
 def admin_index(request):   # 我的账户也主函数
 
@@ -321,22 +320,17 @@ def admin_index(request):   # 我的账户也主函数
         render_context.update(warn_code=warn_code, warning=warning)
 
     # 学生基本信息
-    Sid = request.user.username
-    my_info = web_func.getStudentInfo(Sid)
+    Pid = request.user.username
+    my_info = web_func.getStudentInfo(Pid)
 
     # 头像信息
-    # img_path, valid_path = web_func.img_get_func(request)
-    # if valid_path:
-    #     request.session['img_path'] = img_path
     img_path = get_avatar(request.user)
-    #img_path = request.build_absolute_uri(
-    # reverse("Appointment:web_func.img_get_func") + "?Sid=" + Sid)
     render_context.update(my_info=my_info, img_path=img_path)
 
     # 分成两类,past future
     # 直接从数据库筛选两类预约
-    appoint_list_future = web_func.student2appoints(Sid, 'future').get('data')
-    appoint_list_past = web_func.student2appoints(Sid, 'past').get('data')
+    appoint_list_future = web_func.student2appoints(Pid, 'future').get('data')
+    appoint_list_past = web_func.student2appoints(Pid, 'past').get('data')
 
     for x in appoint_list_future:
         x['Astart_hour_minute'] = datetime.strptime(
@@ -345,7 +339,7 @@ def admin_index(request):   # 我的账户也主函数
             x['Afinish'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
         appoint = Appoint.objects.get(Aid=x['Aid'])
         major_id = str(appoint.major_student_id)
-        x['check_major'] = (Sid == major_id)
+        x['check_major'] = (Pid == major_id)
 
     for x in appoint_list_past:
         x['Astart_hour_minute'] = datetime.strptime(
@@ -363,21 +357,15 @@ def admin_index(request):   # 我的账户也主函数
 
 
 # modified by wxy
-# tag searchadmin_credit
 @identity_check(redirect_field_name='origin')
 def admin_credit(request):
 
-    Sid = request.user.username
+    Pid = request.user.username
 
     # 头像信息
-    # img_path, valid_path = web_func.img_get_func(request)
-    # if valid_path:
-    #     request.session['img_path'] = img_path
     img_path = get_avatar(request.user)
-    #img_path = request.build_absolute_uri(
-    # reverse("Appointment:web_func.img_get_func") + "?Sid=" + Sid)
 
-    vio_list = web_func.student2appoints(Sid, 'violate', major=True).get('data')
+    vio_list = web_func.student2appoints(Pid, 'violate', major=True).get('data')
     vio_list_in_7_days = []
     present_day = datetime.now()
     seven_days_before = present_day - timedelta(7)
@@ -392,7 +380,7 @@ def admin_credit(request):
                     x['Astart'], "%Y-%m-%dT%H:%M:%S") >= seven_days_before:
             vio_list_in_7_days.append(x)
     vio_list_in_7_days.sort(key=lambda k: k['Astart'])
-    my_info = web_func.getStudentInfo(Sid)
+    my_info = web_func.getStudentInfo(Pid)
     return render(request, 'Appointment/admin-credit.html', locals())
 
 
@@ -555,8 +543,6 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
     #         },
     #         status=400)
 
-# tag searchindex
-
 
 @csrf_exempt
 @identity_check(redirect_field_name='origin', auth_func=lambda x: True)
@@ -664,7 +650,6 @@ def index(request):  # 主页
 
     return render(request, 'Appointment/index.html', render_context)
 
-# tag searcharrange_time
 
 @identity_check(redirect_field_name='origin')
 def arrange_time(request):
@@ -737,7 +722,6 @@ def arrange_time(request):
 
         return render(request, 'Appointment/booking.html', locals())
 
-# tag searcharrange_talk
 
 @identity_check(redirect_field_name='origin')
 def arrange_talk_room(request):
@@ -835,7 +819,6 @@ def arrange_talk_room(request):
 
     return render(request, 'Appointment/booking-talk.html', locals())
 
-# tag searchcheck_out
 
 @identity_check(redirect_field_name='origin')
 def check_out(request):  # 预约表单提交
@@ -965,12 +948,12 @@ def logout(request):    # 登出系统
 @csrf_exempt
 @identity_check(redirect_field_name='origin')
 def summary(request):  # 主页
-    Sid = ""
+    Pid = ""
 
     try:
-        if not Sid:
-            Sid = request.user.username
-        with open(f'Appointment/summary_info/{Sid}.txt','r',encoding='utf-8') as fp:
+        if not Pid:
+            Pid = request.user.username
+        with open(f'Appointment/summary_info/{Pid}.txt','r',encoding='utf-8') as fp:
             myinfo = json.load(fp)
     except:
         return redirect(reverse("Appointment:logout"))
