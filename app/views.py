@@ -1,6 +1,7 @@
-from app.views_dependency import *
 from django.views import View
+from app.views_dependency import *
 from app.models import (
+    CourseRecord,
     NaturalPerson,
     Freshman,
     Position,
@@ -20,7 +21,6 @@ from app.models import (
     Wishes,
     QandA,
     ReimbursementPhoto,
-    CourseRecord
 )
 from app.utils import (
     url_check,
@@ -50,15 +50,17 @@ from app.QA_utils import (
     QA_delete,
     QA_ignore,
 )
+
 from app.record_add import (
     CheckGetinFile,
-    add_courseRecord,
+    add_courecord_byfile,
+    add_courecord_byweb,
 )
-
 
 import json
 import random
 import requests  # 发送验证码
+import pandas as pd
 from datetime import date, datetime, timedelta
 
 from boottest import local_dict
@@ -68,12 +70,12 @@ from django.db import transaction
 from django.db.models import Q, F
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
-import pandas as pd
+
 
 # 定时任务不在views直接调用
 # 但是天气任务还是在这里弄吧，太奇怪了
-from app.scheduler_func import start_scheduler
-start_scheduler(with_scheduled_job=True, debug=True)
+# from app.scheduler_func import start_scheduler
+# start_scheduler(with_scheduled_job=True, debug=True)
 
 
 email_url = local_dict["url"]["email_url"]
@@ -1643,12 +1645,9 @@ def subscribeOrganization(request):
 
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    # orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
-    otype_infos = [(
-        otype,
-        list(Organization.objects.filter(otype=otype)
-            .select_related("organization_id")),
-    ) for otype in OrganizationType.objects.all().order_by('-otype_id')]
+    org_list = list(Organization.objects.all().select_related("organization_id","otype"))
+    #orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
+    otype_list = list(OrganizationType.objects.all().order_by('-otype_id'))
     unsubscribe_list = list(me.unsubscribe_list.values_list("organization_id__username", flat=True))
     # 获取不订阅列表（数据库里的是不订阅列表）
 
@@ -1911,6 +1910,33 @@ def QAcenter(request):
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="问答中心")
     return render(request, "QandA_center.html", locals())
 
+
+# def base(request):
+#     return render(request, "base.html")
+
+
+# def course_record(request):
+#     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
+#     bar_display = utils.get_sidebar_and_navbar(request.user, "元培生活")
+#     if request.method=='POST' and request.POST.get("add_courseRecord") is not None:
+#         print("get some file")
+#         xlsx_file = request.FILES.getlist("xlsx_file")
+#         if xlsx_file == []:
+#             pass # TODO: 记得加上
+#         file = xlsx_file[0]
+#         df = pd.read_excel(file)
+
+#         if (CheckGetinFile(df) != 0,str):
+#             pass
+#         if (add_courseRecord(df)==1):
+#             #TODO:
+#             print('error 3')
+#             # pass
+#         else:
+#             print('success')
+        
+#     return render(request, "course_record.html", locals())
+
 class course_record(View):
     def __init__(self):
         self.error = [
@@ -1921,12 +1947,12 @@ class course_record(View):
         ]
         self.course_info = {
             'course' : u'手工课',
-            'year' : '2022',
-            'semester' : 'Spring'
+            'year' : '2021',
+            'semester' : 'Fall'
         }
 
         self.record_list = CourseRecord.objects.filter(
-            course__cid__oname = self.course_info['course'],
+            course__name = self.course_info['course'],
             year = self.course_info['year'],
             semester = self.course_info['semester'],
         )
@@ -1939,32 +1965,49 @@ class course_record(View):
         return render(request, "course_record.html", locals())
 
     def post(self, request):
-        # if request.POST.get("add_courseRecord") is not None:
-        bar_display = utils.get_sidebar_and_navbar(request.user, "课程学时")        
-        record_list = self.record_list
-        course_info = self.course_info
-        html_display={
-            "upload_success":False,
-            'error':'',
-            'type' : 2, #1 =>warning; 2=>error;
-            }
-        xlsx_file = request.FILES.getlist("xlsx_file")
-        if xlsx_file == []:
-            html_display["error"]=self.error[3]
-            html_display['type'] = 1
-            return render(request, "course_record.html", locals())
-        file = xlsx_file[0]
-        df = pd.read_excel(file)
-        
-        file_check = CheckGetinFile(df)
-        if (file_check != -1):
-            html_display["error"]=self.error[file_check]
-            return render(request, "course_record.html", locals())
-        if (add_courseRecord(df)==1):
-            html_display["error"]=self.error[2]
-            return render(request, "course_record.html", locals())
-        else:
-            html_display["upload_success"]=True
-        
+        if request.POST.get("post_record") is not None:
+            bar_display = utils.get_sidebar_and_navbar(request.user, "课程学时")        
+            record_list = self.record_list
+            course_info = self.course_info
+            html_display={
+                "upload_success":False,
+                'error':'',
+                'type' : 2, #1 =>warning; 2=>error;
+                }
+            xlsx_file = request.FILES.getlist("xlsx_file")
+            if xlsx_file == []:
+                html_display["error"]=self.error[3]
+                html_display['type'] = 1
+                return render(request, "course_record.html", locals())
+            file = xlsx_file[0]
+            df = pd.read_excel(file)
+            
+            file_check = CheckGetinFile(df)
+            if (file_check != -1):
+                html_display["error"]=self.error[file_check]
+                return render(request, "course_record.html", locals())
+            if (add_courecord_byfile(df)==1):
+                html_display["error"]=self.error[2]
+                return render(request, "course_record.html", locals())
+            else:
+                html_display["upload_success"]=True
+        if request.is_ajax():
+            # print(request.POST)
+            datas = json.loads(request.POST.get('data'))
+            print(datas,type(datas))
+            for data in datas:
+                # print(data)
+            # for key,value in request.POST.items():
+            #     print(key,value,type(key),type(value))
+                add_courecord_byweb([
+                    data[1],
+                    data[0],
+                    self.course_info['year'],
+                    self.course_info['semester'],
+                    self.course_info['course'],
+                    data[2],
+                    data[3],
+                ])
+
 
         return render(request, "course_record.html", locals())

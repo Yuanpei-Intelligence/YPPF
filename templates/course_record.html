@@ -72,7 +72,7 @@
               <label class="custom-file-label" for="inputGroupFile01"
               style="color:rgba(0, 0, 0, 0.363); height:38px;">选择文件</label> </div>
               <!-- <div class="input-group-text text-primary" id="inputGroupFileAddon01" style="font-weight: bolder;"> -->
-              </td><td><button class="btn btn-primary " style="position:relative; left:5px; height:40px;">上传</button></td>
+              </td><td><button name="post_record" class="btn btn-primary " style="position:relative; left:5px; height:40px;">上传</button></td>
             <!-- </div> --></tr></table>
           </form>   
            
@@ -87,10 +87,10 @@
           {% endif %}
         </div>
         <div class="col-12 layout-spacing">
-          <table class="table table-striped table-active">
+          <table class="table table-striped table-active" id="store_table">
     
             <thead>
-              <tr>
+              <tr >
                 <th scope="col" width="17%">姓名</th>
                 <th scope="col" width="26%">学号</th>
                 <th scope="col" width="20%">参加次数</th>
@@ -100,10 +100,10 @@
             <tbody class="table">
               {% for record in record_list %}
               <tr>
-                <th scope="row">{{record.person.name}}</th>
-                <td>{{record.person.person_id}}</td>
-                <td><a1>{{record.attend_times}}</a1></td>
-                <td><a1>{{record.total_hours}}</a1></td>
+                <th class="name" scope="row">{{record.person.name}}</th>
+                <td class="sid">{{record.person.person_id}}</td>
+                <td class="times"><a1>{{record.attend_times}}</a1></td>
+                <td class="hours"><a1>{{record.total_hours}}</a1></td>
               </tr>
               {% endfor %}
 
@@ -115,10 +115,10 @@
 
         <div class="col-12 row layout-spacing">
           <div class="col-6" style="text-align: center;">
-            <button type="button" class="btn btn-danger btn-lg" >取消保存</button>
+            <button type="button" class="btn btn-danger btn-lg" id="cancel_changes">取消保存</button>
           </div>          
           <div class="col-6" style="text-align: center;">
-            <button type="button" class="btn btn-primary btn-lg" >提交修改</button>
+            <button type="button" class="btn btn-primary btn-lg" id="post_data" name="post_table">提交修改</button>
           </div>
 
         </div>
@@ -181,7 +181,59 @@
     }else {
         $("#name").css('borderColor',''); //取消css样式
     }
+      // 以下为返回上传修改后的表格的代码
+    $("#post_data").click( function() {
+      var tablehtml = $("#store_table")
+      var data = getTableData(tablehtml)
+      // alert('table: '+data)
+      var data_str = JSON.stringify(data)
+      // alert(json)
+      $.ajax({
+            url: "/courserecord/",
+            type: 'POST',
+            data: {'data': data_str},
+            // traditional: true, 
+            // dataType:'json',
+            success: function(res) {
+                //相关操作
+                alert("success!")
+            },
+            error: function(res) {
+                //异常提示
+                alert('error')
+            }
+        });
 
+      
+      function getTableData(tableHtml) {  //获取表格数据
+        let result = []
+        if ($('tr')) {
+            let length = $('tr').length;
+            // alert(length)
+            for(let i = 0; i < length; i++) {   //追加数据
+                let trData=[]; // 每行的数据
+                let table_eq = $('tr').eq(i)
+                //注意text()和val()的区别
+                let name = table_eq.find('.name').text();
+                let sid = table_eq.find('.sid').text();
+                let times = table_eq.find(".times>a1").text();
+                let hours = table_eq.find('.hours>a1').text();
+
+                if (name != "") {
+                  result.push([name, sid, times, hours]);
+                }
+
+            }
+        }
+        return result;
+      }
+     
+    })
+    $('#cancel_changes').click(function() {  //询问是否取消保存
+      if (window.confirm('确认取消修改？修改的数据将不会保存')) {
+        location.reload(true);
+      } 
+    })
     // $("a1").hover(
     //   function(){
     //     $(this).css("font-size","14px");
