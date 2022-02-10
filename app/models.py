@@ -1364,6 +1364,11 @@ class Course(models.Model):
                               upload_to=f"course/photo/%Y/",
                               blank=True)
 
+    # 课程群二维码
+    QRcode = models.ImageField(upload_to=f"course/QRcode/%Y/", 
+                               blank=True, 
+                               null=True) 
+                                
     objects = CourseManager()
 
     def save(self, *args, **kwargs):

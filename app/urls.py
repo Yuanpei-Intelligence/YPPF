@@ -96,6 +96,7 @@ urlpatterns = [
     #      data_import.load_notification_info,
     #      name="load_notification_info"),    #服务器弃用
     path("loadhelp/", data_import.load_help, name="load_help"),
+    path("loadcourecord/", data_import.load_CouRecord,  name="load_cou_record"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
