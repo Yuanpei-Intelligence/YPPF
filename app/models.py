@@ -1398,6 +1398,8 @@ class CourseTime(models.Model):
     # 需要提醒助教，填写的时间是第一周上课的时间，这影响到课程活动的统一开设。
     start = models.DateTimeField("开始时间")
     end = models.DateTimeField("结束时间")
+    cur_week = models.IntegerField("已生成周数", default=0)
+    end_week = models.IntegerField("总周数", default=1)
 
 
 class CourseParticipant(models.Model):
