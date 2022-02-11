@@ -111,10 +111,10 @@
 										<img src="{{img_path}}" alt="User Image">
 									</a>
 									<div class="profile-det-info">
-										<h3>{{my_info.Sname}}</h3>
+										<h3>{{my_info.name}}</h3>
 
 										<div class="patient-details">
-											<h5 class="mb-0">{{my_info.Sid}}</h5>
+											<h5 class="mb-0">{{my_info.id}}</h5>
 										</div>
 									</div>
 								</div>
@@ -147,7 +147,7 @@
 						<div class="card">
 							<div class="card-body">
 								<div class="alert alert-primary alert-dismissible fade show" role="alert">
-									你现在的信用分为<strong> {{my_info.Scredit}} </strong>分，本学期共有<strong> {{vio_list|length}}
+									你现在的信用分为<strong> {{my_info.credit}} </strong>分，本学期共有<strong> {{vio_list|length}}
 									</strong>条扣分违约记录(违约记录的发起人被扣分)
 									<!--
 									<button type="button" class="close" data-dismiss="alert" aria-label="Close">
