@@ -1,4 +1,4 @@
-from unicodedata import category
+# from unicodedata import category
 from app.views_dependency import *
 from app.models import (
     Activity,
@@ -532,25 +532,11 @@ def sendMessage(request):
     return render(request, "sendMessage.html", locals())
 
 
-class testActivity:
-    def __init__(self, title, status, intro, time, place) -> None:
-        self.title = title
-        self.status = status
-        self.introduction = intro
-        self.time = time
-        self.place = place
-
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='org_views[viewActivity]', record_user=True)
 def viewActivity(request):
 # TODO: def showCourseActivity(request):
-
-    # TODO: Aggregation page (assigned to dsx & syj)
-    # 1. Show all future activities. (need pass the list of future activities to html page)
-    # 2. Support jumping to "Start long-term activity" page in the html page.
-    # 3. Support jumping to "Start short-term activity" page in the html page.
-    # 4. Support jumping to "Manual check-in" page in the html page.
 
     # Sanity check and start a html_display.
     user = request.user
@@ -566,8 +552,7 @@ def viewActivity(request):
     if type_name != "书院课程":
         return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
 
-    # TODO: Prepare html_diplay and receiver_type_list.
-    # The most important part is get the list of future activities from the database.
+    # Filters out activities for display.from the database.
 
     all_activity_list = (
         Activity.objects
@@ -589,23 +574,13 @@ def viewActivity(request):
 
     finished_activity_list = (
         all_activity_list
-        .filter(status = Activity.Status.END)
+        .filter(status=Activity.Status.END)
         .filter(
             year=int(local_dict["semester_data"]["year"]),
             semester__contains=local_dict["semester_data"]["semester"]
         )
         .order_by("-end")
     ) # 本学期的已结束活动 
-
-    # TODO: Just pseudo Exampls for front end preview.
-    # future_activity_list = [
-    #     testActivity('dancing', '进行中', 'test', '2022.2.2', '俄文楼201'), 
-    #     testActivity('singing', '审核中', 'test', '2022.2.2', 'B209')
-    # ]
-    # finished_activity_list = [
-    #     testActivity('dancing', '进行中', 'test', '2022.2.2', '俄文楼201'), 
-    #     testActivity('singing', '审核中', 'test', '2022.2.2', 'B209')
-    # ]
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的活动")
 
