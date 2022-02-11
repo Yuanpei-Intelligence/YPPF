@@ -30,7 +30,7 @@ __all__ = [
     'saveShowPositionStatus',
     'modifyPosition',
     'sendMessage',
-    'viewActivity',
+    'showCourseActivity',
 ]
 
 
@@ -530,8 +530,9 @@ def sendMessage(request):
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='org_views[viewActivity]', record_user=True)
-def viewActivity(request):
+@log.except_captured(source='org_views[showCourseActivity]', record_user=True)
+def showCourseActivity(request):
+    """筛选本学期已结束的课程活动、未开始的课程活动，在课程活动聚合页面进行显示"""
 
     # Sanity check and start a html_display.
     user = request.user
@@ -574,5 +575,5 @@ def viewActivity(request):
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的活动")
 
-    return render(request, "org_activity.html", locals())
+    return render(request, "org_show_course_activity.html", locals())
     
