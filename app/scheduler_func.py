@@ -158,6 +158,15 @@ def get_weather():
         return weather_dict
 
 
+# 每天计算用户活跃度
+def update_active_score_per_day():
+    with transaction.atomic():
+        recipients = NaturalPerson.objects.activated().select_for_update()
+        for recipient in recipients:
+            recipient.active_score = (datetime.now() - recipient.last_time_login).days / 15
+            recipient.save()
+
+
 def start_scheduler(with_scheduled_job=True, debug=False):
     '''
     noexcept
@@ -186,6 +195,13 @@ def start_scheduler(with_scheduled_job=True, debug=False):
                               "interval",
                               id=current_job,
                               minutes=5,
+                              replace_existing=True)
+            current_job = "activescoreUpdater"
+            if debug: print(f"adding scheduled job '{current_job}'")
+            scheduler.add_job(update_active_score_per_day,
+                              "interval",
+                              id=current_job,
+                              days=1,
                               replace_existing=True)
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"
