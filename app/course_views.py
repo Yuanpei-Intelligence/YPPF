@@ -5,16 +5,14 @@ course_views.py
 课程详情页面: viewCourse
 """
 import json
-from datetime import datetime, timedelta
 
 from django.db import transaction
 
 from app.course_utils import *
-from app.course_utils import (course2Display, create_single_course_activity,
-                              modify_course_activity, registrationStatusChange,
-                              registrationStatusCreate)
-from app.models import (Activity, Course, CourseParticipant, NaturalPerson,
-                        Organization, OrganizationType, Position)
+from app.course_utils import (course_to_display, create_single_course_activity,
+                              modify_course_activity,
+                              registration_status_change)
+from app.models import Activity, Course, NaturalPerson
 from app.utils import get_person_or_org
 from app.views_dependency import *
 
@@ -139,6 +137,10 @@ def addSingleCourseActivity(request):
 
     return render(request, "lesson_add.html", locals())
 
+from app.course_utils import *
+from app.models import Course, NaturalPerson
+from app.views_dependency import *
+
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
@@ -257,12 +259,9 @@ def selectCourse(request):
                 if me.identity == NaturalPerson.Identity.TEACHER else False)
     html_display["is_staff"] = is_staff
 
-    # TODO: task 10 ljy 2022-02-07
-    # 和编写开课页面的同学对接，尽量在开课的同时完成状态创建，不要每次访问都检查一遍。
-
-    if not is_staff:
-        registration_status_create(me)  # 创建选课状态
-        # html_display["willing_point"] = remaining_willingness_point(me)
+    # 暂时不启用意愿点机制
+    # if not is_staff:
+    #     html_display["willing_point"] = remaining_willingness_point(me)
 
     # 学生选课或者取消选课
 
@@ -288,8 +287,7 @@ def selectCourse(request):
             html_display["warn_message"] = "请不要恶意发送post请求！！"
             return JsonResponse({"success": False})
         try:
-            Course.objects.activated().get(id=course_id,
-                                           participant_set__person=me)
+            Course.objects.activated().get(id=course_id)
         except:
             html_display["warn_code"] = 1  # 失败
             html_display["warn_message"] = "请不要恶意发送post请求！！"

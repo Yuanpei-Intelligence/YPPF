@@ -5,7 +5,6 @@ course_views.py的依赖函数
 
 registration_status_check: 检查学生选课状态变化的合法性
 registration_status_change: 改变学生选课状态
-registration_status_create（临时用，待对接后废弃）: 创建学生选课状态
 course_to_display: 把课程信息转换为方便前端呈现的形式
 draw_lots: 预选阶段结束时执行抽签
 change_course_status: 改变课程的选课阶段
@@ -257,6 +256,7 @@ def remaining_willingness_point(user):
     """
     raise NotImplementedError("暂时不使用意愿点")
     # 当前用户已经预选的课
+    # 由于participant可能为空，重新启用的时候注意修改代码
     courses = Course.objects.filter(
         participant_set__person=user,
         participant_set__status=CourseParticipant.Status.SELECT)
@@ -326,13 +326,10 @@ def registration_status_change(course_id, user, action=None):
         context["warn_message"] = "在非选课阶段不能选课"
         return context
 
-    try:
-        # 选课信息
-        participant_info = CourseParticipant.objects.get(course__id=course_id,
-                                                         person=user)
-        cur_status = participant_info.status
-    except:
-        return context
+    # 选课信息
+    participant_info, _ = CourseParticipant.objects.get_or_create(
+        course_id=course_id, person=user)
+    cur_status = participant_info.status
 
     if action is None:  # 默认的状态翻转操作，之后可能会去掉这部分
         if course_status == Course.Status.STAGE1:
@@ -427,7 +424,7 @@ def course_to_display(courses, user, detail=False):
         返回一个列表，列表中的每个元素是一个课程信息的字典，字典的key同model中的字段名
     """
     display = []
-    courses = courses.prefetch_related("participant_set", "organization")  # 预取，减少数据库查询次数
+    courses = courses.prefetch_related("participant_set")  # 预取，减少数据库查询次数
 
     # 获取课程的基本信息
 
@@ -435,7 +432,6 @@ def course_to_display(courses, user, detail=False):
         course_info = {}
         course_info["id"] = course.id
         course_info["name"] = course.name
-        course_info["organization"] = course.organization
         course_info["current_participants"] = course.current_participants
         course_info["capacity"] = course.capacity
         course_info["times"] = course.times  # 课程周数
@@ -458,8 +454,11 @@ def course_to_display(courses, user, detail=False):
 
         if user.identity == NaturalPerson.Identity.STUDENT:
             # 当前学生的选课状态
-            course_info["student_status"] = course.participant_set.get(
-                course=course, person=user).get_status_display()
+            if course.participant_set.exists():
+                course_info["student_status"] = course.participant_set.get(
+                    course=course, person=user).get_status_display()
+            else:
+                course_info["student_status"] = "未选课"
 
             # 课程是否选满
             # TODO task 10 ljy 2022-02-08
@@ -467,7 +466,7 @@ def course_to_display(courses, user, detail=False):
 
             course_info["is_full"] = (True if course.current_participants >=
                                       course.capacity else False)
-        
+
         # 每周的上课时间
         # TODO：暂时认为前端需要显示每周的上课时间，需要讨论
         course_time = []
@@ -489,25 +488,6 @@ def course_to_display(courses, user, detail=False):
         display.append(course_info)
 
     return display
-
-
-def registration_status_create(user):
-    """
-    检查当前用户的选课状态，如果当前用户存在没有创建的选课状态，就在这里创建
-
-    TODO: task 10 ljy 2022-02-07
-    对接后，在开课的时候创建状态
-    """
-    participant_list = []
-    for course in Course.objects.activated():
-        if not CourseParticipant.objects.filter(course=course,
-                                                person=user).exists():
-            participant = CourseParticipant(course=course, person=user)
-            participant_list.append(participant)
-
-    if participant_list:
-        with transaction.atomic():
-            CourseParticipant.objects.bulk_create(participant_list)
 
 
 @log.except_captured(return_value=True,
@@ -538,7 +518,7 @@ def draw_lots(course):
             CourseParticipant.objects.filter(
                 course=course).select_for_update().update(
                     status=CourseParticipant.Status.SUCCESS)
-            Course.objects.select_for_update().filter(id=course.id).update(
+            Course.objects.filter(id=course.id).select_for_update().update(
                 current_participants=participants_num)
     else:
         # 抽签；可能实现得有一些麻烦
@@ -552,7 +532,7 @@ def draw_lots(course):
             CourseParticipant.objects.filter(
                 id__in=unlucky_ones).select_for_update().update(
                     status=CourseParticipant.Status.FAILED)
-            Course.objects.select_for_update().filter(id=course.id).update(
+            Course.objects.filter(id=course.id).select_for_update().update(
                 current_participants=capacity)
 
     # 给选课成功的同学发送通知
@@ -569,7 +549,7 @@ def draw_lots(course):
 
     title = Notification.Title.ACTIVITY_INFORM
     content = f"您好！您参与抽签的课程《{course.name}》报名成功！"
-    URL = ""
+    URL = f"/viewCourse/?courseid={course.id}"
 
     # ? 不确定微信发送部分是否有问题
 
