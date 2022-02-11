@@ -37,7 +37,10 @@
 </script>
 {% endif %}
 
-<body>
+<script src={% static "assets/js/event_tracking.js" %}></script>
+<!-- <body> -->
+<body onload="PageTrackFunction(0)" onbeforeunload="PageTrackFunction(1)">
+    
 
     <!--  BEGIN NAVBAR  -->
     <div class="header-container fixed-top">
