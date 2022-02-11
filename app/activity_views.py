@@ -1,5 +1,3 @@
-from json import JSONDecodeError
-from xmlrpc.client import Fault
 from app.views_dependency import *
 from app.models import (
     NaturalPerson,
@@ -577,7 +575,6 @@ def addActivity(request, aid=None):
     2. 访问 /editActivity/aid 时，为编辑操作，要求用户是该活动的发起者
     3. GET 请求创建活动的界面，placeholder 为 prompt
     4. GET 请求编辑活动的界面，表单的 placeholder 会被修改为活动的旧值。
-    5. GET 请求获得activity_id = tid(template_id) 的相关信息，用JSONResponse提供给前端自动填充前端页面需要的信息
     """
     # TODO 定时任务
 
@@ -671,11 +668,7 @@ def addActivity(request, aid=None):
     defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG", "id": f"picture{i+1}"} for i in range(5)]
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava() 
-    try:
-        tid = Activity.objects.filter(organization_id=me).last().id
-    except AttributeError:
-        # 说明这个组织之前没有组织过活动
-        tid = None
+
     use_template = False
     if request.method == "GET" and request.GET.get("template"):
         use_template = True
@@ -761,28 +754,13 @@ def addActivity(request, aid=None):
         else:
             photo_id = "picture" + os.path.basename(photo).split(".")[0]
 
+
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     if not edit:
         bar_display = utils.get_sidebar_and_navbar(request.user, "活动发起")
     else:
         bar_display = utils.get_sidebar_and_navbar(request.user, "修改活动")
 
-    if use_template:
-        # use_template == True: 说明此时请求来自自动填充按钮，返回前端需要的、用于自动填充的信息
-        response_dict = activity.__dict__.copy()
-        del response_dict["_state"] # 如果不删去这个的话JSONResponce会报错
-        response_dict["examine_teacher"] = activity.examine_teacher.name
-        response_dict["yq_source"] = yq_source
-        response_dict["signscheme"] = signscheme
-        response_dict["apply_reason"] = apply_reason
-        response_dict["uploaded_photo"] = uploaded_photo
-        response_dict["photo"] = photo
-        response_dict["photo_id"] = photo_id
-        try:
-            return JsonResponse(response_dict, status=200)
-        except Exception as e:
-            return JsonResponse({"error_msg": "自动填充失败，请联系管理员！"}, status=400)
-            # TODO: 写入日志/其他错误处理
     return render(request, "activity_add.html", locals())
 
 
@@ -951,4 +929,3 @@ def examineActivity(request, aid):
     # bar_display["title_name"] = "审查活动"
     # bar_display["narbar_name"] = "审查活动"
     return render(request, "activity_add.html", locals())
-    
