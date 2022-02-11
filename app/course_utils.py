@@ -1,4 +1,3 @@
-from unicodedata import category
 from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
@@ -26,17 +25,25 @@ from datetime import datetime, timedelta
 from app.scheduler import scheduler
 
 
+__all__ = [
+    'course_activity_base_check',
+    'create_single_course_activity',
+    'modify_course_activity',
+    'cancel_course_activity',
+]
+
+
 def course_activity_base_check(request):
-    '''检查课程活动，是activity_base_check的简化版'''
+    '''检查课程活动，是activity_base_check的简化版，失败时抛出AssertionError'''
     context = dict()
 
     # 读取活动名称和地点，检查合法性
     context["title"] = request.POST["title"]
     # context["introduction"] = request.POST["introduction"] # 暂定不需要简介
     context["location"] = request.POST["location"]
-    assert len(context["title"]) > 0
+    assert len(context["title"]) > 0, "标题不能为空"
     # assert len(context["introduction"]) > 0 # 暂定不需要简介
-    assert len(context["location"]) > 0
+    assert len(context["location"]) > 0, "地点不能为空"
 
     # 读取活动时间，检查合法性
     act_start = datetime.strptime(
@@ -45,7 +52,7 @@ def course_activity_base_check(request):
         request.POST["lesson_end"], "%Y-%m-%d %H:%M")  # 活动结束时间
     context["start"] = act_start
     context["end"] = act_end
-    assert check_ac_time(act_start, act_end)
+    assert check_ac_time(act_start, act_end), "活动时间非法"
 
     # 默认需要签到
     context["need_checkin"] = True
@@ -65,14 +72,14 @@ def create_single_course_activity(request):
         start=context["start"],
         # introduction=context["introduction"], # 暂定不需要简介
         location=context["location"],
-        category=Activity.ActivityCategory.COURSE  # 查重时要求是课程活动
+        category=Activity.ActivityCategory.COURSE,  # 查重时要求是课程活动
     )
     if len(old_ones):
         assert len(old_ones) == 1, "创建活动时，已存在的相似活动不唯一"
         return old_ones[0].id, False
 
-    # 默认审核老师（刘欣悦老师）
-    default_examiner_name = get_setting("course/default_examiner")
+    # 获取默认审核老师
+    default_examiner_name = get_setting("course/audit_teacher")
     examine_teacher = NaturalPerson.objects.get(
         name=default_examiner_name, identity=NaturalPerson.Identity.TEACHER)
 
@@ -82,30 +89,29 @@ def create_single_course_activity(request):
         title=context["title"],
         organization_id=org,
         examine_teacher=examine_teacher,
-        # introduction=context["introduction"],# 暂定不需要简介
+        # introduction=context["introduction"],  # 暂定不需要简介
         location=context["location"],
         start=context["start"],
         end=context["end"],
         category=Activity.ActivityCategory.COURSE,
-        need_checkin=True  # 默认需要签到
+        need_checkin=True,  # 默认需要签到
+
+        # 因为目前没有报名环节，活动状态在活动开始前默认都是WAITING，按预审核活动的逻辑
+        recorded=True,
+        status=Activity.Status.WAITING,
+
         # capacity, URL, budget, YQPoint, bidding,
         # apply_reason, inner, source, end_before均为default
     )
 
-    # 因为目前没有报名环节，活动状态在活动开始前默认都是WAITING，按预审核活动的逻辑
-    activity.recorded = True
-    activity.status = Activity.Status.WAITING
-
     # 让课程小组成员参与本活动
     positions = Position.objects.activated().filter(org=activity.organization_id)
-    for p in positions:
-        activity.current_participants += 1
-        person = p.person
-        participant = Participant.objects.create(
-            activity_id=activity, person_id=person
+    for position in positions:
+        Participant.objects.create(
+            activity_id=activity, person_id=position.person,
+            status=Participant.AttendStatus.APLLYSUCCESS,
         )
-        participant.status = Participant.AttendStatus.APLLYSUCCESS
-        participant.save()
+    activity.current_participants = len(positions)
     activity.save()
 
     # 通知课程小组成员
@@ -125,7 +131,7 @@ def create_single_course_activity(request):
     ActivityPhoto.objects.create(
         image=tmp_pic, type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
-    # 通知（刘欣悦）老师审核
+    # 通知审核老师
     notification_create(
         receiver=examine_teacher.person_id,
         sender=request.user,
@@ -144,10 +150,11 @@ def create_single_course_activity(request):
 def modify_course_activity(request, activity):
     '''
     修改单次课程活动信息，是modify_activity的简化版
+    成功无返回值，失败返回错误消息
     '''
     # 课程活动无需报名，在开始前都是等待中的状态
     if activity.status != Activity.Status.WAITING:
-        raise ValueError
+        return "课程活动只有在等待状态才能修改。"
 
     context = course_activity_base_check(request)
 
@@ -196,19 +203,20 @@ def cancel_course_activity(request, activity):
     在聚合页面中，应确保activity是课程活动，并且应检查activity.status，
     如果不是WAITING或PROGRESSING，不应调用本函数
 
-    返回True则表示成功取消，返回False表示"课程活动已于一天前开始，不能取消。"
+    成功无返回值，失败返回错误消息
     （或者也可以在聚合页面判断出来能不能取消）
     '''
     # 只有WAITING和PROGRESSING有可能修改
-    if activity.status != Activity.Status.WAITING and activity.status != Activity.Status.PROGRESSING:
-        raise ValueError
+    if activity.status not in [
+        Activity.Status.WAITING,
+        Activity.Status.PROGRESSING,
+    ]:
+        return f"课程活动状态为{activity.get_status_display()}，不可取消。"
 
     # 课程活动已于一天前开始则不能取消，这一点也可以在聚合页面进行判断
     if activity.status == Activity.Status.PROGRESSING:
-        if activity.start.day == datetime.now().day and datetime.now() < activity.start + timedelta(days=1):
-            pass
-        else:
-            return False
+        if activity.start.day != datetime.now().day:
+            return "课程活动已于一天前开始，不能取消。"
 
     # 取消活动
     activity.status = Activity.Status.CANCELED
@@ -230,5 +238,3 @@ def cancel_course_activity(request, activity):
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
 
     activity.save()
-
-    return True
