@@ -45,10 +45,12 @@ weather*.json
 migrations/
 test_data/
 comment/
+course/
 avatar/
 wallpaper/
 activity/
 reimbursement/
+logstore/
 * old.*
 *_old.*
 *fake.*
@@ -56,3 +58,7 @@ reimbursement/
 # Python #
 __pycache__/
 *.py[cod]
+
+# OPS Files *
+*.ini
+*.sh

@@ -1,6 +1,8 @@
+from app.models import *
+
+from datetime import datetime
 from django.contrib import admin
 from django.utils.safestring import mark_safe
-from app.models import *
 
 # Register your models here.
 admin.site.site_title = '元培成长档案管理后台'
@@ -16,6 +18,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
                 "fields": (
                     "person_id", "name", "nickname", "gender", "identity", "status",
                     "YQPoint", "YQPoint_Bonus", "bonusPoint", "wechat_receive_level",
+                    "accept_promote", "active_score",
                     "stu_id_dbonly",
                     ),
             }
@@ -27,7 +30,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
                 "fields": (
                     "stu_grade", "stu_class", "stu_dorm", "stu_major",
                     "show_gender", "show_email", "show_tel", "show_major", "show_dorm",
-                    "show_nickname", "show_birthday", 
+                    "show_nickname", "show_birthday",
                     ),
             },
         ],
@@ -157,7 +160,7 @@ class OrganizationTypeAdmin(admin.ModelAdmin):
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
     list_display = ["organization_id", "oname", "otype", "Managers"]
-    search_fields = ("oname", "otype__otype_id", "otype__otype_name")
+    search_fields = ("organization_id__username", "oname", "otype__otype_name")
     list_filter = ("otype", )
 
     def Managers(self, obj):
@@ -307,6 +310,7 @@ class ActivityAdmin(admin.ModelAdmin):
                 ('not_waiting', '未进入 等待中 状态'),
                 ('not_processing', '未进入 进行中 状态'),
                 ('not_end', '未进入 已结束 状态'),
+                ('review_end', '已结束的未审核'),
                 ('normal', '正常'),
             )
         
@@ -316,6 +320,7 @@ class ActivityAdmin(admin.ModelAdmin):
             error_id_set = set()
             activate_queryset = queryset.exclude(
                     status__in=[
+                        Activity.Status.REVIEWING,
                         Activity.Status.CANCELED,
                         Activity.Status.REJECT,
                         Activity.Status.ABORT,
@@ -335,6 +340,11 @@ class ActivityAdmin(admin.ModelAdmin):
             if self.value() in ['not_end', 'all', 'normal']:
                 error_id_set.update(activate_queryset.exclude(
                     status=Activity.Status.END).filter(
+                    end__lte=now,
+                    ).values_list('id', flat=True))
+            if self.value() in ['review_end', 'all', 'normal']:
+                error_id_set.update(queryset.filter(
+                    status=Activity.Status.REVIEWING,
                     end__lte=now,
                     ).values_list('id', flat=True))
 
@@ -389,7 +399,7 @@ class ActivityAdmin(admin.ModelAdmin):
                 request=request, message='一次只能修改一个活动状态!', level='error')
         activity = queryset[0]
         try:
-            from app.scheduler_func import changeActivityStatus
+            from app.activity_utils import changeActivityStatus
             changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
             try:
                 from app.scheduler_func import scheduler
@@ -414,7 +424,7 @@ class ActivityAdmin(admin.ModelAdmin):
                 request=request, message='一次只能修改一个活动状态!', level='error')
         activity = queryset[0]
         try:
-            from app.scheduler_func import changeActivityStatus
+            from app.activity_utils import changeActivityStatus
             changeActivityStatus(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
             try:
                 from app.scheduler_func import scheduler
@@ -439,7 +449,7 @@ class ActivityAdmin(admin.ModelAdmin):
                 request=request, message='一次只能修改一个活动状态!', level='error')
         activity = queryset[0]
         try:
-            from app.scheduler_func import changeActivityStatus
+            from app.activity_utils import changeActivityStatus
             changeActivityStatus(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
             try:
                 from app.scheduler_func import scheduler
@@ -507,7 +517,11 @@ class NotificationAdmin(admin.ModelAdmin):
     search_fields = ('id', "receiver__username", "sender__username", 'title')
     list_filter = ('start_time', 'status', 'typename', "finish_time")
 
-    actions = ['set_delete']
+    actions = [
+        'set_delete',
+        'republish',
+        'republish_bulk_at_promote', 'republish_bulk_at_message',
+        ]
 
     def set_delete(self, request, queryset):
         if not request.user.is_superuser:
@@ -518,6 +532,86 @@ class NotificationAdmin(admin.ModelAdmin):
         return self.message_user(request=request,
                                  message='修改成功!')
     set_delete.short_description = "设置状态为 删除"
+
+    def republish(self, request, queryset):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        if len(queryset) != 1:
+            return self.message_user(request=request,
+                                     message='一次只能重发一个通知!',
+                                     level='error')
+        notification = queryset[0]
+        try:
+            from app.wechat_send import publish_notification, WechatApp
+        except Exception as e:
+            return self.message_user(request=request,
+                                     message=f'导入失败, 原因: {e}',
+                                     level='error')
+        if not publish_notification(
+            notification,
+            app=WechatApp.NORMAL,
+            ):
+            return self.message_user(request=request,
+                                     message='发送失败!请检查通知内容!',
+                                     level='error')
+        return self.message_user(request=request,
+                                 message='已成功定时,将发送至默认窗口!')
+    republish.short_description = "重发 单个通知"
+    
+    def republish_bulk(self, request, queryset, app):
+        if not request.user.is_superuser:
+            return self.message_user(request=request,
+                                     message='操作失败,没有权限,请联系老师!',
+                                     level='warning')
+        if len(queryset) != 1:
+            return self.message_user(request=request,
+                                     message='一次只能选择一个通知!',
+                                     level='error')
+        bulk_identifier = queryset[0].bulk_identifier
+        if not bulk_identifier:
+            return self.message_user(request=request,
+                                     message='该通知不存在批次标识!',
+                                     level='error')
+        try:
+            from app.wechat_send import publish_notifications
+        except Exception as e:
+            return self.message_user(request=request,
+                                     message=f'导入失败, 原因: {e}',
+                                     level='error')
+        if not publish_notifications(
+            filter_kws={'bulk_identifier': bulk_identifier},
+            app=app,
+            ):
+            return self.message_user(request=request,
+                                     message='发送失败!请检查通知内容!',
+                                     level='error')
+        return self.message_user(request=request,
+                                 message=f'已成功定时!标识为{bulk_identifier}')
+    republish_bulk.short_description = "错误的重发操作"
+
+    def republish_bulk_at_promote(self, request, queryset):
+        try:
+            from app.wechat_send import WechatApp
+            app = WechatApp._PROMOTE
+        except Exception as e:
+            return self.message_user(request=request,
+                                     message=f'导入失败, 原因: {e}',
+                                     level='error')
+        return self.republish_bulk(request, queryset, app)
+    republish_bulk_at_promote.short_description = "重发 所在批次 于 订阅窗口"
+
+    def republish_bulk_at_message(self, request, queryset):
+        try:
+            from app.wechat_send import WechatApp
+            app = WechatApp._MESSAGE
+        except Exception as e:
+            return self.message_user(request=request,
+                                     message=f'导入失败, 原因: {e}',
+                                     level='error')
+        return self.republish_bulk(request, queryset, app)
+    republish_bulk_at_message.short_description = "重发 所在批次 于 消息窗口"
 
 
 @admin.register(Help)
@@ -582,18 +676,66 @@ class ModifyRecordAdmin(admin.ModelAdmin):
                                     message=f'查询失败: {e}!', level='error')
     get_rank.short_description = "查询排名"
 
+
 @admin.register(ModifyPosition)
 class ModifyPositionAdmin(admin.ModelAdmin):
-    list_display = ["person","org","apply_type", "status"]
+    list_display = ["id", "person", "org", "apply_type", "status"]
     search_fields = ("org__oname", "person__name")
+    list_filter = ("apply_type", 'status', "org__otype", 'time', 'modify_time',)
 
 
-admin.site.register(ModifyOrganization)
+@admin.register(ModifyOrganization)
+class ModifyOrganizationAdmin(admin.ModelAdmin):
+    list_display = ["id", "oname", "otype", "pos", "get_poster_name", "status"]
+    search_fields = ("id", "oname", "otype__otype_name", "pos__username",)
+    list_filter = ('status', "otype", 'time', 'modify_time',)
+    ModifyOrganization.get_poster_name.short_description = "申请者"
 
 
-admin.site.register(TransferRecord)
+@admin.register(Reimbursement)
+class ReimbursementAdmin(admin.ModelAdmin):
+    list_display = ["related_activity", "id", "pos", "get_poster_name",
+                    "amount",
+                    "examine_teacher", "time", "status",]
+    search_fields = ("id", "related_activity__title",
+                    "related_activity__organization_id__oname", "pos__username",
+                    'examine_teacher__name',)
+    list_filter = ('status', 'time', 'modify_time',)
+    Reimbursement.get_poster_name.short_description = "申请者"
+
+
+@admin.register(TransferRecord)
+class TransferRecordAdmin(admin.ModelAdmin):
+    list_display = ["proposer", "recipient", "corres_act",
+                    "amount", "rtype", "status",
+                    "start_time",]
+    search_fields = ("proposer__username", "recipient__username",
+                    "corres_act__title",)
+    list_filter = ("status", "rtype", "start_time", "finish_time",)
+
+
+@admin.register(Course)
+class CourseAdmin(admin.ModelAdmin):
+    list_display = [
+        "name",
+        "organization",
+        "bidding",
+        "current_participants",
+    ]
+
+    class CourseTimeInline(admin.StackedInline):
+        model = CourseTime
+        extra = 1
+
+    inlines = [CourseTimeInline,]
+
+
+@admin.register(CourseParticipant)
+class CourseParticipantAdmin(admin.ModelAdmin):
+    list_display = ["course", "person", "status",]
+    search_fields = ("course__name", "person__name",)
+
 
 admin.site.register(YQPointDistribute)
-admin.site.register(Reimbursement)
 admin.site.register(QandA)
-
+admin.site.register(OrganizationTag)
