@@ -198,7 +198,7 @@ def start_scheduler(with_scheduled_job=True, debug=False):
                               replace_existing=True)
             current_job = "update_active_score_per_day"
             if debug: print(f"adding scheduled job '{current_job}'")
-            scheduler.add_job(changeAllActivities,
+            scheduler.add_job(update_active_score_per_day,
                               "interval",
                               id=current_job,
                               days=1,
