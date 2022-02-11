@@ -184,6 +184,9 @@ def identity_check(
         @wraps(view_function)
         def _wrapped_view(request, *args, **kwargs):
 
+            if request.user.is_superuser or request.user.is_staff:
+                allow_create = False
+
             cur_part = get_participant(request.user)
 
             if cur_part is not None and cur_part.name == '未命名' and update_name:
