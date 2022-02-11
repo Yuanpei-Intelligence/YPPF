@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block mainpage %}
+<div id="content" class="main-content">
+    <div class="container mt-3">
+        <h1>提示：进入该线下签到页面时所有成员的签到状态已经被设置为未签到，请助教按到场情况完成签到</h1>
+        {% for member in member_list %}
+            <form method="POST">
+                <h1>{{member.person.name}}</h1>
+                
+                <input type="radio" class="custom-control-inline" name="checkin{{member.person.person_id}}" value="no" checked onclick="alert('取消{{member.person.name}}的签到')">未签到
+                
+                <input type="radio" class="custom-control-inline" name="checkin{{member.person.person_id}}" value="yes" onclick="alert('修改{{member.person.name}}状态为签到')">已签到
+                
+            
+                <h2>------------------</h2>
+        {% endfor%}
+        
+        <button type="submit" class="btn btn-primary" name="saveSitu" value="yes2" onclick="alert('您已成功提交！现在关闭线下签到页面即可')">保存</button>
+        </form>
+            </div>
+        </div>
+
+{% endblock %}

@@ -195,6 +195,14 @@ def viewActivity(request, aid=None):
                 return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
             except:
                 return redirect(f"/modifyEndActivity/")
+        elif option == "checkinoffline": #进入线下签到界面
+            activity = Activity.objects.get(id=int(aid))
+            if not ownership:
+                return redirect(message_url(wrong('您没有线下补签到的权限！'), request.path))
+            try:
+                return redirect(f"/offlineCheckinActivity/{aid}")
+            except:
+                return redirect(message_url(wrong("签到失败")))   
         elif option == "sign" or option == "enroll": #下载活动签到信息或者报名信息
             if not ownership:
                 return redirect(message_url(wrong('没有下载权限!'), request.path))
@@ -929,4 +937,73 @@ def examineActivity(request, aid):
     # bar_display["title_name"] = "审查活动"
     # bar_display["narbar_name"] = "审查活动"
     return render(request, "activity_add.html", locals())
-    
+
+def offlineCheckinActivity(request,aid):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    user = request.user
+    activity = Activity.objects.get(id=aid)
+    if user_type != "Organization":
+        return redirect(message_url(wrong('签到失败，线下补签请用组织账号')))
+    try:
+        me=get_person_or_org(request.user,user_type)
+        member_list = []
+        positions = Position.objects.activated().filter(org=me).order_by("pos")  # 升序
+        for p in positions:    
+            if p.show_post == True or p.pos == 0 or html_display["is_myself"]:
+                member = {}
+                member["person"] = p.person
+                member_list.append(member)
+        if request.method == "POST" and request.POST:
+            saveSitu = request.POST.get("saveSitu")
+            for member in member_list:
+                checkin = request.POST.get("checkin"+str(member['person'].person_id))
+                if checkin == "yes":
+                    with transaction.atomic():
+                        activity = Activity.objects.select_for_update().get(id=int(aid))
+                        attendee=NaturalPerson.objects.get(person_id=member['person'].person_id)
+                        try: #已报名则会进入try，否则进入except，鉴于现在报名已经取消，该写法将来也可以修改
+                            participant = Participant.objects.select_for_update().get(
+                                activity_id=aid, person_id=attendee,
+                                status__in=[
+                                Participant.AttendStatus.UNATTENDED,
+                                Participant.AttendStatus.APLLYSUCCESS,
+                                Participant.AttendStatus.ATTENDED,
+                                Participant.AttendStatus.CANCELED,
+                                Participant.AttendStatus.APPLYING,
+                                Participant.AttendStatus.APLLYFAILED,
+                                ]
+                            )
+                        except:
+                            participant = Participant()
+                            participant.activity_id = activity
+                            participant.person_id = attendee
+                        participant.status = Participant.AttendStatus.ATTENDED
+                        participant.save()                
+                elif checkin == "no":
+                    with transaction.atomic():
+                        activity = Activity.objects.select_for_update().get(id=int(aid))
+                        attendee=NaturalPerson.objects.get(person_id=member['person'].person_id)
+                        try:
+                            participant = Participant.objects.select_for_update().get(
+                                activity_id=aid, person_id=attendee,
+                                status__in=[
+                                Participant.AttendStatus.UNATTENDED,
+                                Participant.AttendStatus.APLLYSUCCESS,
+                                Participant.AttendStatus.ATTENDED,
+                                Participant.AttendStatus.CANCELED,
+                                Participant.AttendStatus.APPLYING,
+                                Participant.AttendStatus.APLLYFAILED,
+                                ]
+                            )
+                        except:
+                            participant = Participant()
+                            participant.activity_id = activity
+                            participant.person_id = attendee
+                        participant.status = Participant.AttendStatus.UNATTENDED
+                        participant.save()
+                else:
+                    print("sth is wrong") #这里出现意外情况后的报错将来再改，但目前的试验中还没有出现进入else的错误
+        bar_display = utils.get_sidebar_and_navbar(request.user,navbar_name = "小组主页", title_name = me.oname)
+        return render(request, "activity_checkinoffline.html",locals())
+    except:
+        return redirect(message_url(wrong("签到失败")))
