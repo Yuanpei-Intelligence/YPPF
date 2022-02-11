@@ -502,7 +502,115 @@
             <div class="container-fluid layout-px-spacing layout-top-spacing">
                 <div class="bio education layout-spacing ">
                     <div class="widget-content widget-content-area">
-
+                        
+                        {% if html_display.is_myself %}
+                            <div class="row">
+                                <h3 class="col mb-0">我的学时
+                                    <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="仅统计过往学期。如果学时统计有误，请通过相关途径联系管理员。">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
+                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                            <path
+                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                        </svg>
+                                    </a>
+                                </h3>
+                            </div>
+                            <br>
+                            <div class="progress">
+                                {% for progress in progress_list %}
+                                <div class="progress-bar progress-bar-info" role="progressbar"
+                                    aria-valuenow="60" aria-valuemin="0" aria-valuemax="100"
+                                    style="width: {{progress}}%; border-radius:0; 
+                                    {% if forloop.counter == 1 %}
+                                        background-color:#0092c7;
+                                    {% elif forloop.counter == 2 %}
+                                        background-color:#22c3aa;
+                                    {% elif forloop.counter == 3 %}
+                                        background-color:#AD8976;
+                                    {% elif forloop.counter == 4 %}
+                                        background-color:#f3b59b;
+                                    {% elif forloop.counter == 5 %}
+                                        background-color:#f29c9c;
+                                    {% else %}
+                                        background-color:#9E9EA3;
+                                    {% endif %}
+                                    ">
+                                </div>
+                                {% endfor %}
+                            </div>
+                            {% if course_me_past or course_no_use %}
+                                <p class="text-left">
+                                    已有学时 / 规定学时 ： {{total_hours_sum|floatformat:-1}} / {{ruled_hours}} 
+                                </p>
+                                <p class="text-right">
+                                    <button id="course_record" type="button" class="btn btn-info mb-4 mr-2">显示/隐藏详细学时</button>
+                                </p>
+                                <table id="course_show" class="table">
+                                    <thead>
+                                        <th style='text-align: center;'>课程名称</th>
+                                        <th style='text-align: center;'>学年</th>
+                                        <th style='text-align: center;'>学期</th>
+                                        <th style='text-align: center;'>参与次数</th>
+                                        <th style='text-align: center;'>获得学时</th>
+                                        <th style='text-align: center;'>课程类型</th>
+                                    </thead>
+                                    <tbody>
+                                        {% for course_record in course_me_past %}
+                                            <tr>
+                                                <td style='text-align: center;'>{{course_record.get_course_name}}</td>
+                                                <td style='text-align: center;'>{{course_record.year}}</td>
+                                                {% if course_record.semester == "Spring" %}
+                                                    <td style='text-align: center;'>春季</td>
+                                                {% else %}
+                                                    <td style='text-align: center;'>秋季</td>
+                                                {% endif %}
+                                                <td style='text-align: center;'>{{course_record.attend_times}}</td>
+                                                <td style='text-align: center;'>{{course_record.total_hours|floatformat:-1}}</td>
+                                                {% if course_record.course is None %}
+                                                    <td style="text-align: center; color:#9E9EA3;">未分类</td>
+                                                {% else %}
+                                                    <td style="text-align: center; 
+                                                    {% if course_record.course.type == 0 %}
+                                                        color:#0092c7;
+                                                    {% elif course_record.course.type == 1 %}
+                                                        color:#22c3aa;
+                                                    {% elif course_record.course.type == 2 %}
+                                                        color:#AD8976;
+                                                    {% elif course_record.course.type == 3 %}
+                                                        color:#f3b59b;
+                                                    {% elif course_record.course.type == 4 %}
+                                                        color:#f29c9c;
+                                                    {% endif %}
+                                                        ">{{course_record.course.get_type_display}}</td>
+                                                {% endif %}
+                                            </tr>
+                                        {% endfor %}
+                                        {% for course_record in course_no_use %}
+                                            <tr bgcolor = "#F1F3F4">
+                                                <td style='text-align: center; color:grey;'>{{course_record.get_course_name}}</td>
+                                                <td style='text-align: center; color:grey;'>{{course_record.year}}</td>
+                                                {% if course_record.semester == "Spring" %}
+                                                        <td style='text-align: center; color:grey;'>春季</td>
+                                                {% else %}
+                                                        <td style='text-align: center; color:grey;'>秋季</td>
+                                                {% endif %}
+                                                <td style='text-align: center;color:grey;'>{{course_record.attend_times}}</td>
+                                                <td style='text-align: center; color:grey;'>{{course_record.total_hours|floatformat:-1}}</td>
+                                                <td style='text-align: center; color:grey;'>无效学时</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                                <p>注：根据学院规定，同一门书院课程须完成8学时及以上，才可以认定时长（20秋及21春为6学时及以上）。</p>
+                                <br>
+                            {% else %}
+                                <p class="text-left"> 已有学时 / 规定学时 ： {{total_hours_sum}} / {{ruled_hours}} </p>
+                                <br>
+                                <p class="text-center">没有参与的书院课程</p>
+                                <br>
+                            {% endif %}
+                        {% endif %}
+                        
                         <div class="row">
                             <h3 class="col mb-0">参与的活动</h3>
                             {% if html_display.is_myself == False %}
@@ -597,6 +705,16 @@
 {% endblock %}
 
 {% block add_js_file %}
+{% if html_display.is_myself %}
+    <script>
+        $(document).ready(function(){
+            $("#course_show").hide();
+            $("#course_record").click(function(){
+                $("#course_show").toggle();
+            });
+        });
+    </script>
+{% endif %}
 <script type="text/javascript">
     window.addEventListener(`load`, (event) => {
         const hash = window.location.pathname.match(/&(.*)$/);
