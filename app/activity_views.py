@@ -42,7 +42,7 @@ __all__ = [
     'addActivity', 'showActivity', 'examineActivity',
 ]
 
-
+# 2022 02 11
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='views[viewActivity]', record_user=True)
