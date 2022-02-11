@@ -1393,7 +1393,8 @@ class CourseTime(models.Model):
     course = models.ForeignKey(Course,
                                on_delete=models.CASCADE,
                                related_name="time_set")
-
+    cur_week=models.PositiveIntegerField("当前定时任务生成到第X周",default=1)
+    end_week=models.PositiveIntegerField("总周数",default=1)
     # 开始时间和结束时间指的是一次课程的上课时间和下课时间
     # 需要提醒助教，填写的时间是第一周上课的时间，这影响到课程活动的统一开设。
     start = models.DateTimeField("开始时间")
