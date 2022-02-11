@@ -665,7 +665,7 @@ class Activity(CommentBase):
     # 允许是正无穷, 可以考虑用INTINF
     capacity = models.IntegerField("活动最大参与人数", default=100)
     current_participants = models.IntegerField("活动当前报名人数", default=0)
-    course_time_id=models.IntegerField("CourseTime_id",null=True,blank=True)
+    course_time=models.ForeignKey('CourseTime', on_delete=models.CASCADE,blank=True)
     URL = models.URLField("活动相关(推送)网址", max_length=1024, default="", blank=True)
 
     def __str__(self):
@@ -1376,11 +1376,11 @@ class CourseTime(models.Model):
         verbose_name = "上课时间"
         verbose_name_plural = verbose_name
         ordering = ["start"]
-    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一
     course = models.ForeignKey(Course,
                                on_delete=models.CASCADE,
                                related_name="time_set")
-
+    cur_week=models.PositiveIntegerField("当前定时任务生成到第X周",default=1)
+    end_week=models.PositiveIntegerField("总周数",default=1)
     # 开始时间和结束时间指的是一次课程的上课时间和下课时间
     # 需要提醒助教，填写的时间是第一周上课的时间，这影响到课程活动的统一开设。
     start = models.DateTimeField("开始时间")
