@@ -1,6 +1,7 @@
 import requests as requests
 from Appointment import global_info
 from Appointment.models import Participant, Room, Appoint, College_Announcement
+from Appointment.utils.identity import get_participant
 from django.db.models import Q  # modified by wxy
 from datetime import datetime, timedelta, timezone, time, date
 import Appointment.utils.utils as utils
@@ -200,10 +201,11 @@ def get_student_chosen_list(request, get_all=False):
     for stu in Stu_all:
         # 曾经是`(stu.superuser != 1 or get_all == True)`
         # 因superuser只有不显示的作用，合并后舍弃
-        if stu.Sid != request.user.username and (True or get_all == True):
+        Sid = stu.Sid
+        if Sid != request.user.username and (True or get_all == True):
             js_stu_list.append({
-                "id": stu.Sid,
-                "text": stu.name + "_" + stu.Sid[:2],
+                "id": Sid,
+                "text": stu.name + "_" + Sid[:2],
                 "pinyin": stu.pinyin
             })
     return js_stu_list
@@ -226,24 +228,33 @@ def time2datetime(year, month, day, t):
     return datetime(year, month, day, t.hour, t.minute, t.second)
 
 
+def appoints2json(appoints):
+    if isinstance(appoints, Appoint):
+        return appoints.toJson()
+    return [appoint.toJson() for appoint in appoints]
+
+
 # added by wxy
 # TODO: task 0 pht 2022-02-08 模型修改时同步修改
-def student2appoints(Sid, kind, major=False):
+def get_appoints(Pid, kind, major=False, to_json=True):
     '''
+    - Pid: Participant, User or str
     - kind: `'future'`, `'past'` or `'violate'`
     - returns: {data: objs.toJson() form} or {statusInfo: infos}
     '''
     try:
-        student = Participant.objects.get(Sid=Sid)
+        participant = Pid
+        if not isinstance(Pid, Participant):
+            participant = get_participant(participant, raise_except=True)
     except Exception as e:
         return {'statusInfo': {'message': '学号不存在', 'detail': str(e)}}
 
     present_day = datetime.now()
     seven_days_before = present_day - timedelta(7)
 
-    appoints = student.appoint_list.all()
+    appoints = participant.appoint_list.all()
     if major:
-        appoints = appoints.filter(major_student=student)
+        appoints = appoints.filter(major_student=participant)
 
     if kind == 'future':
         appoints = appoints.filter(Astatus=Appoint.Status.APPOINTED,
@@ -260,8 +271,8 @@ def student2appoints(Sid, kind, major=False):
         appoints = appoints.filter(Astatus=Appoint.Status.VIOLATED)
     else:
         return {'statusInfo': {'message': '参数错误', 'detail': f'kind非法: {kind}'}}
-    data = [appoint.toJson() for appoint in appoints]
-    return {'data': data}
+
+    return {'data': appoints2json(appoints) if to_json else appoints}
 
 
 # 对一个从Astart到Afinish的预约,考虑date这一天,返回被占用的时段
@@ -322,16 +333,19 @@ def get_dayrange(span=7):   # 获取用户的违约预约
         timerange_list[i]['day'] = aday.day
     return timerange_list
 
+
 # added by wxy
 # TODO: task 0 pht 2022-02-08 模型修改时同步修改
-def getStudentInfo(Sid):
-    '''抓取学生信息的通用包，成功返回包含Sid, Sname, Scredit的字典'''
+def get_user_info(Pid):
+    '''抓取用户信息的通用包，成功返回包含id, name, credit的字典'''
     try:
-        student = Participant.objects.get(Sid=Sid)
+        participant = Pid
+        if not isinstance(Pid, Participant):
+            participant = get_participant(participant, raise_except=True)
     except Exception as e:
         return {'statusInfo': {'message': '学号不存在', 'detail': str(e)}}
     return {
-        'Sname': student.name,
-        'Sid': student.Sid,
-        'Scredit': student.credit,
+        'id': participant.Sid,
+        'name': participant.name,
+        'credit': participant.credit,
     }

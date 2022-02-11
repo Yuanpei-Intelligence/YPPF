@@ -321,7 +321,7 @@ def admin_index(request):   # 我的账户也主函数
 
     # 学生基本信息
     Pid = request.user.username
-    my_info = web_func.getStudentInfo(Pid)
+    my_info = web_func.get_user_info(Pid)
 
     # 头像信息
     img_path = get_avatar(request.user)
@@ -329,8 +329,8 @@ def admin_index(request):   # 我的账户也主函数
 
     # 分成两类,past future
     # 直接从数据库筛选两类预约
-    appoint_list_future = web_func.student2appoints(Pid, 'future').get('data')
-    appoint_list_past = web_func.student2appoints(Pid, 'past').get('data')
+    appoint_list_future = web_func.get_appoints(Pid, 'future').get('data')
+    appoint_list_past = web_func.get_appoints(Pid, 'past').get('data')
 
     for x in appoint_list_future:
         x['Astart_hour_minute'] = datetime.strptime(
@@ -365,7 +365,7 @@ def admin_credit(request):
     # 头像信息
     img_path = get_avatar(request.user)
 
-    vio_list = web_func.student2appoints(Pid, 'violate', major=True).get('data')
+    vio_list = web_func.get_appoints(Pid, 'violate', major=True).get('data')
     vio_list_in_7_days = []
     present_day = datetime.now()
     seven_days_before = present_day - timedelta(7)
@@ -380,7 +380,7 @@ def admin_credit(request):
                     x['Astart'], "%Y-%m-%dT%H:%M:%S") >= seven_days_before:
             vio_list_in_7_days.append(x)
     vio_list_in_7_days.sort(key=lambda k: k['Astart'])
-    my_info = web_func.getStudentInfo(Pid)
+    my_info = web_func.get_user_info(Pid)
     return render(request, 'Appointment/admin-credit.html', locals())
 
 
