@@ -135,6 +135,7 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
         # 希望接受的非终止状态只有进行中，但其他状态也同样判定是否合格
         if appoint.Astatus != Appoint.Status.PROCESSING:
             utils.operation_writer(
+                # TODO: major_sid
                 appoint.major_student.Sid,
                 f"预约{str(Aid)}结束时状态为{appoint.get_status()}：照常检查是否合格",
                 "web_func.finishAppoint", "Error")
@@ -144,7 +145,10 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
             appoint.Astatus = Appoint.Status.CONFIRMED  # waiting
             appoint.save()
             utils.operation_writer(
-                appoint.major_student.Sid, f"预约{str(Aid)}的状态变为{Appoint.Status.CONFIRMED}: 顺利完成", "web_func.finishAppoint", "OK")
+                # TODO: major_sid
+                appoint.major_student.Sid,
+                f"预约{str(Aid)}的状态变为{Appoint.Status.CONFIRMED}: 顺利完成",
+                "web_func.finishAppoint", "OK")
         else:
             #if appoint.Acamera_check_num == 0:
             #    utils.operation_writer(

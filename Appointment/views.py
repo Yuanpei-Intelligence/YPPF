@@ -338,6 +338,7 @@ def admin_index(request):   # 我的账户也主函数
         x['Afinish_hour_minute'] = datetime.strptime(
             x['Afinish'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
         appoint = Appoint.objects.get(Aid=x['Aid'])
+        # TODO: major_sid
         major_id = str(appoint.major_student_id)
         x['check_major'] = (Pid == major_id)
 

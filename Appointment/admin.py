@@ -257,6 +257,7 @@ class AppointAdmin(admin.ModelAdmin):
                         appoint.save()
                         have_success = 1
                         # send wechat message
+                        # TODO: major_sid
                         scheduler.add_job(send_wechat_message,
                                           args=[[appoint.major_student.Sid],  # stuid_list
                                                 appoint.Astart,  # start_time
@@ -282,6 +283,7 @@ class AppointAdmin(admin.ModelAdmin):
                         appoint.save()
                         have_success = 1
                         # send wechat message
+                        # TODO: major_sid
                         scheduler.add_job(send_wechat_message,
                                           args=[[appoint.major_student.Sid],  # stuid_list
                                                 appoint.Astart,  # start_time
@@ -345,6 +347,7 @@ class AppointAdmin(admin.ModelAdmin):
                 appoint.save()
 
                 # send wechat message
+                # TODO: major_sid
                 scheduler.add_job(send_wechat_message,
                                   args=[[appoint.major_student.Sid],  # stuid_list
                                         appoint.Astart,  # start_time
@@ -438,6 +441,7 @@ class AppointAdmin(admin.ModelAdmin):
                             'Afinish':
                             appoint.Afinish + (i + 1) * timedelta(days=7),
                             'Sid':
+                            # TODO: major_sid
                             appoint.major_student.Sid,
                             'Ausage':
                             appoint.Ausage,
@@ -492,6 +496,7 @@ class AppointAdmin(admin.ModelAdmin):
                               ],
                               id=f'{appoint.Aid}_new_wechat',
                               next_run_time=datetime.now() + timedelta(seconds=5))  # 2s足够了
+            # TODO: major_sid
             operation_writer(appoint.major_student.Sid, "发起"+str(week_num) +
                              "周的长线化预约, 原始预约号"+str(appoint.Aid), "admin.longterm", "OK")
         return self.message_user(request, '长线化成功!')
