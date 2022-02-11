@@ -7,6 +7,8 @@ from app.models import (
     ActivityPhoto,
     Position,
     Participant,
+    Course,
+    CourseTime
 )
 from app.utils import get_person_or_org
 from app.notification_utils import(
@@ -23,7 +25,7 @@ from app.activity_utils import (
 from datetime import datetime, timedelta
 
 from app.scheduler import scheduler
-
+from django.db.models import Q
 
 __all__ = [
     'course_activity_base_check',
@@ -238,3 +240,77 @@ def cancel_course_activity(request, activity):
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
 
     activity.save()
+
+def add_week_course_activity(course_id:int,subsequence:int,week_time_id:int):
+    """
+    添加每周的课程活动
+    """
+    course=Course.objects.get(course_id)
+    week_time=CourseTime.objects.get(week_time_id)
+    examine_teacher=NaturalPerson.objects.get(
+        name='NULL', identity=NaturalPerson.Identity.TEACHER)   # TODO 增加审核老师
+    start_time=week_time.start+timedelta(days=7*subsequence)
+    end_time=week_time.end+timedelta(days=7*subsequence)
+    with transaction.atomic():
+        activity=Activity.objects.create(
+            title=str(course.name)+f'第{subsequence}次课',
+            organization_id=course.organization,
+            examine_teacher=examine_teacher, 
+            location=course.classroom,
+            capacity=course.capacity,
+            start=start_time,
+            end=end_time,
+            category=Activity.ActivityCategory.COURSE
+        )
+        activity.status = Activity.Status.WAITING
+        activity.need_checkin = True    #小签到
+        activity.recorded = True
+        activity.save()
+    
+        #选课人员自动报名活动
+        person_pos = Position.objects.activated().filter(Q(org=course.organization))
+        members = NaturalPerson.objects.filter(
+                id__in=person_pos.values("person")
+            )
+        for member in members:
+            participant = Participant.objects.create(activity_id=activity, person_id=member)
+            participant.status = Participant.AttendStatus.APLLYSUCCESS
+            participant.save()
+    
+    #通知参与成员,创建定时任务并修改活动状态
+    notifyActivity(activity.id, "newActivity")
+
+    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
+        run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
+    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
+        run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
+    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
+        run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
+    
+    notification_create(
+        receiver=examine_teacher.person_id,
+        sender=course.organization.organization_id,
+        typename=Notification.Type.NEEDDO,
+        title=Notification.Title.VERIFY_INFORM,
+        content="您有一个活动待审批",
+        URL=f"/examineActivity/{activity.id}",
+        relate_instance=activity,
+        publish_to_wechat=True,
+        publish_kws={"app": WechatApp.AUDIT},
+    )
+    
+def longterm_launch_course():
+    """
+    自动发起长期课程活动
+    """
+    courses=Course.objects.activated().filter(status=Course.Status.END)
+    for course in courses:
+        time_set=course.time_set
+        for week_time in time_set:
+            for i in range(course.times):
+                due_date=week_time.start +timedelta(days=7*i)
+                if due_date > (datetime.now()+timedelta(days=1)):
+                    scheduler.add_job(add_week_course_activity, "date", id=f"course_{course.id}_week_{i}",
+                        run_date=due_date-timedelta(days=1), args=[course.id,i,week_time.id], replace_existing=True)
+                else:
+                    add_week_course_activity(course.id,i,week_time.id)
