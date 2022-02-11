@@ -1,6 +1,7 @@
 from django.db import models, transaction
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
+from django.db.models import Q
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
 from boottest import local_dict
@@ -1287,12 +1288,16 @@ class CourseManager(models.Manager):
                                        ])
 
     def unselected(self, person: NaturalPerson):
-        # 返回当前学生没选或失败的所有课程
-        return self.activated().filter(participant_set__person=person,
-                                       participant_set__status__in=[
-                                           CourseParticipant.Status.UNSELECT,
-                                           CourseParticipant.Status.FAILED,
-                                       ])
+        # 返回当前学生没选或选课失败的所有课程
+        return self.activated().filter(
+            Q(participant_set=None)
+            | (Q(participant_set__person=person)
+               & Q(participant_set__status__in=[
+                   CourseParticipant.Status.UNSELECT,
+                   CourseParticipant.Status.FAILED,
+               ])))
+
+                                      
 
 
 class Course(models.Model):
