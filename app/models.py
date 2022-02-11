@@ -39,6 +39,8 @@ __all__ = [
     'CourseTime',
     'CourseParticipant',
     'CourseRecord',
+    'PageLog',
+    'ModuleLog',
 ]
 
 
@@ -1458,3 +1460,37 @@ class CourseRecord(models.Model):
             return str(self.course)
         return self.extra_name
     get_course_name.short_description = "课程名"
+
+
+class PageLog(models.Model):
+    # 统计Page类埋点数据(PV/PD)
+    class Meta:
+        verbose_name = "Page类埋点记录"
+        verbose_name_plural = verbose_name
+    class CountType(models.IntegerChoices):
+        PV = 0
+        PD = 1
+    Type = models.IntegerField('事件类型', choices=CountType.choices)
+    Page = models.CharField('页面url', max_length=256, null=True)
+    Time = models.TimeField('发生时间')
+    User = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='UserId', null=True)
+    Platform = models.CharField('设备类型', max_length=32, null=True) # eg. MacIntel iPhone .etc
+    ExploreName = models.CharField('浏览器类型', max_length=32, null=True)
+    ExploreVer = models.CharField('浏览器版本', max_length=32, null=True)
+
+class ModuleLog(models.Model):
+    # 统计Mudule类埋点数据(MV/MC)
+    class Meta:
+        verbose_name = "Module类埋点记录"
+        verbose_name_plural = verbose_name
+    class CountType(models.IntegerChoices):
+        MV = 2
+        MC = 3
+    Type = models.IntegerField('事件类型', choices=CountType.choices)
+    Page = models.CharField('页面url', max_length=256, null=True)
+    ModuleName = models.CharField('模块名称', max_length=64, null=True)
+    Time = models.TimeField('发生时间')
+    User = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='UserId', null=True)
+    Platform = models.CharField('设备类型', max_length=32, null=True) # eg. MacIntel iPhone .etc
+    ExploreName = models.CharField('浏览器类型', max_length=32, null=True)
+    ExploreVer = models.CharField('浏览器版本', max_length=32, null=True)
