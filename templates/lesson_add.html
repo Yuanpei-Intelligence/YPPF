@@ -38,7 +38,11 @@
                         <div class="d-flex justify-content-between">
                             <div>
                                 <h4>
+                                    {% if edit %}
+                                    课程修改
+                                    {% else %}
                                     课程开设
+                                    {% endif %}
                                 </h4>
                             </div>
                             <div>
@@ -59,7 +63,7 @@
                                     <b>基本信息</b>
                                 </p>
                                 <div class="form-group">
-                                    <label>课程名称</label>
+                                    <label>课程活动名称</label>
                                     <input type="text" id="title" name="title" class="form-control"  
                                            maxlength="50" onclick="fill_value(this)" required="required"
                                            placeholder="在这里写下您要开设的课程名称吧~（必填）" >
@@ -86,12 +90,6 @@
                                                 <option value="临时一次" >临时一次</option>
                                             </select>
                                         </div>
-                                        <div class="col-sm-12">
-                                            <label>结课时间</label>
-                                            <input type="text" class="form-control" id="datetimepicker5"
-                                                   name="final" placeholder="填写最后一次课程的时间即可~" required="required" 
-                                                   onclick="fill_value(this)"/>
-                                        </div>
                                     </div>
                                 </div> -->
                                 <div class="form-group">
@@ -117,33 +115,7 @@
                                         </div>
                                         
                                     </div>
-                                </div>
-                                <!-- <div class="form-group" id="lesson2" style="display: none;">
-                                    <div class="row">
-                                        <div class="col-lg-4 col-md-12 col-sm-12 col-xs-12">
-                                            <label>上课地点2</label>
-                                            <input type="text" id="location2" name="location2" class="form-control"  
-                                                   maxlength="50" onclick="fill_value(this)"
-                                                   placeholder="要让上课的同学能找到地点哦~（必填）" >        
-                                        </div>
-                                        <div class="col-lg-8 col-md-12 col-sm-12 col-xs-12">
-                                            <label>上课时间2</label>
-                                            <div class="row">
-                                                <div class="col">
-                                                    <input type="text" class="form-control" id="datetimepicker3"
-                                                           name="lesson_start2" placeholder="开始时间" onclick="fill_value(this)"
-                                                           />
-                                                </div>
-                                                <div class="col">
-                                                    <input type="text" class="form-control" id="datetimepicker4"
-                                                           name="lesson_end2" placeholder="结束时间" onclick="fill_value(this)"
-                                                           />
-                                                </div>
-                                            </div>
-                                        </div> 
-                                    </div>
-                                </div> -->
-                                
+                                </div>                                
                             </div>
                             
                             <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" 
@@ -164,27 +136,6 @@
 <script src={% static "datetimepicker/js/bootstrap-datetimepicker.min.js" %}></script>
 
 <script>
-    // 这段函数暂时没用了
-    function selectPeriod(period) {
-        console.log(period);
-        if(period === "一周两次") {
-            $("#lesson2").show();
-            let lesson2Inputs = $("#lesson2")[0].querySelectorAll("input");
-            for(let i = 0; i < lesson2Inputs.length; i++) {
-                lesson2Inputs[i].required = true;
-            }
-        }
-        else {
-            $("#lesson2").hide();
-            let lesson2Inputs = $("#lesson2")[0].querySelectorAll("input");
-            for(let i = 0; i < lesson2Inputs.length; i++) {
-                console.log(lesson2Inputs[i].textContent);
-                lesson2Inputs[i].textContent = "";
-                lesson2Inputs[i].required = false;
-            }
-        }
-    }
-    console.log("out");
     function checkInputs() {
         // 一些函数和变量
         function showMessage(msgElemId, msgContent) {
@@ -196,14 +147,6 @@
             document.querySelector(msgElemId).style.display = "none";
         }
         const succId = "#success_msg", warnId = "#warn_msg";
-        
-        if ("{{edit}}" === "True") {
-            let all_inputs = document.getElementsByTagName("input");
-            for(let i = 0; i < all_inputs.length; i++){
-                fill_value(all_inputs[i]);
-            }
-        }
-        
         
         // 检查单次课程课程开始时间、结束时间
         let start1 = $("#datetimepicker1").val(), end1 = $("#datetimepicker2").val();
@@ -243,9 +186,6 @@
         document.getElementById("location").placeholder = "{{location | safe}}";
         document.getElementById("datetimepicker1").placeholder="{{start}}";
         document.getElementById("datetimepicker2").placeholder="{{end}}";
-        if ("{{need_checkin}}" === "True")
-            document.getElementById("need_checkin").checked = true;
-        document.getElementById("examine_teacher").value="{{examine_teacher}}";
     }
     fillForms();
     // 这个时候表单的各项不用填写
@@ -257,7 +197,7 @@
 
     if (document.referrer.endsWith("/addSingleCourseActivity/")) {
         document.getElementById("warn_msg").style.display = "";
-        document.getElementById("warn_msg").innerHTML = "课程添加成功！如需申请预算，请在评论区上传预算明细。";
+        document.getElementById("warn_msg").innerHTML = "课程添加成功！";
     }
 </script>
 
