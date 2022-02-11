@@ -164,27 +164,6 @@
 <script src={% static "datetimepicker/js/bootstrap-datetimepicker.min.js" %}></script>
 
 <script>
-    // 这段函数暂时没用了
-    function selectPeriod(period) {
-        console.log(period);
-        if(period === "一周两次") {
-            $("#lesson2").show();
-            let lesson2Inputs = $("#lesson2")[0].querySelectorAll("input");
-            for(let i = 0; i < lesson2Inputs.length; i++) {
-                lesson2Inputs[i].required = true;
-            }
-        }
-        else {
-            $("#lesson2").hide();
-            let lesson2Inputs = $("#lesson2")[0].querySelectorAll("input");
-            for(let i = 0; i < lesson2Inputs.length; i++) {
-                console.log(lesson2Inputs[i].textContent);
-                lesson2Inputs[i].textContent = "";
-                lesson2Inputs[i].required = false;
-            }
-        }
-    }
-    console.log("out");
     function checkInputs() {
         // 一些函数和变量
         function showMessage(msgElemId, msgContent) {
@@ -227,6 +206,7 @@
         return true;
     }
 
+
     function fill_value(a) {
         if ("{{edit}}" === "True") {
             if (a.value == "")
@@ -237,6 +217,8 @@
         }
     }
 
+
+    {% if edit %}
     function fillForms() {
         document.getElementById("title").placeholder = "{{title | safe}}";
         document.getElementById("location").placeholder = "{{location | safe}}";
@@ -247,15 +229,14 @@
         document.getElementById("examine_teacher").value="{{examine_teacher}}";
     }
 
-    if ("{{edit}}" === "True") {
-        fillForms();
-        // 这个时候表单的各项不用填写
-        // TODO: 这样写合不合理
-        let all_inputs = document.getElementsByTagName("input");
-        for(let i = 0; i < all_inputs.length; i++){
-            all_inputs[i].required="";
-        }
+    
+    fillForms();
+    let all_inputs = document.getElementsByTagName("input");
+    for(let i = 0; i < all_inputs.length; i++){
+        all_inputs[i].required="";
     }
+    
+    {% endif %}
 
     if (document.referrer.endsWith("/addSingleCourseActivity/")) {
         document.getElementById("warn_msg").style.display = "";
