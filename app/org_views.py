@@ -1,3 +1,4 @@
+from unicodedata import category
 from app.views_dependency import *
 from app.models import (
     Activity,
@@ -22,6 +23,9 @@ from app.utils import (
 import json
 from django.db import transaction
 from boottest import local_dict
+# TODO：新的本地设置读取都应该使用constants.py中的api（views_dependency已经帮你引入了）
+# 直接访问local_dict已经被废弃，接下来有机会会统一修改
+
 
 __all__ = [
     'showNewOrganization',
@@ -528,6 +532,14 @@ def sendMessage(request):
     return render(request, "sendMessage.html", locals())
 
 
+class testActivity:
+    def __init__(self, title, status, intro, time, place) -> None:
+        self.title = title
+        self.status = status
+        self.introduction = intro
+        self.time = time
+        self.place = place
+
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='org_views[showCourseActivity]', record_user=True)
@@ -544,13 +556,17 @@ def showCourseActivity(request):
         return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
 
     type_name = me.otype.otype_name
+    # TODO：“书院课程”从json读，constants.py可能应该为此增加一项
     if type_name != "书院课程":
         return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
 
-    # Filters out activities for display.
+    # TODO: Prepare html_diplay and receiver_type_list.
+    # The most important part is get the list of future activities from the database.
+
     all_activity_list = (
         Activity.objects
         .filter(organization_id=me)
+        .filter(category=Activity.ActivityCategory.COURSE)
         .order_by("-start")
     )
 
@@ -568,10 +584,22 @@ def showCourseActivity(request):
     finished_activity_list = (
         all_activity_list
         .filter(status = Activity.Status.END)
-        .filter(year=int(local_dict["semester_data"]["year"]))
-        .filter(semester__contains=local_dict["semester_data"]["semester"])
+        .filter(
+            year=int(local_dict["semester_data"]["year"]),
+            semester__contains=local_dict["semester_data"]["semester"]
+        )
         .order_by("-end")
     ) # 本学期的已结束活动 
+
+    # TODO: Just pseudo Exampls for front end preview.
+    # future_activity_list = [
+    #     testActivity('dancing', '进行中', 'test', '2022.2.2', '俄文楼201'), 
+    #     testActivity('singing', '审核中', 'test', '2022.2.2', 'B209')
+    # ]
+    # finished_activity_list = [
+    #     testActivity('dancing', '进行中', 'test', '2022.2.2', '俄文楼201'), 
+    #     testActivity('singing', '审核中', 'test', '2022.2.2', 'B209')
+    # ]
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的活动")
 
