@@ -18,6 +18,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
                 "fields": (
                     "person_id", "name", "nickname", "gender", "identity", "status",
                     "YQPoint", "YQPoint_Bonus", "bonusPoint", "wechat_receive_level",
+                    "accept_promote", "active_score",
                     "stu_id_dbonly",
                     ),
             }
@@ -712,6 +713,29 @@ class TransferRecordAdmin(admin.ModelAdmin):
                     "corres_act__title",)
     list_filter = ("status", "rtype", "start_time", "finish_time",)
 
+
+@admin.register(Course)
+class CourseAdmin(admin.ModelAdmin):
+    list_display = [
+        "name",
+        "organization",
+        "bidding",
+        "current_participants",
+    ]
+
+    class CourseTimeInline(admin.StackedInline):
+        model = CourseTime
+        extra = 1
+
+    inlines = [CourseTimeInline,]
+
+
+@admin.register(CourseParticipant)
+class CourseParticipantAdmin(admin.ModelAdmin):
+    list_display = ["course", "person", "status",]
+    search_fields = ("course__name", "person__name",)
+
+
 admin.site.register(YQPointDistribute)
 admin.site.register(QandA)
-
+admin.site.register(OrganizationTag)
