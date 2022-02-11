@@ -12,7 +12,7 @@ import requests
 import json
 
 # 设置
-from django.conf import settings
+from app.constants import *
 from boottest import local_dict
 
 # 模型与加密模型
@@ -23,7 +23,8 @@ from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from datetime import datetime, timedelta
 
 # 获取对象等操作
-from app.utils import get_person_or_org, except_captured
+from app.utils import get_person_or_org
+from app import log
 
 # 全局设置
 # 是否启用定时任务，请最好仅在服务器启用，如果不启用，后面的多个设置也会随之变化
@@ -52,8 +53,8 @@ if USE_SCHEDULER:
         scheduler.start()
 
 # 全局变量 用来发送和确认默认的导航网址
-DEFAULT_URL = settings.LOGIN_URL
-THIS_URL = settings.LOGIN_URL  # 增加默认url前缀
+DEFAULT_URL = LOGIN_URL
+THIS_URL = LOGIN_URL  # 增加默认url前缀
 if THIS_URL[-1:] == "/" and THIS_URL[-2:] != "//":
     THIS_URL = THIS_URL[:-1]  # 去除尾部的/
 WECHAT_URL = local_dict["url"]["wechat_url"]
@@ -286,7 +287,7 @@ def send_wechat(
             base_send_wechat(*args, **kws)  # 不使用定时任务请改为这句
 
 
-@except_captured(False, record_args=True, source='wechat_send[publish_notification]')
+@log.except_captured(False, record_args=True, source='wechat_send[publish_notification]')
 def publish_notification(notification_or_id,
                         app=None, level=None):
     """
@@ -366,7 +367,7 @@ def publish_notification(notification_or_id,
     return True
 
 
-@except_captured(False, record_args=True, source='wechat_send[publish_notifications]')
+@log.except_captured(False, record_args=True, source='wechat_send[publish_notifications]')
 def publish_notifications(
     notifications_or_ids=None, filter_kws=None, exclude_kws=None,
     app=None, level=None,
