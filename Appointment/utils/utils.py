@@ -5,6 +5,7 @@ import json
 from Appointment import global_info, hash_wechat_coder
 import threading
 from Appointment.models import Participant, Room, Appoint, CardCheckInfo  # 数据库模型
+from django.contrib.auth.models import User
 from django.db import transaction  # 原子化更改数据库
 from datetime import datetime, timedelta
 from django.http import JsonResponse
@@ -117,7 +118,17 @@ send_message = requests.session()
 
 
 # , credit=''):
-def send_wechat_message(stuid_list, starttime, room, message_type, major_student, usage, announcement, num, reason=''):
+def send_wechat_message(
+    stuid_list,
+    starttime,
+    room,
+    message_type,
+    major_student,
+    usage,
+    announcement,
+    num,
+    reason='',
+):
     '''
     stuid_list: Iter[sid] 学号列表，不是学生!
     starttime: datetime | Any, 后者调用str方法
@@ -315,8 +326,8 @@ def set_appoint_reason(input_appoint, reason):
     '''预约的过程中检查迟到，先记录原因，并且进入到进行中状态，不一定扣分'''
     try:
         operation_succeed = False
-        appoints = Appoint.objects.select_for_update().filter(Aid=input_appoint.Aid)
         with transaction.atomic():
+            appoints = Appoint.objects.select_for_update().filter(Aid=input_appoint.Aid)
             if len(appoints) != 1:
                 raise AssertionError
             for appoint in appoints:
@@ -326,24 +337,25 @@ def set_appoint_reason(input_appoint, reason):
                 appoint.save()
                 operation_succeed = True
                 
+                # TODO: major_sid
                 major_sid = str(appoint.major_student.Sid)
                 aid = str(appoint.Aid)
                 areason = str(appoint.get_Areason_display())
         if operation_succeed:
-            str_pid = str(os.getpid())
-            operation_writer(major_sid, "预约" + str(aid) + "出现违约:" +
-                                str(areason), "utils.set_appoint_reason"+str_pid, "OK") 
+            operation_writer(major_sid, f"预约{aid}出现违约:{areason}",
+                            f"utils.set_appoint_reason{os.getpid()}", "OK")
         return True, ""
     except Exception as e:
         return False, "in utils.set_appoint_reason: " + str(e)
+
 
 def appoint_violate(input_appoint, reason):  # 将一个aid设为违约 并根据real_credit_point设置
     try:
         #lock.acquire()
         operation_succeed = False
-        appoints = Appoint.objects.select_related(
-            'major_student').select_for_update().filter(Aid=input_appoint.Aid)
         with transaction.atomic():
+            appoints = Appoint.objects.select_related(
+                'major_student').select_for_update().filter(Aid=input_appoint.Aid)
             if len(appoints) != 1:
                 raise AssertionError
             for appoint in appoints:  # 按照假设，这里的访问应该是原子的，所以第二个程序到这里会卡主
@@ -359,6 +371,7 @@ def appoint_violate(input_appoint, reason):  # 将一个aid设为违约 并根�
                     appoint.major_student.save()
                     operation_succeed = True
 
+                    # TODO: major_sid
                     major_sid = str(appoint.major_student.Sid)
                     astart = appoint.Astart
                     aroom = str(appoint.Room)
@@ -383,10 +396,10 @@ def appoint_violate(input_appoint, reason):  # 将一个aid设为违约 并根�
                                 status,
                                 #appoint.major_student.credit,
                                 )  # totest: only main_student
-            str_pid = str(os.getpid())
-            operation_writer(major_sid, "预约" + str(aid) + "出现违约:" +
-                             str(areason) + ";是否扣除信用分:"+str(really_deduct) +
-                             ";剩余信用分"+str(credit), "utils.appoint_violate"+str_pid, "OK")  # str(os.getpid()),str(threading.current_thread().name()))
+            operation_writer(major_sid, f"预约{aid}出现违约:{areason}" +
+                             f";扣除信用分:{really_deduct}" +
+                             f";剩余信用分:{credit}",
+                             f"utils.appoint_violate{os.getpid()}", "OK")  # str(os.getpid()),str(threading.current_thread().name()))
             #lock.release()
         return True, ""
     except Exception as e:
@@ -429,6 +442,8 @@ def write_before_delete(appoint_list):
 def operation_writer(user, message, source, status_code="OK"):
     lock.acquire()
     try:
+        if isinstance(user, User):
+            user = user.username
         timestamp = str(datetime.now())
         source = str(source).ljust(30)
         status = status_code.ljust(10)
