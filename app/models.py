@@ -3,6 +3,8 @@ from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
+
+from pymysql import NULL
 from boottest import local_dict
 from django.conf import settings
 from random import choice
@@ -663,7 +665,7 @@ class Activity(CommentBase):
     # 允许是正无穷, 可以考虑用INTINF
     capacity = models.IntegerField("活动最大参与人数", default=100)
     current_participants = models.IntegerField("活动当前报名人数", default=0)
-
+    course_time_id=models.IntegerField("CourseTime_id",null=True,blank=True)
     URL = models.URLField("活动相关(推送)网址", max_length=1024, default="", blank=True)
 
     def __str__(self):
@@ -1374,7 +1376,7 @@ class CourseTime(models.Model):
         verbose_name = "上课时间"
         verbose_name_plural = verbose_name
         ordering = ["start"]
-
+    id = models.AutoField(primary_key=True)  # 自增ID，标识唯一
     course = models.ForeignKey(Course,
                                on_delete=models.CASCADE,
                                related_name="time_set")
