@@ -76,6 +76,7 @@ urlpatterns = [
     # 书院课程相关内容
     path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
     path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
+    path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
 ] + [
     # 组织相关操作
     path("saveShowPositionStatus", org_views.saveShowPositionStatus, name="saveShowPositionStatus"),
@@ -84,7 +85,6 @@ urlpatterns = [
     path("modifyPosition/", org_views.modifyPosition, name="modifyPosition"),
     path("modifyOrganization/", org_views.modifyOrganization, name="modifyOrganization"),
     path("sendMessage/", org_views.sendMessage, name="sendMessage"),
-    path("showCourseActivity/", org_views.showCourseActivity, name="showCourseActivity")
     # path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"), 弃用多年
 ] + [
     # 数据导入

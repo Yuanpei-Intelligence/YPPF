@@ -33,7 +33,6 @@ __all__ = [
     'saveShowPositionStatus',
     'modifyPosition',
     'sendMessage',
-    'showCourseActivity',
 ]
 
 
@@ -529,59 +528,3 @@ def sendMessage(request):
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="信息发送中心")
     return render(request, "sendMessage.html", locals())
-
-
-@login_required(redirect_field_name='origin')
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='org_views[showCourseActivity]', record_user=True)
-def showCourseActivity(request):
-    """筛选本学期已结束的课程活动、未开始的课程活动，在课程活动聚合页面进行显示"""
-
-    # Sanity check and start a html_display.
-    user = request.user
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    me = get_person_or_org(user, user_type)  # 获取自身
-
-    
-    if user_type == "Person":
-        return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
-
-    type_name = me.otype.otype_name
-    # TODO：“书院课程”从json读，constants.py可能应该为此增加一项
-    if type_name != "书院课程":
-        return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
-
-    # Filters out activities for display.from the database.
-
-    all_activity_list = (
-        Activity.objects
-        .filter(organization_id=me)
-        .filter(category=Activity.ActivityCategory.COURSE)
-        .order_by("-start")
-    )
-
-    future_activity_list = (
-        all_activity_list.filter(
-            status__in=[
-                Activity.Status.REVIEWING,
-                Activity.Status.APPLYING,
-                Activity.Status.WAITING,
-                Activity.Status.PROGRESSING,
-            ]
-        )
-    )
-
-    finished_activity_list = (
-        all_activity_list
-        .filter(status=Activity.Status.END)
-        .filter(
-            year=int(local_dict["semester_data"]["year"]),
-            semester__contains=local_dict["semester_data"]["semester"]
-        )
-        .order_by("-end")
-    ) # 本学期的已结束活动 
-
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的活动")
-
-    return render(request, "org_show_course_activity.html", locals())
-    
