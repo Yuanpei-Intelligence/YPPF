@@ -76,6 +76,7 @@ urlpatterns = [
     # 书院课程相关内容
     path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
     path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
+    path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
 ] + [
     # 组织相关操作
     path("saveShowPositionStatus", org_views.saveShowPositionStatus, name="saveShowPositionStatus"),
@@ -106,6 +107,9 @@ urlpatterns = [
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
 ] + [
     path("loadcourecord/", data_import.load_CouRecord,  name="load_cou_record"),
+] + [
+    # 埋点
+    path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
