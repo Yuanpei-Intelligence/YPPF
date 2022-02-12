@@ -141,7 +141,7 @@ def addSingleCourseActivity(request):
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='org_views[showCourseActivity]', record_user=True)
+@log.except_captured(source='course_views[showCourseActivity]', record_user=True)
 def showCourseActivity(request):
     """
     筛选本学期已结束的课程活动、未开始的课程活动，在课程活动聚合页面进行显示。
@@ -189,7 +189,7 @@ def showCourseActivity(request):
         .order_by("-end")
     ) # 本学期的已结束活动 
 
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的活动")
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的课程")
 
     return render(request, "org_show_course_activity.html", locals())
     
