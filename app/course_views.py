@@ -11,6 +11,7 @@ from app.models import (
 from app.course_utils import (
     create_single_course_activity,
     modify_course_activity,
+    check_post_data
 )
 from app.utils import (
     get_person_or_org,
@@ -145,20 +146,23 @@ def addSingleCourseActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='views[showCourseRecord]', record_user=True)
+@log.except_captured(EXCEPT_REDIRECT, source='course_views[showCourseRecord]', record_user=True)
 def showCourseRecord(request):
-
-   
-    edit_able = get_setting("course_record_editable")
-    edit_able = bool(edit_able)
+    '''
+    展示及修改学时数据
+    在开启修改功能前，显示本学期已完成的所有课程活动的学生的参与次数
+    开启修改功能后，自动创建学时表，并且允许修改学时
+    '''
     # ----身份检查----
     valid, user_type, display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
-
     if user_type == "Person":   
         return redirect(message_url(wrong('学生账号不能访问此界面！')))
     if me.otype.otype_name != "书院课程":
         return redirect(message_url(wrong('非书院课程组织账号不能访问此界面！')))
+
+    edit_able = get_setting("course_record_editable")
+    edit_able = bool(edit_able)        
     year = get_setting("semester_data/year")
     semester = get_setting("semester_data/semester")
     course_info = {
@@ -184,24 +188,22 @@ def showCourseRecord(request):
         person_id__in = list(all_positions.keys()),
         status = Participant.AttendStatus.ATTENDED ,
     ).values_list("person_id__person_id__username", flat=True)
-    # "person_id__person_id__username" 是学号
+    # "person_id__person_id__username" 为学号
 
     record_list = dict(Counter(list(all_participants)))
-
-    for key in all_positions.keys():     
-        # record_list 是一个储存（活动成员：参与次数）的一个字典，
-        # 可能存在成员不在此字典中的可能，因为有可能一次也没参加
+    # record_list 是一个储存（活动成员：参与次数）的一个字典，
+    # 可能存在成员不在此字典中的可能，因为有可能一次活动也没参加
+    for key in all_positions.keys(): #若一次也没参加活动，为0
         if str(key.person_id) not in list(record_list.keys()):
-            key.times = 0 #一次也没参加活动
+            key.times = 0 
         else: key.times = record_list[str(key.person_id)]
     all_positions = dict(sorted(all_positions.items(), key=lambda x: x[1]))
     #按照职位排序，前端需要
     
-    for person in list(all_positions.keys()): #record_list.keys()即为所有成员的列表
+    for person in list(all_positions.keys()): #all_positions.keys()即为所有成员的列表
         # 下面两个属性用于传入前端
         person.avatar_path = utils.get_user_ava(person, "Person")
         person.pos =me.otype.get_name(all_positions[person])
-
 
     record_search = CourseRecord.objects.filter(#查找此课程本学期所有成员的学时表
         course = course,
@@ -217,16 +219,17 @@ def showCourseRecord(request):
                     person = person,
                     course = course,
                     attend_times = person.times,
-                    total_hours = person.times*2,
+                    total_hours = person.times*2, #默认情况下新建时学时为次数的两倍
                     year = year,
                     semester = Semester.get(course_info['semester']),
                 )
                 loginfo = "Organization"+me.oname+" create CourseRecord: <"+ record_create.course.name\
                     +" times:"+str(record_create.attend_times)+" hours:"+str(record_create.total_hours) +">"
                 record_modification(me.organization_id, info=loginfo)
-            else: #可能在创建学时表之后又有新的活动，所以更新参加次数
+            else: #若在创建学时表之后又有新的活动，更新参加次数
                 with transaction.atomic():
                     record_search_person.update(attend_times = person.times)
+
     # 可编辑状态时传入前端      
     for record in record_search:
         person = record.person
@@ -241,22 +244,23 @@ def showCourseRecord(request):
             return redirect(message_url(wrong('目前尚未开放修改功能，请不要进行任何尝试！')))
         elif request.is_ajax(): #从前端将修改后的表格传入
             post_datas = json.loads(request.POST.get('data'))
+            members = list(all_positions.keys())
+            legal, back_datas = check_post_data(post_datas, members)
+            if not legal:
+                return redirect(message_url(wrong(back_datas)))
+            # --- 修改学时表 ---
             for point in range(len(post_datas)):
                 post_data = post_datas[point]
-                post_data[0] = post_data[0].replace(" ","").replace("\n","") #前端传入的时候格式有点奇怪，会有一些空格和换行符
-                person_edit = list(all_positions.keys())[point]
-                if str(person_edit) != post_data[0]: #只有非法修改流量包的数据才会这样
-                    return redirect(message_url(wrong('请勿尝试篡改传出数据!')))
 
-                # --- 修改学时表 ---
-                record_edited = record_search.filter(person = person_edit)
+                
+                record_edited = record_search.filter(person = members[point])
                 old_times = record_edited[0].attend_times
                 old_hours = record_edited[0].total_hours
                 with transaction.atomic():
                     record_edited.update(
-                        attend_times = int(post_data[2]),
-                        total_hours = int(post_data[3])
+                        total_hours = int(post_data[1])
                     )
+
                 loginfo = "Organization"+me.oname+" change CourseRecord from <"+" times:"+\
                     str(old_times)+" hours:"+str(old_hours)+"> to <"+" times:"+\
                     str(record_edited[0].attend_times) + " hours:"+str(record_edited[0].total_hours) +">"
