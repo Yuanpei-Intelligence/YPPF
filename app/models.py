@@ -165,6 +165,9 @@ class NaturalPerson(models.Model):
             avatar = "avatar/person_default.jpg"
         return settings.MEDIA_URL + str(avatar)
 
+    def get_accept_promote_display(self):
+        return "是" if self.accept_promote else "否"
+    
     def show_info(self):
         """
             返回值为一个列表，在search.html中使用，按照如下顺序呈现：
