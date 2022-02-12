@@ -943,6 +943,16 @@ def examineActivity(request, aid):
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='activity_views[offlineCheckinActivity]', record_user=True)
 def offlineCheckinActivity(request,aid):
+    '''
+    修改签到功能
+    只有举办活动的组织账号可查看和修改
+    
+    
+    参数：
+        me：举办组织
+        activity：对应活动
+        member_list：状态为未签到和已签到组织成员的queryset
+    '''
     valid, user_type, html_display = utils.check_user_type(request.user) 
     me=get_person_or_org(request.user,user_type)
     try:
