@@ -20,7 +20,7 @@ from boottest import local_dict
 __all__ = [
     'editCourseActivity', 
     'addSingleCourseActivity',
-    'showCourseActivity'
+    'showCourseActivity',
 ]
 
 
@@ -148,16 +148,11 @@ def showCourseActivity(request):
     """
 
     # Sanity check and start a html_display.
-    user = request.user
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    me = get_person_or_org(user, user_type)  # 获取自身
+    _, user_type, html_display = utils.check_user_type()
+    me = get_person_or_org(request.user, user_type)  # 获取自身
 
     
-    if user_type == "Person":
-        return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
-
-    type_name = me.otype.otype_name
-    if type_name != COURSE_TYPENAME:
+    if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
         return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
 
     all_activity_list = (
