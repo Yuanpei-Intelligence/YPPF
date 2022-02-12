@@ -25,7 +25,6 @@ from app.activity_utils import (
 from datetime import datetime, timedelta
 
 from app.scheduler import scheduler
-from django.db.models import Q
 
 __all__ = [
     'course_activity_base_check',
