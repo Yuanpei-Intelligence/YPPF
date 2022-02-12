@@ -20,7 +20,7 @@ from boottest import local_dict
 __all__ = [
     'editCourseActivity', 
     'addSingleCourseActivity',
-    'showCourseActivity'
+    'showCourseActivity',
 ]
 
 
@@ -107,7 +107,7 @@ def addSingleCourseActivity(request):
         valid, user_type, html_display = utils.check_user_type(request.user)
         # assert valid  已经在check_user_access检查过了
         me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
-        if user_type != "Organization" or me.otype.otype_name != "书院课程":
+        if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
             return redirect(message_url(wrong('书院课程小组账号才能开设课程活动!')))
         if me.oname == YQP_ONAME:
             return redirect("/showActivity")  # TODO: 可以重定向到书院课程聚合页面
@@ -148,17 +148,11 @@ def showCourseActivity(request):
     """
 
     # Sanity check and start a html_display.
-    user = request.user
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    me = get_person_or_org(user, user_type)  # 获取自身
+    _, user_type, html_display = utils.check_user_type()
+    me = get_person_or_org(request.user, user_type)  # 获取自身
 
     
-    if user_type == "Person":
-        return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
-
-    type_name = me.otype.otype_name
-    # TODO：“书院课程”从json读，constants.py可能应该为此增加一项
-    if type_name != "书院课程":
+    if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
         return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
 
     all_activity_list = (
@@ -189,5 +183,4 @@ def showCourseActivity(request):
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的活动")
 
     return render(request, "org_show_course_activity.html", locals())
-    
 

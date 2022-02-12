@@ -107,6 +107,9 @@ urlpatterns = [
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
 ] + [
     path("loadcourecord/", data_import.load_CouRecord,  name="load_cou_record"),
+] + [
+    # 埋点
+    path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
