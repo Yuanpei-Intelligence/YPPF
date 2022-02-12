@@ -4,6 +4,7 @@ from app.models import (
     Freshman,
     Position,
     Organization,
+    OrganizationTag,
     OrganizationType,
     ModifyPosition,
     Activity,
@@ -1080,6 +1081,9 @@ def accountSetting(request):
 
         useroj = Organization.objects.get(organization_id=user)
         former_wallpaper = utils.get_user_wallpaper(me, "Organization")
+        org_tags = list(me.tags.all())
+        org_tag_names = [tag['name'] for tag in me.tags.all().values()]
+        other_tags = OrganizationTag.objects.exclude(name__in=org_tag_names)
         if request.method == "POST" and request.POST:
 
             ava = request.FILES.get("avatar")
@@ -1095,13 +1099,25 @@ def accountSetting(request):
                 modify_info.append(f'avatar: {ava}')
             if wallpaper:
                 modify_info.append(f'wallpaper: {wallpaper}')
-            modify_info += [f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}'
-                            for attr in attr_check_list
-                            if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr])]
+            attr = 'introduction'
+            if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]):
+                modify_info += [f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}']
+            attr = 'tags_modify'
+            if attr_dict[attr] != "":
+                modify_info += [f'{attr}: {attr_dict[attr]}']
 
-            for attr in attr_check_list:
-                if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
-                    setattr(useroj, attr, attr_dict[attr])
+            attr = 'introduction'
+            if attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]:
+                setattr(useroj, attr, attr_dict[attr])
+            if attr_dict['tags_modify'] != "":
+                for modify in attr_dict['tags_modify'].split(';'):
+                    if modify != "":
+                        action, tag_id = modify.split(" ")
+                        if action == 'add':
+                            me.tags.add(OrganizationTag.objects.get(id=tag_id))
+                        else:
+                            me.tags.remove(OrganizationTag.objects.get(id=tag_id))
+                me.save()
             if ava is None:
                 pass
             else:
