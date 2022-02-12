@@ -198,10 +198,8 @@ def viewActivity(request, aid=None):
             if not ownership:
                 return redirect(message_url(wrong('您没有线下补签到的权限！'), request.path))
             try:
-                if activity.status != Activity.Status.END:
-                    return redirect(message_url(wrong('活动尚未结束!'), request.path))
-                assert activity.status == Activity.Status.END
                 activity = Activity.objects.get(id=int(aid))
+                assert activity.status == Activity.Status.END
                 return redirect(f"/offlineCheckinActivity/{aid}")
             except:
                 return redirect(message_url(wrong("修改签到信息失败")))   
