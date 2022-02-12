@@ -77,77 +77,76 @@
                                             {% endif %}
                                             <div class="row w-100 m-0">
                                                 {% for act in future_activity_list %}
-                                                    <!-- BEGIN ACTIVITY DISPLAY -->
-                                                    <div class="col-xm-12 col-md-6 mb-xl-5 mb-5 ">
-                                                        <div class="dropdown">
-                                                        <div class="d-flex b-skills" role="button" data-toggle="dropdown">
-                                                            <div class="text-nowrap mw-100">
-                                                                <div class="d-flex justify-content-between">
-                                                                    <h5
-                                                                        style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                        {% if act.status == "等待中" %}
-                                                                        <span class="badge badge-pill badge-warning">
-                                                                            等待开始
-                                                                            {% else %}
-                                                                            {% if act.status == "审核中" %}
-                                                                            <span
-                                                                                class="flex badge badge-pill badge-secondary">
-                                                                                {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                                <!-- BEGIN ACTIVITY DISPLAY -->
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                    <div class=" b-skills">
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <h5
+                                                                    style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                                    {% if act.status == "等待中" %}
+                                                                    <span class="badge badge-pill badge-warning">
+                                                                        等待开始
+                                                                        {% else %}
+                                                                        {% if act.status == "审核中" %}
+                                                                        <span
+                                                                            class="flex badge badge-pill badge-secondary">
+                                                                            {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                                                            <span class="badge badge-pill badge-danger">
+                                                                                {% elif act.status == "报名中" %}
                                                                                 <span
-                                                                                    class="badge badge-pill badge-danger">
-                                                                                    {% elif act.status == "报名中" %}
+                                                                                    class="badge badge-pill badge-info">
+                                                                                    {% elif act.status == "进行中" %}
                                                                                     <span
-                                                                                        class="badge badge-pill badge-info">
-                                                                                        {% elif act.status == "进行中" %}
-                                                                                        <span
-                                                                                            class="badge badge-pill badge-success">
-                                                                                            {% endif %}
-                                                                                            {{ act.status }}
-                                                                                            {% endif %}
-                                                                                        </span>
-                                                                                        {{ act.title }}
-                                                                    </h5>
+                                                                                        class="badge badge-pill badge-success">
+                                                                                        {% endif %}
+                                                                                        {{ act.status }}
+                                                                                        {% endif %}
+                                                                                    </span>
+                                                                                    {{ act.title }}
+                                                                </h5>
+                                                            </div>
+                                                            <div>
+                                                                <div class="dropdown">
+                                                                    <button type="button"
+                                                                        class="btn btn-primary dropdown-toggle"
+                                                                        data-toggle="dropdown">
+                                                                        管理活动
+                                                                    </button>
+                                                                    <div class="dropdown-menu">
+                                                                        <a class="dropdown-item" href="/editCourseActivity/{{act.id}}">修改活动</a>
+                                                                        <a class="dropdown-item" href="#">取消活动</a>
+                                                                    </div>
                                                                 </div>
-
-                                                                <p
-                                                                    style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                    <i class="fa fa-info-circle"
-                                                                        style="width: 20px;"></i>
-                                                                    <span class="ml-1">{{ act.introduction }}</span>
-                                                                </p>
-
-                                                                <p
-                                                                    style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                    <i class="fa fa-clock" style="width: 20px;"></i>
-                                                                    <span class="ml-1">活动开始时间：{{ act.start }}&nbsp;</span>
-                                                                </p>
-
-                                                                <p
-                                                                    style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                    <i class="fa fa-location-arrow"
-                                                                        style="width: 20px;"></i>
-                                                                    <span class="ml-1">{{ act.location }}&nbsp;</span>
-                                                                </p>
-
                                                             </div>
 
                                                         </div>
-                                                        
-                                                        <!-- BEGIN DROPDOWN MENU -->
-                                                        <!-- TODO: modify href -->
-                                                        <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
-                                                            <a class="dropdown-item" href="/editCourseActivity/act.id">修改活动</a>
-                                                            <a class="dropdown-item" href="#">取消活动</a>
-                                                        </div>
-                                                        <!-- END DROPDOWN MENU -->
 
+                                                        <p
+                                                            style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                            <i class="fa fa-info-circle" style="width: 20px;"></i>
+                                                            <span class="ml-1">{{ act.introduction }}</span>
+                                                        </p>
+
+                                                        <p
+                                                            style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                            <i class="fa fa-clock" style="width: 20px;"></i>
+                                                            <span class="ml-1">开始时间：{{ act.start }}&nbsp;</span>
+                                                        </p>
+
+                                                        <p
+                                                            style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                            <i class="fa fa-location-arrow" style="width: 20px;"></i>
+                                                            <span class="ml-1">{{ act.location }}&nbsp;</span>
+                                                        </p>
                                                     </div>
-                                                    <!-- END ACTIVITY DISPLAY -->
                                                 </div>
-                                                {% endfor %}
-                                            </div>
 
+                                                <!-- END ACTIVITY DISPLAY -->
+                                            </div>
+                                            {% endfor %}
                                         </div>
+
                                     </div>
 
                                     <div id="finishedActivity" class="tab-pane fade">
@@ -158,93 +157,90 @@
                                             {% endif %}
                                             <div class="row w-100 m-0">
                                                 {% for act in finished_activity_list %}
-                                                    <!-- BEGIN ACTIVITY DISPLAY -->
-                                                    <div class="col-xm-12 col-md-6 mb-xl-5 mb-5 ">
-                                                        <div class="dropdown">
-                                                        <div class="d-flex b-skills" role="button" data-toggle="dropdown">
-                                                            <div class="text-nowrap mw-100">
-                                                                <div class="d-flex justify-content-between">
-                                                                    <h5
-                                                                        style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                        {% if act.status == "等待中" %}
-                                                                        <span class="badge badge-pill badge-warning">
-                                                                            等待开始
-                                                                            {% else %}
-                                                                            {% if act.status == "审核中" %}
-                                                                            <span
-                                                                                class="flex badge badge-pill badge-secondary">
-                                                                                {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                                <!-- BEGIN ACTIVITY DISPLAY -->
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+
+                                                    <div class=" b-skills">
+
+
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <h5
+                                                                    style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                                    {% if act.status == "等待中" %}
+                                                                    <span class="badge badge-pill badge-warning">
+                                                                        等待开始
+                                                                        {% else %}
+                                                                        {% if act.status == "审核中" %}
+                                                                        <span
+                                                                            class="flex badge badge-pill badge-secondary">
+                                                                            {% elif act.status == "未过审" or act.status == "已取消" or act.status == "已撤销" or act.status == "已结束" %}
+                                                                            <span class="badge badge-pill badge-danger">
+                                                                                {% elif act.status == "报名中" %}
                                                                                 <span
-                                                                                    class="badge badge-pill badge-danger">
-                                                                                    {% elif act.status == "报名中" %}
+                                                                                    class="badge badge-pill badge-info">
+                                                                                    {% elif act.status == "进行中" %}
                                                                                     <span
-                                                                                        class="badge badge-pill badge-info">
-                                                                                        {% elif act.status == "进行中" %}
-                                                                                        <span
-                                                                                            class="badge badge-pill badge-success">
-                                                                                            {% endif %}
-                                                                                            {{ act.status }}
-                                                                                            {% endif %}
-                                                                                        </span>
-                                                                                        {{ act.title }}
-                                                                    </h5>
+                                                                                        class="badge badge-pill badge-success">
+                                                                                        {% endif %}
+                                                                                        {{ act.status }}
+                                                                                        {% endif %}
+                                                                                    </span>
+                                                                                    {{ act.title }}
+                                                                </h5>
+                                                            </div>
+                                                            <div>
+                                                                <div class="dropdown">
+                                                                    <button type="button"
+                                                                        class="btn btn-primary dropdown-toggle"
+                                                                        data-toggle="dropdown">
+                                                                        管理活动
+                                                                    </button>
+                                                                    <div class="dropdown-menu">
+                                                                        <a class="dropdown-item" href="#">手工签到</a>
+                                                                    </div>
                                                                 </div>
-
-                                                                <p
-                                                                    style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                    <i class="fa fa-info-circle"
-                                                                        style="width: 20px;"></i>
-                                                                    <span class="ml-1">{{ act.introduction }}</span>
-                                                                </p>
-
-                                                                <p
-                                                                    style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                    <i class="fa fa-clock" style="width: 20px;"></i>
-                                                                    <span class="ml-1">结束时间：{{ act.end }}&nbsp;</span>
-                                                                </p>
-
-                                                                <p
-                                                                    style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                    <i class="fa fa-location-arrow"
-                                                                        style="width: 20px;"></i>
-                                                                    <span class="ml-1">{{ act.location }}&nbsp;</span>
-                                                                </p>
-
                                                             </div>
 
                                                         </div>
-                                                    
-                                                        <!-- BEGIN DROPDOWN MENU -->
-                                                        <!-- TODO: modify href -->
-                                                        <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
-                                                            <a class="dropdown-item" href="#">手工签到</a>
-                                                        </div>
-                                                        <!-- END DROPDOWN MENU -->
 
+                                                        <p
+                                                            style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                            <i class="fa fa-info-circle" style="width: 20px;"></i>
+                                                            <span class="ml-1">{{ act.introduction }}</span>
+                                                        </p>
+
+                                                        <p
+                                                            style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                            <i class="fa fa-clock" style="width: 20px;"></i>
+                                                            <span class="ml-1">结束时间：{{ act.end }}&nbsp;</span>
+                                                        </p>
+
+                                                        <p
+                                                            style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                            <i class="fa fa-location-arrow" style="width: 20px;"></i>
+                                                            <span class="ml-1">{{ act.location }}&nbsp;</span>
+                                                        </p>
                                                     </div>
-                                                    <!-- END ACTIVITY DISPLAY -->
                                                 </div>
-                                                {% endfor %}
+                                                <!-- END ACTIVITY DISPLAY -->
                                             </div>
+                                            {% endfor %}
                                         </div>
                                     </div>
-
                                 </div>
 
                             </div>
-                        </div>
 
-                        <!-- END ACTIVITY LIST -->
+                        </div>
                     </div>
+                    <!-- END ACTIVITY LIST -->
+
                 </div>
             </div>
         </div>
     </div>
     <!-- END BOOTSTRAP GRID-->
-
-
-
-
 </div>
 <!--  END CONTENT AREA  -->
 
