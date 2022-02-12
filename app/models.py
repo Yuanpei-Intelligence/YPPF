@@ -1501,4 +1501,3 @@ class ModuleLog(models.Model):
     platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
     explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
     explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
-
