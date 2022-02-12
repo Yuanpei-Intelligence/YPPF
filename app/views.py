@@ -22,6 +22,8 @@ from app.models import (
     Course,
     CourseRecord,
     Semester,
+    PageLog,
+    ModuleLog,
 )
 from app.utils import (
     url_check,
@@ -1974,3 +1976,37 @@ def QAcenter(request):
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="问答中心")
     return render(request, "QandA_center.html", locals())
+
+
+def eventTrackingFunc(request):
+    # unpack request:
+    logTime = int(request.POST['Time'])
+    logTime = datetime.fromtimestamp(logTime/1000)
+    logUrl = request.POST['Url'] # 由于对PV/PD埋点的JavaScript脚本在base.html中实现，所以所有页面的PV/PD都会被track
+    logType = int(request.POST['Type'])
+    logPlatform = request.POST['Platform']
+    logExploreName, logExploreVer = request.POST['Explore'].split()
+
+    # modify the dataset
+    _, user_type, _ = utils.check_user_type(request.user)
+    me = get_person_or_org(request.user, user_type)
+    if isinstance(me, NaturalPerson):
+        me = me.person_id
+    else:
+        me = me.organization_id
+    
+    if logType in [2,3]: # 是Module类的埋点
+        logModuleName = request.POST['Name']
+        log = ModuleLog(Page=logUrl, ModuleName=logModuleName, Type=logType, Time=logTime, User=me, 
+            Platform=logPlatform, ExploreName=logExploreName, ExploreVer=logExploreVer)
+    else: # 是Page类的埋点
+        log = PageLog(Page=logUrl, Type=logType, Time=logTime, User=me,
+            Platform=logPlatform, ExploreName=logExploreName, ExploreVer=logExploreVer)
+    log.save()
+    
+    # pack response: 
+    response = json.dumps({
+        'status' : 'ok',
+    })
+
+    return HttpResponse(response)
