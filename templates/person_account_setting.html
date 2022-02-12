@@ -194,6 +194,29 @@
         <div class="row mx-0 pt-5">
             <div class="col-1 px-0"></div>
             <div class="col-10 col-md-2 px-0">
+                <h2 class="text-dark pr-4">推广权限</h2>
+            </div>
+            <div class="col-1 px-0 d-md-none"></div>
+            <div class="col-1 px-0 d-md-none"></div>
+            <div class="col-10 col-md-7 px-0">
+                <label for="select-promote" style="width: max-content;">是否接收推广消息？</label>
+                <div class="form-group mb-0">
+                    <select class="form-control" id="select-promote" name="promote">
+                    {% if useroj.accept_promote %}
+                        <option selected>是</option>
+                        <option>否</option>
+                    {% else %}
+                        <option selected>否</option>
+                        <option>是</option>
+                    {% endif %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mx-0 pt-5">
+            <div class="col-1 px-0"></div>
+            <div class="col-10 col-md-2 px-0">
                 <h2 class="text-dark pr-4">主页外观</h2>
             </div>
             <div class="col-1 px-0 d-md-none"></div>
