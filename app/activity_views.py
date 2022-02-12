@@ -941,16 +941,15 @@ def examineActivity(request, aid):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[offlineCheckinActivity]', record_user=True)
+@log.except_captured(source='activity_views[offlineCheckinActivity]', record_user=True)
 def offlineCheckinActivity(request,aid):
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    user = request.user
-    activity = Activity.objects.get(id=aid)
-    if user_type != "Organization":
-        return redirect(message_url(wrong('修改失败，修改签到请用组织账号')))
+    valid, user_type, html_display = utils.check_user_type(request.user) 
     me=get_person_or_org(request.user,user_type)
-    if me != activity.organization_id:
-        return redirect(message_url(wrong('修改失败，修改签到请用举办该活动的组织账号')))
+    try:
+        activity = Activity.objects.get(id=aid)
+        assert me == activity.organization_id and user_type == "Organization"
+    except:
+        return redirect(message_url(wrong('修改失败')))
     member_list = Participant.objects.filter(activity_id=aid,
                                              status__in=[
                                                     Participant.AttendStatus.UNATTENDED,
@@ -966,9 +965,7 @@ def offlineCheckinActivity(request,aid):
                 elif checkin == "no":
                     member.status = Participant.AttendStatus.UNATTENDED
                     member.save()
-                else:
-                    print("sth is wrong") #这里出现意外情况后的报错将来再改，但目前的试验中还没有出现进入else的错误
         except:
             return redirect(message_url(wrong('修改失败')))
-    bar_display = utils.get_sidebar_and_navbar(request.user,navbar_name = "小组主页", title_name = me.oname)
+    bar_display = utils.get_sidebar_and_navbar(request.user,navbar_name = "修改签到信息", title_name = me.oname)
     return render(request, "activity_checkinoffline.html",locals())
