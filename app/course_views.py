@@ -151,7 +151,6 @@ def showCourseRecord(request):
    
     edit_able = get_setting("course_record_editable")
     edit_able = bool(edit_able)
-    print(edit_able)
     # ----身份检查----
     valid, user_type, display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
@@ -171,11 +170,9 @@ def showCourseRecord(request):
         # ---- 收集当前小组成员信息 ----
     positions  = Position.objects.activated().filter(org = me, 
         person__identity = NaturalPerson.Identity.STUDENT)
-    print(positions)
     course = Course.objects.activated().filter(organization = me)[0]
     all_positions = {position.person:position.pos for position in positions}
-
-    #positions: 储存（小组成员：职位）的一个字典
+    #all_positions: 储存 小组成员：职位 的一个字典
 
         # ---- 收集本学期已完成活动 ----
     activities=Activity.objects.activated().filter(
@@ -190,9 +187,10 @@ def showCourseRecord(request):
     # "person_id__person_id__username" 是学号
 
     record_list = dict(Counter(list(all_participants)))
-    # record_list 是一个储存（活动成员：参与次数）的一个字典，
-    # 可能存在成员不在此字典中的可能，因为有可能一次也没参加
-    for key in all_positions.keys(): 
+
+    for key in all_positions.keys():     
+        # record_list 是一个储存（活动成员：参与次数）的一个字典，
+        # 可能存在成员不在此字典中的可能，因为有可能一次也没参加
         if str(key.person_id) not in list(record_list.keys()):
             key.times = 0 #一次也没参加活动
         else: key.times = record_list[str(key.person_id)]
@@ -209,7 +207,7 @@ def showCourseRecord(request):
         course = course,
         year = course_info['year'],
         semester = Semester.get(course_info['semester']),
-        )
+    )
     if edit_able:
         #-----新建空学时表-----
         for person in all_positions.keys(): 
@@ -227,7 +225,6 @@ def showCourseRecord(request):
                     +" times:"+str(record_create.attend_times)+" hours:"+str(record_create.total_hours) +">"
                 record_modification(me.organization_id, info=loginfo)
             else: #可能在创建学时表之后又有新的活动，所以更新参加次数
-                print(person.times)
                 with transaction.atomic():
                     record_search_person.update(attend_times = person.times)
     # 可编辑状态时传入前端      
