@@ -3,7 +3,7 @@
 {% block mainpage %}
 
 <!-- TODO: Link to related pages -->
-{% with title='我的课程' link1='' btn_name1='新增活动' link2='' btn_name2='发起选课' %}
+{% with title='我的课程' link1='/addSingleCourseActivity' btn_name1='增加课时' link2='' btn_name2='发起选课' %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -134,8 +134,9 @@
                                                         </div>
                                                         
                                                         <!-- BEGIN DROPDOWN MENU -->
+                                                        <!-- TODO: modify href -->
                                                         <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
-                                                            <a class="dropdown-item" href="#">修改活动</a>
+                                                            <a class="dropdown-item" href="/editCourseActivity/act.id">修改活动</a>
                                                             <a class="dropdown-item" href="#">取消活动</a>
                                                         </div>
                                                         <!-- END DROPDOWN MENU -->
@@ -214,6 +215,7 @@
                                                         </div>
                                                     
                                                         <!-- BEGIN DROPDOWN MENU -->
+                                                        <!-- TODO: modify href -->
                                                         <div class="dropdown-menu" aria-labelledby="dropdownMenuLink">
                                                             <a class="dropdown-item" href="#">手工签到</a>
                                                         </div>
