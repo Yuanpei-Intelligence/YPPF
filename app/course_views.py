@@ -103,7 +103,7 @@ def addSingleCourseActivity(request):
         valid, user_type, html_display = utils.check_user_type(request.user)
         # assert valid  已经在check_user_access检查过了
         me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
-        if user_type != "Organization":
+        if user_type != "Organization" or me.otype.otype_name != "书院课程":
             return redirect(message_url(wrong('书院课程小组账号才能开设课程活动!')))
         if me.oname == YQP_ONAME:
             return redirect("/showActivity")  # TODO: 可以重定向到书院课程聚合页面
