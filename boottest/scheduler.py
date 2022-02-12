@@ -51,8 +51,8 @@ def start_scheduler():
 
         return scheduler
 
-def register_periodic_job(func, trigger='interval', *args, **kwargs):
-    scheduler.add_job(func, trigger, id=func.__name__, *args, **kwargs)
+# def register_periodic_job(func, trigger='interval', *args, **kwargs):
+#     scheduler.add_job(func, trigger, id=func.__name__, *args, **kwargs)
 
 if settings.__ENV in ["PRODUCT", "TEST"]:
     port_number = settings.RPC_PORT

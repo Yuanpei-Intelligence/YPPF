@@ -12,6 +12,9 @@ logging.getLogger('apscheduler').setLevel(settings.__LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
 
+from app.scheduler_func import *
+from Appointment.utils.scheduler_func import clear_appointments
+
 class SchedulerService(rpyc.Service):
 
     def __init__(self, scheduler):
@@ -30,13 +33,17 @@ class Command(BaseCommand):
         scheduler.add_jobstore(DjangoJobStore(), "default")
         scheduler.start()
 
+        scheduler.add_job(get_weather, 'interval', id=get_weather.__name__, minutes=5, replace_existing=True)
+        scheduler.add_job(changeAllActivities, 'interval', id=changeAllActivities.__name__, minutes=5, replace_existing=True)
+        scheduler.add_job(clear_appointments, 'cron', id=clear_appointments.__name__, day_of_week='sat', hour='3', minute="30", second='0', replace_existing=True)
+
         protocol_config = {
             'allow_all_attrs': True,
             'logger': logger,
         }
         server = ThreadedServer(SchedulerService(scheduler), port=settings.RPC_PORT, protocol_config=protocol_config)
         try:
-            logging.info("Starting thread server...")
+            # logging.info("Starting thread server...")
             server.start()
         except (KeyboardInterrupt, SystemExit):
             pass
