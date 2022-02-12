@@ -1,52 +1,50 @@
 {% extends "base.html" %}
-
-
 {% block add_css_file %}
-{%if edit_able %}
+
+
+{% if edit_able %}
 <style type='text/css'>
-  a1,a2{
+  a2{
     font-size: 12px;
   }
-  a1:hover,a2:hover{
+  a2:hover{
     font-size: 14px;
     color: rgb(0, 132, 255);
     cursor:pointer;
+  }  
+  #input_text{
+    height:12px;
+    text-align:center;
+    width:100px;
+    margin:0 auto;
+    vertical-align:middel;  
   }
 </style>
-{%endif%}
-{%if not edit_able %}
+{% else %}
 <style type='text/css'>
   a2 {
     font-size: 12px;
     color: rgba(0, 0, 0, 0.199);
   }
 </style>
-{%endif%}
-
-
+{% endif %}
 {% endblock %}
 
 {% block mainpage %}
 
-
   <div id="content" class="main-content">      
-    {% if html_display.type == 2%}
-      <div id='UploadSuccess' class="alert alert-success  text-center">{{html_display.message}}
-          <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-          <span aria-hidden="true">&times;</span></button>
-      </div> 
-    {%endif%}
     <div class="container">
       <div class="layout-top-spacing" style="text-align:center">
+        <div style="text-align:left;"> {% include 'help.html' %}</div> <br>
         <h3 class="text-primary" >{{course_info.year}}年{% if course_info.semester == "Fall" %}秋季{%elif course_info.semester == "Spring" %}春季{% endif %}{{course_info.course}}学时记录
-          <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="" data-original-title="在服务器开启权限后，才可双击修改表格中的参与次数与学时">
+          <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="" data-original-title="在服务器开启权限后，才可双击修改表格中的学时信息。">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle-fill" viewBox="0 0 22 22" style="color:rgba(0, 0, 0, 0.404);">
-            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"></path>
+                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"></path>
             </svg>
           </a>
-        </h3>    
-      <br>
+        </h3>
         
+       
         <div class="col-12 row layout-spacing" style="text-align: left;">
           <div class="col-xl-3 col-lg-3 col-md-3 col-sm-0"></div>
           <div class="input-group mb-3 col-xl-6 col-lg-6 col-md-6 col-sm-12"></div> 
@@ -65,33 +63,31 @@
               </thead>
               <tbody class="table">
                 {%if edit_able%}
-                <!-- 若处于可以修改的状态 -->
-                {% for record in record_search %}
-                <tr>
-                  <th class="name" scope="row">
-                      <img src={{ record.person.avatar_path }} width="24" height="24" alt="avatar">
-                  <a href='/stuinfo/?name={{ record.person.name }}'><u>
-                  {{record.person.name}}</u></a>
+                  <!-- 若处于可以修改的状态 -->
+                  {% for record in record_search %}
+                    <tr>
+                      <th class="name" scope="row">
+                          <img src={{ record.person.avatar_path }} width="24" height="24" alt="avatar">
+                          <a href='/stuinfo/?name={{ record.person.name }}'><u>{{record.person.name}}</u></a>
                       </th>
-                  <td class="sid">{{record.person.pos}}</td>
-                  <td class="times"><a1>{{record.attend_times}}</a1></td>
-                  <td class="hours"><a2>{{record.total_hours}}</a1></td>
-                </tr>
-                {% endfor %}
-                <!-- 若处于不可修改状态 -->
+                      <td class="sid">{{record.person.pos}}</td>
+                      <td class="times"><a1>{{record.attend_times}}</a1></td>
+                      <td class="hours"><a2>{{record.total_hours}}</a1></td>
+                    </tr>
+                  {% endfor %}
+                <!-- 若处于不可修改状态  -->
                 {%else%}
-                {% for person in all_positions.keys %}
-                <tr>
-                  <th class="name" scope="row">
-                      <img src= {{ person.avatar_path }} width="24" height="24" alt="avatar">
-                  <a href='/stuinfo/?name={{ person.name }}'><u>
-                  {{person.name}}</u></a>
+                  {% for person in all_positions.keys %}
+                    <tr>
+                      <th class="name" scope="row">
+                        <img src= {{ person.avatar_path }} width="24" height="24" alt="avatar">
+                        <a href='/stuinfo/?name={{ person.name }}'><u>{{person.name}}</u></a>
                       </th>
-                  <td class="sid">{{person.pos}}</td>
-                  <td class="times"><a1>{{person.times}}</a1></td>
-                  <td class="hours"><a2>0</a1></td>
-                </tr>   
-                {% endfor %}           
+                      <td class="sid">{{person.pos}}</td>
+                      <td class="times"><a1>{{person.times}}</a1></td>
+                      <td class="hours"><a2>0</a1></td>
+                    </tr>   
+                  {% endfor %}           
                 {%endif%}
 
               </tbody>
@@ -99,14 +95,14 @@
           </div>
         </div>
         {% if edit_able %}
-        <div class="col-12 row layout-spacing">
-          <div class="col-6" style="text-align: center;">
-            <button type="button" class="btn btn-danger btn-lg" id="cancel_changes">取消保存</button>
-          </div>          
-          <div class="col-6" style="text-align: center;">
-            <button type="button" class="btn btn-primary btn-lg" id="post_data" name="post_table">提交修改</button>
+          <div class="col-12 row layout-spacing">
+            <div class="col-6" style="text-align: center;">
+              <button type="button" class="btn btn-danger btn-lg" id="cancel_changes">取消保存</button>
+            </div>          
+            <div class="col-6" style="text-align: center;">
+              <button type="button" class="btn btn-primary btn-lg" id="post_data" name="post_table">提交修改</button>
+            </div>
           </div>
-        </div>
         {%endif%}
       </div>
     </div>
@@ -122,11 +118,11 @@
 <script>
   $(document).ready(function(){
     var edit_able = {edit_able};
-    $("a1,a2").dblclick(function(){
+    $("a2").dblclick(function(){
       if (edit_able) {
         var th = $(this);
         var text = th.text();
-        var txt = $('<input id="input_" type="text" class="form-control">').val(text);
+        var txt = $('<input id="input_text" type="text" class="form-control">').val(text);
         txt.blur(function(){
           var newtxt = $(this).val();
           $(this).remove();
@@ -146,31 +142,21 @@
       txt.focus();
     });
     
-
-    
-    var name=$("#input_").val();
-    if (name == '' || name == undefined || name == null){
-        $("#name").css('borderColor','red'); //添加css样式
-    }else {
-        $("#name").css('borderColor',''); //取消css样式
-    }
-      // 以下为返回上传修改后的表格的代码
+      // 以下为返回上传修改后的表格的逻辑
     $("#post_data").click( function() {
 
       var tablehtml = $("#store_table")
       var data = getTableData(tablehtml)
       var data_str = JSON.stringify(data)
       $.ajax({
-            url: "/couRecord/",
+            url: "/showCourseRecord/",
             type: 'POST',
             data: {'data': data_str},
             success: function(res) {
-                //相关操作
                 alert("学时修改成功!")
             },
             error: function(res) {
-                //异常提示
-                alert('出现错误！')
+                alert('出现错误！修改失败')
             }
         });
 
@@ -179,20 +165,14 @@
         let result = []
         if ($('tr')) {
             let length = $('tr').length;
-            // alert(length)
             for(let i = 0; i < length; i++) {   //追加数据
-                let trData=[]; // 每行的数据
-                let table_eq = $('tr').eq(i)
-                //注意text()和val()的区别
-                let name = table_eq.find('.name').text();
-                let sid = table_eq.find('.sid').text();
-                let times = table_eq.find(".times>a1").text();
-                let hours = table_eq.find('.hours>a2').text();
-
-                if (name != "") {
-                  result.push([name, sid, times, hours]);
-                }
-
+              let trData=[]; // 每行的数据
+              let table_eq = $('tr').eq(i)
+              let name = table_eq.find('.name').text();
+              let hours = table_eq.find('.hours>a2').text();
+              if (name != "") {
+                result.push([name,hours]);
+              }
             }
         }
         return result;
@@ -204,9 +184,8 @@
         location.reload(true);
       } 
     })
+
     });
 </script>
 {%endif%}
-
-
 {% endblock %}
