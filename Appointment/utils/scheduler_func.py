@@ -22,7 +22,7 @@ scheduler_func.py是所有和scheduler定时任务发生交互的函数集合。
 # # 定时任务生成器
 # scheduler = BackgroundScheduler()
 # scheduler.add_jobstore(DjangoJobStore(), "default")
-from boottest.scheduler import scheduler, register_periodic_job
+from boottest.scheduler import scheduler
 from django.conf import settings
 
 
@@ -506,5 +506,5 @@ def addAppoint(contents):  # 添加预约, main function
     return JsonResponse({'data': appoint.toJson()}, status=200)
 
 
-if settings.__ENV != "SCHEDULER":
-    register_periodic_job(clear_appointments, 'cron', day_of_week='sat', hour='3', minute="30", second='0', replace_existing=True)
+# if settings.__ENV != "SCHEDULER":
+#     register_periodic_job(clear_appointments, 'cron', day_of_week='sat', hour='3', minute="30", second='0', replace_existing=True)

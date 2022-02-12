@@ -21,7 +21,8 @@ from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
 from app import log
 from app.constants import *
 from boottest import local_dict
-from boottest.scheduler import scheduler, register_periodic_job
+from boottest.scheduler import scheduler
+# from boottest.scheduler import scheduler, register_periodic_job
 
 import json
 import urllib.request
@@ -31,6 +32,14 @@ from django.db import transaction  # 原子化更改数据库
 from django.conf import settings
 
 default_weather = get_config('default_weather', default=None)
+
+__all__ = [
+    'send_to_persons',
+    'send_to_orgs',
+    'distribute_YQPoint_per_month',
+    'changeAllActivities',
+    'get_weather',
+]
 
 
 def send_to_persons(title, message, url='/index/'):
@@ -208,8 +217,8 @@ def get_weather():
 
 
 
-if settings.__ENV != "SCHEDULER":
-    import logging
-    logging.info("Register interval jobs.")
-    register_periodic_job(get_weather, minutes=5, replace_existing=True)
-    register_periodic_job(changeAllActivities, minutes=5, replace_existing=True)
+# if settings.__ENV != "SCHEDULER":
+#     import logging
+#     logging.info("Register interval jobs.")
+#     register_periodic_job(get_weather, minutes=5, replace_existing=True)
+#     register_periodic_job(changeAllActivities, minutes=5, replace_existing=True)
