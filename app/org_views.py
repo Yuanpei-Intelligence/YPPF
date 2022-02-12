@@ -21,9 +21,6 @@ from app.utils import (
 
 import json
 from django.db import transaction
-from boottest import local_dict
-# TODO：新的本地设置读取都应该使用constants.py中的api（views_dependency已经帮你引入了）
-# 直接访问local_dict已经被废弃，接下来有机会会统一修改
 
 
 __all__ = [
