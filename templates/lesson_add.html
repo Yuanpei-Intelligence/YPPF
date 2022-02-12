@@ -37,13 +37,11 @@
                     <div class="widget-header">
                         <div class="d-flex justify-content-between">
                             <div>
-                                <h4>
-                                    {% if edit %}
-                                    课程修改
-                                    {% else %}
-                                    课程开设
-                                    {% endif %}
-                                </h4>
+                                {% if edit %}
+                                    <h4>课程修改</h4>
+                                {% else %}
+                                    <h4>课程添加</h4>
+                                {% endif %}            
                             </div>
                             <div>
                                 <h4>
@@ -64,9 +62,15 @@
                                 </p>
                                 <div class="form-group">
                                     <label>课程活动名称</label>
-                                    <input type="text" id="title" name="title" class="form-control"  
-                                           maxlength="50" onclick="fill_value(this)" required="required"
-                                           placeholder="在这里写下您要开设的课程名称吧~（必填）" >
+                                    {% if not edit %}
+                                        <input type="text" id="title" name="title" class="form-control"  
+                                               maxlength="50" onclick="fill_value(this)" required="required"
+                                               placeholder="在这里写下您要开设的课程名称吧~（必填）" >
+                                    {% else %}
+                                        <input type="text" id="title" name="title" class="form-control"  
+                                            maxlength="50" onclick="fill_value(this)" required="required"
+                                            placeholder="{{title | safe}}" >
+                                    {% endif %}
                                 </div>
                                 
                             </div>
@@ -96,20 +100,36 @@
                                     <div class="row">
                                         <div class="col-lg-4 col-md-12 col-sm-12 col-xs-12">
                                             <label>上课地点</label>
-                                            <input type="text" id="location" name="location" class="form-control"  
-                                                   maxlength="50" onclick="fill_value(this)" required="required"
-                                                   placeholder="要让上课的同学能找到地点哦~（必填）" aria-label="Default">        
+                                            {% if not edit %}
+                                                <input type="text" id="location" name="location" class="form-control"  
+                                                    maxlength="50" onclick="fill_value(this)" required="required"
+                                                    placeholder="要让上课的同学能找到地点哦~（必填）" aria-label="Default">  
+                                            {% else %}
+                                                <input type="text" id="location" name="location" class="form-control"  
+                                                    maxlength="50" onclick="fill_value(this)" required="required"
+                                                    placeholder="{{location | safe}}" aria-label="Default">  
+                                            {% endif%}
                                         </div>
                                         <div class="col-lg-8 col-md-12 col-sm-12 col-xs-12">
                                             <label>上课时间</label>
                                             <div class="row">
                                                 <div class="col">
-                                                    <input type="text" class="form-control" id="datetimepicker1"
-                                                        name="lesson_start" placeholder="开始时间" required="required" onclick="fill_value(this)"/>
+                                                    {% if not edit %}
+                                                        <input type="text" class="form-control" id="datetimepicker1"
+                                                            name="lesson_start" placeholder="开始时间" required="required" onclick="fill_value(this)"/>
+                                                    {% else %}
+                                                        <input type="text" class="form-control" id="datetimepicker1"
+                                                            name="lesson_start" placeholder="{{start}}" required="required" onclick="fill_value(this)"/>
+                                                    {% endif %}
                                                 </div>
                                                 <div class="col">
-                                                    <input type="text" class="form-control" id="datetimepicker2"
-                                                        name="lesson_end" placeholder="结束时间" required="required" onclick="fill_value(this)"/>
+                                                    {% if not edit %}
+                                                        <input type="text" class="form-control" id="datetimepicker2"
+                                                            name="lesson_end" placeholder="结束时间" required="required" onclick="fill_value(this)"/>
+                                                    {% else %}
+                                                        <input type="text" class="form-control" id="datetimepicker2"
+                                                            name="lesson_end" placeholder="{{end}}" required="required" onclick="fill_value(this)"/>
+                                                    {% endif %}
                                                 </div>
                                             </div>
                                         </div>
@@ -117,12 +137,17 @@
                                     </div>
                                 </div>                                
                             </div>
-                            
-                            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" 
-                                    onclick="return confirm('确认修改活动信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
-                                修改课程信息
-                            </button>
-
+                            {% if edit %}
+                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" 
+                                        onclick="return confirm('确认修改活动信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
+                                    修改课程信息
+                                </button>
+                            {% else %}
+                                <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" 
+                                        onclick="return confirm('确认提交活动信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
+                                    添加课程
+                                </button>
+                            {% endif %}
                         </form>
                     </div>
                 </div>
@@ -158,41 +183,27 @@
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }      
-        // 检查课程名称和地点不能为空
-        let title = $("#title").val(), location = $("#location").val();
-        if (title === "None" || location === "None") {
-            hideMessage(succId);
-            showMessage(warnId, "课程名称和地点不能为None！");
-            document.body.scrollTop = document.documentElement.scrollTop = 0;
-            return false;
-        }
 
         return true;
     }
 
     function fill_value(a) {
-        if ("{{edit}}" === "True") {
-            if (a.value == "")
+        {% if edit %}
+            if (a.value == ""){
                 a.value = a.placeholder;
-        }
-        else {
+                return;
+            }
+        {% else %}
             return;
-        }
+        {% endif %}
     }
 
     {% if edit %}
-    function fillForms() {
-        document.getElementById("title").placeholder = "{{title | safe}}";
-        document.getElementById("location").placeholder = "{{location | safe}}";
-        document.getElementById("datetimepicker1").placeholder="{{start}}";
-        document.getElementById("datetimepicker2").placeholder="{{end}}";
-    }
-    fillForms();
-    // 这个时候表单的各项不用填写
-    let all_inputs = document.getElementsByTagName("input");
-    for(let i = 0; i < all_inputs.length; i++){
-        all_inputs[i].required="";
-    }
+        // 这个时候表单的各项不用填写
+        let all_inputs = document.getElementsByTagName("input");
+        for(let i = 0; i < all_inputs.length; i++){
+            all_inputs[i].required="";
+        }
     {% endif %}
 
     if (document.referrer.endsWith("/addSingleCourseActivity/")) {
@@ -209,21 +220,6 @@ $(function () {
         minDate: new Date(),
     });
     $("#datetimepicker2").datetimepicker({
-        format: "YYYY-MM-DD HH:mm",
-        sideBySide: true,
-        minDate: new Date(),
-    });
-    $("#datetimepicker3").datetimepicker({
-        format: "YYYY-MM-DD HH:mm",
-        sideBySide: true,
-        minDate: new Date(),
-    });
-    $("#datetimepicker4").datetimepicker({
-        format: "YYYY-MM-DD HH:mm",
-        sideBySide: true,
-        minDate: new Date(),
-    });
-    $("#datetimepicker5").datetimepicker({
         format: "YYYY-MM-DD HH:mm",
         sideBySide: true,
         minDate: new Date(),
