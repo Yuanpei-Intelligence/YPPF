@@ -96,5 +96,5 @@
         "stu_name": "YPadmin"
     },
     "YQPoint_source_oname": "元培元气值中心",
-    "cour_record_editable" : 1
+    "cour_record_editable" : false
 }

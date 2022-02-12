@@ -80,7 +80,7 @@
                 {% endfor %}
                 <!-- 若处于不可修改状态 -->
                 {%else%}
-                {% for person,times in record_list.items %}
+                {% for person in all_positions.keys %}
                 <tr>
                   <th class="name" scope="row">
                       <img src= {{ person.avatar_path }} width="24" height="24" alt="avatar">
@@ -88,7 +88,7 @@
                   {{person.name}}</u></a>
                       </th>
                   <td class="sid">{{person.pos}}</td>
-                  <td class="times"><a1>{{times}}</a1></td>
+                  <td class="times"><a1>{{person.times}}</a1></td>
                   <td class="hours"><a2>0</a1></td>
                 </tr>   
                 {% endfor %}           

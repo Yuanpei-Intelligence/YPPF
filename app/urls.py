@@ -76,7 +76,7 @@ urlpatterns = [
     # 书院课程相关内容
     path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
     path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
-    path("couRecord/", views.couRecordShow, name = "couRecord/"),
+    path("showCourseRecord/", course_views.showCourseRecord, name = "showCourseRecord/"),
 ] + [
     # 组织相关操作
     path("saveShowPositionStatus", org_views.saveShowPositionStatus, name="saveShowPositionStatus"),
