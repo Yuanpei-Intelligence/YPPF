@@ -15,10 +15,10 @@ from app.models import (
     Course,
     CourseTime
 )
-from app.activity_utils import changeActivityStatus,notifyActivity
+from app.activity_utils import changeActivityStatus, notifyActivity
 from app.notification_utils import (
     notification_create,
-    bulk_notification_create, 
+    bulk_notification_create,
     notification_status_change
 )
 from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
@@ -41,25 +41,27 @@ default_weather = get_config('default_weather', default=None)
 def send_to_persons(title, message, url='/index/'):
     sender = User.objects.get(username='zz00000')
     np = NaturalPerson.objects.activated().all()
-    receivers = User.objects.filter(id__in=np.values_list('person_id', flat=True))
+    receivers = User.objects.filter(
+        id__in=np.values_list('person_id', flat=True))
     print(bulk_notification_create(
         receivers, sender,
         Notification.Type.NEEDREAD, title, message, url,
         publish_to_wechat=True,
         publish_kws={'level': WechatMessageLevel.IMPORTANT},
-        ))
+    ))
 
 
 def send_to_orgs(title, message, url='/index/'):
     sender = User.objects.get(username='zz00000')
     org = Organization.objects.activated().all().exclude(otype__otype_id=0)
-    receivers = User.objects.filter(id__in=org.values_list('organization_id', flat=True))
+    receivers = User.objects.filter(
+        id__in=org.values_list('organization_id', flat=True))
     bulk_notification_create(
         receivers, sender,
         Notification.Type.NEEDREAD, title, message, url,
         publish_to_wechat=True,
         publish_kws={'level': WechatMessageLevel.IMPORTANT},
-        )
+    )
 
 
 # 学院每月下发元气值
@@ -69,14 +71,14 @@ def distribute_YQPoint_per_month():
         YP = Organization.objects.get(oname=YQP_ONAME)
         trans_time = datetime.now()
         transfer_list = [TransferRecord(
-                proposer=YP.organization_id,
-                recipient=recipient.person_id,
-                amount=(30 + max(0, (30 - recipient.YQPoint))),
-                start_time=trans_time,
-                finish_time=trans_time,
-                message=f"元气值每月发放。",
-                status=TransferRecord.TransferStatus.ACCEPTED,
-                rtype=TransferRecord.TransferType.BONUS
+            proposer=YP.organization_id,
+            recipient=recipient.person_id,
+            amount=(30 + max(0, (30 - recipient.YQPoint))),
+            start_time=trans_time,
+            finish_time=trans_time,
+            message=f"元气值每月发放。",
+            status=TransferRecord.TransferStatus.ACCEPTED,
+            rtype=TransferRecord.TransferType.BONUS
         ) for recipient in recipients]
         notification_lists = [
             Notification(
@@ -102,6 +104,7 @@ def distribute_YQPoint_per_month():
 对于被多次落下的活动，每次更新一步状态
 """
 
+
 def changeAllActivities():
 
     now = datetime.now()
@@ -112,7 +115,7 @@ def changeAllActivities():
     )
     for activity in applying_activities:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-            run_date=execute_time, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
+                          run_date=execute_time, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
         execute_time += timedelta(seconds=5)
 
     waiting_activities = Activity.objects.filter(
@@ -121,9 +124,8 @@ def changeAllActivities():
     )
     for activity in waiting_activities:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
-            run_date=execute_time, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
+                          run_date=execute_time, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
         execute_time += timedelta(seconds=5)
-
 
     progressing_activities = Activity.objects.filter(
         status=Activity.Status.PROGRESSING,
@@ -131,7 +133,7 @@ def changeAllActivities():
     )
     for activity in progressing_activities:
         scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
-            run_date=execute_time, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
+                          run_date=execute_time, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
         execute_time += timedelta(seconds=5)
 
 
@@ -143,7 +145,8 @@ def get_weather():
         key = local_dict["weather_api_key"]
         lang = "zh_cn"
         url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={key}&lang={lang}"
-        load_json = json.loads(urllib.request.urlopen(url, timeout=5).read())  # 这里面信息太多了，不太方便传到前端
+        load_json = json.loads(urllib.request.urlopen(
+            url, timeout=5).read())  # 这里面信息太多了，不太方便传到前端
         weather_dict = {
             "modify_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f"),
             "description": load_json["weather"][0]["description"],
@@ -154,13 +157,16 @@ def get_weather():
         with open("./weather.json", "w") as weather_json:
             json.dump(weather_dict, weather_json)
     except KeyError as e:
-        log.operation_writer(SYSTEM_LOG, "天气更新异常,原因可能是local_dict中缺少weather_api_key:"+str(e), "scheduler_func[get_weather]", log.STATE_WARNING)
+        log.operation_writer(SYSTEM_LOG, "天气更新异常,原因可能是local_dict中缺少weather_api_key:" +
+                             str(e), "scheduler_func[get_weather]", log.STATE_WARNING)
         return None
     except Exception as e:
-        log.operation_writer(SYSTEM_LOG, "天气更新异常,未知错误", "scheduler_func[get_weather]", log.STATE_WARNING)
+        log.operation_writer(SYSTEM_LOG, "天气更新异常,未知错误",
+                             "scheduler_func[get_weather]", log.STATE_WARNING)
         return default_weather
     else:
-        log.operation_writer(SYSTEM_LOG, "天气更新成功", "scheduler_func[get_weather]")
+        log.operation_writer(SYSTEM_LOG, "天气更新成功",
+                             "scheduler_func[get_weather]")
         return weather_dict
 
 
@@ -176,8 +182,8 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
     examine_teacher = NaturalPerson.objects.get(
         name=default_examiner_name, identity=NaturalPerson.Identity.TEACHER)
     conducted_num = Activity.objects.activated().filter(organization_id=course.organization,
-                                                            status=Activity.ActivityCategory.COURSE,
-                                                            course_time=week_time).count()
+                                                        status=Activity.ActivityCategory.COURSE,
+                                                        course_time=week_time).count()
     with transaction.atomic():
         activity = Activity.objects.create(
             title=str(course.name)+f'第{conducted_num+1}次课',
@@ -192,7 +198,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
         activity.status = Activity.Status.WAITING
         activity.need_checkin = True  # 需要签到
         activity.recorded = True
-        activity.course_time=week_time
+        activity.course_time = week_time
         activity.save()
 
         # 选课人员自动报名活动
@@ -239,7 +245,8 @@ def longterm_launch_course():
             cur_week = week_time.cur_week
             end_week = week_time.end_week
             if cur_week <= end_week:
-                due_time = week_time.end + timedelta(days=7*cur_week) #提前一周发出课程
+                due_time = week_time.end + \
+                    timedelta(days=7*cur_week)  # 提前一周发出课程
                 if due_time - timedelta(days=7) < datetime.now() < due_time:
                     add_week_course_activity(course.id, week_time.id, cur_week)
                     week_time.cur_week += 1
@@ -257,26 +264,30 @@ def start_scheduler(with_scheduled_job=True, debug=False):
     '''
     # register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
     # 但好像非服务器版本有问题??
-    if debug: print("———————————————— Scheduler:   Debug ————————————————")
+    if debug:
+        print("———————————————— Scheduler:   Debug ————————————————")
     if with_scheduled_job:
         current_job = None
         try:
             current_job = "get_weather"
-            if debug: print(f"adding scheduled job '{current_job}'")
+            if debug:
+                print(f"adding scheduled job '{current_job}'")
             scheduler.add_job(get_weather,
                               'interval',
                               id=current_job,
                               minutes=5,
                               replace_existing=True)
             current_job = "activityStatusUpdater"
-            if debug: print(f"adding scheduled job '{current_job}'")
+            if debug:
+                print(f"adding scheduled job '{current_job}'")
             scheduler.add_job(changeAllActivities,
                               "interval",
                               id=current_job,
                               minutes=5,
                               replace_existing=True)
             current_job = "courseWeeklyActivitylauncher"
-            if debug: print(f"adding scheduled job '{current_job}'")
+            if debug:
+                print(f"adding scheduled job '{current_job}'")
             scheduler.add_job(longterm_launch_course,
                               "interval",
                               id=current_job,
@@ -285,17 +296,22 @@ def start_scheduler(with_scheduled_job=True, debug=False):
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"
             log.operation_writer(SYSTEM_LOG, info,
-                            "scheduler_func[start_scheduler]", log.STATE_ERROR)
-            if debug: print(info)
+                                 "scheduler_func[start_scheduler]", log.STATE_ERROR)
+            if debug:
+                print(info)
 
     try:
-        if debug: print("starting schduler in scheduler_func.py")
+        if debug:
+            print("starting schduler in scheduler_func.py")
         scheduler.start()
     except Exception as e:
         info = f"start scheduler failed, reason: {e}"
         log.operation_writer(SYSTEM_LOG, info,
-                        "scheduler_func[start_scheduler]", log.STATE_ERROR)
-        if debug: print(info)
+                             "scheduler_func[start_scheduler]", log.STATE_ERROR)
+        if debug:
+            print(info)
         scheduler.shutdown(wait=False)
-        if debug: print("successfully shutdown scheduler")
-    if debug: print("———————————————— End     :   Debug ————————————————")
+        if debug:
+            print("successfully shutdown scheduler")
+    if debug:
+        print("———————————————— End     :   Debug ————————————————")

@@ -14,8 +14,6 @@ from app.utils import (
 from datetime import datetime, timedelta
 from django.db import transaction
 
-from boottest import local_dict
-# TODO：新的本地设置读取都应该使用constants.py中的api引入，有待统一修改
 
 __all__ = [
     'editCourseActivity', 
