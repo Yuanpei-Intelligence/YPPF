@@ -682,7 +682,8 @@ class Activity(CommentBase):
     current_participants = models.IntegerField("活动当前报名人数", default=0)
 
     URL = models.URLField("活动相关(推送)网址", max_length=1024, default="", blank=True)
-
+    course_time = models.ForeignKey("CourseTime", on_delete=models.SET_NULL,blank=True,
+                            null=True,verbose_name="课程每周活动时间")
     def __str__(self):
         return str(self.title)
 
