@@ -241,6 +241,7 @@ def cancel_course_activity(request, activity):
 
     activity.save()
 
+
 def add_week_course_activity(course_id:int,subsequence:int,week_time_id:int):
     """
     添加每周的课程活动
