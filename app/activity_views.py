@@ -952,8 +952,9 @@ def offlineCheckinActivity(request,aid):
     try:
         activity = Activity.objects.get(id=aid)
         assert me == activity.organization_id and user_type == "Organization"
-    except:
-        return redirect(message_url(wrong('修改失败')))
+    except Exception as e:
+        log.record_traceback(request, e)
+        return EXCEPT_REDIRECT
     member_list = Participant.objects.filter(activity_id=aid,
                                              status__in=[
                                                     Participant.AttendStatus.UNATTENDED,
