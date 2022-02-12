@@ -133,3 +133,4 @@ def addSingleCourseActivity(request):
     edit = False  # 前端据此区分是编辑还是创建
 
     return render(request, "lesson_add.html", locals())
+

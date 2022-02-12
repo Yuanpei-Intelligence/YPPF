@@ -1931,9 +1931,7 @@ def QAcenter(request):
     QA的聚合界面
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
-
     me = get_person_or_org(request.user, user_type)
-
     if request.method == "POST":
         if request.POST.get("anwser") is not None:
             anwser = request.POST.get("anwser")
