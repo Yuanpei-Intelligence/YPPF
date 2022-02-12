@@ -43,7 +43,7 @@ RETRY = False
 
 if USE_SCHEDULER:
     try:
-        from app.scheduler import scheduler
+        from boottest.scheduler import scheduler
     except:
         from apscheduler.schedulers.background import BackgroundScheduler
         from django_apscheduler.jobstores import DjangoJobStore

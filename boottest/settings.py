@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/2.1/ref/settings/
 """
 
 import os
+import logging
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -48,6 +49,7 @@ INSTALLED_APPS = [
     "django_apscheduler",
     "app",
     "Appointment",
+    "scheduler",
 ]
 
 MIDDLEWARE = [
@@ -165,23 +167,28 @@ USE_TZ = False
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
-__STATIC_DIR = BASE_DIR
-__LOG_DIR = BASE_DIR
+__ENV = os.getenv("YPPF_ENV", "")
+__STATIC_DIR = os.getenv("YPPF_STATIC_DIR", BASE_DIR)
+__LOG_DIR = os.getenv("YPPF_LOG_DIR", BASE_DIR)
+__TMP_DIR = os.getenv("YPPF_TMP_DIR", BASE_DIR)
+__LOG_LEVEL = logging.DEBUG if os.getenv("YPPF_LOG_DEBUG", "") else logging.INFO
 
-if os.getenv("YPPF_ENV") in ["PRODUCT", "TEST"]:
+SCHEDULER_LOG_FILE = os.getenv("YPPF_SCHEDULER_LOG_FILE", "scheduler.log")
+RPC_PORT = os.getenv("YPPF_SCHEDULER_PORT", 6666)
+INNER_PORT = os.getenv("YPPF_INNER_PORT", 80)
+
+if __ENV in ["PRODUCT", "TEST"]:
     # Set cookie session domain to allow two sites share the session
     SESSION_COOKIE_DOMAIN = os.environ["YPPF_SESSION_COOKIE_DOMAIN"]
-
-    __IS_PRODUCT = os.getenv("YPPF_ENV") == "PRODUCT"
-    if __IS_PRODUCT:
+    if __ENV == "PRODUCT":
         SECRET_KEY = os.environ["YPPF_SECRET_KEY"]
 
-    try:
-        __STATIC_DIR = os.environ["YPPF_STATIC_DIR"]
-        __LOG_DIR = os.environ["YPPF_LOG_DIR"]
-    except:
-        if __IS_PRODUCT:
-            raise
+if __ENV == "SCHEDULER":
+    assert SCHEDULER_LOG_FILE != "scheduler.log"
+
+if __ENV == "INNER":
+    pass
+
 
 # STATIC_ROOT = os.path.join(BASE_DIR, "static")
 STATIC_URL = "/static/"
@@ -211,14 +218,11 @@ LOGGING = {
 }
 '''
 
-import logging
+# Only used for debugging schedulers
 logging.basicConfig(
-    filename=os.path.join(
-        __LOG_DIR,  # os.path.join(BASE_DIR, 'logstore'),
-        'scheduler.log',
-        ),
-    filemode='a',
+    filename=os.path.join(__LOG_DIR, SCHEDULER_LOG_FILE),
+    filemode='w',
     format='%(asctime)s,%(msecs)d in %(funcName)s - %(levelname)s: %(message)s',
     datefmt='%m-%d %H:%M:%S',
-    level=logging.INFO,
+    level=__LOG_LEVEL,
 )

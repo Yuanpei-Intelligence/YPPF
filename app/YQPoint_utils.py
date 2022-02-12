@@ -16,7 +16,7 @@ from app.models import (
 from datetime import datetime, timedelta
 from django.db.models import F
 
-from app.scheduler import scheduler
+from boottest.scheduler import scheduler
 
 __all__ = [
     # 'distribute_YQPoint',
