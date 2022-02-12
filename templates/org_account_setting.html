@@ -84,14 +84,14 @@
                 <div class="col-1 px-0 d-md-none"></div>
                 <div class="col-10 col-md-7 px-0">
                     <div class="row">
-                        <div class="col-6">
+                        <div class="col-12 col-md-6">
                             <label for="introduction" style="width: max-content;">小组介绍</label>
                             <div class="mb-4">
                                 <textarea class="form-control" id="introduction" name="introduction"
                                         placeholder="{{userinfo.introduction}}" rows="6" onclick="if(this.placeholder != ''){this.value=this.placeholder;}"></textarea>
                             </div>
                         </div>
-                        <div class="col-6">
+                        <div class="col-12 col-md-6">
                             <label for="tags_modify" style="width: max-content;">小组标签
                                 <a data-toggle="tooltip" data-placement="bottom" title="点击标签进行添加/删除~">
                                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
@@ -105,28 +105,22 @@
                                 <tbody>
                                     <tr>
                                         <td>
-                                            {% if org_tags %}
-                                                {% spaceless %}
-                                                {% for tag in org_tags %}
-                                                    <span id="{{tag.id}}" name="{{tag.name}}" class="badge badge-pill" style="background-color:{{tag.color}}; border-radius:4px; color:#FFFFFF; margin:2px; " onclick="del_tag.call(this)"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg> {{tag.name}}</span>
-                                                {% endfor %}
-                                                {% endspaceless %}
-                                            {% else %}
-                                                <font color="ADB0C1">本小组还没有任何标签噢！</font>
-                                            {% endif %}
+                                            {% spaceless %}
+                                            {% for tag in all_tags %}
+                                                <span id="org_{{tag.id}}" name="{{tag.name}}" class="badge badge-pill" style="background-color:{{tag.color}}; border-radius:4px; color:#FFFFFF; margin:2px; " onclick="del_tag.call(this)" {% if tag in other_tags %} hidden {% endif%}><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-x-circle-fill" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z"/></svg> {{tag.name}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                            <font color="ADB0C1" {% if org_tags %} hidden {% endif %}>本小组还没有任何标签噢！</font>
                                         </td>
                                     </tr>
                                     <tr>
                                         <td>
-                                            {% if other_tags %}
-                                                {% spaceless %}
-                                                {% for tag in other_tags %}
-                                                    <span id="{{tag.id}}" name="{{tag.name}}" class="badge badge-pill" style="background-color:{{tag.color}}; border-radius:4px; color:#FFFFFF; margin:2px; " onclick="add_tag.call(this)"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg> {{tag.name}}</span>
-                                                {% endfor %}
-                                                {% endspaceless %}
-                                            {% else %}
-                                                <font color="ADB0C1">本小组已经选择了全部标签！</font>
-                                            {% endif %}
+                                            {% spaceless %}
+                                            {% for tag in all_tags %}
+                                                <span id="other_{{tag.id}}" name="{{tag.name}}" class="badge badge-pill" style="background-color:{{tag.color}}; border-radius:4px; color:#FFFFFF; margin:2px; " onclick="add_tag.call(this)" {% if tag in org_tags %} hidden {% endif %}><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-check-circle-fill" viewBox="0 0 16 16"><path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z"/></svg> {{tag.name}}</span>
+                                            {% endfor %}
+                                            {% endspaceless %}
+                                            <font color="ADB0C1" {% if other_tags %} hidden {% endif %}>本小组已经选择了全部标签！</font>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -176,85 +170,47 @@
     <script>
         function del_tag() {
             tags_input = this.parentNode.parentNode.parentNode.previousElementSibling;
-            if (tags_input.value.includes(this.id))
-                tags_input.value = tags_input.value.replace("add " + this.id + ";", "");
+            tag_name = this.getAttribute("name");
+            if (tags_input.value.includes(tag_name))
+                tags_input.value = tags_input.value.replace("add " + tag_name + ";", "");
             else
-                tags_input.value += "del " + this.id + ";";
+                tags_input.value += "del " + tag_name + ";";
             org_tags_td = this.parentNode;
             other_tags_td = this.parentNode.parentNode.nextElementSibling.children[0];
-            if (other_tags_td.children[0].tagName == "FONT") {
-                var inform_font = other_tags_td.children[0];
-                inform_font.remove();
+            const tags_num = org_tags_td.children.length - 1;
+            other_tags_td.children[tags_num].hidden = true;
+            this.hidden = true;
+            document.getElementById("other"+this.id.replace("org","")).hidden = false;
+            var hidden_tags = 0;
+            for (var i = 0; i < tags_num; i += 1) {
+                if (org_tags_td.children[i].hidden == true)
+                    hidden_tags += 1;
             }
-            var new_tag = create_tag.call(this, 'del');
-            other_tags_td.appendChild(new_tag);
-            this.remove();
-            if (org_tags_td.children.length == 0) {
-                var new_font = create_font.call(this, 'del');
-                org_tags_td.appendChild(new_font);
+            if (hidden_tags == tags_num) {
+                org_tags_td.children[tags_num].hidden = false;
             }
         }
         function add_tag() {
             tags_input = this.parentNode.parentNode.parentNode.previousElementSibling;
-            if (tags_input.value.includes(this.id))
-                tags_input.value = tags_input.value.replace("del " + this.id + ";", "");
+            tag_name = this.getAttribute("name");
+            if (tags_input.value.includes(tag_name))
+                tags_input.value = tags_input.value.replace("del " + tag_name + ";", "");
             else
-                tags_input.value += "add " + this.id + ";";
+                tags_input.value += "add " + tag_name + ";";
             org_tags_td = this.parentNode.parentNode.previousElementSibling.children[0];
             other_tags_td = this.parentNode;
-            if (org_tags_td.children[0].tagName == "FONT") {
-                var inform_font = org_tags_td.children[0];
-                inform_font.remove();
+            const tags_num = org_tags_td.children.length - 1;
+            org_tags_td.children[tags_num].hidden = true;
+            this.hidden = true;
+            document.getElementById("org"+this.id.replace("other","")).hidden = false;
+            var hidden_tags = 0;
+            for (var i = 0; i < tags_num; i += 1) {
+                if (other_tags_td.children[i].hidden == true)
+                    hidden_tags += 1;
             }
-            var new_tag = create_tag.call(this, 'add');
-            org_tags_td.appendChild(new_tag);
-            this.remove();
-            if (other_tags_td.children.length == 0) {
-                var new_font = create_font.call(this, 'add');
-                other_tags_td.appendChild(new_font);
+            if (hidden_tags == tags_num) {
+                other_tags_td.children[tags_num].hidden = false;
             }
-        }
-        function create_font(action) {
-            var new_font = document.createElement("FONT");
-            new_font.setAttribute("color","ADB0C1");
-            if (action == 'del')
-                new_font.innerHTML="本小组还没有任何标签噢！";
-            else
-                new_font.innerHTML="本小组已经选择了全部标签！";
-            return new_font;
-        }
-        function create_tag(action) {
-            var new_tag = document.createElement("SPAN");
-            var new_svg = document.createElementNS("http://www.w3.org/2000/svg","svg");
-            var new_path = document.createElementNS("http://www.w3.org/2000/svg","path");
-            var new_text = document.createTextNode(" "+this.getAttribute("name"));
-            new_tag.setAttribute("id",this.id);
-            new_tag.setAttribute("name",this.getAttribute("name"));
-            new_tag.setAttribute("class","badge badge-pill");
-            style_str = this.getAttribute("style");
-            style_color = style_str.substring(style_str.indexOf("#")+1,style_str.indexOf("#")+7);
-            new_tag.setAttribute("style","background-color:#" + style_color + "; border-radius:4px; color:#FFFFFF; margin:2px; ");
-            if (action == 'add')
-                new_tag.setAttribute("onclick","del_tag.call(this)");
-            else
-                new_tag.setAttribute("onclick","add_tag.call(this)");
-            new_svg.setAttribute("xmlns","http://www.w3.org/2000/svg");
-            new_svg.setAttribute("height","12");
-            new_svg.setAttribute("weight","12");
-            new_svg.setAttribute("fill","currentColor");
-            if (action == 'add')
-                new_svg.setAttribute("class","bi bi-x-circle-fill");
-            else
-                new_svg.setAttribute("class","bi bi-check-circle-fill");
-            new_svg.setAttribute("viewBox","0 0 16 16");
-            if (action == 'add')
-                new_path.setAttribute("d","M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.354 4.646a.5.5 0 1 0-.708.708L7.293 8l-2.647 2.646a.5.5 0 0 0 .708.708L8 8.707l2.646 2.647a.5.5 0 0 0 .708-.708L8.707 8l2.647-2.646a.5.5 0 0 0-.708-.708L8 7.293 5.354 4.646z");
-            else
-                new_path.setAttribute("d","M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zm-3.97-3.03a.75.75 0 0 0-1.08.022L7.477 9.417 5.384 7.323a.75.75 0 0 0-1.06 1.06L6.97 11.03a.75.75 0 0 0 1.079-.02l3.992-4.99a.75.75 0 0 0-.01-1.05z");
-            $(new_svg).append(new_path);
-            new_tag.appendChild(new_svg);
-            new_tag.appendChild(new_text);
-            return new_tag;
         }
     </script>
     <!--  END SCRIPT FUNCTION-->
