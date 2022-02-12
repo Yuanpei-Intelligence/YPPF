@@ -163,6 +163,7 @@ def showCourseActivity(request):
 
     all_activity_list = (
         Activity.objects
+        .activated()
         .filter(organization_id=me)
         .filter(category=Activity.ActivityCategory.COURSE)
         .order_by("-start")
@@ -182,10 +183,6 @@ def showCourseActivity(request):
     finished_activity_list = (
         all_activity_list
         .filter(status=Activity.Status.END)
-        .filter(
-            year=int(local_dict["semester_data"]["year"]),
-            semester__contains=local_dict["semester_data"]["semester"]
-        )
         .order_by("-end")
     ) # 本学期的已结束活动 
 
