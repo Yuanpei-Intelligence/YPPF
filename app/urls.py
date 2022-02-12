@@ -18,6 +18,7 @@ from . import (
     activity_views,
     reimbursement_views,
     YQPoint_views,
+    course_views,
 )
 from django.conf import settings
 
@@ -72,6 +73,11 @@ urlpatterns = [
     path("endActivity/", reimbursement_views.endActivity, name="endActivity"),
     path("modifyEndActivity/", reimbursement_views.modifyEndActivity, name="modifyEndActivity"),
 ] + [
+    # 书院课程相关内容
+    path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
+    path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
+    path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
+] + [
     # 组织相关操作
     path("saveShowPositionStatus", org_views.saveShowPositionStatus, name="saveShowPositionStatus"),
     path("showNewOrganization/", org_views.showNewOrganization, name="showNewOrganization"),
@@ -97,6 +103,9 @@ urlpatterns = [
     #      name="load_notification_info"),    #服务器弃用
     path("loadhelp/", data_import.load_help, name="load_help"),
     path("loadcourecord/", data_import.load_CouRecord,  name="load_cou_record"),
+] + [
+    # 埋点
+    path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
