@@ -48,6 +48,7 @@ from app.QA_utils import (
     QA_delete,
     QA_ignore,
 )
+import app.scheduler_func
 import json
 import random
 import requests  # 发送验证码
@@ -64,8 +65,8 @@ from django.core.exceptions import ValidationError
 
 # 定时任务不在views直接调用
 # 但是天气任务还是在这里弄吧，太奇怪了
-from app.scheduler_func import start_scheduler
-start_scheduler(with_scheduled_job=True, debug=True)
+# from app.scheduler_func import start_scheduler
+# start_scheduler(with_scheduled_job=True, debug=True)
 
 
 email_url = local_dict["url"]["email_url"]
