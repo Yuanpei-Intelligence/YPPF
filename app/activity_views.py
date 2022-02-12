@@ -197,9 +197,10 @@ def viewActivity(request, aid=None):
         elif option == "checkinoffline": #进入线下签到界面
             if not ownership:
                 return redirect(message_url(wrong('您没有线下补签到的权限！'), request.path))
-            if activity.status != Activity.Status.END:
-                return redirect(message_url(wrong('活动尚未结束!'), request.path))
             try:
+                if activity.status != Activity.Status.END:
+                    return redirect(message_url(wrong('活动尚未结束!'), request.path))
+                assert activity.status == Activity.Status.END
                 activity = Activity.objects.get(id=int(aid))
                 return redirect(f"/offlineCheckinActivity/{aid}")
             except:
@@ -942,7 +943,7 @@ def examineActivity(request, aid):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[orginfo]', record_user=True)
+@log.except_captured(source='views[offlineCheckinActivity]', record_user=True)
 def offlineCheckinActivity(request,aid):
     valid, user_type, html_display = utils.check_user_type(request.user)
     user = request.user
@@ -952,17 +953,24 @@ def offlineCheckinActivity(request,aid):
     me=get_person_or_org(request.user,user_type)
     if me != activity.organization_id:
         return redirect(message_url(wrong('修改失败，修改签到请用举办该活动的组织账号')))
-    member_list = Participant.objects.filter(activity_id=aid)
+    member_list = Participant.objects.filter(activity_id=aid,
+                                             status__in=[
+                                                    Participant.AttendStatus.UNATTENDED,
+                                                    Participant.AttendStatus.ATTENDED,
+                                                    ])
     if request.method == "POST" and request.POST:
-        for member in member_list:
-            checkin = request.POST.get("checkin"+str(member.person_id.person_id))
-            if checkin == "yes":
-                member.status = Participant.AttendStatus.ATTENDED 
-                member.save()              
-            elif checkin == "no":
-                member.status = Participant.AttendStatus.UNATTENDED
-                member.save()
-            else:
-                print("sth is wrong") #这里出现意外情况后的报错将来再改，但目前的试验中还没有出现进入else的错误
+        try:
+            for member in member_list:
+                checkin = request.POST.get("checkin"+str(member.person_id.person_id))
+                if checkin == "yes":
+                    member.status = Participant.AttendStatus.ATTENDED 
+                    member.save()              
+                elif checkin == "no":
+                    member.status = Participant.AttendStatus.UNATTENDED
+                    member.save()
+                else:
+                    print("sth is wrong") #这里出现意外情况后的报错将来再改，但目前的试验中还没有出现进入else的错误
+        except:
+            return redirect(message_url(wrong('修改失败')))
     bar_display = utils.get_sidebar_and_navbar(request.user,navbar_name = "小组主页", title_name = me.oname)
     return render(request, "activity_checkinoffline.html",locals())
