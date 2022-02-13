@@ -1,6 +1,7 @@
 from django.db import models, transaction
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
+from django.db.models import Q
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
 from boottest import local_dict
@@ -294,8 +295,20 @@ class OrganizationTag(models.Model):
     class Meta:
         verbose_name = "组织类型标签"
         verbose_name_plural = verbose_name
+    class ColorChoice(models.TextChoices):
+        grey = ("#C1C1C1", "灰色")
+        red = ("#DC143C", "红色")
+        orange = ("#FFA500", "橙色")
+        yellow = ("#FFD700", "黄色")
+        green = ("#3CB371", "绿色")
+        blue = ("#1E90FF", "蓝色")
+        purple = ("#800080", "紫色")
+        pink = ("#FF69B4", "粉色")
+        brown = ("#DAA520", "棕色")
+        coffee = ("#8B4513", "咖啡色")
     
     name = models.CharField("标签名", max_length=10, blank=False)
+    color = models.CharField("颜色", choices=ColorChoice.choices, max_length=10)
 
 
 class OrganizationManager(models.Manager):
@@ -1287,17 +1300,18 @@ class CourseManager(models.Manager):
                                        participant_set__status__in=[
                                            CourseParticipant.Status.SELECT,
                                            CourseParticipant.Status.SUCCESS,
-                                       ])
-
-    def unselected(self, person: NaturalPerson):
-        # 返回当前学生没选或失败的所有课程
-        return self.activated().filter(participant_set__person=person,
-                                       participant_set__status__in=[
-                                           CourseParticipant.Status.UNSELECT,
                                            CourseParticipant.Status.FAILED,
                                        ])
 
 
+    def unselected(self, person: NaturalPerson):
+        # 返回当前学生没选的所有课程
+        return self.activated().filter(
+            Q(participant_set=None)
+            | (Q(participant_set__person=person)
+               & Q(participant_set__status=CourseParticipant.Status.UNSELECT)))
+
+                                      
 class Course(models.Model):
     """
     助教发布课程需要填写的信息
@@ -1470,30 +1484,38 @@ class PageLog(models.Model):
     class Meta:
         verbose_name = "Page类埋点记录"
         verbose_name_plural = verbose_name
+
     class CountType(models.IntegerChoices):
-        PV = 0
-        PD = 1
-    Type = models.IntegerField('事件类型', choices=CountType.choices)
-    Page = models.CharField('页面url', max_length=256, null=True)
-    Time = models.TimeField('发生时间')
-    User = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='UserId', null=True)
-    Platform = models.CharField('设备类型', max_length=32, null=True) # eg. MacIntel iPhone .etc
-    ExploreName = models.CharField('浏览器类型', max_length=32, null=True)
-    ExploreVer = models.CharField('浏览器版本', max_length=32, null=True)
+        PV = 0, "Page View"
+        PD = 1, "Page Disappear"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    type = models.IntegerField('事件类型', choices=CountType.choices)
+
+    page = models.URLField('页面url', max_length=256, blank=True)
+    time = models.DateTimeField('发生时间', default=datetime.now)
+    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
+    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
+    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
+
 
 class ModuleLog(models.Model):
-    # 统计Mudule类埋点数据(MV/MC)
+    # 统计Module类埋点数据(MV/MC)
     class Meta:
         verbose_name = "Module类埋点记录"
         verbose_name_plural = verbose_name
+        
     class CountType(models.IntegerChoices):
-        MV = 2
-        MC = 3
-    Type = models.IntegerField('事件类型', choices=CountType.choices)
-    Page = models.CharField('页面url', max_length=256, null=True)
-    ModuleName = models.CharField('模块名称', max_length=64, null=True)
-    Time = models.TimeField('发生时间')
-    User = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='UserId', null=True)
-    Platform = models.CharField('设备类型', max_length=32, null=True) # eg. MacIntel iPhone .etc
-    ExploreName = models.CharField('浏览器类型', max_length=32, null=True)
-    ExploreVer = models.CharField('浏览器版本', max_length=32, null=True)
+        MV = 2, "Module View"
+        MC = 3, "Module Click"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    type = models.IntegerField('事件类型', choices=CountType.choices)
+
+    page = models.URLField('页面url', max_length=256, blank=True)
+    module_name = models.CharField('模块名称', max_length=64, blank=True)
+    time = models.DateTimeField('发生时间', default=datetime.now)
+    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
+    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
+    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
+

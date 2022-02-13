@@ -73,10 +73,6 @@ urlpatterns = [
     path("endActivity/", reimbursement_views.endActivity, name="endActivity"),
     path("modifyEndActivity/", reimbursement_views.modifyEndActivity, name="modifyEndActivity"),
 ] + [
-    # 书院课程相关内容
-    path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
-    path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
-] + [
     # 组织相关操作
     path("saveShowPositionStatus", org_views.saveShowPositionStatus, name="saveShowPositionStatus"),
     path("showNewOrganization/", org_views.showNewOrganization, name="showNewOrganization"),
@@ -85,6 +81,13 @@ urlpatterns = [
     path("modifyOrganization/", org_views.modifyOrganization, name="modifyOrganization"),
     path("sendMessage/", org_views.sendMessage, name="sendMessage"),
     # path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"), 弃用多年
+] + [
+    # 课程相关操作
+    path("selectCourse/", course_views.selectCourse, name="selectCourse"),
+    path("viewCourse/", course_views.viewCourse, name="viewCourse"),
+    path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
+    path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
+    path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
 ] + [
     # 数据导入
     path("loadstudata/", data_import.load_stu_data, name="load_stu_data"),
@@ -106,6 +109,9 @@ urlpatterns = [
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
 ] + [
     path("loadcourecord/", data_import.load_CouRecord,  name="load_cou_record"),
+] + [
+    # 埋点
+    path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
