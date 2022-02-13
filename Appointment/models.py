@@ -209,11 +209,11 @@ class Appoint(models.Model):
             'Aid':
             self.Aid,  # 预约编号
             'Atime':
-            self.Atime,  # 申请提交时间
+            self.Atime.strftime("%Y-%m-%dT%H:%M:%S"),  # 申请提交时间
             'Astart':
-            self.Astart,  # 开始使用时间
+            self.Astart.strftime("%Y-%m-%dT%H:%M:%S"),  # 开始使用时间
             'Afinish':
-            self.Afinish,  # 结束使用时间
+            self.Afinish.strftime("%Y-%m-%dT%H:%M:%S"),  # 结束使用时间
             'Ausage':
             self.Ausage,  # 房间用途
             'Aannouncement':
