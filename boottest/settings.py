@@ -18,6 +18,12 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 from boottest import local_dict, base_get_setting
 
+from django.utils.translation import gettext_lazy as _
+
+LANGUAGES = [
+    ('zh-Hans', _('Chinese')),
+]
+
 # LOGIN_URL，未登录时重定向到的 URL
 LOGIN_URL = base_get_setting('url/login_url')
 # LOGIN_URL = local_dict["url"]["login_url"]

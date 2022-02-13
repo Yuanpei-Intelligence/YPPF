@@ -877,23 +877,28 @@ def homepage(request):
                 np.save()
                 html_display['first_signin'] = True # 前端显示
 
+    # 以下为"活动一览"列表部分，均排除了category为"书院课程"的活动
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
-    recentactivity_list = Activity.objects.get_recent_activity().select_related('organization_id')
+    recentactivity_list = Activity.objects.get_recent_activity().select_related(
+        'organization_id').filter(~Q(category = Activity.ActivityCategory.COURSE))
 
     # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
-    activities = Activity.objects.get_today_activity().select_related('organization_id')
+    activities = Activity.objects.get_today_activity().select_related(
+        'organization_id').filter(~Q(category = Activity.ActivityCategory.COURSE))
     activities_start = [
         activity.start.strftime("%H:%M") for activity in activities
     ]
     html_display['today_activities'] = list(zip(activities, activities_start)) or None
 
     # 最新一周内发布的活动，按发布的时间逆序
-    newlyreleased_list = Activity.objects.get_newlyreleased_activity().select_related('organization_id')
+    newlyreleased_list = Activity.objects.get_newlyreleased_activity().select_related(
+        'organization_id').filter(~Q(category = Activity.ActivityCategory.COURSE))
 
     # 即将截止的活动，按截止时间正序
     prepare_times = Activity.EndBeforeHours.prepare_times
     signup_rec = Activity.objects.activated().select_related(
-        'organization_id').filter(status = Activity.Status.APPLYING)
+        'organization_id').filter(Q(status = Activity.Status.APPLYING) 
+                                  & ~Q(category = Activity.ActivityCategory.COURSE))
     signup_list = []
     for act in signup_rec:
         deadline = act.apply_end
