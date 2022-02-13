@@ -703,7 +703,7 @@ class Activity(CommentBase):
         return str(self.title)
 
     class Status(models.TextChoices):
-        REVIEWING = ("审核中","审核中")
+        REVIEWING = "审核中"
         ABORT = "已撤销"
         REJECT = "未过审"
         CANCELED = "已取消"
