@@ -25,7 +25,7 @@ admin.site.register(College_Announcement)
 class ParticipantAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
-    search_fields = ('Sid', 'name', 'pinyin')
+    search_fields = ('Sid_id', 'name', 'pinyin')
     list_display = ('Sid', 'name', 'credit')
     list_display_links = ('Sid', 'name')
     list_editable = ('credit', )
@@ -259,7 +259,7 @@ class AppointAdmin(admin.ModelAdmin):
                         # send wechat message
                         # TODO: major_sid
                         scheduler.add_job(send_wechat_message,
-                                          args=[[appoint.major_student.Sid],  # stuid_list
+                                          args=[[appoint.major_student.Sid_id],  # stuid_list
                                                 appoint.Astart,  # start_time
                                                 appoint.Room,     # room
                                                 "confirm_admin_w2c",  # message_type
@@ -285,7 +285,7 @@ class AppointAdmin(admin.ModelAdmin):
                         # send wechat message
                         # TODO: major_sid
                         scheduler.add_job(send_wechat_message,
-                                          args=[[appoint.major_student.Sid],  # stuid_list
+                                          args=[[appoint.major_student.Sid_id],  # stuid_list
                                                 appoint.Astart,  # start_time
                                                 appoint.Room,     # room
                                                 "confirm_admin_v2j",  # message_type
@@ -349,7 +349,7 @@ class AppointAdmin(admin.ModelAdmin):
                 # send wechat message
                 # TODO: major_sid
                 scheduler.add_job(send_wechat_message,
-                                  args=[[appoint.major_student.Sid],  # stuid_list
+                                  args=[[appoint.major_student.Sid_id],  # stuid_list
                                         appoint.Astart,  # start_time
                                         appoint.Room,     # room
                                         "violate_admin",  # message_type
@@ -426,7 +426,7 @@ class AppointAdmin(admin.ModelAdmin):
             # print(appoint)
             try:
                 with transaction.atomic():
-                    stuid_list = [stu.Sid for stu in appoint.students.all()]
+                    stuid_list = [stu.Sid_id for stu in appoint.students.all()]
                     for i in range(week_num):
                         # 调用函数完成预约
                         feedback = addAppoint({
@@ -442,7 +442,7 @@ class AppointAdmin(admin.ModelAdmin):
                             appoint.Afinish + (i + 1) * timedelta(days=7),
                             'Sid':
                             # TODO: major_sid
-                            appoint.major_student.Sid,
+                            appoint.major_student.Sid_id,
                             'Ausage':
                             appoint.Ausage,
                             'announcement':
@@ -497,7 +497,7 @@ class AppointAdmin(admin.ModelAdmin):
                               id=f'{appoint.Aid}_new_wechat',
                               next_run_time=datetime.now() + timedelta(seconds=5))  # 2s足够了
             # TODO: major_sid
-            operation_writer(appoint.major_student.Sid, "发起"+str(week_num) +
+            operation_writer(appoint.major_student.Sid_id, "发起"+str(week_num) +
                              "周的长线化预约, 原始预约号"+str(appoint.Aid), "admin.longterm", "OK")
         return self.message_user(request, '长线化成功!')
 

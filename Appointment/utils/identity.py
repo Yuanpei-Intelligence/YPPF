@@ -41,14 +41,13 @@ def get_participant(user: Union[User, str], update=False, raise_except=False):
     - participant: 满足participant.Sid=user, 不存在时返回`None`
     '''
     try:
-        # TODO: task 2 pht 修改模型字段后删除下行
-        if isinstance(user, User): user = user.username
         if update:
             par_all = Participant.objects.select_for_update().all()
         else:
             par_all = Participant.objects.all()
 
-        # TODO: task 2 pht 修改模型字段后增加一行如果是str，则改为__username获取
+        if isinstance(user, str):
+            return par_all.get(Sid_id=user)
         return par_all.get(Sid=user)
     except:
         if raise_except:
@@ -61,8 +60,6 @@ def _arg2user(participant: Union[Participant, User]):
     user = participant
     if isinstance(user, Participant):
         user = participant.Sid
-        # TODO: task 2 pht 修改模型字段后删除下行
-        if isinstance(user, str): user = User.objects.get(username=user)
     return user
 
 
@@ -164,7 +161,6 @@ def _update_name(user: Union[Participant, User, str]):
 
     # 更新数据库和session
     with transaction.atomic():
-        # TODO: task 1 qwn 2022-1-26 Participant字段变化应同步修改
         participant = get_participant(participant.Sid, update=True, raise_except=True)
         participant.name = given_name
         participant.pinyin = pinyin_init
