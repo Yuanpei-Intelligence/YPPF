@@ -77,6 +77,7 @@ urlpatterns = [
     path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
     path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
     path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
+    path("showCourseRecord/", course_views.showCourseRecord, name = "showCourseRecord/"),
 ] + [
     # 组织相关操作
     path("saveShowPositionStatus", org_views.saveShowPositionStatus, name="saveShowPositionStatus"),

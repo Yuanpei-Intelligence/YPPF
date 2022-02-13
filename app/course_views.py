@@ -2,17 +2,26 @@ from app.views_dependency import *
 from app.models import (
     NaturalPerson,
     Activity,
+    Position,
+    Course,
+    Semester,
+    Participant,
+    CourseRecord,
 )
 from app.course_utils import (
     create_single_course_activity,
     modify_course_activity,
+    check_post_data,
 )
 from app.utils import (
     get_person_or_org,
+    record_modification,
 )
 
 from datetime import datetime, timedelta
 from django.db import transaction
+from collections import Counter
+import json
 
 __all__ = [
     'editCourseActivity', 
@@ -179,3 +188,129 @@ def showCourseActivity(request):
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的活动")
 
     return render(request, "org_show_course_activity.html", locals())
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(EXCEPT_REDIRECT, source='course_views[showCourseRecord]', record_user=True)
+def showCourseRecord(request):
+    '''
+    展示及修改学时数据
+    在开启修改功能前，显示本学期已完成的所有课程活动的学生的参与次数
+    开启修改功能后，自动创建学时表，并且允许修改学时
+    '''
+    # ----身份检查----
+    valid, user_type, display = utils.check_user_type(request.user)
+    me = utils.get_person_or_org(request.user)  # 获取自身
+    if user_type == "Person":   
+        return redirect(message_url(wrong('学生账号不能访问此界面！')))
+    if me.otype.otype_name != "书院课程":
+        return redirect(message_url(wrong('非书院课程组织账号不能访问此界面！')))
+
+    edit_able = get_setting("course_record_editable")
+    edit_able = bool(edit_able)        
+    year = get_setting("semester_data/year")
+    semester = get_setting("semester_data/semester")
+    course_info = {
+        'course' : me.oname,
+        'year' : year,
+        'semester' : semester,
+    }     
+    # ---- 收集本学期的已完成的活动中的签到信息（开放修改功能前）----
+        # ---- 收集当前小组成员信息 ----
+    positions  = Position.objects.activated().filter(org = me, 
+        person__identity = NaturalPerson.Identity.STUDENT)
+    course = Course.objects.activated().filter(organization = me)[0]
+    all_positions = {position.person:position.pos for position in positions}
+    #all_positions: 储存 小组成员：职位 的一个字典
+
+        # ---- 收集本学期已完成活动 ----
+    activities=Activity.objects.activated().filter(
+        organization_id=me,status=Activity.Status.END,
+        category=Activity.ActivityCategory.COURSE)
+        # ---- 统计签到情况 -----
+    all_participants = Participant.objects.filter(
+        activity_id__in = activities ,
+        person_id__in = list(all_positions.keys()),
+        status = Participant.AttendStatus.ATTENDED ,
+    ).values_list("person_id__person_id__username", flat=True)
+    # "person_id__person_id__username" 为学号
+
+    record_list = dict(Counter(list(all_participants)))
+    # record_list 是一个储存（活动成员：参与次数）的一个字典，
+    # 可能存在成员不在此字典中的可能，因为有可能一次活动也没参加
+    for key in all_positions.keys(): #若一次也没参加活动，为0
+        if str(key.person_id) not in list(record_list.keys()):
+            key.times = 0 
+        else: key.times = record_list[str(key.person_id)]
+    all_positions = dict(sorted(all_positions.items(), key=lambda x: x[1]))
+    #按照职位排序，前端需要
+
+    for person in list(all_positions.keys()): #all_positions.keys()即为所有成员的列表
+        # 下面两个属性用于传入前端
+        person.avatar_path = utils.get_user_ava(person, "Person")
+        person.pos =me.otype.get_name(all_positions[person])
+
+    record_search = CourseRecord.objects.filter(#查找此课程本学期所有成员的学时表
+        course = course,
+        year = course_info['year'],
+        semester = Semester.get(course_info['semester']),
+    )
+    if edit_able:
+        #-----新建空学时表-----
+        for person in all_positions.keys(): 
+            record_search_person = record_search.filter(person = person)
+            if not record_search_person.exists():
+                record_create = CourseRecord.objects.create(
+                    person = person,
+                    course = course,
+                    attend_times = person.times,
+                    total_hours = person.times*2, #默认情况下新建时学时为次数的两倍
+                    year = year,
+                    semester = Semester.get(course_info['semester']),
+                )
+                loginfo = "Organization"+me.oname+" create CourseRecord: <"+ record_create.course.name\
+                    +" times:"+str(record_create.attend_times)+" hours:"+str(record_create.total_hours) +">"
+                record_modification(me.organization_id, info=loginfo)
+            else: #若在创建学时表之后又有新的活动，更新参加次数
+                with transaction.atomic():
+                    record_search_person.update(attend_times = person.times)
+
+    # 可编辑状态时传入前端      
+    for record in record_search:
+        person = record.person
+        person.pos = me.otype.get_name(all_positions[person])
+        person.avatar_path = utils.get_user_ava(person, "Person")
+        record.total_hours = int(record.total_hours)
+
+    if request.method == "POST":
+        if not edit_able:
+            # 由于未开放修改功能时前端无法通过表格和按钮修改和提交，
+            # 所以如果出现POST请求，则为非法情况
+            return redirect(message_url(wrong('目前尚未开放修改功能，请不要进行任何尝试！')))
+        elif request.is_ajax(): #从前端将修改后的表格传入
+            post_datas = json.loads(request.POST.get('data'))
+            members = list(all_positions.keys())
+            legal, back_datas = check_post_data(post_datas, members)
+            if not legal:
+                return redirect(message_url(wrong(back_datas)))
+            # --- 修改学时表 ---
+            for point in range(len(post_datas)):
+                post_data = post_datas[point]
+
+
+                record_edited = record_search.filter(person = members[point])
+                old_times = record_edited[0].attend_times
+                old_hours = record_edited[0].total_hours
+                with transaction.atomic():
+                    record_edited.update(
+                        total_hours = int(post_data[1])
+                    )
+
+                loginfo = "Organization"+me.oname+" change CourseRecord from <"+" times:"+\
+                    str(old_times)+" hours:"+str(old_hours)+"> to <"+" times:"+\
+                    str(record_edited[0].attend_times) + " hours:"+str(record_edited[0].total_hours) +">"
+                record_modification(me.organization_id, info=loginfo)
+
+    bar_display = utils.get_sidebar_and_navbar(request.user, "课程学时")
+    return render(request, "course_record.html", locals())
