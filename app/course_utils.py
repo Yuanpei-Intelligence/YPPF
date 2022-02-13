@@ -705,6 +705,7 @@ def course_base_check(request):
     context["capacity"] = request.POST["capacity"]
     # context['current_participants'] = request.POST["current_participants"]
     context["photo"] = request.FILES.get("photo")
+    
     """
     # 时间
     stage1_start = datetime.strptime(request.POST["stage1_start"], "%Y-%m-%d %H:%M")  # 预选开始时间
@@ -722,10 +723,10 @@ def course_base_check(request):
     context["stage2_start"] = stage2_start
     context["stage2_end"] = stage2_end
     """
+
     # 每周课程时间
     course_starts = request.POST.getlist("start")
     course_ends = request.POST.getlist("end")
-    print(course_starts)
     course_starts = [
         datetime.strptime(course_start, "%Y-%m-%d %H:%M") 
         for course_start in course_starts 
@@ -736,7 +737,6 @@ def course_base_check(request):
         for course_end in course_ends 
         if course_end != ''
         ]
-    print(course_starts[0].date())
     for i in range(len(course_starts)):
         assert check_ac_time(course_starts[i], course_ends[i]),f'第{i+1}次上课时间起止时间有误！'
         #课程每周同一次课的开始和结束时间应当处于同一天
