@@ -1,0 +1,66 @@
+{% extends 'base.html' %}
+
+{% block mainpage %}
+<div id="content" class="main-content">
+    <div class="container mt-3">
+
+        <div class="row layout-top-spacing">
+            {% if bar_display.help_paragraphs %}
+                {% include 'help.html' %}
+            {% endif %}
+            <div class="col-lg-12 col-12 layout-top-spacing">
+                <div class="bio layout-spacing ">
+                    <div class="widget-content widget-content-area">
+                        <h3>修改签到</h3>
+
+        
+                        <table class="table table-bordered mb-4">
+                            <thead>
+                                <tr>
+                                    <th>成员</th>
+                                    <th>签到状态</th>
+                                </tr>
+                            </thead>
+                                <tbody>
+
+
+
+
+                                    {% for member in member_list %}
+                                    <tr>
+                                    <form method="POST">
+                                        <td>
+                                            <a href='/stuinfo/?name={{ member.person_id }}'>
+                                                <u>{{ member.person_id }}</u>
+                                            </a></td>
+                                        <td>
+                                             {% if member.status == "未签到" %}
+                                                <input type="radio" class="custom-control-inline" name="checkin{{member.person_id_id}}" value="no" checked >未参与
+                
+                                                <input type="radio" class="custom-control-inline" name="checkin{{member.person_id_id}}" value="yes" >已参与
+                                             {% endif %}
+                
+                                            {% if member.status == "已参与" %}
+                                                <input type="radio" class="custom-control-inline" name="checkin{{member.person_id_id}}" value="no"  >未参与
+                
+                                                <input type="radio" class="custom-control-inline" name="checkin{{member.person_id_id}}" value="yes" checked >已参与
+                                            {% endif %}
+                                        </td>
+            
+                                    </tr>
+                                {% endfor%}
+        
+                                <tbody>
+                        </table>
+
+
+                    <button type="submit" class="btn btn-primary btn-block mb-2" name="saveSituation" value="yes2" onclick="alert('您已成功提交修改！')">保存</button>
+                    </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
