@@ -16,6 +16,7 @@ from app.course_utils import (
     modify_course_activity,
     registration_status_change,
     course_to_display,
+    create_course,
 )
 from app.utils import get_person_or_org
 
