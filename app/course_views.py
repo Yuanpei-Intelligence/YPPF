@@ -14,7 +14,6 @@ from app.utils import (
 from datetime import datetime, timedelta
 from django.db import transaction
 
-
 __all__ = [
     'editCourseActivity', 
     'addSingleCourseActivity',
@@ -181,4 +180,3 @@ def showCourseActivity(request):
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的活动")
 
     return render(request, "org_show_course_activity.html", locals())
-

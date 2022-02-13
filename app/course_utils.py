@@ -7,8 +7,6 @@ from app.models import (
     ActivityPhoto,
     Position,
     Participant,
-    Course,
-    CourseTime
 )
 from app.utils import get_person_or_org
 from app.notification_utils import(
@@ -17,7 +15,7 @@ from app.notification_utils import(
 )
 from app.wechat_send import WechatApp, WechatMessageLevel
 from app.activity_utils import (
-    changeActivityStatus,
+    changeActivityStatus, 
     check_ac_time,
     notifyActivity,
 )
@@ -239,6 +237,3 @@ def cancel_course_activity(request, activity):
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
 
     activity.save()
-
-
-

@@ -1933,7 +1933,9 @@ def QAcenter(request):
     QA的聚合界面
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
+
     me = get_person_or_org(request.user, user_type)
+    
     if request.method == "POST":
         if request.POST.get("anwser") is not None:
             anwser = request.POST.get("anwser")
@@ -1976,7 +1978,6 @@ def QAcenter(request):
     return render(request, "QandA_center.html", locals())
 
 
-
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, log=False)
@@ -2017,4 +2018,3 @@ def eventTrackingFunc(request):
         PageLog.objects.create(**kwargs)
 
     return JsonResponse({'status': 'ok'})
-
