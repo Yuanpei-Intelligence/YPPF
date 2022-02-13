@@ -728,12 +728,12 @@ def course_base_check(request):
     course_starts = [
         datetime.strptime(course_start, "%Y-%m-%d %H:%M") 
         for course_start in course_starts 
-        if course_start is not ""
+        if course_start != ""
         ]
     course_ends = [
         datetime.strptime(course_end, "%Y-%m-%d %H:%M") 
         for course_end in course_ends 
-        if course_end is not ""
+        if course_end != ""
         ]
     for i in range(len(course_starts)):
         assert check_ac_time(course_starts[i], course_ends[i]),f'第{i}次上课时间起止时间有误！'

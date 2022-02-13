@@ -393,7 +393,7 @@ def addCourse(request, cid=None):
                             succeed('存在信息相同的课程，已为您自动跳转!'),
                             f'/viewCourse/{cid}'))
                     return redirect(f"/editCourse/{cid}")
-            except 
+            except:
                 return redirect(message_url(wrong('遇到不可预料的错误。如有需要，请联系管理员解决！'),
                                             f'/viewCourse/{course.id}'))
         else:
@@ -410,7 +410,7 @@ def addCourse(request, cid=None):
                     create_course(request, course)
                 html_display["warn_message"] = "修改成功。"
                 html_display["warn_code"] = 2
-            except 
+            except:
                 return redirect(message_url(wrong('遇到不可预料的错误。如有需要，请联系管理员解决！'),
                                             f'/viewCourse/{course.id}'))
 
