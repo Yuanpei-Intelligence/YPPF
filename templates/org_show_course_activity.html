@@ -70,8 +70,7 @@
 
                                 <div class="tab-content" id="activityTabContent">
                                     <div id="futureActivity" class="tab-pane active">
-                                        <div class="bio-skill-box layout-top-spacing"
-                                            style="max-height: 75vh; overflow: scroll;">
+                                        <div class="bio-skill-box layout-top-spacing" style="max-height: 75vh; overflow: scroll;">
                                             {% if future_activity_list|length == 0 %}
                                             <p style="text-align: center;">没有未开始的课程活动！</p>
                                             {% endif %}
@@ -110,11 +109,35 @@
                                                                     <div class="dropdown-menu">
                                                                         <a class="dropdown-item"
                                                                             href="/editCourseActivity/{{act.id}}">修改活动</a>
-                                                                        <a class="dropdown-item" href="#">取消活动</a>
+                                                                        <!-- Dropdown item trigger modal -->
+                                                                        <a class="dropdown-item" data-toggle="modal" data-target="#cancelActivityModal">取消活动</a>
                                                                     </div>
                                                                 </div>
                                                             </div>
-
+                                                            <!-- BEIGN cancelActivityModal -->
+                                                            <div class="modal fade" id="cancelActivityModal" tabindex="-1" role="dialog" aria-labelledby="cancelActivityModalLabel" aria-hidden="true">
+                                                                <div class="modal-dialog modal-dialog-centered" role="document">
+                                                                    <div class="modal-content">
+                                                                        <div class="modal-header">
+                                                                            <h5 class="modal-title" id="cancelActivityModalLabel">取消单次课程活动</h5>
+                                                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                                                                <span aria-hidden="true">&times;</span>
+                                                                            </button>
+                                                                        </div>
+                                                                        <div class="modal-body">
+                                                                            活动取消后不可撤回操作，确认要取消吗？
+                                                                        </div>
+                                                                        <div class="modal-footer">
+                                                                            <button type="button" class="btn btn-secondary" data-dismiss="modal">再想想</button>
+                                                                            <form method="POST" id="cancel-details">
+                                                                                <input type="hidden" name="cancel-action" value="{{act.id}}">
+                                                                                <button type="button" class="btn btn-primary" onclick="this.form.submit()" data-dismiss="modal">确认</button>
+                                                                            </form>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                            <!-- END cancelActivityModal -->
                                                         </div>
 
                                                         <p style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
@@ -135,9 +158,9 @@
                                                 </div>
 
                                                 <!-- END ACTIVITY DISPLAY -->
-                                            </div>
                                             {% endfor %}
-                                        </div>
+                                            </div>
+                                        </div>                                        
 
                                     </div>
 
@@ -204,8 +227,8 @@
                                                     </div>
                                                 </div>
                                                 <!-- END ACTIVITY DISPLAY -->
-                                            </div>
                                             {% endfor %}
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
