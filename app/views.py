@@ -1,3 +1,4 @@
+from unicodedata import category
 from app.views_dependency import *
 from app.models import (
     NaturalPerson,
@@ -22,6 +23,7 @@ from app.models import (
     ReimbursementPhoto,
     Course,
     CourseRecord,
+    CourseParticipant,
     Semester,
     PageLog,
     ModuleLog,
@@ -880,8 +882,10 @@ def homepage(request):
 
     # 以下为"活动一览"列表部分，均排除了category为"书院课程"的活动
     # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
-    recentactivity_list = Activity.objects.get_recent_activity().select_related(
-        'organization_id').filter(~Q(category = Activity.ActivityCategory.COURSE))
+    all_recentactivity_list = Activity.objects.get_recent_activity().select_related('organization_id')
+    # 排除书院课程    
+    recentactivity_list = all_recentactivity_list.filter(
+        ~Q(category = Activity.ActivityCategory.COURSE))
 
     # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
     activities = Activity.objects.get_today_activity().select_related(
@@ -910,6 +914,18 @@ def homepage(request):
         signup_list.append(dictmp)
     signup_list.sort(key=lambda x:x["deadline"])
     signup_list = signup_list[:10]
+
+    # "书院课程一览"部分
+    # 用户参与的最近的书院课程活动
+    recent_course_activity_list = all_recentactivity_list.filter(
+        category = Activity.ActivityCategory.COURSE, 
+        activity_participant__person_id = me
+        )
+    
+    # 选课成功的课程
+    elected_courses_list = Course.objects.activated().filter(participant_set__person = me,
+        participant_set__status = CourseParticipant.Status.SUCCESS)
+
     # 如果提交了心愿，发生如下的操作
     if request.method == "POST" and request.POST:
         wishtext = request.POST.get("wish")

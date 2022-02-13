@@ -838,7 +838,9 @@ class Participant(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["activity_id"]
 
-    activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
+    activity_id = models.ForeignKey(Activity, 
+                                    related_name='activity_participant',
+                                    on_delete=models.CASCADE)
     person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
 
     class AttendStatus(models.TextChoices):
