@@ -1285,21 +1285,18 @@ class CourseManager(models.Manager):
                                        participant_set__status__in=[
                                            CourseParticipant.Status.SELECT,
                                            CourseParticipant.Status.SUCCESS,
+                                           CourseParticipant.Status.FAILED,
                                        ])
 
+
     def unselected(self, person: NaturalPerson):
-        # 返回当前学生没选或选课失败的所有课程
+        # 返回当前学生没选的所有课程
         return self.activated().filter(
             Q(participant_set=None)
             | (Q(participant_set__person=person)
-               & Q(participant_set__status__in=[
-                   CourseParticipant.Status.UNSELECT,
-                   CourseParticipant.Status.FAILED,
-               ])))
+               & Q(participant_set__status=CourseParticipant.Status.UNSELECT)))
 
                                       
-
-
 class Course(models.Model):
     """
     助教发布课程需要填写的信息
