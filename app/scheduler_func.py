@@ -168,15 +168,16 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
     添加每周的课程活动
     """
     course = Course.objects.get(id=course_id)
+    examine_teacher = NaturalPerson.objects.get(
+    name=get_setting("course/audit_teacher"), identity=NaturalPerson.Identity.TEACHER)
     week_time = CourseTime.objects.get(id=weektime_id)
     start_time = week_time.start+timedelta(days=7*cur_week)
     end_time = week_time.end+timedelta(days=7*cur_week)
-    default_examiner_name = get_setting("course/audit_teacher")
-    examine_teacher = NaturalPerson.objects.get(
-        name=default_examiner_name, identity=NaturalPerson.Identity.TEACHER)
+    #当前课程在学期已举办的活动
     conducted_num = Activity.objects.activated().filter(organization_id=course.organization,
                                                         status=Activity.ActivityCategory.COURSE,
-                                                        course_time=week_time).count()
+                                                        course_time__isnull=False).count()
+    #发起活动，并设置报名                                                    
     with transaction.atomic():
         activity = Activity.objects.create(
             title=str(course.name)+f'第{conducted_num+1}次课',
@@ -231,15 +232,15 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
 def longterm_launch_course():
     """
     定时发起长期课程活动
+    提前一周发出课程，一般是在本周课程活动结束时发出
     """
     courses = Course.objects.activated().filter(status=Course.Status.END)
     for course in courses:
         for week_time in course.time_set.all():
             cur_week = week_time.cur_week
             end_week = week_time.end_week
-            if cur_week <= end_week:
-                due_time = week_time.end + \
-                    timedelta(days=7*cur_week)  # 提前一周发出课程
+            if cur_week <= end_week:    #
+                due_time = week_time.end + timedelta(days=7*cur_week)  
                 if due_time - timedelta(days=7) < datetime.now() < due_time:
                     add_week_course_activity(course.id, week_time.id, cur_week)
                     week_time.cur_week += 1
