@@ -8,7 +8,7 @@ import rpyc
 from rpyc.utils.server import ThreadedServer
 
 import logging
-logging.getLogger('apscheduler').setLevel(settings.__LOG_LEVEL)
+logging.getLogger('apscheduler').setLevel(settings.MY_LOG_LEVEL)
 logger = logging.getLogger(__name__)
 
 
@@ -24,6 +24,7 @@ class SchedulerService(rpyc.Service):
     def exposed_wakeup(self):
         return self.scheduler.wakeup()
 
+
 class Command(BaseCommand):
     help = "Runs apscheduler."
 
@@ -33,15 +34,30 @@ class Command(BaseCommand):
         scheduler.add_jobstore(DjangoJobStore(), "default")
         scheduler.start()
 
-        scheduler.add_job(get_weather, 'interval', id=get_weather.__name__, minutes=5, replace_existing=True)
-        scheduler.add_job(changeAllActivities, 'interval', id=changeAllActivities.__name__, minutes=5, replace_existing=True)
-        scheduler.add_job(clear_appointments, 'cron', id=clear_appointments.__name__, day_of_week='sat', hour='3', minute="30", second='0', replace_existing=True)
+        scheduler.add_job(get_weather,
+                          'interval',
+                          id='get_weather',
+                          minutes=5,
+                          replace_existing=True)
+        scheduler.add_job(changeAllActivities,
+                          'interval',
+                          id='activityStatusUpdater',
+                          minutes=5,
+                          replace_existing=True)
+        scheduler.add_job(clear_appointments,
+                          'cron',
+                          id='ontime_delete',
+                          day_of_week='sat',
+                          hour=3,
+                          minute=30,
+                          second=0,
+                          replace_existing=True)
 
         protocol_config = {
             'allow_all_attrs': True,
             'logger': logger,
         }
-        server = ThreadedServer(SchedulerService(scheduler), port=settings.RPC_PORT, protocol_config=protocol_config)
+        server = ThreadedServer(SchedulerService(scheduler), port=settings.MY_RPC_PORT, protocol_config=protocol_config)
         try:
             # logging.info("Starting thread server...")
             server.start()

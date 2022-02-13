@@ -167,36 +167,36 @@ USE_TZ = False
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.1/howto/static-files/
-__ENV = os.getenv("YPPF_ENV", "")
-__STATIC_DIR = os.getenv("YPPF_STATIC_DIR", BASE_DIR)
-__LOG_DIR = os.getenv("YPPF_LOG_DIR", BASE_DIR)
-__TMP_DIR = os.getenv("YPPF_TMP_DIR", BASE_DIR)
-__LOG_LEVEL = logging.DEBUG if os.getenv("YPPF_LOG_DEBUG", "") else logging.INFO
+MY_ENV = os.getenv("YPPF_ENV", "")
+MY_STATIC_DIR = os.getenv("YPPF_STATIC_DIR", BASE_DIR)
+MY_LOG_DIR = os.getenv("YPPF_LOG_DIR", BASE_DIR)
+MY_TMP_DIR = os.getenv("YPPF_TMP_DIR", BASE_DIR)
+MY_LOG_LEVEL = logging.DEBUG if os.getenv("YPPF_LOG_DEBUG", "") else logging.INFO
 
-SCHEDULER_LOG_FILE = os.getenv("YPPF_SCHEDULER_LOG_FILE", "scheduler.log")
-RPC_PORT = os.getenv("YPPF_SCHEDULER_PORT", 6666)
-INNER_PORT = os.getenv("YPPF_INNER_PORT", 80)
+MY_SCHEDULER_LOG = os.getenv("YPPF_SCHEDULER_LOG_FILE", "scheduler.log")
+MY_RPC_PORT = os.getenv("YPPF_SCHEDULER_PORT", 6666)
+MY_INNER_PORT = os.getenv("YPPF_INNER_PORT", 80)
 
-if __ENV in ["PRODUCT", "TEST"]:
+if MY_ENV in ["PRODUCT", "TEST"]:
     # Set cookie session domain to allow two sites share the session
     SESSION_COOKIE_DOMAIN = os.environ["YPPF_SESSION_COOKIE_DOMAIN"]
-    if __ENV == "PRODUCT":
+    if MY_ENV == "PRODUCT":
         SECRET_KEY = os.environ["YPPF_SECRET_KEY"]
 
-if __ENV == "SCHEDULER":
-    assert SCHEDULER_LOG_FILE != "scheduler.log"
+if MY_ENV == "SCHEDULER":
+    assert MY_SCHEDULER_LOG != "scheduler.log"
 
-if __ENV == "INNER":
+if MY_ENV == "INNER":
     pass
 
 
 # STATIC_ROOT = os.path.join(BASE_DIR, "static")
 STATIC_URL = "/static/"
 
-STATICFILES_DIRS = (os.path.join(__STATIC_DIR, "static"),)
+STATICFILES_DIRS = (os.path.join(MY_STATIC_DIR, "static"),)
 
 MEDIA_URL = "/media/"
-MEDIA_ROOT = os.path.join(__STATIC_DIR, "media/")
+MEDIA_ROOT = os.path.join(MY_STATIC_DIR, "media/")
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
@@ -220,9 +220,9 @@ LOGGING = {
 
 # Only used for debugging schedulers
 logging.basicConfig(
-    filename=os.path.join(__LOG_DIR, SCHEDULER_LOG_FILE),
+    filename=os.path.join(MY_LOG_DIR, MY_SCHEDULER_LOG),
     filemode='a',
     format='%(asctime)s,%(msecs)d in %(funcName)s - %(levelname)s: %(message)s',
     datefmt='%m-%d %H:%M:%S',
-    level=__LOG_LEVEL,
+    level=MY_LOG_LEVEL,
 )
