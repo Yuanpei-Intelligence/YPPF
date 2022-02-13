@@ -677,3 +677,102 @@ def change_course_status(course_id, cur_status, to_status):
         if positions:
             with transaction.atomic():
                 Position.objects.bulk_create(positions)
+
+def create_course(request, course=None):
+    '''
+    检查课程，合法时寻找该课程，不存在时创建
+    返回(course.id, created)
+    '''
+    context = course_base_check(request)
+    
+    # 编辑已有课程
+    if course is not None:
+        course_time = course.time_set.all()
+        course_time.delete()
+
+        course.update(
+            name=context["name"],
+            organization=context['organization'],
+            # year=context['year'],
+            # semester=context['semester'],
+            times=context['times'],
+            classroom=context["classroom"],
+            teacher=context['teacher'],
+            stage1_start=context['stage1_start'],
+            stage1_end=context['stage1_end'],
+            stage2_start=context['stage2_start'],
+            stage2_end=context['stage2_end'],
+            # bidding=context["bidding"],
+            introduction=context["introduction"],
+            # status=context['status'],
+            type=context['type'],
+            capacity=context["capacity"],
+            # current_participants=context['current_participants'],
+            photo=context['photo'],
+            )
+
+        for i in range(len(context['course_starts'])):
+            CourseTime.objects.create(
+                course=course,
+                start=context['course_starts'][i],
+                end=context['course_ends'][i],
+                end_week=context['times'],
+            )
+
+    # 创建新课程
+    else:
+        # 查找是否有类似课程存在
+        old_ones = Course.objects.activated().filter(
+            name=context["name"],
+            teacher=context['teacher'],
+            classroom=context["classroom"],
+        )
+        if len(old_ones):
+            assert len(old_ones) == 1, "创建课程时，已存在的相似课程不唯一"
+            return old_ones[0].id, False
+        
+        # 检查完毕，创建课程
+        course = Course.objects.create(
+                        name=context["name"],
+                        organization=context['organization'],
+                        # year=context['year'],
+                        # semester=context['semester'],
+                        times=context['times'],
+                        classroom=context["classroom"],
+                        teacher=context['teacher'],
+                        stage1_start=context['stage1_start'],
+                        stage1_end=context['stage1_end'],
+                        stage2_start=context['stage2_start'],
+                        stage2_end=context['stage2_end'],
+                        # bidding=context["bidding"],
+                        introduction=context["introduction"],
+                        # status=context['status'],
+                        type=context['type'],
+                        capacity=context["capacity"],
+                        # current_participants=context['current_participants'],
+                        photo=context['photo'],
+                    )
+
+        # 定时任务和微信消息有关吗，我还没了解怎么发微信消息orz不过定时任务还是能写出来的……应该
+
+        # scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
+        #     run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
+        # # 活动状态修改
+        # scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
+        #     run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
+        # scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
+        #     run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
+        # scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
+        #     run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
+
+        course.save()
+        
+        for i in range(len(context['course_starts'])):
+            CourseTime.objects.create(
+                course=course,
+                start=context['course_starts'][i],
+                end=context['course_ends'][i],
+                end_week=context['times'],
+            )
+
+    return course.id, True
