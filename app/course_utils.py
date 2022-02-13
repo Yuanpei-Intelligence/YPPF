@@ -693,9 +693,18 @@ def course_base_check(request):
     context["name"] = request.POST["name"]
     context["introduction"] = request.POST["introduction"]
     context["classroom"] = request.POST["classroom"]
-    assert len(context["name"]) > 0
-    assert len(context["introduction"]) > 0
-    assert len(context["classroom"]) > 0
+    assert len(context["name"]) > 0,"课程名称不能为空！"
+    assert len(context["introduction"]) > 0,"课程介绍不能为空！"
+    assert len(context["classroom"]) > 0,"上课地点不能为空！"
+
+    org = get_person_or_org(request.user, "Organization")
+    context['organization']=org
+    context['times'] = int(request.POST["times"])    #课程上课周数
+    context['teacher'] = request.POST["teacher"]    
+    context['type'] = request.POST["type"]  #课程类型
+    context["capacity"] = request.POST["capacity"]
+    # context['current_participants'] = request.POST["current_participants"]
+    context["photo"] = request.FILES.get("photo")
 
     # 时间
     stage1_start = datetime.strptime(request.POST["stage1_start"], "%Y-%m-%d %H:%M")  # 预选开始时间
@@ -727,20 +736,12 @@ def course_base_check(request):
         if course_end is not ""
         ]
     for i in range(len(course_starts)):
-        assert check_ac_time(course_starts[i], course_ends[i])
+        assert check_ac_time(course_starts[i], course_ends[i]),f'第{i}次上课时间起止时间有误！'
         #课程每周同一次课的开始和结束时间应当处于同一天
-        assert course_starts[i].day() == course_ends[i].day() 
+        assert course_starts[i].day() == course_ends[i].day(),f'第{i}次上课起止时间应当为同一天'
     context['course_starts'] = course_starts
     context['course_ends'] = course_ends
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    org = utils.get_person_or_org(request.user, user_type)
-    context['organization']=org
-    context['times'] = int(request.POST["times"])    #课程上课周数
-    context['teacher'] = request.POST["teacher"]    
-    context['type'] = request.POST["type"]  #课程类型
-    context["capacity"] = request.POST["capacity"]
-    # context['current_participants'] = request.POST["current_participants"]
-    context["photo"] = request.FILES.get("photo")
+
     return context
 
 

@@ -393,9 +393,9 @@ def addCourse(request, cid=None):
                             succeed('存在信息相同的课程，已为您自动跳转!'),
                             f'/viewCourse/{cid}'))
                     return redirect(f"/editCourse/{cid}")
-            except Exception as e:
-                log.record_traceback(request, e)
-                return EXCEPT_REDIRECT
+            except 
+                return redirect(message_url(wrong('遇到不可预料的错误。如有需要，请联系管理员解决！'),
+                                            f'/viewCourse/{course.id}'))
         else:
             # 仅未开始选课阶段可以修改
             if course.status != Course.Status.WAITING:
@@ -410,9 +410,9 @@ def addCourse(request, cid=None):
                     create_course(request, course)
                 html_display["warn_message"] = "修改成功。"
                 html_display["warn_code"] = 2
-            except Exception as e:
-                log.record_traceback(request, e)
-                return EXCEPT_REDIRECT
+            except 
+                return redirect(message_url(wrong('遇到不可预料的错误。如有需要，请联系管理员解决！'),
+                                            f'/viewCourse/{course.id}'))
 
     
     # 下面的操作基本如无特殊说明，都是准备前端使用量
