@@ -139,7 +139,7 @@ def cancelFunction(request):  # 取消预约
     try:
         # TODO: major_sid
         Pid = request.user.username
-        assert appoint.major_student.Sid == Pid
+        assert appoint.major_student.Sid_id == Pid
     except:
         warn_code = 1
         warning = "请不要恶意尝试取消不是自己发起的预约！"
@@ -172,12 +172,12 @@ def cancelFunction(request):  # 取消预约
                 "取消时未发现开始计时器，可能已经开始", 'scheduler_func.cancelAppoint', "Problem")
         
         # TODO: major_sid
-        utils.operation_writer(appoint.major_student.Sid, "取消了预约" +
+        utils.operation_writer(appoint.major_student.Sid_id, "取消了预约" +
                          str(appoint.Aid), "scheduler_func.cancelAppoint", "OK")
         warn_code = 2
         warning = "成功取消对" + appoint_room_name + "的预约!"
     # TODO: major_sid
-    # send_status, err_message = utils.send_wechat_message([appoint.major_student.Sid],appoint.Astart,appoint.Room,"cancel")
+    # send_status, err_message = utils.send_wechat_message([appoint.major_student.Sid_id],appoint.Astart,appoint.Room,"cancel")
     # todo: to all
         print('will send cancel message')
         scheduler.add_job(utils.send_wechat_message,
@@ -296,6 +296,7 @@ def set_start_wechat(appoint, students_id=None, notify_new=True):
 
 
 def addAppoint(contents):  # 添加预约, main function
+    '''Sid: arg for `get_participant`'''
 
     # 检查是否为临时预约 add by lhw (2021.7.13)
     if 'Atemp_flag' not in contents.keys():
@@ -455,7 +456,7 @@ def addAppoint(contents):  # 添加预约, main function
                         # Room不用检查，肯定是同一个房间
                         # TODO: major_sid
                         utils.operation_writer(
-                            major_student.Sid, "重复发起同时段预约，预约号"+str(appoint.Aid), "scheduler_func.addAppoint", "OK")
+                            major_student.Sid_id, "重复发起同时段预约，预约号"+str(appoint.Aid), "scheduler_func.addAppoint", "OK")
                         return JsonResponse({'data': appoint.toJson()}, status=200)
                     else:
                         # 预约冲突
@@ -502,7 +503,7 @@ def addAppoint(contents):  # 添加预约, main function
                         )
 
             # TODO: major_sid
-            utils.operation_writer(major_student.Sid, "发起预约，预约号" +
+            utils.operation_writer(major_student.Sid_id, "发起预约，预约号" +
                              str(appoint.Aid), "scheduler_func.addAppoint", "OK")
 
     except Exception as e:

@@ -339,7 +339,7 @@ def admin_index(request):   # 我的账户也主函数
             x['Afinish'], "%Y-%m-%dT%H:%M:%S").strftime("%I:%M %p")
         appoint = Appoint.objects.get(Aid=x['Aid'])
         # TODO: major_sid
-        major_id = str(appoint.major_student_id)
+        major_id = str(appoint.major_student.Sid_id)
         x['check_major'] = (Pid == major_id)
 
     for x in appoint_list_past:
@@ -865,7 +865,6 @@ def check_out(request):  # 预约表单提交
                 if datetime.now().strftime("%a") == appoint_params['weekday']:
                     appoint_params['Rmin'] = min(
                         global_info.today_min, room_object.Rmin)
-        # TODO: task 3 pht 2022-1-28 模型修改时同步修改
         appoint_params['Sid'] = request.user.username
         appoint_params['Sname'] = get_participant(appoint_params['Sid']).name
 
