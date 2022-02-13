@@ -653,6 +653,7 @@ def load_org_tag(request):
     context = {"message": "导入组织标签类型信息成功！"}
     return render(request, "debugging.html", context)
 
+
 def load_tags_for_old_org(request):
     if not request.user.is_superuser:
         context = {"message": "请先以超级账户登录后台后再操作！"}
