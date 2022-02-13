@@ -1978,35 +1978,44 @@ def QAcenter(request):
     return render(request, "QandA_center.html", locals())
 
 
+
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(EXCEPT_REDIRECT, log=False)
 def eventTrackingFunc(request):
     # unpack request:
-    logTime = int(request.POST['Time'])
-    logTime = datetime.fromtimestamp(logTime/1000)
-    logUrl = request.POST['Url'] # 由于对PV/PD埋点的JavaScript脚本在base.html中实现，所以所有页面的PV/PD都会被track
     logType = int(request.POST['Type'])
-    logPlatform = request.POST['Platform']
-    logExploreName, logExploreVer = request.POST['Explore'].split()
+    logUrl = request.POST['Url']
+    try:
+        logTime = int(request.POST['Time'])
+        logTime = datetime.fromtimestamp(logTime / 1000)
+    except:
+        logTime = datetime.now()
+    # 由于对PV/PD埋点的JavaScript脚本在base.html中实现，所以所有页面的PV/PD都会被track
+    logPlatform = request.POST.get('Platform', None)
+    try:
+        logExploreName, logExploreVer = request.POST['Explore'].rsplit(maxsplit=1)
+    except:
+        logExploreName, logExploreVer = None, None
 
-    # modify the dataset
-    _, user_type, _ = utils.check_user_type(request.user)
-    me = get_person_or_org(request.user, user_type)
-    if isinstance(me, NaturalPerson):
-        me = me.person_id
-    else:
-        me = me.organization_id
-    
-    if logType in [2,3]: # 是Module类的埋点
-        logModuleName = request.POST['Name']
-        log = ModuleLog(Page=logUrl, ModuleName=logModuleName, Type=logType, Time=logTime, User=me, 
-            Platform=logPlatform, ExploreName=logExploreName, ExploreVer=logExploreVer)
-    else: # 是Page类的埋点
-        log = PageLog(Page=logUrl, Type=logType, Time=logTime, User=me,
-            Platform=logPlatform, ExploreName=logExploreName, ExploreVer=logExploreVer)
-    log.save()
-    
-    # pack response: 
-    response = json.dumps({
-        'status' : 'ok',
-    })
+    kwargs = {}
+    kwargs.update(
+        user=request.user,
+        type=logType,
+        page=logUrl,
+        time=logTime,
+        platform=logPlatform,
+        explore_name=logExploreName,
+        explore_version=logExploreVer,
+    )
+    if logType in ModuleLog.CountType.values:
+        # Module类埋点
+        kwargs.update(
+            module_name=request.POST['Name'],
+        )
+        ModuleLog.objects.create(**kwargs)
+    elif logType in PageLog.CountType.values:
+        # Page类的埋点
+        PageLog.objects.create(**kwargs)
 
-    return HttpResponse(response)
+    return JsonResponse({'status': 'ok'})

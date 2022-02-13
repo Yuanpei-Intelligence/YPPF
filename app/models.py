@@ -1467,30 +1467,37 @@ class PageLog(models.Model):
     class Meta:
         verbose_name = "Page类埋点记录"
         verbose_name_plural = verbose_name
+
     class CountType(models.IntegerChoices):
-        PV = 0
-        PD = 1
-    Type = models.IntegerField('事件类型', choices=CountType.choices)
-    Page = models.CharField('页面url', max_length=256, null=True)
-    Time = models.TimeField('发生时间')
-    User = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='UserId', null=True)
-    Platform = models.CharField('设备类型', max_length=32, null=True) # eg. MacIntel iPhone .etc
-    ExploreName = models.CharField('浏览器类型', max_length=32, null=True)
-    ExploreVer = models.CharField('浏览器版本', max_length=32, null=True)
+        PV = 0, "Page View"
+        PD = 1, "Page Disappear"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    type = models.IntegerField('事件类型', choices=CountType.choices)
+
+    page = models.URLField('页面url', max_length=256, blank=True)
+    time = models.DateTimeField('发生时间', default=datetime.now)
+    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
+    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
+    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
+
 
 class ModuleLog(models.Model):
-    # 统计Mudule类埋点数据(MV/MC)
+    # 统计Module类埋点数据(MV/MC)
     class Meta:
         verbose_name = "Module类埋点记录"
         verbose_name_plural = verbose_name
+        
     class CountType(models.IntegerChoices):
-        MV = 2
-        MC = 3
-    Type = models.IntegerField('事件类型', choices=CountType.choices)
-    Page = models.CharField('页面url', max_length=256, null=True)
-    ModuleName = models.CharField('模块名称', max_length=64, null=True)
-    Time = models.TimeField('发生时间')
-    User = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='UserId', null=True)
-    Platform = models.CharField('设备类型', max_length=32, null=True) # eg. MacIntel iPhone .etc
-    ExploreName = models.CharField('浏览器类型', max_length=32, null=True)
-    ExploreVer = models.CharField('浏览器版本', max_length=32, null=True)
+        MV = 2, "Module View"
+        MC = 3, "Module Click"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    type = models.IntegerField('事件类型', choices=CountType.choices)
+
+    page = models.URLField('页面url', max_length=256, blank=True)
+    module_name = models.CharField('模块名称', max_length=64, blank=True)
+    time = models.DateTimeField('发生时间', default=datetime.now)
+    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
+    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
+    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
