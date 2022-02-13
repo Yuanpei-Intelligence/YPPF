@@ -295,8 +295,20 @@ class OrganizationTag(models.Model):
     class Meta:
         verbose_name = "组织类型标签"
         verbose_name_plural = verbose_name
+    class ColorChoice(models.TextChoices):
+        grey = ("#C1C1C1", "灰色")
+        red = ("#DC143C", "红色")
+        orange = ("#FFA500", "橙色")
+        yellow = ("#FFD700", "黄色")
+        green = ("#3CB371", "绿色")
+        blue = ("#1E90FF", "蓝色")
+        purple = ("#800080", "紫色")
+        pink = ("#FF69B4", "粉色")
+        brown = ("#DAA520", "棕色")
+        coffee = ("#8B4513", "咖啡色")
     
     name = models.CharField("标签名", max_length=10, blank=False)
+    color = models.CharField("颜色", choices=ColorChoice.choices, max_length=10)
 
 
 class OrganizationManager(models.Manager):
