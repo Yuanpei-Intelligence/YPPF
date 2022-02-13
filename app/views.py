@@ -1035,13 +1035,15 @@ def accountSetting(request):
 
             # 合法性检查
             attr_dict, show_dict, html_display = utils.check_account_setting(request, user_type)
-            attr_check_list = [attr for attr in attr_dict.keys() if attr not in ['gender', 'ava', 'wallpaper']]
+            attr_check_list = [attr for attr in attr_dict.keys() if attr not in ['gender', 'ava', 'wallpaper', 'accept_promote']]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
             modify_info = []
             if attr_dict['gender'] != useroj.get_gender_display():
                 modify_info.append(f'gender: {useroj.get_gender_display()}->{attr_dict["gender"]}')
+            if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
+                modify_info.append(f'accept_promote: {useroj.get_accept_promote_display()}->{attr_dict["accept_promote"]}')
             if attr_dict['ava']:
                 modify_info.append(f'avatar: {attr_dict["ava"]}')
             if attr_dict['wallpaper']:
@@ -1055,6 +1057,8 @@ def accountSetting(request):
 
             if attr_dict['gender'] != useroj.gender:
                 useroj.gender = NaturalPerson.Gender.MALE if attr_dict['gender'] == '男' else NaturalPerson.Gender.FEMALE
+            if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
+                useroj.accept_promote = True if attr_dict['accept_promote'] == '是' else False
             for attr in attr_check_list:
                 if attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]:
                     setattr(useroj, attr, attr_dict[attr])
