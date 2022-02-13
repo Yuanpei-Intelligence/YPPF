@@ -184,15 +184,17 @@ def identity_check(
         @wraps(view_function)
         def _wrapped_view(request, *args, **kwargs):
 
+            _allow_create = allow_create  # 作用域问题
+
             if request.user.is_superuser or request.user.is_staff:
-                allow_create = False
+                _allow_create = False
 
             cur_part = get_participant(request.user)
 
             if cur_part is not None and cur_part.name == '未命名' and update_name:
                 _update_name(cur_part)
                 
-            if cur_part is None and allow_create:
+            if cur_part is None and _allow_create:
                 cur_part = _create_account(request)
 
             if not auth_func(cur_part):
