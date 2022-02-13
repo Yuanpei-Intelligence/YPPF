@@ -1,6 +1,7 @@
 from django.db import models, transaction
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
+from django.db.models import Q
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
 from boottest import local_dict
@@ -165,6 +166,9 @@ class NaturalPerson(models.Model):
             avatar = "avatar/person_default.jpg"
         return settings.MEDIA_URL + str(avatar)
 
+    def get_accept_promote_display(self):
+        return "是" if self.accept_promote else "否"
+    
     def show_info(self):
         """
             返回值为一个列表，在search.html中使用，按照如下顺序呈现：
@@ -291,8 +295,20 @@ class OrganizationTag(models.Model):
     class Meta:
         verbose_name = "组织类型标签"
         verbose_name_plural = verbose_name
+    class ColorChoice(models.TextChoices):
+        grey = ("#C1C1C1", "灰色")
+        red = ("#DC143C", "红色")
+        orange = ("#FFA500", "橙色")
+        yellow = ("#FFD700", "黄色")
+        green = ("#3CB371", "绿色")
+        blue = ("#1E90FF", "蓝色")
+        purple = ("#800080", "紫色")
+        pink = ("#FF69B4", "粉色")
+        brown = ("#DAA520", "棕色")
+        coffee = ("#8B4513", "咖啡色")
     
     name = models.CharField("标签名", max_length=10, blank=False)
+    color = models.CharField("颜色", choices=ColorChoice.choices, max_length=10)
 
 
 class OrganizationManager(models.Manager):
@@ -687,7 +703,7 @@ class Activity(CommentBase):
         return str(self.title)
 
     class Status(models.TextChoices):
-        REVIEWING = "审核中"
+        REVIEWING = ("审核中","审核中")
         ABORT = "已撤销"
         REJECT = "未过审"
         CANCELED = "已取消"
@@ -1284,17 +1300,18 @@ class CourseManager(models.Manager):
                                        participant_set__status__in=[
                                            CourseParticipant.Status.SELECT,
                                            CourseParticipant.Status.SUCCESS,
-                                       ])
-
-    def unselected(self, person: NaturalPerson):
-        # 返回当前学生没选或失败的所有课程
-        return self.activated().filter(participant_set__person=person,
-                                       participant_set__status__in=[
-                                           CourseParticipant.Status.UNSELECT,
                                            CourseParticipant.Status.FAILED,
                                        ])
 
 
+    def unselected(self, person: NaturalPerson):
+        # 返回当前学生没选的所有课程
+        return self.activated().filter(
+            Q(participant_set=None)
+            | (Q(participant_set__person=person)
+               & Q(participant_set__status=CourseParticipant.Status.UNSELECT)))
+
+                                      
 class Course(models.Model):
     """
     助教发布课程需要填写的信息
@@ -1501,3 +1518,4 @@ class ModuleLog(models.Model):
     platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
     explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
     explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
+
