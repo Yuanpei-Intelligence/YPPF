@@ -166,6 +166,9 @@ class NaturalPerson(models.Model):
             avatar = "avatar/person_default.jpg"
         return settings.MEDIA_URL + str(avatar)
 
+    def get_accept_promote_display(self):
+        return "是" if self.accept_promote else "否"
+    
     def show_info(self):
         """
             返回值为一个列表，在search.html中使用，按照如下顺序呈现：
@@ -700,7 +703,7 @@ class Activity(CommentBase):
         return str(self.title)
 
     class Status(models.TextChoices):
-        REVIEWING = "审核中"
+        REVIEWING = ("审核中","审核中")
         ABORT = "已撤销"
         REJECT = "未过审"
         CANCELED = "已取消"
@@ -1515,3 +1518,4 @@ class ModuleLog(models.Model):
     platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
     explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
     explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
+

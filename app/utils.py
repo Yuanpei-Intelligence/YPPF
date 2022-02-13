@@ -490,6 +490,7 @@ def check_account_setting(request, user_type):
         attr_dict['ava'] = request.FILES.get("avatar")
         attr_dict['gender'] = request.POST['gender']
         attr_dict['birthday'] = request.POST['birthday']
+        attr_dict['accept_promote'] = request.POST['accept_promote']
         attr_dict['wallpaper'] = request.FILES.get("wallpaper")
 
         show_dict = dict()
