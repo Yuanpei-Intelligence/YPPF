@@ -141,14 +141,14 @@ def addSingleCourseActivity(request):
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='org_views[showCourseActivity]', record_user=True)
+@log.except_captured(source='course_views[showCourseActivity]', record_user=True)
 def showCourseActivity(request):
     """
     筛选本学期已结束的课程活动、未开始的课程活动，在课程活动聚合页面进行显示。
     """
 
     # Sanity check and start a html_display.
-    _, user_type, html_display = utils.check_user_type()
+    _, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)  # 获取自身
 
     
