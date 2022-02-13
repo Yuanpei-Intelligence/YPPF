@@ -1083,10 +1083,8 @@ def accountSetting(request):
 
         useroj = Organization.objects.get(organization_id=user)
         former_wallpaper = utils.get_user_wallpaper(me, "Organization")
-        org_tags = list(me.tags.all())
-        org_tag_names = [tag['name'] for tag in me.tags.all().values()]
-        other_tags = OrganizationTag.objects.exclude(name__in=org_tag_names)
-        all_tags = OrganizationTag.objects.all()
+        org_tags = list(useroj.tags.all())
+        all_tags = list(OrganizationTag.objects.all())
         if request.method == "POST" and request.POST:
 
             ava = request.FILES.get("avatar")
@@ -1117,10 +1115,9 @@ def accountSetting(request):
                     if modify != "":
                         action, tag_name = modify.split(" ")
                         if action == 'add':
-                            me.tags.add(OrganizationTag.objects.get(name=tag_name))
+                            useroj.tags.add(OrganizationTag.objects.get(name=tag_name))
                         else:
-                            me.tags.remove(OrganizationTag.objects.get(name=tag_name))
-                me.save()
+                            useroj.tags.remove(OrganizationTag.objects.get(name=tag_name))
             if ava is None:
                 pass
             else:
