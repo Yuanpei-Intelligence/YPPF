@@ -20,6 +20,7 @@ from app.models import (
     Position,
     Participant,
     Course,
+    CourseTime,
     CourseParticipant,
     Semester,
 )
@@ -54,6 +55,8 @@ __all__ = [
     'registration_status_change',
     'course_to_display',
     'change_course_status',
+    'course_base_check',
+    'create_course',
 ]
 
 
@@ -677,6 +680,65 @@ def change_course_status(course_id, cur_status, to_status):
         if positions:
             with transaction.atomic():
                 Position.objects.bulk_create(positions)
+
+
+
+def course_base_check(request):
+    context = dict()
+
+    # name, introduction, classroom 创建时不能为空
+    context["name"] = request.POST["name"]
+    context["introduction"] = request.POST["introduction"]
+    context["classroom"] = request.POST["classroom"]
+    assert len(context["name"]) > 0
+    assert len(context["introduction"]) > 0
+    assert len(context["classroom"]) > 0
+
+    # 时间
+    stage1_start = datetime.strptime(request.POST["stage1_start"], "%Y-%m-%d %H:%M")  # 预选开始时间
+    stage1_end = datetime.strptime(request.POST["stage1_end"], "%Y-%m-%d %H:%M")  # 预选结束时间
+    stage2_start = datetime.strptime(request.POST["stage2_start"], "%Y-%m-%d %H:%M")  # 补退选开始时间
+    stage2_end = datetime.strptime(request.POST["stage2_end"], "%Y-%m-%d %H:%M")  # 补退选结束时间
+    context["stage1_start"] = stage1_start
+    context["stage1_end"] = stage1_end
+    context["stage2_start"] = stage2_start
+    context["stage2_end"] = stage2_end
+    assert check_ac_time(stage1_start, stage1_end)
+    assert check_ac_time(stage2_start, stage2_end)
+    # 预选开始时间和结束时间不应该相隔太近
+    assert stage1_end > stage1_start + timedelta(days=7)
+    # 预选结束时间和补退选开始时间不应该相隔太近
+    assert stage2_start > stage1_end + timedelta(days=3)
+
+    # 每周课程时间
+    course_starts = request.POST.getlist("start")
+    course_ends = request.POST.getlist("end")
+    course_starts = [
+        datetime.strptime(course_start, "%Y-%m-%d %H:%M") 
+        for course_start in course_starts 
+        if course_start is not ""
+        ]
+    course_ends = [
+        datetime.strptime(course_end, "%Y-%m-%d %H:%M") 
+        for course_end in course_ends 
+        if course_end is not ""
+        ]
+    for i in range(len(course_starts)):
+        assert check_ac_time(course_starts[i], course_ends[i])
+        assert course_starts[i].day() == course_ends[i].day()
+    context['course_starts'] = course_starts
+    context['course_ends'] = course_ends
+
+    org = get_person_or_org(request.user, "Organization")
+    context['organization'] = org
+    context['times'] = request.POST["times"]
+    context['teacher'] = request.POST["teacher"]
+    context['type'] = request.POST["type"]
+    context["capacity"] = request.POST["capacity"]
+    # context['current_participants'] = request.POST["current_participants"]
+    context["photo"] = request.FILES.get("photo")
+    return context
+
 
 def create_course(request, course=None):
     '''
