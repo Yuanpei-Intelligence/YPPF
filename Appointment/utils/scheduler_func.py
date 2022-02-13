@@ -10,6 +10,7 @@ from datetime import datetime, timedelta, timezone, time, date
 from django.db import transaction  # 原子化更改数据库
 import Appointment.utils.utils as utils
 import Appointment.utils.web_func as web_func
+from Appointment.utils.identity import get_participant
 
 '''
 YWolfeee:
@@ -134,7 +135,9 @@ def cancelFunction(request):  # 取消预约
             str(warn_code) + "&warning=" + warning)
 
     try:
-        assert appoint.major_student.Sid == request.user.username
+        # TODO: major_sid
+        Pid = request.user.username
+        assert appoint.major_student.Sid == Pid
     except:
         warn_code = 1
         warning = "请不要恶意尝试取消不是自己发起的预约！"
@@ -151,7 +154,7 @@ def cancelFunction(request):  # 取消预约
             reverse("Appointment:admin_index") + "?warn_code=" +
             str(warn_code) + "&warning=" + warning)
     # 先准备发送人
-    stuid_list = [stu.Sid for stu in appoint.students.all()]
+    stuid_list = list(appoint.students.values_list('Sid', flat=True))
     with transaction.atomic():
         appoint_room_name = appoint.Room.Rtitle
         appoint.cancel()
@@ -166,10 +169,12 @@ def cancelFunction(request):  # 取消预约
             utils.operation_writer(global_info.system_log, "预约"+str(appoint.Aid) +
                 "取消时未发现开始计时器，可能已经开始", 'scheduler_func.cancelAppoint', "Problem")
         
+        # TODO: major_sid
         utils.operation_writer(appoint.major_student.Sid, "取消了预约" +
                          str(appoint.Aid), "scheduler_func.cancelAppoint", "OK")
         warn_code = 2
         warning = "成功取消对" + appoint_room_name + "的预约!"
+    # TODO: major_sid
     # send_status, err_message = utils.send_wechat_message([appoint.major_student.Sid],appoint.Astart,appoint.Room,"cancel")
     # todo: to all
         print('will send cancel message')
@@ -210,8 +215,7 @@ def cancelFunction(request):  # 取消预约
 def set_start_wechat(appoint, students_id=None, notify_new=True):
     '''将预约成功和开始前的提醒定时发送给微信'''
     if students_id is None:
-        students_id = list(appoint.students.all().
-                            values_list('Sid', flat=True))
+        students_id = list(appoint.students.values_list('Sid', flat=True))
     # write by cdf end2
     # modify by pht: 如果已经开始，非临时预约记录log
     if datetime.now() >= appoint.Astart:
@@ -309,6 +313,7 @@ def addAppoint(contents):  # 添加预约, main function
             status=400)
     # 再检查学号对不对
     students_id = contents['students']  # 存下学号列表
+    # TODO: task 0 pht 检查更新后Sid__in是否正常
     students = Participant.objects.filter(
         Sid__in=students_id).distinct()  # 获取学生objects
     try:
@@ -416,9 +421,8 @@ def addAppoint(contents):  # 添加预约, main function
         with transaction.atomic():
 
             # 获取预约发起者,确认预约状态
-            try:
-                major_student = Participant.objects.get(Sid=contents['Sid'])
-            except:
+            major_student = get_participant(contents['Sid'])
+            if major_student is None:
                 return JsonResponse(
                     {
                         'statusInfo': {
@@ -440,10 +444,14 @@ def addAppoint(contents):  # 添加预约, main function
                 # 第二种可能，开始在开始之后，只要在结束之前就都不行
                 if (start <= Astart < finish) or (Astart <= start < Afinish):
                     # 有预约冲突的嫌疑，但要检查一下是不是重复预约了
-                    if start == Astart and finish == Afinish and appoint.Ausage == contents['Ausage'] \
-                            and appoint.Aannouncement == contents['announcement'] and appoint.Ayp_num == len(students) \
-                            and appoint.Anon_yp_num == contents['non_yp_num'] and contents['Sid'] == appoint.major_student_id:
+                    if (start == Astart and finish == Afinish
+                            and appoint.Ausage == contents['Ausage']
+                            and appoint.Aannouncement == contents['announcement']
+                            and appoint.Ayp_num == len(students)
+                            and appoint.Anon_yp_num == contents['non_yp_num']
+                            and major_student == appoint.major_student):
                         # Room不用检查，肯定是同一个房间
+                        # TODO: major_sid
                         utils.operation_writer(
                             major_student.Sid, "重复发起同时段预约，预约号"+str(appoint.Aid), "scheduler_func.addAppoint", "OK")
                         return JsonResponse({'data': appoint.toJson()}, status=200)
@@ -459,9 +467,7 @@ def addAppoint(contents):  # 添加预约, main function
                             status=400)
 
             # 确认信用分符合要求
-            try:
-                assert major_student.credit > 0
-            except:
+            if major_student.credit <= 0:
                 return JsonResponse(
                     {'statusInfo': {
                         'message': '信用分不足,本月无法发起预约!',
@@ -479,6 +485,7 @@ def addAppoint(contents):  # 添加预约, main function
                               Ayp_num=len(students),
                               Atemp_flag=contents['Atemp_flag'])
             appoint.save()
+            # appoint.students.set(students)
             for student in students:
                 appoint.students.add(student)
             appoint.save()
@@ -492,6 +499,7 @@ def addAppoint(contents):  # 添加预约, main function
                         notify_new=bool(contents.get('new_require', True))
                         )
 
+            # TODO: major_sid
             utils.operation_writer(major_student.Sid, "发起预约，预约号" +
                              str(appoint.Aid), "scheduler_func.addAppoint", "OK")
 
@@ -505,6 +513,3 @@ def addAppoint(contents):  # 添加预约, main function
 
     return JsonResponse({'data': appoint.toJson()}, status=200)
 
-
-# if settings.__ENV != "SCHEDULER":
-#     register_periodic_job(clear_appointments, 'cron', day_of_week='sat', hour='3', minute="30", second='0', replace_existing=True)
