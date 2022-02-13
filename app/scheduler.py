@@ -7,6 +7,6 @@ from django_apscheduler.jobstores import DjangoJobStore
 # register_job(scheduler, ...)的替代写法为scheduler.scheduled_job(...)
 
 # 定时任务生成器
-scheduler = BackgroundScheduler()
+scheduler = BackgroundScheduler(timezone='Asia/Shanghai')
 scheduler.add_jobstore(DjangoJobStore(), "default")
 # scheduler.start() # 把启动函数放到scheduler_func，只在views调用避免多次触发

@@ -1,61 +1,453 @@
 """
-这个文件应该只被 /app/views.py 依赖
-依赖于 /app/utils.py, /app/scheduler_func.py,
+activity_utils.py
+
+这个文件应该只被 ./activity_views.py, ./scheduler_func.py 依赖
+依赖于 ./utils.py, ./wechat_send.py, ./notification_utils.py
 
 scheduler_func 依赖于 wechat_send 依赖于 utils
 
 文件中参数存在 activity 的函数需要在 transaction.atomic() 块中进行。
 如果存在预期异常，抛出 ActivityException，否则抛出其他异常
 """
-from datetime import datetime, timedelta
-from app.utils import get_person_or_org, if_image, calcu_activity_bonus
-from app.notification_utils import(
-    notification_create,
-    bulk_notification_create,
-    notification_status_change,
-)
-from django.contrib.auth.models import User
-from app.wechat_send import WechatApp
+from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
     Position,
     Organization,
-    OrganizationType,
     Position,
     Activity,
     TransferRecord,
     Participant,
     Notification,
-    ModifyOrganization,
-    Comment,
-    CommentPhoto,
-    YQPointDistribute,
-    ActivityPhoto
+    ActivityPhoto,
 )
-import qrcode
-import os
-from boottest.hasher import MySHA256Hasher
-from boottest.settings import MEDIA_ROOT, MEDIA_URL
-from boottest import local_dict
-from django.core.files import File
-from django.core.files.base import ContentFile
+from django.contrib.auth.models import User
+from app.utils import get_person_or_org, if_image
+from app.notification_utils import(
+    notification_create,
+    bulk_notification_create,
+    notification_status_change,
+)
+from app.wechat_send import WechatApp, WechatMessageLevel
 import io
+import os
 import base64
+import qrcode
+
+from random import sample
+from datetime import datetime, timedelta
+from boottest import local_dict
 from django.db.models import Sum
-from app.scheduler import scheduler
-from app.scheduler_func import changeActivityStatus, notifyActivity
 from django.db.models import F
 
+from app.scheduler import scheduler
+
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
-YQPoint_oname = local_dict["YQPoint_source_oname"]
+
+
+"""
+使用方式：
+scheduler.add_job(changeActivityStatus, "date",
+    id=f"activity_{aid}_{to_status}", run_date, args)
+注意：
+    1、当 cur_status 不为 None 时，检查活动是否为给定状态
+    2、一个活动每一个目标状态最多保留一个定时任务
+允许的状态变换：
+    2、报名中 -> 等待中
+    3、等待中 -> 进行中
+    4、进行中 -> 已结束
+活动变更为进行中时，更新报名成功人员状态
+"""
+
+@log.except_captured(True, record_args=True, source='activity_utils[changeActivityStatus]修改活动状态')
+@log.except_captured(True, AssertionError, record_args=True, status_code=log.STATE_WARNING,
+                 record_user=False, record_request_args=False,
+                 source='activity_utils[changeActivityStatus]检查活动状态')
+def changeActivityStatus(aid, cur_status, to_status):
+    '''
+    幂等；可能发生异常；包装器负责处理异常
+    必须提供cur_status，则会在转换状态前检查前后状态，每次只能变更一个阶段
+    即：报名中->等待中->进行中->结束
+    状态不符合时，抛出AssertionError
+    '''
+    # print(f"Change Activity Job works: aid: {aid}, cur_status: {cur_status}, to_status: {to_status}\n")
+    with transaction.atomic():
+        activity = Activity.objects.select_for_update().get(id=aid)
+        if cur_status is not None:
+            assert cur_status == activity.status, f"希望的状态是{cur_status}，但实际状态为{activity.status}"
+            if cur_status == Activity.Status.APPLYING:
+                assert to_status == Activity.Status.WAITING, f"不能从{cur_status}变更到{to_status}"
+            elif cur_status == Activity.Status.WAITING:
+                assert to_status == Activity.Status.PROGRESSING, f"不能从{cur_status}变更到{to_status}"
+            elif cur_status == Activity.Status.PROGRESSING:
+                assert to_status == Activity.Status.END, f"不能从{cur_status}变更到{to_status}"
+        else:
+            raise AssertionError('未提供当前状态，不允许进行活动状态修改')
+
+        if to_status == Activity.Status.WAITING:
+            if activity.bidding:
+                """
+                投点时使用
+                if activity.source == Activity.YQPointSource.COLLEGE:
+                    draw_lots(activity)
+                else:
+                    weighted_draw_lots(activity)
+                """
+                draw_lots(activity)
+
+
+        # 活动变更为进行中时，修改参与人参与状态
+        elif to_status == Activity.Status.PROGRESSING:
+            if activity.need_checkin:
+                Participant.objects.filter(
+                    activity_id=aid,
+                    status=Participant.AttendStatus.APLLYSUCCESS
+                ).update(status=Participant.AttendStatus.UNATTENDED)
+            else:
+                Participant.objects.filter(
+                    activity_id=aid,
+                    status=Participant.AttendStatus.APLLYSUCCESS
+                ).update(status=Participant.AttendStatus.ATTENDED)
+
+            # if not activity.valid:
+            #     # 活动开始后，未审核自动通过
+            #     activity.valid = True
+            #     records = TransferRecord.objects.filter(
+            #         status=TransferRecord.TransferStatus.PENDING,
+            #         corres_act=activity,
+            #     )
+            #     total_amount = records.aggregate(nums=Sum('amount'))["nums"]
+            #     if total_amount is None:
+            #         total_amount = 0.0
+            #     if total_amount > 0:
+            #         organization_id = activity.organization_id_id
+            #         organization = Organization.objects.select_for_update().get(id=organization_id)
+            #         organization.YQPoint += total_amount
+            #         organization.save()
+            #         YP = Organization.objects.select_for_update().get(oname=YQP_ONAME)
+            #         YP.YQPoint -= total_amount
+            #         YP.save()
+            #     records.update(
+            #         status=TransferRecord.TransferStatus.ACCEPTED,
+            #         finish_time=datetime.now()
+            #     )
+
+            #     notification = Notification.objects.get(
+            #         relate_instance=activity,
+            #         status=Notification.Status.UNDONE,
+            #         title=Notification.Title.VERIFY_INFORM
+            #     )
+            #     notification_status_change(notification, Notification.Status.DONE)
+
+        # 结束，计算积分    
+        elif to_status == Activity.Status.END and activity.valid:
+            point = calcu_activity_bonus(activity)
+            participants = Participant.objects.filter(
+                activity_id=aid, status=Participant.AttendStatus.ATTENDED)
+            NaturalPerson.objects.filter(id__in=participants.values_list(
+                'person_id', flat=True)).update(
+                bonusPoint=F('bonusPoint') + point)
+
+        # 过早进行这个修改，将被写到activity待执行的保存中，导致失败后调用activity.save仍会调整状态
+        activity.status = to_status
+        activity.save()
+
+
+"""
+需要在 transaction 中使用
+所有涉及到 activity 的函数，都应该先锁 activity
+"""
+
+
+
+def draw_lots(activity):
+    participants_applying = Participant.objects.filter(activity_id=activity.id,
+                                                       status=Participant.AttendStatus.APPLYING)
+    l = len(participants_applying)
+
+    participants_applySuccess = Participant.objects.filter(
+        activity_id=activity.id,
+        status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.UNATTENDED, Participant.AttendStatus.ATTENDED]
+    )
+    engaged = len(participants_applySuccess)
+
+    leftQuota = activity.capacity - engaged
+
+    if l <= leftQuota:
+        Participant.objects.filter(
+            activity_id=activity.id,
+            status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYFAILED]
+        ).update(status=Participant.AttendStatus.APLLYSUCCESS)
+        activity.current_participants = engaged + l
+    else:
+        lucky_ones = sample(range(l), leftQuota)
+        activity.current_participants = activity.capacity
+        for i, participant in enumerate(Participant.objects.select_for_update().filter(
+                activity_id=activity.id,
+                status__in=[Participant.AttendStatus.APPLYING, Participant.AttendStatus.APLLYFAILED]
+        )):
+            if i in lucky_ones:
+                participant.status = Participant.AttendStatus.APLLYSUCCESS
+            else:
+                participant.status = Participant.AttendStatus.APLLYFAILED
+            participant.save()
+    #签到成功的转发通知和微信通知
+    receivers = Participant.objects.filter(
+            activity_id=activity.id,
+            status=Participant.AttendStatus.APLLYSUCCESS
+        ).values_list('person_id__person_id', flat=True)
+    receivers = User.objects.filter(id__in=receivers)
+    sender = activity.organization_id.organization_id
+    typename = Notification.Type.NEEDREAD
+    content = f'您好！您参与抽签的活动“{activity.title}”报名成功！请准时参加活动！'
+    URL = f'/viewActivity/{activity.id}'
+    if len(receivers) > 0:
+        bulk_notification_create(
+            receivers=receivers,
+            sender=sender,
+            typename=typename,
+            title=Notification.Title.ACTIVITY_INFORM,
+            content=content,
+            URL=URL,
+            publish_to_wechat=True,
+            publish_kws={
+                'app': WechatApp.TO_PARTICIPANT,
+                'level': WechatMessageLevel.IMPORTANT,
+            },
+        )
+    #抽签失败的同学发送通知
+    receivers = Participant.objects.filter(
+        activity_id=activity.id,
+        status=Participant.AttendStatus.APLLYFAILED
+    ).values_list('person_id__person_id', flat=True)
+    receivers = User.objects.filter(id__in=receivers)
+    content = f'很抱歉通知您，您参与抽签的活动“{activity.title}”报名失败！'
+    if len(receivers) > 0:
+        bulk_notification_create(
+            receivers=receivers,
+            sender=sender,
+            typename=typename,
+            title=Notification.Title.ACTIVITY_INFORM,
+            content=content,
+            URL=URL,
+            publish_to_wechat=True,
+            publish_kws={
+                'app': WechatApp.TO_PARTICIPANT,
+                'level': WechatMessageLevel.IMPORTANT,
+            },
+        )
+
+
+
+"""
+投点情况下的抽签，暂时不用
+需要在 transaction 中使用
+def weighted_draw_lots(activity):
+    participants = Participant.objects().select_for_update().filter(activity_id=activity.id, status=Participant.AttendStatus.APPLYING)
+    l = len(participants)
+    if l <= activity.capacity:
+        for participant in participants:
+            participant.status = Participant.AttendStatus.APLLYSUCCESS
+            participant.save()
+    else:
+        weights = []
+        for participant in participants:
+            records = TransferRecord.objects(),filter(corres_act=activity, status=TransferRecord.TransferStatus.ACCEPTED, person_id=participant.proposer)
+            weight = 0
+            for record in records:
+                weight += record.amount
+            weights.append(weight)
+        total_weight = sum(weights)
+        d = [weight/total_weight for weight in weights]
+        lucky_ones = choice(l, activity.capacity, replacement=False, p=weights)
+        for i, participant in enumerate(participants):
+            if i in lucky_ones:
+                participant.status = Participant.AttendStatus.APLLYSUCCESS
+            else:
+                participant.status = Participant.AttendStatus.APLLYFAILED
+            participant.save()
+"""
+
+"""
+使用方式：
+scheduler.add_job(notifyActivityStart, "date",
+    id=f"activity_{aid}_{start_notification}", run_date, args)
+"""
+
+
+@log.except_captured(True, source='activity_utils[notifyActivity]发送微信消息')
+def notifyActivity(aid: int, msg_type: str, msg=""):
+    try:
+        activity = Activity.objects.get(id=aid)
+        inner = activity.inner
+        title = Notification.Title.ACTIVITY_INFORM
+        if msg_type == "newActivity":
+            title = activity.title
+            msg = f"您关注的小组{activity.organization_id.oname}发布了新的活动。"
+            msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
+            msg += f"\n活动地点: {activity.location}"
+            subscribers = NaturalPerson.objects.activated().exclude(
+                id__in=activity.organization_id.unsubscribers.all()
+            ).values_list('person_id', flat=True)
+            receivers = User.objects.filter(id__in=subscribers)
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER}  
+        elif msg_type == "remind":
+
+            with transaction.atomic():
+                activity = Activity.objects.select_for_update().get(id=aid)
+                nowtime = datetime.now()
+                notifications = Notification.objects.filter(
+                    relate_instance=activity,
+                    start_time__gt=nowtime + timedelta(seconds=60),
+                    title=Notification.Title.PENDING_INFORM,
+                )
+                if len(notifications) > 0:
+                    return False
+                else:
+                    msg = f"您参与的活动 <{activity.title}> 即将开始。"
+                    msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
+                    msg += f"\n活动地点: {activity.location}"
+                    participants = Participant.objects.filter(activity_id=aid, status=Participant.AttendStatus.APLLYSUCCESS)
+                    receivers = participants.values_list('person_id__person_id', flat=True)
+                    receivers = User.objects.filter(id__in=receivers)
+                    # receivers = [participant.person_id.person_id for participant in participants]
+                    publish_kws = {"app": WechatApp.TO_PARTICIPANT}
+
+                    if inner and publish_kws.get('app') == WechatApp.TO_SUBSCRIBER:
+                        member_id_list = Position.objects.activated().filter(
+                            org=activity.organization_id).values_list(
+                                'person__person_id', flat=True)
+                        receivers = receivers.filter(id__in=member_id_list)
+
+                    success, _ = bulk_notification_create(
+                        receivers=list(receivers),
+                        sender=activity.organization_id.organization_id,
+                        typename=Notification.Type.NEEDREAD,
+                        title=title,
+                        content=msg,
+                        URL=f"/viewActivity/{aid}",
+                        relate_instance=activity,
+                        publish_to_wechat=True,
+                        publish_kws=publish_kws,
+                    )
+
+                    return success
+
+        elif msg_type == 'modification_sub':
+            subscribers = NaturalPerson.objects.activated().exclude(
+                id__in=activity.organization_id.unsubscribers.all()
+            ).values_list('person_id', flat=True)
+            receivers = User.objects.filter(id__in=subscribers)
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
+        elif msg_type == 'modification_par':
+            participants = Participant.objects.filter(
+                activity_id=aid,
+                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
+            )
+            receivers = participants.values_list('person_id__person_id', flat=True)
+            receivers = User.objects.filter(id__in=receivers)
+            # receivers = [participant.person_id.person_id for participant in participants]
+            publish_kws = {
+                "app": WechatApp.TO_PARTICIPANT,
+                "level": WechatMessageLevel.IMPORTANT,
+            }
+        elif msg_type == "modification_sub_ex_par":
+            '''
+                YWolfeee: 查询策略为，拿到NP list
+                拿到NP list中的person_id_id字段，作为一个list来操作
+                直接访问一次user表得到user list，而不是通过for循环每一个进行一次
+                要知道 [NP.user for NP in NP_list]的查询速度是O(xy),其中x是NP_list长度，y是User表长度
+                而 User.objects.filter(id__in = [NP_person_id_id_list])则是O(y)
+            '''
+            # ———————————————— 拿参与者的user_id ————————————————
+            participant_person_id = Participant.objects.filter(
+                activity_id=aid,
+                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
+            ).prefetch_related("person_id_id").values_list("person_id_id", flat=True) # 拿的是person_id
+            participant_user_id = NaturalPerson.objects.activated().filter(id__in = participant_person_id).values_list(
+                "person_id_id",flat=True)   # 这回拿到的是user_id
+
+            #  ———————————————— 拿订阅者的user_id ————————————————
+            subscribers_user_id = NaturalPerson.objects.activated().exclude(
+                id__in=activity.organization_id.unsubscribers.all()
+            ).values_list("person_id_id", flat=True )  # 拿的是user_id
+
+            # ———————————————— 获取对应的User QuerySet ————————————————
+            receiver_id_list = list(set(subscribers_user_id) - set(participant_user_id))
+            receivers = User.objects.filter(id__in = receiver_id_list)
+
+            # ↓这么写特别慢！
+            #receivers = list(set(subscribers) - set([participant.person_id for participant in participants]))
+            #receivers = [receiver.person_id for receiver in receivers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
+
+        # 应该用不到了，调用的时候分别发给 par 和 sub
+        # 主要发给两类用户的信息往往是不一样的
+        elif msg_type == 'modification_all':
+            # ———————————————— 拿参与者的user_id ————————————————
+            participant_person_id = Participant.objects.filter(
+                activity_id=aid,
+                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
+            ).values_list("person_id_id", flat=True) # 拿的是person_id
+            participant_user_id = NaturalPerson.objects.activated().filter(
+                id__in=participant_person_id).values_list(
+                    "person_id_id", flat=True)   # 这回拿到的是user_id
+
+            #  ———————————————— 拿订阅者的user_id ————————————————
+            subscribers_user_id = NaturalPerson.objects.activated().exclude(
+                id__in=activity.organization_id.unsubscribers.all()
+            ).values_list("person_id_id", flat=True )  # 拿的是user_id
+
+            # ———————————————— 获取对应的User QuerySet ————————————————
+            receiver_id_list = list(set(subscribers_user_id) | set(participant_user_id))
+            receivers = User.objects.filter(id__in = receiver_id_list)
+
+            # ↓这么写特别慢！
+            # receivers = set([participant.person_id for participant in participants]) | set(subscribers)
+            # receivers = [receiver.person_id for receiver in receivers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
+        else:
+            raise ValueError(f"msg_type参数错误: {msg_type}")
+        
+        # 现在必须保证到此处时receivers是一个queryset, 不过也有好处就是更统一了
+        # 参与者总是收到消息, 但订阅者消息只会发给内部
+        if inner and publish_kws.get('app') == WechatApp.TO_SUBSCRIBER:
+            member_id_list = Position.objects.activated().filter(
+                org=activity.organization_id).values_list(
+                    'person__person_id', flat=True)
+            receivers = receivers.filter(id__in=member_id_list)
+
+        success, _ = bulk_notification_create(
+            receivers=list(receivers),
+            sender=activity.organization_id.organization_id,
+            typename=Notification.Type.NEEDREAD,
+            title=title,
+            content=msg,
+            URL=f"/viewActivity/{aid}",
+            relate_instance=activity,
+            publish_to_wechat=True,
+            publish_kws=publish_kws,
+        )
+        assert success, "批量创建通知并发送时失败"
+
+    except Exception as e:
+        raise
+
 
 def get_activity_QRcode(activity):
-
     auth_code = hash_coder.encode(str(activity.id))
-    # url = f"http://localhost:8000/checkinActivity/{activity.id}?auth={auth_code}"
-    url_components = [local_dict["url"]["login_url"].strip("/"), "checkinActivity", f"{activity.id}?auth={auth_code}"]
+    url_components = [
+        local_dict["url"]["login_url"].strip("/"),
+        "checkinActivity",
+        f"{activity.id}?auth={auth_code}",
+    ]
     url = "/".join(url_components)
-    qr=qrcode.QRCode(version = 2,error_correction = qrcode.constants.ERROR_CORRECT_L,box_size=5,border=5)
+    qr = qrcode.QRCode(
+        version=2,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=5,
+        border=5,
+    )
     qr.add_data(url)
     qr.make(fit=True)
     img = qr.make_image()
@@ -98,7 +490,7 @@ def activity_base_check(request, edit=False):
     assert len(context["location"]) > 0
 
     # url，就不支持了 http 了，真的没必要
-    context["url"] = request.POST["URL"] 
+    context["url"] = request.POST["URL"]
     if context["url"] != "":
         assert context["url"].startswith("http://") or context["url"].startswith("https://")
 
@@ -169,7 +561,7 @@ def activity_base_check(request, edit=False):
 
     # 内部活动
     if request.POST.get("inner"):
-        context["inner"] = True  
+        context["inner"] = True
     else:
         context["inner"] = False
 
@@ -248,7 +640,7 @@ def create_activity(request):
     # 检查完毕，创建活动
     org = get_person_or_org(request.user, "Organization")
     activity = Activity.objects.create(
-                    title=context["title"], 
+                    title=context["title"],
                     organization_id=org,
                     examine_teacher=examine_teacher,
                     introduction=context["introduction"],
@@ -278,13 +670,13 @@ def create_activity(request):
         scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
             run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
         # 活动状态修改
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
             run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
             run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
             run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
-    
+
     activity.save()
 
     if context.get("template_id"):
@@ -306,7 +698,7 @@ def create_activity(request):
         URL=f"/examineActivity/{activity.id}",
         relate_instance=activity,
         publish_to_wechat=True,
-        publish_kws={"app":WechatApp.AUDIT},
+        publish_kws={"app": WechatApp.AUDIT},
     )
 
     return activity.id, True
@@ -447,7 +839,7 @@ def modify_accepted_activity(request, activity):
     else:
         signup_end = activity.apply_end
         assert signup_end + timedelta(hours=1) <= act_start
-    
+
     if activity.start != act_start:
         # to_subscribers.append(f"活动开始时间调整为{act_start.strftime('%Y-%m-%d %H:%M')}")
         to_participants.append(f"活动开始时间调整为{act_start.strftime('%Y-%m-%d %H:%M')}")
@@ -463,7 +855,7 @@ def modify_accepted_activity(request, activity):
         capacity = int(request.POST["maxpeople"])
         assert capacity > 0
         if capacity < len(Participant.objects.filter(
-            activity_id=activity.id, 
+            activity_id=activity.id,
             status=Participant.AttendStatus.APLLYSUCCESS
         )):
             raise ActivityException(f"当前成功报名人数已超过{capacity}人!")
@@ -488,19 +880,19 @@ def modify_accepted_activity(request, activity):
 
 
     if activity.status == Activity.Status.APPLYING:
-        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
+        scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
             run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING], replace_existing=True)
     scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
         run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
+    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
         run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
-    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
+    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
         run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
 
 
     # if len(to_subscribers) > 1:
     #     notifyActivity(activity.id, "modification_sub_ex_par", "\n".join(to_subscribers))
-    if len(to_participants) > 1:   
+    if len(to_participants) > 1:
         notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
 
 
@@ -512,7 +904,7 @@ def accept_activity(request, activity):
 
     # 通知
     notification = Notification.objects.get(
-        relate_instance=activity, 
+        relate_instance=activity,
         status=Notification.Status.UNDONE,
         title=Notification.Title.VERIFY_INFORM
     )
@@ -527,7 +919,7 @@ def accept_activity(request, activity):
         URL=f"/viewActivity/{activity.id}",
         relate_instance=activity,
         publish_to_wechat=True,
-        publish_kws={"app":WechatApp.AUDIT},
+        publish_kws={"app": WechatApp.AUDIT},
     )
 
     if activity.status == Activity.Status.REVIEWING:
@@ -537,22 +929,22 @@ def accept_activity(request, activity):
             activity.status = Activity.Status.END
         elif activity.start <= now_time:
             activity.status = Activity.Status.PROGRESSING
-            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
+            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
                 run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
         elif activity.apply_end <= now_time:
             activity.status = Activity.Status.WAITING
-            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
+            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
                 run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
-            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
+            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
                 run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
         else:
             activity.status = Activity.Status.APPLYING
             notifyActivity(activity.id, "newActivity")
-            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}", 
+            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
                 run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
-            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}", 
+            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
                 run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
-            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}", 
+            scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
                 run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
             scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
                 run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
@@ -563,12 +955,12 @@ def accept_activity(request, activity):
         organization = Organization.objects.select_for_update().get(id=organization_id)
         organization.YQPoint += activity.YQPoint
         organization.save()
-        YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-        YP.YQPoint -= activity.YQPoint
-        YP.save()
+        YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
+        YQP_center.YQPoint -= activity.YQPoint
+        YQP_center.save()
         amount = activity.YQPoint
         record = TransferRecord.objects.create(
-            proposer=YP.organization_id, 
+            proposer=YQP_center.organization_id,
             recipient=organization.organization_id,
             rtype=TransferRecord.TransferType.ACTIVITY
         )
@@ -583,7 +975,7 @@ def accept_activity(request, activity):
         # 预报备活动，修改转账记录为 accepted
         # 锁了 activity，不会有幻读
         records = TransferRecord.objects.filter(
-            status=TransferRecord.TransferStatus.PENDING, 
+            status=TransferRecord.TransferStatus.PENDING,
             corres_act=activity,
         )
         total_amount = records.aggregate(nums=Sum('amount'))["nums"]
@@ -594,9 +986,9 @@ def accept_activity(request, activity):
             organization = Organization.objects.select_for_update().get(id=organization_id)
             organization.YQPoint += total_amount
             organization.save()
-            YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-            YP.YQPoint -= total_amount
-            YP.save()
+            YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
+            YQP_center.YQPoint -= total_amount
+            YQP_center.save()
             records.update(
                 status=TransferRecord.TransferStatus.ACCEPTED,
                 finish_time=datetime.now()
@@ -615,12 +1007,12 @@ def accept_activity(request, activity):
 
 
 def reject_activity(request, activity):
-    # 审批过，这个叫 valid 不太合适...... 
+    # 审批过，这个叫 valid 不太合适......
     activity.valid = True
 
     # 通知
     notification = Notification.objects.get(
-        relate_instance=activity, 
+        relate_instance=activity,
         status=Notification.Status.UNDONE,
         title=Notification.Title.VERIFY_INFORM
     )
@@ -644,10 +1036,10 @@ def reject_activity(request, activity):
 
         # 加退款逻辑 ( 只需要考虑学生 )
         records = TransferRecord.objects.filter(
-            status=TransferRecord.TransferStatus.PENDING, 
+            status=TransferRecord.TransferStatus.PENDING,
             corres_act=activity,
         )
-        person_list = User.objects.filter(id__in=records.values_list("proposer_id",flat=True))
+        person_list = User.objects.filter(id__in=records.values_list("proposer_id", flat=True))
         # person_list = [record.proposer.id for record in records]
         payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
         for record in records:
@@ -667,7 +1059,7 @@ def reject_activity(request, activity):
         URL=f"/viewActivity/{activity.id}",
         relate_instance=activity,
         publish_to_wechat=True,
-        publish_kws={"app":WechatApp.AUDIT},
+        publish_kws={"app": WechatApp.AUDIT},
     )
 
 
@@ -680,7 +1072,6 @@ def applyActivity(request, activity):
     '''这个函数在正常情况下只应该抛出提示错误信息的ActivityException'''
     context = dict()
     context["success"] = False
-    CREATE = True
 
     payer = NaturalPerson.objects.select_for_update().get(
         person_id=request.user
@@ -696,10 +1087,10 @@ def applyActivity(request, activity):
         participant = Participant.objects.select_for_update().get(
             activity_id=activity, person_id=payer
         )
-        CREATE = False
+        participated = True
     except:
-        pass
-    if CREATE == False:
+        participated = False
+    if participated:
         if (
             participant.status == Participant.AttendStatus.APLLYSUCCESS or
             participant.status == Participant.AttendStatus.APPLYING
@@ -707,7 +1098,7 @@ def applyActivity(request, activity):
             raise ActivityException("您已报名该活动。")
         elif participant.status != Participant.AttendStatus.CANCELED:
             raise ActivityException(f"您的报名状态异常，当前状态为：{participant.status}")
-        
+
 
 
     if activity.source == Activity.YQPointSource.COLLEGE:
@@ -752,7 +1143,7 @@ def applyActivity(request, activity):
         if amount > 0:
             payer.YQPoint -= amount
             record = TransferRecord.objects.create(
-                proposer=request.user, 
+                proposer=request.user,
                 recipient=activity.organization_id.organization_id,
                 rtype=TransferRecord.TransferType.ACTIVITY
             )
@@ -764,9 +1155,9 @@ def applyActivity(request, activity):
                 organization = Organization.objects.select_for_update().get(id=organization_id)
                 organization.YQPoint += amount
                 organization.save()
-                YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-                YP.YQPoint -= amount
-                YP.save()
+                YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
+                YQP_center.YQPoint -= amount
+                YQP_center.save()
                 record.status = TransferRecord.TransferStatus.ACCEPTED
             else:
                 record.status = TransferRecord.TransferStatus.PENDING
@@ -775,7 +1166,7 @@ def applyActivity(request, activity):
             record.save()
 
 
-    if CREATE:
+    if not participated:
         participant = Participant.objects.create(
             activity_id=activity, person_id=payer
         )
@@ -796,7 +1187,7 @@ def cancel_activity(request, activity):
         activity.save()
         # 修改老师的通知
         notification = Notification.objects.get(
-            relate_instance=activity, 
+            relate_instance=activity,
             status=Notification.Status.UNDONE
         )
         notification_status_change(notification, Notification.Status.DELETE)
@@ -822,13 +1213,13 @@ def cancel_activity(request, activity):
         org.YQPoint -= activity.YQPoint
         org.save()
         # 这里加个悲观锁能提高性能吗 ？
-        YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-        YP.YQPoint += activity.YQPoint
-        YP.save()
+        YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
+        YQP_center.YQPoint += activity.YQPoint
+        YQP_center.save()
         # activity 上了悲观锁，这里不用锁
         record = TransferRecord.objects.get(
-            proposer=YP, 
-            status=TransferRecord.TransferStatus.ACCEPTED, 
+            proposer=YQP_center,
+            status=TransferRecord.TransferStatus.ACCEPTED,
             corres_act=activity
         )
         record.status = TransferRecord.TransferStatus.REFUND
@@ -837,7 +1228,7 @@ def cancel_activity(request, activity):
         # 考虑两种情况，活动 valid，所有 record 都是 accepted
         if activity.valid:
             records = TransferRecord.objects.filter(
-                status=TransferRecord.TransferStatus.ACCEPTED, 
+                status=TransferRecord.TransferStatus.ACCEPTED,
                 corres_act=activity).prefetch_related("proposer")
             total_amount = records.aggregate(nums=Sum('amount'))["nums"]
             if total_amount is None:
@@ -847,10 +1238,10 @@ def cancel_activity(request, activity):
             if total_amount > 0:
                 org.YQPoint -= total_amount
                 org.save()
-                YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-                YP.YQPoint += total_amount
-                YP.save()
-                person_list = User.objects.filter(id__in=records.values_list("proposer_id",flat=True))
+                YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
+                YQP_center.YQPoint += total_amount
+                YQP_center.save()
+                person_list = User.objects.filter(id__in=records.values_list("proposer_id", flat=True))
                 # person_list = [record.proposer.id for record in records]
                 payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
                 for record in records:
@@ -862,10 +1253,10 @@ def cancel_activity(request, activity):
         else:
             # 都是 pending
             records = TransferRecord.objects.filter(
-                status=TransferRecord.TransferStatus.PENDING, 
+                status=TransferRecord.TransferStatus.PENDING,
                 corres_act=activity).prefetch_related("proposer")
             # person_list = [record.proposer.id for record in records]
-            person_list = User.objects.filter(id__in=records.values_list("proposer_id",flat=True))
+            person_list = User.objects.filter(id__in=records.values_list("proposer_id", flat=True))
             payers = NaturalPerson.objects.select_for_update().filter(person_id__in=person_list)
             for record in records:
                 NaturalPerson.objects.filter(person_id=record.proposer).update(YQPoint=F("YQPoint") + record.amount)
@@ -947,9 +1338,9 @@ def withdraw_activity(request, activity):
             record.status = TransferRecord.TransferStatus.REFUND
             record.save()
             np.YQPoint += amount
-            YP = Organization.objects.select_for_update().get(oname=YQPoint_oname)
-            YP.YQPoint += amount
-            YP.save()
+            YQP_center = Organization.objects.select_for_update().get(oname=YQP_ONAME)
+            YQP_center.YQPoint += amount
+            YQP_center.save()
         except:
             pass
 
@@ -976,10 +1367,32 @@ def withdraw_activity(request, activity):
     activity.save()
 
 
+def calcu_activity_bonus(activity):
+    hours = (activity.end - activity.start).seconds / 3600
+    try:
+        invalid_hour = float(local_dict["thresholds"]["activity_point_invalid_hour"])
+    except:
+        invalid_hour = 24.0
+    if hours > invalid_hour:
+        return 0.0
+    # 以标题筛选不记录积分的活动，包含筛选词时不记录积分
+    try:
+        invalid_letters = local_dict["thresholds"]["activity_point_invalid_titles"]
+        assert isinstance(invalid_letters, list)
+        for invalid_letter in invalid_letters:
+            if invalid_letter in activity.title:
+                return 0.0
+    except:
+        pass
 
-
-
-
-
-
-
+    try:
+        point_rate = float(local_dict["thresholds"]["activity_point_per_hour"])
+    except:
+        point_rate = 1.0
+    point = point_rate * hours
+    # 单次活动记录的积分上限，默认6
+    try:
+        max_point = float(local_dict["thresholds"]["activity_point"])
+    except:
+        max_point = 6.0
+    return min(point, max_point)

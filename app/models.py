@@ -8,6 +8,40 @@ from django.conf import settings
 from random import choice
 
 
+__all__ = [
+    'User',
+    'NaturalPerson',
+    'Freshman',
+    'OrganizationType',
+    'OrganizationTag',
+    # 'Semester',
+    'Organization',
+    'Position',
+    'Course',
+    'CommentBase',
+    'Activity',
+    'ActivityPhoto',
+    'TransferRecord',
+    'Participant',
+    'YQPointDistribute',
+    'QandA',
+    'Notification',
+    'Comment',
+    'CommentPhoto',
+    'ModifyOrganization',
+    'ModifyPosition',
+    'Reimbursement',
+    'ReimbursementPhoto',
+    'Help',
+    'Wishes',
+    'ModifyRecord',
+    'Course',
+    'CourseTime',
+    'CourseParticipant',
+    'CourseRecord',
+]
+
+
 def current_year()-> int:
     return int(datetime.now().strftime("%Y"))
 
@@ -113,6 +147,9 @@ class NaturalPerson(models.Model):
         choices=ReceiveLevel.choices, default=0,
         help_text='允许微信接收的最低消息等级，更低等级的通知类消息将被屏蔽'
         )
+
+    accept_promote = models.BooleanField(default=True)    # 是否接受推广消息
+    active_score = models.FloatField("活跃度", default=0)  # 用户活跃度
 
     def __str__(self):
         return str(self.name)
@@ -248,6 +285,14 @@ class Semester(models.TextChoices):
             raise NotImplementedError("出现未设计的学期状态")
 
 
+class OrganizationTag(models.Model):
+    class Meta:
+        verbose_name = "组织类型标签"
+        verbose_name_plural = verbose_name
+    
+    name = models.CharField("标签名", max_length=10, blank=False)
+
+
 class OrganizationManager(models.Manager):
     def activated(self):
         return self.exclude(status=False)
@@ -274,6 +319,9 @@ class Organization(models.Model):
 
     first_time_login = models.BooleanField(default=True)  # 是否第一次登录
     inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
+        
+    # 组织类型标签，一个组织可能同时有多个标签
+    tags = models.ManyToManyField(OrganizationTag)
 
     def __str__(self):
         return str(self.oname)
@@ -320,7 +368,7 @@ class PositionManager(models.Manager):
         with transaction.atomic():
             if apply_type == "JOIN":
                 apply_type = Position.ApplyType.JOIN
-                assert len(self.activated().filter(person=person, org=org))==0
+                assert len(self.activated().filter(person=person, org=org)) == 0
                 application, created = self.current().get_or_create(
                     person=person, org=org, apply_type=apply_type, apply_pos=apply_pos
                 )
@@ -436,27 +484,6 @@ class Position(models.Model):
         return min(len(self.org.otype.job_name_list), self.pos)
 
 
-
-class Course(models.Model):
-    class Meta:
-        verbose_name = "课程"
-        verbose_name_plural = verbose_name
-
-    cid = models.OneToOneField(to=Organization, on_delete=models.CASCADE)
-
-    # 课程周期
-    year = models.IntegerField("当前学年", default=current_year)
-    semester = models.CharField("当前学期", choices=Semester.choices, max_length=15)
-
-    scheduler = models.CharField("上课时间", max_length=25)
-    classroom = models.CharField("上课地点", max_length=25)
-    evaluation_manner = models.CharField("考核方式", max_length=225)
-    education_plan = models.CharField("教学计划", max_length=225)
-
-    def __str__(self):
-        return str(self.cid)
-
-
 class ActivityManager(models.Manager):
     def activated(self, only_displayable=True):
         # 选择学年相同，并且学期相同或者覆盖的
@@ -482,14 +509,14 @@ class ActivityManager(models.Manager):
     def get_newlyended_activity(self):
         # 一周内结束的活动
         nowtime = datetime.now()
-        mintime = nowtime-timedelta(days = 7)
+        mintime = nowtime - timedelta(days = 7)
         return self.activated().filter(end__gt = mintime).filter(status=Activity.Status.END)
 
     def get_recent_activity(self):
         # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
         nowtime = datetime.now()
-        mintime = nowtime-timedelta(days = 7)
-        maxtime = nowtime+timedelta(days = 7)
+        mintime = nowtime - timedelta(days = 7)
+        maxtime = nowtime + timedelta(days = 7)
         return self.activated().filter(start__gt = mintime).filter(start__lt = maxtime).filter(
             status__in=[
                 Activity.Status.APPLYING,
@@ -502,7 +529,7 @@ class ActivityManager(models.Manager):
     def get_newlyreleased_activity(self):
         # 最新一周内发布的活动，按发布的时间逆序
         nowtime = datetime.now()
-        return self.activated().filter(publish_time__gt = nowtime-timedelta(days = 7)).filter(
+        return self.activated().filter(publish_time__gt = nowtime - timedelta(days = 7)).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -673,6 +700,15 @@ class Activity(CommentBase):
     )
 
     objects = ActivityManager()
+
+    class ActivityCategory(models.IntegerChoices):
+        NORMAL = (0, "普通活动")
+        COURSE = (1, "课程活动")
+        ELECTION = (2, "选课活动") # 不一定会使用到
+    
+    category = models.SmallIntegerField(
+        "活动类别", choices=ActivityCategory.choices, default=0
+    )
 
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
@@ -1093,22 +1129,22 @@ class ModifyPosition(CommentBase):
     def accept_submit(self): #同意申请，假设都是合法操作
         if self.apply_type == ModifyPosition.ApplyType.WITHDRAW:
             Position.objects.activated().filter(
-                org = self.org, person = self.person
-            ).update(status = Position.Status.DEPART)
+                org=self.org, person=self.person
+            ).update(status=Position.Status.DEPART)
         elif self.apply_type == ModifyPosition.ApplyType.JOIN:
             # 尝试获取已有的position
             if Position.objects.current().filter(
-                org = self.org, person = self.person).exists(): # 如果已经存在这个量了
-                Position.objects.current().filter(org = self.org, person = self.person
+                org=self.org, person=self.person).exists(): # 如果已经存在这个量了
+                Position.objects.current().filter(org=self.org, person=self.person
                 ).update(
-                    status = Position.Status.INSERVICE,
-                    pos = self.pos,
-                    is_admin = (self.pos<=self.org.otype.control_pos_threshold))
+                    status=Position.Status.INSERVICE,
+                    pos=self.pos,
+                    is_admin=(self.pos <= self.org.otype.control_pos_threshold))
             else: # 不存在 直接新建
-                Position.objects.create(pos=self.pos, person=self.person, org=self.org, is_admin = (self.pos<=self.org.otype.control_pos_threshold))
+                Position.objects.create(pos=self.pos, person=self.person, org=self.org, is_admin=(self.pos<=self.org.otype.control_pos_threshold))
         else:   # 修改 则必定存在这个量
-            Position.objects.activated().filter(org = self.org, person = self.person
-                ).update(pos = self.pos, is_admin = (self.pos<=self.org.otype.control_pos_threshold))
+            Position.objects.activated().filter(org=self.org, person=self.person
+                ).update(pos=self.pos, is_admin=(self.pos <= self.org.otype.control_pos_threshold))
         # 修改申请状态
         ModifyPosition.objects.filter(id=self.id).update(status=ModifyPosition.Status.CONFIRMED)
 
@@ -1228,3 +1264,197 @@ class ModifyRecord(models.Model):
     name = models.CharField('名称', max_length=32, default='', blank=True)
     info = models.TextField('相关信息', default='', blank=True)
     time = models.DateTimeField('修改时间', auto_now_add=True)
+
+
+class CourseManager(models.Manager):
+    def activated(self):
+        # 选择当前学期的开设课程
+        # 不显示已撤销的课程信息
+        return self.filter(
+            year=int(local_dict["semester_data"]["year"]),
+            semester=local_dict["semester_data"]["semester"]).exclude(
+                status=Course.Status.ABORT)
+
+    def selected(self, person: NaturalPerson):
+        # 返回当前学生所选的所有课程
+        # participant_set是对CourseParticipant的反向查询
+        return self.activated().filter(participant_set__person=person,
+                                       participant_set__status__in=[
+                                           CourseParticipant.Status.SELECT,
+                                           CourseParticipant.Status.SUCCESS,
+                                       ])
+
+    def unselected(self, person: NaturalPerson):
+        # 返回当前学生没选或失败的所有课程
+        return self.activated().filter(participant_set__person=person,
+                                       participant_set__status__in=[
+                                           CourseParticipant.Status.UNSELECT,
+                                           CourseParticipant.Status.FAILED,
+                                       ])
+
+
+class Course(models.Model):
+    """
+    助教发布课程需要填写的信息
+    """
+    class Meta:
+        verbose_name = "书院课程"
+        verbose_name_plural = verbose_name
+        ordering = ["id"]
+
+    name = models.CharField("课程名称", max_length=60)
+    organization = models.ForeignKey(Organization,
+                                     on_delete=models.CASCADE,
+                                     verbose_name="开课组织")
+
+    year = models.IntegerField("开课年份", default=current_year)
+
+    semester = models.CharField("开课学期",
+                                choices=Semester.choices,
+                                max_length=15,
+                                default=Semester.get(
+                                    local_dict["semester_data"]["semester"]))
+
+    # 课程开设的周数
+    times = models.SmallIntegerField("课程开设周数", default=7)
+    classroom = models.CharField("预期上课地点",
+                                 max_length=60,
+                                 default="",
+                                 blank=True)
+    teacher = models.CharField("授课教师", max_length=48, default="", blank=True)
+
+    # 不确定能否统一选课的情况，先用最保险的方法
+    # 如果由助教填写，表单验证时要着重检查这一部分。预选结束时间和补退选开始时间不应该相隔太近。
+    stage1_start = models.DateTimeField("预选开始时间", blank=True, null=True)
+    stage1_end = models.DateTimeField("预选结束时间", blank=True, null=True)
+    stage2_start = models.DateTimeField("补退选开始时间", blank=True, null=True)
+    stage2_end = models.DateTimeField("补退选结束时间", blank=True, null=True)
+
+    bidding = models.FloatField("意愿点价格", default=0.0)
+
+    introduction = models.TextField("课程简介", blank=True, default="这里暂时没有介绍哦~")
+
+    # 假定课程已经进行线下审核，暂定不需要二次审核
+
+    class Status(models.IntegerChoices):
+        # 预选前和预选结束到补退选开始都是WAITING状态
+        ABORT = (0, "已撤销")
+        WAITING = (1, "未开始选课")
+        STAGE1 = (2, "预选")
+        STAGE2 = (3, "补退选")
+        END = (4, "已结束")
+
+    status = models.SmallIntegerField("开课状态",
+                                      choices=Status.choices,
+                                      default=Status.WAITING)
+
+    class CourseType(models.IntegerChoices):
+        # 课程类型
+        MORAL = (0, "德")
+        INTELLECTUAL = (1, "智")
+        PHYSICAL = (2, "体")
+        AESTHETICS = (3, "美")
+        LABOUR = (4, "劳")
+
+    type = models.SmallIntegerField("课程类型", choices=CourseType.choices)
+
+    capacity = models.IntegerField("课程容量", default=100)
+    current_participants = models.IntegerField("当前选课人数", default=0)
+
+    # 暂时只允许上传一张图片
+    photo = models.ImageField(verbose_name="宣传图片",
+                              upload_to=f"course/photo/%Y/",
+                              blank=True)
+
+    # 课程群二维码
+    QRcode = models.ImageField(upload_to=f"course/QRcode/%Y/", 
+                               blank=True, 
+                               null=True) 
+                                
+    objects = CourseManager()
+
+    def save(self, *args, **kwargs):
+        self.bidding = round(self.bidding, 1)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.name
+
+
+class CourseTime(models.Model):
+    """
+    记录课程每周的上课时间，同一课程可以对应多个上课时间
+    """
+    class Meta:
+        verbose_name = "上课时间"
+        verbose_name_plural = verbose_name
+        ordering = ["start"]
+
+    course = models.ForeignKey(Course,
+                               on_delete=models.CASCADE,
+                               related_name="time_set")
+
+    # 开始时间和结束时间指的是一次课程的上课时间和下课时间
+    # 需要提醒助教，填写的时间是第一周上课的时间，这影响到课程活动的统一开设。
+    start = models.DateTimeField("开始时间")
+    end = models.DateTimeField("结束时间")
+    cur_week = models.IntegerField("已生成周数", default=0)
+    end_week = models.IntegerField("总周数", default=1)
+
+
+class CourseParticipant(models.Model):
+    """
+    学生的选课情况
+    """
+    class Meta:
+        verbose_name = "课程报名情况"
+        verbose_name_plural = verbose_name
+
+    course = models.ForeignKey(Course,
+                               on_delete=models.CASCADE,
+                               related_name="participant_set")
+    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+
+    class Status(models.IntegerChoices):
+        SELECT = (0, "已选课")
+        UNSELECT = (1, "未选课")
+        SUCCESS = (2, "选课成功")
+        FAILED = (3, "选课失败")
+
+    status = models.SmallIntegerField(
+        "选课状态",
+        choices=Status.choices,
+        default=Status.UNSELECT,
+    )
+
+
+class CourseRecord(models.Model):
+    class Meta:
+        verbose_name = "学时表"
+        verbose_name_plural = verbose_name
+    # TODO: task 5 hjb(Toseic) 2022/2/6 related_name后续可能还需要添加
+    
+    person = models.ForeignKey(
+        NaturalPerson, on_delete=models.CASCADE,
+    )
+    course = models.ForeignKey(
+        Course, on_delete=models.SET_NULL, null=True, blank=True,
+    )
+    # 长度兼容组织和课程名
+    extra_name = models.CharField("课程名称额外标注", max_length=60, blank=True)
+    
+    year = models.IntegerField("课程所在学年", default=current_year)
+    semester = models.CharField(
+        "课程所在学期",
+        choices=Semester.choices, 
+        default=Semester.get(local_dict["semester_data"]["semester"]), 
+        max_length=15,
+    )
+    total_hours = models.FloatField("总计参加学时")
+    attend_times = models.IntegerField("参加课程次数", default=0)
+
+    def get_course_name(self):
+        if self.course is not None:
+            return str(self.course)
+        return self.extra_name
+    get_course_name.short_description = "课程名"
