@@ -214,7 +214,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     else:
         bar_display["profile_name"] = "小组主页"
         bar_display["profile_url"] = "/orginfo/"
-        bar_display["org_type"] = me.otype.otype_name
+        bar_display["is_course"] = me.otype.otype_name == COURSE_TYPENAME
 
     bar_display["navbar_name"] = navbar_name
     # title_name默认与navbar_name相同
@@ -490,6 +490,7 @@ def check_account_setting(request, user_type):
         attr_dict['ava'] = request.FILES.get("avatar")
         attr_dict['gender'] = request.POST['gender']
         attr_dict['birthday'] = request.POST['birthday']
+        attr_dict['accept_promote'] = request.POST['accept_promote']
         attr_dict['wallpaper'] = request.FILES.get("wallpaper")
 
         show_dict = dict()
@@ -526,6 +527,7 @@ def check_account_setting(request, user_type):
         html_display['warn_code'] = 0
         html_display['warn_message'] = ""
         attr_dict['introduction'] = request.POST['introduction']
+        attr_dict['tags_modify'] = request.POST['tags_modify']
     return attr_dict, show_dict, html_display
 
 #获取未报销的活动

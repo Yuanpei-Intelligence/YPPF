@@ -194,6 +194,36 @@
         <div class="row mx-0 pt-5">
             <div class="col-1 px-0"></div>
             <div class="col-10 col-md-2 px-0">
+                <h2 class="text-dark pr-4">推广权限</h2>
+            </div>
+            <div class="col-1 px-0 d-md-none"></div>
+            <div class="col-1 px-0 d-md-none"></div>
+            <div class="col-10 col-md-7 px-0">
+                <label for="select-promote" style="width: max-content;">是否接收推广消息？
+                    <a data-toggle="tooltip" data-placement="bottom" title="开启推广意味着你将有一定的概率接收到来自新建学生小组的推广信息。这个概率基于你的活跃度、参加活动的类型因素等计算，我们会为你推送和你兴趣相近的小组的信息~">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                            <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                        </svg>
+                    </a>
+                </label>
+                <div class="form-group mb-0">
+                    <select class="form-control" id="select-promote" name="accept_promote">
+                    {% if useroj.accept_promote %}
+                        <option selected>是</option>
+                        <option>否</option>
+                    {% else %}
+                        <option selected>否</option>
+                        <option>是</option>
+                    {% endif %}
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <div class="row mx-0 pt-5">
+            <div class="col-1 px-0"></div>
+            <div class="col-10 col-md-2 px-0">
                 <h2 class="text-dark pr-4">主页外观</h2>
             </div>
             <div class="col-1 px-0 d-md-none"></div>
