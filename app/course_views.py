@@ -346,7 +346,7 @@ def viewCourse(request):
  
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='course_views[addCourse]', record_user=True)
+#@log.except_captured(EXCEPT_REDIRECT, source='course_views[addCourse]', record_user=True)
 def addCourse(request, cid=None):
     """
     发起课程页
@@ -391,16 +391,16 @@ def addCourse(request, cid=None):
                     if not created:
                         return redirect(message_url(
                             succeed('存在信息相同的课程，已为您自动跳转!'),
-                            f'/viewCourse/{cid}'))
+                            f'/editCourse/{cid}'))
                     return redirect(f"/editCourse/{cid}")
-            except:
-                return redirect(message_url(wrong('遇到不可预料的错误。如有需要，请联系管理员解决！'),
-                                            f'/viewCourse/{course.id}'))
+            except Exception as e:
+                return redirect(message_url(wrong(str(e)),
+                                            f'/addCourse/'))
         else:
             # 仅未开始选课阶段可以修改
             if course.status != Course.Status.WAITING:
                 return redirect(message_url(wrong('当前课程状态不允许修改!'),
-                                            f'/viewCourse/{course.id}'))
+                                            f'/addCourse/{course.id}'))
             try:
                 # 只能修改自己的课程
                 with transaction.atomic():
@@ -412,7 +412,7 @@ def addCourse(request, cid=None):
                 html_display["warn_code"] = 2
             except:
                 return redirect(message_url(wrong('遇到不可预料的错误。如有需要，请联系管理员解决！'),
-                                            f'/viewCourse/{course.id}'))
+                                            f'/addCourse/{course.id}'))
 
     
     # 下面的操作基本如无特殊说明，都是准备前端使用量
@@ -430,10 +430,10 @@ def addCourse(request, cid=None):
         times = course.times
         classroom = utils.escape_for_templates(course.classroom)
         teacher = utils.escape_for_templates(course.teacher)
-        stage1_start = course.stage1_start.strftime("%Y-%m-%d %H:%M")
-        stage1_end = course.stage1_end.strftime("%Y-%m-%d %H:%M")
-        stage2_start = course.stage2_start.strftime("%Y-%m-%d %H:%M")
-        stage2_end = course.stage2_end.strftime("%Y-%m-%d %H:%M")
+        # stage1_start = course.stage1_start.strftime("%Y-%m-%d %H:%M")
+        # stage1_end = course.stage1_end.strftime("%Y-%m-%d %H:%M")
+        # stage2_start = course.stage2_start.strftime("%Y-%m-%d %H:%M")
+        # stage2_end = course.stage2_end.strftime("%Y-%m-%d %H:%M")
         course_time = course.time_set.all()
         bidding = course.bidding
         introduction = utils.escape_for_templates(course.introduction)

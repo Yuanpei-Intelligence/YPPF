@@ -699,13 +699,13 @@ def course_base_check(request):
 
     org = get_person_or_org(request.user, "Organization")
     context['organization']=org
-    context['times'] = int(request.POST["times"])    #课程上课周数
+    #context['times'] = int(request.POST["times"])    #课程上课周数
     context['teacher'] = request.POST["teacher"]    
     context['type'] = request.POST["type"]  #课程类型
     context["capacity"] = request.POST["capacity"]
     # context['current_participants'] = request.POST["current_participants"]
     context["photo"] = request.FILES.get("photo")
-
+    """
     # 时间
     stage1_start = datetime.strptime(request.POST["stage1_start"], "%Y-%m-%d %H:%M")  # 预选开始时间
     stage1_end = datetime.strptime(request.POST["stage1_end"], "%Y-%m-%d %H:%M")  # 预选结束时间
@@ -721,24 +721,26 @@ def course_base_check(request):
     context["stage1_end"] = stage1_end
     context["stage2_start"] = stage2_start
     context["stage2_end"] = stage2_end
-
+    """
     # 每周课程时间
     course_starts = request.POST.getlist("start")
     course_ends = request.POST.getlist("end")
+    print(course_starts)
     course_starts = [
         datetime.strptime(course_start, "%Y-%m-%d %H:%M") 
         for course_start in course_starts 
-        if course_start != ""
+        if course_start != ''
         ]
     course_ends = [
         datetime.strptime(course_end, "%Y-%m-%d %H:%M") 
         for course_end in course_ends 
-        if course_end != ""
+        if course_end != ''
         ]
+    print(course_starts[0].date())
     for i in range(len(course_starts)):
-        assert check_ac_time(course_starts[i], course_ends[i]),f'第{i}次上课时间起止时间有误！'
+        assert check_ac_time(course_starts[i], course_ends[i]),f'第{i+1}次上课时间起止时间有误！'
         #课程每周同一次课的开始和结束时间应当处于同一天
-        assert course_starts[i].day() == course_ends[i].day(),f'第{i}次上课起止时间应当为同一天'
+        assert course_starts[i].date() == course_ends[i].date(),f'第{i+1}次上课起止时间应当为同一天'
     context['course_starts'] = course_starts
     context['course_ends'] = course_ends
 
@@ -762,13 +764,8 @@ def create_course(request, course=None):
             organization=context['organization'],
             # year=context['year'],
             # semester=context['semester'],
-            times=context['times'],
             classroom=context["classroom"],
             teacher=context['teacher'],
-            stage1_start=context['stage1_start'],
-            stage1_end=context['stage1_end'],
-            stage2_start=context['stage2_start'],
-            stage2_end=context['stage2_end'],
             # bidding=context["bidding"],
             introduction=context["introduction"],
             # status=context['status'],
@@ -783,7 +780,7 @@ def create_course(request, course=None):
                 course=course,
                 start=context['course_starts'][i],
                 end=context['course_ends'][i],
-                end_week=context['times'],
+                end_week=16,
             )
 
     # 创建新课程
@@ -804,13 +801,13 @@ def create_course(request, course=None):
                         organization=context['organization'],
                         # year=context['year'],
                         # semester=context['semester'],
-                        times=context['times'],
+                        times=16,
                         classroom=context["classroom"],
                         teacher=context['teacher'],
-                        stage1_start=context['stage1_start'],
-                        stage1_end=context['stage1_end'],
-                        stage2_start=context['stage2_start'],
-                        stage2_end=context['stage2_end'],
+                        # stage1_start=context['stage1_start'],
+                        # stage1_end=context['stage1_end'],
+                        # stage2_start=context['stage2_start'],
+                        # stage2_end=context['stage2_end'],
                         # bidding=context["bidding"],
                         introduction=context["introduction"],
                         # status=context['status'],
@@ -821,7 +818,7 @@ def create_course(request, course=None):
                     )
 
         # 定时任务和微信消息有关吗，我还没了解怎么发微信消息orz不过定时任务还是能写出来的……应该
-
+        #TODO:定时任务
         # scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
         #     run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
         # # 活动状态修改
@@ -839,7 +836,7 @@ def create_course(request, course=None):
                 course=course,
                 start=context['course_starts'][i],
                 end=context['course_ends'][i],
-                end_week=context['times'],
+                end_week=16,
             )
 
-    return course.id
+    return course.id,True
