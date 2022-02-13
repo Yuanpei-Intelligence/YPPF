@@ -243,7 +243,7 @@ class Appoint(models.Model):
                 {
                     'Sname': student.name,  # 参与人姓名
                     'Sid': student.Sid,
-                } for student in self.students.all() if Participant.Sid != self.major_student.Sid
+                } for student in self.students.all() # if student.Sid != self.major_student.Sid
             ]
         }
         try:
