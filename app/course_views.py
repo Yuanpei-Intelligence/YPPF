@@ -1,30 +1,39 @@
+"""
+course_views.py
+
+选课页面: selectCourse
+课程详情页面: viewCourse
+"""
 from app.views_dependency import *
 from app.models import (
     NaturalPerson,
     Activity,
+    Course,
 )
 from app.course_utils import (
+    cancel_course_activity,
     create_single_course_activity,
     modify_course_activity,
-    cancel_course_activity,
+    registration_status_change,
+    course_to_display,
 )
-from app.utils import (
-    get_person_or_org,
-)
+from app.utils import get_person_or_org
 
-from datetime import datetime, timedelta
 from django.db import transaction
 
+
 __all__ = [
-    'editCourseActivity', 
+    'editCourseActivity',
     'addSingleCourseActivity',
     'showCourseActivity',
+    'selectCourse',
+    'viewCourse',
 ]
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='views[editCourseActivity]', record_user=True)
+@log.except_captured(EXCEPT_REDIRECT, source='course_views[editCourseActivity]', record_user=True)
 def editCourseActivity(request, aid):
     """
     编辑单次书院课程活动，addActivity的简化版
@@ -95,7 +104,7 @@ def editCourseActivity(request, aid):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='views[addSingleCourseActivity]', record_user=True)
+@log.except_captured(EXCEPT_REDIRECT, source='course_views[addSingleCourseActivity]', record_user=True)
 def addSingleCourseActivity(request):
     """
     创建单次书院课程活动，addActivity的简化版
@@ -223,3 +232,113 @@ def showCourseActivity(request):
             return redirect(message_url(wrong(error)), request.path)
 
     return render(request, "org_show_course_activity.html", locals())
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(record_user=True,
+                     record_request_args=True,
+                     source='course_views[selectCourse]')
+def selectCourse(request):
+    """
+    学生选课的聚合页面，包括: 
+    1. 所有开放课程的选课信息
+    2. 在预选和补退选阶段，学生可以通过点击课程对应的按钮实现选课或者退选，
+    且点击后页面显示发生相应的变化
+    3. 显示选课结果
+    
+    用户权限: 只有学生账号可以进入，组织和老师均不应该进入该页面
+    """
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = get_person_or_org(request.user, user_type)
+
+    if (user_type == "Organization"
+            or me.identity == NaturalPerson.Identity.TEACHER):
+        return redirect(message_url(wrong("非学生账号不能选课！")))
+
+    # 暂时不启用意愿点机制
+    # if not is_staff:
+    #     html_display["willing_point"] = remaining_willingness_point(me)
+
+    # 学生选课或者取消选课
+
+    if request.method == 'POST':
+
+        # 参数: 课程id，操作action: select/cancel
+
+        try:
+            course_id = request.POST.get('courseid')
+            action = request.POST.get('action')
+
+            # 合法性检查
+            assert action == "select" or action == "cancel"
+            assert Course.objects.activated().filter(id=course_id).exists()
+
+        except:
+            html_display["warn_code"] = 1  # 失败
+            html_display["warn_message"] = "出现预料之外的错误！如有需要，请联系管理员。"
+        try:
+            # 对学生的选课状态进行变更
+            context = registration_status_change(course_id, me, action)
+            html_display["warn_code"] = context["warn_code"]
+            html_display["warn_message"] = context["warn_message"]
+        except:
+            html_display["warn_code"] = 1  # 意外失败
+            html_display["warn_message"] = "选课过程出现错误！请联系管理员。"
+
+    html_display["is_myself"] = True
+    html_display["current_year"] = get_setting("semester_data/year")
+    html_display["semester"] = ("春" if get_setting("semester_data/semester")
+                                == "Spring" else "秋")
+
+    unselected_courses = Course.objects.unselected(me)
+    selected_courses = Course.objects.selected(me)
+
+    # TODO task 10 ljy 2022-02-13
+    # 前端完成后可以省略course_to_display函数，暂时保留便于对接
+
+    # 未选的课程需要按照课程类型排序
+    courses = {}
+    for type in Course.CourseType.values:
+        courses[type] = course_to_display(unselected_courses.filter(type=type),
+                                          me)
+
+    # 命名和前端分类保持一致
+    my_courses = course_to_display(selected_courses, me)
+
+    bar_display = utils.get_sidebar_and_navbar(request.user, "书院课程")
+
+    return render(request, "select_course.html", locals())
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(record_user=True,
+                     record_request_args=True,
+                     source='course_views[courseDetail]')
+def viewCourse(request):
+    """
+    展示一门课程的详细信息
+    
+    GET参数: ?courseid=<int>
+
+    用户权限: 不对用户类型作出限制，均正常显示内容  
+    """
+    valid, user_type, html_display = utils.check_user_type(request.user)
+
+    try:
+        course_id = int(request.GET.get("courseid", None))
+        course = Course.objects.filter(id=course_id)
+
+        assert course.exists()
+
+    except:
+        return redirect(message_url(wrong("该课程不存在！")))
+
+    me = utils.get_person_or_org(request.user, user_type)
+    course_display = course_to_display(course, me, detail=True)
+
+    # TODO: task 10 ljy 2022-02-07
+    # 和前端对接
+
+    return HttpResponse()
