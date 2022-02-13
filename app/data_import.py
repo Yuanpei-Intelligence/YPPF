@@ -27,6 +27,7 @@ from datetime import datetime
 from boottest import local_dict
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
+from django.db import transaction
 
 
 def load_file(file):
@@ -649,5 +650,29 @@ def load_org_tag(request):
             )
         )
     OrganizationTag.objects.bulk_create(tag_list)
-    context = {"message": "导入组织类型标签信息成功！"}
+    context = {"message": "导入组织标签类型信息成功！"}
+    return render(request, "debugging.html", context)
+
+def load_tags_for_old_org(request):
+    if not request.user.is_superuser:
+        context = {"message": "请先以超级账户登录后台后再操作！"}
+        return render(request, "debugging.html", context)
+    try:
+        org_tag_def = load_file("oldorgtags.csv")
+    except:
+        context = {"message": "没有找到oldorgtags.csv,请确认该文件已经在test_data中。"}
+        return render(request, "debugging.html", context)
+    tag_list = []
+    for _, tag_dict in org_tag_def.iterrows():
+        with transaction.atomic():
+            useroj = Organization.objects.select_for_update().get(oname=tag_dict[0])
+            for tag in tag_dict[1:]:
+                if type(tag)==str:
+                    print(tag,math.nan,tag in ('',None))
+                    useroj.tags.add(OrganizationTag.objects.get(name=tag))
+                else:
+                    break
+            print()
+            useroj.save()
+    context = {"message": "导入组织标签信息成功！"}
     return render(request, "debugging.html", context)
