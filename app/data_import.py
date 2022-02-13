@@ -663,17 +663,14 @@ def load_tags_for_old_org(request):
     except:
         context = {"message": "没有找到oldorgtags.csv,请确认该文件已经在test_data中。"}
         return render(request, "debugging.html", context)
-    tag_list = []
     for _, tag_dict in org_tag_def.iterrows():
         with transaction.atomic():
             useroj = Organization.objects.select_for_update().get(oname=tag_dict[0])
             for tag in tag_dict[1:]:
                 if type(tag)==str:
-                    print(tag,math.nan,tag in ('',None))
                     useroj.tags.add(OrganizationTag.objects.get(name=tag))
                 else:
                     break
-            print()
             useroj.save()
     context = {"message": "导入组织标签信息成功！"}
     return render(request, "debugging.html", context)
