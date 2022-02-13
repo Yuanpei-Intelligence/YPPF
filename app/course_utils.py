@@ -684,6 +684,9 @@ def change_course_status(course_id, cur_status, to_status):
 
 
 def course_base_check(request):
+    """
+    选课单变量合法性检查并准备变量
+    """
     context = dict()
 
     # name, introduction, classroom 创建时不能为空
@@ -699,16 +702,16 @@ def course_base_check(request):
     stage1_end = datetime.strptime(request.POST["stage1_end"], "%Y-%m-%d %H:%M")  # 预选结束时间
     stage2_start = datetime.strptime(request.POST["stage2_start"], "%Y-%m-%d %H:%M")  # 补退选开始时间
     stage2_end = datetime.strptime(request.POST["stage2_end"], "%Y-%m-%d %H:%M")  # 补退选结束时间
+    assert check_ac_time(stage1_start, stage1_end)
+    assert check_ac_time(stage2_start, stage2_end)
+    # 预选开始时间和结束时间不应该相隔太近
+    assert stage1_end > stage1_start 
+    # 预选结束时间和补退选开始时间不应该相隔太近
+    assert stage2_start >= stage1_end
     context["stage1_start"] = stage1_start
     context["stage1_end"] = stage1_end
     context["stage2_start"] = stage2_start
     context["stage2_end"] = stage2_end
-    assert check_ac_time(stage1_start, stage1_end)
-    assert check_ac_time(stage2_start, stage2_end)
-    # 预选开始时间和结束时间不应该相隔太近
-    assert stage1_end > stage1_start + timedelta(days=7)
-    # 预选结束时间和补退选开始时间不应该相隔太近
-    assert stage2_start > stage1_end + timedelta(days=3)
 
     # 每周课程时间
     course_starts = request.POST.getlist("start")
@@ -725,15 +728,16 @@ def course_base_check(request):
         ]
     for i in range(len(course_starts)):
         assert check_ac_time(course_starts[i], course_ends[i])
-        assert course_starts[i].day() == course_ends[i].day()
+        #课程每周同一次课的开始和结束时间应当处于同一天
+        assert course_starts[i].day() == course_ends[i].day() 
     context['course_starts'] = course_starts
     context['course_ends'] = course_ends
-
-    org = get_person_or_org(request.user, "Organization")
-    context['organization'] = org
-    context['times'] = request.POST["times"]
-    context['teacher'] = request.POST["teacher"]
-    context['type'] = request.POST["type"]
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    org = utils.get_person_or_org(request.user, user_type)
+    context['organization']=org
+    context['times'] = int(request.POST["times"])    #课程上课周数
+    context['teacher'] = request.POST["teacher"]    
+    context['type'] = request.POST["type"]  #课程类型
     context["capacity"] = request.POST["capacity"]
     # context['current_participants'] = request.POST["current_participants"]
     context["photo"] = request.FILES.get("photo")
@@ -837,4 +841,4 @@ def create_course(request, course=None):
                 end_week=context['times'],
             )
 
-    return course.id, True
+    return course.id
