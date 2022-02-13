@@ -613,10 +613,13 @@ def send_message_check(me, request):
             receivers = NaturalPerson.objects.activated().exclude(
                 id__in=me.unsubscribers.all()).select_related('person_id')
             receivers = [receiver.person_id for receiver in receivers]
-        else:   # 检查过逻辑了，不可能是其他的
+        elif receiver_type == "小组成员":
             receivers = NaturalPerson.objects.activated().filter(
                 id__in=me.position_set.values_list('person_id', flat=True)
                 ).select_related('person_id')
+            receivers = [receiver.person_id for receiver in receivers]
+        else:  # 推广消息
+            receivers = NaturalPerson.objects.activated().all().select_related('person_id')
             receivers = [receiver.person_id for receiver in receivers]
 
         # 创建通知
@@ -634,13 +637,16 @@ def send_message_check(me, request):
         return wrong("创建通知的时候出现错误！请联系管理员！")
     try:
         wechat_kws = {}
-        if receiver_type == "订阅用户":
-            wechat_kws['app'] = WechatApp.TO_SUBSCRIBER
-        else:   # 小组成员
+        if receiver_type == "小组成员":
             wechat_kws['app'] = WechatApp.TO_MEMBER
+        else:
+            wechat_kws['app'] = WechatApp.TO_SUBSCRIBER
         wechat_kws['filter_kws'] = {'bulk_identifier': bulk_identifier}
         assert publish_notifications(**wechat_kws)
     except:
         return wrong("发送微信的过程出现错误！请联系管理员！")
 
-    return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了!")
+    if receiver_type == "推广消息":
+        return succeed(f"成功创建知晓类消息，发送给所有推广算法匹配的用户了!共{len(receivers)}人。")
+    else:
+        return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了!共{len(receivers)}人。")
