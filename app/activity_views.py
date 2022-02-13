@@ -947,6 +947,8 @@ def offlineCheckinActivity(request, aid):
     '''
     修改签到功能
     只有举办活动的组织账号可查看和修改
+    注：
+        该函数实现的重要前提是活动已经设置所有组织成员签到初始状态为未签到
     '''
     _, user_type, _ = utils.check_user_type(request.user) 
     me = get_person_or_org(request.user, user_type)
@@ -962,24 +964,25 @@ def offlineCheckinActivity(request, aid):
         status__in=[
                     Participant.AttendStatus.UNATTENDED,
                     Participant.AttendStatus.ATTENDED,
-        ]).select_related('person_id')
+        ])
     # 时间优化新版本
     member_attend = []
     member_unattend = []
     for member in member_list:
         checkin = request.POST.get("checkin" + 
-                                           str(member.person_id.person_id))
+                                           str(member.person_id_id))
+        print(member.person_id_id)
         if checkin == "yes":
-            member_attend.append(member.person_id)
+            member_attend.append(member.person_id_id)
         elif checkin == "no":
-            member_unattend.append(member.person_id)
+            member_unattend.append(member.person_id_id)
     try:
         with transaction.atomic():
             Participant.objects.filter(
-                person_id__in=member_attend).update(
+                person_id_id__in=member_attend).update(
                     status = Participant.AttendStatus.ATTENDED)
             Participant.objects.filter(
-                person_id__in=member_unattend).update(
+                person_id_id__in=member_unattend).update(
                     status = Participant.AttendStatus.UNATTENDED)
     except Exception as e:
             log.record_traceback(request, e)
