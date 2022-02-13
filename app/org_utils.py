@@ -29,6 +29,7 @@ from datetime import datetime, timedelta
 
 from django.db.models import Q
 from django.contrib.auth.models import User
+import re
 
 __all__ = [
     'find_max_oname',
@@ -562,7 +563,25 @@ def send_message_check(me, request):
     if len(title) == 0:
         return wrong("不能不写通知的标题！补起来！")
     elif len(title) > 10:
-        return wrong("通知的标题不能超过10个字！不然发出来的通知会很丑！")
+        my_re = re.compile(r'[A-Za-z]', re.S)
+        res = re.findall(my_re, title)
+        if len(res):  # title含有英文字符，每个单词算作一个字
+            flag = False
+            new_len = 0  # 重新计算title长度
+            for i in list(title):
+                if i.isalpha():  # 当前字符是英文字符，按单词处理
+                    if not flag:
+                        new_len += 1
+                        flag = True
+                else:
+                    new_len += 1
+                    if flag:
+                        flag = False
+            if new_len > 10:
+                return wrong("通知的标题不能超过10个字！不然发出来的通知会很丑！") 
+        else:  # title不含英文字符
+            return wrong("通知的标题不能超过10个字！不然发出来的通知会很丑！")
+
 
     if len(url) == 0:
         url = None
