@@ -188,7 +188,7 @@ def showCourseActivity(request):
     # 取消单次活动
     if request.method == "POST" and request.POST:
         # 获取待取消的活动
-        aid = int(request.POST.get("cancel_aid"))
+        aid = int(request.POST.get("cancel-action"))
         activity = Activity.objects.get(id=aid)
 
         if activity.organization_id != me:
