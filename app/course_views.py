@@ -6,6 +6,7 @@ from app.models import (
 from app.course_utils import (
     create_single_course_activity,
     modify_course_activity,
+    cancel_course_activity,
 )
 from app.utils import (
     get_person_or_org,
@@ -172,10 +173,53 @@ def showCourseActivity(request):
 
     finished_activity_list = (
         all_activity_list
-        .filter(status=Activity.Status.END)
+        .filter(
+            status__in=[
+                Activity.Status.END,
+                Activity.Status.CANCELED,
+            ]
+        )
         .order_by("-end")
-    ) # 本学期的已结束活动 
+    )  # 本学期的已结束活动（包括已取消的）
 
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的活动")
+    bar_display = utils.get_sidebar_and_navbar(
+        request.user, navbar_name="我的活动")
+
+    # 取消单次活动
+    if request.method == "POST" and request.POST:
+        # 获取待取消的活动
+        try:
+            aid = int(request.POST.get("cancel-action"))
+            activity = Activity.objects.get(id=aid)
+        except:
+            return redirect(message_url(wrong('遇到不可预料的错误。如有需要，请联系管理员解决!'), request.path))
+
+        if activity.organization_id != me:
+            return redirect(message_url(wrong('您没有取消该课程活动的权限!'), request.path))
+        
+        if activity.status in [
+            Activity.Status.REJECT,
+            Activity.Status.ABORT,
+            Activity.Status.END,
+            Activity.Status.CANCELED,
+        ]:
+            return redirect(message_url(wrong('该课程活动已结束，不可取消!'), request.path))
+
+        assert activity.status not in [
+            Activity.Status.REVIEWING,
+            Activity.Status.APPLYING,
+        ], "课程活动状态非法"  # 课程活动不应出现这两个状态
+
+        # 取消活动
+        with transaction.atomic():
+            activity = Activity.objects.select_for_update().get(id=aid)
+            error = cancel_course_activity(request, activity)
+        
+        # 无返回值表示取消成功，有则失败
+        if error is None:
+            html_display["warn_code"] = 2
+            html_display["warn_message"] = "成功取消活动。"
+        else:
+            return redirect(message_url(wrong(error)), request.path)
 
     return render(request, "org_show_course_activity.html", locals())

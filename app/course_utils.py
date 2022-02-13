@@ -231,10 +231,13 @@ def cancel_course_activity(request, activity):
     )
     notification_status_change(notification, Notification.Status.DELETE)
 
-    # 取消定时任务
-    scheduler.remove_job(f"activity_{activity.id}_remind")
-    scheduler.remove_job(
-        f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
-    scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
+    # 取消定时任务（需要先判断一下是否已经被执行了）
+    if activity.start - timedelta(minutes=15) > datetime.now():
+        scheduler.remove_job(f"activity_{activity.id}_remind")
+    if activity.start > datetime.now():
+        scheduler.remove_job(
+            f"activity_{activity.id}_{Activity.Status.PROGRESSING}")
+    if activity.end > datetime.now():
+        scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
 
     activity.save()
