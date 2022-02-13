@@ -73,11 +73,6 @@ urlpatterns = [
     path("endActivity/", reimbursement_views.endActivity, name="endActivity"),
     path("modifyEndActivity/", reimbursement_views.modifyEndActivity, name="modifyEndActivity"),
 ] + [
-    # 书院课程相关内容
-    path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
-    path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
-    path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
-] + [
     # 组织相关操作
     path("saveShowPositionStatus", org_views.saveShowPositionStatus, name="saveShowPositionStatus"),
     path("showNewOrganization/", org_views.showNewOrganization, name="showNewOrganization"),
@@ -90,6 +85,9 @@ urlpatterns = [
     # 课程相关操作
     path("selectCourse/", course_views.selectCourse, name="selectCourse"),
     path("viewCourse/", course_views.viewCourse, name="viewCourse"),
+    path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
+    path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
+    path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
 ] + [
     # 数据导入
     path("loadstudata/", data_import.load_stu_data, name="load_stu_data"),

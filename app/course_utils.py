@@ -11,32 +11,49 @@ change_course_status: 改变课程的选课阶段
 remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 """
-from datetime import datetime, timedelta
-from random import sample
+from app.utils_dependency import *
+from app.models import (
+    NaturalPerson,
+    Activity,
+    Notification,
+    ActivityPhoto,
+    Position,
+    Participant,
+    Course,
+    CourseParticipant,
+    Semester,
+)
+from app.utils import get_person_or_org
+from app.notification_utils import (
+    bulk_notification_create,
+    notification_create,
+    notification_status_change,
+)
+from app.activity_utils import (
+    changeActivityStatus,
+    check_ac_time,
+    notifyActivity,
+)
+from app.wechat_send import WechatApp, WechatMessageLevel
 
-from boottest import local_dict
+from random import sample
+from datetime import datetime, timedelta
+
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import F, Sum
 
-from app.activity_utils import (changeActivityStatus, check_ac_time,
-                                notifyActivity)
-from app.models import (Activity, ActivityPhoto, Course, CourseParticipant,
-                        NaturalPerson, Notification, Participant, Position,
-                        Semester)
-from app.notification_utils import (bulk_notification_create,
-                                    notification_create,
-                                    notification_status_change)
 from app.scheduler import scheduler
-from app.utils import get_person_or_org
-from app.utils_dependency import *
-from app.wechat_send import WechatApp, WechatMessageLevel
+
 
 __all__ = [
     'course_activity_base_check',
     'create_single_course_activity',
     'modify_course_activity',
     'cancel_course_activity',
+    'registration_status_change',
+    'course_to_display',
+    'change_course_status',
 ]
 
 
@@ -305,8 +322,8 @@ def registration_status_change(course_id, user, action=None):
 
     参数:
         course_id: Course的主键，
-        action: 是希望对课程进行的操作，可能为"select"或"cancel"（待对接）
-                如果action为None，默认翻转选课状态（尽量对接后去掉）
+        action: 是希望对课程进行的操作，可能为"select"或"cancel"
+
     注意: 
         非选课阶段，不应该进入这个函数！
     """
@@ -323,7 +340,7 @@ def registration_status_change(course_id, user, action=None):
 
     if (course_status != Course.Status.STAGE1
             and course_status != Course.Status.STAGE2):
-        context["warn_message"] = "在非选课阶段不能选课"
+        context["warn_message"] = "在非选课阶段不能选课！"
         return context
 
     # 选课信息
@@ -331,14 +348,7 @@ def registration_status_change(course_id, user, action=None):
         course_id=course_id, person=user)
     cur_status = participant_info.status
 
-    if action is None:  # 默认的状态翻转操作，之后可能会去掉这部分
-        if course_status == Course.Status.STAGE1:
-            if cur_status == CourseParticipant.Status.UNSELECT:
-                to_status = CourseParticipant.Status.SELECT
-        else:
-            if cur_status != CourseParticipant.Status.SUCCESS:
-                to_status = CourseParticipant.Status.SUCCESS
-    elif action == "select":
+    if action == "select":
         if course_status == Course.Status.STAGE1:
             to_status = CourseParticipant.Status.SELECT
         else:
@@ -352,21 +362,19 @@ def registration_status_change(course_id, user, action=None):
                     CourseParticipant.Status.SELECT,
                     CourseParticipant.Status.SUCCESS,
                 ]).count() >= 6:
-            context["warn_message"] = "最多只能选择6门课程～"
+            context["warn_message"] = "每位同学同时预选或选上的课程数最多为6门！"
             return context
 
     # 如果action为取消预选或退选，to_status直接使用初始值即可
 
     # 检查当前选课状态、选课阶段和操作的一致性
-
     try:
         registration_status_check(course_status, cur_status, to_status)
     except AssertionError:
-        context["warn_message"] = "非法的选课状态修改"
+        context["warn_message"] = "非法的选课状态修改！"
         return context
 
     # 暂时不使用意愿点选课
-
     # if (course_status == Course.Status.STAGE1
     #         and remaining_willingness_point(user) < course.bidding):
     #     context["warn_message"] = "剩余意愿点不足"
@@ -380,11 +388,15 @@ def registration_status_change(course_id, user, action=None):
                 CourseParticipant.objects.filter(
                     course__id=course_id, person=user).update(status=to_status)
                 context["warn_code"] = 2
-                context["warn_message"] = "成功取消选课"
+                context["warn_message"] = "成功取消选课！"
             else:
                 # 处理并发问题
                 course = Course.objects.select_for_update().get(id=course_id)
-                if course.current_participants < course.capacity:
+                if (course_status == Course.Status.STAGE2
+                        and course.current_participants >= course.capacity):
+                    context["warn_code"] = 1
+                    context["warn_message"] = "选课人数已满！"
+                else:
                     course.current_participants = course.current_participants + 1
                     course.save()
 
@@ -393,10 +405,7 @@ def registration_status_change(course_id, user, action=None):
                         course__id=course_id,
                         person=user).update(status=to_status)
                     context["warn_code"] = 2
-                    context["warn_message"] = "选课成功"
-                else:
-                    context["warn_code"] = 1
-                    context["warn_message"] = "选课人数已满"
+                    context["warn_message"] = "选课成功！"
     except:
         return context
     return context
@@ -409,7 +418,7 @@ def process_time(start, end) -> str:
     chinese_display = ["一", "二", "三", "四", "五", "六", "日"]
     start_time = start.strftime("%H:%M")
     end_time = end.strftime("%H:%M")
-    return f"每周{chinese_display[start.weekday()]} {start_time}-{end_time}"
+    return f"周{chinese_display[start.weekday()]} {start_time}-{end_time}"
 
 
 def course_to_display(courses, user, detail=False):
@@ -421,58 +430,50 @@ def course_to_display(courses, user, detail=False):
         user: 当前用户对应的NaturalPerson对象
         detail: 是否显示课程的详细信息，默认为False
     返回值:
-        返回一个列表，列表中的每个元素是一个课程信息的字典，字典的key同model中的字段名
+        返回一个列表，列表中的每个元素是一个课程信息的字典
     """
     display = []
-    courses = courses.prefetch_related("participant_set")  # 预取，减少数据库查询次数
+
+    # 预取，减少数据库查询次数
+    courses = courses.select_related("organization").prefetch_related(
+        "participant_set")
 
     # 获取课程的基本信息
-
     for course in courses:
         course_info = {}
-        course_info["id"] = course.id
+        course_info["course_id"] = course.id
         course_info["name"] = course.name
-        course_info["current_participants"] = course.current_participants
         course_info["capacity"] = course.capacity
+        course_info["current_participants"] = course.current_participants
         course_info["times"] = course.times  # 课程周数
         course_info["type"] = course.get_type_display()  # 课程类型
         course_info["status"] = course.get_status_display()  # 课程所处的选课阶段
+        course_info["avatar_path"] = course.organization.avatar.name
+        # 暂时不用这些信息
+        # if course.stage1_start:
+        #     course_info["stage1_start"] = course.stage1_start.strftime(
+        #         "%Y-%m-%d %H:%M")
+        # if course.stage1_end:
+        #     course_info["stage1_end"] = course.stage1_end.strftime(
+        #         "%Y-%m-%d %H:%M")
+        # if course.stage2_start:
+        #     course_info["stage2_start"] = course.stage2_start.strftime(
+        #         "%Y-%m-%d %H:%M")
+        # if course.stage2_end:
+        #     course_info["stage2_end"] = course.stage2_end.strftime(
+        #         "%Y-%m-%d %H:%M")
 
-        # TODO: 可能要去掉
-        if course.stage1_start:
-            course_info["stage1_start"] = course.stage1_start.strftime(
-                "%Y-%m-%d %H:%M")
-        if course.stage1_end:
-            course_info["stage1_end"] = course.stage1_end.strftime(
-                "%Y-%m-%d %H:%M")
-        if course.stage2_start:
-            course_info["stage2_start"] = course.stage2_start.strftime(
-                "%Y-%m-%d %H:%M")
-        if course.stage2_end:
-            course_info["stage2_end"] = course.stage2_end.strftime(
-                "%Y-%m-%d %H:%M")
+        # 当前学生的选课状态
+        if course.participant_set.exists():
+            course_info["student_status"] = course.participant_set.get(
+                course=course, person=user).get_status_display()
+        else:
+            course_info["student_status"] = "未选课"
 
-        if user.identity == NaturalPerson.Identity.STUDENT:
-            # 当前学生的选课状态
-            if course.participant_set.exists():
-                course_info["student_status"] = course.participant_set.get(
-                    course=course, person=user).get_status_display()
-            else:
-                course_info["student_status"] = "未选课"
-
-            # 课程是否选满
-            # TODO task 10 ljy 2022-02-08
-            # 和前端对接，如果课程已经选满，应该禁用对应的选课按钮
-
-            course_info["is_full"] = (True if course.current_participants >=
-                                      course.capacity else False)
-
-        # 每周的上课时间
-        # TODO：暂时认为前端需要显示每周的上课时间，需要讨论
         course_time = []
         for time in course.time_set.all():
             course_time.append(process_time(time.start, time.end))
-        course_info["time"] = course_time
+        course_info["time_set"] = course_time
 
         # 在课程详情页才展示的信息
 
@@ -543,16 +544,13 @@ def draw_lots(course):
     receivers = User.objects.filter(id__in=receivers)
     sender = course.organization.organization_id
     typename = Notification.Type.NEEDREAD
-
-    # TODO task 10 ljy 2022-02-07
-    # 通知title可能要修改; 通知内容需要斟酌; URL待补充
-
     title = Notification.Title.ACTIVITY_INFORM
-    content = f"您好！您参与抽签的课程《{course.name}》报名成功！"
+    content = f"您好！您已成功选上课程《{course.name}》！"
+
+    # 课程详情页面
     URL = f"/viewCourse/?courseid={course.id}"
 
-    # ? 不确定微信发送部分是否有问题
-
+    # 批量发送通知
     bulk_notification_create(
         receivers=receivers,
         sender=sender,
@@ -574,7 +572,7 @@ def draw_lots(course):
         status=CourseParticipant.Status.FAILED,
     ).values_list("person", flat=True)
     receivers = User.objects.filter(id__in=receivers)
-    content = f"很抱歉通知您，您参与抽签的课程《{course.name}》报名失败。"
+    content = f"很抱歉通知您，您未选上课程《{course.name}》。"
     if len(receivers) > 0:
         bulk_notification_create(
             receivers=receivers,
@@ -660,9 +658,6 @@ def change_course_status(course_id, cur_status, to_status):
         Course.objects.select_for_update().filter(id=course_id).update(
             status=to_status)
 
-    # TODO: task 10 ljy 2022-02-07
-    # 如果选课结束，需要根据上课时间批量开设整个学期的课程活动
-
     if to_status == Course.Status.END:
         # 将选课成功的同学批量加入小组
         participants = CourseParticipant.objects.filter(
@@ -671,13 +666,13 @@ def change_course_status(course_id, cur_status, to_status):
         organization = course.organization
         positions = []
         for participant in participants:
+            # 检查是否已经加入小组
             if not Position.objects.filter(person=participant.person,
                                            org=organization).exists():
-                position = Position(
-                    person=participant.person,
-                    org=organization,
-                    in_semester=Semester.get(
-                        local_dict["semester_data"]["semester"]))
+                position = Position(person=participant.person,
+                                    org=organization,
+                                    in_semester=Semester.get(
+                                        get_setting("semester_data/semester")))
                 positions.append(position)
         if positions:
             with transaction.atomic():
