@@ -276,6 +276,14 @@ def start_scheduler(with_scheduled_job=True, debug=False):
                               id=current_job,
                               minutes=5,
                               replace_existing=True)
+            current_job = "courseWeeklyActivitylauncher"
+            if debug:
+                print(f"adding scheduled job '{current_job}'")
+            scheduler.add_job(longterm_launch_course,
+                              "interval",
+                              id=current_job,
+                              minutes=5,
+                              replace_existing=True)
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"
             log.operation_writer(SYSTEM_LOG, info,

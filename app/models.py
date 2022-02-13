@@ -700,7 +700,8 @@ class Activity(CommentBase):
     status = models.CharField(
         "活动状态", choices=Status.choices, default=Status.REVIEWING, max_length=32
     )
-
+    course_time = models.ForeignKey("CourseTime", on_delete=models.SET_NULL,blank=True,
+                            null=True,verbose_name="课程每周活动时间")
     objects = ActivityManager()
 
     class ActivityCategory(models.IntegerChoices):
