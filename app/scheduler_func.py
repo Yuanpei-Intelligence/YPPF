@@ -161,9 +161,22 @@ def get_weather():
 # 每天计算用户活跃度
 def update_active_score_per_day():
     with transaction.atomic():
+        start_time = datetime.now() - timedelta(days=15)
         recipients = NaturalPerson.objects.activated().select_for_update()
         for recipient in recipients:
-            recipient.active_score = (datetime.now() - recipient.last_time_login).days / 15
+            PV_all = PageLog.objects.filter(
+                user=recipient.person_id,
+                type=PageLog.CountType.PV,
+                time__gte=start_time,
+            )
+            PV_count = 0    # 15天内的PV数，一天可能有多个PV最多算一次
+            for i in range(15):
+                finish_time = start_time + timedelta(days=1)
+                PV_day = PV_all.filter(time__range=[start_time, finish_time])
+                if len(PV_day) != 0:
+                    PV_count += 1
+                start_time += timedelta(days=1)
+            recipient.active_score = PV_count / 15
             recipient.save()
 
 
