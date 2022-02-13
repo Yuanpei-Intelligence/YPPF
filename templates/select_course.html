@@ -102,55 +102,8 @@
                                 </thead>
             
                                 <tbody class="table">
-                                    <!--前三个打个样子，包括了各种可能出现的情况（多时间，多状态）-->
-                                  <tr>
-                                    <th scope="row">理想国读书会</th>
-                                    <td>周六 18:00-21:00</td>
-                                    <td>6</td>
-                                    <td>智</td>
-                                    <td>
-                                        <span class="badge badge-pill badge-secondary">预选</span>
-                                    </td>
-                                    <td>10/23</td>
-                                    <td>
-                                        <button type="button" class="btn btn-primary btn-sm">选课</button>
-                                    </td>
-                                  </tr>
-                                  <tr>
-                                    <th scope="row">健身俱乐部健身课程</th>
-                                    <td>
-                                        周一 15:00-16:00<br>
-                                        周三 15:00-16:00<br>
-                                        周五 15:00-16:00
-                                    </td>
-                                    <td>10</td>
-                                    <td>体</td>
-                                    <td>
-                                        <span class="badge badge-pill badge-primary">未开始</span>
-                                    </td>
-                                    <td>10/23</td>
-                                    <td>
-                                        <button type="button" class="btn btn-primary btn-sm">选课</button>
-                                    </td>
-                                  </tr>
-                                  <tr>
-                                    <th scope="row">绘画班</th>
-                                    <td>周六&nbsp;18:00-21:00</td>
-                                    <td>6</td>
-                                    <td>美</td>
-                                    <td>
-                                        <span class="badge badge-pill badge-info">补退选</span>
-                                    </td>
-                                    <td>10/23</td>
-                                    <td>
-                                        <button type="button" class="btn btn-primary btn-sm">选课</button>
-                                    </td>
-                                  </tr> 
                                   
-                                  <!-- TODO : 传递courses列表，需要该学生参与participate状态为未选课的所有课程（unselectedcourses不够，注意下面的todo）-->
-                                  <!--再从这个大列表中准备好对应课程类别五个小列表-->
-                                  
-                                  <!--Sophie-zh TODO: 1.超链接&头像；2.课程分类筛选-->
+                                 
                                   {% for course in unselected_display %}
                                   <tr>
                                     <th scope="row">
@@ -211,7 +164,7 @@
                                 </thead>
             
                                 <tbody class="table">
-                                    <!--TODO : 或许大概不是这么调用，暂存-->
+                                    
                                   {% for course in courses.0 %}
                                   <tr>
                                     <th scope="row">
