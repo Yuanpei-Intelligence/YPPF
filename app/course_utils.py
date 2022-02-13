@@ -24,6 +24,7 @@ from datetime import datetime, timedelta
 
 from app.scheduler import scheduler
 
+
 __all__ = [
     'course_activity_base_check',
     'create_single_course_activity',
@@ -237,3 +238,4 @@ def cancel_course_activity(request, activity):
     scheduler.remove_job(f"activity_{activity.id}_{Activity.Status.END}")
 
     activity.save()
+    
