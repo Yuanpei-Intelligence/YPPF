@@ -259,7 +259,7 @@ def showCourseRecord(request):
     me = utils.get_person_or_org(request.user)  # 获取自身
     if user_type == "Person":   
         return redirect(message_url(wrong('学生账号不能访问此界面！')))
-    if me.otype.otype_name != "书院课程":
+    if me.otype.otype_name != COURSE_TYPENAME:
         return redirect(message_url(wrong('非书院课程组织账号不能访问此界面！')))
 
     edit_able = get_setting("course_record_editable")
