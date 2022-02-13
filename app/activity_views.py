@@ -1,3 +1,4 @@
+from turtle import update
 from app.views_dependency import *
 from app.models import (
     NaturalPerson,
@@ -942,35 +943,72 @@ def examineActivity(request, aid):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='activity_views[offlineCheckinActivity]', record_user=True)
-def offlineCheckinActivity(request,aid):
+def offlineCheckinActivity(request, aid):
     '''
     修改签到功能
     只有举办活动的组织账号可查看和修改
     '''
-    valid, user_type, html_display = utils.check_user_type(request.user) 
-    me=get_person_or_org(request.user,user_type)
+    _, user_type, _ = utils.check_user_type(request.user) 
+    me = get_person_or_org(request.user, user_type)
     try:
         activity = Activity.objects.get(id=aid)
         assert me == activity.organization_id and user_type == "Organization"
     except Exception as e:
         log.record_traceback(request, e)
         return EXCEPT_REDIRECT
-    member_list = Participant.objects.filter(activity_id=aid,
-                                             status__in=[
-                                                    Participant.AttendStatus.UNATTENDED,
-                                                    Participant.AttendStatus.ATTENDED,
-                                                    ])
+    
+    member_list = Participant.objects.filter(
+        activity_id=aid,
+        status__in=[
+                    Participant.AttendStatus.UNATTENDED,
+                    Participant.AttendStatus.ATTENDED,
+        ]).select_related('person_id')
+    # 时间优化新版本
+    member_attend = []
+    member_unattend = []
+    for member in member_list:
+        checkin = request.POST.get("checkin" + 
+                                           str(member.person_id.person_id))
+        if checkin == "yes":
+            member_attend.append(member.person_id)
+        elif checkin == "no":
+            member_unattend.append(member.person_id)
+    try:
+        with transaction.atomic():
+            Participant.objects.filter(
+                person_id__in=member_attend).update(
+                    status = Participant.AttendStatus.ATTENDED)
+            Participant.objects.filter(
+                person_id__in=member_unattend).update(
+                    status = Participant.AttendStatus.UNATTENDED)
+    except Exception as e:
+            log.record_traceback(request, e)
+            return EXCEPT_REDIRECT
+    
+    '''
+    旧版本
     if request.method == "POST" and request.POST:
         try:
             for member in member_list:
-                checkin = request.POST.get("checkin"+str(member.person_id.person_id))
+                checkin = request.POST.get("checkin" + 
+                                           str(member.person_id.person_id))
                 if checkin == "yes":
-                    member.status = Participant.AttendStatus.ATTENDED 
-                    member.save()              
+                    member.status = Participant.AttendStatus.ATTENDED
+                    member.save()
                 elif checkin == "no":
                     member.status = Participant.AttendStatus.UNATTENDED
                     member.save()
         except:
             return redirect(message_url(wrong('修改失败')))
-    bar_display = utils.get_sidebar_and_navbar(request.user,navbar_name = "修改签到信息", title_name = me.oname)
-    return render(request, "activity_checkinoffline.html",locals())
+    '''
+    try:    #点击保存按钮后跳转到viewActivity界面
+        saveSituation = request.POST.get("saveSituation")
+        if saveSituation == "yes2":
+            return redirect(f"/viewActivity/{aid}")
+    except Exception as e:
+            log.record_traceback(request, e)
+            return EXCEPT_REDIRECT
+    
+    bar_display = utils.get_sidebar_and_navbar(request.user,
+                                               navbar_name = "修改签到信息")
+    return render(request, "activity_checkinoffline.html", locals())
