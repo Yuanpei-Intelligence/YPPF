@@ -188,8 +188,11 @@ def showCourseActivity(request):
     # 取消单次活动
     if request.method == "POST" and request.POST:
         # 获取待取消的活动
-        aid = int(request.POST.get("cancel-action"))
-        activity = Activity.objects.get(id=aid)
+        try:
+            aid = int(request.POST.get("cancel-action"))
+            activity = Activity.objects.get(id=aid)
+        except:
+            return redirect(message_url(wrong('遇到不可预料的错误。如有需要，请联系管理员解决!'), request.path))
 
         if activity.organization_id != me:
             return redirect(message_url(wrong('您没有取消该课程活动的权限!'), request.path))
