@@ -663,14 +663,29 @@ def load_tags_for_old_org(request):
     except:
         context = {"message": "没有找到oldorgtags.csv,请确认该文件已经在test_data中。"}
         return render(request, "debugging.html", context)
+    error_dict = {}
+    org_num = 0
     for _, tag_dict in org_tag_def.iterrows():
+        org_num += 1
+        err = False
         with transaction.atomic():
-            useroj = Organization.objects.select_for_update().get(oname=tag_dict[0])
-            for tag in tag_dict[1:]:
-                if type(tag)==str:
+            try:
+                useroj = Organization.objects.select_for_update().get(oname=tag_dict[0])
+                for tag in tag_dict[1:]:
                     useroj.tags.add(OrganizationTag.objects.get(name=tag))
-                else:
-                    break
-            useroj.save()
-    context = {"message": "导入组织标签信息成功！"}
+            except Exception as e:
+                if not(type(tag)==float and math.isnan(tag)): # 说明不是因遍历至空单元格导致的异常
+                    error_dict[tag_dict[0]] = e
+                    err = True
+            if not err:  # 只有未出现异常，组织的标签信息才被保存
+                useroj.save()
+    context = {
+        "message": '<br/>'.join((
+                    f"共尝试导入{org_num}个组织的标签信息",
+                    f"导入成功的组织：{org_num - len(error_dict)}个",
+                    f"导入失败的组织：{len(error_dict)}个",
+                    f'错误原因：' if error_dict else ''
+                    ) + tuple(f'{org}：{err}' for org, err in error_dict.items())
+                    )
+        }
     return render(request, "debugging.html", context)
