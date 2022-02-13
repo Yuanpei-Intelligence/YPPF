@@ -24,7 +24,6 @@ scheduler_func.py是所有和scheduler定时任务发生交互的函数集合。
 # scheduler = BackgroundScheduler()
 # scheduler.add_jobstore(DjangoJobStore(), "default")
 from boottest.scheduler import scheduler
-from django.conf import settings
 
 
 # 每周清除预约的程序，会写入logstore中
@@ -512,4 +511,3 @@ def addAppoint(contents):  # 添加预约, main function
             status=400)
 
     return JsonResponse({'data': appoint.toJson()}, status=200)
-

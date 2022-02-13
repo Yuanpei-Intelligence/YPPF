@@ -3,8 +3,6 @@ scheduler_func.py
 
 应尽量只包含周期性定时任务
 '''
-import os
-
 from app.models import (
     User,
     NaturalPerson,
@@ -21,15 +19,15 @@ from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
 from app import log
 from app.constants import *
 from boottest import local_dict
-from boottest.scheduler import scheduler
-# from boottest.scheduler import scheduler, register_periodic_job
 
 import json
 import urllib.request
 
 from datetime import datetime, timedelta
 from django.db import transaction  # 原子化更改数据库
-from django.conf import settings
+
+# 引入定时任务还是放上面吧
+from app.scheduler import scheduler
 
 default_weather = get_config('default_weather', default=None)
 
@@ -155,7 +153,7 @@ def get_weather():
             "temp_feel": str(round(float(load_json["main"]["feels_like"]) - 273.15)),
             "icon": load_json["weather"][0]["icon"]
         }
-        with open(os.path.join(settings.__TMP_DIR, "weather.json"), "w") as weather_json:
+        with open("./weather.json", "w") as weather_json:
             json.dump(weather_dict, weather_json)
     except KeyError as e:
         log.operation_writer(SYSTEM_LOG, "天气更新异常,原因可能是local_dict中缺少weather_api_key:"+str(e), "scheduler_func[get_weather]", log.STATE_WARNING)
@@ -168,57 +166,50 @@ def get_weather():
         return weather_dict
 
 
-# def start_scheduler(with_scheduled_job=True, debug=False):
-#     '''
-#     noexcept
+def start_scheduler(with_scheduled_job=True, debug=False):
+    '''
+    noexcept
 
-#     启动定时任务，先尝试添加计划任务，再启动，两部分之间互不影响
-#     失败时写入log
-#     - with_scheduled_job: 添加计划任务
-#     - debug: 提供具体的错误信息
-#     '''
-#     # register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
-#     # 但好像非服务器版本有问题??
-#     if debug: print("———————————————— Scheduler:   Debug ————————————————")
-#     if with_scheduled_job:
-#         current_job = None
-#         try:
-#             current_job = "get_weather"
-#             if debug: print(f"adding scheduled job '{current_job}'")
-#             scheduler.add_job(get_weather,
-#                               'interval',
-#                               id=current_job,
-#                               minutes=5,
-#                               replace_existing=True)
-#             current_job = "activityStatusUpdater"
-#             if debug: print(f"adding scheduled job '{current_job}'")
-#             scheduler.add_job(changeAllActivities,
-#                               "interval",
-#                               id=current_job,
-#                               minutes=5,
-#                               replace_existing=True)
-#         except Exception as e:
-#             info = f"add scheduled job '{current_job}' failed, reason: {e}"
-#             log.operation_writer(SYSTEM_LOG, info,
-#                             "scheduler_func[start_scheduler]", log.STATE_ERROR)
-#             if debug: print(info)
+    启动定时任务，先尝试添加计划任务，再启动，两部分之间互不影响
+    失败时写入log
+    - with_scheduled_job: 添加计划任务
+    - debug: 提供具体的错误信息
+    '''
+    return NotImplementedError
+    # register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
+    # 但好像非服务器版本有问题??
+    if debug: print("———————————————— Scheduler:   Debug ————————————————")
+    if with_scheduled_job:
+        current_job = None
+        try:
+            current_job = "get_weather"
+            if debug: print(f"adding scheduled job '{current_job}'")
+            scheduler.add_job(get_weather,
+                              'interval',
+                              id=current_job,
+                              minutes=5,
+                              replace_existing=True)
+            current_job = "activityStatusUpdater"
+            if debug: print(f"adding scheduled job '{current_job}'")
+            scheduler.add_job(changeAllActivities,
+                              "interval",
+                              id=current_job,
+                              minutes=5,
+                              replace_existing=True)
+        except Exception as e:
+            info = f"add scheduled job '{current_job}' failed, reason: {e}"
+            log.operation_writer(SYSTEM_LOG, info,
+                            "scheduler_func[start_scheduler]", log.STATE_ERROR)
+            if debug: print(info)
 
-#     try:
-#         if debug: print("starting schduler in scheduler_func.py")
-#         scheduler.start()
-#     except Exception as e:
-#         info = f"start scheduler failed, reason: {e}"
-#         log.operation_writer(SYSTEM_LOG, info,
-#                         "scheduler_func[start_scheduler]", log.STATE_ERROR)
-#         if debug: print(info)
-#         scheduler.shutdown(wait=False)
-#         if debug: print("successfully shutdown scheduler")
-#     if debug: print("———————————————— End     :   Debug ————————————————")
-
-
-
-# if settings.__ENV != "SCHEDULER":
-#     import logging
-#     logging.info("Register interval jobs.")
-#     register_periodic_job(get_weather, minutes=5, replace_existing=True)
-#     register_periodic_job(changeAllActivities, minutes=5, replace_existing=True)
+    try:
+        if debug: print("starting schduler in scheduler_func.py")
+        scheduler.start()
+    except Exception as e:
+        info = f"start scheduler failed, reason: {e}"
+        log.operation_writer(SYSTEM_LOG, info,
+                        "scheduler_func[start_scheduler]", log.STATE_ERROR)
+        if debug: print(info)
+        scheduler.shutdown(wait=False)
+        if debug: print("successfully shutdown scheduler")
+    if debug: print("———————————————— End     :   Debug ————————————————")

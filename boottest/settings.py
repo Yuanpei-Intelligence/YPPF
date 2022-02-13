@@ -221,7 +221,7 @@ LOGGING = {
 # Only used for debugging schedulers
 logging.basicConfig(
     filename=os.path.join(__LOG_DIR, SCHEDULER_LOG_FILE),
-    filemode='w',
+    filemode='a',
     format='%(asctime)s,%(msecs)d in %(funcName)s - %(levelname)s: %(message)s',
     datefmt='%m-%d %H:%M:%S',
     level=__LOG_LEVEL,
