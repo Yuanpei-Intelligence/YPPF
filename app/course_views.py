@@ -433,11 +433,14 @@ def addCourse(request, cid=None):
         course_time = course.time_set.all()
         bidding = course.bidding
         introduction = utils.escape_for_templates(course.introduction)
+        teaching_plan=utils.escape_for_templates(course.teaching_plan)
+        record_cal_method=utils.escape_for_templates(course.record_cal_method)
         status = course.status
         type_name = course.get_type_display
         capacity = course.capacity
         current_participants = course.current_participants
         photo = str(course.photo) #TODO 修改呈现
+
  
     if not edit:
         bar_display = utils.get_sidebar_and_navbar(request.user, "发起课程")

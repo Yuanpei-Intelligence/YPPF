@@ -223,8 +223,20 @@
                                     <div class="form-group">
                                         <label for="aintro">课程简介</label>
                                         <textarea id="aintro" name="introduction" class="form-control" rows="3"
-                                            placeholder="在这里介绍一下课程内容、教学计划吧~" onclick="fill_value(this)"
+                                            placeholder="在这里简要介绍一下课程吧~" onclick="fill_value(this)"
                                             required="required" maxlength=1000>{{introduction|default:''}}</textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="aintro">教学计划</label>
+                                        <textarea id="teaching_plan" name="teaching_plan" class="form-control" rows="3"
+                                            placeholder="在这里介绍一下教学计划吧~" onclick="fill_value(this)"
+                                            required="required" maxlength=1000>{{teaching_plan|default:''}}</textarea>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="aintro">学时计算方式</label>
+                                        <textarea id="record_cal_method" name="record_cal_method" class="form-control" rows="3"
+                                            placeholder="在这里介绍一下学时计算方式吧~" onclick="fill_value(this)"
+                                            required="required" maxlength=1000>{{record_cal_method|default:''}}</textarea>
                                     </div>
 
 
@@ -450,15 +462,16 @@
 
     // 宣传信息
     document.getElementById("aintro").placeholder = "{{introduction | safe}}";
-
+    document.getElementById("teaching_plan").placeholder = "{{teaching_plan | safe}}";
+    document.getElementById("record_cal_method").placeholder = "{{record_cal_method | safe}}";
     // input 不再必须填写
     var all_inputs = document.getElementsByTagName("input");
     for (var i = 0; i < all_inputs.length; i++) {
         all_inputs[i].required = "";
     }
     document.getElementById("aintro").required = "";
-    document.getElementById("apply_reason").required = "";
-
+    document.getElementById("teaching_plan").required = "";
+    document.getElementById("record_cal_method").required = "";
     /* 填充旧图片 */
     {% if full_editable %}
     {% if uploaded_photo %}

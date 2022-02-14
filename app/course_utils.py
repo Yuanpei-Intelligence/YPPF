@@ -697,8 +697,12 @@ def course_base_check(request):
     context["name"] = request.POST["name"]
     context["introduction"] = request.POST["introduction"]
     context["classroom"] = request.POST["classroom"]
+    context["teaching_plan"] = request.POST["teaching_plan"]
+    context["record_cal_method"] = request.POST["record_cal_method"]
     assert len(context["name"]) > 0,"课程名称不能为空！"
     assert len(context["introduction"]) > 0,"课程介绍不能为空！"
+    assert len(context["teaching_plan"]) > 0,"教学计划不能为空！"
+    assert len(context["record_cal_method"]) > 0,"学时计算方法不能为空！"
     assert len(context["classroom"]) > 0,"上课地点不能为空！"
 
     org = get_person_or_org(request.user, "Organization")
@@ -707,22 +711,7 @@ def course_base_check(request):
     context['teacher'] = request.POST["teacher"]    
     context['type'] = request.POST["type"]  #课程类型
     context["capacity"] = request.POST["capacity"]
-    # context['current_participants'] = request.POST["current_participants"]
-    context["photo"] = request.FILES.get("photo")
-    
-    stage1_start = str_to_time(str(get_setting(
-        "course/yx_election_start")))  # 预选开始时间
-    stage1_end = str_to_time(str(get_setting(
-        "course/yx_election_end")))  # 预选结束时间
-    stage2_start = str_to_time(str(get_setting(
-        "course/btx_election_start")))  # 补退选开始时间
-    stage2_end = str_to_time(str(get_setting(
-        "course/btx_election_start")))  # 补退选结束时间
-    context["stage1_start"] = stage1_start
-    context["stage1_end"] = stage1_end
-    context["stage2_start"] = stage2_start
-    context["stage2_end"] = stage2_end
-    
+    context["photo"] = request.FILES.get("photo") 
 
     # 每周课程时间
     course_starts = request.POST.getlist("start")
@@ -764,6 +753,8 @@ def create_course(request, course=None):
             classroom=context["classroom"],
             teacher=context['teacher'],
             introduction=context["introduction"],
+            teaching_plan=context["teaching_plan"],
+            record_cal_method=context["record_cal_method"],
             type=context['type'],
             capacity=context["capacity"],
             photo=context['photo'],
@@ -774,7 +765,6 @@ def create_course(request, course=None):
                 course=course,
                 start=context['course_starts'][i],
                 end=context['course_ends'][i],
-                end_week=16,
             )
 
     # 创建新课程
@@ -795,11 +785,9 @@ def create_course(request, course=None):
                         organization=context['organization'],
                         classroom=context["classroom"],
                         teacher=context['teacher'],
-                        stage1_start=context['stage1_start'],
-                        stage1_end=context['stage1_end'],
-                        stage2_start=context['stage2_start'],
-                        stage2_end=context['stage2_end'],
                         introduction=context["introduction"],
+                        teaching_plan=context["teaching_plan"],
+                        record_cal_method=context["record_cal_method"],
                         type=context['type'],
                         capacity=context["capacity"],
                         photo=context['photo'],
@@ -807,16 +795,6 @@ def create_course(request, course=None):
 
         # 定时任务和微信消息有关吗，我还没了解怎么发微信消息orz不过定时任务还是能写出来的……应该
         #TODO:定时任务
-        # scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
-        #     run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
-        # # 活动状态修改
-        # scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.WAITING}",
-        #     run_date=activity.apply_end, args=[activity.id, Activity.Status.APPLYING, Activity.Status.WAITING])
-        # scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
-        #     run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING])
-        # scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
-        #     run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
-
         course.save()
         
         for i in range(len(context['course_starts'])):
@@ -824,7 +802,6 @@ def create_course(request, course=None):
                 course=course,
                 start=context['course_starts'][i],
                 end=context['course_ends'][i],
-                end_week=16,
             )
 
     return course.id,True
