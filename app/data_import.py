@@ -641,9 +641,11 @@ def load_org_tag(request):
     tag_list = []
     for _, tag_dict in org_tag_def.iterrows():
         tag_name = tag_dict["name"]
+        tag_color = tag_dict["color"]
         tag_list.append(
             OrganizationTag(
                 name=tag_name,
+                color=tag_color,
             )
         )
     OrganizationTag.objects.bulk_create(tag_list)
