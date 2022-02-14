@@ -4,6 +4,7 @@ from app.models import (
     Freshman,
     Position,
     Organization,
+    OrganizationTag,
     OrganizationType,
     ModifyPosition,
     Activity,
@@ -167,33 +168,10 @@ def index(request):
             html_display["warn_message"] = local_dict["msg"]["406"]
 
     # 所有跳转，现在不管是不是post了
-    if arg_origin is not None:
-        if request.user.is_authenticated:
-
-            if not check_cross_site(request, arg_origin):
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
-                return redirect(message_url(html_display))
-
-            is_inner, arg_origin = utils.get_std_inner_url(arg_origin)
-            if is_inner:  # 非外部链接，合法性已经检查过
-                return redirect(arg_origin)  # 不需要加密验证
-
-            is_underground, arg_origin = utils.get_std_underground_url(arg_origin)
-            if not is_underground:
-                return redirect(arg_origin)
-
-            timeStamp = str(int(datetime.utcnow().timestamp())) # UTC 统一服务器
-            username = request.user.username    # session["username"] 已废弃
-            en_pw = hash_coder.encode(username + timeStamp)
-            try:
-                userinfo = NaturalPerson.objects.get(person_id__username=username)
-                arg_origin = append_query(arg_origin,
-                    Sid=username, timeStamp=timeStamp, Secret=en_pw, name=userinfo.name)
-            except:
-                arg_origin = append_query(arg_origin,
-                    Sid=username, timeStamp=timeStamp, Secret=en_pw)
-            return redirect(arg_origin)
+    if arg_origin is not None and request.user.is_authenticated:
+        if not check_cross_site(request, arg_origin):
+            return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
+        return redirect(arg_origin)
 
     return render(request, "index.html", locals())
 
@@ -1034,13 +1012,15 @@ def accountSetting(request):
 
             # 合法性检查
             attr_dict, show_dict, html_display = utils.check_account_setting(request, user_type)
-            attr_check_list = [attr for attr in attr_dict.keys() if attr not in ['gender', 'ava', 'wallpaper']]
+            attr_check_list = [attr for attr in attr_dict.keys() if attr not in ['gender', 'ava', 'wallpaper', 'accept_promote']]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
             modify_info = []
             if attr_dict['gender'] != useroj.get_gender_display():
                 modify_info.append(f'gender: {useroj.get_gender_display()}->{attr_dict["gender"]}')
+            if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
+                modify_info.append(f'accept_promote: {useroj.get_accept_promote_display()}->{attr_dict["accept_promote"]}')
             if attr_dict['ava']:
                 modify_info.append(f'avatar: {attr_dict["ava"]}')
             if attr_dict['wallpaper']:
@@ -1054,6 +1034,8 @@ def accountSetting(request):
 
             if attr_dict['gender'] != useroj.gender:
                 useroj.gender = NaturalPerson.Gender.MALE if attr_dict['gender'] == '男' else NaturalPerson.Gender.FEMALE
+            if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
+                useroj.accept_promote = True if attr_dict['accept_promote'] == '是' else False
             for attr in attr_check_list:
                 if attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]:
                     setattr(useroj, attr, attr_dict[attr])
@@ -1082,6 +1064,8 @@ def accountSetting(request):
 
         useroj = Organization.objects.get(organization_id=user)
         former_wallpaper = utils.get_user_wallpaper(me, "Organization")
+        org_tags = list(useroj.tags.all())
+        all_tags = list(OrganizationTag.objects.all())
         if request.method == "POST" and request.POST:
 
             ava = request.FILES.get("avatar")
@@ -1097,13 +1081,24 @@ def accountSetting(request):
                 modify_info.append(f'avatar: {ava}')
             if wallpaper:
                 modify_info.append(f'wallpaper: {wallpaper}')
-            modify_info += [f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}'
-                            for attr in attr_check_list
-                            if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr])]
+            attr = 'introduction'
+            if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]):
+                modify_info += [f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}']
+            attr = 'tags_modify'
+            if attr_dict[attr] != "":
+                modify_info += [f'{attr}: {attr_dict[attr]}']
 
-            for attr in attr_check_list:
-                if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
-                    setattr(useroj, attr, attr_dict[attr])
+            attr = 'introduction'
+            if attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]:
+                setattr(useroj, attr, attr_dict[attr])
+            if attr_dict['tags_modify'] != "":
+                for modify in attr_dict['tags_modify'].split(';'):
+                    if modify != "":
+                        action, tag_name = modify.split(" ")
+                        if action == 'add':
+                            useroj.tags.add(OrganizationTag.objects.get(name=tag_name))
+                        else:
+                            useroj.tags.remove(OrganizationTag.objects.get(name=tag_name))
             if ava is None:
                 pass
             else:

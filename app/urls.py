@@ -72,11 +72,7 @@ urlpatterns = [
     path("examineActivity/<str:aid>", activity_views.examineActivity, name="examineActivity"),
     path("endActivity/", reimbursement_views.endActivity, name="endActivity"),
     path("modifyEndActivity/", reimbursement_views.modifyEndActivity, name="modifyEndActivity"),
-] + [
-    # 书院课程相关内容
-    path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
-    path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
-    path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
+    path("offlineCheckinActivity/<str:aid>", activity_views.offlineCheckinActivity, name="offlineCheckinActivity"),
 ] + [
     # 组织相关操作
     path("saveShowPositionStatus", org_views.saveShowPositionStatus, name="saveShowPositionStatus"),
@@ -86,6 +82,13 @@ urlpatterns = [
     path("modifyOrganization/", org_views.modifyOrganization, name="modifyOrganization"),
     path("sendMessage/", org_views.sendMessage, name="sendMessage"),
     # path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"), 弃用多年
+] + [
+    # 课程相关操作
+    path("selectCourse/", course_views.selectCourse, name="selectCourse"),
+    path("viewCourse/", course_views.viewCourse, name="viewCourse"),
+    path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
+    path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
+    path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
 ] + [
     # 数据导入
     path("loadstudata/", data_import.load_stu_data, name="load_stu_data"),
