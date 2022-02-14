@@ -170,33 +170,10 @@ def index(request):
             html_display["warn_message"] = local_dict["msg"]["406"]
 
     # 所有跳转，现在不管是不是post了
-    if arg_origin is not None:
-        if request.user.is_authenticated:
-
-            if not check_cross_site(request, arg_origin):
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
-                return redirect(message_url(html_display))
-
-            is_inner, arg_origin = utils.get_std_inner_url(arg_origin)
-            if is_inner:  # 非外部链接，合法性已经检查过
-                return redirect(arg_origin)  # 不需要加密验证
-
-            is_underground, arg_origin = utils.get_std_underground_url(arg_origin)
-            if not is_underground:
-                return redirect(arg_origin)
-
-            timeStamp = str(int(datetime.utcnow().timestamp())) # UTC 统一服务器
-            username = request.user.username    # session["username"] 已废弃
-            en_pw = hash_coder.encode(username + timeStamp)
-            try:
-                userinfo = NaturalPerson.objects.get(person_id__username=username)
-                arg_origin = append_query(arg_origin,
-                    Sid=username, timeStamp=timeStamp, Secret=en_pw, name=userinfo.name)
-            except:
-                arg_origin = append_query(arg_origin,
-                    Sid=username, timeStamp=timeStamp, Secret=en_pw)
-            return redirect(arg_origin)
+    if arg_origin is not None and request.user.is_authenticated:
+        if not check_cross_site(request, arg_origin):
+            return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
+        return redirect(arg_origin)
 
     return render(request, "index.html", locals())
 
