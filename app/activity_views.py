@@ -990,7 +990,7 @@ def offlineCheckinActivity(request, aid):
     try:
         saveSituation = request.POST.get("saveSituation")
         if saveSituation == "yes2":
-            return redirect(f"/offlineCheckinActivity/{aid}")
+            return redirect(f"/viewActivity/{aid}")
     except Exception as e:
             log.record_traceback(request, e)
             return EXCEPT_REDIRECT

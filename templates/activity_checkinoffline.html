@@ -35,15 +35,15 @@
                                             </a></td>
                                         <td>
                                              {% if member.status == "未签到" %}
-                                                <input type="radio" class="custom-control-inline" name="checkin{{member.person_id_id}}" value="no" checked onclick="alert('取消{{member.person_id}}的签到')">未参与
+                                                <input type="radio" class="custom-control-inline" name="checkin{{member.person_id_id}}" value="no" checked >未参与
                 
-                                                <input type="radio" class="custom-control-inline" name="checkin{{member.person_id_id}}" value="yes" onclick="alert('修改{{member.person_id}}状态为签到')">已参与
+                                                <input type="radio" class="custom-control-inline" name="checkin{{member.person_id_id}}" value="yes" >已参与
                                              {% endif %}
                 
                                             {% if member.status == "已参与" %}
-                                                <input type="radio" class="custom-control-inline" name="checkin{{member.person_id_id}}" value="no"  onclick="alert('取消{{member.person_id}}的签到')">未参与
+                                                <input type="radio" class="custom-control-inline" name="checkin{{member.person_id_id}}" value="no"  >未参与
                 
-                                                <input type="radio" class="custom-control-inline" name="checkin{{member.person_id_id}}" value="yes" checked onclick="alert('修改{{member.person_id}}状态为签到')">已参与
+                                                <input type="radio" class="custom-control-inline" name="checkin{{member.person_id_id}}" value="yes" checked >已参与
                                             {% endif %}
                                         </td>
             
