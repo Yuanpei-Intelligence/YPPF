@@ -47,7 +47,7 @@ from datetime import datetime, timedelta
 
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import F, Sum
+from django.db.models import F, Sum, Prefetch
 
 from app.scheduler import scheduler
 
@@ -431,7 +431,11 @@ def process_time(start, end) -> str:
     return f"周{chinese_display[start.weekday()]} {start_time}-{end_time}"
 
 
-def course_to_display(courses, user, detail=False):
+@log.except_captured(return_value=True,
+                     record_args=True,
+                     status_code=log.STATE_WARNING,
+                     source='course_utils[course_to_display]')
+def course_to_display(courses, user, detail=False) -> list:
     """
     方便前端呈现课程信息
 
@@ -444,9 +448,21 @@ def course_to_display(courses, user, detail=False):
     """
     display = []
 
-    # 预取，减少数据库查询次数
-    courses = courses.select_related("organization").prefetch_related(
-        "participant_set")
+    # TODO：task10 ljy 2022-02-14
+    # 在课程详情页的前端完成后，适当调整向前端传递的字段
+
+    if detail:
+        courses = courses.only("classroom", "teacher", "introduction",
+                               "photo").prefetch_related("time_set")
+    else:
+        # 预取，同时不查询不需要的字段
+        courses = courses.defer(
+            "classroom", "teacher", "introduction",
+            "photo").select_related('organization').prefetch_related(
+                Prefetch(
+                    'participant_set',
+                    queryset=CourseParticipant.objects.filter(person=user),
+                    to_attr='participants'), "time_set")
 
     # 获取课程的基本信息
     for course in courses:
@@ -463,8 +479,9 @@ def course_to_display(courses, user, detail=False):
             course_info["teacher"] = course.teacher
             course_info["introduction"] = course.introduction
             course_info["photo"] = course.photo.name  # 图片在media文件夹内的路径
+            display.append(course_info)
             continue
-        
+
         course_info["course_id"] = course.id
         course_info["name"] = course.name
         course_info["capacity"] = course.capacity
@@ -477,10 +494,10 @@ def course_to_display(courses, user, detail=False):
         # 暂时不启用意愿点机制
         # course_info["bidding"] = int(course.bidding)
 
-        # 当前学生的选课状态
-        if course.participant_set.exists():
-            course_info["student_status"] = course.participant_set.get(
-                course=course, person=user).get_status_display()
+        # 当前学生的选课状态（注：course.participants是一个list）
+        if course.participants:
+            course_info["student_status"] = course.participants[
+                0].get_status_display()
         else:
             course_info["student_status"] = "未选课"
 
