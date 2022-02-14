@@ -1004,10 +1004,10 @@ def offlineCheckinActivity(request, aid):
         except:
             return redirect(message_url(wrong('修改失败')))
     '''
-    try:    #点击保存按钮后跳转到viewActivity界面
+    try:
         saveSituation = request.POST.get("saveSituation")
         if saveSituation == "yes2":
-            return redirect(f"/viewActivity/{aid}")
+            return redirect(f"/offlineCheckinActivity/{aid}")
     except Exception as e:
             log.record_traceback(request, e)
             return EXCEPT_REDIRECT
