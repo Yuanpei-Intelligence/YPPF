@@ -432,17 +432,14 @@ def selectCourse(request):
     unselected_courses = Course.objects.unselected(me)
     selected_courses = Course.objects.selected(me)
 
-    # TODO task 10 ljy 2022-02-13
-    # 前端完成后可以省略course_to_display函数，暂时保留便于对接
-
     # 未选的课程需要按照课程类型排序
     courses = {}
     for type in Course.CourseType.values:
         courses[type] = course_to_display(unselected_courses.filter(type=type),
                                           me)
 
-    # 命名和前端分类保持一致
-    my_courses = course_to_display(selected_courses, me)
+    unselected_display = course_to_display(unselected_courses, me)
+    selected_display = course_to_display(selected_courses, me)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "书院课程")
 
@@ -475,6 +472,8 @@ def viewCourse(request):
 
     me = utils.get_person_or_org(request.user, user_type)
     course_display = course_to_display(course, me, detail=True)
+
+    bar_display = utils.get_sidebar_and_navbar(request.user, "课程详情")
 
     # TODO: task 10 ljy 2022-02-07
     # 和前端对接

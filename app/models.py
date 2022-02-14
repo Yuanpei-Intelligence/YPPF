@@ -1376,7 +1376,7 @@ class Course(models.Model):
     class Status(models.IntegerChoices):
         # 预选前和预选结束到补退选开始都是WAITING状态
         ABORT = (0, "已撤销")
-        WAITING = (1, "未开始选课")
+        WAITING = (1, "未开始")
         STAGE1 = (2, "预选")
         DRAWING = (3, "抽签中")
         STAGE2 = (4, "补退选")
