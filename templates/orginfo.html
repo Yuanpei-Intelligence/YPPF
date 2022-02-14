@@ -273,9 +273,11 @@
                                 <br /><br />
                             </div>
                             <div class="m-3">
+                                {% spaceless %}
                                 {% for tag in org_tags %}
                                     <span class="badge badge-pill" style="background-color:{{tag.color}}; border-radius:4px; color:#FFFFFF; margin:2px;">{{tag.name}}</span>
                                 {% endfor %}
+                                {% endspaceless %}
                             </div>
                         {% endif %}
                     </div>
