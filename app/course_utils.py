@@ -451,6 +451,20 @@ def course_to_display(courses, user, detail=False):
     # 获取课程的基本信息
     for course in courses:
         course_info = {}
+
+        course_time = []
+        for time in course.time_set.all():
+            course_time.append(process_time(time.start, time.end))
+        course_info["time_set"] = course_time
+
+        if detail:
+            # 在课程详情页才展示的信息
+            course_info["classroom"] = course.classroom
+            course_info["teacher"] = course.teacher
+            course_info["introduction"] = course.introduction
+            course_info["photo"] = course.photo.name  # 图片在media文件夹内的路径
+            continue
+        
         course_info["course_id"] = course.id
         course_info["name"] = course.name
         course_info["capacity"] = course.capacity
@@ -458,20 +472,10 @@ def course_to_display(courses, user, detail=False):
         course_info["times"] = course.times  # 课程周数
         course_info["type"] = course.get_type_display()  # 课程类型
         course_info["status"] = course.get_status_display()  # 课程所处的选课阶段
-        course_info["avatar_path"] = course.organization.avatar.name
-        # 暂时不用这些信息
-        # if course.stage1_start:
-        #     course_info["stage1_start"] = course.stage1_start.strftime(
-        #         "%Y-%m-%d %H:%M")
-        # if course.stage1_end:
-        #     course_info["stage1_end"] = course.stage1_end.strftime(
-        #         "%Y-%m-%d %H:%M")
-        # if course.stage2_start:
-        #     course_info["stage2_start"] = course.stage2_start.strftime(
-        #         "%Y-%m-%d %H:%M")
-        # if course.stage2_end:
-        #     course_info["stage2_end"] = course.stage2_end.strftime(
-        #         "%Y-%m-%d %H:%M")
+        course_info["avatar_path"] = course.organization.get_user_ava()
+
+        # 暂时不启用意愿点机制
+        # course_info["bidding"] = int(course.bidding)
 
         # 当前学生的选课状态
         if course.participant_set.exists():
@@ -479,22 +483,6 @@ def course_to_display(courses, user, detail=False):
                 course=course, person=user).get_status_display()
         else:
             course_info["student_status"] = "未选课"
-
-        course_time = []
-        for time in course.time_set.all():
-            course_time.append(process_time(time.start, time.end))
-        course_info["time_set"] = course_time
-
-        # 在课程详情页才展示的信息
-
-        if detail:
-            course_info["classroom"] = course.classroom
-            course_info["teacher"] = course.teacher
-            course_info["introduction"] = course.introduction
-            course_info["photo"] = course.photo.name  # 图片在media文件夹内的路径
-
-            # 暂时不启用意愿点机制
-            # course_info["bidding"] = int(course.bidding)
 
         display.append(course_info)
 
