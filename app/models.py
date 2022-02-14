@@ -716,7 +716,8 @@ class Activity(CommentBase):
     status = models.CharField(
         "活动状态", choices=Status.choices, default=Status.REVIEWING, max_length=32
     )
-
+    course_time = models.ForeignKey("CourseTime", on_delete=models.SET_NULL,blank=True,
+                        null=True,verbose_name="课程每周活动时间")
     objects = ActivityManager()
 
     class ActivityCategory(models.IntegerChoices):
@@ -1352,8 +1353,8 @@ class Course(models.Model):
     bidding = models.FloatField("意愿点价格", default=0.0)
 
     introduction = models.TextField("课程简介", blank=True, default="这里暂时没有介绍哦~")
-
-    # 假定课程已经进行线下审核，暂定不需要二次审核
+    teaching_plan = models.TextField("教学计划", blank=True, default="暂无")
+    record_cal_method = models.TextField("学时计算方式", blank=True, default="暂无")
 
     class Status(models.IntegerChoices):
         # 预选前和预选结束到补退选开始都是WAITING状态
