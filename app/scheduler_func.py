@@ -240,6 +240,7 @@ def longterm_launch_course():
             cur_week = week_time.cur_week
             end_week = week_time.end_week
             if cur_week <= end_week:    #   end_week默认16周，允许助教修改
+                #提前6天发布
                 due_time = week_time.end + timedelta(days=6*cur_week)  
                 if due_time - timedelta(days=6) < datetime.now() < due_time:
                     add_week_course_activity(course.id, week_time.id, cur_week)
