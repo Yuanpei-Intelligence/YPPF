@@ -642,6 +642,7 @@ def send_message_check(me, request):
 
     return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了!")
 
+
 def get_tags(application):
     tag_list = []
     for tag in application.tags.split(";"):
