@@ -46,6 +46,16 @@
     <!--  END SWITCH TAB  -->
 
     <div class="container-fluid tab-content" id="myTabContent">
+        <!--TODO : 后端对接bool值-->
+        {% if is_drawing == True %}
+        <div class="tab-pane fade show active" id="information" role="tabpanel">
+            <div class="col-12 layout-top-spacing">
+                <br>
+                <p style="text-align: center;">抽签进行中，暂不支持选课！</p>
+            </div>
+        </div>
+
+        {% else %}
         <!--  BEGIN INFORMATION TAB  -->
         <div class="tab-pane fade show active" id="information" role="tabpanel">
             <div class="col-12 layout-top-spacing">
@@ -108,7 +118,7 @@
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                                         <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
-                                            <u>{{course.name>}}</u>
+                                            <u>{{course.name}}</u>
                                         </a>
                                     </th>
                                     <td>
@@ -190,7 +200,7 @@
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                                         <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
-                                            <u>{{course.name>}}</u>
+                                            <u>{{course.name}}</u>
                                         </a>
                                     </th>
                                     <td>
@@ -273,7 +283,7 @@
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                                         <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
-                                            <u>{{course.name>}}</u>
+                                            <u>{{course.name}}</u>
                                         </a>
                                     </th>
                                     <td>
@@ -356,7 +366,7 @@
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                                         <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
-                                            <u>{{course.name>}}</u>
+                                            <u>{{course.name}}</u>
                                         </a>
                                     </th>
                                     <td>
@@ -439,7 +449,7 @@
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                                         <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
-                                            <u>{{course.name>}}</u>
+                                            <u>{{course.name}}</u>
                                         </a>
                                     </th>
                                     <td>
@@ -522,7 +532,7 @@
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                                         <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
-                                            <u>{{course.name>}}</u>
+                                            <u>{{course.name}}</u>
                                         </a>
                                     </th>
                                     <td>
@@ -588,6 +598,7 @@
             </div>
         </div>
         <!--  END INFORMATION TAB  -->
+        {% endif %}
 
         <!--  BEGIN MYCOURSE TAB  -->
         <div class="tab-pane fade" id="mycourses" role="tabpanel">
@@ -614,7 +625,7 @@
                         <th scope="row">
                             <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                             <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
-                                <u>{{course.name>}}</u>
+                                <u>{{course.name}}</u>
                             </a>
                         </th>
                         <td>
@@ -626,7 +637,10 @@
                         <td>{{course.times}}</td>
                         <td>{{course.type}}</td>
                         <td>
-                            {% if course.student_status == "已选课" %}
+                            <!--TODO : 对接后端bool值-->
+                            {% if is_drawing == True %}
+                            <span class="badge badge-pill badge-info">{{course.student_status}}</span>
+                            {% elif course.student_status == "已选课" %}
                             <span class="badge badge-pill badge-secondary">{{course.student_status}}</span>
                             {% elif course.student_status == "选课成功" %}
                             <span class="badge badge-pill badge-success">{{course.student_status}}</span>
