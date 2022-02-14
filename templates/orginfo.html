@@ -266,6 +266,18 @@
                         </div>
                         <p class="m-3">{{org.introduction}}</p>
                         {% endif %}
+                        {% if org_tags %}
+                            <br />
+                            <div class="d-flex justify-content-between">
+                                <h3 class="">小组标签</h3>
+                                <br /><br />
+                            </div>
+                            <div class="m-3">
+                                {% for tag in org_tags %}
+                                    <span class="badge badge-pill" style="background-color:{{tag.color}}; border-radius:4px; color:#FFFFFF; margin:2px;">{{tag.name}}</span>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     </div>
                 </div>
             </div>
