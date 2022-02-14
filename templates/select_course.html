@@ -102,15 +102,13 @@
                                 </thead>
             
                                 <tbody class="table">
-                                  
-                                 
                                   {% for course in unselected_display %}
                                   <tr>
                                     <th scope="row">
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                                         <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
-                                            {{course.name}}
+                                            <u>{{course.name>}}</u>
                                         </a>
                                     </th>
                                     <td>
@@ -118,6 +116,9 @@
                                         <!-- {{time.week}}&nbsp;{{time.start}}-{{time.end}}<br>-->
                                             {{time}}<br>
                                         {% endfor %}
+                                        {% if course.time_set|length == 0 %}
+                                            时间待定
+                                        {% endif %}
                                     </td>
                                     <td>{{course.times}}</td>
                                     <td>{{course.type}}</td>
@@ -138,7 +139,26 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            <button type="submit" onclick="alert(`你对{{course.name}}进行了选课操作！`);" class="btn btn-primary btn-sm">选课</button>
+                                            {% if course.status == "未开始" or course.status == "已结束" %}
+                                            <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
+                                            {% elif course.status == "预选" or course.status == "补退选" %}
+                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal">选课</button>
+                                            <div class="modal fade" id="myModal">
+                                                <div class="modal-dialog">
+                                                  <div class="modal-content">
+                                                    <!-- 模态框主体 -->
+                                                    <div class="modal-body">
+                                                      你确定要选课程《{{course.name}}》吗？
+                                                    </div>
+                                                    <!-- 模态框底部 -->
+                                                    <div class="modal-footer">
+                                                        <button type="submit" class="btn btn-primary btn-sm">确定</button>
+                                                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">关闭</button>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
                                         </form>
                                         
                                     </td>
@@ -164,14 +184,13 @@
                                 </thead>
             
                                 <tbody class="table">
-                                    
                                   {% for course in courses.0 %}
                                   <tr>
                                     <th scope="row">
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                                         <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
-                                            {{course.name}}
+                                            <u>{{course.name>}}</u>
                                         </a>
                                     </th>
                                     <td>
@@ -179,6 +198,9 @@
                                         <!-- {{time.week}}&nbsp;{{time.start}}-{{time.end}}<br>-->
                                             {{time}}<br>
                                         {% endfor %}
+                                        {% if course.time_set|length == 0 %}
+                                            时间待定
+                                        {% endif %}
                                     </td>
                                     <td>{{course.times}}</td>
                                     <td>{{course.type}}</td>
@@ -199,9 +221,27 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            <button type="submit" onclick="alert(`你对{{course.name}}进行了选课操作！`);" class="btn btn-primary btn-sm">选课</button>
+                                            {% if course.status == "未开始" or course.status == "已结束" %}
+                                            <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
+                                            {% elif course.status == "预选" or course.status == "补退选" %}
+                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal0">选课</button>
+                                            <div class="modal fade" id="myModal0">
+                                                <div class="modal-dialog">
+                                                  <div class="modal-content">
+                                                    <!-- 模态框主体 -->
+                                                    <div class="modal-body">
+                                                      你确定要选课程《{{course.name}}》吗？
+                                                    </div>
+                                                    <!-- 模态框底部 -->
+                                                    <div class="modal-footer">
+                                                        <button type="submit" class="btn btn-primary btn-sm">确定</button>
+                                                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">关闭</button>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
                                         </form>
-                                        
                                     </td>
                                   </tr>
                                   {% endfor %}
@@ -233,7 +273,7 @@
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                                         <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
-                                            {{course.name}}
+                                            <u>{{course.name>}}</u>
                                         </a>
                                     </th>
                                     <td>
@@ -241,6 +281,9 @@
                                         <!-- {{time.week}}&nbsp;{{time.start}}-{{time.end}}<br>-->
                                             {{time}}<br>
                                         {% endfor %}
+                                        {% if course.time_set|length == 0 %}
+                                            时间待定
+                                        {% endif %}
                                     </td>
                                     <td>{{course.times}}</td>
                                     <td>{{course.type}}</td>
@@ -261,7 +304,26 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            <button type="submit" onclick="alert(`你对{{course.name}}进行了选课操作！`);" class="btn btn-primary btn-sm">选课</button>
+                                            {% if course.status == "未开始" or course.status == "已结束" %}
+                                            <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
+                                            {% elif course.status == "预选" or course.status == "补退选" %}
+                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal1">选课</button>
+                                            <div class="modal fade" id="myModal1">
+                                                <div class="modal-dialog">
+                                                  <div class="modal-content">
+                                                    <!-- 模态框主体 -->
+                                                    <div class="modal-body">
+                                                      你确定要选课程《{{course.name}}》吗？
+                                                    </div>
+                                                    <!-- 模态框底部 -->
+                                                    <div class="modal-footer">
+                                                        <button type="submit" class="btn btn-primary btn-sm">确定</button>
+                                                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">关闭</button>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
                                         </form>
                                         
                                     </td>
@@ -294,7 +356,7 @@
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                                         <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
-                                            {{course.name}}
+                                            <u>{{course.name>}}</u>
                                         </a>
                                     </th>
                                     <td>
@@ -302,6 +364,9 @@
                                         <!-- {{time.week}}&nbsp;{{time.start}}-{{time.end}}<br>-->
                                             {{time}}<br>
                                         {% endfor %}
+                                        {% if course.time_set|length == 0 %}
+                                            时间待定
+                                        {% endif %}
                                     </td>
                                     <td>{{course.times}}</td>
                                     <td>{{course.type}}</td>
@@ -322,7 +387,26 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            <button type="submit" onclick="alert(`你对{{course.name}}进行了选课操作！`);" class="btn btn-primary btn-sm">选课</button>
+                                            {% if course.status == "未开始" or course.status == "已结束" %}
+                                            <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
+                                            {% elif course.status == "预选" or course.status == "补退选" %}
+                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal2">选课</button>
+                                            <div class="modal fade" id="myModal2">
+                                                <div class="modal-dialog">
+                                                  <div class="modal-content">
+                                                    <!-- 模态框主体 -->
+                                                    <div class="modal-body">
+                                                      你确定要选课程《{{course.name}}》吗？
+                                                    </div>
+                                                    <!-- 模态框底部 -->
+                                                    <div class="modal-footer">
+                                                        <button type="submit" class="btn btn-primary btn-sm">确定</button>
+                                                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">关闭</button>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
                                         </form>
                                         
                                     </td>
@@ -355,7 +439,7 @@
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                                         <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
-                                            {{course.name}}
+                                            <u>{{course.name>}}</u>
                                         </a>
                                     </th>
                                     <td>
@@ -363,9 +447,12 @@
                                         <!-- {{time.week}}&nbsp;{{time.start}}-{{time.end}}<br>-->
                                             {{time}}<br>
                                         {% endfor %}
+                                        {% if course.time_set|length == 0 %}
+                                            时间待定
+                                        {% endif %}
                                     </td>
                                     <td>{{course.times}}</td>
-=                                   <td>{{course.type}}</td>
+                                    <td>{{course.type}}</td>
                                     <!--注意这里的status是课程的，除了已撤销的四个都在这儿-->
                                     <td>
                                         {% if course.status == "未开始" %}
@@ -383,7 +470,26 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            <button type="submit" onclick="alert(`你对{{course.name}}进行了选课操作！`);" class="btn btn-primary btn-sm">选课</button>
+                                            {% if course.status == "未开始" or course.status == "已结束" %}
+                                            <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
+                                            {% elif course.status == "预选" or course.status == "补退选" %}
+                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal3">选课</button>
+                                            <div class="modal fade" id="myModal3">
+                                                <div class="modal-dialog">
+                                                  <div class="modal-content">
+                                                    <!-- 模态框主体 -->
+                                                    <div class="modal-body">
+                                                      你确定要选课程《{{course.name}}》吗？
+                                                    </div>
+                                                    <!-- 模态框底部 -->
+                                                    <div class="modal-footer">
+                                                        <button type="submit" class="btn btn-primary btn-sm">确定</button>
+                                                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">关闭</button>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
                                         </form>
                                         
                                     </td>
@@ -416,7 +522,7 @@
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                                         <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
-                                            {{course.name}}
+                                            <u>{{course.name>}}</u>
                                         </a>
                                     </th>
                                     <td>
@@ -424,6 +530,9 @@
                                         <!-- {{time.week}}&nbsp;{{time.start}}-{{time.end}}<br>-->
                                             {{time}}<br>
                                         {% endfor %}
+                                        {% if course.time_set|length == 0 %}
+                                            时间待定
+                                        {% endif %}
                                     </td>
                                     <td>{{course.times}}</td>
                                     <td>{{course.type}}</td>
@@ -444,7 +553,26 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            <button type="submit" onclick="alert(`你对{{course.name}}进行了选课操作！`);" class="btn btn-primary btn-sm">选课</button>
+                                            {% if course.status == "未开始" or course.status == "已结束" %}
+                                            <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
+                                            {% elif course.status == "预选" or course.status == "补退选" %}
+                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal4">选课</button>
+                                            <div class="modal fade" id="myModal4">
+                                                <div class="modal-dialog">
+                                                  <div class="modal-content">
+                                                    <!-- 模态框主体 -->
+                                                    <div class="modal-body">
+                                                      你确定要选课程《{{course.name}}》吗？
+                                                    </div>
+                                                    <!-- 模态框底部 -->
+                                                    <div class="modal-footer">
+                                                        <button type="submit" class="btn btn-primary btn-sm">确定</button>
+                                                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">关闭</button>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                            </div>
+                                            {% endif %}
                                         </form>
                                         
                                     </td>
@@ -480,59 +608,13 @@
                     </thead>
 
                     <tbody class="table">
-                      
-                        <!--前三个打个样子，包括了各种可能出现的情况（多时间，多状态）-->
-                      {% comment %} <tr>
-                        <th scope="row">理想国读书会</th>
-                        <td>周六 18:00-21:00</td>
-                        <td>6</td>
-                        <td>智</td>
-                        <td>
-                            <span class="badge badge-pill badge-secondary">已选课</span>
-                        </td>
-                        <td>10/23</td>
-                        <td>
-                            <button type="button" class="btn btn-danger btn-sm">退课</button>
-                        </td>
-                      </tr>
-                      <tr>
-                        <th scope="row">健身俱乐部健身课程</th>
-                        <td>
-                            周一 15:00-16:00<br>
-                            周三 15:00-16:00<br>
-                            周五 15:00-16:00
-                        </td>
-                        <td>10</td>
-                        <td>体</td>
-                        <td>
-                            <span class="badge badge-pill badge-success">选课成功</span>
-                        </td>
-                        <td>10/23</td>
-                        <td>
-                            <button type="button" class="btn btn-danger btn-sm">退课</button>
-                        </td>
-                      </tr>
-                      <tr>
-                        <th scope="row">绘画班</th>
-                        <td>周六&nbsp;18:00-21:00</td>
-                        <td>6</td>
-                        <td>美</td>
-                        <td>
-                            <span class="badge badge-pill badge-danger">选课失败</span>
-                        </td>
-                        <td>10/23</td>
-                        <td>
-                            <button type="button" class="btn btn-danger btn-sm">退课</button>
-                        </td>
-                      </tr> {% endcomment %}
-
+                                            
                       {% for course in selected_display %}
                       <tr>
                         <th scope="row">
-                            <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                             <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                             <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
-                                {{course.name}}
+                                <u>{{course.name>}}</u>
                             </a>
                         </th>
                         <td>
@@ -543,23 +625,36 @@
                         </td>
                         <td>{{course.times}}</td>
                         <td>{{course.type}}</td>
-                        <!--注意这里的status不是课程状态是学生状态！也就是participate里的除了未选课的三个！-->
                         <td>
-                            {% if course.status == "已选课" %}
+                            {% if course.student_status == "已选课" %}
                             <span class="badge badge-pill badge-secondary">{{course.student_status}}</span>
-                            {% elif course.status == "选课成功" %}
+                            {% elif course.student_status == "选课成功" %}
                             <span class="badge badge-pill badge-success">{{course.student_status}}</span>
-                            {% elif course.status == "选课失败" %}
+                            {% elif course.student_status == "选课失败" %}
                             <span class="badge badge-pill badge-danger">{{course.student_status}}</span>
                             {% endif %}
                         </td>
                         <td>{{course.capacity}}/{{course.current_participants}}</td>
                         <td>
-                            <!--TODO : 你看一下这个表单对不对？-->
                             <form action="/selectCourse/" method="post">
                                 <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                 <input type="hidden" id="action" name="action"value="cancel" />
-                                <button type="submit" onclick="alert(`你对{{course.name}}进行了退课操作！`);" class="btn btn-secondary btn-sm">退课</button>
+                                <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#myModalcancel">退课</button>
+                                <div class="modal fade" id="myModalcancel">
+                                    <div class="modal-dialog">
+                                      <div class="modal-content">
+                                        <!-- 模态框主体 -->
+                                        <div class="modal-body">
+                                          你确定要退课程《{{course.name}}》吗？
+                                        </div>
+                                        <!-- 模态框底部 -->
+                                        <div class="modal-footer">
+                                            <button type="submit" class="btn btn-primary btn-sm">确定</button>
+                                            <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">关闭</button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                </div>
                             </form>
                             
                         </td>
