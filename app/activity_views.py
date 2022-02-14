@@ -195,15 +195,15 @@ def viewActivity(request, aid=None):
                 return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
             except:
                 return redirect(f"/modifyEndActivity/")
-        elif option == "checkinoffline": #进入线下签到界面
+
+        elif option == "checkinoffline":
+            # 进入调整签到界面
+            if activity.status != Activity.Status.END:
+                return redirect(message_url(wrong('活动尚未结束!'), request.path))
             if not ownership:
-                return redirect(message_url(wrong('您没有线下补签到的权限！'), request.path))
-            try:
-                activity = Activity.objects.get(id=int(aid))
-                assert activity.status == Activity.Status.END
-                return redirect(f"/offlineCheckinActivity/{aid}")
-            except:
-                return redirect(message_url(wrong("修改签到信息失败")))   
+                return redirect(message_url(wrong('您没有调整签到信息的权限!'), request.path))
+            return redirect(f"/offlineCheckinActivity/{aid}")
+
         elif option == "sign" or option == "enroll": #下载活动签到信息或者报名信息
             if not ownership:
                 return redirect(message_url(wrong('没有下载权限!'), request.path))
@@ -214,7 +214,7 @@ def viewActivity(request, aid=None):
             return redirect("/welcome/")
         else:
             return redirect(message_url(wrong('无效的请求!'), request.path))
-        
+
     elif request.method == "GET":
         warn_code = request.GET.get("warn_code")
         warn_msg = request.GET.get("warn_message")
@@ -302,7 +302,7 @@ def viewActivity(request, aid=None):
             summary_photo_exists = True
         except Exception as e:
             pass
-    
+
     # 参与者, 无论报名是否通过
     participants = Participant.objects.filter(Q(activity_id=activity),
         Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APLLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED) | Q(status=Participant.AttendStatus.UNATTENDED))
@@ -493,10 +493,10 @@ def checkinActivity(request, aid=None):
                     context = succeed("签到成功!")
         except:
             context = wrong("您尚未报名该活动!")
-        
+
     else:
         context = wrong("活动开始前一小时开放签到，请耐心等待!")
-        
+
     # TODO 在 activity_info 里加更多信息
     return redirect(message_url(context, f"/viewActivity/{aid}"))
 
@@ -676,7 +676,7 @@ def addActivity(request, aid=None):
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG", "id": f"picture{i+1}"} for i in range(5)]
     html_display["applicant_name"] = me.oname
-    html_display["app_avatar_path"] = me.get_user_ava() 
+    html_display["app_avatar_path"] = me.get_user_ava()
 
     use_template = False
     if request.method == "GET" and request.GET.get("template"):
@@ -950,51 +950,50 @@ def offlineCheckinActivity(request, aid):
     注：
         该函数实现的重要前提是活动已经设置所有组织成员签到初始状态为未签到
     '''
-    _, user_type, _ = utils.check_user_type(request.user) 
+    _, user_type, _ = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)
     try:
+        aid = int(aid)
         activity = Activity.objects.get(id=aid)
         assert me == activity.organization_id and user_type == "Organization"
-    except Exception as e:
-        log.record_traceback(request, e)
-        return EXCEPT_REDIRECT
-    
+    except:
+        return redirect(message_url(wrong('请不要恶意访问其他网页！')))
+
     member_list = Participant.objects.filter(
         activity_id=aid,
         status__in=[
-                    Participant.AttendStatus.UNATTENDED,
-                    Participant.AttendStatus.ATTENDED,
+            Participant.AttendStatus.UNATTENDED,
+            Participant.AttendStatus.ATTENDED,
         ])
-    member_attend = []
-    member_unattend = []
-    for member in member_list:
-        checkin = request.POST.get("checkin" + 
-                                           str(member.person_id_id))
-        if checkin == "yes":
-            member_attend.append(member.person_id_id)
-        elif checkin == "no":
-            member_unattend.append(member.person_id_id)
-    try:
-        with transaction.atomic():
-            Participant.objects.filter(
-                person_id_id__in=member_attend).update(
-                    status = Participant.AttendStatus.ATTENDED)
-            Participant.objects.filter(
-                person_id_id__in=member_unattend).update(
-                    status = Participant.AttendStatus.UNATTENDED)
-    except Exception as e:
-            log.record_traceback(request, e)
-            return EXCEPT_REDIRECT
-    
-    
-    try:
-        saveSituation = request.POST.get("saveSituation")
-        if saveSituation == "yes2":
-            return redirect(f"/viewActivity/{aid}")
-    except Exception as e:
-            log.record_traceback(request, e)
-            return EXCEPT_REDIRECT
-    
+
+    if request.method == "POST" and request.POST:
+        option = request.POST.get("option")
+        if option == "saveSituation":
+            # 修改签到状态
+
+            member_userids = member_list.values_list("person_id", flat=True)
+            member_attend, member_unattend = [], []
+            for person_id in member_userids:
+                checkin = request.POST.get(f"checkin_{person_id}")
+                if checkin == "yes":
+                    member_attend.append(person_id)
+                elif checkin == "no":
+                    member_unattend.append(person_id)
+            try:
+                with transaction.atomic():
+                    Participant.objects.select_for_update().filter(
+                        person_id_id__in=member_attend).update(
+                            status = Participant.AttendStatus.ATTENDED)
+                    Participant.objects.select_for_update().filter(
+                        person_id_id__in=member_unattend).update(
+                            status = Participant.AttendStatus.UNATTENDED)
+            except:
+                return redirect(message_url(wrong("修改失败。"), request.path))
+            return redirect(message_url(
+                succeed("修改签到信息成功。"), f"/viewActivity/{aid}"))
+
     bar_display = utils.get_sidebar_and_navbar(request.user,
-                                               navbar_name = "修改签到信息")
-    return render(request, "activity_checkinoffline.html", locals())
+                                               navbar_name="调整签到信息")
+    member_list = member_list.select_related('person_id')
+    render_context = dict(bar_display=bar_display, member_list=member_list)
+    return render(request, "activity_checkinoffline.html", render_context)
