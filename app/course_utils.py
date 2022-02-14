@@ -706,23 +706,19 @@ def course_base_check(request):
     # context['current_participants'] = request.POST["current_participants"]
     context["photo"] = request.FILES.get("photo")
     
-    """
-    # 时间
-    stage1_start = datetime.strptime(request.POST["stage1_start"], "%Y-%m-%d %H:%M")  # 预选开始时间
-    stage1_end = datetime.strptime(request.POST["stage1_end"], "%Y-%m-%d %H:%M")  # 预选结束时间
-    stage2_start = datetime.strptime(request.POST["stage2_start"], "%Y-%m-%d %H:%M")  # 补退选开始时间
-    stage2_end = datetime.strptime(request.POST["stage2_end"], "%Y-%m-%d %H:%M")  # 补退选结束时间
-    assert check_ac_time(stage1_start, stage1_end)
-    assert check_ac_time(stage2_start, stage2_end)
-    # 预选开始时间和结束时间不应该相隔太近
-    assert stage1_end > stage1_start 
-    # 预选结束时间和补退选开始时间不应该相隔太近
-    assert stage2_start >= stage1_end
+    stage1_start = datetime.strptime(get_setting(
+        "course/yx_election_start"), "%Y-%m-%d %H:%M")  # 预选开始时间
+    stage1_end = datetime.strptime(get_setting(
+        "course/yx_election_end"), "%Y-%m-%d %H:%M")  # 预选结束时间
+    stage2_start = datetime.strptime(get_setting(
+        "course/btx_election_start"), "%Y-%m-%d %H:%M")  # 补退选开始时间
+    stage2_end = datetime.strptime(get_setting(
+        "course/btx_election_start"), "%Y-%m-%d %H:%M")  # 补退选结束时间
     context["stage1_start"] = stage1_start
     context["stage1_end"] = stage1_end
     context["stage2_start"] = stage2_start
     context["stage2_end"] = stage2_end
-    """
+    
 
     # 每周课程时间
     course_starts = request.POST.getlist("start")
@@ -761,17 +757,11 @@ def create_course(request, course=None):
 
         course.update(
             name=context["name"],
-            organization=context['organization'],
-            # year=context['year'],
-            # semester=context['semester'],
             classroom=context["classroom"],
             teacher=context['teacher'],
-            # bidding=context["bidding"],
             introduction=context["introduction"],
-            # status=context['status'],
             type=context['type'],
             capacity=context["capacity"],
-            # current_participants=context['current_participants'],
             photo=context['photo'],
             )
 
@@ -799,21 +789,15 @@ def create_course(request, course=None):
         course = Course.objects.create(
                         name=context["name"],
                         organization=context['organization'],
-                        # year=context['year'],
-                        # semester=context['semester'],
-                        times=16,
                         classroom=context["classroom"],
                         teacher=context['teacher'],
-                        # stage1_start=context['stage1_start'],
-                        # stage1_end=context['stage1_end'],
-                        # stage2_start=context['stage2_start'],
-                        # stage2_end=context['stage2_end'],
-                        # bidding=context["bidding"],
+                        stage1_start=context['stage1_start'],
+                        stage1_end=context['stage1_end'],
+                        stage2_start=context['stage2_start'],
+                        stage2_end=context['stage2_end'],
                         introduction=context["introduction"],
-                        # status=context['status'],
                         type=context['type'],
                         capacity=context["capacity"],
-                        # current_participants=context['current_participants'],
                         photo=context['photo'],
                     )
 
