@@ -593,7 +593,7 @@ def draw_lots(course):
                      record_args=True,
                      status_code=log.STATE_WARNING,
                      source='course_utils[change_course_status]')
-def change_course_status(course_id, cur_status, to_status):
+def change_course_status(to_status):
     """
     作为定时任务，在课程设定的时间改变课程的选课阶段
 
@@ -602,78 +602,66 @@ def change_course_status(course_id, cur_status, to_status):
         id=f"course_{course_id}_{to_status}, run_date, args)
 
     参数:
-        course_id: course对象的主键
-        cur_status: course对象当前的选课状态
         to_status: 希望course变为的选课状态
-    
-    注意:
-        1、暂时没有做时间一致性的检查。考虑到在开课填表的时候，前端要进行时间的检查，
-        所以这里暂时可以不检查时间。
-        2、在开设课程的时候将该函数添加到定时任务中，可以参考活动开设的相关操作。
     """
-    try:
-        course = Course.objects.get(id=course_id)
-    except:
-        raise AssertionError("课程ID不存在")
 
-    # 分别是预选和补退选的开始和结束时间
-
-    stage1_start = course.stage1_start
-    stage1_end = course.stage1_end
-    stage2_start = course.stage2_start
-    stage2_end = course.stage2_end
-    now = datetime.now()
-
-    # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
     # 以下进行状态的合法性检查
-
-    if cur_status is not None:
-        assert cur_status == course.status, \
-               f"希望的状态是{cur_status}，但实际状态为{course.status}"
-        if cur_status == Course.Status.WAITING:
-            if now < stage1_end:  # 开始预选，那么当前时间一定比预选结束的时间早
-                assert to_status == Course.Status.STAGE1, \
-                f"不能从{cur_status}变更到{to_status}"
-            else:
-                assert to_status == Course.Status.STAGE2, \
-                f"不能从{cur_status}变更到{to_status}"
-        elif cur_status == Course.Status.STAGE1:
-            assert to_status == Course.Status.WAITING, \
-            f"不能从{cur_status}变更到{to_status}"
-        elif cur_status == Course.Status.STAGE2:
-            assert to_status == Course.Status.END, \
-            f"不能从{cur_status}变更到{to_status}"
-        else:
-            raise AssertionError("选课已经结束，不能再变化状态")
-    else:
-        raise AssertionError("未提供当前状态，不允许进行选课状态修改")
-
-    if to_status == Course.Status.WAITING and now >= stage1_end:
-        # 预选结束，进行抽签
-        draw_lots(course)
+    courses=Course.objects.activated()
+    for course in courses:
+        if to_status == Course.Status.WAITING:
+            # 预选结束，进行抽签
+            draw_lots(course)
+        elif to_status == Course.Status.END:
+            # 选课结束，将选课成功的同学批量加入小组
+            participants = CourseParticipant.objects.filter(
+                course=course,
+                status=CourseParticipant.Status.SUCCESS).select_related('person')
+            organization = course.organization
+            positions = []
+            for participant in participants:
+                # 检查是否已经加入小组
+                if not Position.objects.filter(person=participant.person,
+                                            org=organization).exists():
+                    position = Position(person=participant.person,
+                                        org=organization,
+                                        in_semester=Semester.get(
+                                            get_setting("semester_data/semester")))
+                    positions.append(position)
+            if positions:
+                with transaction.atomic():
+                    Position.objects.bulk_create(positions)
 
     # 其他情况只需要更新课程的选课阶段
-
     with transaction.atomic():
-        Course.objects.select_for_update().filter(id=course_id).update(
+        Course.objects.select_for_update().activated().update(
             status=to_status)
+    
+@log.except_captured(return_value=True,
+                     record_args=True,
+                     status_code=log.STATE_WARNING,
+                     source='course_utils[register_selection]')
+def register_selection():
+    """
+    添加定时任务，实现课程状态转变，每次发起课程时调用
+    """
+    
+    # 预选和补退选的开始和结束时间
+    def str_to_time(stage:str):
+        return datetime.strptime(stage,'%Y-%m-%d %H:%M:%S')
+    year = str(get_setting("semester_data/year"))
+    semster = str(get_setting("semester_data/semester"))
+    stage1_start = str_to_time(get_setting("course/yx_election_start"))
+    stage1_end = str_to_time(get_setting("course/yx_election_end"))
+    stage2_start = str_to_time(get_setting("course/btx_election_start"))
+    stage2_end = str_to_time(get_setting("course/btx_election_end"))
 
-    if to_status == Course.Status.END:
-        # 将选课成功的同学批量加入小组
-        participants = CourseParticipant.objects.filter(
-            course=course,
-            status=CourseParticipant.Status.SUCCESS).select_related('person')
-        organization = course.organization
-        positions = []
-        for participant in participants:
-            # 检查是否已经加入小组
-            if not Position.objects.filter(person=participant.person,
-                                           org=organization).exists():
-                position = Position(person=participant.person,
-                                    org=organization,
-                                    in_semester=Semester.get(
-                                        get_setting("semester_data/semester")))
-                positions.append(position)
-        if positions:
-            with transaction.atomic():
-                Position.objects.bulk_create(positions)
+    # 定时任务：修改课程状态
+    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_start",
+                      run_date=stage1_start, args=[Course.Status.STAGE1])
+    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_end",
+                      run_date=stage1_end, args=[Course.Status.WAITING])
+    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_start",
+                    run_date=stage2_start, args=[Course.Status.STAGE2])
+    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_end",
+                    run_date=stage2_end, args=[Course.Status.END])                
+    # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
