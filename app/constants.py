@@ -21,7 +21,7 @@ __all__ = [
     'get_setting', 'get_config',
     'DEBUG', 'MEDIA_URL', 'LOGIN_URL',
     'WRONG', 'SUCCEED', 'SYSTEM_LOG',
-    'YQP_ONAME',
+    'YQP_ONAME', 'COURSE_TYPENAME',
 ]
 
 PREFIX = ''
@@ -62,3 +62,5 @@ def get_config(path: str='', default=None, trans_func=None,
     '''
     return base_get_setting(
         PREFIX + path, default, trans_func, fuzzy_lookup, raise_exception)
+
+COURSE_TYPENAME = get_config('course/type_name', '书院课程')

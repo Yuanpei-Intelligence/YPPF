@@ -52,4 +52,3 @@ from django.views.decorators.http import require_POST, require_GET
 
 # 用于重定向的视图专用常量
 EXCEPT_REDIRECT = HttpResponseRedirect(message_url(wrong('出现意料之外的错误, 请联系管理员!')))
-

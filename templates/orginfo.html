@@ -654,7 +654,7 @@
         }
     }
     async function save_subscribe_status(status) {
-        const { success } = await fetch(`/save_subscribe_status`, {
+        const { success } = await fetch(`/saveSubscribeStatus`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
             body: JSON.stringify({ id: '{{org.organization_id.username}}', status }),
@@ -664,7 +664,7 @@
         return success;
     }
     async function save_show_position_status(status) {
-        const { success } = await fetch(`/save_show_position_status`, {
+        const { success } = await fetch(`/saveShowPositionStatus`, {
             headers: { "Content-Type": `text/plain` },
             method: `POST`,
             body: JSON.stringify({ id: '{{my_position.id}}', status }),

@@ -1,6 +1,7 @@
 from django.db import models, transaction
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
+from django.db.models import Q
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
 from boottest import local_dict
@@ -39,6 +40,8 @@ __all__ = [
     'CourseTime',
     'CourseParticipant',
     'CourseRecord',
+    'PageLog',
+    'ModuleLog',
 ]
 
 
@@ -163,6 +166,9 @@ class NaturalPerson(models.Model):
             avatar = "avatar/person_default.jpg"
         return settings.MEDIA_URL + str(avatar)
 
+    def get_accept_promote_display(self):
+        return "是" if self.accept_promote else "否"
+    
     def show_info(self):
         """
             返回值为一个列表，在search.html中使用，按照如下顺序呈现：
@@ -291,6 +297,21 @@ class OrganizationTag(models.Model):
         verbose_name_plural = verbose_name
     
     name = models.CharField("标签名", max_length=10, blank=False)
+    
+    class ColorChoice(models.TextChoices):
+        grey = ("#C1C1C1", "灰色")
+        red = ("#DC143C", "红色")
+        orange = ("#FFA500", "橙色")
+        yellow = ("#FFD700", "黄色")
+        green = ("#3CB371", "绿色")
+        blue = ("#1E90FF", "蓝色")
+        purple = ("#800080", "紫色")
+        pink = ("#FF69B4", "粉色")
+        brown = ("#DAA520", "棕色")
+        coffee = ("#8B4513", "咖啡色")
+    
+    name = models.CharField("标签名", max_length=10, blank=False)
+    color = models.CharField("颜色", choices=ColorChoice.choices, max_length=10)
 
 
 class OrganizationManager(models.Manager):
@@ -1292,7 +1313,6 @@ class CourseManager(models.Manager):
                                            CourseParticipant.Status.FAILED,
                                        ])
 
-
 class Course(models.Model):
     """
     助教发布课程需要填写的信息
@@ -1458,3 +1478,44 @@ class CourseRecord(models.Model):
             return str(self.course)
         return self.extra_name
     get_course_name.short_description = "课程名"
+
+
+class PageLog(models.Model):
+    # 统计Page类埋点数据(PV/PD)
+    class Meta:
+        verbose_name = "Page类埋点记录"
+        verbose_name_plural = verbose_name
+
+    class CountType(models.IntegerChoices):
+        PV = 0, "Page View"
+        PD = 1, "Page Disappear"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    type = models.IntegerField('事件类型', choices=CountType.choices)
+
+    page = models.URLField('页面url', max_length=256, blank=True)
+    time = models.DateTimeField('发生时间', default=datetime.now)
+    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
+    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
+    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
+
+
+class ModuleLog(models.Model):
+    # 统计Module类埋点数据(MV/MC)
+    class Meta:
+        verbose_name = "Module类埋点记录"
+        verbose_name_plural = verbose_name
+        
+    class CountType(models.IntegerChoices):
+        MV = 2, "Module View"
+        MC = 3, "Module Click"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    type = models.IntegerField('事件类型', choices=CountType.choices)
+
+    page = models.URLField('页面url', max_length=256, blank=True)
+    module_name = models.CharField('模块名称', max_length=64, blank=True)
+    time = models.DateTimeField('发生时间', default=datetime.now)
+    platform = models.CharField('设备类型', max_length=32, null=True, blank=True)
+    explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
+    explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
