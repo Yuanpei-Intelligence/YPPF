@@ -244,7 +244,7 @@
 
                                     <div class="form-group">
                                         <label>
-                                            课程微信群二维码 （这一段暂且注释，因为数据库里暂时还没有相应的二维码列）
+                                            课程微信群二维码 
                                             <a data-toggle="tooltip" data-placement="bottom"
                                                 title="如有需要，请在这里上传课程微信群二维码（选填）">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
@@ -356,7 +356,6 @@
 <!-- 主要是一些监控函数 -->
 <!-- 根据页面不同，可能会有些多余的函数，但是不影响 js 执行 -->
 <script>
-
     {% for pic in defaultpics %}
     $("input[name='{{pic.id}}']").on("change", function () {
         //输出选中状态
@@ -508,33 +507,24 @@
     function fill_value(a) {
         console.log(a.value);
     }
-
-
-
 </script>
 {% else %}
 <script type="text/javascript">
     // 没用，只是防止报错影响 js 执行
     function fill_value(a) {
         console.log(a.value);
-    }
-</script>
-
-{% endif %}
-
-<!-- 检查部分 input 参数 -->
-<script type="text/javascript">
+    };
+    // 检查部分 input 参数 
     function check_inputs() {
         /* 三个第一周上课起止时间 */
         var start1 = document.getElementById("datetimepicker1_start").value;
         var end1 = document.getElementById("datetimepicker1_end").value;
-        var start2 = document.getElementById("datetimepicker1_start2").value;
-        var end2 = document.getElementById("datetimepicker1_end2").value;
-        var start3 = document.getElementById("datetimepicker1_start3").value;
-        var end3 = document.getElementById("datetimepicker_end3").value;
-
+        var start2 = document.getElementById("datetimepicker2_start").value;
+        var end2 = document.getElementById("datetimepicker2_end").value;
+        var start3 = document.getElementById("datetimepicker3_start").value;
+        var end3 = document.getElementById("datetimepicker3_end").value;
+        
         var now = new Date();
-        var prepare_option = document.getElementById("inputState").value;
 
         start1 = new Date(start1);
         end1 = new Date(end1);
@@ -542,7 +532,7 @@
         end2 = new Date(end2);
         start3 = new Date(start3);
         end3 = new Date(end3);
-
+        
         // 结束要比开始晚
         if (start1 >= end1 || start2 >= end2 || start3 >= end3) {
             document.getElementById("success_msg").style.display = "none";
@@ -551,82 +541,6 @@
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
-        //TODO
-        // 创建活动时，要求开始时间 - 准备时间应该晚于当下，即活动必须要能进入 applying 阶段（怎么改？
-        {% if not edit %}
-        var applyEnd;
-        if (prepare_option == "0")
-            applyEnd = new Date(start.setHours(start.getHours() - 1));
-        else if (prepare_option == "1")
-            applyEnd = new Date(start.setHours(start.getHours() - 24));
-        else if (prepare_option == "2")
-            applyEnd = new Date(start.setHours(start.getHours() - 72));
-        else if (prepare_option == "3")
-            applyEnd = new Date(start.setHours(start.getHours() - 168));
-        else
-            window.location.href = "/welcome/"
-        if (applyEnd < now) {
-            {% if html_display.warn_code == 2 %}
-            document.getElementById("success_msg").style.display = "none";
-            {% endif %}
-            document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "没有足够的准备时间（报名截止时间早于当前时间）。";
-            document.body.scrollTop = document.documentElement.scrollTop = 0;
-            return false;
-        }
-        {% else %}
-        var before_start = new Date(start);
-        before_start = new Date(before_start.setHours(before_start.getHours() - 1));
-        // 记不清当时为什么这么写了，先留着
-        // var applyEnd = new Date("{{apply_end_for_js}}");
-        var applyEnd = new Date("{{apply_end}}");
-        if (document.getElementById("adjust_apply_ddl").checked) {
-            if (prepare_option == "0")
-                applyEnd = new Date(start.setHours(start.getHours() - 1));
-            else if (prepare_option == "1")
-                applyEnd = new Date(start.setHours(start.getHours() - 24));
-            else if (prepare_option == "2")
-                applyEnd = new Date(start.setHours(start.getHours() - 72));
-            else if (prepare_option == "3")
-                applyEnd = new Date(start.setHours(start.getHours() - 168));
-            else
-                window.location.href = "/welcome/"
-            // else 的情况：已截止/未截止 -> 未截止
-            // 如果是已截止，也不需要提醒，重新开放就是了
-        }
-        if (applyEnd < now) {
-            // 相当于提前截止报名，在这改太麻烦了，在 viewActivity 界面留一个 button 吧
-            {% if html_display.warn_code == 2 %}
-            document.getElementById("success_msg").style.display = "none";
-            {% endif %}
-            document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "修改失败：修改后的报名截止时间早于当前时间。如果是因为希望提前举办活动，请同时修改报名截止时间，谢谢！。";
-            document.body.scrollTop = document.documentElement.scrollTop = 0;
-            return false;
-        }
-        if (before_start < applyEnd) {
-            {% if html_display.warn_code == 2 %}
-            document.getElementById("success_msg").style.display = "none";
-            {% endif %}
-            document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "活动报名应在活动开始前一小时截止。";
-            document.body.scrollTop = document.documentElement.scrollTop = 0;
-            return false;
-        }
-        {% endif %}
-        //TODO
-        /* 选择了审核老师 */
-        if (document.getElementById("examine_teacher").value == "") {
-            {% if html_display.warn_code == 2 %}
-            document.getElementById("success_msg").style.display = "none";
-            {% endif %}
-            document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "尚未选择审核老师。";
-            document.body.scrollTop = document.documentElement.scrollTop = 0;
-            return false;
-        }
-
-
 
         /* 检查图片 */
         {% if not examine and not accepted and not use_template %}
@@ -675,30 +589,6 @@
         }
         {% endif %}
 
-        /* URL 不要太长，使用 https 协议 */
-        var url_value = document.getElementById("URL").value;
-        if (url_value.length >= 1000) {
-            {% if html_display.warn_code == 2 %}
-            document.getElementById("success_msg").style.display = "none";
-            {% endif %}
-            document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "URL 长度超出上限。";
-            document.body.scrollTop = document.documentElement.scrollTop = 0;
-            return false;
-        }
-        if (!url_value == "") {
-            if (!url_value.startsWith("http")) {
-                {% if html_display.warn_code == 2 %}
-                document.getElementById("success_msg").style.display = "none";
-                {% endif %}
-                document.getElementById("warn_msg").style.display = "";
-                document.getElementById("warn_msg").innerHTML = "出于安全性考虑，目前仅支持 http 或 https 协议的 URL。";
-                document.body.scrollTop = document.documentElement.scrollTop = 0;
-                return false;
-            }
-        }
-
-
         {% if edit %}
         /* edit 情况下，未填入的 input 补为 placeholder */
         var all_inputs = document.getElementsByTagName("input");
@@ -714,23 +604,9 @@
 
         return true;
     }
-    {% if examine %}
-    function check_examine() {
-        // 不要求活动报名时间截止
-        return true;
-        var applyEnd = new Date("{{apply_end}}")
-        var now = new Date()
-        if (applyEnd < now) {
-            {% if html_display.warn_code == 2 %}
-            document.getElementById("success_msg").style.display = "none";
-            {% endif %}
-            document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "活动报名截止时间已过，请通知小组修改。";
-            document.body.scrollTop = document.documentElement.scrollTop = 0;
-            return false;
-        }
-    }
-    {% endif %}
+        
 </script>
+{% endif %}
+
 
 {% endblock %}

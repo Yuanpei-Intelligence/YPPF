@@ -793,7 +793,6 @@ def create_course(request, course=None):
                         photo=context['photo'],
                     )
 
-        # 定时任务和微信消息有关吗，我还没了解怎么发微信消息orz不过定时任务还是能写出来的……应该
         #TODO:定时任务
         course.save()
         
