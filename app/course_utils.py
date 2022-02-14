@@ -681,7 +681,11 @@ def change_course_status(course_id, cur_status, to_status):
             with transaction.atomic():
                 Position.objects.bulk_create(positions)
 
-
+def str_to_time(stage:str):
+    """
+    将读取的字符串转换成时间
+    """
+    return datetime.strptime(stage, '%Y-%m-%d %H:%M')
 
 def course_base_check(request):
     """
@@ -706,14 +710,14 @@ def course_base_check(request):
     # context['current_participants'] = request.POST["current_participants"]
     context["photo"] = request.FILES.get("photo")
     
-    stage1_start = datetime.strptime(get_setting(
-        "course/yx_election_start"), "%Y-%m-%d %H:%M")  # 预选开始时间
-    stage1_end = datetime.strptime(get_setting(
-        "course/yx_election_end"), "%Y-%m-%d %H:%M")  # 预选结束时间
-    stage2_start = datetime.strptime(get_setting(
-        "course/btx_election_start"), "%Y-%m-%d %H:%M")  # 补退选开始时间
-    stage2_end = datetime.strptime(get_setting(
-        "course/btx_election_start"), "%Y-%m-%d %H:%M")  # 补退选结束时间
+    stage1_start = str_to_time(str(get_setting(
+        "course/yx_election_start")))  # 预选开始时间
+    stage1_end = str_to_time(str(get_setting(
+        "course/yx_election_end")))  # 预选结束时间
+    stage2_start = str_to_time(str(get_setting(
+        "course/btx_election_start")))  # 补退选开始时间
+    stage2_end = str_to_time(str(get_setting(
+        "course/btx_election_start")))  # 补退选结束时间
     context["stage1_start"] = stage1_start
     context["stage1_end"] = stage1_end
     context["stage2_start"] = stage2_start
