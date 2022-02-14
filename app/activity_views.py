@@ -965,13 +965,11 @@ def offlineCheckinActivity(request, aid):
                     Participant.AttendStatus.UNATTENDED,
                     Participant.AttendStatus.ATTENDED,
         ])
-    # 时间优化新版本
     member_attend = []
     member_unattend = []
     for member in member_list:
         checkin = request.POST.get("checkin" + 
                                            str(member.person_id_id))
-        print(member.person_id_id)
         if checkin == "yes":
             member_attend.append(member.person_id_id)
         elif checkin == "no":
@@ -988,22 +986,7 @@ def offlineCheckinActivity(request, aid):
             log.record_traceback(request, e)
             return EXCEPT_REDIRECT
     
-    '''
-    旧版本
-    if request.method == "POST" and request.POST:
-        try:
-            for member in member_list:
-                checkin = request.POST.get("checkin" + 
-                                           str(member.person_id.person_id))
-                if checkin == "yes":
-                    member.status = Participant.AttendStatus.ATTENDED
-                    member.save()
-                elif checkin == "no":
-                    member.status = Participant.AttendStatus.UNATTENDED
-                    member.save()
-        except:
-            return redirect(message_url(wrong('修改失败')))
-    '''
+    
     try:
         saveSituation = request.POST.get("saveSituation")
         if saveSituation == "yes2":
