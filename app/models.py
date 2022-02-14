@@ -1325,10 +1325,14 @@ class CourseManager(models.Manager):
 
     def unselected(self, person: NaturalPerson):
         # 返回当前学生没选的所有课程
-        return self.activated().filter(
-            Q(participant_set=None)
-            | (Q(participant_set__person=person)
-               & Q(participant_set__status=CourseParticipant.Status.UNSELECT)))
+        return self.activated().exclude(participant_set__person=person,
+                                        participant_set__status__in=[
+                                           CourseParticipant.Status.SELECT,
+                                           CourseParticipant.Status.SUCCESS,
+                                           CourseParticipant.Status.FAILED,
+                                        ])
+        
+
 
 
 class Course(models.Model):
