@@ -1319,7 +1319,7 @@ class Course(models.Model):
                                     local_dict["semester_data"]["semester"]))
 
     # 课程开设的周数
-    times = models.SmallIntegerField("课程开设周数", default=7)
+    times = models.SmallIntegerField("课程开设周数", default=16)
     classroom = models.CharField("预期上课地点",
                                  max_length=60,
                                  default="",
@@ -1346,6 +1346,7 @@ class Course(models.Model):
         STAGE1 = (2, "预选")
         STAGE2 = (3, "补退选")
         END = (4, "已结束")
+        
 
     status = models.SmallIntegerField("开课状态",
                                       choices=Status.choices,
@@ -1402,7 +1403,7 @@ class CourseTime(models.Model):
     start = models.DateTimeField("开始时间")
     end = models.DateTimeField("结束时间")
     cur_week = models.IntegerField("已生成周数", default=0)
-    end_week = models.IntegerField("总周数", default=1)
+    end_week = models.IntegerField("总周数", default=16)
 
 
 class CourseParticipant(models.Model):
