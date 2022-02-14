@@ -588,6 +588,13 @@ def draw_lots(course):
             },
         )
 
+def str_to_time(stage:str):
+    """
+    字符串转换成时间
+    """
+    return datetime.strptime(stage,'%Y-%m-%d %H:%M:%S')
+
+
 
 @log.except_captured(return_value=True,
                      record_args=True,
@@ -635,7 +642,8 @@ def change_course_status(to_status):
     with transaction.atomic():
         Course.objects.select_for_update().activated().update(
             status=to_status)
-    
+
+
 @log.except_captured(return_value=True,
                      record_args=True,
                      status_code=log.STATE_WARNING,
@@ -646,8 +654,7 @@ def register_selection():
     """
     
     # 预选和补退选的开始和结束时间
-    def str_to_time(stage:str):
-        return datetime.strptime(stage,'%Y-%m-%d %H:%M:%S')
+
     year = str(get_setting("semester_data/year"))
     semster = str(get_setting("semester_data/semester"))
     stage1_start = str_to_time(get_setting("course/yx_election_start"))
