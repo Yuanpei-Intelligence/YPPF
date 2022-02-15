@@ -7,6 +7,7 @@ course_views.py
 from app.views_dependency import *
 from app.models import (
     NaturalPerson,
+    Semester,
     Activity,
     Course,
 )
@@ -288,9 +289,8 @@ def selectCourse(request):
             html_display["warn_message"] = "选课过程出现错误！请联系管理员。"
 
     html_display["is_myself"] = True
-    html_display["current_year"] = get_setting("semester_data/year")
-    html_display["semester"] = ("春" if get_setting("semester_data/semester")
-                                == "Spring" else "秋")
+    html_display["current_year"] = CURRENT_ACADEMIC_YEAR
+    html_display["semester"] = Semester.now().value
 
     unselected_courses = Course.objects.unselected(me)
     selected_courses = Course.objects.selected(me)

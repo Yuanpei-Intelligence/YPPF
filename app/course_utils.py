@@ -646,7 +646,7 @@ def change_course_status(course_id, cur_status, to_status):
             assert to_status == Course.Status.WAITING, \
             f"不能从{cur_status}变更到{to_status}"
         elif cur_status == Course.Status.STAGE2:
-            assert to_status == Course.Status.END, \
+            assert to_status == Course.Status.SELECT_END, \
             f"不能从{cur_status}变更到{to_status}"
         else:
             raise AssertionError("选课已经结束，不能再变化状态")
@@ -663,7 +663,7 @@ def change_course_status(course_id, cur_status, to_status):
         Course.objects.select_for_update().filter(id=course_id).update(
             status=to_status)
 
-    if to_status == Course.Status.END:
+    if to_status == Course.Status.SELECT_END:
         # 将选课成功的同学批量加入小组
         participants = CourseParticipant.objects.filter(
             course=course,
@@ -676,8 +676,7 @@ def change_course_status(course_id, cur_status, to_status):
                                            org=organization).exists():
                 position = Position(person=participant.person,
                                     org=organization,
-                                    in_semester=Semester.get(
-                                        get_setting("semester_data/semester")))
+                                    in_semester=Semester.now())
                 positions.append(position)
         if positions:
             with transaction.atomic():
