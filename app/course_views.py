@@ -428,19 +428,25 @@ def selectCourse(request):
 
     html_display["is_myself"] = True
     html_display["current_year"] = CURRENT_ACADEMIC_YEAR
-    html_display["semester"] = Semester.now().value
+    html_display["semester"] = ("春"
+                                if Semester.now().value == "Spring" else "秋")
 
     html_display["yx_election_start"] = get_setting("course/yx_election_start")
     html_display["yx_election_end"] = get_setting("course/yx_election_end")
     html_display["btx_election_start"] = get_setting("course/btx_election_start")
     html_display["btx_election_end"] = get_setting("course/btx_election_end")
 
+    # 是否正在进行抽签
     is_drawing = (True
                   if datetime.strptime(html_display["yx_election_end"],
                                        "%Y-%m-%d %H:%M:%S") <= datetime.now()
                   and datetime.now() <= datetime.strptime(
                       html_display["btx_election_start"], "%Y-%m-%d %H:%M:%S")
                   else False)
+    
+    # 选课是否已经全部结束
+    is_end = (True if datetime.now() > datetime.strptime(
+        html_display["btx_election_end"], "%Y-%m-%d %H:%M:%S") else False)
 
     unselected_courses = Course.objects.unselected(me)
     selected_courses = Course.objects.selected(me)
@@ -463,7 +469,7 @@ def selectCourse(request):
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(record_user=True,
                      record_request_args=True,
-                     source='course_views[courseDetail]')
+                     source='course_views[viewCourse]')
 def viewCourse(request):
     """
     展示一门课程的详细信息
@@ -488,10 +494,7 @@ def viewCourse(request):
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "课程详情")
 
-    # TODO: task 10 ljy 2022-02-07
-    # 和前端对接
-
-    return HttpResponse()
+    return render(request, "course_info.html", locals())
  
 
 @login_required(redirect_field_name="origin")
