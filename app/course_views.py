@@ -89,7 +89,7 @@ def editCourseActivity(request, aid):
     # 前端使用量
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava()
-    bar_display = utils.get_sidebar_and_navbar(request.user, "修改单次课程活动")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "修改课程活动")
 
     # 前端使用量，均可编辑
     title = utils.escape_for_templates(activity.title)
