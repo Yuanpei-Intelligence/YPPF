@@ -685,6 +685,9 @@ def change_course_status(course_id, cur_status, to_status):
                 Position.objects.bulk_create(positions)
 
 def downloadCourseRecord(request):
+    '''
+    导出学时数据为excel
+    '''
     #TODO: 身份验证
     writer = pd.ExcelWriter("test_data/test.xlsx")
     courses = Course.objects.activated()
