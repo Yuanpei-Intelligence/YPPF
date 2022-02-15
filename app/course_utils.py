@@ -721,19 +721,18 @@ def course_base_check(request):
         return wrong(str(e))
 
     #图片类型合法性检查 
+    context["QRcode"] = request.FILES.get("QRcode")
     announcephoto = request.FILES.getlist("photo")
-    pic = NoneType
+    pic = None
     if len(announcephoto) > 0:
         pic = announcephoto[0]
-        assert if_image(pic) == 2
     else:
         for i in range(5):
             if request.POST.get(f'picture{i+1}'):
                 pic = request.POST.get(f'picture{i+1}')
     context["photo"] = pic
-    context["QRcode"] = request.FILES.get("QRcode")
     try:
-        assert if_image(context["photo"]) == 1,"课程预告图片未上传或课程预告图片类型错误！"
+        assert if_image(context["photo"]) == 2,"课程预告图片未上传或课程预告图片类型错误！"
         assert if_image(context["QRcode"]) != 1,"微信群二维码类型错误！"
     except Exception as e:
         return wrong(str(e))
@@ -777,9 +776,8 @@ def create_course(request, course_id=None):
         if context["warn_code"] == 1: #合法性检查出错！
             return context
     except :
-        return wrong("遇到不可预料的错误。如有需要，请联系管理员解决!"))
+        return wrong("遇到不可预料的错误。如有需要，请联系管理员解决!")
     
-     
     # 编辑已有课程
     if course is not None:
         try:
@@ -812,7 +810,6 @@ def create_course(request, course_id=None):
         context["warn_message"] = "修改课程成功！"
     # 创建新课程
     else:
-
         try:
             with transaction.atomic():
                 course = Course.objects.create(
