@@ -12,6 +12,7 @@ remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 """
 from app.utils_dependency import *
+from django.http import HttpResponse
 from app.models import (
     NaturalPerson,
     Activity,
@@ -22,6 +23,8 @@ from app.models import (
     Course,
     CourseParticipant,
     Semester,
+    CourseRecord,
+    
 )
 from app.utils import get_person_or_org
 from app.notification_utils import (
@@ -44,6 +47,9 @@ from django.db import transaction
 from django.db.models import F, Sum
 
 from app.scheduler import scheduler
+import re
+from zhon.hanzi import punctuation
+import pandas as pd
 
 
 __all__ = [
@@ -677,3 +683,40 @@ def change_course_status(course_id, cur_status, to_status):
         if positions:
             with transaction.atomic():
                 Position.objects.bulk_create(positions)
+
+def downloadCourseRecord(request):
+    #TODO: 身份验证
+    writer = pd.ExcelWriter("test_data/test.xlsx")
+    courses = Course.objects.activated()
+    year = get_setting("semester_data/year")
+    semester = get_setting("semester_data/semester")
+    # print(courses)
+    for course in courses:
+        writeInfo = {
+            '姓名':[],
+            '学号':[],
+            '参加次数':[],
+            '学时':[],
+        }
+        records = CourseRecord.objects.filter(
+            year = year,
+            semester = semester,
+            course = course,
+        )
+        for record in records:
+            writeInfo['姓名'].append(record.person.name)
+            writeInfo['学号'].append(str(record.person.person_id))
+            writeInfo['参加次数'].append(record.attend_times)
+            writeInfo['学时'].append(record.total_hours)
+        df = pd.DataFrame(data = writeInfo)
+        name = str(course.name)
+        name = re.sub('[{}]'.format(punctuation),"",name) 
+        #排除中文符号,否则给sheet命名的时候会出问题
+        df.to_excel(writer, sheet_name = name, encoding='utf-8')
+
+    writer.close()
+    with open("test_data/test.xlsx", "rb") as file :  
+        response = HttpResponse(file)
+        response['content_type'] = "application/octet-stream"
+        response['Content-Disposition'] = 'attachment; filename={0}'.format('test.xlsx')
+        return response

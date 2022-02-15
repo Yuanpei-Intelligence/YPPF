@@ -19,6 +19,7 @@ from . import (
     reimbursement_views,
     YQPoint_views,
     course_views,
+    course_utils
 )
 from django.conf import settings
 
@@ -108,6 +109,9 @@ urlpatterns = [
 ] + [
     # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
+] + [
+    #数据导出
+    path("downloadCourseRecord/", course_utils.downloadCourseRecord, name = "downloadCourseRecord")
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
