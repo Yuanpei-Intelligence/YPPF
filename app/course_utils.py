@@ -51,6 +51,7 @@ __all__ = [
     'create_single_course_activity',
     'modify_course_activity',
     'cancel_course_activity',
+    'check_post_data',
     'registration_status_change',
     'course_to_display',
     'change_course_status',
@@ -266,20 +267,27 @@ def cancel_course_activity(request, activity):
 
     activity.save()
 
+
 def check_post_data(post_datas, members):
     '''
     用于showCourseRecord()中检查并处理前端传入的数据
     '''
-    for point in range(len(post_datas)):
-        post_data = post_datas[point]
-        post_data[0] = post_data[0].replace(" ","").replace("\n","") 
-        #前端传入的时候格式有点奇怪，会有一些空格和换行符
-        if not post_data[1].isalnum()  : #学时数据检查
+    new_datas = []
+    for post_data, person in zip(post_datas, members):
+        # 前端传入的时候格式有点奇怪，会有一些空格和换行符
+        try:
+            person_name, hours = post_data
+            person_name = person_name.replace(" ","").replace("\n","")
+        except:
+            return False, "数据格式异常!"
+        try:
+            hours = float(hours)
+        except:
             return False, "修改的学时数据只可为整数和小数"
-        person = members[point]
-        if str(person) != post_data[0]: #只有非法修改流量包的数据才会这样
+        if str(person) != person_name: #只有非法修改流量包的数据才会这样
             return False, "请勿尝试篡改传出数据!"
-    return True, post_datas
+        new_datas.append([person_name, hours])
+    return True, new_datas
     
 
 def remaining_willingness_point(user):
