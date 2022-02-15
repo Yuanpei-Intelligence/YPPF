@@ -25,6 +25,7 @@ import urllib.request
 
 from datetime import datetime, timedelta
 from django.db import transaction  # 原子化更改数据库
+from django.db.models import F
 
 # 引入定时任务还是放上面吧
 from app.scheduler import scheduler
@@ -161,23 +162,15 @@ def get_weather():
 # 每天计算用户活跃度
 def update_active_score_per_day():
     with transaction.atomic():
-        finish_time = datetime.now()
-        start_time = datetime.now() - timedelta(days=15)
+        now = datetime.now()
         recipients = NaturalPerson.objects.activated().select_for_update()
-        PV_all = PageLog.objects.filter(
-            type=PageLog.CountType.PV,
-            time__range=[start_time, finish_time],
-        )   # 15天内的所有PV，[start_time, finish_time]不包括finish_time时间
-        PV_dict = {recipient.person_id: [0 for i in range(15)] 
-            for recipient in recipients}   # 记录每个recipient 15天内的登陆情况
-        for PV in PV_all:
-            PV_day = (PV.time - start_time).days
-            PV_dict[PV.user][PV_day] = 1
+        recipients.all().update(active_score=0)
+        for i in range(15):
+            finish_time = now - timedelta(days=i)
+            start_time = finish_time - timedelta(days=1)
+            users = set(PageLog.objects.filter(time__range=[start_time, finish_time]).values_list('user', flat=True))
+            recipients.filter(person_id__in=users).update(active_score=F('active_score')+1/15)
         for recipient in recipients:
-            PV_count = 0
-            for i in range(15):
-                PV_count += PV_dict[recipient.person_id][i]
-            recipient.active_score = PV_count / 15
             recipient.save()
 
 
