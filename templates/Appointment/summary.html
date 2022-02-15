@@ -1,0 +1,569 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <title>我的地下室年度回忆</title>
+  <link type="image/x-icon" href="{% static 'Appointment/assets/img/yp_favicon.png' %} " rel="icon">
+  <meta name="theme-color" content="#f00">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport"
+    content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, minimal-ui">
+  <meta name="full-screen" content="yes">
+  <meta name="browsermode" content="application">
+  <meta name="x5-fullscreen" content="true">
+  <meta name="x5-page-mode" content="app">
+  <meta name="apple-mobile-web-app-title" content="我的网易云音乐2017">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="format-detection" content="telephone=no, email=no">
+  <link rel="stylesheet" href="{% static 'Appointment/assets/css/jquery.fullpage.css' %}">
+  <link rel="stylesheet" href="{% static 'Appointment/assets/css/main.css' %}">
+</head>
+</head>
+
+<body>
+  <div id="app">
+
+
+
+
+
+
+    <section class="section page page-1 page-home">
+      <div class="bg-back"></div>
+      <div class="bg-white"></div>
+      <div class="title-wrapper">
+        <h1 class="title title-1"></h1>
+        <h1 class="title title-2"></h1>
+      </div>
+      <div class="nickname">Hi ，{{ Sname }}</div>
+      <a class="button">
+        <span>立即<br>查看</span>
+      </a>
+    </section>
+
+
+
+
+
+    <section class="section page page-2">
+      <div class="bg-back"></div>
+      <div class="content">
+        <p class="para">这一年里</p>
+        <p class="para mt-10">地下室预约系统一共发起了</p>
+        <p class="para mt-10"><span class="fs-18 fc-red">{{all_appoint_num}}</span>条预约</p>
+        <p class="para mt-35">总预约时长达到<span class="fs-18 fc-red">{{all_appoint_len}}</span>小时</p>
+        <p class="para mt-10">相当于<span class="fs-18 fc-red">{{all_appoint_len_day}}</span>个整天</p>
+      </div>
+    </section>
+
+
+
+
+
+    <section class="section page page-2">
+      <div class="bg-star"></div>
+      <div class="night night-1"></div>
+      <div class="night night-2"></div>
+      <div class="stars">
+        <span class="star star-1"></span>
+        <span class="star star-2"></span>
+        <span class="star star-3"></span>
+        <span class="star star-4"></span>
+      </div>
+      <div class="meteors">
+        <span class="meteor meteor-1"></span>
+        <span class="meteor meteor-2"></span>
+      </div>
+      <!-- <div class="moon-wrapper"></div> -->
+      <div class="moon">
+      </div>
+      <div class="building building-1"></div>
+      <div class="content">
+        {% if appoint_make_num %}
+        <p class="para">其中，你一共发起了<span class="fs-18 fc-red">{{appoint_make_num}}</span>条预约</p>
+        <!-- <p class="para mt-10">并参加了别人发起的<span class="fs-18 fc-red">3067</span>条预约</p> -->
+        <p class="para mt-10">在所有使用者中排前<span class="fs-18 fc-red">{{appoint_make_num_pct}}%</span></p>
+        <p class="para mt-35">总预约时长为<span class="fs-18 fc-red">{{appoint_make_hour}}</span>小时</p>
+        <p class="para mt-10">在所有使用者中排前<span class="fs-18 fc-red">{{appoint_make_hour_pct}}%</span></p>
+        {% else %}
+        <p class="para">其中，你一共参加了<span class="fs-18 fc-red">{{appoint_attend_num}}</span>条预约</p>
+        <!-- <p class="para mt-10">并参加了别人发起的<span class="fs-18 fc-red">3067</span>条预约</p> -->
+        <!-- <p class="para mt-10">相当于整个预约系统的<span class="fs-18 fc-red">{{appoint_make_num_pct}}%</span></p> -->
+        <p class="para mt-35">参加的预约总时长为<span class="fs-18 fc-red">{{appoint_attend_hour}}</span>小时</p>
+        <!-- <p class="para mt-10">相当于整个预约系统的<span class="fs-18 fc-red">{{appoint_make_hour_pct}}%</span></p> -->
+        {% endif %}
+      </div>
+    </section>
+
+
+
+
+
+
+    <section class="section page page-10">
+      <div class="bg-yellow"></div>
+      <!-- <div class="water"></div> -->
+      <!-- <div class="ripple">
+        <div class="bottle-wrapper">
+          <div class="bottle bottle-1">
+            <div class="man"></div>
+          </div>
+          <div class="bottle bottle-2"></div>
+        </div>
+      </div> -->
+      <!-- <div class="rain">
+        <div class="drop drop-1"></div>
+        <div class="drop drop-2"></div>
+        <div class="drop drop-3"></div>
+      </div> -->
+      <div class="content">
+        <p class="para">这一年</p>
+        <p class="para para-1"><span class="fc-red">{{hottest_room_1.0}} {{hottest_room_1.1}}</span></p>
+        <p class="para para-1">以<span class="fc-red">{{hottest_room_1.2}}</span>次的预约数</p>
+        <p class="para para-1">成为最抢手的功能房</p>
+        <p class="para para-1">而<span class="fc-red">{{hottest_room_2.0}} {{hottest_room_2.1}}</span>和<span
+            class="fc-red">{{hottest_room_3.0}} {{hottest_room_3.1}}</span></p>
+        <p class="para para-1">分别以<span class="fc-red">{{hottest_room_2.2}}次</span>和<span
+            class="fc-red">{{hottest_room_3.2}}次</span>的预约数</p>
+        <p class="para para-1">成为第二、第三热门的功能房</p>
+      </div>
+    </section>
+
+
+
+    {% if Sfav_room_id %}
+
+
+    <section class="section page page-8">
+      <div class="bg-back"></div>
+      <div class="rabbit">
+      </div>
+      <!-- <div class="bottom"></div> -->
+      <div class="building building-1">
+        <!-- <div class="roll"></div> -->
+        <!-- <div class="man"></div> -->
+      </div>
+      <div class="content">
+        <p class="para">在这一年里</p>
+        <p class="para para-1">你最喜欢使用的房间是<span class="fs-18 fc-red">{{Sfav_room_id}} {{Sfav_room_name}}</span></p>
+        <p class="para para-1">一共使用了<span class="fs-18 fc-red">{{Sfav_room_freq}}</span>次</p>
+        <p class="para para-1">不知道在这个房间里</p>
+        <p class="para para-1">有没有留下属于你的独家记忆</p>
+      </div>
+    </section>
+
+    {% endif %}
+
+
+    
+    <section class="section page page-5">
+      <div class="mountain mountain-1"></div>
+      <div class="mountain mountain-2"></div>
+      <div class="tree tree-1"></div>
+      <div class="tree tree-2"></div>
+      <div class="tree tree-3"></div>
+      <div class="tree tree-4"></div>
+      <div class="tree tree-5"></div>
+      <div class="tree tree-6"></div>
+      <div class="tree tree-7"></div>
+      <div class="tree tree-8"></div>
+      <div class="content">
+
+        {% if appoint_make_num %}
+        <p class="para">你最常在<span class="fc-red">{{Smake_time_most}}:00-{{Smake_time_most|add:1}}:00</span></p>
+        <p class="para para-1">发起预约</p>
+        <p class="para para-3">而在<span class="fc-red">{{Suse_time_most}}:00-{{Suse_time_most|add:1}}:00</span></p>
+        <p class="para para-1">使用房间最为频繁</p>
+        {% elif appoint_attend_num %}
+        <p class="para para-3">你在<span class="fc-red">{{Suse_time_most}}:00-{{Suse_time_most|add:1}}:00</span></p>
+        <p class="para para-1">使用房间最为频繁</p>
+        {% endif %}
+        <p class="para para-3">在忙碌的同时</p>
+        <p class="para para-1">不要忘了好好休息</p>
+      </div>
+      <div id="main" style="position: relative;margin:0px auto; width: 95%;height:300px; bottom: -150px;"></div>
+      <script type="text/javascript" src="{% static 'Appointment/assets/js/echarts.min.js' %}"></script>
+      <script type="text/javascript">
+        // 基于准备好的dom，初始化echarts实例
+        // 指定图表的配置项和数据
+        var chartDom = document.getElementById('main');
+        var myChart = echarts.init(chartDom);
+        var option;
+        var times_data = JSON.parse('{{Suse_time_list_js|safe}}');
+        var times_label = JSON.parse('{{Suse_time_list_label_js|safe}}')
+
+        option = {
+          xAxis: {
+            type: 'category',
+            data: times_label
+          },
+          yAxis: {
+            type: 'value',
+            name: '使用次数'
+          },
+          series: [{
+            data: times_data,
+            type: 'bar'
+          }]
+        };
+
+        option && myChart.setOption(option);
+      </script>
+    </section>
+
+
+
+    {% if appoint_make_num %}
+
+    <section class="section page page-4">
+      <div class="bg-sand"></div>
+      <div class="wave1 wave1-1">
+        <div class="ripple"></div>
+      </div>
+      <div class="wave1 wave1-2"></div>
+      <!-- <div class="wave2 wave2-1"></div>
+      <div class="wave2 wave2-2"></div> -->
+      <div class="cat"></div>
+      <!-- <div class="man-wrapper">
+        <div class="splash"></div>
+        <div class="man"></div>
+      </div> -->
+      <div class="content">
+        <p class="para"><span class="fc-red">{{Sfirst_appoint.0}}</span>年<span
+            class="fc-red">{{Sfirst_appoint.1}}</span>月<span class="fc-red">{{Sfirst_appoint.2}}</span>日
+        </p>
+        <p class="para para-2">因为<span class="fc-red">{{Sfirst_appoint.3}}</span></p>
+        <p class="para para-2">你在<span class="fc-red">{{Sfirst_appoint.4}} {{Sfirst_appoint.5}}</span></p>
+        <p class="para para-2">发起了自己的第一条预约</p>
+        <p class="para para-2">与新地下室的初见</p>
+        <p class="para para-2">有没有带给你惊喜呢</p>
+      </div>
+    </section>
+
+    {% endif %}
+
+
+
+    {% if Skeywords_len %}
+
+    <section class="section page page-12">
+      <div class="info">
+        <div class="photo-wrapper">
+          <div class="photo">
+          </div>
+        </div>
+        <div class="content">
+          <div class="name f-thide">这些</div>
+          <p class="para">是你本学年的预约关键词</p>
+          <!-- <p class="para">共听了<span class="fs-18 fc-red">411</span>次</p> -->
+        </div>
+      </div>
+      <div class="waves">
+        <div class="wave wave-1"></div>
+        <div class="wave wave-2"></div>
+        <div class="wave wave-3"></div>
+        <div class="wave wave-4"></div>
+      </div>
+      <ul class="lines">
+        <li class="line line-1"><span class="text">{{Skeywords.0}}</span></li>
+        <li class="line line-2"><span class="text">{{Skeywords.1}}</span></li>
+        <li class="line line-3"><span class="text">{{Skeywords.2}}</span></li>
+        <li class="line line-4"><span class="text">{{Skeywords.3}}</span></li>
+        <li class="line line-5"><span class="text">{{Skeywords.4}}</span></li>
+        <li class="line line-6"><span class="text">{{Skeywords.5}}</span></li>
+        <li class="line line-7"><span class="text">{{Skeywords.6}}</span></li>
+        <li class="line line-8"><span class="text">{{Skeywords.7}}</span></li>
+        <li class="line line-9"><span class="text">{{Skeywords.8}}</span></li>
+        <li class="line line-10"><span class="text">{{Skeywords.9}}</span></li>
+      </ul>
+    </section>
+
+    {% endif %}
+
+
+    {% if Sfriend %}
+
+    <section class="section page page-6">
+      <div class="night night-1"></div>
+      <div class="night night-2"></div>
+      <div class="star star-1"></div>
+      <div class="star star-2"></div>
+      <div class="star star-3"></div>
+      <div class="star star-4"></div>
+      <div class="meteor meteor-1"></div>
+      <div class="meteor meteor-2"></div>
+      <div class="bottom-wrapper">
+        <div class="cooperation"></div>
+      </div>
+      <div class="content">
+        <p class="para">这一年</p>
+        <p class="para para-1">最常与你一起预约的小伙伴是</p>
+        <p class="para para-1"><span class="fc-red">{{Sfriend.0}} {{Sfriend.1}} {{Sfriend.2}}</span></p>
+        <p class="para para-4">化孤独为共同</p>
+        <p class="para para-1">我们践行着我们的初心</p>
+      </div>
+    </section>
+
+    {% endif %}
+
+
+
+    {% if aygj %}
+
+    <sectioin class="section page page-15">
+      <div class="ground">
+        <div class="clock-wrapper">
+          <div class="min"></div>
+          <div class="hour"></div>
+        </div>
+        <div class="crowd crowd-1"></div>
+        <div class="crowd crowd-2"></div>
+        <div class="crowd crowd-3"></div>
+        <div class="crowd crowd-4"></div>
+        <div class="crowd crowd-5"></div>
+        <div class="crowd cup"></div>
+      </div>
+      <div class="content">
+        <div class="content">
+          <p class="para para-1">你曾经在<span class="fs-18 fc-red">2:00-5:00</span>发起预约</p>
+          <p class="para-2 para">最晚的一次</p>
+          <p class="para-2 para">是在<span class="fs-18 fc-red">{{aygj.0}}</span>年<span
+              class="fs-18 fc-red">{{aygj.1}}</span>月<span class="fs-18 fc-red">{{aygj.2}}</span>日的<span
+              class="fs-18 fc-red">{{aygj.3}}</span></p>
+          <p class="para-2 para">解锁成就<span class="fs-18 fc-red">熬夜冠军</span></p>
+          <p class="para-2 para">本年度有<span class="fs-18 fc-red">{{aygj_num}}</span>人获此殊荣</p>
+        </div>
+      </div>
+      <!-- <div class="tips">欸，有彩蛋吗？滑动看下~</div> -->
+    </sectioin>
+    {% endif %}
+
+    <!-- zqgj -->
+
+
+
+    {% if zqgj %}
+
+    <sectioin class="section page page-15">
+      <div class="ground">
+        <div class="clock-wrapper">
+          <div class="min"></div>
+          <div class="hour"></div>
+        </div>
+        <div class="crowd crowd-1"></div>
+        <div class="crowd crowd-2"></div>
+        <div class="crowd crowd-3"></div>
+        <div class="crowd crowd-4"></div>
+        <div class="crowd crowd-5"></div>
+        <div class="crowd coffee"></div>
+      </div>
+      <div class="content">
+        <div class="content">
+          <p class="para para-1">你曾经在<span class="fs-18 fc-red">6:00-8:00</span>间进行预约</p>
+          <p class="para-2 para">最早的一次发生在<span class="fs-18 fc-red">{{zqgj.0}}</span>年<span
+              class="fs-18 fc-red">{{zqgj.1}}</span>月<span class="fs-18 fc-red">{{zqgj.2}}</span>日<span
+              class="fs-18 fc-red">{{zqgj.3}}</span></p>
+          <p class="para-2 para"><span class="fs-18 fc-red">{{zqgj.5}} {{zqgj.6}}</span>的<span
+              class="fs-18 fc-red">{{zqgj.4}}</span></p>
+          <p class="para-2 para">解锁成就<span class="fs-18 fc-red">早起冠军</span></p>
+          <p class="para-2 para">有<span class="fs-18 fc-red">{{zqgj_num}}</span>人获此殊荣</p>
+        </div>
+      </div>
+      <!-- <div class="tips">欸，有彩蛋吗？滑动看下~</div> -->
+    </sectioin>
+    {% endif %}
+
+
+    {% if wycm %}
+
+    <sectioin class="section page page-15">
+      <div class="ground">
+        <div class="clock-wrapper">
+          <div class="min"></div>
+          <div class="hour"></div>
+        </div>
+        <div class="crowd crowd-1"></div>
+        <div class="crowd crowd-2"></div>
+        <div class="crowd crowd-3"></div>
+        <div class="crowd crowd-4"></div>
+        <div class="crowd crowd-5"></div>
+        <div class="crowd birdclock"></div>
+      </div>
+      <div class="content">
+        <div class="content">
+          <p class="para para-1">在你发起的所有预约中</p>
+          <p class="para-2 para">有超过<span class="fs-18 fc-red">5</span>条提前一周以上预约</p>
+          <p class="para-2 para">解锁成就<span class="fs-18 fc-red">未雨绸缪</span></p>
+          <p class="para-2 para">本年度仅有<span class="fs-18 fc-red">{{wycm_num}}</span>人获此殊荣</p>
+        </div>
+      </div>
+      <!-- <div class="tips">欸，有彩蛋吗？滑动看下~</div> -->
+    </sectioin>
+    {% endif %}
+
+    {% if jxcz %}
+
+    <sectioin class="section page page-15">
+      <div class="ground">
+        <div class="clock-wrapper">
+          <div class="min"></div>
+          <div class="hour"></div>
+        </div>
+        <div class="crowd crowd-1"></div>
+        <div class="crowd crowd-2"></div>
+        <div class="crowd crowd-3"></div>
+        <div class="crowd crowd-4"></div>
+        <div class="crowd crowd-5"></div>
+        <div class="crowd lightning"></div>
+      </div>
+      <div class="content">
+        <div class="content">
+          <p class="para-2 para">你曾<span class="fs-18 fc-red">在开始时间前2分钟内</span>才进行预约</p>
+          <p class="para-2 para">解锁成就<span class="fs-18 fc-red">极限操作</span></p>
+          <p class="para-2 para">其中，<span class="fs-18 fc-red">{{jxcz.0}}</span>年<span
+              class="fs-18 fc-red">{{jxcz.1}}</span>月<span class="fs-18 fc-red">{{jxcz.2}}</span>日</p>
+          <p class="para-2 para">你在<span class="fs-18 fc-red">{{jxcz.3}}</span>预约了<span
+              class="fs-18 fc-red">{{jxcz.4}}</span>的<span class="fs-18 fc-red">{{jxcz.5}} {{jxcz.6}}</span></p>
+          <p class="para-2 para">有<span class="fs-18 fc-red">{{jxcz_num}}</span>人获此殊荣</p>
+        </div>
+      </div>
+      <!-- <div class="tips">欸，有彩蛋吗？滑动看下~</div> -->
+    </sectioin>
+    {% endif %}
+
+
+    {% if ypgw %}
+
+    <sectioin class="section page page-15">
+      <div class="ground">
+        <div class="clock-wrapper">
+          <div class="min"></div>
+          <div class="hour"></div>
+        </div>
+        <div class="crowd crowd-1"></div>
+        <div class="crowd crowd-2"></div>
+        <div class="crowd crowd-3"></div>
+        <div class="crowd crowd-4"></div>
+        <div class="crowd crowd-5"></div>
+        <div class="crowd gugugu"></div>
+      </div>
+      <div class="content">
+        <div class="content">
+          <p class="para para-1">本学年</p>
+          <p class="para-2 para">你因为<span class="fs-18 fc-red">迟到</span>而违规的次数达到<span
+              class="fs-18 fc-red">{{ypgw}}</span>次</p>
+          <p class="para-2 para">解锁成就<span class="fs-18 fc-red">元培鸽王</span></p>
+          <p class="para-2 para">本年度仅有<span class="fs-18 fc-red">{{ypgw_num}}</span>人获此殊荣</p>
+          <p class="para-2 para">分享到朋友圈，寻找身边志同道合的鸽子</p>
+        </div>
+      </div>
+      <div class="tips">欸，有彩蛋吗？滑动看下~</div>
+    </sectioin>
+    {% endif %}
+
+
+
+
+
+
+
+    <section class="section page page-16">
+      <div class="bg-letter"></div>
+      <!-- <div class="arrow"></div> -->
+      <!-- <div class="slogan"> -->
+      <!-- <p class="text">↓ 点击开启 ↓</p>
+        <p class="text">(TODO:这页预告新功能)</p> -->
+      <div class="content">
+        <p class="para para-11-title" style="font-size: 22px;">邀 请 函</p>
+        <p class="para para-11-blank">&nbsp;</p>
+        <p class="para para-11">亲爱的{{Sname}}：</p>
+        <p class="para para-11">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;你好！</p>
+        <p class="para para-11">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;2021年秋季，Yuanpei Profile（元培智慧校园系统）即将上线，在这座“看不见的城市”里，你会解锁以下角落：</p>
+
+        <p class="para para-11" style="text-align: center;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;元培门户：生活展示窗口</p>
+        <p class="para para-11" style="text-align: center;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;成长档案：一串成长足迹</p>
+        <p class="para para-11" style="text-align: center;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;订阅服务：消息提醒助手</p>
+        <p class="para para-11" style="text-align: center;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;事务平台：事务一键解决</p>
+        <p class="para para-11" style="text-align: center;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;通知信箱：你的事务管家</p>
+        <p class="para para-11" style="text-align: center;">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;元气积分：意愿点与动力</p>
+
+        <p class="para para-11">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;在这里，你能够享受活动举办的全线上操作服务，代码替你奔跑，只需动动手指，你就能获知学院所有的活动消息。</p>
+        <p class="para para-11">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;在这里，你可以有多种存在方式：安利音乐、设置个性签名、保存成长节点，你表达，故你在。</p>
+        <p class="para para-11">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;这里还会有许多有意思的故事，详情可关注后续推文，也欢迎你在以后的使用中自己不断探索体验。</p>
+        <p class="para para-11">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Yuanpei Profile——共同生活的线上家园，期待并欢迎你的入住！</p>
+
+        <p class="para para-11-blank">&nbsp;</p>
+        <p class="para para-11-end">智慧校园项目组</p>
+      </div>
+      <div class="video-wrapper">
+      </div>
+      <div class="buttons">
+        <a href="javascript:;" class="button">重温我的年度回忆</a>
+      </div>
+      <div class="content-annotation">
+        <p class="para" style="font-size: 8px; color: grey; line-height: 10px;">制作｜wxy pht</p>
+        <p class="para" style="font-size: 8px; color: grey; line-height: 10px;">文案｜wxy zcy lzq</p>
+        <p class="para" style="font-size: 8px; color: grey; line-height: 10px;">感谢JohnieXu在Github的开源项目</p>
+
+      </div>
+    </section>
+
+  </div>
+  <!-- lib -->
+  <script src="{% static 'Appointment/assets/js/jquery.min.js' %}"></script>
+  <!-- <script src="https://unpkg.com/jplayer@2.9.2/dist/jplayer/jquery.jplayer.min.js"></script> -->
+  <script src="{% static 'Appointment/assets/js/jquery.fullpage.js' %}"></script>
+  <!-- components -->
+  <script src="{% static 'Appointment/./assets/js/App.js' %}"></script>
+  <!-- main -->
+  <script lang="javascript">
+    jQuery(document).ready(function ($) {
+      var app = new App();
+      var ajaxData = {
+      }
+      var page1Css = {
+        background: 'red'
+      }
+      var bg = {
+        // bgLight: 'http://s3.music.126.net/nact/s/client/images/year2017/cover/cover_bg.jpg?91115a3fd39e5158b3387c3eec828793',
+        // bgBack: 'http://s3.music.126.net/nact/s/client/images/year2017/cover/light.png?282c69970cb1ace98b08e594888bcc5e',
+        // bgBack: '../img/cover.png'
+      }
+
+      $('#app').fullpage({
+        onLeave: function (index, nextIndex, direction) {
+          if (index == 1) {
+            rst = window.confirm('点击确认则视为允许我们访问你的必要数据，但是我们保证不会将其泄露给其他人')
+            if (!rst) {
+              return false
+            }
+          }
+          console.log(index + ' leave direction: ' + direction);
+        },
+        afterLoad: function (anchorLink, index) {
+          console.log(index + ' loaded');
+        },
+        sectionColor: ['yellow', 'green', 'blue', 'purple'],
+        fadingEffect: true
+      });
+      /*前往正文页面=>立即查看*/
+      $('#app .page-1 .button').click(function () {
+        $.fn.fullpage.moveSectionDown();
+      });
+      /*回顶部=>重温TA的2017*/
+      $('#app .page-16 .buttons .button').click(function () {
+        $.fn.fullpage.moveTo(1, 0);
+        // console.log('aaa');
+      });
+      /*测试*/
+      // $.fn.fullpage.moveTo(16, 0);
+    });
+
+  </script>
+</body>
+
+</html>
