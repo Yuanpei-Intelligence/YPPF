@@ -693,7 +693,6 @@ def downloadCourseRecord(request):
     courses = Course.objects.activated()
     year = get_setting("semester_data/year")
     semester = get_setting("semester_data/semester")
-    # print(courses)
     for course in courses:
         writeInfo = {
             '姓名':[],
@@ -714,7 +713,7 @@ def downloadCourseRecord(request):
         df = pd.DataFrame(data = writeInfo)
         name = str(course.name)
         name = re.sub('[{}]'.format(punctuation),"",name) 
-        #排除中文符号,否则给sheet命名的时候会出问题
+        #去除中文符号,否则给sheet命名的时候会出问题
         df.to_excel(writer, sheet_name = name, encoding='utf-8')
 
     writer.close()
