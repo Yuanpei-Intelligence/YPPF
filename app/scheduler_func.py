@@ -12,6 +12,7 @@ from app.models import (
     Participant,
     Notification,
     Position,
+    PageLog,
 )
 from app.activity_utils import changeActivityStatus
 from app.notification_utils import bulk_notification_create, notification_status_change
@@ -159,19 +160,18 @@ def get_weather():
         return weather_dict
 
 
-# 每天计算用户活跃度
-def update_active_score_per_day():
+def update_active_score_per_day(days=14):
+    '''每天计算用户活跃度， 计算前days天（不含今天）内的平均活跃度'''
     with transaction.atomic():
-        now = datetime.now()
-        recipients = NaturalPerson.objects.activated().select_for_update()
-        recipients.all().update(active_score=0)
-        for i in range(15):
-            finish_time = now - timedelta(days=i)
-            start_time = finish_time - timedelta(days=1)
-            users = set(PageLog.objects.filter(time__range=[start_time, finish_time]).values_list('user', flat=True))
-            recipients.filter(person_id__in=users).update(active_score=F('active_score')+1/15)
-        for recipient in recipients:
-            recipient.save()
+        today = datetime.now().date()
+        persons = NaturalPerson.objects.activated().select_for_update()
+        persons.update(active_score=0)
+        for i in range(days):
+            date = today - timedelta(days=i+1)
+            userids = set(PageLog.objects.filter(
+                time__date=date).values_list('user', flat=True))
+            persons.filter(person_id__in=userids).update(
+                active_score=F('active_score') + 1 / days)
 
 
 def start_scheduler(with_scheduled_job=True, debug=False):
@@ -203,12 +203,12 @@ def start_scheduler(with_scheduled_job=True, debug=False):
                               id=current_job,
                               minutes=5,
                               replace_existing=True)
-            current_job = "activescoreUpdater"
+            current_job = "active_score_updater"
             if debug: print(f"adding scheduled job '{current_job}'")
             scheduler.add_job(update_active_score_per_day,
-                              "interval",
+                              "cron",
                               id=current_job,
-                              days=1,
+                              hour=1,
                               replace_existing=True)
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"
