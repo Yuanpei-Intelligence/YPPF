@@ -689,7 +689,7 @@ def downloadCourseRecord(request):
     导出学时数据为excel
     '''
     #TODO: 身份验证
-    writer = pd.ExcelWriter("test_data/test.xlsx")
+    writer = pd.ExcelWriter("test_data/downCourecord.xlsx")
     courses = Course.objects.activated()
     year = get_setting("semester_data/year")
     semester = get_setting("semester_data/semester")
@@ -717,8 +717,8 @@ def downloadCourseRecord(request):
         df.to_excel(writer, sheet_name = name, encoding='utf-8')
 
     writer.close()
-    with open("test_data/test.xlsx", "rb") as file :  
+    with open("test_data/downCourecord.xlsx", "rb") as file :  
         response = HttpResponse(file)
         response['content_type'] = "application/octet-stream"
-        response['Content-Disposition'] = 'attachment; filename={0}'.format('test.xlsx')
+        response['Content-Disposition'] = 'attachment; filename={0}'.format('downCourecord.xlsx')
         return response
