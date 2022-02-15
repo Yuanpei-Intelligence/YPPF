@@ -356,8 +356,8 @@ def addCourse(request, cid=None):
     该函数处理 GET, POST 两种请求，发起和修改两类操作
     1. 访问 /addCourse/ 时，为创建操作，要求用户是小组；
     2. 访问 /editCourse/aid 时，为编辑操作，要求用户是该活动的发起者
-    3. GET 请求创建活动的界面，placeholder 为 prompt
-    4. GET 请求编辑活动的界面，表单的 placeholder 会被修改为活动的旧值。
+    3. GET 请求创建课程的界面，placeholder 为 prompt
+    4. GET 请求编辑课程的界面，表单的 placeholder 会被修改为课程的旧值。
     """
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
@@ -387,6 +387,9 @@ def addCourse(request, cid=None):
         log.record_traceback(request, e)
         return EXCEPT_REDIRECT
 
+    html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
+    html_display["warn_message"] = request.GET.get(
+            "warn_message", "")  # 提醒的具体内容
     
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewCourse，可以不设计bar_display
@@ -394,7 +397,6 @@ def addCourse(request, cid=None):
         if not edit:
             context=create_course(request)
             html_display["warn_code"] = context["warn_code"]
-            html_display["warn_message"] = context["warn_message"]
             if html_display["warn_code"] == 2:
                 return redirect(message_url(succeed("创建课程成功！为您自动跳转到编辑界面。"),
                                         f'/editCourse/{context["cid"]}'))
@@ -404,8 +406,9 @@ def addCourse(request, cid=None):
                 return redirect(message_url(wrong('当前课程状态不允许修改!'),
                                             f'/editCourse/{course.id}'))
             context = create_course(request, course.id)
-            html_display["warn_code"] = context["warn_code"]
-            html_display["warn_message"] = context["warn_message"]
+            course = Course.objects.get(id=context["cid"])
+        html_display["warn_code"] = context["warn_code"]
+        html_display["warn_message"] = context["warn_message"]
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     html_display["applicant_name"] = me.oname
@@ -422,6 +425,7 @@ def addCourse(request, cid=None):
     editable=False
     if edit and course.status == Course.Status.WAITING: #选课未开始才能修改
         editable = True
+    
     if edit:
         name = utils.escape_for_templates(course.name)
         organization = course.organization

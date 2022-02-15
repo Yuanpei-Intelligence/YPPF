@@ -116,7 +116,7 @@
                                                         value="{{course_type.1}}">&nbsp;&nbsp;&nbsp;“{{course_type.0}}”类课程</a>
                                                     {% endfor %}
                                                 </div>
-                                                <input type="hidden" id="type" name="type" value="{%if edit %}{{type}}{% else %}{%endif%}" />
+                                                <input type="hidden" id="type" name="type" value="{%if edit %}{{type}}{% else %}{%endif%}" required="required" />
                                             </div>
                                         </div>
                                     </div>
@@ -258,9 +258,9 @@
                                     {%if not edit%}
                                     <div class="form-group">
                                         <label>
-                                            课程预告图片（可选）
+                                            课程预告图片
                                             <a data-toggle="tooltip" data-placement="bottom"
-                                                title="每周课程预告图片，可以自行上传本地图片或选择从以下五张图片中选择一张。">
+                                                title="每周课程预告图片，可以自行上传本地图片或选择从以下五张图片中选择一张。如果不选择，默认为第一张图片。">
                                                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                                                     fill="currentColor" class="bi bi-question-circle-fill"
                                                     viewBox="0 0 22 22">
