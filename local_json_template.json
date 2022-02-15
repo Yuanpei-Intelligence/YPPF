@@ -97,6 +97,7 @@
     },
     "course": {
         "type_name": "书院课程",
+        "record_editable" : false,
         "audit_teacher": "YPadmin"
     },
     "audit_teacher": {
@@ -105,6 +106,5 @@
     "test_info": {
         "stu_name": "YPadmin"
     },
-    "YQPoint_source_oname": "元培元气值中心",
-    "course_record_editable" : false
+    "YQPoint_source_oname": "元培元气值中心"
 }
