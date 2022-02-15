@@ -1313,7 +1313,7 @@ class CourseManager(models.Manager):
         ).exclude(status=Course.Status.ABORT)
 
     def selected(self, person: NaturalPerson):
-        # 返回当前学生所选的所有课程
+        # 返回当前学生所选的所有课程，选课失败也要算入
         # participant_set是对CourseParticipant的反向查询
         return self.activated().filter(participant_set__person=person,
                                        participant_set__status__in=[
@@ -1324,12 +1324,11 @@ class CourseManager(models.Manager):
 
 
     def unselected(self, person: NaturalPerson):
-        # 返回当前学生没选的所有课程
+        # 返回当前学生没选上的所有课程
         return self.activated().exclude(participant_set__person=person,
                                         participant_set__status__in=[
                                            CourseParticipant.Status.SELECT,
                                            CourseParticipant.Status.SUCCESS,
-                                           CourseParticipant.Status.FAILED,
                                         ])
         
 

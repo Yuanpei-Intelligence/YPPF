@@ -24,8 +24,9 @@ from app.course_utils import (
 )
 from app.utils import get_person_or_org
 
-from django.db import transaction
 from datetime import datetime
+
+from django.db import transaction
 
 __all__ = [
     'editCourseActivity',
@@ -428,6 +429,18 @@ def selectCourse(request):
     html_display["is_myself"] = True
     html_display["current_year"] = CURRENT_ACADEMIC_YEAR
     html_display["semester"] = Semester.now().value
+
+    html_display["yx_election_start"] = get_setting("course/yx_election_start")
+    html_display["yx_election_end"] = get_setting("course/yx_election_end")
+    html_display["btx_election_start"] = get_setting("course/btx_election_start")
+    html_display["btx_election_end"] = get_setting("course/btx_election_end")
+
+    is_drawing = (True
+                  if datetime.strptime(html_display["yx_election_end"],
+                                       "%Y-%m-%d %H:%M:%S") <= datetime.now()
+                  and datetime.now() <= datetime.strptime(
+                      html_display["btx_election_start"], "%Y-%m-%d %H:%M:%S")
+                  else False)
 
     unselected_courses = Course.objects.unselected(me)
     selected_courses = Course.objects.selected(me)
