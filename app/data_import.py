@@ -442,10 +442,7 @@ def load_CouRecord(request):
     # 学年，学期和课程的德智体美劳信息都是在文件的info这个sheet中读取的
     year = courserecord_file['info'].iloc[1,1]
     semester = courserecord_file['info'].iloc[2,1]
-    if semester in ['秋季', '秋']:
-        semester = 'Fall'
-    elif semester in ['春季', '春']:
-        semester = 'Spring'
+    semester = Semester.get(semester)
 
     course_type_all = {
        "德" : Course.CourseType.MORAL ,
@@ -550,7 +547,7 @@ def load_CouRecord(request):
             record = CourseRecord.objects.filter( #查询是否已经有记录
                 person = person[0],
                 year = year,
-                semester = Semester.get(semester),
+                semester = semester,
             )
             record_search_course = record.filter(course__name= course,)
             record_search_extra = record.filter(extra_name = course,)
@@ -561,7 +558,7 @@ def load_CouRecord(request):
                     attend_times = times,
                     total_hours = hours,
                     year = year,
-                    semester = Semester.get(semester),
+                    semester = semester,
                 )
                 if course_found: 
                     newrecord.course = course_get[0] 
