@@ -32,7 +32,7 @@ utils
 '''
 from app.constants import *
 from app import log
-from app.global_messages import (
+from boottest.global_messages import (
     wrong,
     succeed,
 )
