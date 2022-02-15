@@ -146,9 +146,9 @@
 
 
                                     <div class="form-group">
-                                        <label>第一周上课时间（默认每周按相同时间段重复）</label>
+                                        <label>每周上课时间（填写第一周上课时间，之后每周按相同时间段重复。不足三次，多余部分可空填。）</label>
                                         <a data-toggle="tooltip" data-placement="bottom"
-                                            title="请按照实际上课时间填写第一周的上课时间段（一周上多节课的课程，如燃脂塑形课等，可至多填写3个上课时间段）；若课程每周上课不足3次，之后日期框空着不填即可。">
+                                            title="一周上多节课的课程，可至多填写3个上课时间段；若课程每周上课不足3次，之后日期框空着不填即可。">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                                                 fill="currentColor" class="bi bi-question-circle-fill"
                                                 viewBox="0 0 22 22">
@@ -159,13 +159,13 @@
                                         <div class="row">
                                             <div class="col">
                                                 <input type="text" class="form-control" id="datetimepicker1_start"
-                                                    name="start" placeholder="第一周的上课时间 No.1" required="required"
+                                                    name="start" placeholder="上课时间 No.1" required="required"
                                                     onclick="fill_value(this)"
                                                     value="{{course_time.0.start|default:''}}" />
                                             </div>
                                             <div class="col">
                                                 <input type="text" class="form-control" id="datetimepicker1_end"
-                                                    name="end" placeholder="第一周的下课时间 No.1" required="required"
+                                                    name="end" placeholder="下课时间 No.1" required="required"
                                                     onclick="fill_value(this)"
                                                     value="{{course_time.0.end|default:''}}" />
                                             </div>
@@ -173,24 +173,24 @@
                                         <div class="row">
                                             <div class="col">
                                                 <input type="text" class="form-control" id="datetimepicker2_start"
-                                                    name="start" placeholder="第一周的上课时间 No.2" onclick="fill_value(this)"
+                                                    name="start" placeholder="上课时间 No.2" onclick="fill_value(this)"
                                                     value="{{course_time.1.start|default:''}}" />
                                             </div>
                                             <div class="col">
                                                 <input type="text" class="form-control" id="datetimepicker2_end"
-                                                    name="end" placeholder="第一周的下课时间 No.2" onclick="fill_value(this)"
+                                                    name="end" placeholder="下课时间 No.2" onclick="fill_value(this)"
                                                     value="{{course_time.1.end|default:''}}" />
                                             </div>
                                         </div>
                                         <div class="row">
                                             <div class="col">
                                                 <input type="text" class="form-control" id="datetimepicker3_start"
-                                                    name="start" placeholder="第一周的上课时间 No.3" onclick="fill_value(this)"
+                                                    name="start" placeholder="上课时间 No.3" onclick="fill_value(this)"
                                                     value="{{course_time.2.start|default:''}}" />
                                             </div>
                                             <div class="col">
                                                 <input type="text" class="form-control" id="datetimepicker3_end"
-                                                    name="end" placeholder="第一周的下课时间 No.3" onclick="fill_value(this)"
+                                                    name="end" placeholder="下课时间 No.3" onclick="fill_value(this)"
                                                     value="{{course_time.2.end|default:''}}" />
                                             </div>
                                         </div>
