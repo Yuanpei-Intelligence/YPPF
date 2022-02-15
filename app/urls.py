@@ -72,6 +72,7 @@ urlpatterns = [
     path("examineActivity/<str:aid>", activity_views.examineActivity, name="examineActivity"),
     path("endActivity/", reimbursement_views.endActivity, name="endActivity"),
     path("modifyEndActivity/", reimbursement_views.modifyEndActivity, name="modifyEndActivity"),
+    path("offlineCheckinActivity/<str:aid>", activity_views.offlineCheckinActivity, name="offlineCheckinActivity"),
 ] + [
     # 组织相关操作
     path("saveShowPositionStatus", org_views.saveShowPositionStatus, name="saveShowPositionStatus"),
@@ -105,10 +106,6 @@ urlpatterns = [
     #      data_import.load_notification_info,
     #      name="load_notification_info"),    #服务器弃用
     path("loadhelp/", data_import.load_help, name="load_help"),
-] + [
-    # 埋点
-    path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
-] + [
     path("loadcourecord/", data_import.load_CouRecord,  name="load_cou_record"),
 ] + [
     # 埋点

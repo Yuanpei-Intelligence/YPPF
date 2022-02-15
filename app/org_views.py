@@ -1,6 +1,5 @@
 from app.views_dependency import *
 from app.models import (
-    Activity,
     NaturalPerson,
     Position,
     Organization,
@@ -23,7 +22,6 @@ from app.utils import (
 
 import json
 from django.db import transaction
-
 
 __all__ = [
     'showNewOrganization',

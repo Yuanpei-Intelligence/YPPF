@@ -337,7 +337,7 @@ def load_stu_data(request):
             user, created = User.objects.get_or_create(username=username)
             if not created:
                 exist_list.append(username)
-                # continue
+                continue
             # 这一步的PBKDF2加密算法太慢了
             user.set_password(password)
             user.save()
