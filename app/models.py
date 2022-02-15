@@ -1422,6 +1422,10 @@ class Course(models.Model):
     def __str__(self):
         return self.name
 
+    def get_photo_path(self):
+        # 假设课程的宣传图片一定存在
+        return MEDIA_URL + str(self.photo)
+
 
 class CourseTime(models.Model):
     """
