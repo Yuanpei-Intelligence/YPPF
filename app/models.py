@@ -1361,8 +1361,9 @@ class Course(models.Model):
         ABORT = (0, "已撤销")
         WAITING = (1, "未开始选课")
         STAGE1 = (2, "预选")
-        STAGE2 = (3, "补退选")
-        END = (4, "已结束")
+        DRAWING = (3, "抽签中")
+        STAGE2 = (4, "补退选")
+        END = (5, "已结束")
 
     status = models.SmallIntegerField("开课状态",
                                       choices=Status.choices,

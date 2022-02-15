@@ -11,6 +11,7 @@ change_course_status: 改变课程的选课阶段
 remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 """
+from torch import NoneType
 from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
@@ -24,7 +25,7 @@ from app.models import (
     CourseParticipant,
     Semester,
 )
-from app.utils import get_person_or_org
+from app.utils import get_person_or_org,if_image
 from app.notification_utils import (
     bulk_notification_create,
     notification_create,
@@ -692,28 +693,52 @@ def course_base_check(request):
     选课单变量合法性检查并准备变量
     """
     context = dict()
-
-    # name, introduction, classroom 创建时不能为空
-    context["name"] = request.POST["name"]
-    context["introduction"] = request.POST["introduction"]
-    context["classroom"] = request.POST["classroom"]
-    context["teaching_plan"] = request.POST["teaching_plan"]
-    context["record_cal_method"] = request.POST["record_cal_method"]
-    assert len(context["name"]) > 0,"课程名称不能为空！"
-    assert len(context["introduction"]) > 0,"课程介绍不能为空！"
-    assert len(context["teaching_plan"]) > 0,"教学计划不能为空！"
-    assert len(context["record_cal_method"]) > 0,"学时计算方法不能为空！"
-    assert len(context["classroom"]) > 0,"上课地点不能为空！"
-
-    org = get_person_or_org(request.user, "Organization")
-    context['organization']=org
+    #字符串字段合法性检查
+    try:
+        # name, introduction, classroom 创建时不能为空
+        context["name"] = str(request.POST["name"])
+        context['teacher'] = str(request.POST["teacher"])
+        context["introduction"] = str(request.POST["introduction"])
+        context["classroom"] = str(request.POST["classroom"])
+        context["teaching_plan"] = str(request.POST["teaching_plan"])
+        context["record_cal_method"] = str(request.POST["record_cal_method"])
+        assert len(context["name"]) > 0,"课程名称不能为空！"
+        assert len(context["introduction"]) > 0,"课程介绍不能为空！"
+        assert len(context["teaching_plan"]) > 0,"教学计划不能为空！"
+        assert len(context["record_cal_method"]) > 0,"学时计算方法不能为空！"
+        assert len(context["classroom"]) > 0,"上课地点不能为空！"
+    except Exception as e:
+        return wrong(str(e))
+    
+    #int类型合法性检查
+    context['type'] = int(request.POST["type"])  #课程类型
+    context["capacity"] = int(request.POST["capacity"])
     #context['times'] = int(request.POST["times"])    #课程上课周数
-    context['teacher'] = request.POST["teacher"]    
-    context['type'] = request.POST["type"]  #课程类型
-    context["capacity"] = request.POST["capacity"]
-    context["photo"] = request.FILES.get("photo") 
+    try:
+        assert 0 < context['type'] < 5,"课程类型仅包括德智体美劳五种！"
+        assert context["capacity"] > 0,"课程容量应当大于0！"
+    except Exception as e:
+        return wrong(str(e))
 
-    # 每周课程时间
+    #图片类型合法性检查 
+    announcephoto = request.FILES.getlist("photo")
+    pic = NoneType
+    if len(announcephoto) > 0:
+        pic = announcephoto[0]
+        assert if_image(pic) == 2
+    else:
+        for i in range(5):
+            if request.POST.get(f'picture{i+1}'):
+                pic = request.POST.get(f'picture{i+1}')
+    context["photo"] = pic
+    context["QRcode"] = request.FILES.get("QRcode")
+    try:
+        assert if_image(context["photo"]) == 1,"课程预告图片未上传或课程预告图片类型错误！"
+        assert if_image(context["QRcode"]) != 1,"微信群二维码类型错误！"
+    except Exception as e:
+        return wrong(str(e))
+
+    # 每周课程时间合法性检查
     course_starts = request.POST.getlist("start")
     course_ends = request.POST.getlist("end")
     course_starts = [
@@ -726,81 +751,95 @@ def course_base_check(request):
         for course_end in course_ends 
         if course_end != ''
         ]
-    for i in range(len(course_starts)):
-        assert check_ac_time(course_starts[i], course_ends[i]),f'第{i+1}次上课时间起止时间有误！'
-        #课程每周同一次课的开始和结束时间应当处于同一天
-        assert course_starts[i].date() == course_ends[i].date(),f'第{i+1}次上课起止时间应当为同一天'
+    try:
+        for i in range(len(course_starts)):
+            assert check_ac_time(course_starts[i], course_ends[i]),f'第{i+1}次上课时间起止时间有误！'
+            #课程每周同一次课的开始和结束时间应当处于同一天
+            assert course_starts[i].date() == course_ends[i].date(),f'第{i+1}次上课起止时间应当为同一天'
+    except Exception as e:
+        return wrong(str(e))
     context['course_starts'] = course_starts
     context['course_ends'] = course_ends
 
+    context["warn_code"] = 2
+    context["warn_message"] = "合法性检查通过！"
     return context
 
 
-def create_course(request, course=None):
+def create_course(request, course_id=None):
     '''
     检查课程，合法时寻找该课程，不存在时创建
     返回(course.id, created)
     '''
-    context = course_base_check(request)
+    context=dict()
+    try:
+        context = course_base_check(request)
+        if context["warn_code"] == 1: #合法性检查出错！
+            return context
+    except :
+        return wrong("遇到不可预料的错误。如有需要，请联系管理员解决!"))
     
+     
     # 编辑已有课程
     if course is not None:
-        course_time = course.time_set.all()
-        course_time.delete()
+        try:
+            course = Course.objects.get(course_id)
+            with transaction.atomic():
+                course_time = course.time_set.all()
+                course_time.delete()
+                course.name=context["name"]
+                course.classroom=context["classroom"]
+                course.teacher=context['teacher']
+                course.introduction=context["introduction"]
+                course.teaching_plan=context["teaching_plan"]
+                course.record_cal_method=context["record_cal_method"]
+                course.type=context['type']
+                course.capacity=context["capacity"]
+                course.photo=context['photo']
+                course.QRcode=context["QRcode"]
+                course.save()
 
-        course.update(
-            name=context["name"],
-            classroom=context["classroom"],
-            teacher=context['teacher'],
-            introduction=context["introduction"],
-            teaching_plan=context["teaching_plan"],
-            record_cal_method=context["record_cal_method"],
-            type=context['type'],
-            capacity=context["capacity"],
-            photo=context['photo'],
-            )
-
-        for i in range(len(context['course_starts'])):
-            CourseTime.objects.create(
-                course=course,
-                start=context['course_starts'][i],
-                end=context['course_ends'][i],
-            )
-
+                for i in range(len(context['course_starts'])):
+                    CourseTime.objects.create(
+                        course=course,
+                        start=context['course_starts'][i],
+                        end=context['course_ends'][i],
+                    )
+        except:
+            return wrong("遇到不可预料的错误。如有需要，请联系管理员解决!")
+        context["cid"] = course_id
+        context["warn_code"] = 2
+        context["warn_message"] = "修改课程成功！"
     # 创建新课程
     else:
-        # 查找是否有类似课程存在
-        old_ones = Course.objects.activated().filter(
-            name=context["name"],
-            teacher=context['teacher'],
-            classroom=context["classroom"],
-        )
-        if len(old_ones):
-            assert len(old_ones) == 1, "创建课程时，已存在的相似课程不唯一"
-            return old_ones[0].id, False
-        
-        # 检查完毕，创建课程
-        course = Course.objects.create(
-                        name=context["name"],
-                        organization=context['organization'],
-                        classroom=context["classroom"],
-                        teacher=context['teacher'],
-                        introduction=context["introduction"],
-                        teaching_plan=context["teaching_plan"],
-                        record_cal_method=context["record_cal_method"],
-                        type=context['type'],
-                        capacity=context["capacity"],
-                        photo=context['photo'],
+
+        try:
+            with transaction.atomic():
+                course = Course.objects.create(
+                                name=context["name"],
+                                organization=context['organization'],
+                                classroom=context["classroom"],
+                                teacher=context['teacher'],
+                                introduction=context["introduction"],
+                                teaching_plan=context["teaching_plan"],
+                                record_cal_method=context["record_cal_method"],
+                                type=context['type'],
+                                capacity=context["capacity"],
+                                photo=context['photo'],
+                                QRcode=context["QRcode"]
+                            )
+                course.save()
+                
+                for i in range(len(context['course_starts'])):
+                    CourseTime.objects.create(
+                        course=course,
+                        start=context['course_starts'][i],
+                        end=context['course_ends'][i],
                     )
+        except:
+            return wrong("遇到不可预料的错误。如有需要，请联系管理员解决!")
+        context["cid"] = course.id
+        context["warn_code"] = 2
+        context["warn_message"] = "创建课程成功！"
 
-        #TODO:定时任务
-        course.save()
-        
-        for i in range(len(context['course_starts'])):
-            CourseTime.objects.create(
-                course=course,
-                start=context['course_starts'][i],
-                end=context['course_ends'][i],
-            )
-
-    return course.id,True
+    return context

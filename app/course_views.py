@@ -368,6 +368,13 @@ def addCourse(request, cid=None):
         if cid is None:
             if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME: 
                 return redirect(message_url(wrong('书院课程账号才能发起课程!')))
+            #暂时仅支持一个课程账号一学期只能开一门课
+            courses = Course.objects.activated().filter(organization=me)
+            if courses.exists():
+                cid = courses[0].id
+                return redirect(message_url(
+                            succeed('您已在本学期创建过课程，已为您自动跳转!'),
+                            f'/editCourse/{cid}'))
             edit = False
         else:
             cid = int(cid)
@@ -385,61 +392,52 @@ def addCourse(request, cid=None):
     # 在这个界面，不会返回render，而是直接跳转到viewCourse，可以不设计bar_display
     if request.method == "POST" and request.POST:
         if not edit:
-            try:
-                with transaction.atomic():
-                    cid, created = create_course(request)
-                    if not created:
-                        return redirect(message_url(
-                            succeed('存在信息相同的课程，已为您自动跳转!'),
-                            f'/editCourse/{cid}'))
-                    return redirect(f"/editCourse/{cid}")
-            except Exception as e:
-                return redirect(message_url(wrong(str(e)),
-                                            f'/addCourse/'))
+            context=create_course(request)
+            html_display["warn_code"] = context["warn_code"]
+            html_display["warn_message"] = context["warn_message"]
+            if html_display["warn_code"] == 2:
+                return redirect(message_url(succeed("创建课程成功！为您自动跳转到编辑界面。"),
+                                        f'/editCourse/{context["cid"]}'))
         else:
             # 仅未开始选课阶段可以修改
             if course.status != Course.Status.WAITING:
                 return redirect(message_url(wrong('当前课程状态不允许修改!'),
                                             f'/editCourse/{course.id}'))
-            try:
-                # 只能修改自己的课程
-                with transaction.atomic():
-                    course = Course.objects.select_for_update().get(id=cid)
-                    org = utils.get_person_or_org(request.user, "Organization")
-                    assert course.organization == org
-                    create_course(request, course)
-                html_display["warn_message"] = "修改成功。"
-                html_display["warn_code"] = 2
-            except Exception as e:
-                return redirect(message_url(wrong(str(e)),
-                                            f'/editCourse/{course.id}'))
+            context = create_course(request, course.id)
+            html_display["warn_code"] = context["warn_code"]
+            html_display["warn_message"] = context["warn_message"]
 
-    
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava() 
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
-    editable = True
-    if edit and course.status == Course.Status.WAITING:
+    course_type_all = [
+       ["德" , Course.CourseType.MORAL] ,
+       ["智" , Course.CourseType.INTELLECTUAL] , 
+       ["体" , Course.CourseType.PHYSICAL] ,
+       ["美" , Course.CourseType.AESTHETICS],
+       ["劳" , Course.CourseType.LABOUR],
+    ]
+    defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG", "id": f"picture{i+1}"} for i in range(5)]
+    editable=False
+    if edit and course.status == Course.Status.WAITING: #选课未开始才能修改
         editable = True
     if edit:
         name = utils.escape_for_templates(course.name)
         organization = course.organization
         year = course.year
         semester = utils.escape_for_templates(course.semester)
-        times = course.times
         classroom = utils.escape_for_templates(course.classroom)
         teacher = utils.escape_for_templates(course.teacher)
         course_time = course.time_set.all()
-        bidding = course.bidding
         introduction = utils.escape_for_templates(course.introduction)
         teaching_plan=utils.escape_for_templates(course.teaching_plan)
         record_cal_method=utils.escape_for_templates(course.record_cal_method)
         status = course.status
-        type_name = course.get_type_display
         capacity = course.capacity
+        type = course.type
         current_participants = course.current_participants
-        photo = str(course.photo) #TODO 修改呈现
+        QRcode=course.QRcode
 
  
     if not edit:
