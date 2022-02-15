@@ -201,7 +201,6 @@ class NaturalPerson(models.Model):
             assert self.stu_id_dbonly == self.person_id.username, "学号不匹配！"
         self.YQPoint = round(self.YQPoint, 1)
         self.bonusPoint = round(self.bonusPoint, 1)
-        self.active_score = round(self.active_score, 4)
         super().save(*args, **kwargs)
 
 
