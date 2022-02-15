@@ -152,8 +152,8 @@
                                             {% if course.status == "未开始" or course.status == "已结束" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% elif course.status == "预选" or course.status == "补退选" %}
-                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal">选课</button>
-                                            <div class="modal fade" id="myModal">
+                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal-{{course.course_id}}">选课</button>
+                                            <div class="modal fade" id="myModal-{{course.course_id}}">
                                                 <div class="modal-dialog">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
@@ -234,8 +234,8 @@
                                             {% if course.status == "未开始" or course.status == "已结束" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% elif course.status == "预选" or course.status == "补退选" %}
-                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal0">选课</button>
-                                            <div class="modal fade" id="myModal0">
+                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal0-{{course.course_id}}">选课</button>
+                                            <div class="modal fade" id="myModal0-{{course.course_id}}">
                                                 <div class="modal-dialog">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
@@ -317,8 +317,8 @@
                                             {% if course.status == "未开始" or course.status == "已结束" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% elif course.status == "预选" or course.status == "补退选" %}
-                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal1">选课</button>
-                                            <div class="modal fade" id="myModal1">
+                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal1-{{course.course_id}}">选课</button>
+                                            <div class="modal fade" id="myModal1-{{course.course_id}}">
                                                 <div class="modal-dialog">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
@@ -400,8 +400,8 @@
                                             {% if course.status == "未开始" or course.status == "已结束" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% elif course.status == "预选" or course.status == "补退选" %}
-                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal2">选课</button>
-                                            <div class="modal fade" id="myModal2">
+                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal2-{{course.course_id}}">选课</button>
+                                            <div class="modal fade" id="myModal2-{{course.course_id}}">
                                                 <div class="modal-dialog">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
@@ -483,8 +483,8 @@
                                             {% if course.status == "未开始" or course.status == "已结束" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% elif course.status == "预选" or course.status == "补退选" %}
-                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal3">选课</button>
-                                            <div class="modal fade" id="myModal3">
+                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal3-{{course.course_id}}">选课</button>
+                                            <div class="modal fade" id="myModal3-{{course.course_id}}">
                                                 <div class="modal-dialog">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
@@ -566,8 +566,8 @@
                                             {% if course.status == "未开始" or course.status == "已结束" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% elif course.status == "预选" or course.status == "补退选" %}
-                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal4">选课</button>
-                                            <div class="modal fade" id="myModal4">
+                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal4-{{course.course_id}}">选课</button>
+                                            <div class="modal fade" id="myModal4-{{course.course_id}}">
                                                 <div class="modal-dialog">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
@@ -633,13 +633,16 @@
                             <!-- {{time.week}}&nbsp;{{time.start}}-{{time.end}}<br>-->
                                 {{time}}<br>
                             {% endfor %}
+                            {% if course.time_set|length == 0 %}
+                                时间待定
+                            {% endif %}
                         </td>
                         <td>{{course.times}}</td>
                         <td>{{course.type}}</td>
                         <td>
                             <!--TODO : 对接后端bool值-->
                             {% if is_drawing == True %}
-                            <span class="badge badge-pill badge-info">{{course.student_status}}</span>
+                            <span class="badge badge-pill badge-info">抽签中</span>
                             {% elif course.student_status == "已选课" %}
                             <span class="badge badge-pill badge-secondary">{{course.student_status}}</span>
                             {% elif course.student_status == "选课成功" %}
@@ -653,8 +656,12 @@
                             <form action="/selectCourse/" method="post">
                                 <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                 <input type="hidden" id="action" name="action"value="cancel" />
-                                <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#myModalcancel">退课</button>
-                                <div class="modal fade" id="myModalcancel">
+                                {% if course.status != "预选" and course.status != "补退选" or course.student_status == "选课失败" %}
+                                <button type="submit" class="btn btn-danger btn-sm" disabled>退课</button>
+                                {% else %}
+                                <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#myModalcancel-{{course.course_id}}">退课</button>
+                                {% endif %}
+                                <div class="modal fade" id="myModalcancel-{{course.course_id}}">
                                     <div class="modal-dialog">
                                       <div class="modal-content">
                                         <!-- 模态框主体 -->
