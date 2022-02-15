@@ -31,7 +31,7 @@ views
 @Date 2022-01-17
 '''
 from app.constants import *
-from app.global_messages import (
+from boottest.global_messages import (
     wrong,
     succeed,
     message_url,
