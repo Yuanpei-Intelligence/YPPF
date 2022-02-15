@@ -1,8 +1,8 @@
 {% extends "base.html" %}
+
 {% block add_css_file %}
 
-
-{% if edit_able %}
+{% if editable %}
 <style type='text/css'>
   a2{
     font-size: 12px;
@@ -28,6 +28,7 @@
   }
 </style>
 {% endif %}
+
 {% endblock %}
 
 {% block mainpage %}
@@ -36,7 +37,8 @@
     <div class="container">
       <div class="layout-top-spacing" style="text-align:center">
         <div style="text-align:left;"> {% include 'help.html' %}</div> <br>
-        <h3 class="text-primary" >{{course_info.year}}年{% if course_info.semester == "Fall" %}秋季{%elif course_info.semester == "Spring" %}春季{% endif %}{{course_info.course}}学时记录
+        <h3 class="text-primary" >
+          {{course_info.year}}年{{course_info.semester}}{{course_info.course}}学时记录
           <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="" data-original-title="在服务器开启权限后，才可双击修改表格中的学时信息。">
             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle-fill" viewBox="0 0 22 22" style="color:rgba(0, 0, 0, 0.404);">
                 <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z"></path>
@@ -62,7 +64,7 @@
                 </tr>
               </thead>
               <tbody class="table">
-                {%if edit_able%}
+                {% if editable %}
                   <!-- 若处于可以修改的状态 -->
                   {% for record in record_search %}
                     <tr>
@@ -76,7 +78,7 @@
                     </tr>
                   {% endfor %}
                 <!-- 若处于不可修改状态  -->
-                {%else%}
+                {% else %}
                   {% for person in all_positions.keys %}
                     <tr>
                       <th class="name" scope="row">
@@ -88,13 +90,13 @@
                       <td class="hours"><a2>0</a1></td>
                     </tr>   
                   {% endfor %}           
-                {%endif%}
+                {% endif %}
 
               </tbody>
             </table>
           </div>
         </div>
-        {% if edit_able %}
+        {% if editable %}
           <div class="col-12 row layout-spacing">
             <div class="col-6" style="text-align: center;">
               <button type="button" class="btn btn-danger btn-lg" id="cancel_changes">取消保存</button>
@@ -103,7 +105,7 @@
               <button type="button" class="btn btn-primary btn-lg" id="post_data" name="post_table">提交修改</button>
             </div>
           </div>
-        {%endif%}
+        {% endif %}
       </div>
     </div>
   </div> 
@@ -114,12 +116,11 @@
 {% block add_js_file %}
 
 
-{%if edit_able%}
+{% if editable %}
 <script>
   $(document).ready(function(){
-    var edit_able = {edit_able};
     $("a2").dblclick(function(){
-      if (edit_able) {
+      {
         var th = $(this);
         var text = th.text();
         var txt = $('<input id="input_text" type="text" class="form-control">').val(text);
@@ -187,5 +188,5 @@
 
     });
 </script>
-{%endif%}
+{% endif %}
 {% endblock %}
