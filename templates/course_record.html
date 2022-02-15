@@ -1,39 +1,15 @@
 {% extends "base.html" %}
 
-{% block add_css_file %}
 
-{% if editable %}
-<style type='text/css'>
-  a2{
-    font-size: 12px;
-  }
-  a2:hover{
-    font-size: 14px;
-    color: rgb(0, 132, 255);
-    cursor:pointer;
-  }  
-  #input_text{
-    height:12px;
-    text-align:center;
-    width:100px;
-    margin:0 auto;
-    vertical-align:middel;  
-  }
-</style>
-{% else %}
-<style type='text/css'>
-  a2 {
-    font-size: 12px;
-    color: rgba(0, 0, 0, 0.199);
-  }
-</style>
-{% endif %}
-
-{% endblock %}
 
 {% block mainpage %}
 
-  <div id="content" class="main-content">      
+  <div id="content" class="main-content">   
+    {% if context.status == 1 %}
+    <div class="alert alert-warning  text-center">{{ context.message }}</div>
+    {% elif context.status == 2 %}
+    <div class="alert alert-success  text-center">{{ context.message }}</div>
+    {% endif %}
     <div class="container">
       <div class="layout-top-spacing" style="text-align:center">
         <div style="text-align:left;"> {% include 'help.html' %}</div> <br>
@@ -52,141 +28,58 @@
           <div class="input-group mb-3 col-xl-6 col-lg-6 col-md-6 col-sm-12"></div> 
         </div>
 
-        <div class="col-12 layout-spacing">
-          <div class="statbox widget box box-shadow">
-            <table class="table table-striped table-active" id="store_table">
-              <thead>
-                <tr >
-                  <th scope="col" width="17%">姓名</th>
-                  <th scope="col" width="26%">职务</th>
-                  <th scope="col" width="20%">参加次数</th>
-                  <th scope="col" >学时</th>
-                </tr>
-              </thead>
-              <tbody class="table">
-                {% if editable %}
-                  <!-- 若处于可以修改的状态 -->
-                  {% for record in record_search %}
-                    <tr>
-                      <th class="name" scope="row">
-                          <img src={{ record.person.avatar_path }} width="24" height="24" alt="avatar">
-                          <a href='/stuinfo/?name={{ record.person.name }}'><u>{{record.person.name}}</u></a>
-                      </th>
-                      <td class="sid">{{record.person.pos}}</td>
-                      <td class="times"><a1>{{record.attend_times}}</a1></td>
-                      <td class="hours"><a2>{{record.total_hours}}</a1></td>
+        <form method="POST">
+                        
+          <div class="col-12 layout-spacing">
+            <div class="statbox widget box box-shadow">
+              <table class="table table-striped table-active" id="store_table">
+                <thead>
+                  <tr >
+                    <th scope="col">姓名</th>
+                    <th scope="col">年级</th>
+                    <th scope="col">次数</th>
+                    {% if editable %}
+                      <th scope="col" >学时</th>
+                    {% endif %}
+                  </tr>
+                </thead>
+                <tbody class="table">
+                  {% for record in records_list %}
+                  <tr>
+                    <td class="name" scope="row">
+                      <img src={{ record.avatar }} width="24" height="24" alt="avatar">
+                      <a href='/stuinfo/?name={{ record.name }}'><u>{{record.name}}</u></a>
+                    </td>
+                    <td class="grade">{{record.grade}}</td>
+                    <td class="times"><a1>{{record.times}}</a1></td>
+                    {% if editable %}
+                    <!-- 若处于可以修改的状态 -->
+                    <td class="hours">
+                      <input type="text" class="form-control" id="{{record.pk}}" name="{{record.pk}}"
+                      style="text-align: center;" size="1" value = "{{record.hours}}">
+                    </td>
+                    <!-- <td class="hours"><a2>{{record.hours}}</a1></td> -->
+                      {% endif %}
                     </tr>
-                  {% endfor %}
-                <!-- 若处于不可修改状态  -->
-                {% else %}
-                  {% for person in all_positions.keys %}
-                    <tr>
-                      <th class="name" scope="row">
-                        <img src= {{ person.avatar_path }} width="24" height="24" alt="avatar">
-                        <a href='/stuinfo/?name={{ person.name }}'><u>{{person.name}}</u></a>
-                      </th>
-                      <td class="sid">{{person.pos}}</td>
-                      <td class="times"><a1>{{person.times}}</a1></td>
-                      <td class="hours"><a2>0</a1></td>
-                    </tr>   
-                  {% endfor %}           
+                    {% endfor %}
+                    
+                  </tbody>
+                </table>
+                {% if not records_list  %}
+                  <p style="text-align: center; vertical-align: middle;">没有任何记录!</p>
                 {% endif %}
+                </div>
+          </div>
 
-              </tbody>
-            </table>
-          </div>
-        </div>
-        {% if editable %}
-          <div class="col-12 row layout-spacing">
-            <div class="col-6" style="text-align: center;">
-              <button type="button" class="btn btn-danger btn-lg" id="cancel_changes">取消保存</button>
-            </div>          
-            <div class="col-6" style="text-align: center;">
-              <button type="button" class="btn btn-primary btn-lg" id="post_data" name="post_table">提交修改</button>
-            </div>
-          </div>
-        {% endif %}
+          {% if editable %}
+            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value=""
+                onclick="return confirm('确认提交学时信息？学时更新后将会给全体参课成员发送消息！确认后请耐心等待，不要重复点击本按钮。')">
+                提交学时信息
+            </button>
+          {% endif %}
+        </form>
       </div>
     </div>
   </div> 
 
-{% endblock %}
-
-
-{% block add_js_file %}
-
-
-{% if editable %}
-<script>
-  $(document).ready(function(){
-    $("a2").dblclick(function(){
-      {
-        var th = $(this);
-        var text = th.text();
-        var txt = $('<input id="input_text" type="text" class="form-control">').val(text);
-        txt.blur(function(){
-          var newtxt = $(this).val();
-          $(this).remove();
-          th.text(newtxt);
-        });
-        txt.keydown(function(e){
-          if (e.keyCode == 13) {
-            var newtxt = $(this).val();           
-            $(this).remove();
-              th.text(newtxt);
-
-          };
-        });
-      }
-      th.text("");
-      th.append(txt);
-      txt.focus();
-    });
-    
-      // 以下为返回上传修改后的表格的逻辑
-    $("#post_data").click( function() {
-
-      var tablehtml = $("#store_table")
-      var data = getTableData(tablehtml)
-      var data_str = JSON.stringify(data)
-      $.ajax({
-            url: "/showCourseRecord/",
-            type: 'POST',
-            data: {'data': data_str},
-            success: function(res) {
-                alert("学时修改成功!")
-            },
-            error: function(res) {
-                alert('出现错误！修改失败')
-            }
-        });
-
-      
-      function getTableData(tableHtml) {  //获取表格数据
-        let result = []
-        if ($('tr')) {
-            let length = $('tr').length;
-            for(let i = 0; i < length; i++) {   //追加数据
-              let trData=[]; // 每行的数据
-              let table_eq = $('tr').eq(i)
-              let name = table_eq.find('.name').text();
-              let hours = table_eq.find('.hours>a2').text();
-              if (name != "") {
-                result.push([name,hours]);
-              }
-            }
-        }
-        return result;
-      }
-     
-    })
-    $('#cancel_changes').click(function() {  //询问是否取消保存
-      if (window.confirm('确认取消修改？修改的数据将不会保存')) {
-        location.reload(true);
-      } 
-    })
-
-    });
-</script>
-{% endif %}
 {% endblock %}
