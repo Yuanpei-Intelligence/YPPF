@@ -158,8 +158,10 @@
 
                                     <div class="form-group">
                                         <label>第一周上课时间（默认每周按相同时间段重复）</label>
-                                        <a data-toggle="tooltip" data-placement="bottom"
-                                            title="请按照实际上课时间填写第一周的上课时间段（一周上多节课的课程，如燃脂塑形课等，可至多填写3个上课时间段）；若课程每周上课不足3次，之后日期框空着不填即可。">
+                                        <a data-toggle="tooltip" data-placement="bottom" white-space: pre
+                                            title="请按照实际上课时间填写第一周的上课时间段\n（一周上多节课的课程，
+                                            如燃脂塑形课等，可至多填写3个上课时间段）；若课程每周上课不足3次，之后的时间框空着不填即可。
+                                            若多点选了不需要的时间框，选中框内文字并删除即可。">
                                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                                                 fill="currentColor" class="bi bi-question-circle-fill"
                                                 viewBox="0 0 22 22">
@@ -208,50 +210,27 @@
                                     </div>
 
                                     <hr>
-                                    <p>课程宣传信息
-                                        <a data-toggle="tooltip" data-placement="bottom"
-                                            title="填写课程介绍并上传课程图片，吸引更多同学来选课吧~">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                fill="currentColor" class="bi bi-question-circle-fill"
-                                                viewBox="0 0 22 22">
-                                                <path
-                                                    d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                            </svg>
-                                        </a>
-                                    </p>
+                                    <p>课程宣传信息</p>
 
                                     <div class="form-group">
                                         <label for="aintro">课程简介</label>
-                                        <textarea id="aintro" name="introduction" class="form-control" rows="3"
+                                        <textarea id="aintro" name="introduction" class="form-control" rows="10"
                                             placeholder="在这里介绍一下课程内容、教学计划吧~" onclick="fill_value(this)"
                                             required="required" maxlength=1000>{{introduction|default:''}}</textarea>
                                     </div>
 
 
-                                    {% if not edit or full_editable %}
+                                    <!-- {% if not edit or full_editable %} -->
 
                                     <div class="form-group">
                                         <label>
-                                            课程微信群二维码 （这一段暂且注释，因为数据库里暂时还没有相应的二维码列）
-                                            <a data-toggle="tooltip" data-placement="bottom"
-                                                title="如有需要，请在这里上传课程微信群二维码（选填）">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                    fill="currentColor" class="bi bi-question-circle-fill"
-                                                    viewBox="0 0 22 22">
-                                                    <path
-                                                        d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                </svg>
-                                            </a>
+                                            课程微信群二维码（可选）
                                         </label><br />
                                         <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12">
-                                            {% if use_template %}
-                                            <input type="hidden" id="template_id" name="template_id"
-                                                value="{{template_id}}">
-                                            {% endif %}
-                                            <input onchange="showFilenameLocal(this.files)" type="file"
-                                                class="custom-file-input" id="images" name="images" accept="image/*"
+                                            <input onchange="showFilenameLocal1(this.files)" type="file"
+                                                class="custom-file-input" id="QRcode" name="QRcode" accept="image/*"
                                                 data-max-file-size="4096K">
-                                            <label id="upload_annouce_photo" name="upload_annouce_photo"
+                                            <label id="upload_announce_photo1" name="upload_announce_photo1"
                                                 class="custom-file-label" for="customFile"> 上传本地图片 </label>
                                         </div>
                                     </div>
@@ -260,52 +239,36 @@
                                     <div class="form-group">
                                         <label>
                                             课程预告图片（可选）
-                                            <a data-toggle="tooltip" data-placement="bottom"
-                                                title="每周课程预告图片，可以自行上传本地图片。">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
-                                                    fill="currentColor" class="bi bi-question-circle-fill"
-                                                    viewBox="0 0 22 22">
-                                                    <path
-                                                        d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                                                </svg>
-                                            </a>
                                         </label><br />
-                                        <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12">
-                                            {% if use_template %}
-                                            <input type="hidden" id="template_id" name="template_id"
-                                                value="{{template_id}}">
-                                            {% endif %}
-                                            <input onchange="showFilenameLocal(this.files)" type="file"
-                                                class="custom-file-input" id="photo" name="photo" accept="image/*"
+                                        <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12">                            
+                                            <input onchange="showFilenameLocal2(this.files)" type="file"
+                                                class="custom-file-input" id="course_photo" name="course_photo" accept="image/*"
                                                 data-max-file-size="4096K">
-                                            <label id="upload_annouce_photo" name="upload_annouce_photo"
-                                                class="custom-file-label" for="customFile"> 请上传本地图片（如往届开课时拍摄的照片等）
+                                            <label id="upload_announce_photo2" name="upload_announce_photo2"
+                                                class="custom-file-label" for="customFile"> 请选择本地图片（如往届课程照片）或以下默认图片之一
                                             </label>
-
                                         </div>
-
                                     </div>
 
-                                    <div class="form-group">
 
+                                    <div class="form-group">                                                
                                         <div class="form-check">
                                             <div class="row">
-
-                                                {% for pic in defaultpics %}
-                                                <div class="col-xl-4 col-lg-4 col-md-4 mb-5">
-                                                    <input class="form-check-input" type="checkbox" value={{pic.src}}
-                                                        id={{pic.id}} name={{pic.id}}>
-                                                    <label class="form-check-label" for="defaultCheck1">
-                                                        <img src={{pic.src}} class="img-fluid">
-                                                    </label>
-                                                </div>
-                                                {% endfor %}
+                                            {% for pic in defaultpics %}
+                                            <div class="col-xl-4 col-lg-4 col-md-4 mb-5">
+                                                <input class="form-check-input" type="checkbox"
+                                                    value={{pic.src}}
+                                                    id={{pic.id}} name={{pic.id}}>
+                                                <label class="form-check-label" for={{pic.id}}>
+                                                    <img src={{pic.src}} class="img-fluid">
+                                                </label>
                                             </div>
-                                        </div>
+                                            {% endfor %}
+                                            </div>
+                                        </div>                                                
+                                    </div>              
 
-
-                                    </div>
-                                    {% endif %}
+                                    <!-- {% endif %} -->
 
 
                                     {% if edit %}
@@ -343,9 +306,8 @@
 
 <!-- 主要是一些监控函数 -->
 <!-- 根据页面不同，可能会有些多余的函数，但是不影响 js 执行 -->
-<script>
-
-    {% for pic in defaultpics %}
+<script>    
+    {% for pic in defaultpics %}  // 暂时没看出这段是干啥的...
     $("input[name='{{pic.id}}']").on("change", function () {
         //输出选中状态
         if (true === $(this).prop("checked")) {
@@ -357,20 +319,31 @@
     });
     {% endfor %}
 
-    function showFilenameLocal(files) {
+    function showFilenameLocal1(files) {
         var text = "";
         for (i = 0; i < files.length; i++) {
             text += (" " + files[i].name);
         }
         if (text == "")
-            text = "选择历史活动图片或海报或以下默认图片之一";
+            text = "请选择一张本地图片";
+        $("#upload_announce_photo1").html(text);
+    }
+
+    function showFilenameLocal2(files) {
+        var text = "";
+        for (i = 0; i < files.length; i++) {
+            text += (" " + files[i].name);
+        }
+        if (text == "")
+            text = "请选择一张本地图片";
         else {
             {% for pic in defaultpics %}
             document.getElementById("{{pic.id}}").checked = false;
             {% endfor %}
         }
-        $("#upload_annouce_photo").html(text);
+        $("#upload_announce_photo2").html(text);
     }
+
     function get_type_value(a) {
         $("#pricebutton1").text(a);
         if (a.lastIndexOf("德") != -1) {
@@ -433,9 +406,7 @@
 <!-- 请求为 edit 时执行的脚本， -->
 {% if edit %}
 <script type="text/javascript">
-
-    /* 将 palceholder 全部换为旧值，很长很啰嗦 */
-    // 但是 Django 是做的文本替换，又必须全写出来......
+    // 将 placeholder 全部换为旧值，很长很啰嗦, 但是 Django 是做的文本替换，又必须全写出来......
     // 活动信息
     document.getElementById("name").value = "{{name | safe}}";
     document.getElementById("classroom").value = "{{classroom | safe}}";
@@ -446,7 +417,6 @@
     document.getElementById("datetimepicker1_end").value = "{{end.0}}";
     document.getElementById("datetimepicker2_end").value = "{{end.1}}";
     document.getElementById("datetimepicker3_end").value = "{{end.2}}";
-
 
     // 宣传信息
     document.getElementById("aintro").placeholder = "{{introduction | safe}}";
@@ -462,12 +432,12 @@
     /* 填充旧图片 */
     {% if full_editable %}
     {% if uploaded_photo %}
-    document.getElementById("upload_annouce_photo").innerHTML = "{{photo}}";
+    document.getElementById("upload_announce_photo1").innerHTML = "{{QRcode}}";
+    document.getElementById("upload_announce_photo2").innerHTML = "{{course_photo}}";
     {% else %}
     document.getElementById("{{photo_id}}").checked = true;
     {% endif %}
     {% endif %}
-
 
     // 点击自动填充可修改
     {% if edit and accepted %}
@@ -495,9 +465,6 @@
     function fill_value(a) {
         console.log(a.value);
     }
-
-
-
 </script>
 {% else %}
 <script type="text/javascript">
@@ -506,7 +473,6 @@
         console.log(a.value);
     }
 </script>
-
 {% endif %}
 
 <!-- 检查部分 input 参数 -->
@@ -539,7 +505,7 @@
             return false;
         }
         //TODO
-        // 创建活动时，要求开始时间 - 准备时间应该晚于当下，即活动必须要能进入 applying 阶段（怎么改？
+        // 发起选课时，要求开始时间 - 准备时间应该晚于当下，即课程必须要能进入 applying 阶段
         {% if not edit %}
         var applyEnd;
         if (prepare_option == "0")
@@ -601,18 +567,6 @@
             return false;
         }
         {% endif %}
-        //TODO
-        /* 选择了审核老师 */
-        if (document.getElementById("examine_teacher").value == "") {
-            {% if html_display.warn_code == 2 %}
-            document.getElementById("success_msg").style.display = "none";
-            {% endif %}
-            document.getElementById("warn_msg").style.display = "";
-            document.getElementById("warn_msg").innerHTML = "尚未选择审核老师。";
-            document.body.scrollTop = document.documentElement.scrollTop = 0;
-            return false;
-        }
-
 
 
         /* 检查图片 */

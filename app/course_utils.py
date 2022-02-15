@@ -704,7 +704,9 @@ def course_base_check(request):
     context['type'] = request.POST["type"]  #课程类型
     context["capacity"] = request.POST["capacity"]
     # context['current_participants'] = request.POST["current_participants"]
-    context["photo"] = request.FILES.get("photo")
+    context["QRcode"] = request.FILES.get("QRcode")
+    context["course_photo"] = request.FILES.get("course_photo")
+    
     
     """
     # 时间
@@ -772,7 +774,8 @@ def create_course(request, course=None):
             type=context['type'],
             capacity=context["capacity"],
             # current_participants=context['current_participants'],
-            photo=context['photo'],
+            # QRcode=context['QRcode'],
+            photo=context['course_photo'],
             )
 
         for i in range(len(context['course_starts'])):
@@ -814,7 +817,8 @@ def create_course(request, course=None):
                         type=context['type'],
                         capacity=context["capacity"],
                         # current_participants=context['current_participants'],
-                        photo=context['photo'],
+                        # QRcode=context['QRcode'],
+                        photo=context['course_photo'],
                     )
 
         # 定时任务和微信消息有关吗，我还没了解怎么发微信消息orz不过定时任务还是能写出来的……应该
