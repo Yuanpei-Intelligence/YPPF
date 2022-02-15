@@ -671,8 +671,7 @@ def change_course_status(course_id, cur_status, to_status):
                                            org=organization).exists():
                 position = Position(person=participant.person,
                                     org=organization,
-                                    in_semester=Semester.get(
-                                        get_setting("semester_data/semester")))
+                                    in_semester=Semester.now())
                 positions.append(position)
         if positions:
             with transaction.atomic():
