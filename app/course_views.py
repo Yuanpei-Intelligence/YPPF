@@ -481,6 +481,7 @@ def viewCourse(request):
 
     return HttpResponse()
  
+
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[addCourse]', record_user=True)
@@ -587,4 +588,3 @@ def addCourse(request, cid=None):
         bar_display = utils.get_sidebar_and_navbar(request.user, "修改课程")
     
     return render(request, "register_course.html", locals())
-  
