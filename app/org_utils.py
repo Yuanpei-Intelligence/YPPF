@@ -4,6 +4,7 @@ from app.models import (
     Position,
     Organization,
     OrganizationType,
+    OrganizationTag,
     ModifyPosition,
     Notification,
     ModifyOrganization,
@@ -29,6 +30,7 @@ from datetime import datetime, timedelta
 
 from django.db.models import Q
 from django.contrib.auth.models import User
+from django.db import transaction
 
 __all__ = [
     'find_max_oname',
@@ -70,6 +72,10 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
 
     for person in NaturalPerson.objects.all():
         org.unsubscribers.add(person)
+    with transaction.atomic():
+        for tag in application.tags.split(';'):
+            if tag:
+                org.tags.add(OrganizationTag.objects.get(name=tag))
     org.save()
     charger = get_person_or_org(application.pos)
     pos = Position.objects.create(person=charger,
@@ -149,6 +155,13 @@ def check_neworg_request(request, org=None):
     if context["application"] == "":
         context["warn_code"] = 1
         context["warn_message"] = "申请理由不能为空"
+    
+    context["tags_modify"] = request.POST.get("tags_modify") # 标签增加/修改
+    
+    if context["tags_modify"] == "":
+        context["warn_code"] = 1
+        context["warn_message"] = "新建小组至少要选择一个标签噢！"
+        
     return context
 
 
@@ -210,7 +223,8 @@ def update_org_application(application, me, request):
                         otype=otype,
                         pos=me.person_id,
                         introduction=info.get('introduction'),
-                        application=info.get('application')
+                        application=info.get('application'),
+                        tags=info.get('tags_modify')
                     )
                     if context["avatar"] is not None:
                         application.avatar = context['avatar'];
@@ -229,14 +243,16 @@ def update_org_application(application, me, request):
                     if (application.oname == info.get("oname")
                             and application.introduction == info.get('introduction')
                             and application.avatar == info.get('avatar', None)
-                            and application.application == info.get('application')):
+                            and application.application == info.get('application')
+                            and application.tags == info.get('tags_modify')):
                         return wrong("没有检测到修改！")
                     # 至此可以发起修改
                     ModifyOrganization.objects.filter(id=application.id).update(
                         oname=info.get('oname'),
                         #otype=OrganizationType.objects.get(otype_name=info.get('otype')),
                         introduction=info.get('introduction'),
-                        application=info.get('application'))
+                        application=info.get('application'),
+                        tags=info.get('tags_modify'))
                     if context["avatar"] is not None:
                         application.avatar = context['avatar']
                         application.save()
@@ -625,3 +641,11 @@ def send_message_check(me, request):
         return wrong("发送微信的过程出现错误！请联系管理员！")
 
     return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了!")
+
+
+def get_tags(application):
+    tag_list = []
+    for tag in application.tags.split(";"):
+        if tag:
+            tag_list.append(OrganizationTag.objects.get(name=tag))
+    return tag_list
