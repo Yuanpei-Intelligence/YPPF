@@ -41,6 +41,8 @@ __all__ = [
     'CourseRecord',
     'PageLog',
     'ModuleLog',
+    'FeedbackType',
+    'Feedback',
 ]
 
 
@@ -324,6 +326,9 @@ class OrganizationTag(models.Model):
 
     name = models.CharField("标签名", max_length=10, blank=False)
     color = models.CharField("颜色", choices=ColorChoice.choices, max_length=10)
+    
+    def __str__(self):
+        return self.name
 
 
 class OrganizationManager(models.Manager):
@@ -1546,3 +1551,66 @@ class ModuleLog(models.Model):
     explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
     explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
 
+
+class FeedbackType(models.Model):
+    class Meta:
+        verbose_name = "反馈类型"
+        verbose_name_plural = verbose_name
+    
+    id = models.SmallIntegerField("反馈类型编号", unique=True, primary_key=True)
+    name = models.CharField("反馈类型名称", max_length=10)
+    org_type = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
+
+
+class Feedback(CommentBase):
+    class Meta:
+        verbose_name = "反馈"
+        verbose_name_plural = verbose_name
+    
+    type = models.ForeignKey(FeedbackType, on_delete=models.CASCADE)
+    title = models.CharField("标题", max_length=30, blank=False)
+    content = models.TextField("内容", blank=False)
+    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    org = models.ForeignKey(Organization, on_delete=models.CASCADE)
+    
+    class IssueStatus(models.IntegerChoices):
+        DRAFTED = (0, "草稿")
+        ISSUED = (1, "已发布")
+        DELETED = (2, "已删除")
+    
+    class ReadStatus(models.IntegerChoices):
+        READ = (0, "已读")
+        UNREAD = (1, "未读")
+    
+    class SolveStatus(models.IntegerChoices):
+        SOLVED = (0, "已解决")
+        SOLVING = (1, "解决中")
+        UNSOLVABLE = (2, "无法解决")
+        
+    issue_status = models.SmallIntegerField(
+        '发布状态', choices=IssueStatus.choices, default=IssueStatus.DRAFTED
+    )
+    read_status = models.SmallIntegerField(
+        '阅读情况', choices=ReadStatus.choices, default=ReadStatus.UNREAD
+    )
+    solve_status = models.SmallIntegerField(
+        '解决进度', choices=SolveStatus.choices, default=SolveStatus.SOLVING
+    )
+    
+    feedback_time = models.DateTimeField('反馈时间', default=datetime.now)
+    publisher_public = models.BooleanField('发布者是否公开', default=False)
+    org_public = models.BooleanField('组织是否公开', default=False)
+    public_time = models.DateTimeField('组织公开时间', default=datetime.now)
+    
+    class PublicStatus(models.IntegerChoices):
+        PUBLIC = (0, '公开')
+        PRIVATE = (1, '未公开')
+        WITHDRAWAL = (2, '撤销公开')
+        FORCE_PRIVATE = (3, '强制不公开')
+    
+    public_status = models.SmallIntegerField(
+        '公开状态', choices=PublicStatus.choices, default=PublicStatus.PRIVATE
+    )
