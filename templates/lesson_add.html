@@ -38,9 +38,9 @@
                         <div class="d-flex justify-content-between">
                             <div>
                                 {% if edit %}
-                                    <h4>课程修改</h4>
+                                    <h4>修改课程</h4>
                                 {% else %}
-                                    <h4>课程添加</h4>
+                                    <h4>新增单次课程</h4>
                                 {% endif %}            
                             </div>
                             <div>
@@ -59,6 +59,9 @@
                             <div id="basic-info">
                                 <p>
                                     <b>基本信息</b>
+                                    {% if edit and course_time_tag %}
+                                    <label><font color="#FF0000">[本活动为长期定时活动]</font></label>
+                                    {% endif %}
                                 </p>
                                 <div class="form-group">
                                     <label>课程活动名称</label>
@@ -172,6 +175,13 @@
             document.querySelector(msgElemId).style.display = "none";
         }
         const succId = "#success_msg", warnId = "#warn_msg";
+
+        {% if edit %}
+            let inputs = document.getElementsByTagName("input");
+            for(let i = 0; i < inputs.length; i++) {
+                fill_value(inputs[i]);
+            }
+        {% endif %}
         
         // 检查单次课程课程开始时间、结束时间
         let start1 = $("#datetimepicker1").val(), end1 = $("#datetimepicker2").val();

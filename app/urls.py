@@ -72,6 +72,7 @@ urlpatterns = [
     path("examineActivity/<str:aid>", activity_views.examineActivity, name="examineActivity"),
     path("endActivity/", reimbursement_views.endActivity, name="endActivity"),
     path("modifyEndActivity/", reimbursement_views.modifyEndActivity, name="modifyEndActivity"),
+    path("offlineCheckinActivity/<str:aid>", activity_views.offlineCheckinActivity, name="offlineCheckinActivity"),
 ] + [
     # 组织相关操作
     path("saveShowPositionStatus", org_views.saveShowPositionStatus, name="saveShowPositionStatus"),
@@ -95,6 +96,7 @@ urlpatterns = [
     path("loadfreshman/", data_import.load_freshman_info, name="load_freshman"),
     path("loadorgdata/", data_import.load_org_data, name="load_org_data"),
     path("loadorgtag/", data_import.load_org_tag, name="loag_org_tag"),
+    path("loadoldorgtags/", data_import.load_tags_for_old_org, name="load_tags_for_old_org"),
     # path("loadtransferinfo/",
     #      data_import.load_transfer_info,
     #      name="load_transfer_info"),        #服务器弃用
