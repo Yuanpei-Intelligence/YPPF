@@ -177,6 +177,8 @@ MY_SCHEDULER_LOG = os.getenv("YPPF_SCHEDULER_LOG_FILE", "scheduler.log")
 MY_RPC_PORT = os.getenv("YPPF_SCHEDULER_PORT", 6666)
 MY_INNER_PORT = os.getenv("YPPF_INNER_PORT", 80)
 
+SESSION_COOKIE_DOMAIN = ".yuanpei.life"
+
 if MY_ENV in ["PRODUCT", "TEST"]:
     # Set cookie session domain to allow two sites share the session
     SESSION_COOKIE_DOMAIN = os.environ["YPPF_SESSION_COOKIE_DOMAIN"]
