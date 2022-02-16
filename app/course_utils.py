@@ -11,8 +11,6 @@ change_course_status: 改变课程的选课阶段
 remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 """
-from pymysql import NULL
-from torch import NoneType
 from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
@@ -27,7 +25,10 @@ from app.models import (
     CourseRecord,
     Semester,
 )
-from app.utils import get_person_or_org,if_image
+from app.utils import (
+    get_person_or_org,
+    if_image,
+)
 from app.notification_utils import (
     bulk_notification_create,
     notification_create,
@@ -46,7 +47,7 @@ from datetime import datetime, timedelta
 
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import F, Sum,Q
+from django.db.models import F, Sum
 
 from app.scheduler import scheduler
 
@@ -807,7 +808,7 @@ def create_course(request, course_id=None):
                 course.type = context['type']
                 course.capacity = context["capacity"]
                 course.photo = context['photo'] if context['photo'] is not None else course.photo
-                course.QRcode = context["QRcode"] if context['QRcode'] is not None else NULL
+                course.QRcode = context["QRcode"] if context['QRcode'] is not None else None
                 course.save()
 
                 for i in range(len(context['course_starts'])):
@@ -837,7 +838,7 @@ def create_course(request, course_id=None):
                     capacity=context["capacity"],
                 )
                 course.photo = context['photo'] if context['photo'] is not None else course.photo
-                course.QRcode = context["QRcode"] if context['QRcode'] else NULL
+                course.QRcode = context["QRcode"] if context['QRcode'] else None
                 course.save()
 
                 for i in range(len(context['course_starts'])):
@@ -902,4 +903,3 @@ def check_post_and_modify(records, post_data):
         return wrong(str(e))
     except:
         return wrong("数据格式异常，请检查输入数据！")
-
