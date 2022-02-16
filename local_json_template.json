@@ -97,7 +97,6 @@
     },
     "course": {
         "type_name": "书院课程",
-        "record_editable" : false,
         "audit_teacher": "YPadmin"
     },
     "audit_teacher": {
