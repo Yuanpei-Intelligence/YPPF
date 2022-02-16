@@ -797,7 +797,7 @@ def create_course(request, course_id=None):
                 course.type = context['type']
                 course.capacity = context["capacity"]
                 course.photo = context['photo'] if context['photo'] is not None else course.photo
-                if context['QRcode'] is not None:
+                if context['QRcode']:
                     course.QRcode = context["QRcode"]
                 course.save()
 
