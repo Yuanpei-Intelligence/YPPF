@@ -54,7 +54,7 @@ class Command(BaseCommand):
                           replace_existing=True)
         scheduler.add_job(update_active_score_per_day,
                           "cron",
-                          id=current_job,
+                          id='active_score_updater',
                           hour=1,
                           replace_existing=True)
 
