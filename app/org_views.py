@@ -4,6 +4,7 @@ from app.models import (
     Position,
     Organization,
     OrganizationType,
+    OrganizationTag,
     ModifyPosition,
     ModifyOrganization,
 )
@@ -12,6 +13,7 @@ from app.org_utils import (
     update_pos_application,
     make_relevant_notification,
     send_message_check,
+    get_tags,
 )
 from app.comment_utils import addComment, showComment
 from app.utils import (
@@ -218,6 +220,8 @@ def modifyOrganization(request):
     org_avatar_path = utils.get_user_ava(application, "Organization")
     org_types = OrganizationType.objects.order_by("-otype_id").all()  # 当前小组类型，前端展示需要
     former_img = Organization().get_user_ava()
+    all_tags = list(OrganizationTag.objects.all())
+    org_tags = get_tags(application) if not is_new_application else []
     if not is_new_application:
         org_type_list[application.otype]['selected'] = True
 
