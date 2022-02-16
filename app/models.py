@@ -1,4 +1,3 @@
-from email.policy import default
 from django.db import models, transaction
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
