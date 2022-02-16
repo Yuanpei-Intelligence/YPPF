@@ -618,7 +618,7 @@ def change_course_status(to_status):
         if to_status == Course.Status.WAITING:
             # 预选结束，进行抽签
             draw_lots(course)
-        elif to_status == Course.Status.END:
+        elif to_status == Course.Status.SELECT_END:
             # 选课结束，将选课成功的同学批量加入小组
             participants = CourseParticipant.objects.filter(
                 course=course,
@@ -655,8 +655,8 @@ def register_selection():
     
     # 预选和补退选的开始和结束时间
 
-    year = str(get_setting("semester_data/year"))
-    semster = str(get_setting("semester_data/semester"))
+    year = str(CURRENT_ACADEMIC_YEAR)
+    semster = str(Semester.now())
     stage1_start = str_to_time(get_setting("course/yx_election_start"))
     stage1_end = str_to_time(get_setting("course/yx_election_end"))
     stage2_start = str_to_time(get_setting("course/btx_election_start"))
@@ -666,10 +666,10 @@ def register_selection():
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_start",
                       run_date=stage1_start, args=[Course.Status.STAGE1])
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_end",
-                      run_date=stage1_end, args=[Course.Status.WAITING])
+                      run_date=stage1_end, args=[Course.Status.DRAWING])
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_start",
                     run_date=stage2_start, args=[Course.Status.STAGE2])
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_end",
-                    run_date=stage2_end, args=[Course.Status.END])                
+                    run_date=stage2_end, args=[Course.Status.SELECT_END])                
     # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
 
