@@ -236,7 +236,7 @@ def longterm_launch_course():
     定时发起长期课程活动
     提前一周发出课程，一般是在本周课程活动结束时发出
     """
-    courses = Course.objects.activated().filter(status=Course.Status.END)
+    courses = Course.objects.activated().filter(status=Course.Status.SELECT_END)
     for course in courses:
         for week_time in course.time_set.all():
             cur_week = week_time.cur_week
