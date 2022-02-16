@@ -89,6 +89,7 @@ urlpatterns = [
     path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
     path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
     path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
+    path("showCourseRecord/", course_views.showCourseRecord, name="showCourseRecord"),
 ] + [
     # 数据导入
     path("loadstudata/", data_import.load_stu_data, name="load_stu_data"),
