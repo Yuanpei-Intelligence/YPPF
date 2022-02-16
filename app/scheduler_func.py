@@ -39,6 +39,7 @@ __all__ = [
     'distribute_YQPoint_per_month',
     'changeAllActivities',
     'get_weather',
+    'update_active_score_per_day',
 ]
 
 
