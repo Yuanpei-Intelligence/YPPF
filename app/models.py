@@ -41,6 +41,7 @@ __all__ = [
     'CourseRecord',
     'PageLog',
     'ModuleLog',
+    'FeedbackType',
     'Feedback',
 ]
 
@@ -325,6 +326,9 @@ class OrganizationTag(models.Model):
 
     name = models.CharField("标签名", max_length=10, blank=False)
     color = models.CharField("颜色", choices=ColorChoice.choices, max_length=10)
+    
+    def __str__(self):
+        return self.name
 
 
 class OrganizationManager(models.Manager):
@@ -1549,12 +1553,16 @@ class FeedbackType(models.Model):
     name = models.CharField("反馈类型名称", max_length=10)
     org_type = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
 
+    def __str__(self):
+        return self.name
+
 
 class Feedback(CommentBase):
     class Meta:
         verbose_name = "反馈"
         verbose_name_plural = verbose_name
     
+    type = models.ForeignKey(FeedbackType, on_delete=models.CASCADE)
     title = models.CharField("标题", max_length=30, blank=False)
     content = models.CharField("内容", max_length=800, blank=False)
     nickname = models.CharField("反馈者昵称", max_length=12, blank=False)
