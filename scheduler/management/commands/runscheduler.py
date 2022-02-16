@@ -52,6 +52,11 @@ class Command(BaseCommand):
                           minute=30,
                           second=0,
                           replace_existing=True)
+        scheduler.add_job(update_active_score_per_day,
+                          "cron",
+                          id=current_job,
+                          hour=1,
+                          replace_existing=True)
 
         protocol_config = {
             'allow_all_attrs': True,

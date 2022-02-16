@@ -20,9 +20,6 @@ scheduler_func.py是所有和scheduler定时任务发生交互的函数集合。
 如果需要实现新的函数，建议先详细阅读本py中其他函数的实现方式。
 '''
 
-# # 定时任务生成器
-# scheduler = BackgroundScheduler()
-# scheduler.add_jobstore(DjangoJobStore(), "default")
 from boottest.scheduler import scheduler
 
 
