@@ -1408,7 +1408,7 @@ class Course(models.Model):
     # 暂时只允许上传一张图片
     photo = models.ImageField(verbose_name="宣传图片",
                               upload_to=f"course/photo/%Y/",
-                              blank=True,default="/static/assets/img/announcepics/1.JPG")
+                              blank=True)
 
     # 课程群二维码
     QRcode = models.ImageField(upload_to=f"course/QRcode/%Y/",
