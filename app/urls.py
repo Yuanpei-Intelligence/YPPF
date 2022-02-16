@@ -96,6 +96,7 @@ urlpatterns = [
     path("loadfreshman/", data_import.load_freshman_info, name="load_freshman"),
     path("loadorgdata/", data_import.load_org_data, name="load_org_data"),
     path("loadorgtag/", data_import.load_org_tag, name="loag_org_tag"),
+    path("loadoldorgtags/", data_import.load_tags_for_old_org, name="load_tags_for_old_org"),
     # path("loadtransferinfo/",
     #      data_import.load_transfer_info,
     #      name="load_transfer_info"),        #服务器弃用
