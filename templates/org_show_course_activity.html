@@ -198,6 +198,11 @@
                                                                 </h5>
                                                             </div>
                                                             <div>
+                                                                {% if act.status == "已取消" %}
+                                                                <button type="button" class="btn btn-primary dropdown-toggle" disabled data-toggle="dropdown">
+                                                                    管理活动
+                                                                </button>
+                                                                {% else %}
                                                                 <div class="dropdown">
                                                                     <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
                                                                         管理活动
@@ -206,6 +211,7 @@
                                                                         <a class="dropdown-item" href="#">手工签到</a>
                                                                     </div>
                                                                 </div>
+                                                                {% endif %}
                                                             </div>
 
                                                         </div>
