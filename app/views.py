@@ -73,7 +73,6 @@ from django.core.exceptions import ValidationError
 from app.scheduler_func import start_scheduler
 start_scheduler(with_scheduled_job=True, debug=True)
 
-
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
