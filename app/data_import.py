@@ -712,36 +712,23 @@ def load_feedback():
             feedback.title = feedback_dict["title"]
             feedback.content = feedback_dict["content"]
             feedback.nickname = feedback_dict["nickname"]
+            
+            issue_status_dict = {"草稿": 0, "已发布": 1, "已删除": 2,}
+            read_status_dict = {"已读": 0, "未读": 1,}
+            solve_status_dict = {"已解决": 0, "解决中": 1, "无法解决": 2,}
+            public_status_dict = {"公开": 0, "未公开": 1, "撤销公开": 2,}
 
             assert feedback_dict["issue_status"] in ("草稿", "已发布", "已删除")
-            if feedback_dict["issue_status"] == "草稿":
-                feedback.issue_status = 0
-            elif feedback_dict["issue_status"] == "已发布":
-                feedback.issue_status = 1
-            else:
-                feedback.issue_status = 2
+            feedback.issue_status = issue_status_dict[feedback_dict["issue_status"]]
 
             assert feedback_dict["read_status"] in ("已读", "未读")
-            if feedback_dict["read_status"] == "已读":
-                feedback.read_status = 0
-            else:
-                feedback.read_status = 1
+            feedback.read_status = read_status_dict[feedback_dict["read_status"]]
 
             assert feedback_dict["solve_status"] in ("已解决", "解决中", "无法解决")
-            if feedback_dict["solve_status"] == "已解决":
-                feedback.solve_status = 0
-            elif feedback_dict["solve_status"] == "解决中":
-                feedback.solve_status = 1
-            else:
-                feedback.solve_status = 2
+            feedback.solve_status = solve_status_dict[feedback_dict["solve_status"]]
 
             assert feedback_dict["public_status"] in ("公开", "未公开", "撤销公开")
-            if feedback_dict["public_status"] == "公开":
-                feedback.public_status = 0
-            elif feedback_dict["public_status"] == "未公开":
-                feedback.public_status = 1
-            else:
-                feedback.public_status = 2
+            feedback.public_status = public_status_dict[feedback_dict["public_status"]]
 
             if feedback_dict["publisher_public"].lower() == "true":
                 feedback.publisher_public = True
