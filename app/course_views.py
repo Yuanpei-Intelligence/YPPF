@@ -9,11 +9,6 @@ from app.models import (
     NaturalPerson,
     Semester,
     Activity,
-    Position,
-    Semester,
-    Position,
-    Activity,
-    Participant,
     Course,
     CourseRecord,
 )
@@ -21,19 +16,13 @@ from app.course_utils import (
     cancel_course_activity,
     create_single_course_activity,
     modify_course_activity,
-    check_post_data,
     registration_status_change,
     course_to_display,
     cal_participate_num,
-    check_and_modify_post,
+    check_post_and_modify,
 )
-from app.utils import (
-    get_person_or_org,
-    record_modification,
-)
+from app.utils import get_person_or_org
 
-import json
-from collections import Counter
 from django.db import transaction
 
 
@@ -274,55 +263,61 @@ def showCourseRecord(request):
     # 提取课程，后端保证每个组织只有一个Course字段
 
     # 获取课程开设筛选信息
-    year = get_setting("semester_data/year", trans_func=int)
-    semester = get_setting("semester_data/semester", trans_func=Semester.get)
+    year = CURRENT_ACADEMIC_YEAR
+    semester = Semester.now()
 
     course = Course.objects.activated().filter(
-        organization = me,
-        year = year,
-        semester = semester
+        organization=me,
+        year=year,
+        semester=semester,
     )
     if len(course) == 0: # 尚未开课的情况
-        return redirect(message_url(wrong('没有检测到该组织本学期开设的课程。如有疑问，请与管理员联系！')))
-    elif len(course) >= 2:  # 这是代码不应该出现的bug
-        raise ValueError("检测到该组织的课程超过一门，属于不可预料的错误，请及时处理！") # TODO: 报错
+        return redirect(message_url(wrong('没有检测到该组织本学期开设的课程。')))
+    # TODO: 报错 这是代码不应该出现的bug
+    assert (len(course) >= 2,
+            "检测到该组织的课程超过一门，属于不可预料的错误，请及时处理！")
     course = course.first()
 
     # 是否可以编辑
-    editable = course.status == course.Status.END  
+    editable = course.status == Course.Status.END
+
+    # 获取前端可能的提示
+    try:
+        if request.GET.get("warn_code") is not None:
+            warn_code = int(request.GET["warn_code"])
+            warn_message = request.GET["warn_message"]
+            messages = dict(warn_code=warn_code, warn_message=warn_message)
+    except:
+        pass
 
     # -------- POST 表单处理 --------
     # 默认状态为正常
-    context = {"status": 0}
     if request.method == "POST" and request.POST:
         if not editable:
             # 由于未开放修改功能时前端无法通过表格和按钮修改和提交，
             # 所以如果出现POST请求，则为非法情况
-            return redirect(message_url(wrong('学时修改尚未开放。如有疑问，请联系管理员！')))
-        try:
-            with transaction.atomic():
+            return redirect(message_url(
+                wrong('学时修改尚未开放。如有疑问，请联系管理员！'), request.path))
+        with transaction.atomic():
             # 检查信息并进行修改
-                record_search = CourseRecord.objects.filter(
-                    course=course,
-                    year=year,
-                    semester=semester,
-                ).select_for_update()
-                context = check_and_modify_post(record_search, request.POST)
-                # TODO: 发送微信消息
-        except Exception as e:
-            log.record_traceback(request, e)
-            return EXCEPT_REDIRECT
+            record_search = CourseRecord.objects.filter(
+                course=course,
+                year=year,
+                semester=semester,
+            ).select_for_update()
+            messages = check_post_and_modify(record_search, request.POST)
+            # TODO: 发送微信消息?不一定需要
 
     # -------- GET 部分 --------
     # 如果进入这个页面时课程的状态(Course.Status)为未结束，那么只能查看不能修改，此时从函数读取
     if not editable:
-        
-        # 获取形如[{pk: times}]的列表，这里pk是naturalperson的主键
+
+        # 获取形如{id: times}的字典，这里id是naturalperson的主键id而不是userid
         participate_raw = cal_participate_num(course)
-        convert_dict = {w[0]: w[1] for w in participate_raw}    #转换为字典方便查询
+        convert_dict = participate_raw    # 转换为字典方便查询, 这里已经是字典了
         # 选取人选
         participant_list = NaturalPerson.objects.activated().filter(
-            pk__in = convert_dict.keys()
+            id__in=convert_dict.keys()
         )
 
         # 转换为前端使用的list
@@ -331,14 +326,14 @@ def showCourseRecord(request):
                 "pk": person.id,
                 "name": person.name,
                 "grade": person.stu_grade,
-                "avatar": utils.get_user_ava(person, "Person"),
+                "avatar": person.get_user_ava(),
                 "times": convert_dict[person.id],   # 参与次数
             } for person in participant_list
         ]
 
     # 否则可以修改表单，从CourseRecord读取
     else:
-        
+
         # 查找此课程本学期所有成员的学时表
         record_search = CourseRecord.objects.filter(
             course=course,
@@ -354,10 +349,10 @@ def showCourseRecord(request):
                 "pk": record.person.id,
                 "name": record.person.name,
                 "grade": record.person.stu_grade,
-                "avatar": utils.get_user_ava(record.person, "Person"),
+                "avatar": record.person.get_user_ava(),
                 "times": record.attend_times,
                 "hours": record.total_hours
-            } for record in record_search 
+            } for record in record_search
         ]
 
 
@@ -369,7 +364,12 @@ def showCourseRecord(request):
     }
     bar_display = utils.get_sidebar_and_navbar(request.user, "课程学时")
 
-    return render(request, "course_record.html", locals())
+    render_context = dict(
+        course_info=course_info, records_list=records_list,
+        editable=editable,
+        bar_display=bar_display, messages=messages,
+    )
+    return render(request, "course_record.html", render_context)
 
 
 @login_required(redirect_field_name="origin")

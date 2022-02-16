@@ -11,10 +11,8 @@ change_course_status: 改变课程的选课阶段
 remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 """
-from django.http import QueryDict
 from app.utils_dependency import *
 from app.models import (
-    CourseRecord,
     NaturalPerson,
     Activity,
     Notification,
@@ -23,6 +21,7 @@ from app.models import (
     Participant,
     Course,
     CourseParticipant,
+    CourseRecord,
     Semester,
 )
 from app.utils import get_person_or_org
@@ -39,11 +38,12 @@ from app.activity_utils import (
 from app.wechat_send import WechatApp, WechatMessageLevel
 
 from random import sample
+from collections import Counter
 from datetime import datetime, timedelta
 
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import F, Q, Sum
+from django.db.models import F, Sum
 
 from app.scheduler import scheduler
 
@@ -57,7 +57,7 @@ __all__ = [
     'course_to_display',
     'change_course_status',
     'cal_participate_num',
-    'check_and_modify_post',
+    'check_post_and_modify',
 ]
 
 
@@ -681,52 +681,51 @@ def change_course_status(course_id, cur_status, to_status):
             with transaction.atomic():
                 Position.objects.bulk_create(positions)
 
-def cal_participate_num(course: Course):
+
+def cal_participate_num(course: Course)-> Counter:
     """
     计算该课程对应组织所有成员的参与次数
     return {Naturalperson.id:参与次数}
     前端使用的时候直接读取字典的值就好了
     """
     org = course.organization
-    """
-    person_poss = Position.objects.activated().filter(org=org)
-    participants = NaturalPerson.objects.filter(
-        id__in=person_poss.values("person"))
-    """
-    activities = Activity.objects.activated().filter(organization_id=org,
-                                                     status=Activity.Status.END, category=Activity.ActivityCategory.COURSE)
-    all_participants = Participant.objects.filter(
-        Q(activity_id__id__in=activities.values("id"))  &
-        Q(status=Participant.AttendStatus.APLLYFAILED)
+    activities = Activity.objects.activated().filter(
+        organization_id=org,
+        status=Activity.Status.END,
+        category=Activity.ActivityCategory.COURSE,
+    )
+    all_participants = (
+        Participant.objects.activated(no_unattend=True)
+        .filter(activity_id__in=activities)
     ).values_list("person_id", flat=True)
-    from collections import Counter
-    # 形如[{pk: times}]的列表
-    participate_num = Counter(list(all_participants))
-
+    participate_num = Counter(all_participants)
     return participate_num
 
-def check_and_modify_post(records, post_data):
+
+def check_post_and_modify(records, post_data):
     """
     records和post_data分别为原先和更新后的list
     检查post表单是否可以为这个course对应的内容，
     如果可以，修改学时
+    - 返回wrong|succeed
+    - 不抛出异常
     """
     try:
         # 对每一条记录而言
         for record in records:
-            key = str(record.person.id) #选取id作为匹配键
-            assert str(key) in post_data.keys(), "修改学时时出现人员信息不匹配的情况，请联系管理员！"
-            
+            # 选取id作为匹配键
+            key = str(record.person.id)
+            assert key in post_data.keys(), "提交的人员信息不匹配，请联系管理员！"
+
             # 读取小时数
             hours = post_data.get(str(key), -1)
-            assert float(hours) > 0, "学时数据不为正数，请检查输入数据！"
+            assert float(hours) >= 0, "学时数据为负数，请检查输入数据！"
             record.total_hours = float(hours)
 
         CourseRecord.objects.bulk_update(records, ["total_hours"])
-        return {"status": 2, "message": "修改学时信息成功！"}
-    except Exception as e:
+        return succeed("修改学时信息成功！")
+    except AssertionError as e:
         # 此时相当于出现用户应该知晓的信息
-        return {
-            "status": 1,
-            "message": str(e)
-        }
+        return wrong(str(e))
+    except:
+        return wrong("数据格式异常，请检查输入数据！")
