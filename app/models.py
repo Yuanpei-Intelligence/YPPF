@@ -1,3 +1,4 @@
+from email.policy import default
 from django.db import models, transaction
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
@@ -1353,7 +1354,7 @@ class Course(models.Model):
                                 default=Semester.now)
 
     # 课程开设的周数
-    times = models.SmallIntegerField("课程开设周数", default=7)
+    times = models.SmallIntegerField("课程开设周数", default=16)
     classroom = models.CharField("预期上课地点",
                                  max_length=60,
                                  default="",
@@ -1378,9 +1379,10 @@ class Course(models.Model):
         ABORT = (0, "已撤销")
         WAITING = (1, "未开始选课")
         STAGE1 = (2, "预选")
-        STAGE2 = (3, "补退选")
-        SELECT_END = (4, "选课结束")
-        END = (5, "已结束")
+        DRAWING = (3, "抽签中")
+        STAGE2 = (4, "补退选")
+        SELECT_END = (5, "选课结束")
+        END = (6, "已结束")
 
     status = models.SmallIntegerField("开课状态",
                                       choices=Status.choices,
@@ -1402,7 +1404,7 @@ class Course(models.Model):
     # 暂时只允许上传一张图片
     photo = models.ImageField(verbose_name="宣传图片",
                               upload_to=f"course/photo/%Y/",
-                              blank=True)
+                              blank=True,default="/static/assets/img/announcepics/1.JPG")
 
     # 课程群二维码
     QRcode = models.ImageField(upload_to=f"course/QRcode/%Y/",
@@ -1437,7 +1439,7 @@ class CourseTime(models.Model):
     start = models.DateTimeField("开始时间")
     end = models.DateTimeField("结束时间")
     cur_week = models.IntegerField("已生成周数", default=0)
-    end_week = models.IntegerField("总周数", default=1)
+    end_week = models.IntegerField("总周数", default=16)
 
 
 class CourseParticipant(models.Model):

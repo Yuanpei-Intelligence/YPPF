@@ -18,13 +18,14 @@ from app.course_utils import (
     modify_course_activity,
     registration_status_change,
     course_to_display,
+    create_course,
     cal_participate_num,
     check_post_and_modify,
 )
 from app.utils import get_person_or_org
 
 from django.db import transaction
-
+from datetime import datetime
 
 __all__ = [
     'editCourseActivity',
@@ -479,3 +480,111 @@ def viewCourse(request):
     # 和前端对接
 
     return HttpResponse()
+ 
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+#@log.except_captured(EXCEPT_REDIRECT, source='course_views[addCourse]', record_user=True)
+def addCourse(request, cid=None):
+    """
+    发起课程页
+    ---------------
+    页面逻辑：
+
+    该函数处理 GET, POST 两种请求，发起和修改两类操作
+    1. 访问 /addCourse/ 时，为创建操作，要求用户是小组；
+    2. 访问 /editCourse/aid 时，为编辑操作，要求用户是该活动的发起者
+    3. GET 请求创建课程的界面，placeholder 为 prompt
+    4. GET 请求编辑课程的界面，表单的 placeholder 会被修改为课程的旧值。
+    """
+
+    # 检查：不是超级用户，必须是小组，修改是必须是自己
+    try:
+        valid, user_type, html_display = utils.check_user_type(request.user)
+        # assert valid  已经在check_user_access检查过了
+        me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
+        if cid is None:
+            if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME: 
+                return redirect(message_url(wrong('书院课程账号才能发起课程!')))
+            #暂时仅支持一个课程账号一学期只能开一门课
+            courses = Course.objects.activated().filter(organization=me)
+            if courses.exists():
+                cid = courses[0].id
+                return redirect(message_url(
+                            succeed('您已在本学期创建过课程，已为您自动跳转!'),
+                            f'/editCourse/{cid}'))
+            edit = False
+        else:
+            cid = int(cid)
+            course = Course.objects.get(id=cid)
+            if course.organization != me:
+                return redirect(message_url(wrong("无法修改其他小组的课程!")))
+            edit = True
+        html_display["is_myself"] = True
+    except Exception as e:
+        log.record_traceback(request, e)
+        return EXCEPT_REDIRECT
+
+    html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
+    html_display["warn_message"] = request.GET.get(
+            "warn_message", "")  # 提醒的具体内容
+    
+    # 处理 POST 请求
+    # 在这个界面，不会返回render，而是直接跳转到viewCourse，可以不设计bar_display
+    if request.method == "POST" and request.POST:
+        if not edit:
+            context=create_course(request)
+            html_display["warn_code"] = context["warn_code"]
+            if html_display["warn_code"] == 2:
+                return redirect(message_url(succeed("创建课程成功！为您自动跳转到编辑界面。"),
+                                        f'/editCourse/{context["cid"]}'))
+        else:
+            # 仅未开始选课阶段可以修改
+            if course.status != Course.Status.WAITING:
+                return redirect(message_url(wrong('当前课程状态不允许修改!'),
+                                            f'/editCourse/{course.id}'))
+            context = create_course(request, course.id)
+            course = Course.objects.get(id=context["cid"])
+        html_display["warn_code"] = context["warn_code"]
+        html_display["warn_message"] = context["warn_message"]
+
+    # 下面的操作基本如无特殊说明，都是准备前端使用量
+    html_display["applicant_name"] = me.oname
+    html_display["app_avatar_path"] = me.get_user_ava() 
+    html_display["today"] = datetime.now().strftime("%Y-%m-%d")
+    course_type_all = [
+       ["德" , Course.CourseType.MORAL] ,
+       ["智" , Course.CourseType.INTELLECTUAL] , 
+       ["体" , Course.CourseType.PHYSICAL] ,
+       ["美" , Course.CourseType.AESTHETICS],
+       ["劳" , Course.CourseType.LABOUR],
+    ]
+    defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG", "id": f"picture{i+1}"} for i in range(5)]
+    editable=False
+    if edit and course.status == Course.Status.WAITING: #选课未开始才能修改
+        editable = True
+    
+    if edit:
+        name = utils.escape_for_templates(course.name)
+        organization = course.organization
+        year = course.year
+        semester = utils.escape_for_templates(course.semester)
+        classroom = utils.escape_for_templates(course.classroom)
+        teacher = utils.escape_for_templates(course.teacher)
+        course_time = course.time_set.all()
+        introduction = utils.escape_for_templates(course.introduction)
+        teaching_plan=utils.escape_for_templates(course.teaching_plan)
+        record_cal_method=utils.escape_for_templates(course.record_cal_method)
+        status = course.status
+        capacity = course.capacity
+        type = course.type
+        current_participants = course.current_participants
+        QRcode=course.QRcode
+
+ 
+    if not edit:
+        bar_display = utils.get_sidebar_and_navbar(request.user, "发起课程")
+    else:
+        bar_display = utils.get_sidebar_and_navbar(request.user, "修改课程")
+    
+    return render(request, "register_course.html", locals())
+  
