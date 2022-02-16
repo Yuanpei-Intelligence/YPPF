@@ -1,11 +1,11 @@
+from email.policy import default
 from django.db import models, transaction
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
-from boottest import local_dict
-from django.conf import settings
+from app.constants import *
 from random import choice
 
 
@@ -15,7 +15,7 @@ __all__ = [
     'Freshman',
     'OrganizationType',
     'OrganizationTag',
-    # 'Semester',
+    'Semester',
     'Organization',
     'Position',
     'Course',
@@ -46,7 +46,9 @@ __all__ = [
 
 
 def current_year()-> int:
-    return int(datetime.now().strftime("%Y"))
+    '''不导出的函数，用于实时获取学年设置'''
+    return CURRENT_ACADEMIC_YEAR
+
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
@@ -164,7 +166,7 @@ class NaturalPerson(models.Model):
             avatar = ""
         if not avatar:
             avatar = "avatar/person_default.jpg"
-        return settings.MEDIA_URL + str(avatar)
+        return MEDIA_URL + str(avatar)
 
     def get_accept_promote_display(self):
         return "是" if self.accept_promote else "否"
@@ -273,22 +275,36 @@ class OrganizationType(models.Model):
     def get_length(self):
         return len(self.job_name_list) + 1
 
-class Semester(models.TextChoices):
-    FALL = "Fall"
-    SPRING = "Spring"
-    ANNUAL = "Fall+Spring"
 
-    def get(
-        semester,
-    ):  # read a string indicating the semester, return the correspoding status
-        if semester == "Fall":
+class Semester(models.TextChoices):
+    FALL = "Fall", "秋"
+    SPRING = "Spring", "春"
+    ANNUAL = "Fall+Spring", "春秋"
+
+    def get(semester: str):
+        '''read a string indicating the semester, return the correspoding status'''
+        if semester in ["Fall", "秋", "秋季"]:
             return Semester.FALL
-        elif semester == "Spring":
+        elif semester in ["Spring", "春", "春季"]:
             return Semester.SPRING
-        elif semester == "Annual":
+        elif semester in ["Annual", "Fall+Spring", "全年", "春秋"]:
             return Semester.ANNUAL
         else:
             raise NotImplementedError("出现未设计的学期状态")
+
+    def now():
+        '''返回本地设置中当前学期对应的Semester状态'''
+        return get_setting("semester_data/semester", trans_func=Semester.get)
+    
+    def match(sem1, sem2):
+        try:
+            if not isinstance(sem1, Semester):
+                sem1 = Semester.get(sem1)
+            if not isinstance(sem2, Semester):
+                sem2 = Semester.get(sem2)
+            return sem1 == sem2
+        except:
+            return False
 
 
 class OrganizationTag(models.Model):
@@ -355,7 +371,7 @@ class Organization(models.Model):
             avatar = ""
         if not avatar:
             avatar = "avatar/org_default.png"
-        return settings.MEDIA_URL + str(avatar)
+        return MEDIA_URL + str(avatar)
 
     def get_subscriber_num(self, activated=True):
         if activated:
@@ -373,8 +389,8 @@ class Organization(models.Model):
 class PositionManager(models.Manager):
     def current(self):
         return self.filter(
-            in_year=int(local_dict["semester_data"]["year"]),
-            in_semester__contains=local_dict["semester_data"]["semester"],
+            in_year=current_year(),
+            in_semester__contains=Semester.now().value,
         )
 
     def activated(self):
@@ -510,8 +526,9 @@ class ActivityManager(models.Manager):
             query_range = self.displayable()
         else:
             query_range = self.all()
-        return query_range.filter(year=int(local_dict["semester_data"]["year"])).filter(
-            semester__contains=local_dict["semester_data"]["semester"]
+        return query_range.filter(
+            year=current_year(),
+            semester__contains=Semester.now().value,
         )
 
     def displayable(self):
@@ -558,17 +575,16 @@ class ActivityManager(models.Manager):
     def get_today_activity(self):
         # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
         nowtime = datetime.now()
-        return self.filter(year=int(local_dict["semester_data"]["year"])).filter(
-            semester__contains=local_dict["semester_data"]["semester"]
+        return self.filter(
+            year=current_year(),
+            semester__contains=Semester.now().value,
         ).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
                 Activity.Status.PROGRESSING,
             ]
-        ).filter(start__year=nowtime.year
-        ).filter(start__month=nowtime.month
-        ).filter(start__day=nowtime.day
+        ).filter(start__date=nowtime.date(),
         ).order_by("start")
 
 
@@ -637,7 +653,7 @@ class Activity(CommentBase):
         "活动学期",
         choices=Semester.choices,
         max_length=15,
-        default=Semester.get(local_dict["semester_data"]["semester"]),
+        default=Semester.now,
     )
 
     publish_time = models.DateTimeField("信息发布时间", auto_now_add=True)  # 可以为空
@@ -1018,7 +1034,7 @@ class CommentPhoto(models.Model):
 
     # 路径无法加上相应图片
     def imagepath(self):
-        return settings.MEDIA_URL + str(self.image)
+        return MEDIA_URL + str(self.image)
 
 
 class ModifyOrganization(CommentBase):
@@ -1045,6 +1061,7 @@ class ModifyOrganization(CommentBase):
         REFUSED = (3, "已拒绝")
 
     status = models.SmallIntegerField(choices=Status.choices, default=0)
+    tags = models.CharField(max_length=100, default='', blank=True)
 
     def __str__(self):
         # YWolfeee: 不认为应该把类型放在如此重要的位置
@@ -1075,7 +1092,7 @@ class ModifyOrganization(CommentBase):
             avatar = ""
         if not avatar:
             avatar = "avatar/person_default.jpg"
-        return settings.MEDIA_URL + str(avatar)
+        return MEDIA_URL + str(avatar)
 
     def is_pending(self):   #表示是不是pending状态
         return self.status == ModifyOrganization.Status.PENDING
@@ -1292,9 +1309,9 @@ class CourseManager(models.Manager):
         # 选择当前学期的开设课程
         # 不显示已撤销的课程信息
         return self.filter(
-            year=int(local_dict["semester_data"]["year"]),
-            semester=local_dict["semester_data"]["semester"]).exclude(
-                status=Course.Status.ABORT)
+            year=current_year(),
+            semester__contains=Semester.now().value,
+        ).exclude(status=Course.Status.ABORT)
 
     def selected(self, person: NaturalPerson):
         # 返回当前学生所选的所有课程
@@ -1334,11 +1351,10 @@ class Course(models.Model):
     semester = models.CharField("开课学期",
                                 choices=Semester.choices,
                                 max_length=15,
-                                default=Semester.get(
-                                    local_dict["semester_data"]["semester"]))
+                                default=Semester.now)
 
     # 课程开设的周数
-    times = models.SmallIntegerField("课程开设周数", default=7)
+    times = models.SmallIntegerField("课程开设周数", default=16)
     classroom = models.CharField("预期上课地点",
                                  max_length=60,
                                  default="",
@@ -1363,8 +1379,10 @@ class Course(models.Model):
         ABORT = (0, "已撤销")
         WAITING = (1, "未开始选课")
         STAGE1 = (2, "预选")
-        STAGE2 = (3, "补退选")
-        END = (4, "已结束")
+        DRAWING = (3, "抽签中")
+        STAGE2 = (4, "补退选")
+        SELECT_END = (5, "选课结束")
+        END = (6, "已结束")
 
     status = models.SmallIntegerField("开课状态",
                                       choices=Status.choices,
@@ -1386,7 +1404,7 @@ class Course(models.Model):
     # 暂时只允许上传一张图片
     photo = models.ImageField(verbose_name="宣传图片",
                               upload_to=f"course/photo/%Y/",
-                              blank=True)
+                              blank=True,default="/static/assets/img/announcepics/1.JPG")
 
     # 课程群二维码
     QRcode = models.ImageField(upload_to=f"course/QRcode/%Y/",
@@ -1421,7 +1439,7 @@ class CourseTime(models.Model):
     start = models.DateTimeField("开始时间")
     end = models.DateTimeField("结束时间")
     cur_week = models.IntegerField("已生成周数", default=0)
-    end_week = models.IntegerField("总周数", default=1)
+    end_week = models.IntegerField("总周数", default=16)
 
 
 class CourseParticipant(models.Model):
@@ -1469,7 +1487,7 @@ class CourseRecord(models.Model):
     semester = models.CharField(
         "课程所在学期",
         choices=Semester.choices,
-        default=Semester.get(local_dict["semester_data"]["semester"]),
+        default=Semester.now,
         max_length=15,
     )
     total_hours = models.FloatField("总计参加学时")
