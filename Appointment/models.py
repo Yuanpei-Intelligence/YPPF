@@ -25,9 +25,6 @@ class College_Announcement(models.Model):
 
 
 class Participant(models.Model):
-    Sid = models.CharField('学号', max_length=10, primary_key=True)
-    '''
-    # 合并后的模型主键，合并后删除
     Sid = models.ForeignKey(
         User,
         related_name='+',
@@ -36,7 +33,6 @@ class Participant(models.Model):
         verbose_name='学号',
         primary_key=True,
     )
-    '''
     name = models.CharField('姓名', max_length=64)
     credit = models.IntegerField('信用分', default=3)
     pinyin = models.CharField('拼音', max_length=20, null=True)
@@ -213,11 +209,11 @@ class Appoint(models.Model):
             'Aid':
             self.Aid,  # 预约编号
             'Atime':
-            self.Atime,  # 申请提交时间
+            self.Atime.strftime("%Y-%m-%dT%H:%M:%S"),  # 申请提交时间
             'Astart':
-            self.Astart,  # 开始使用时间
+            self.Astart.strftime("%Y-%m-%dT%H:%M:%S"),  # 开始使用时间
             'Afinish':
-            self.Afinish,  # 结束使用时间
+            self.Afinish.strftime("%Y-%m-%dT%H:%M:%S"),  # 结束使用时间
             'Ausage':
             self.Ausage,  # 房间用途
             'Aannouncement':
@@ -237,12 +233,12 @@ class Appoint(models.Model):
             'major_student':
             {
                 "Sname": self.major_student.name,  # 发起预约人
-                "Sid": self.major_student.Sid,
+                "Sid": self.major_student.Sid_id,
             },
             'students': [  # 参与人
                 {
                     'Sname': student.name,  # 参与人姓名
-                    'Sid': student.Sid,
+                    'Sid': student.Sid_id,
                 } for student in self.students.all() # if student.Sid != self.major_student.Sid
             ]
         }

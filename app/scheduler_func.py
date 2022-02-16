@@ -12,6 +12,7 @@ from app.models import (
     Participant,
     Notification,
     Position,
+    PageLog,
 )
 from app.activity_utils import changeActivityStatus
 from app.notification_utils import bulk_notification_create, notification_status_change
@@ -25,6 +26,7 @@ import urllib.request
 
 from datetime import datetime, timedelta
 from django.db import transaction  # 原子化更改数据库
+from django.db.models import F
 
 # 引入定时任务还是放上面吧
 from app.scheduler import scheduler
@@ -166,6 +168,20 @@ def get_weather():
         return weather_dict
 
 
+def update_active_score_per_day(days=14):
+    '''每天计算用户活跃度， 计算前days天（不含今天）内的平均活跃度'''
+    with transaction.atomic():
+        today = datetime.now().date()
+        persons = NaturalPerson.objects.activated().select_for_update()
+        persons.update(active_score=0)
+        for i in range(days):
+            date = today - timedelta(days=i+1)
+            userids = set(PageLog.objects.filter(
+                time__date=date).values_list('user', flat=True))
+            persons.filter(person_id__in=userids).update(
+                active_score=F('active_score') + 1 / days)
+
+
 def start_scheduler(with_scheduled_job=True, debug=False):
     '''
     noexcept
@@ -195,6 +211,13 @@ def start_scheduler(with_scheduled_job=True, debug=False):
                               "interval",
                               id=current_job,
                               minutes=5,
+                              replace_existing=True)
+            current_job = "active_score_updater"
+            if debug: print(f"adding scheduled job '{current_job}'")
+            scheduler.add_job(update_active_score_per_day,
+                              "cron",
+                              id=current_job,
+                              hour=1,
                               replace_existing=True)
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"

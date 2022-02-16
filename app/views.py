@@ -4,6 +4,7 @@ from app.models import (
     Freshman,
     Position,
     Organization,
+    OrganizationTag,
     OrganizationType,
     ModifyPosition,
     Activity,
@@ -19,6 +20,11 @@ from app.models import (
     Wishes,
     QandA,
     ReimbursementPhoto,
+    Course,
+    CourseRecord,
+    Semester,
+    PageLog,
+    ModuleLog,
 )
 from app.utils import (
     url_check,
@@ -57,7 +63,7 @@ from boottest import local_dict
 from django.contrib import auth, messages
 from django.contrib.auth.hashers import make_password, check_password
 from django.db import transaction
-from django.db.models import Q, F
+from django.db.models import Q, F, Sum
 from django.contrib.auth.password_validation import CommonPasswordValidator, NumericPasswordValidator
 from django.core.exceptions import ValidationError
 
@@ -414,6 +420,75 @@ def stuinfo(request, name=None):
 
         # ----------------------------------- 活动卡片 ----------------------------------- #
 
+        # ------------------ 学时查询 ------------------ #
+
+        # 只有是自己的主页时才显示学时
+        if is_myself:
+            course_me = CourseRecord.objects.filter(person_id=oneself)
+            # 把当前学期的活动去除
+            course_me_past = (
+                course_me.exclude(
+                    year=CURRENT_ACADEMIC_YEAR, 
+                    semester=Semester.now())
+            )
+
+            # 无效学时，在前端呈现
+            course_no_use = (
+                course_me_past
+                .filter(total_hours__lt=8)
+                .exclude(year=2020, semester=Semester.FALL, total_hours__gte=6)
+                .exclude(year=2021, semester=Semester.SPRING, total_hours__gte=6)
+            )
+            
+            # 特判，需要一定时长才能计入总学时
+            course_me_past = (
+                course_me_past
+                .exclude(year=2020, semester=Semester.FALL, total_hours__lt=6)
+                .exclude(year=2021, semester=Semester.SPRING, total_hours__lt=6)
+                .exclude(year=2021, semester=Semester.FALL, total_hours__lt=8) # 21秋开始，需要至少8学时
+                .exclude(year__gt=2021, total_hours__lt=8)
+            )
+
+            course_me_past = course_me_past.order_by('year', '-semester')
+            course_no_use = course_no_use.order_by('year', '-semester')
+
+            progress_list = []
+
+            # 计算每个类别的学时
+            for course_type in list(Course.CourseType): # CourseType.values亦可
+                progress_list.append((
+                    course_me_past
+                    .filter(course__type=course_type)
+                    .aggregate(Sum('total_hours'))
+                )['total_hours__sum'] or 0)
+
+            # 计算没有对应Course的学时
+            progress_list.append((
+                course_me_past
+                .filter(course__isnull=True)
+                .aggregate(Sum('total_hours'))
+            )['total_hours__sum'] or 0)
+
+            # 每个人的规定学时，按年级讨论
+            if int(oneself.stu_grade) <= 2018:
+                ruled_hours = 0
+            elif int(oneself.stu_grade) == 2019:
+                ruled_hours = 32
+            else:
+                ruled_hours = 64
+
+            # 计算总学时
+            total_hours_sum = sum(progress_list)
+            # 用于算百分比的实际总学时（考虑到可能会超学时），仅后端使用
+            actual_total_hours = max(total_hours_sum, ruled_hours)
+            if actual_total_hours > 0:
+                progress_list = [
+                    hour / actual_total_hours * 100 for hour in progress_list
+                ]
+
+
+        # ------------------ 活动参与 ------------------ #
+        
         participants = Participant.objects.activated().filter(person_id=person)
         activities = Activity.objects.activated().filter(
             Q(id__in=participants.values("activity_id")),
@@ -563,6 +638,7 @@ def orginfo(request, name=None):
         # 下面是小组信息
 
         org = Organization.objects.activated().get(oname=name)
+        org_tags = org.tags.all()
 
     except:
         return redirect(message_url(wrong('该小组不存在!')))
@@ -937,13 +1013,15 @@ def accountSetting(request):
 
             # 合法性检查
             attr_dict, show_dict, html_display = utils.check_account_setting(request, user_type)
-            attr_check_list = [attr for attr in attr_dict.keys() if attr not in ['gender', 'ava', 'wallpaper']]
+            attr_check_list = [attr for attr in attr_dict.keys() if attr not in ['gender', 'ava', 'wallpaper', 'accept_promote']]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
             modify_info = []
             if attr_dict['gender'] != useroj.get_gender_display():
                 modify_info.append(f'gender: {useroj.get_gender_display()}->{attr_dict["gender"]}')
+            if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
+                modify_info.append(f'accept_promote: {useroj.get_accept_promote_display()}->{attr_dict["accept_promote"]}')
             if attr_dict['ava']:
                 modify_info.append(f'avatar: {attr_dict["ava"]}')
             if attr_dict['wallpaper']:
@@ -957,6 +1035,8 @@ def accountSetting(request):
 
             if attr_dict['gender'] != useroj.gender:
                 useroj.gender = NaturalPerson.Gender.MALE if attr_dict['gender'] == '男' else NaturalPerson.Gender.FEMALE
+            if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
+                useroj.accept_promote = True if attr_dict['accept_promote'] == '是' else False
             for attr in attr_check_list:
                 if attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]:
                     setattr(useroj, attr, attr_dict[attr])
@@ -985,6 +1065,8 @@ def accountSetting(request):
 
         useroj = Organization.objects.get(organization_id=user)
         former_wallpaper = utils.get_user_wallpaper(me, "Organization")
+        org_tags = list(useroj.tags.all())
+        all_tags = list(OrganizationTag.objects.all())
         if request.method == "POST" and request.POST:
 
             ava = request.FILES.get("avatar")
@@ -1000,13 +1082,24 @@ def accountSetting(request):
                 modify_info.append(f'avatar: {ava}')
             if wallpaper:
                 modify_info.append(f'wallpaper: {wallpaper}')
-            modify_info += [f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}'
-                            for attr in attr_check_list
-                            if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr])]
+            attr = 'introduction'
+            if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]):
+                modify_info += [f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}']
+            attr = 'tags_modify'
+            if attr_dict[attr] != "":
+                modify_info += [f'{attr}: {attr_dict[attr]}']
 
-            for attr in attr_check_list:
-                if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
-                    setattr(useroj, attr, attr_dict[attr])
+            attr = 'introduction'
+            if attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]:
+                setattr(useroj, attr, attr_dict[attr])
+            if attr_dict['tags_modify'] != "":
+                for modify in attr_dict['tags_modify'].split(';'):
+                    if modify != "":
+                        action, tag_name = modify.split(" ")
+                        if action == 'add':
+                            useroj.tags.add(OrganizationTag.objects.get(name=tag_name))
+                        else:
+                            useroj.tags.remove(OrganizationTag.objects.get(name=tag_name))
             if ava is None:
                 pass
             else:
@@ -1612,9 +1705,12 @@ def subscribeOrganization(request):
 
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
-    org_list = list(Organization.objects.all().select_related("organization_id","otype"))
-    #orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
-    otype_list = list(OrganizationType.objects.all().order_by('-otype_id'))
+    # orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
+    otype_infos = [(
+        otype,
+        list(Organization.objects.filter(otype=otype)
+            .select_related("organization_id")),
+    ) for otype in OrganizationType.objects.all().order_by('-otype_id')]
     unsubscribe_list = list(me.unsubscribe_list.values_list("organization_id__username", flat=True))
     # 获取不订阅列表（数据库里的是不订阅列表）
 
@@ -1876,3 +1972,45 @@ def QAcenter(request):
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="问答中心")
     return render(request, "QandA_center.html", locals())
+
+
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(EXCEPT_REDIRECT, log=False)
+def eventTrackingFunc(request):
+    # unpack request:
+    logType = int(request.POST['Type'])
+    logUrl = request.POST['Url']
+    try:
+        logTime = int(request.POST['Time'])
+        logTime = datetime.fromtimestamp(logTime / 1000)
+    except:
+        logTime = datetime.now()
+    # 由于对PV/PD埋点的JavaScript脚本在base.html中实现，所以所有页面的PV/PD都会被track
+    logPlatform = request.POST.get('Platform', None)
+    try:
+        logExploreName, logExploreVer = request.POST['Explore'].rsplit(maxsplit=1)
+    except:
+        logExploreName, logExploreVer = None, None
+
+    kwargs = {}
+    kwargs.update(
+        user=request.user,
+        type=logType,
+        page=logUrl,
+        time=logTime,
+        platform=logPlatform,
+        explore_name=logExploreName,
+        explore_version=logExploreVer,
+    )
+    if logType in ModuleLog.CountType.values:
+        # Module类埋点
+        kwargs.update(
+            module_name=request.POST['Name'],
+        )
+        ModuleLog.objects.create(**kwargs)
+    elif logType in PageLog.CountType.values:
+        # Page类的埋点
+        PageLog.objects.create(**kwargs)
+
+    return JsonResponse({'status': 'ok'})

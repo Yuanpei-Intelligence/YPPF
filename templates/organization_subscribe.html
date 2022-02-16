@@ -69,7 +69,7 @@
                             </div>
                         </div>
                     </div>
-                    {% for otype in otype_list %}
+                    {% for otype, org_list in otype_infos %}
                     {% with type_id=otype.otype_id %}
                     <div id="tableDropdown{{type_id}}" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
                         <div class="statbox widget box box-shadow">
@@ -114,8 +114,7 @@
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {% for org in org_list%}
-                                                {% if org.otype.otype_name == otype.otype_name %}
+                                                {% for org in org_list %}
                                                 <tr>
                                                     <td>
                                                         <u><a href="/orginfo/?name={{org.oname}}"><img src="{{org.get_user_ava}}" width="18px" height="18px" style="margin-top: -2px; margin-right: 5px; border-radius: 9px;"><span>{{org.oname}}</span></a></u>
@@ -131,7 +130,7 @@
                                                     <td bgColor="F3FDFF" , id="td{{username}}_{{type_id}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
-                                                                id="{{username}}_{{type_id}}"
+                                                                id="{{username}}_{{type_id}}" name="{{type_id}}"
                                                                 onclick="change_status.call(this);this.blur();" checked {% if not otype.allow_unsubscribe %} disabled {% endif %}>
                                                             <label class="custom-control-label"
                                                                 for="{{username}}_{{type_id}}"
@@ -145,7 +144,7 @@
                                                     <td bgColor="FFFFFF" , id="td{{username}}_{{type_id}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
-                                                                id="{{username}}_{{type_id}}"
+                                                                id="{{username}}_{{type_id}}" name="{{type_id}}"
                                                                 onclick="change_status.call(this);this.blur();">
                                                             <label class="custom-control-label"
                                                                 for="{{username}}_{{type_id}}"
@@ -158,7 +157,6 @@
                                                     {%endif%}
                                                     {% endwith %}
                                                 </tr>
-                                                {% endif %}
                                                 {% endfor %}
                                             </tbody>
                                         </table>
@@ -209,14 +207,12 @@
 </script>
 <script>
     async function turn_off_all() {
-        lst = document.getElementsByClassName('custom-control-input');
+        lst = document.getElementsByName(this.id);
         const success = await save_all.call(this,false);
         for (var i = 0; i < lst.length; i += 1) {
-            if (lst[i].checked && this.id == lst[i].id.substring(lst[i].id.indexOf("_")+1)) {
+            if (lst[i].checked) {
                 if (success) {
-                    document.getElementById(`td${lst[i].id}`).bgColor = "FFFFFF";
-                    document.getElementById(`font${lst[i].id}`).color = "E1E1E1";
-                    document.getElementById(`font${lst[i].id}`).innerHTML = "未订阅";
+                    change_single_status(lst[i], "FFFFFF", "E1E1E1", "未订阅");
                     const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
                     num.textContent = Number(num.textContent) - 1;
                     lst[i].checked = false;
@@ -225,14 +221,12 @@
         }
     }
     async function turn_on_all() {
-        lst = document.getElementsByClassName('custom-control-input');
+        lst = document.getElementsByName(this.id);
         const success = await save_all.call(this,true);
         for (var i = 0; i < lst.length; i += 1) {
-            if (!lst[i].checked && this.id == lst[i].id.substring(lst[i].id.indexOf("_")+1)) {
+            if (!lst[i].checked) {
                 if (success) {
-                    document.getElementById(`td${lst[i].id}`).bgColor = "F3FDFF";
-                    document.getElementById(`font${lst[i].id}`).color = "5F747B";
-                    document.getElementById(`font${lst[i].id}`).innerHTML = "已订阅";
+                    change_single_status(lst[i], "F3FDFF", "5F747B", "已订阅");
                     const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
                     num.textContent = Number(num.textContent) + 1;
                     lst[i].checked = true;
@@ -246,18 +240,14 @@
         if (!this.checked) {
             const success = await save_subscribe_status.call(this, false);
             if (success) {
-                document.getElementById(`td${this.id}`).bgColor = "FFFFFF";
-                document.getElementById(`font${this.id}`).color = "E1E1E1";
-                document.getElementById(`font${this.id}`).innerHTML = "未订阅";
+                change_single_status(this, "FFFFFF", "E1E1E1", "未订阅");
                 num.textContent = Number(num.textContent) - 1;
             }
             else this.checked = true;
         } else {
             const success = await save_subscribe_status.call(this, true);
             if (success) {
-                document.getElementById(`td${this.id}`).bgColor = "F3FDFF";
-                document.getElementById(`font${this.id}`).color = "5F747B";
-                document.getElementById(`font${this.id}`).innerHTML = "已订阅";
+                change_single_status(this, "F3FDFF", "5F747B", "已订阅");
                 num.textContent = Number(num.textContent) + 1;
             }
             else this.checked = false;
@@ -300,6 +290,20 @@
     }
     function disable(id){
         document.getElementById(id).disabled = 'disabled'
+    }
+    function change_single_status(cell, bgcol, col, stat) {
+        /*
+        该函数用于在用户切换订阅状态时，改变前端的呈现。
+            cell：订阅状态单元格所在的input标签
+            bgcol：订阅状态单元格的背景色
+            col：订阅状态单元格中字体的颜色
+            stat：订阅状态单元格中的内容(已订阅/未订阅)
+        */
+        const sub_status_td = cell.parentNode.parentNode;  //订阅状态所在单元格的td标签
+        const sub_status_font = cell.nextElementSibling.childNodes[1];  //订阅状态的font标签，标记颜色与内容
+        sub_status_td.bgColor = bgcol;      
+        sub_status_font.color = col;      
+        sub_status_font.innerHTML = stat;   
     }
 </script>
 {% endblock %}
