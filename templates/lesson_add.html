@@ -38,7 +38,7 @@
                         <div class="d-flex justify-content-between">
                             <div>
                                 {% if edit %}
-                                    <h4>修改单次课程</h4>
+                                    <h4>修改课程</h4>
                                 {% else %}
                                     <h4>新增单次课程</h4>
                                 {% endif %}            
@@ -59,6 +59,9 @@
                             <div id="basic-info">
                                 <p>
                                     <b>基本信息</b>
+                                    {% if edit and course_time_tag %}
+                                    <label><font color="#FF0000">[本活动为长期定时活动]</font></label>
+                                    {% endif %}
                                 </p>
                                 <div class="form-group">
                                     <label>课程活动名称</label>
