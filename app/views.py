@@ -428,25 +428,25 @@ def stuinfo(request, name=None):
             # 把当前学期的活动去除
             course_me_past = (
                 course_me.exclude(
-                    year=int(local_dict["semester_data"]["year"]), 
-                    semester=local_dict["semester_data"]["semester"])
+                    year=CURRENT_ACADEMIC_YEAR, 
+                    semester=Semester.now())
             )
 
             # 无效学时，在前端呈现
             course_no_use = (
                 course_me_past
                 .filter(total_hours__lt=8)
-                .exclude(year=20, semester=Semester.FALL, total_hours__gte=6)
-                .exclude(year=21, semester=Semester.SPRING, total_hours__gte=6)
+                .exclude(year=2020, semester=Semester.FALL, total_hours__gte=6)
+                .exclude(year=2021, semester=Semester.SPRING, total_hours__gte=6)
             )
             
             # 特判，需要一定时长才能计入总学时
             course_me_past = (
                 course_me_past
-                .exclude(year=20, semester=Semester.FALL, total_hours__lt=6)
-                .exclude(year=21, semester=Semester.SPRING, total_hours__lt=6)
-                .exclude(year=21, semester=Semester.FALL, total_hours__lt=8) # 21秋开始，需要至少8学时
-                .exclude(year__gt=21, total_hours__lt=8)
+                .exclude(year=2020, semester=Semester.FALL, total_hours__lt=6)
+                .exclude(year=2021, semester=Semester.SPRING, total_hours__lt=6)
+                .exclude(year=2021, semester=Semester.FALL, total_hours__lt=8) # 21秋开始，需要至少8学时
+                .exclude(year__gt=2021, total_hours__lt=8)
             )
 
             course_me_past = course_me_past.order_by('year', '-semester')
@@ -638,6 +638,7 @@ def orginfo(request, name=None):
         # 下面是小组信息
 
         org = Organization.objects.activated().get(oname=name)
+        org_tags = org.tags.all()
 
     except:
         return redirect(message_url(wrong('该小组不存在!')))
