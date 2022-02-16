@@ -209,11 +209,10 @@ def showCourseActivity(request):
         cancel_all = False
         # 获取待取消的活动
         try:
-            aid = request.POST.get("cancel-action")
-            if not aid:
-                aid = request.POST.get("cancel-all")
+            aid = int(request.POST.get("cancel-action"))
+            post_type = str(request.POST.get("post_type"))
+            if post_type == "cancel_all":
                 cancel_all = True
-            aid = int(aid)
             activity = Activity.objects.get(id=aid)
         except:
             return redirect(message_url(wrong('遇到不可预料的错误。如有需要，请联系管理员解决!'), request.path))
