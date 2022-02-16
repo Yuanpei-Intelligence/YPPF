@@ -566,25 +566,16 @@ def send_message_check(me, request):
     if len(title) == 0:
         return wrong("不能不写通知的标题！补起来！")
     elif len(title) > 10:
-        my_re = re.compile(r'[A-Za-z]', re.S)
-        res = re.findall(my_re, title)
-        if len(res):  # title含有英文字符，每个单词算作一个字
-            flag = False
-            new_len = 0  # 重新计算title长度
-            for i in list(title):
-                if i.isalpha():  # 当前字符是英文字符，按单词处理
-                    if not flag:
-                        new_len += 1
-                        flag = True
-                else:
-                    new_len += 1
-                    if flag:
-                        flag = False
-            if new_len > 10:
-                return wrong("通知的标题不能超过10个字！不然发出来的通知会很丑！") 
-        else:  # title不含英文字符
-            return wrong("通知的标题不能超过10个字！不然发出来的通知会很丑！")
-
+        new_len = 0
+        for i in list(title):
+            inside_code=ord(i)
+            delta = 1
+            if inside_code >= 32 and inside_code <= 126:  # 半角字符
+                if not (i >= u'\u4e00' and i <=u'\u9fa5'):  # 不是汉字
+                    delta = 0.5
+            new_len += delta
+        if new_len > 10:
+            return wrong("通知的标题不能超过10个字！不然发出来的通知会很丑！") 
 
     if len(url) == 0:
         url = None
