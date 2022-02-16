@@ -230,9 +230,9 @@ def modify_course_activity(request, activity):
     notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
 
 
-def cancel_course_activity(request, activity):
+def cancel_course_activity(request, activity, cancel_all=False):
     '''
-    取消单次课程活动，是cancel_activity的简化版，在聚合页面被调用
+    取消课程活动，是cancel_activity的简化版，在聚合页面被调用
 
     在聚合页面中，应确保activity是课程活动，并且应检查activity.status，
     如果不是WAITING或PROGRESSING，不应调用本函数
@@ -276,6 +276,10 @@ def cancel_course_activity(request, activity):
 
     activity.save()
 
+    #取消该时段所有活动！
+    if cancel_all:
+        activity.course_time.end_week = activity.course_time.cur_week - 1
+        activity.course_time.save()
 
 def remaining_willingness_point(user):
     """
