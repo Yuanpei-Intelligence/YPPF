@@ -12,9 +12,18 @@ from app.models import (
     Participant,
     Notification,
     Position,
+<<<<<<< HEAD
     PageLog,
+=======
+    Course,
+    CourseTime
 )
-from app.activity_utils import changeActivityStatus
+from app.activity_utils import (
+    changeActivityStatus,
+    notifyActivity,
+    notification_create
+>>>>>>> d926669ca48030dcba6f5a0307311c87ea6f4953
+)
 from app.notification_utils import bulk_notification_create, notification_status_change
 from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
 from app import log
@@ -159,6 +168,91 @@ def get_weather():
         log.operation_writer(SYSTEM_LOG, "天气更新成功", "scheduler_func[get_weather]")
         return weather_dict
 
+def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
+    """
+    添加每周的课程活动
+    """
+    course = Course.objects.get(id=course_id)
+    examine_teacher = NaturalPerson.objects.get(
+    name=get_setting("course/audit_teacher"), identity=NaturalPerson.Identity.TEACHER)
+    week_time = CourseTime.objects.get(id=weektime_id)
+    start_time = week_time.start+timedelta(days=7*cur_week)
+    end_time = week_time.end+timedelta(days=7*cur_week)
+    #当前课程在学期已举办的活动
+    conducted_num = Activity.objects.activated().filter(organization_id=course.organization,
+                                                        status=Activity.ActivityCategory.COURSE,
+                                                        course_time__isnull=False).count()
+    #发起活动，并设置报名                                                    
+    with transaction.atomic():
+        activity = Activity.objects.create(
+            title=str(course.name)+f'第{conducted_num+1}次课',
+            organization_id=course.organization,
+            examine_teacher=examine_teacher,
+            location=course.classroom,
+            capacity=course.capacity,
+            start=start_time,
+            end=end_time,
+            category=Activity.ActivityCategory.COURSE
+        )
+        activity.status = Activity.Status.WAITING
+        activity.need_checkin = True  # 需要签到
+        activity.recorded = True
+        activity.course_time = week_time
+        activity.save()
+
+        # 选课人员自动报名活动
+        person_pos = Position.objects.activated().filter(org=course.organization)
+        members = NaturalPerson.objects.filter(
+            id__in=person_pos.values("person")
+        )
+        for member in members:
+            participant = Participant.objects.create(
+                activity_id=activity, person_id=member)
+            participant.status = Participant.AttendStatus.APLLYSUCCESS
+            participant.save()
+
+    # 通知参与成员,创建定时任务并修改活动状态
+    notifyActivity(activity.id, "newActivity")
+
+    scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
+                      run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
+    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.PROGRESSING}",
+                      run_date=activity.start, args=[activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING], replace_existing=True)
+    scheduler.add_job(changeActivityStatus, "date", id=f"activity_{activity.id}_{Activity.Status.END}",
+                      run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END], replace_existing=True)
+
+    notification_create(
+        receiver=examine_teacher.person_id,
+        sender=course.organization.organization_id,
+        typename=Notification.Type.NEEDDO,
+        title=Notification.Title.VERIFY_INFORM,
+        content="您有一个活动待审批",
+        URL=f"/examineActivity/{activity.id}",
+        relate_instance=activity,
+        publish_to_wechat=True,
+        publish_kws={"app": WechatApp.AUDIT},
+    )
+
+
+def longterm_launch_course():
+    """
+    定时发起长期课程活动
+    提前一周发出课程，一般是在本周课程活动结束时发出
+    """
+    courses = Course.objects.activated().filter(status=Course.Status.END)
+    for course in courses:
+        for week_time in course.time_set.all():
+            cur_week = week_time.cur_week
+            end_week = week_time.end_week
+            if cur_week <= end_week:    #   end_week默认16周，允许助教修改
+                #提前6天发布
+                due_time = week_time.end + timedelta(days=6*cur_week)  
+                if due_time - timedelta(days=6) < datetime.now() < due_time:
+                    add_week_course_activity(course.id, week_time.id, cur_week)
+                    week_time.cur_week += 1
+                    week_time.save()
+
+
 
 def update_active_score_per_day(days=14):
     '''每天计算用户活跃度， 计算前days天（不含今天）内的平均活跃度'''
@@ -209,6 +303,13 @@ def start_scheduler(with_scheduled_job=True, debug=False):
                               "cron",
                               id=current_job,
                               hour=1,
+            current_job = "courseWeeklyActivitylauncher"
+            if debug:
+                print(f"adding scheduled job '{current_job}'")
+            scheduler.add_job(longterm_launch_course,
+                              "interval",
+                              id=current_job,
+                              minutes=5,
                               replace_existing=True)
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"
