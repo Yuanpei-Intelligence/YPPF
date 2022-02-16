@@ -30,7 +30,6 @@ from datetime import datetime, timedelta
 
 from django.db.models import Q
 from django.contrib.auth.models import User
-from django.db import transaction
 
 __all__ = [
     'find_max_oname',
@@ -40,6 +39,7 @@ __all__ = [
     'update_pos_application',
     'make_relevant_notification',
     'send_message_check',
+    'get_tags',
 ]
 
 
@@ -70,13 +70,11 @@ def accept_modifyorg_submit(application): #同意申请，假设都是合法操�
                                       introduction=application.introduction,
                                       avatar=application.avatar)
 
-    for person in NaturalPerson.objects.all():
-        org.unsubscribers.add(person)
-    with transaction.atomic():
-        for tag in application.tags.split(';'):
-            if tag:
-                org.tags.add(OrganizationTag.objects.get(name=tag))
-    org.save()
+    # 反向关联管理器可以使用set方法一次性设置，且设置被自动提交，无需save
+    org.unsubscribers.set(NaturalPerson.objects.activated().all())
+    org_tags = get_tags(application.tags)
+    org.tags.set(org_tags)
+    # org.save()
     charger = get_person_or_org(application.pos)
     pos = Position.objects.create(person=charger,
                                   org=org,
@@ -643,9 +641,9 @@ def send_message_check(me, request):
     return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了!")
 
 
-def get_tags(application):
-    tag_list = []
-    for tag in application.tags.split(";"):
-        if tag:
-            tag_list.append(OrganizationTag.objects.get(name=tag))
+def get_tags(tag_names: str):
+    '''返回Tag对象的list'''
+    if isinstance(tag_names, str):
+        tag_names = [tag_name for tag_name in tag_names.split(";") if tag_name]
+    tag_list = list(OrganizationTag.objects.filter(name__in=tag_names))
     return tag_list

@@ -221,9 +221,10 @@ def modifyOrganization(request):
     org_types = OrganizationType.objects.order_by("-otype_id").all()  # 当前小组类型，前端展示需要
     former_img = Organization().get_user_ava()
     all_tags = list(OrganizationTag.objects.all())
-    org_tags = get_tags(application) if not is_new_application else []
+    org_tags = []
     if not is_new_application:
         org_type_list[application.otype]['selected'] = True
+        org_tags = get_tags(application.tags)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="小组申请详情")
     return render(request, "modify_organization.html", locals())

@@ -1,16 +1,13 @@
+from email.policy import default
 from django.db import models, transaction
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
 from django.db.models import Q
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
-<<<<<<< HEAD
 from app.constants import *
-=======
-from app.constants import get_setting
 from boottest import local_dict
 from django.conf import settings
->>>>>>> d926669ca48030dcba6f5a0307311c87ea6f4953
 from random import choice
 
 
@@ -1066,8 +1063,8 @@ class ModifyOrganization(CommentBase):
         REFUSED = (3, "已拒绝")
 
     status = models.SmallIntegerField(choices=Status.choices, default=0)
-    tags = models.CharField(max_length=100, default='')
-    
+    tags = models.CharField(max_length=100, default='', blank=True)
+
     def __str__(self):
         # YWolfeee: 不认为应该把类型放在如此重要的位置
         # return f'{self.oname}{self.otype.otype_name}'
@@ -1389,7 +1386,7 @@ class Course(models.Model):
         WAITING = (1, "未开始选课")
         STAGE1 = (2, "预选")
         DRAWING = (3, "抽签中")
-        STAGE2 = (4, "补退选")  
+        STAGE2 = (4, "补退选")
         SELECT_END = (5, "选课结束")
         END = (6, "已结束")
 
@@ -1413,7 +1410,7 @@ class Course(models.Model):
     # 暂时只允许上传一张图片
     photo = models.ImageField(verbose_name="宣传图片",
                               upload_to=f"course/photo/%Y/",
-                              blank=True)
+                              blank=True,default="/static/assets/img/announcepics/1.JPG")
 
     # 课程群二维码
     QRcode = models.ImageField(upload_to=f"course/QRcode/%Y/",
