@@ -131,12 +131,8 @@
                                                                         <div class="modal-footer">
                                                                             <form method="POST" id="cancel-details">
                                                                                 <input type="hidden" name="cancel-action" value="{{act.id}}">
-                                                                                <button type="button" class="btn btn-primary" onclick="this.form.submit()" data-dismiss="modal">仅取消当前活动</button>
-                                                                    
-                                                                            </form>
-                                                                            <form method="POST" id="cancel-details">
-                                                                                <input type="hidden" name="cancel-all" value="{{act.id}}">
-                                                                                <button type="button" class="btn btn-secondary" onclick="this.form.submit()" data-dismiss="modal">取消该时段所有活动</button>
+                                                                                <button type="button" class="btn btn-primary" onclick="this.form.submit()" name="post_type" value="cancel_only" data-dismiss="modal">仅取消当前活动</button>
+                                                                                <button type="button" class="btn btn-secondary" onclick="this.form.submit()" name="post_type" value="cancel_all"data-dismiss="modal">取消该时段所有活动</button>
                                                                             </form>
                                                                         </div>
                                                                         {% else %}

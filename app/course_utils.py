@@ -11,6 +11,7 @@ change_course_status: 改变课程的选课阶段
 remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 """
+from pymysql import NULL
 from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
@@ -43,7 +44,7 @@ from app.wechat_send import WechatApp, WechatMessageLevel
 
 from random import sample
 from collections import Counter
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from django.contrib.auth.models import User
 from django.db import transaction
@@ -91,6 +92,7 @@ def course_activity_base_check(request):
     # 默认需要签到
     context["need_checkin"] = True
 
+    context["post_type"] = str(request.POST.get("post_type"))
     return context
 
 
@@ -204,6 +206,28 @@ def modify_course_activity(request, activity):
     activity.end = context["end"]
     activity.save()
 
+    #修改所有该时段的时间、地点
+    course_time = activity.course_time
+    if context["post_type"] == "modify_all" and course_time:
+        course_time = CourseTime.objects.get(id=course_time.id)
+        org = activity.organization_id
+        course = Course.objects.activated().filter(organization=org)
+        course = course.first()
+        schedule_start = course_time.start
+        schedule_end = course_time.end
+        schedule_start += timedelta(
+            days=(context["start"].weekday()-schedule_start.weekday()))
+        schedule_start = schedule_start.replace(
+            hour=context["start"].hour, minute=context["start"].minute, second=context["start"].second)
+        schedule_end += timedelta(
+            days=(context["end"].weekday()-schedule_end.weekday()))
+        schedule_end = schedule_end.replace(
+            hour=context["end"].hour, minute=context["end"].minute, second=context["end"].second)
+        course_time.start = schedule_start
+        course_time.end = schedule_end
+        course.classroom = context["location"]
+        course.save()
+        course_time.save()
     # 目前只要编辑了活动信息，无论活动处于什么状态，都通知全体选课同学
     # if activity.status != Activity.Status.APPLYING and activity.status != Activity.Status.WAITING:
     #     return

@@ -141,10 +141,34 @@
                                 </div>                                
                             </div>
                             {% if edit %}
+                                {%if activity.course_time%}
+                                
+                                <div align="center">
+                                    <table>
+                                        <tr>
+                                            <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                     name="post_type"
+                                                     value="modify_only"
+                                                    onclick="return confirm('确认修改活动信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')""
+                                            >仅修改当前活动
+                                            </button>
+                                        </tr>
+                                        <tr>
+                                            <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                     name="post_type"
+                                                    value="modify_all"
+                                                    onclick="return confirm('确认修改活动信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')""
+                                            >修改当前时段所有活动
+                                            </button>
+                                        </tr>
+                                    </table>
+                                </div>
+                                {% else %}
                                 <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" 
                                         onclick="return confirm('确认修改活动信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
                                     修改课程信息
                                 </button>
+                                {% endif %}
                             {% else %}
                                 <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" 
                                         onclick="return confirm('确认提交活动信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')">
