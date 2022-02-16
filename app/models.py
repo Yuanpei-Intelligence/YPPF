@@ -1584,7 +1584,7 @@ class Feedback(CommentBase):
         UNSOLVED = (2, "无法解决")
         
     issue_status = models.SmallIntegerField(
-        '发布状态', choices=IssueStatus.choices
+        '发布状态', choices=IssueStatus.choices, default=IssueStatus.DRAFTED
     )
     read_status = models.SmallIntegerField(
         '阅读情况', choices=ReadStatus.choices, default=ReadStatus.UNREAD
@@ -1603,4 +1603,6 @@ class Feedback(CommentBase):
         PRIVATE = (1, '未公开')
         WITHDRAWAL = (2, '撤销公开')
     
-    public_status = models.SmallIntegerField('公开状态', choices=PublicStatus.choices)
+    public_status = models.SmallIntegerField(
+        '公开状态', choices=PublicStatus.choices, default=PublicStatus.PRIVATE
+    )
