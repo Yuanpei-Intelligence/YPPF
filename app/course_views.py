@@ -90,7 +90,7 @@ def editCourseActivity(request, aid):
     # 前端使用量
     html_display["applicant_name"] = me.oname
     html_display["app_avatar_path"] = me.get_user_ava()
-    bar_display = utils.get_sidebar_and_navbar(request.user, "修改单次课程活动")
+    bar_display = utils.get_sidebar_and_navbar(request.user, "修改课程活动")
 
     # 前端使用量，均可编辑
     title = utils.escape_for_templates(activity.title)
@@ -99,6 +99,9 @@ def editCourseActivity(request, aid):
     end = activity.end.strftime("%Y-%m-%d %H:%M")
     # introduction = escape_for_templates(activity.introduction) # 暂定不需要简介
     edit = True  # 前端据此区分是编辑还是创建
+    
+    # 判断本活动是否为长期定时活动
+    course_time_tag = (activity.course_time is not None)
 
     return render(request, "lesson_add.html", locals())
 
@@ -143,6 +146,7 @@ def addSingleCourseActivity(request):
     html_display["app_avatar_path"] = me.get_user_ava()
     bar_display = utils.get_sidebar_and_navbar(request.user, "发起单次课程活动")
     edit = False  # 前端据此区分是编辑还是创建
+    course_time_tag = False
 
     return render(request, "lesson_add.html", locals())
 
