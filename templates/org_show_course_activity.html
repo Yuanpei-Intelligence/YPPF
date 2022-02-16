@@ -70,7 +70,7 @@
 
                                 <div class="tab-content" id="activityTabContent">
                                     <div id="futureActivity" class="tab-pane active">
-                                        <div class="bio-skill-box layout-top-spacing" style="max-height: 75vh; overflow: scroll;">
+                                        <div class="bio-skill-box layout-top-spacing">
                                             {% if future_activity_list|length == 0 %}
                                             <p style="text-align: center;">没有未开始的课程活动！</p>
                                             {% endif %}
@@ -165,7 +165,7 @@
                                     </div>
 
                                     <div id="finishedActivity" class="tab-pane fade">
-                                        <div class="bio-skill-box layout-top-spacing" style="max-height: 75vh; overflow: scroll;">
+                                        <div class="bio-skill-box layout-top-spacing">
                                             {% if finished_activity_list|length == 0 %}
                                             <p style="text-align: center;">没有已结束的课程活动！</p>
                                             {% endif %}
