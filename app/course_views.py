@@ -496,7 +496,7 @@ def viewCourse(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-#@log.except_captured(EXCEPT_REDIRECT, source='course_views[addCourse]', record_user=True)
+@log.except_captured(EXCEPT_REDIRECT, source='course_views[addCourse]', record_user=True)
 def addCourse(request, cid=None):
     """
     发起课程页
