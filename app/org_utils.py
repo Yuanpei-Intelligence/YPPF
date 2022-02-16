@@ -562,20 +562,16 @@ def send_message_check(me, request):
         return wrong("请填写通知的内容！")
     elif len(content) > 225:
         return wrong("通知的长度不能超过225个字！你超过了！")
+    
+    def judge_half_size(x):  # 半角字符且不是汉字
+        return ord(x) >= 32 and ord(x) <= 126 and not(x >= u'\u4e00' and x <= u'\u9fa5')
 
     if len(title) == 0:
         return wrong("不能不写通知的标题！补起来！")
     elif len(title) > 10:
-        new_len = 0
-        for i in list(title):
-            inside_code=ord(i)
-            delta = 1
-            if inside_code >= 32 and inside_code <= 126:  # 半角字符
-                if not (i >= u'\u4e00' and i <=u'\u9fa5'):  # 不是汉字
-                    delta = 0.5
-            new_len += delta
+        new_len = sum([0.5 if judge_half_size(x) else 1 for x in list(title)])
         if new_len > 10:
-            return wrong("通知的标题不能超过10个字！不然发出来的通知会很丑！") 
+            return wrong("通知的标题不能超过10个全角字符！不然发出来的通知会很丑！") 
 
     if len(url) == 0:
         url = None
