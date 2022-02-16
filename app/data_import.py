@@ -691,6 +691,7 @@ def load_tags_for_old_org(request):
 
 
 def load_feedback():
+    '''该函数用于导入反馈详情的数据(csv)'''
     try:
         feedback_df = load_file("feedbackinf.csv")
     except:
@@ -716,18 +717,18 @@ def load_feedback():
             issue_status_dict = {"草稿": 0, "已发布": 1, "已删除": 2,}
             read_status_dict = {"已读": 0, "未读": 1,}
             solve_status_dict = {"已解决": 0, "解决中": 1, "无法解决": 2,}
-            public_status_dict = {"公开": 0, "未公开": 1, "撤销公开": 2,}
+            public_status_dict = {"公开": 0, "未公开": 1, "撤销公开": 2, "强制不公开": 3,}
 
-            assert feedback_dict["issue_status"] in ("草稿", "已发布", "已删除")
+            assert feedback_dict["issue_status"] in issue_status_dict.keys()
             feedback.issue_status = issue_status_dict[feedback_dict["issue_status"]]
 
-            assert feedback_dict["read_status"] in ("已读", "未读")
+            assert feedback_dict["read_status"] in read_status_dict.keys()
             feedback.read_status = read_status_dict[feedback_dict["read_status"]]
 
-            assert feedback_dict["solve_status"] in ("已解决", "解决中", "无法解决")
+            assert feedback_dict["solve_status"] in solve_status_dict.keys()
             feedback.solve_status = solve_status_dict[feedback_dict["solve_status"]]
 
-            assert feedback_dict["public_status"] in ("公开", "未公开", "撤销公开")
+            assert feedback_dict["public_status"] in public_status_dict.keys()
             feedback.public_status = public_status_dict[feedback_dict["public_status"]]
 
             if feedback_dict["publisher_public"].lower() == "true":
@@ -761,11 +762,12 @@ def load_feedback():
                     f"（1）issue_status：草稿 / 已发布 / 已删除",
                     f"（2）read_status：已读 / 未读",
                     f"（3）solve_status：已解决 / 解决中 / 无法解决",
-                    f"（4）public_status：公开 / 未公开 / 撤销公开"
+                    f"（4）public_status：公开 / 未公开 / 撤销公开 / 强制不公开"
                     ))
 
 
 def load_feedback_type():
+    '''该函数用于导入反馈类型的数据(csv)'''
     try:
         feedback_type_df = load_file("feedbacktype.csv")
     except:

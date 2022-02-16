@@ -1564,7 +1564,7 @@ class Feedback(CommentBase):
     
     type = models.ForeignKey(FeedbackType, on_delete=models.CASCADE)
     title = models.CharField("标题", max_length=30, blank=False)
-    content = models.CharField("内容", max_length=800, blank=False)
+    content = models.TextField("内容", blank=False)
     nickname = models.CharField("反馈者昵称", max_length=12, blank=False)
     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     org = models.ForeignKey(Organization, on_delete=models.CASCADE)
@@ -1581,7 +1581,7 @@ class Feedback(CommentBase):
     class SolveStatus(models.IntegerChoices):
         SOLVED = (0, "已解决")
         SOLVING = (1, "解决中")
-        UNSOLVED = (2, "无法解决")
+        UNSOLVABLE = (2, "无法解决")
         
     issue_status = models.SmallIntegerField(
         '发布状态', choices=IssueStatus.choices, default=IssueStatus.DRAFTED
@@ -1602,6 +1602,7 @@ class Feedback(CommentBase):
         PUBLIC = (0, '公开')
         PRIVATE = (1, '未公开')
         WITHDRAWAL = (2, '撤销公开')
+        FORCE_PRIVATE = (3, '强制不公开')
     
     public_status = models.SmallIntegerField(
         '公开状态', choices=PublicStatus.choices, default=PublicStatus.PRIVATE
