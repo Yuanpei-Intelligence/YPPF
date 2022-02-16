@@ -37,12 +37,3 @@ class MySHA256Hasher(object):
     def verify(self, identifier, encoded):
         encoded_2 = self.encode(identifier)
         return encoded.upper() == encoded_2.upper()
-
-
-class MyPBKDF2PasswordHasher(PBKDF2PasswordHasher):
-    """
-    A subclass of PBKDF2PasswordHasher that uses 100 times less iterations.
-    """
-
-    iterations = PBKDF2PasswordHasher.iterations // 100
-
