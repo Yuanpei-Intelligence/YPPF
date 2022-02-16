@@ -1313,7 +1313,7 @@ class CourseManager(models.Manager):
         ).exclude(status=Course.Status.ABORT)
 
     def selected(self, person: NaturalPerson):
-        # 返回当前学生所选的所有课程
+        # 返回当前学生所选的所有课程，选课失败也要算入
         # participant_set是对CourseParticipant的反向查询
         return self.activated().filter(participant_set__person=person,
                                        participant_set__status__in=[
@@ -1324,11 +1324,14 @@ class CourseManager(models.Manager):
 
 
     def unselected(self, person: NaturalPerson):
-        # 返回当前学生没选的所有课程
-        return self.activated().filter(
-            Q(participant_set=None)
-            | (Q(participant_set__person=person)
-               & Q(participant_set__status=CourseParticipant.Status.UNSELECT)))
+        # 返回当前学生没选上的所有课程
+        return self.activated().exclude(participant_set__person=person,
+                                        participant_set__status__in=[
+                                           CourseParticipant.Status.SELECT,
+                                           CourseParticipant.Status.SUCCESS,
+                                        ])
+        
+
 
 
 class Course(models.Model):
@@ -1376,7 +1379,7 @@ class Course(models.Model):
     class Status(models.IntegerChoices):
         # 预选前和预选结束到补退选开始都是WAITING状态
         ABORT = (0, "已撤销")
-        WAITING = (1, "未开始选课")
+        WAITING = (1, "未开始")
         STAGE1 = (2, "预选")
         DRAWING = (3, "抽签中")
         STAGE2 = (4, "补退选")
@@ -1418,6 +1421,10 @@ class Course(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_photo_path(self):
+        # 假设课程的宣传图片一定存在
+        return MEDIA_URL + str(self.photo)
 
 
 class CourseTime(models.Model):
