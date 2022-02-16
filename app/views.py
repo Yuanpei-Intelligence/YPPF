@@ -638,6 +638,7 @@ def orginfo(request, name=None):
         # 下面是小组信息
 
         org = Organization.objects.activated().get(oname=name)
+        org_tags = org.tags.all()
 
     except:
         return redirect(message_url(wrong('该小组不存在!')))

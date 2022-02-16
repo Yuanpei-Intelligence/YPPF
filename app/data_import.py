@@ -27,6 +27,7 @@ from datetime import datetime
 from boottest import local_dict
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
+from django.db import transaction
 
 
 def load_file(file):
@@ -646,5 +647,42 @@ def load_org_tag(request):
             )
         )
     OrganizationTag.objects.bulk_create(tag_list)
-    context = {"message": "导入组织类型标签信息成功！"}
+    context = {"message": "导入组织标签类型信息成功！"}
+    return render(request, "debugging.html", context)
+
+
+def load_tags_for_old_org(request):
+    if not request.user.is_superuser:
+        context = {"message": "请先以超级账户登录后台后再操作！"}
+        return render(request, "debugging.html", context)
+    try:
+        org_tag_def = load_file("oldorgtags.csv")
+    except:
+        context = {"message": "没有找到oldorgtags.csv,请确认该文件已经在test_data中。"}
+        return render(request, "debugging.html", context)
+    error_dict = {}
+    org_num = 0
+    for _, tag_dict in org_tag_def.iterrows():
+        org_num += 1
+        err = False
+        with transaction.atomic():
+            try:
+                useroj = Organization.objects.select_for_update().get(oname=tag_dict[0])
+                for tag in tag_dict[1:]:
+                    useroj.tags.add(OrganizationTag.objects.get(name=tag))
+            except Exception as e:
+                if not(type(tag)==float and math.isnan(tag)): # 说明不是因遍历至空单元格导致的异常
+                    error_dict[tag_dict[0]] = e
+                    err = True
+            if not err:  # 只有未出现异常，组织的标签信息才被保存
+                useroj.save()
+    context = {
+        "message": '<br/>'.join((
+                    f"共尝试导入{org_num}个组织的标签信息",
+                    f"导入成功的组织：{org_num - len(error_dict)}个",
+                    f"导入失败的组织：{len(error_dict)}个",
+                    f'错误原因：' if error_dict else ''
+                    ) + tuple(f'{org}：{err}' for org, err in error_dict.items())
+                    )
+        }
     return render(request, "debugging.html", context)

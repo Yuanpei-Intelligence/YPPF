@@ -24,6 +24,7 @@ from app.models import (
     Course,
     CourseTime,
     CourseParticipant,
+    CourseRecord,
     Semester,
 )
 from app.utils import get_person_or_org,if_image
@@ -40,6 +41,7 @@ from app.activity_utils import (
 from app.wechat_send import WechatApp, WechatMessageLevel
 
 from random import sample
+from collections import Counter
 from datetime import datetime, timedelta
 
 from django.contrib.auth.models import User
@@ -59,6 +61,8 @@ __all__ = [
     'change_course_status',
     'course_base_check',
     'create_course',
+    'cal_participate_num',
+    'check_post_and_modify',
 ]
 
 
@@ -682,6 +686,7 @@ def change_course_status(course_id, cur_status, to_status):
             with transaction.atomic():
                 Position.objects.bulk_create(positions)
 
+
 def str_to_time(stage: str):
     """
     将读取的字符串转换成时间
@@ -848,3 +853,53 @@ def create_course(request, course_id=None):
         context["warn_message"] = "创建课程成功！"
 
     return context
+
+
+def cal_participate_num(course: Course)-> Counter:
+    """
+    计算该课程对应组织所有成员的参与次数
+    return {Naturalperson.id:参与次数}
+    前端使用的时候直接读取字典的值就好了
+    """
+    org = course.organization
+    activities = Activity.objects.activated().filter(
+        organization_id=org,
+        status=Activity.Status.END,
+        category=Activity.ActivityCategory.COURSE,
+    )
+    all_participants = (
+        Participant.objects.activated(no_unattend=True)
+        .filter(activity_id__in=activities)
+    ).values_list("person_id", flat=True)
+    participate_num = Counter(all_participants)
+    return participate_num
+
+
+def check_post_and_modify(records, post_data):
+    """
+    records和post_data分别为原先和更新后的list
+    检查post表单是否可以为这个course对应的内容，
+    如果可以，修改学时
+    - 返回wrong|succeed
+    - 不抛出异常
+    """
+    try:
+        # 对每一条记录而言
+        for record in records:
+            # 选取id作为匹配键
+            key = str(record.person.id)
+            assert key in post_data.keys(), "提交的人员信息不匹配，请联系管理员！"
+
+            # 读取小时数
+            hours = post_data.get(str(key), -1)
+            assert float(hours) >= 0, "学时数据为负数，请检查输入数据！"
+            record.total_hours = float(hours)
+
+        CourseRecord.objects.bulk_update(records, ["total_hours"])
+        return succeed("修改学时信息成功！")
+    except AssertionError as e:
+        # 此时相当于出现用户应该知晓的信息
+        return wrong(str(e))
+    except:
+        return wrong("数据格式异常，请检查输入数据！")
+
