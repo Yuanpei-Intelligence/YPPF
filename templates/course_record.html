@@ -1,18 +1,22 @@
 {% extends "base.html" %}
 
-
-
 {% block mainpage %}
 
   <div id="content" class="main-content">   
-    {% if context.status == 1 %}
-    <div class="alert alert-warning  text-center">{{ context.message }}</div>
-    {% elif context.status == 2 %}
-    <div class="alert alert-success  text-center">{{ context.message }}</div>
+    {% if messages.warn_code == 1 %}
+    <div class="alert alert-warning  text-center">{{ messages.warn_message }}</div>
+    {% elif messages.warn_code == 2 %}
+    <div class="alert alert-success  text-center">{{ messages.warn_message }}</div>
     {% endif %}
     <div class="container">
       <div class="layout-top-spacing" style="text-align:center">
-        <div style="text-align:left;"> {% include 'help.html' %}</div> <br>
+
+        {% if bar_display.help_paragraphs %}
+        <div style="text-align:left;">
+          {% include 'help.html' %}
+        </div> <br>
+        {% endif %}
+
         <h3 class="text-primary" >
           {{course_info.year}}年{{course_info.semester}}{{course_info.course}}学时记录
           <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="" data-original-title="在服务器开启权限后，才可双击修改表格中的学时信息。">
@@ -65,7 +69,7 @@
                     
                   </tbody>
                 </table>
-                {% if not records_list  %}
+                {% if not records_list %}
                   <p style="text-align: center; vertical-align: middle;">没有任何记录!</p>
                 {% endif %}
                 </div>
