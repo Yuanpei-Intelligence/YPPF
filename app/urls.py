@@ -83,7 +83,7 @@ urlpatterns = [
     path("sendMessage/", org_views.sendMessage, name="sendMessage"),
     # path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"), 弃用多年
 ] + [
-    # 选课相关操作
+    # 发布选课相关操作
     path("addCourse/", course_views.addCourse, name="addCourse"),
     path("editCourse/<str:cid>", course_views.addCourse, name="editCourse"),
     # 课程相关操作
