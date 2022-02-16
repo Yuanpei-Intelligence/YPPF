@@ -11,7 +11,6 @@ change_course_status: 改变课程的选课阶段
 remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 """
-from pymysql import NULL
 from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
@@ -44,7 +43,7 @@ from app.wechat_send import WechatApp, WechatMessageLevel
 
 from random import sample
 from collections import Counter
-from datetime import date, datetime, timedelta
+from datetime import datetime, timedelta
 
 from django.contrib.auth.models import User
 from django.db import transaction
