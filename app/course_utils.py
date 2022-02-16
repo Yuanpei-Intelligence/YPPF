@@ -610,7 +610,7 @@ def str_to_time(stage:str):
                      record_args=True,
                      status_code=log.STATE_WARNING,
                      source='course_utils[change_course_status]')
-def change_course_status(to_status):
+def change_course_status(cur_status,to_status):
     """
     作为定时任务，在课程设定的时间改变课程的选课阶段
 
@@ -623,13 +623,27 @@ def change_course_status(to_status):
     """
 
     # 以下进行状态的合法性检查
+    if cur_status is not None:
+        if cur_status == Course.Status.WAITING:
+                assert to_status == Course.Status.STAGE1, \
+                f"不能从{cur_status}变更到{to_status}"
+        elif cur_status == Course.Status.STAGE1:
+            assert to_status == Course.Status.DRAWING, \
+            f"不能从{cur_status}变更到{to_status}"
+        elif cur_status == Course.Status.DRAWING:
+            assert to_status == Course.Status.STAGE2, \
+            f"不能从{cur_status}变更到{to_status}"
+        else:
+            raise AssertionError("选课已经结束，不能再变化状态")
+    else:
+        raise AssertionError("未提供当前状态，不允许进行选课状态修改")
+
     courses=Course.objects.activated()
     with transaction.atomic():
         #更新目标状态
         courses.update(status=to_status) 
         for course in courses:
-            print(course)
-            if to_status == Course.Status.WAITING:
+            if to_status == Course.Status.DRAWING:
                 # 预选结束，进行抽签
                 draw_lots(course)
             elif to_status == Course.Status.SELECT_END:
@@ -672,13 +686,13 @@ def register_selection():
 
     # 定时任务：修改课程状态
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_start",
-                      run_date=stage1_start, args=[Course.Status.STAGE1], replace_existing=True)
+                      run_date=stage1_start, args=[Course.Status.WAITING,Course.Status.STAGE1], replace_existing=True)
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_end",
-                      run_date=stage1_end, args=[Course.Status.DRAWING], replace_existing=True)
+                      run_date=stage1_end, args=[Course.Status.STAGE1,Course.Status.DRAWING], replace_existing=True)
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_start",
-                    run_date=stage2_start, args=[Course.Status.STAGE2], replace_existing=True)
+                    run_date=stage2_start, args=[Course.Status.DRAWING,Course.Status.STAGE2], replace_existing=True)
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_end",
-                    run_date=stage2_end, args=[Course.Status.SELECT_END], replace_existing=True)                
+                    run_date=stage2_end, args=[Course.Status.STAGE2,Course.Status.SELECT_END], replace_existing=True)                
     # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
 
 
