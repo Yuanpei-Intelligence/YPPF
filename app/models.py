@@ -1366,7 +1366,7 @@ class Course(models.Model):
     stage1_end = models.DateTimeField("预选结束时间", blank=True, null=True)
     stage2_start = models.DateTimeField("补退选开始时间", blank=True, null=True)
     stage2_end = models.DateTimeField("补退选结束时间", blank=True, null=True)
-        
+
     bidding = models.FloatField("意愿点价格", default=0.0)
 
     introduction = models.TextField("课程简介", blank=True, default="这里暂时没有介绍哦~")

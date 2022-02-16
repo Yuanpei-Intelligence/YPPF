@@ -603,7 +603,7 @@ def draw_lots(course):
                      record_args=True,
                      status_code=log.STATE_WARNING,
                      source='course_utils[change_course_status]')
-def change_course_status(cur_status,to_status):
+def change_course_status(cur_status, to_status):
     """
     作为定时任务，在课程设定的时间改变课程的选课阶段
 
@@ -626,14 +626,17 @@ def change_course_status(cur_status,to_status):
         elif cur_status == Course.Status.DRAWING:
             assert to_status == Course.Status.STAGE2, \
             f"不能从{cur_status}变更到{to_status}"
+        elif cur_status == Course.Status.STAGE2:
+            assert to_status == Course.Status.SELECT_END, \
+            f"不能从{cur_status}变更到{to_status}"
         else:
             raise AssertionError("选课已经结束，不能再变化状态")
     else:
         raise AssertionError("未提供当前状态，不允许进行选课状态修改")
-    courses = Course.objects.activated()
+    courses = Course.objects.activated().filter(status=cur_status)
     with transaction.atomic():
         #更新目标状态
-        courses.update(status=to_status)
+        courses.select_for_update().update(status=to_status)
         for course in courses:
             if to_status == Course.Status.DRAWING:
                 # 预选结束，进行抽签

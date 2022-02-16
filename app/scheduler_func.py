@@ -186,6 +186,8 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
     # 发起活动，并设置报名
     with transaction.atomic():
         week_time = CourseTime.objects.select_for_update().get(id=weektime_id)
+        if week_time.cur_week != cur_week:
+            return False
         start_time = week_time.start + timedelta(days=7 * cur_week)
         end_time = week_time.end + timedelta(days=7 * cur_week)
         activity = Activity.objects.create(
@@ -234,11 +236,11 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
         sender=course.organization.organization_id,
         typename=Notification.Type.NEEDDO,
         title=Notification.Title.VERIFY_INFORM,
-        content="您有一个活动待审批",
+        content="新增了一个已审批的课程活动",
         URL=f"/examineActivity/{activity.id}",
         relate_instance=activity,
         publish_to_wechat=True,
-        publish_kws={"app": WechatApp.AUDIT},
+        publish_kws={"app": WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
     )
 
 
@@ -316,7 +318,7 @@ def start_scheduler(with_scheduled_job=True, debug=False):
             scheduler.add_job(longterm_launch_course,
                               "interval",
                               id=current_job,
-                              minutes=1,    #TODO 上线之前可修改成每1h一发
+                              minutes=5,
                               replace_existing=True)
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"
