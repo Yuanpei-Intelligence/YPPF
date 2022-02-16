@@ -24,6 +24,15 @@
         "$STUID1$",
         "$STUID2$"
     ],
+    "underground": {
+        "system_log":   "Appoint_Sys",
+        "url":{
+            "img_url":      "http://$THIS_IP$/$IMG_PATH$"
+        },
+        "token":{
+            "display":      "$DISPLAY_TOKEN$"
+        }
+    },
     "weather_api_key": "$API_KEY$",
     "default_weather": {
         "modify_time": "2021-09-01 10:59:07.389086",
@@ -88,7 +97,11 @@
     },
     "course": {
         "type_name": "书院课程",
-        "audit_teacher": "YPadmin"
+        "audit_teacher": "YPadmin",
+        "yx_election_start":"2022-02-16 10:00:00",
+        "yx_election_end":"2022-02-16 12:00:00",
+        "btx_election_start":"2022-02-16 12:00:00",
+        "btx_election_end":"2022-02-16 14:00:00"
     },
     "audit_teacher": {
         "Funds": "YPadmin"
