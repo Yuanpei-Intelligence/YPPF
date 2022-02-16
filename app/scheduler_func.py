@@ -33,6 +33,15 @@ from app.scheduler import scheduler
 
 default_weather = get_config('default_weather', default=None)
 
+__all__ = [
+    'send_to_persons',
+    'send_to_orgs',
+    'distribute_YQPoint_per_month',
+    'changeAllActivities',
+    'get_weather',
+    'update_active_score_per_day',
+]
+
 
 def send_to_persons(title, message, url='/index/'):
     sender = User.objects.get(username='zz00000')
@@ -183,6 +192,7 @@ def start_scheduler(with_scheduled_job=True, debug=False):
     - with_scheduled_job: 添加计划任务
     - debug: 提供具体的错误信息
     '''
+    return NotImplementedError
     # register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
     # 但好像非服务器版本有问题??
     if debug: print("———————————————— Scheduler:   Debug ————————————————")

@@ -1,9 +1,6 @@
 # YWolfeee:
 # 本py文件保留所有需要与scheduler交互的函数。
 from Appointment import global_info
-from apscheduler.schedulers.background import BackgroundScheduler
-from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
-
 
 from Appointment.models import Participant, Room, Appoint, College_Announcement
 from django.http import JsonResponse, HttpResponse  # Json响应
@@ -23,13 +20,10 @@ scheduler_func.py是所有和scheduler定时任务发生交互的函数集合。
 如果需要实现新的函数，建议先详细阅读本py中其他函数的实现方式。
 '''
 
-# 定时任务生成器
-scheduler = BackgroundScheduler()
-scheduler.add_jobstore(DjangoJobStore(), "default")
+from boottest.scheduler import scheduler
 
 
 # 每周清除预约的程序，会写入logstore中
-@register_job(scheduler, 'cron', id='ontime_delete', day_of_week='sat', hour='3', minute="30", second='0', replace_existing=True)
 def clear_appointments():
     if global_info.delete_appoint_weekly:   # 是否清除一周之前的预约
         appoints_to_delete = Appoint.objects.filter(
@@ -40,7 +34,7 @@ def clear_appointments():
             appoints_to_delete.delete()
         except Exception as e:
             utils.operation_writer(global_info.system_log, "定时删除任务出现错误: "+str(e),
-                             "scheduler_func.clear_appointments", "Problem")
+                            "scheduler_func.clear_appointments", "Problem")
 
         # 写入日志
         utils.operation_writer(global_info.system_log, "定时删除任务成功", "scheduler_func.clear_appointments")
