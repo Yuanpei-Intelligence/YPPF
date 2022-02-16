@@ -9,12 +9,14 @@ from app.models import (
     Organization,
     TransferRecord,
     Activity,
+    ActivityPhoto,
     Participant,
     Notification,
     Position,
     PageLog,
     Course,
-    CourseTime
+    CourseTime,
+    Semester
 )
 from app.activity_utils import (
     changeActivityStatus,
@@ -172,15 +174,15 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
     course = Course.objects.get(id=course_id)
     examine_teacher = NaturalPerson.objects.get(
     name=get_setting("course/audit_teacher"), identity=NaturalPerson.Identity.TEACHER)
-    week_time = CourseTime.objects.get(id=weektime_id)
-    start_time = week_time.start+timedelta(days=7*cur_week)
-    end_time = week_time.end+timedelta(days=7*cur_week)
     #当前课程在学期已举办的活动
     conducted_num = Activity.objects.activated().filter(organization_id=course.organization,
                                                         status=Activity.ActivityCategory.COURSE,
                                                         course_time__isnull=False).count()
     #发起活动，并设置报名                                                    
     with transaction.atomic():
+        week_time = CourseTime.objects.select_for_update().get(id=weektime_id)
+        start_time = week_time.start+timedelta(days=7*cur_week)
+        end_time = week_time.end+timedelta(days=7*cur_week)
         activity = Activity.objects.create(
             title=str(course.name)+f'第{conducted_num+1}次课',
             organization_id=course.organization,
@@ -196,7 +198,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
         activity.recorded = True
         activity.course_time = week_time
         activity.save()
-
+        ActivityPhoto.objects.create(image=course.photo, type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
         # 选课人员自动报名活动
         person_pos = Position.objects.activated().filter(org=course.organization)
         members = NaturalPerson.objects.filter(
@@ -207,6 +209,8 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
                 activity_id=activity, person_id=member)
             participant.status = Participant.AttendStatus.APLLYSUCCESS
             participant.save()
+        week_time.cur_week += 1
+        week_time.save()
 
     # 通知参与成员,创建定时任务并修改活动状态
     notifyActivity(activity.id, "newActivity")
@@ -230,13 +234,16 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
         publish_kws={"app": WechatApp.AUDIT},
     )
 
-
 def longterm_launch_course():
     """
     定时发起长期课程活动
     提前一周发出课程，一般是在本周课程活动结束时发出
     """
-    courses = Course.objects.activated().filter(status=Course.Status.SELECT_END)
+    courses = Course.objects.filter(status=Course.Status.SELECT_END)
+    courses = courses.filter(
+            year=CURRENT_ACADEMIC_YEAR,
+            semester__contains=Semester.now().value,
+        ).exclude(status=Course.Status.ABORT)
     for course in courses:
         for week_time in course.time_set.all():
             cur_week = week_time.cur_week
@@ -246,8 +253,7 @@ def longterm_launch_course():
                 due_time = week_time.end + timedelta(days=6*cur_week)  
                 if due_time - timedelta(days=6) < datetime.now() < due_time:
                     add_week_course_activity(course.id, week_time.id, cur_week)
-                    week_time.cur_week += 1
-                    week_time.save()
+
 
 
 
@@ -307,7 +313,7 @@ def start_scheduler(with_scheduled_job=True, debug=False):
             scheduler.add_job(longterm_launch_course,
                               "interval",
                               id=current_job,
-                              minutes=5,
+                              minutes=1,    #TODO 上线之前可修改成每1h一发
                               replace_existing=True)
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"
