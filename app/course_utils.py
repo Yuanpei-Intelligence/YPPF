@@ -712,15 +712,17 @@ def course_base_check(request):
 
     # int类型合法性检查
 
-    context['type'] = int(request.POST.get("type", -1))  # 课程类型
-    context["capacity"] = int(request.POST.get("capacity", -1))
+    type_num = request.POST.get("type", -1)  # 课程类型
+    capacity = request.POST.get("capacity", -1)
     # context['times'] = int(request.POST["times"])    #课程上课周数
     try:
-        assert context['type'] != -1, "记得选择课程类型哦！"
-        assert 0 <= context['type'] < 5, "课程类型仅包括德智体美劳五种！"
-        assert context["capacity"] > 0, "课程容量应当大于0！"
+        assert type_num != "", "记得选择课程类型哦！"
+        assert 0 <= int(type_num) < 5, "课程类型仅包括德智体美劳五种！"
+        assert int(capacity) > 0, "课程容量应当大于0！"
     except Exception as e:
         return wrong(str(e))
+    context['type'] = int(type_num)
+    context['capacity'] = int(capacity)
 
     # 图片类型合法性检查
     try:
@@ -778,8 +780,9 @@ def create_course(request, course_id=None):
     返回(course.id, created)
     '''
     context = dict()
-    context = course_base_check(request)
+    
     try:
+        context = course_base_check(request)
         if context["warn_code"] == 1:  # 合法性检查出错！
             return context
     except:
