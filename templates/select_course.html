@@ -19,8 +19,8 @@
     </div>
 
     <div style="text-align: left; margin-left: 2%;">
-        <p style="margin-bottom: 0%;">预选时间：{{html_display.yx_election_start}}-{{html_display.yx_election_end}}</p>
-        <p style="margin-top: 0%;">补退选时间：{{html_display.btx_election_start}}-{{html_display.btx_election_end}}</p>
+        <p style="margin-bottom: 0%;">预选时间：{{html_display.yx_election_start}}至{{html_display.yx_election_end}}</p>
+        <p style="margin-top: 0%;">补退选时间：{{html_display.btx_election_start}}至{{html_display.btx_election_end}}</p>
     </div>
 
     <!--  BEGIN SWITCH TAB  -->
@@ -57,6 +57,13 @@
             <div class="col-12 layout-top-spacing">
                 <br>
                 <p style="text-align: center;">抽签进行中，暂不支持选课！</p>
+            </div>
+        </div>
+        {% elif is_end == True %}
+        <div class="tab-pane fade show active" id="information" role="tabpanel">
+            <div class="col-12 layout-top-spacing">
+                <br>
+                <p style="text-align: center;">选课已经全部结束，请前往”我的课程“查看选课结果！</p>
             </div>
         </div>
 
@@ -147,6 +154,8 @@
                                         <span class="badge badge-pill badge-info">{{course.status}}</span>
                                         {% elif course.status == "选课结束" %}
                                         <span class="badge badge-pill badge-primary">{{course.status}}</span>
+                                        {% else %}
+                                        <span class="badge badge-pill badge-warning">{{course.status}}</span>
                                         {% endif %}
                                     </td>
                                     <td>{{course.capacity}}/{{course.current_participants}}</td>
@@ -154,9 +163,9 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            {% if course.status == "未开始" or course.status == "选课结束" %}
+                                            {% if course.status != "预选" and course.status != "补退选" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
-                                            {% elif course.status == "预选" or course.status == "补退选" %}
+                                            {% else %}
                                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal-{{course.course_id}}">选课</button>
                                             <div class="modal fade" id="myModal-{{course.course_id}}">
                                                 <div class="modal-dialog modal-dialog-centered">
@@ -229,6 +238,8 @@
                                         <span class="badge badge-pill badge-info">{{course.status}}</span>
                                         {% elif course.status == "选课结束" %}
                                         <span class="badge badge-pill badge-primary">{{course.status}}</span>
+                                        {% else %}
+                                        <span class="badge badge-pill badge-warning">{{course.status}}</span>
                                         {% endif %}
                                     </td>
                                     <td>{{course.capacity}}/{{course.current_participants}}</td>
@@ -236,9 +247,9 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            {% if course.status == "未开始" or course.status == "选课结束" %}
+                                            {% if course.status != "预选" and course.status != "补退选" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
-                                            {% elif course.status == "预选" or course.status == "补退选" %}
+                                            {% else %}
                                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal0-{{course.course_id}}">选课</button>
                                             <div class="modal fade" id="myModal0-{{course.course_id}}">
                                                 <div class="modal-dialog modal-dialog-centered">
@@ -312,6 +323,8 @@
                                         <span class="badge badge-pill badge-info">{{course.status}}</span>
                                         {% elif course.status == "选课结束" %}
                                         <span class="badge badge-pill badge-primary">{{course.status}}</span>
+                                        {% else %}
+                                        <span class="badge badge-pill badge-warning">{{course.status}}</span>
                                         {% endif %}
                                     </td>
                                     <td>{{course.capacity}}/{{course.current_participants}}</td>
@@ -319,9 +332,9 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            {% if course.status == "未开始" or course.status == "选课结束" %}
+                                            {% if course.status != "预选" and course.status != "补退选" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
-                                            {% elif course.status == "预选" or course.status == "补退选" %}
+                                            {% else %}
                                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal1-{{course.course_id}}">选课</button>
                                             <div class="modal fade" id="myModal1-{{course.course_id}}">
                                                 <div class="modal-dialog modal-dialog-centered">
@@ -395,6 +408,8 @@
                                         <span class="badge badge-pill badge-info">{{course.status}}</span>
                                         {% elif course.status == "选课结束" %}
                                         <span class="badge badge-pill badge-primary">{{course.status}}</span>
+                                        {% else %}
+                                        <span class="badge badge-pill badge-warning">{{course.status}}</span>
                                         {% endif %}
                                     </td>
                                     <td>{{course.capacity}}/{{course.current_participants}}</td>
@@ -402,9 +417,9 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            {% if course.status == "未开始" or course.status == "选课结束" %}
+                                            {% if course.status != "预选" and course.status != "补退选" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
-                                            {% elif course.status == "预选" or course.status == "补退选" %}
+                                            {% else %}
                                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal2-{{course.course_id}}">选课</button>
                                             <div class="modal fade" id="myModal2-{{course.course_id}}">
                                                 <div class="modal-dialog modal-dialog-centered">
@@ -478,6 +493,8 @@
                                         <span class="badge badge-pill badge-info">{{course.status}}</span>
                                         {% elif course.status == "选课结束" %}
                                         <span class="badge badge-pill badge-primary">{{course.status}}</span>
+                                        {% else %}
+                                        <span class="badge badge-pill badge-warning">{{course.status}}</span>
                                         {% endif %}
                                     </td>
                                     <td>{{course.capacity}}/{{course.current_participants}}</td>
@@ -485,9 +502,9 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            {% if course.status == "未开始" or course.status == "选课结束" %}
+                                            {% if course.status != "预选" and course.status != "补退选" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
-                                            {% elif course.status == "预选" or course.status == "补退选" %}
+                                            {% else %}
                                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal3-{{course.course_id}}">选课</button>
                                             <div class="modal fade" id="myModal3-{{course.course_id}}">
                                                 <div class="modal-dialog modal-dialog-centered">
@@ -561,6 +578,8 @@
                                         <span class="badge badge-pill badge-info">{{course.status}}</span>
                                         {% elif course.status == "选课结束" %}
                                         <span class="badge badge-pill badge-primary">{{course.status}}</span>
+                                        {% else %}
+                                        <span class="badge badge-pill badge-warning">{{course.status}}</span>
                                         {% endif %}
                                     </td>
                                     <td>{{course.capacity}}/{{course.current_participants}}</td>
@@ -568,9 +587,9 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            {% if course.status == "未开始" or course.status == "选课结束" %}
+                                            {% if course.status != "预选" and course.status != "补退选" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
-                                            {% elif course.status == "预选" or course.status == "补退选" %}
+                                            {% else %}
                                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal4-{{course.course_id}}">选课</button>
                                             <div class="modal fade" id="myModal4-{{course.course_id}}">
                                                 <div class="modal-dialog modal-dialog-centered">
