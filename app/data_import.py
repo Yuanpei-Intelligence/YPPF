@@ -12,7 +12,9 @@ from app.models import (
     Help,
     Course,
     CourseRecord,
-    Semester
+    Semester,
+    FeedbackType,
+    Feedback,
 )
 from app.utils import random_code_init
 
@@ -686,3 +688,129 @@ def load_tags_for_old_org(request):
                     )
         }
     return render(request, "debugging.html", context)
+
+
+def load_feedback():
+    try:
+        feedback_df = load_file("feedbackinf.csv")
+    except:
+        return "没有找到feedbackinf.csv,请确认该文件已经在test_data中。"
+    error_dict = {}
+    feedback_num = 0
+    for _, feedback_dict in feedback_df.iterrows():
+        feedback_num += 1
+        err = False
+        try:
+            type_id = FeedbackType.objects.get(name=feedback_dict["type"]).id
+            person_id = NaturalPerson.objects.get(name=feedback_dict["person"]).id
+            org_id = Organization.objects.get(oname=feedback_dict["org"]).id
+
+            feedback, mid = Feedback.objects.get_or_create(
+                type_id=type_id, person_id=person_id, org_id=org_id,
+            )
+
+            feedback.title = feedback_dict["title"]
+            feedback.content = feedback_dict["content"]
+            feedback.nickname = feedback_dict["nickname"]
+
+            assert feedback_dict["issue_status"] in ("草稿", "已发布", "已删除")
+            if feedback_dict["issue_status"] == "草稿":
+                feedback.issue_status = 0
+            elif feedback_dict["issue_status"] == "已发布":
+                feedback.issue_status = 1
+            else:
+                feedback.issue_status = 2
+
+            assert feedback_dict["read_status"] in ("已读", "未读")
+            if feedback_dict["read_status"] == "已读":
+                feedback.read_status = 0
+            else:
+                feedback.read_status = 1
+
+            assert feedback_dict["solve_status"] in ("已解决", "解决中", "无法解决")
+            if feedback_dict["solve_status"] == "已解决":
+                feedback.solve_status = 0
+            elif feedback_dict["solve_status"] == "解决中":
+                feedback.solve_status = 1
+            else:
+                feedback.solve_status = 2
+
+            assert feedback_dict["public_status"] in ("公开", "未公开", "撤销公开")
+            if feedback_dict["public_status"] == "公开":
+                feedback.public_status = 0
+            elif feedback_dict["public_status"] == "未公开":
+                feedback.public_status = 1
+            else:
+                feedback.public_status = 2
+
+            if feedback_dict["publisher_public"].lower() == "true":
+                feedback.publisher_public = True
+            else:
+                feedback.publisher_public = False
+
+            if feedback_dict["org_public"].lower() == "true":
+                feedback.org_public = True
+            else:
+                feedback.org_public = False
+
+        except Exception as e:
+            err = True
+            error_dict["{}: {}".format(feedback_num, feedback_dict["title"])] = '''
+                填写状态信息有误，请再次检查发布/阅读/解决/公开状态(文字)是否填写正确！
+            ''' if isinstance(e,AssertionError) else e
+            feedback.delete()
+        
+        if not err:
+            feedback.save()
+
+    return '<br/>'.join((
+                    f"共尝试导入{feedback_num}条反馈的详细信息",
+                    f"导入成功的反馈：{feedback_num - len(error_dict)}条",
+                    f"导入失败的反馈：{len(error_dict)}条",
+                    f'错误原因：' if error_dict else ''
+                    ) + tuple(f'{fb}：{err}' for fb, err in error_dict.items()
+                    ) + ('',
+                    f"请注意：下面的字段必须填写对应的选项，否则反馈信息将无法保存！",
+                    f"（1）issue_status：草稿 / 已发布 / 已删除",
+                    f"（2）read_status：已读 / 未读",
+                    f"（3）solve_status：已解决 / 解决中 / 无法解决",
+                    f"（4）public_status：公开 / 未公开 / 撤销公开"
+                    ))
+
+
+def load_feedback_type():
+    try:
+        feedback_type_df = load_file("feedbacktype.csv")
+    except:
+        return "没有找到feedbacktype.csv,请确认该文件已经在test_data中。"
+    type_list = []
+    for _, type_dict in feedback_type_df.iterrows():
+        type_id = int(type_dict["id"])
+        type_name = type_dict["name"]
+        otype = type_dict["org_type"]
+        otype_id = OrganizationType.objects.get(otype_name=otype).otype_id
+        feedbacktype, mid = FeedbackType.objects.get_or_create(
+            id=type_id, org_type_id=otype_id,
+        )
+        feedbacktype.name = type_name
+        feedbacktype.save()
+    
+    FeedbackType.objects.bulk_create(type_list)
+    return "导入反馈类型信息成功！"
+
+
+def load_feedback_data(request):
+    if request.user.is_superuser:
+        load_type = request.GET.get("loadtype", None)
+        message = "加载失败！"
+        if load_type is None:
+            message = "没有传入loadtype参数:[detail或type]"
+        elif load_type == "type":
+            message = load_feedback_type()
+        elif load_type == "detail":
+            message = load_feedback()
+        else:
+            message = "没有得到loadtype参数:[detail或otype]"
+    else:
+        message = "请先以超级账户登录后台后再操作！"
+    return render(request, "debugging.html", locals())
