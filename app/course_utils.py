@@ -780,7 +780,7 @@ def create_course(request, course_id=None):
             return context
     except:
         return wrong("检查参数合法性时遇到不可预料的错误。如有需要，请联系管理员解决!")
-
+    default_photo="/static/assets/img/announcepics/1.JPG"
     # 编辑已有课程
     if course_id is not None:
         try:
@@ -827,7 +827,7 @@ def create_course(request, course_id=None):
                     type=context['type'],
                     capacity=context["capacity"],
                 )
-                course.photo = context['photo'] if context['photo'] is not None else course.photo
+                course.photo = context['photo'] if context['photo'] is not None else default_photo
                 if context['QRcode']:
                     course.QRcode = context["QRcode"] 
                 course.save()
