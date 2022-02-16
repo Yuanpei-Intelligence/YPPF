@@ -712,7 +712,6 @@ def load_feedback():
 
             feedback.title = feedback_dict["title"]
             feedback.content = feedback_dict["content"]
-            feedback.nickname = feedback_dict["nickname"]
             
             issue_status_dict = {"草稿": 0, "已发布": 1, "已删除": 2,}
             read_status_dict = {"已读": 0, "未读": 1,}
