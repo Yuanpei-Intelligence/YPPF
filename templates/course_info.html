@@ -20,8 +20,7 @@
     </div>
     <div class="container-fluid">
         <div class="statbox widget box box-shadow">
-            <table class="table table-responsive-sm table-active" width="100%">
-
+            <table class="table table-responsive-sm table-active" style="word-break:break-all" >
                 <tbody class="table">
                    
                     <tr>
@@ -37,10 +36,10 @@
                     <!--TODO : coursetodisplay字典里面加一个organization-->
                     <tr>
                         <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 开课组织</th>
-                        <td> 
+                        <td colspan="8"> 
                             <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
-                            <a href="/orginfo/?name={{course.organization.oname}}"">
-                                <u>{{course.organization}}</u>
+                            <a href="/orginfo/?name={{course.organization_name}}">
+                                <u>{{course.organization_name}}</u>
                             </a>
                         </td>
                     </tr>
@@ -65,7 +64,7 @@
                     <tr>
                         <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 宣传图片</th>
                         <td colspan="8"> 
-                            <img width="50%" src={{ course.photo_path }}>
+                            <img width="40%" src={{ course.photo_path }}>
                         </td>
                     </tr>
                   

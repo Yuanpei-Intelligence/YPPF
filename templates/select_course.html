@@ -18,6 +18,11 @@
         <br>
     </div>
 
+    <div style="text-align: left; margin-left: 2%;">
+        <p style="margin-bottom: 0%;">预选时间：{{html_display.yx_election_start}}-{{html_display.yx_election_end}}</p>
+        <p style="margin-top: 0%;">补退选时间：{{html_display.btx_election_start}}-{{html_display.btx_election_end}}</p>
+    </div>
+
     <!--  BEGIN SWITCH TAB  -->
     <ul class="nav nav-tabs nav-tabs-solid nav-justified" role="tablist">
         <li class="nav-item">
@@ -117,7 +122,7 @@
                                     <th scope="row">
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
-                                        <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
+                                        <a href='/viewCourse/?courseid={{ course.course_id }}'><!--要做一个新的课程详情页来着..先放着-->
                                             <u>{{course.name}}</u>
                                         </a>
                                     </th>
@@ -140,7 +145,7 @@
                                         <span class="badge badge-pill badge-secondary">{{course.status}}</span>
                                         {% elif course.status == "补退选" %}
                                         <span class="badge badge-pill badge-info">{{course.status}}</span>
-                                        {% elif course.status == "已结束" %}
+                                        {% elif course.status == "选课结束" %}
                                         <span class="badge badge-pill badge-primary">{{course.status}}</span>
                                         {% endif %}
                                     </td>
@@ -149,12 +154,12 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            {% if course.status == "未开始" or course.status == "已结束" %}
+                                            {% if course.status == "未开始" or course.status == "选课结束" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% elif course.status == "预选" or course.status == "补退选" %}
                                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal-{{course.course_id}}">选课</button>
                                             <div class="modal fade" id="myModal-{{course.course_id}}">
-                                                <div class="modal-dialog">
+                                                <div class="modal-dialog modal-dialog-centered">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
                                                     <div class="modal-body">
@@ -199,7 +204,7 @@
                                     <th scope="row">
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
-                                        <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
+                                        <a href='/viewCourse/?courseid={{ course.course_id }}'><!--要做一个新的课程详情页来着..先放着-->
                                             <u>{{course.name}}</u>
                                         </a>
                                     </th>
@@ -222,7 +227,7 @@
                                         <span class="badge badge-pill badge-secondary">{{course.status}}</span>
                                         {% elif course.status == "补退选" %}
                                         <span class="badge badge-pill badge-info">{{course.status}}</span>
-                                        {% elif course.status == "已结束" %}
+                                        {% elif course.status == "选课结束" %}
                                         <span class="badge badge-pill badge-primary">{{course.status}}</span>
                                         {% endif %}
                                     </td>
@@ -231,12 +236,12 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            {% if course.status == "未开始" or course.status == "已结束" %}
+                                            {% if course.status == "未开始" or course.status == "选课结束" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% elif course.status == "预选" or course.status == "补退选" %}
                                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal0-{{course.course_id}}">选课</button>
                                             <div class="modal fade" id="myModal0-{{course.course_id}}">
-                                                <div class="modal-dialog">
+                                                <div class="modal-dialog modal-dialog-centered">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
                                                     <div class="modal-body">
@@ -282,7 +287,7 @@
                                     <th scope="row">
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
-                                        <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
+                                        <a href='/viewCourse/?courseid={{ course.course_id }}'><!--要做一个新的课程详情页来着..先放着-->
                                             <u>{{course.name}}</u>
                                         </a>
                                     </th>
@@ -305,7 +310,7 @@
                                         <span class="badge badge-pill badge-secondary">{{course.status}}</span>
                                         {% elif course.status == "补退选" %}
                                         <span class="badge badge-pill badge-info">{{course.status}}</span>
-                                        {% elif course.status == "已结束" %}
+                                        {% elif course.status == "选课结束" %}
                                         <span class="badge badge-pill badge-primary">{{course.status}}</span>
                                         {% endif %}
                                     </td>
@@ -314,12 +319,12 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            {% if course.status == "未开始" or course.status == "已结束" %}
+                                            {% if course.status == "未开始" or course.status == "选课结束" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% elif course.status == "预选" or course.status == "补退选" %}
                                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal1-{{course.course_id}}">选课</button>
                                             <div class="modal fade" id="myModal1-{{course.course_id}}">
-                                                <div class="modal-dialog">
+                                                <div class="modal-dialog modal-dialog-centered">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
                                                     <div class="modal-body">
@@ -365,7 +370,7 @@
                                     <th scope="row">
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
-                                        <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
+                                        <a href='/viewCourse/?courseid={{ course.course_id }}'><!--要做一个新的课程详情页来着..先放着-->
                                             <u>{{course.name}}</u>
                                         </a>
                                     </th>
@@ -388,7 +393,7 @@
                                         <span class="badge badge-pill badge-secondary">{{course.status}}</span>
                                         {% elif course.status == "补退选" %}
                                         <span class="badge badge-pill badge-info">{{course.status}}</span>
-                                        {% elif course.status == "已结束" %}
+                                        {% elif course.status == "选课结束" %}
                                         <span class="badge badge-pill badge-primary">{{course.status}}</span>
                                         {% endif %}
                                     </td>
@@ -397,12 +402,12 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            {% if course.status == "未开始" or course.status == "已结束" %}
+                                            {% if course.status == "未开始" or course.status == "选课结束" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% elif course.status == "预选" or course.status == "补退选" %}
                                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal2-{{course.course_id}}">选课</button>
                                             <div class="modal fade" id="myModal2-{{course.course_id}}">
-                                                <div class="modal-dialog">
+                                                <div class="modal-dialog modal-dialog-centered">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
                                                     <div class="modal-body">
@@ -448,7 +453,7 @@
                                     <th scope="row">
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
-                                        <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
+                                        <a href='/viewCourse/?courseid={{ course.course_id }}'><!--要做一个新的课程详情页来着..先放着-->
                                             <u>{{course.name}}</u>
                                         </a>
                                     </th>
@@ -471,7 +476,7 @@
                                         <span class="badge badge-pill badge-secondary">{{course.status}}</span>
                                         {% elif course.status == "补退选" %}
                                         <span class="badge badge-pill badge-info">{{course.status}}</span>
-                                        {% elif course.status == "已结束" %}
+                                        {% elif course.status == "选课结束" %}
                                         <span class="badge badge-pill badge-primary">{{course.status}}</span>
                                         {% endif %}
                                     </td>
@@ -480,12 +485,12 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            {% if course.status == "未开始" or course.status == "已结束" %}
+                                            {% if course.status == "未开始" or course.status == "选课结束" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% elif course.status == "预选" or course.status == "补退选" %}
                                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal3-{{course.course_id}}">选课</button>
                                             <div class="modal fade" id="myModal3-{{course.course_id}}">
-                                                <div class="modal-dialog">
+                                                <div class="modal-dialog modal-dialog-centered">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
                                                     <div class="modal-body">
@@ -531,7 +536,7 @@
                                     <th scope="row">
                                         <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
-                                        <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
+                                        <a href='/viewCourse/?courseid={{ course.course_id }}'><!--要做一个新的课程详情页来着..先放着-->
                                             <u>{{course.name}}</u>
                                         </a>
                                     </th>
@@ -554,7 +559,7 @@
                                         <span class="badge badge-pill badge-secondary">{{course.status}}</span>
                                         {% elif course.status == "补退选" %}
                                         <span class="badge badge-pill badge-info">{{course.status}}</span>
-                                        {% elif course.status == "已结束" %}
+                                        {% elif course.status == "选课结束" %}
                                         <span class="badge badge-pill badge-primary">{{course.status}}</span>
                                         {% endif %}
                                     </td>
@@ -563,12 +568,12 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            {% if course.status == "未开始" or course.status == "已结束" %}
+                                            {% if course.status == "未开始" or course.status == "选课结束" %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% elif course.status == "预选" or course.status == "补退选" %}
                                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal4-{{course.course_id}}">选课</button>
                                             <div class="modal fade" id="myModal4-{{course.course_id}}">
-                                                <div class="modal-dialog">
+                                                <div class="modal-dialog modal-dialog-centered">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
                                                     <div class="modal-body">
@@ -624,7 +629,7 @@
                       <tr>
                         <th scope="row">
                             <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
-                            <a href='/welcome/'><!--要做一个新的课程详情页来着..先放着-->
+                            <a href='/viewCourse/?courseid={{ course.course_id }}'><!--要做一个新的课程详情页来着..先放着-->
                                 <u>{{course.name}}</u>
                             </a>
                         </th>
@@ -662,7 +667,7 @@
                                 <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#myModalcancel-{{course.course_id}}">退课</button>
                                 {% endif %}
                                 <div class="modal fade" id="myModalcancel-{{course.course_id}}">
-                                    <div class="modal-dialog">
+                                    <div class="modal-dialog modal-dialog-centered">
                                       <div class="modal-content">
                                         <!-- 模态框主体 -->
                                         <div class="modal-body">
