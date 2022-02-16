@@ -1060,8 +1060,8 @@ class ModifyOrganization(CommentBase):
         REFUSED = (3, "已拒绝")
 
     status = models.SmallIntegerField(choices=Status.choices, default=0)
-    tags = models.CharField(max_length=100, default='')
-    
+    tags = models.CharField(max_length=100, default='', blank=True)
+
     def __str__(self):
         # YWolfeee: 不认为应该把类型放在如此重要的位置
         # return f'{self.oname}{self.otype.otype_name}'
