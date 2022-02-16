@@ -119,11 +119,27 @@
                                                                 <div class="modal-dialog modal-dialog-centered" role="document">
                                                                     <div class="modal-content">
                                                                         <div class="modal-header">
-                                                                            <h5 class="modal-title" id="cancelActivityModalLabel">取消单次课程活动</h5>
+                                                                            <h5 class="modal-title" id="cancelActivityModalLabel">取消课程活动</h5>
                                                                             <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                                                                                 <span aria-hidden="true">&times;</span>
                                                                             </button>
                                                                         </div>
+                                                                        {% if act.course_time %}
+                                                                        <div class="modal-body">
+                                                                            该活动为长期活动且活动取消后不可撤回操作，确认要取消吗？
+                                                                        </div>
+                                                                        <div class="modal-footer">
+                                                                            <form method="POST" id="cancel-details">
+                                                                                <input type="hidden" name="cancel-action" value="{{act.id}}">
+                                                                                <button type="button" class="btn btn-primary" onclick="this.form.submit()" data-dismiss="modal">仅取消当前活动</button>
+                                                                    
+                                                                            </form>
+                                                                            <form method="POST" id="cancel-details">
+                                                                                <input type="hidden" name="cancel-all" value="{{act.id}}">
+                                                                                <button type="button" class="btn btn-secondary" onclick="this.form.submit()" data-dismiss="modal">取消该时段所有活动</button>
+                                                                            </form>
+                                                                        </div>
+                                                                        {% else %}
                                                                         <div class="modal-body">
                                                                             活动取消后不可撤回操作，确认要取消吗？
                                                                         </div>
@@ -134,6 +150,9 @@
                                                                                 <button type="button" class="btn btn-primary" onclick="this.form.submit()" data-dismiss="modal">确认</button>
                                                                             </form>
                                                                         </div>
+                                                                        
+                                                                        {%endif%}
+
                                                                     </div>
                                                                 </div>
                                                             </div>
