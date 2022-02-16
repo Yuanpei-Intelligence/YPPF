@@ -6,8 +6,6 @@ from django.db.models import Q
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
 from app.constants import *
-from boottest import local_dict
-from django.conf import settings
 from random import choice
 
 
