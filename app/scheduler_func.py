@@ -12,9 +12,7 @@ from app.models import (
     Participant,
     Notification,
     Position,
-<<<<<<< HEAD
     PageLog,
-=======
     Course,
     CourseTime
 )
@@ -22,7 +20,6 @@ from app.activity_utils import (
     changeActivityStatus,
     notifyActivity,
     notification_create
->>>>>>> d926669ca48030dcba6f5a0307311c87ea6f4953
 )
 from app.notification_utils import bulk_notification_create, notification_status_change
 from app.wechat_send import publish_notifications, WechatMessageLevel, WechatApp
@@ -303,6 +300,7 @@ def start_scheduler(with_scheduled_job=True, debug=False):
                               "cron",
                               id=current_job,
                               hour=1,
+                              replace_existing=True)
             current_job = "courseWeeklyActivitylauncher"
             if debug:
                 print(f"adding scheduled job '{current_job}'")
