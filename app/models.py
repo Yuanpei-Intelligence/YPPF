@@ -4,7 +4,13 @@ from django.contrib.auth.models import User
 from django.db.models import Q
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
+<<<<<<< HEAD
 from app.constants import *
+=======
+from app.constants import get_setting
+from boottest import local_dict
+from django.conf import settings
+>>>>>>> d926669ca48030dcba6f5a0307311c87ea6f4953
 from random import choice
 
 
@@ -1353,7 +1359,7 @@ class Course(models.Model):
                                 default=Semester.now)
 
     # 课程开设的周数
-    times = models.SmallIntegerField("课程开设周数", default=7)
+    times = models.SmallIntegerField("课程开设周数", default=16)
     classroom = models.CharField("预期上课地点",
                                  max_length=60,
                                  default="",
@@ -1362,11 +1368,15 @@ class Course(models.Model):
 
     # 不确定能否统一选课的情况，先用最保险的方法
     # 如果由助教填写，表单验证时要着重检查这一部分。预选结束时间和补退选开始时间不应该相隔太近。
-    stage1_start = models.DateTimeField("预选开始时间", blank=True, null=True)
-    stage1_end = models.DateTimeField("预选结束时间", blank=True, null=True)
-    stage2_start = models.DateTimeField("补退选开始时间", blank=True, null=True)
-    stage2_end = models.DateTimeField("补退选结束时间", blank=True, null=True)
-
+    stage1_start = models.DateTimeField("预选开始时间", default=datetime.strptime(
+        get_setting("course/yx_election_start"), '%Y-%m-%d %H:%M:%S'))
+    stage1_end = models.DateTimeField("预选结束时间", default=datetime.strptime(
+        get_setting("course/yx_election_end"), '%Y-%m-%d %H:%M:%S'))
+    stage2_start = models.DateTimeField("补退选开始时间", default=datetime.strptime(
+        get_setting("course/btx_election_start"), '%Y-%m-%d %H:%M:%S'))
+    stage2_end = models.DateTimeField("补退选结束时间", default=datetime.strptime(
+        get_setting("course/btx_election_end"), '%Y-%m-%d %H:%M:%S'))
+        
     bidding = models.FloatField("意愿点价格", default=0.0)
 
     introduction = models.TextField("课程简介", blank=True, default="这里暂时没有介绍哦~")
@@ -1378,7 +1388,7 @@ class Course(models.Model):
         ABORT = (0, "已撤销")
         WAITING = (1, "未开始选课")
         STAGE1 = (2, "预选")
-        STAGE2 = (3, "补退选")
+        STAGE2 = (3, "补退选")  #TODO test
         SELECT_END = (4, "选课结束")
         END = (5, "已结束")
 
@@ -1437,7 +1447,7 @@ class CourseTime(models.Model):
     start = models.DateTimeField("开始时间")
     end = models.DateTimeField("结束时间")
     cur_week = models.IntegerField("已生成周数", default=0)
-    end_week = models.IntegerField("总周数", default=1)
+    end_week = models.IntegerField("总周数", default=16)
 
 
 class CourseParticipant(models.Model):
