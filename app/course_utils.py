@@ -598,13 +598,6 @@ def draw_lots(course):
             },
         )
 
-def str_to_time(stage:str):
-    """
-    字符串转换成时间
-    """
-    return datetime.strptime(stage,'%Y-%m-%d %H:%M:%S')
-
-
 
 @log.except_captured(return_value=True,
                      record_args=True,
@@ -623,6 +616,7 @@ def change_course_status(cur_status,to_status):
     """
 
     # 以下进行状态的合法性检查
+<<<<<<< HEAD
     if cur_status is not None:
         if cur_status == Course.Status.WAITING:
                 assert to_status == Course.Status.STAGE1, \
@@ -639,9 +633,12 @@ def change_course_status(cur_status,to_status):
         raise AssertionError("未提供当前状态，不允许进行选课状态修改")
 
     courses=Course.objects.activated()
+=======
+    courses = Course.objects.activated()
+>>>>>>> 99d6971cad2f3c181df75e21d672085ea507832a
     with transaction.atomic():
         #更新目标状态
-        courses.update(status=to_status) 
+        courses.update(status=to_status)
         for course in courses:
             if to_status == Course.Status.DRAWING:
                 # 预选结束，进行抽签
@@ -650,21 +647,27 @@ def change_course_status(cur_status,to_status):
                 # 选课结束，将选课成功的同学批量加入小组
                 participants = CourseParticipant.objects.filter(
                     course=course,
-                    status=CourseParticipant.Status.SUCCESS).select_related('person')
+                    status=CourseParticipant.Status.SUCCESS).select_related(
+                        'person')
                 organization = course.organization
                 positions = []
                 for participant in participants:
                     # 检查是否已经加入小组
                     if not Position.objects.filter(person=participant.person,
-                                                org=organization).exists():
+                                                   org=organization).exists():
                         position = Position(person=participant.person,
                                             org=organization,
                                             in_semester=Semester.now())
                         positions.append(position)
                 if positions:
                     with transaction.atomic():
-                        Position.objects.bulk_create(positions)        
-    
+                        Position.objects.bulk_create(positions)
+
+
+def str_to_time(stage: str):
+    """字符串转换成时间"""
+    return datetime.strptime(stage,'%Y-%m-%d %H:%M:%S')
+
 
 @log.except_captured(return_value=True,
                      record_args=True,
@@ -674,17 +677,18 @@ def register_selection():
     """
     添加定时任务，实现课程状态转变，每次发起课程时调用
     """
-    
+
     # 预选和补退选的开始和结束时间
 
-    year = str(CURRENT_ACADEMIC_YEAR)
-    semster = str(Semester.now())
+    year = CURRENT_ACADEMIC_YEAR
+    semster = Semester.now()
     stage1_start = str_to_time(get_setting("course/yx_election_start"))
     stage1_end = str_to_time(get_setting("course/yx_election_end"))
     stage2_start = str_to_time(get_setting("course/btx_election_start"))
     stage2_end = str_to_time(get_setting("course/btx_election_end"))
 
     # 定时任务：修改课程状态
+<<<<<<< HEAD
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_start",
                       run_date=stage1_start, args=[Course.Status.WAITING,Course.Status.STAGE1], replace_existing=True)
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_end",
@@ -693,6 +697,16 @@ def register_selection():
                     run_date=stage2_start, args=[Course.Status.DRAWING,Course.Status.STAGE2], replace_existing=True)
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_end",
                     run_date=stage2_end, args=[Course.Status.STAGE2,Course.Status.SELECT_END], replace_existing=True)                
+=======
+    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year}{semster}_stage1_start",
+                      run_date=stage1_start, args=[Course.Status.STAGE1], replace_existing=True)
+    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year}{semster}_stage1_end",
+                      run_date=stage1_end, args=[Course.Status.DRAWING], replace_existing=True)
+    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year}{semster}_stage2_start",
+                    run_date=stage2_start, args=[Course.Status.STAGE2], replace_existing=True)
+    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year}{semster}_stage2_end",
+                    run_date=stage2_end, args=[Course.Status.SELECT_END], replace_existing=True)
+>>>>>>> 99d6971cad2f3c181df75e21d672085ea507832a
     # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
 
 
@@ -788,7 +802,7 @@ def create_course(request, course_id=None):
     返回(course.id, created)
     '''
     context = dict()
-    
+
     try:
         context = course_base_check(request)
         if context["warn_code"] == 1:  # 合法性检查出错！
@@ -844,7 +858,7 @@ def create_course(request, course_id=None):
                 )
                 course.photo = context['photo'] if context['photo'] is not None else default_photo
                 if context['QRcode']:
-                    course.QRcode = context["QRcode"] 
+                    course.QRcode = context["QRcode"]
                 course.save()
 
                 for i in range(len(context['course_starts'])):
