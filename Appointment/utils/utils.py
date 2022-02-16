@@ -338,7 +338,7 @@ def set_appoint_reason(input_appoint, reason):
                 operation_succeed = True
                 
                 # TODO: major_sid
-                major_sid = str(appoint.major_student.Sid)
+                major_sid = str(appoint.major_student.Sid_id)
                 aid = str(appoint.Aid)
                 areason = str(appoint.get_Areason_display())
         if operation_succeed:
@@ -372,7 +372,7 @@ def appoint_violate(input_appoint, reason):  # 将一个aid设为违约 并根�
                     operation_succeed = True
 
                     # TODO: major_sid
-                    major_sid = str(appoint.major_student.Sid)
+                    major_sid = str(appoint.major_student.Sid_id)
                     astart = appoint.Astart
                     aroom = str(appoint.Room)
                     major_name = str(appoint.major_student.name)

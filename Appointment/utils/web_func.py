@@ -136,7 +136,7 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
         if appoint.Astatus != Appoint.Status.PROCESSING:
             utils.operation_writer(
                 # TODO: major_sid
-                appoint.major_student.Sid,
+                appoint.major_student.Sid_id,
                 f"预约{str(Aid)}结束时状态为{appoint.get_status()}：照常检查是否合格",
                 "web_func.finishAppoint", "Error")
 
@@ -146,7 +146,7 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
             appoint.save()
             utils.operation_writer(
                 # TODO: major_sid
-                appoint.major_student.Sid,
+                appoint.major_student.Sid_id,
                 f"预约{str(Aid)}的状态变为{Appoint.Status.CONFIRMED}: 顺利完成",
                 "web_func.finishAppoint", "OK")
         else:
@@ -205,7 +205,7 @@ def get_student_chosen_list(request, get_all=False):
     for stu in Stu_all:
         # 曾经是`(stu.superuser != 1 or get_all == True)`
         # 因superuser只有不显示的作用，合并后舍弃
-        Sid = stu.Sid
+        Sid = stu.Sid_id
         if Sid != request.user.username and (True or get_all == True):
             js_stu_list.append({
                 "id": Sid,
@@ -349,7 +349,7 @@ def get_user_info(Pid):
     except Exception as e:
         return {'statusInfo': {'message': '学号不存在', 'detail': str(e)}}
     return {
-        'id': participant.Sid,
+        'id': participant.Sid_id,
         'name': participant.name,
         'credit': participant.credit,
     }
