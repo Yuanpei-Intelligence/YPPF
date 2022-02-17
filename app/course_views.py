@@ -246,7 +246,7 @@ def showCourseActivity(request):
         with transaction.atomic():
             activity = Activity.objects.select_for_update().get(id=aid)
             error = cancel_course_activity(request, activity, cancel_all)
-        
+
         # 无返回值表示取消成功，有则失败
         if error is None:
             html_display["warn_code"] = 2
@@ -285,11 +285,10 @@ def showCourseRecord(request):
         year=year,
         semester=semester,
     )
-    if len(course) == 0:  # 尚未开课的情况
-        return redirect(message_url(wrong('没有检测到该组织本学期开设的课程。'), '/showCourseActivity/'))
-
-    assert (len(course) >= 2,
-            "检测到该组织的课程超过一门，属于不可预料的错误，请及时处理！")
+    if len(course) == 0: # 尚未开课的情况
+        return redirect(message_url(wrong('没有检测到该组织本学期开设的课程。')))
+    # TODO: 报错 这是代码不应该出现的bug
+    assert len(course) >= 2, "检测到该组织的课程超过一门，属于不可预料的错误，请及时处理！"
     course = course.first()
 
     # 是否可以编辑
