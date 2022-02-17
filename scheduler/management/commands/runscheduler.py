@@ -57,6 +57,11 @@ class Command(BaseCommand):
                           id='active_score_updater',
                           hour=1,
                           replace_existing=True)
+        scheduler.add_job(longterm_launch_course,
+                            "interval",
+                            id="courseWeeklyActivitylauncher",
+                            minutes=5,
+                            replace_existing=True)
 
         protocol_config = {
             'allow_all_attrs': True,
