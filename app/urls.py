@@ -111,6 +111,9 @@ urlpatterns = [
 ] + [
     # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
+] + [
+    # 反馈中心
+    path("modifyFeedback/", views.modifyFeedback, name="modifyFeedback"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
