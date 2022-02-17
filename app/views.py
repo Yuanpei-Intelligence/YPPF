@@ -168,33 +168,10 @@ def index(request):
             html_display["warn_message"] = local_dict["msg"]["406"]
 
     # 所有跳转，现在不管是不是post了
-    if arg_origin is not None:
-        if request.user.is_authenticated:
-
-            if not check_cross_site(request, arg_origin):
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
-                return redirect(message_url(html_display))
-
-            is_inner, arg_origin = utils.get_std_inner_url(arg_origin)
-            if is_inner:  # 非外部链接，合法性已经检查过
-                return redirect(arg_origin)  # 不需要加密验证
-
-            is_underground, arg_origin = utils.get_std_underground_url(arg_origin)
-            if not is_underground:
-                return redirect(arg_origin)
-
-            timeStamp = str(int(datetime.utcnow().timestamp())) # UTC 统一服务器
-            username = request.user.username    # session["username"] 已废弃
-            en_pw = hash_coder.encode(username + timeStamp)
-            try:
-                userinfo = NaturalPerson.objects.get(person_id__username=username)
-                arg_origin = append_query(arg_origin,
-                    Sid=username, timeStamp=timeStamp, Secret=en_pw, name=userinfo.name)
-            except:
-                arg_origin = append_query(arg_origin,
-                    Sid=username, timeStamp=timeStamp, Secret=en_pw)
-            return redirect(arg_origin)
+    if arg_origin is not None and request.user.is_authenticated:
+        if not check_cross_site(request, arg_origin):
+            return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
+        return redirect(arg_origin)
 
     return render(request, "index.html", locals())
 
@@ -451,25 +428,25 @@ def stuinfo(request, name=None):
             # 把当前学期的活动去除
             course_me_past = (
                 course_me.exclude(
-                    year=int(local_dict["semester_data"]["year"]), 
-                    semester=local_dict["semester_data"]["semester"])
+                    year=CURRENT_ACADEMIC_YEAR,
+                    semester=Semester.now())
             )
 
             # 无效学时，在前端呈现
             course_no_use = (
                 course_me_past
                 .filter(total_hours__lt=8)
-                .exclude(year=20, semester=Semester.FALL, total_hours__gte=6)
-                .exclude(year=21, semester=Semester.SPRING, total_hours__gte=6)
+                .exclude(year=2020, semester=Semester.FALL, total_hours__gte=6)
+                .exclude(year=2021, semester=Semester.SPRING, total_hours__gte=6)
             )
-            
+
             # 特判，需要一定时长才能计入总学时
             course_me_past = (
                 course_me_past
-                .exclude(year=20, semester=Semester.FALL, total_hours__lt=6)
-                .exclude(year=21, semester=Semester.SPRING, total_hours__lt=6)
-                .exclude(year=21, semester=Semester.FALL, total_hours__lt=8) # 21秋开始，需要至少8学时
-                .exclude(year__gt=21, total_hours__lt=8)
+                .exclude(year=2020, semester=Semester.FALL, total_hours__lt=6)
+                .exclude(year=2021, semester=Semester.SPRING, total_hours__lt=6)
+                .exclude(year=2021, semester=Semester.FALL, total_hours__lt=8) # 21秋开始，需要至少8学时
+                .exclude(year__gt=2021, total_hours__lt=8)
             )
 
             course_me_past = course_me_past.order_by('year', '-semester')
@@ -511,7 +488,7 @@ def stuinfo(request, name=None):
 
 
         # ------------------ 活动参与 ------------------ #
-        
+
         participants = Participant.objects.activated().filter(person_id=person)
         activities = Activity.objects.activated().filter(
             Q(id__in=participants.values("activity_id")),
@@ -661,6 +638,7 @@ def orginfo(request, name=None):
         # 下面是小组信息
 
         org = Organization.objects.activated().get(oname=name)
+        org_tags = org.tags.all()
 
     except:
         return redirect(message_url(wrong('该小组不存在!')))

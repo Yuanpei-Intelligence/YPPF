@@ -72,6 +72,7 @@ urlpatterns = [
     path("examineActivity/<str:aid>", activity_views.examineActivity, name="examineActivity"),
     path("endActivity/", reimbursement_views.endActivity, name="endActivity"),
     path("modifyEndActivity/", reimbursement_views.modifyEndActivity, name="modifyEndActivity"),
+    path("offlineCheckinActivity/<str:aid>", activity_views.offlineCheckinActivity, name="offlineCheckinActivity"),
 ] + [
     # 组织相关操作
     path("saveShowPositionStatus", org_views.saveShowPositionStatus, name="saveShowPositionStatus"),
@@ -82,18 +83,24 @@ urlpatterns = [
     path("sendMessage/", org_views.sendMessage, name="sendMessage"),
     # path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"), 弃用多年
 ] + [
+    # 发布选课相关操作
+    path("addCourse/", course_views.addCourse, name="addCourse"),
+    path("editCourse/<str:cid>", course_views.addCourse, name="editCourse"),
     # 课程相关操作
     path("selectCourse/", course_views.selectCourse, name="selectCourse"),
     path("viewCourse/", course_views.viewCourse, name="viewCourse"),
     path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
     path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
     path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
+    path("showCourseRecord/", course_views.showCourseRecord, name="showCourseRecord"),
 ] + [
     # 数据导入
     path("loadstudata/", data_import.load_stu_data, name="load_stu_data"),
     path("loadfreshman/", data_import.load_freshman_info, name="load_freshman"),
     path("loadorgdata/", data_import.load_org_data, name="load_org_data"),
     path("loadorgtag/", data_import.load_org_tag, name="loag_org_tag"),
+    path("loadoldorgtags/", data_import.load_tags_for_old_org, name="load_tags_for_old_org"),
+    path("loadfeedbackdata/", data_import.load_feedback_data, name="load_feedback_data"),
     # path("loadtransferinfo/",
     #      data_import.load_transfer_info,
     #      name="load_transfer_info"),        #服务器弃用
@@ -104,10 +111,6 @@ urlpatterns = [
     #      data_import.load_notification_info,
     #      name="load_notification_info"),    #服务器弃用
     path("loadhelp/", data_import.load_help, name="load_help"),
-] + [
-    # 埋点
-    path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
-] + [
     path("loadcourecord/", data_import.load_CouRecord,  name="load_cou_record"),
 ] + [
     # 埋点

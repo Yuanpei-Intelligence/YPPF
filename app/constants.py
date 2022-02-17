@@ -15,22 +15,36 @@ constants.py
 # 与使用环境有关的内容应在对应文件中定义
 
 from boottest import base_get_setting
+from boottest import (
+    # settings相关常量
+    DEBUG, MEDIA_URL, LOGIN_URL,
+    # 全局的其它常量
+)
+from boottest.global_messages import (
+    WRONG, SUCCEED,
+)
 from django.conf import settings
 
 __all__ = [
+    # 读取本地设置的函数
     'get_setting', 'get_config',
+    # 全局设置的常量
     'DEBUG', 'MEDIA_URL', 'LOGIN_URL',
-    'WRONG', 'SUCCEED', 'SYSTEM_LOG',
+    # 全局消息的常量
+    'WRONG', 'SUCCEED',
+    # Log记录的常量
+    'SYSTEM_LOG',
+    # 本应用的常量
+    'CURRENT_ACADEMIC_YEAR',
     'YQP_ONAME', 'COURSE_TYPENAME',
 ]
 
+# 本应用的本地设置目录
 PREFIX = ''
 
 def get_setting(path: str='', default=None, trans_func=None,
                fuzzy_lookup=False, raise_exception=True):
     '''
-    默认值更宽松的`get_setting`, 适合可选本地设置
-
     提供/或\\分割的setting路径，尝试寻找对应路径的设置，失败时返回default
     - 如果某级目录未找到且设置了fuzzy_lookup，会依次尝试其小写、大写版本，并忽略空目录
     - 可选的trans_func标识了结果转换函数，可以是int str等
@@ -38,17 +52,6 @@ def get_setting(path: str='', default=None, trans_func=None,
     '''
     return base_get_setting(
         PREFIX + path, default, trans_func, fuzzy_lookup, raise_exception)
-
-
-DEBUG = settings.DEBUG
-MEDIA_URL = settings.MEDIA_URL
-LOGIN_URL = settings.LOGIN_URL
-
-WRONG, SUCCEED = 1, 2
-
-YQP_ONAME = get_setting('YQPoint_source_oname')
-
-SYSTEM_LOG = get_setting('system_log')
 
 def get_config(path: str='', default=None, trans_func=None,
                fuzzy_lookup=False, raise_exception=False):
@@ -63,4 +66,13 @@ def get_config(path: str='', default=None, trans_func=None,
     return base_get_setting(
         PREFIX + path, default, trans_func, fuzzy_lookup, raise_exception)
 
-COURSE_TYPENAME = get_config('course/type_name', '书院课程')
+
+# Log记录的常量，未来可能从对应应用导入
+SYSTEM_LOG: str = get_setting('system_log')
+
+# 本应用的必要设置
+CURRENT_ACADEMIC_YEAR: int = get_setting('semester_data/year', trans_func=int)
+YQP_ONAME: str = get_setting('YQPoint_source_oname')
+
+# 本应用的可选设置，每个都应该给出默认值
+COURSE_TYPENAME: str = get_config('course/type_name', '书院课程')

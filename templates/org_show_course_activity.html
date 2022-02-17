@@ -3,7 +3,8 @@
 {% block mainpage %}
 
 <!-- TODO: Link to related pages -->
-{% with title='我的课程' link1='/addSingleCourseActivity' btn_name1='增加课时' link2='' btn_name2='发起选课' %}
+
+{% with title='我的课程' link1='/addSingleCourseActivity' btn_name1='增加课时' link2='/addCourse' btn_name2='发起选课' link3='/showCourseRecord' btn_name3='课程结项' %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -28,6 +29,9 @@
                                 </button>
                                 <button type="button" class="btn btn-info mb-4 mr-2 "
                                     onclick="location.href = '{{link2}}';">{{btn_name2}}
+                                </button>
+                                <button type="button" class="btn btn-info mb-4 mr-2 "
+                                    onclick="location.href = '{{link3}}';">{{btn_name3}}
                                 </button>
                             </div>
                         </div>
@@ -70,7 +74,7 @@
 
                                 <div class="tab-content" id="activityTabContent">
                                     <div id="futureActivity" class="tab-pane active">
-                                        <div class="bio-skill-box layout-top-spacing" style="max-height: 75vh; overflow: scroll;">
+                                        <div class="bio-skill-box layout-top-spacing">
                                             {% if future_activity_list|length == 0 %}
                                             <p style="text-align: center;">没有未开始的课程活动！</p>
                                             {% endif %}
@@ -165,7 +169,7 @@
                                     </div>
 
                                     <div id="finishedActivity" class="tab-pane fade">
-                                        <div class="bio-skill-box layout-top-spacing" style="max-height: 75vh; overflow: scroll;">
+                                        <div class="bio-skill-box layout-top-spacing">
                                             {% if finished_activity_list|length == 0 %}
                                             <p style="text-align: center;">没有已结束的课程活动！</p>
                                             {% endif %}
