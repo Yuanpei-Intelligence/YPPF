@@ -513,7 +513,7 @@ def sendMessage(request):
             'disabled' : False,  # 是否禁止选择这个量
             'selected' : False   # 是否默认选中这个量
         }
-        for w in ['订阅用户','小组成员']
+        for w in ['订阅用户','小组成员','推广消息']
     }
 
     # 设置默认量

@@ -8,24 +8,35 @@ constants.py
     - 前者默认抛出异常，适合必要的设置，后者默认更加宽松，适合
     - 命名只是因为settings.py，不用太在意语义
 
-@Date 2022-01-17
+@Date 2022-02-17
 '''
 # 对改动者：
 # 本文件是最基础的依赖文件，应当只加入跨架构的必要常量，而不导入其他文件
 # 与使用环境有关的内容应在对应文件中定义
 
 from boottest import base_get_setting
+from boottest import (
+    # settings相关常量
+    DEBUG, MEDIA_URL, LOGIN_URL,
+    # 全局的其它常量
+)
+from boottest.global_messages import (
+    WRONG, SUCCEED,
+)
 from django.conf import settings
 
 __all__ = [
     # 读取本地设置的函数
     'get_setting', 'get_config',
+    # 全局设置的常量
     'DEBUG', 'MEDIA_URL', 'LOGIN_URL',
-    'CURRENT_ACADEMIC_YEAR',
+    # 全局消息的常量
     'WRONG', 'SUCCEED',
     # Log记录的常量
     'SYSTEM_LOG',
     # 本应用的常量
+    'UTYPE_PER', 'UTYPE_ORG',
+    'CURRENT_ACADEMIC_YEAR',
     'YQP_ONAME', 'COURSE_TYPENAME',
 ]
 
@@ -42,14 +53,6 @@ def get_setting(path: str='', default=None, trans_func=None,
     '''
     return base_get_setting(
         PREFIX + path, default, trans_func, fuzzy_lookup, raise_exception)
-
-
-DEBUG = settings.DEBUG
-MEDIA_URL = settings.MEDIA_URL
-LOGIN_URL = settings.LOGIN_URL
-
-WRONG, SUCCEED = 1, 2
-
 
 def get_config(path: str='', default=None, trans_func=None,
                fuzzy_lookup=False, raise_exception=False):
@@ -68,9 +71,13 @@ def get_config(path: str='', default=None, trans_func=None,
 # Log记录的常量，未来可能从对应应用导入
 SYSTEM_LOG: str = get_setting('system_log')
 
+# 本应用的常量
+UTYPE_PER = 'Person'
+UTYPE_ORG = 'Organization'
+
 # 本应用的必要设置
 CURRENT_ACADEMIC_YEAR: int = get_setting('semester_data/year', trans_func=int)
 YQP_ONAME: str = get_setting('YQPoint_source_oname')
 
 # 本应用的可选设置，每个都应该给出默认值
-COURSE_TYPENAME = get_config('course/type_name', '书院课程')
+COURSE_TYPENAME: str = get_config('course/type_name', '书院课程')

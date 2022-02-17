@@ -68,7 +68,7 @@ def get_person_or_org(user, user_type=None):
             return user.organization
     return (
         NaturalPerson.objects.get(person_id=user)
-        if user_type == "Person"
+        if user_type == UTYPE_PER
         else Organization.objects.get(organization_id=user)
     )
 
@@ -81,18 +81,18 @@ def check_user_type(user):
     if user.is_superuser or user.is_staff:
         if user.is_staff:
             for user_type, model_name in [
-                ("Organization", "organization"),
-                ("Person", "naturalperson"),
+                (UTYPE_ORG, "organization"),
+                (UTYPE_PER, "naturalperson"),
                 ]:
                 if hasattr(user, model_name):
                     html_display["user_type"] = user_type
                     return True, user_type, html_display
         return False, "", html_display
     if user.username[:2] == "zz":
-        user_type = "Organization"
+        user_type = UTYPE_ORG
         html_display["user_type"] = user_type
     else:
-        user_type = "Person"
+        user_type = UTYPE_PER
         html_display["user_type"] = user_type
 
     return True, user_type, html_display
@@ -104,7 +104,7 @@ def get_user_ava(obj, user_type):
     except:
         ava = ""
     if not ava:
-        if user_type == "Person":
+        if user_type == UTYPE_PER:
             return MEDIA_URL + "avatar/person_default.jpg"
         else:
             return MEDIA_URL + "avatar/org_default.png"
@@ -113,7 +113,7 @@ def get_user_ava(obj, user_type):
 
 
 def get_user_wallpaper(person, user_type):
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         return MEDIA_URL + (str(person.wallpaper) or "wallpaper/person_wall_default.jpg")
     else:
         return MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.jpg")

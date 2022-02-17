@@ -4,15 +4,11 @@
 
 包含与身份有关的工具函数
 
-可能依赖于app.utils
+依赖于app.API
 '''
-from Appointment import global_info
+from Appointment import *
 from Appointment.models import Participant
-from app.utils import (
-    check_user_type,
-    get_person_or_org,
-    get_user_ava,
-)
+from app import API
 from typing import Union
 from django.contrib.auth.models import User
 
@@ -64,48 +60,41 @@ def _arg2user(participant: Union[Participant, User]):
 
 
 # 获取用户身份
-def _is_org_type(usertype):
-    return usertype == 'Organization'
+def is_valid(participant: Union[Participant, User]):
+    '''返回participant对象是否是一个有效的用户'''
+    user = _arg2user(participant)
+    return API.is_org(user)
 
 def is_org(participant: Union[Participant, User]):
     '''返回participant对象是否是组织'''
     user = _arg2user(participant)
-    return _is_org_type(check_user_type(user)[1])
+    return API.is_org(user)
 
 def is_person(participant: Union[Participant, User]):
     '''返回participant是否是个人'''
-    return not is_org(participant)
+    user = _arg2user(participant)
+    return API.is_person(user)
 
 
 # 获取用户信息
-def _get_userinfo(user: User):
-    '''返回User对象对应的(object, type)二元组'''
-    user_type = check_user_type(user)[1]
-    obj = get_person_or_org(user, user_type)
-    return obj, user_type
-
-
 def get_name(participant: Union[Participant, User]):
     '''返回participant(个人或组织)的名称'''
-    obj, user_type = _get_userinfo(_arg2user(participant))
-    if _is_org_type(user_type):
-        return obj.oname
-    else:
-        return obj.name
+    user = _arg2user(participant)
+    return API.get_display_name(user)
 
 
 def get_avatar(participant: Union[Participant, User]):
     '''返回participant的头像'''
-    obj, user_type = _get_userinfo(_arg2user(participant))
-    return get_user_ava(obj, user_type)
+    user = _arg2user(participant)
+    return API.get_avatar_url(user)
 
 
 # 用户验证、创建和更新
-def _create_account(request):
+def _create_account(request, **values):
     '''
     根据请求信息创建账户, 根据创建结果返回生成的对象或者`None`, noexcept
     '''
-    if not global_info.allow_newstu_appoint:
+    if not GLOBAL_INFO.allow_newstu_appoint:
         return None
 
     import pypinyin
@@ -116,25 +105,25 @@ def _create_account(request):
             try:
                 given_name = get_name(request.user)
             except:
-                # TODO: task 1 pht 2022-1-26 将来仍无法读取信息应当报错
-                from Appointment.utils.utils import operation_writer
-                operation_writer(global_info.system_log,
-                                f'创建未命名用户:学号为{request.user.username}',
-                                'identity._create_account',
-                                'Problem')
-                given_name = '未命名'
+                if values.get('given_name') is None:
+                    from Appointment.utils.utils import operation_writer
+                    operation_writer(SYSTEM_LOG,
+                                     f'找不到用户{request.user.username}的姓名',
+                                     'identity._create_account', 'Error')
 
             # 设置首字母
             pinyin_list = pypinyin.pinyin(given_name, style=pypinyin.NORMAL)
             pinyin_init = ''.join([w[0][0] for w in pinyin_list])
 
-            # TODO: task 1 pht 2022-1-28 模型修改时需要调整
-            account = Participant.objects.create(
-                Sid=request.user.username,
+            values.update(
+                Sid=request.user,
                 name=given_name,
-                credit=3,
                 pinyin=pinyin_init,
             )
+            values.setdefault('credit', 3)
+            values.setdefault('hidden', is_org(request.user))
+
+            account = Participant.objects.create(**values)
             return account
     except:
         return None
@@ -143,7 +132,7 @@ def _create_account(request):
 def _update_name(user: Union[Participant, User, str]):
     import pypinyin
     from django.db import transaction
-    
+
     participant = user
     if not isinstance(user, Participant):
         participant = get_participant(user)
@@ -182,14 +171,14 @@ def identity_check(
 
             _allow_create = allow_create  # 作用域问题
 
-            if request.user.is_superuser or request.user.is_staff:
+            if not is_valid(request.user):
                 _allow_create = False
 
             cur_part = get_participant(request.user)
 
             if cur_part is not None and cur_part.name == '未命名' and update_name:
                 _update_name(cur_part)
-                
+
             if cur_part is None and _allow_create:
                 cur_part = _create_account(request)
 
