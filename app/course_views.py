@@ -251,7 +251,7 @@ def showCourseActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-#@log.except_captured(EXCEPT_REDIRECT, source='course_views[showCourseRecord]', record_user=True)
+@log.except_captured(EXCEPT_REDIRECT, source='course_views[showCourseRecord]', record_user=True)
 def showCourseRecord(request):
     '''
     展示及修改学时数据
