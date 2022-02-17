@@ -51,6 +51,7 @@ __all__ = [
     'changeAllActivities',
     'get_weather',
     'update_active_score_per_day',
+    'longterm_launch_course',
 ]
 
 
@@ -323,8 +324,7 @@ def start_scheduler(with_scheduled_job=True, debug=False):
                               hour=1,
                               replace_existing=True)
             current_job = "courseWeeklyActivitylauncher"
-            if debug:
-                print(f"adding scheduled job '{current_job}'")
+            if debug: print(f"adding scheduled job '{current_job}'")
             scheduler.add_job(longterm_launch_course,
                               "interval",
                               id=current_job,
