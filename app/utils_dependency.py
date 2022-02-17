@@ -36,6 +36,7 @@ from boottest.global_messages import (
     wrong,
     succeed,
 )
+import boottest.global_messages as my_messages
 
 # 内部加密用，不同utils文件不共享，可能被对应的views依赖
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher

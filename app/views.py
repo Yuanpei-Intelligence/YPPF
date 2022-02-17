@@ -434,7 +434,7 @@ def stuinfo(request, name=None):
             # 把当前学期的活动去除
             course_me_past = (
                 course_me.exclude(
-                    year=CURRENT_ACADEMIC_YEAR, 
+                    year=CURRENT_ACADEMIC_YEAR,
                     semester=Semester.now())
             )
 
@@ -445,7 +445,7 @@ def stuinfo(request, name=None):
                 .exclude(year=2020, semester=Semester.FALL, total_hours__gte=6)
                 .exclude(year=2021, semester=Semester.SPRING, total_hours__gte=6)
             )
-            
+
             # 特判，需要一定时长才能计入总学时
             course_me_past = (
                 course_me_past
@@ -494,7 +494,7 @@ def stuinfo(request, name=None):
 
 
         # ------------------ 活动参与 ------------------ #
-        
+
         participants = Participant.objects.activated().filter(person_id=person)
         activities = Activity.objects.activated().filter(
             Q(id__in=participants.values("activity_id")),
