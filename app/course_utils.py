@@ -206,25 +206,25 @@ def modify_course_activity(request, activity):
     activity.save()
 
     #修改所有该时段的时间、地点
-    course_time = activity.course_time
-    if context["post_type"] == "modify_all" and course_time:
-        course_time = CourseTime.objects.get(id=course_time.id)
-        org = activity.organization_id
-        course = Course.objects.activated().filter(organization=org)
-        course = course.first()
+    if context["post_type"] == "modify_all" and activity.course_time is not None:
+        course_time = CourseTime.objects.select_for_update().get(
+            id=activity.course_time.id)
+        course = course_time.course
         schedule_start = course_time.start
         schedule_end = course_time.end
         #设置CourseTime初始时间为对应的 周几:hour:minute:second
         #设置周几
         schedule_start += timedelta(
-            days=(context["start"].weekday()-schedule_start.weekday()))
+            days=(context["start"].weekday() - schedule_start.weekday()))
         schedule_end += timedelta(
-            days=(context["end"].weekday()-schedule_end.weekday()))
+            days=(context["end"].weekday() - schedule_end.weekday()))
         #设置每周上课时间：hour:minute:second
-        schedule_start = schedule_start.replace(
-            hour=context["start"].hour, minute=context["start"].minute, second=context["start"].second)
-        schedule_end = schedule_end.replace(
-            hour=context["end"].hour, minute=context["end"].minute, second=context["end"].second)
+        schedule_start = schedule_start.replace(hour=context["start"].hour,
+                                                minute=context["start"].minute,
+                                                second=context["start"].second)
+        schedule_end = schedule_end.replace(hour=context["end"].hour,
+                                            minute=context["end"].minute,
+                                            second=context["end"].second)
         course_time.start = schedule_start
         course_time.end = schedule_end
         #设置地点
@@ -305,8 +305,8 @@ def cancel_course_activity(request, activity, cancel_all=False):
 
     #取消该时段所有活动！
     if cancel_all:
-        #   设置结束 若cur_week > end_week 则每周定时任务无需执行
-        activity.course_time.end_week = activity.course_time.cur_week - 1
+        # 设置结束 若cur_week >= end_week 则每周定时任务无需执行
+        activity.course_time.end_week = activity.course_time.cur_week
         activity.course_time.save()
 
 def remaining_willingness_point(user):
@@ -658,8 +658,8 @@ def change_course_status(cur_status, to_status):
     # 以下进行状态的合法性检查
     if cur_status is not None:
         if cur_status == Course.Status.WAITING:
-                assert to_status == Course.Status.STAGE1, \
-                f"不能从{cur_status}变更到{to_status}"
+            assert to_status == Course.Status.STAGE1, \
+            f"不能从{cur_status}变更到{to_status}"
         elif cur_status == Course.Status.STAGE1:
             assert to_status == Course.Status.DRAWING, \
             f"不能从{cur_status}变更到{to_status}"
@@ -733,7 +733,7 @@ def register_selection():
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_start",
                     run_date=stage2_start, args=[Course.Status.DRAWING,Course.Status.STAGE2], replace_existing=True)
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_end",
-                    run_date=stage2_end, args=[Course.Status.STAGE2,Course.Status.SELECT_END], replace_existing=True)                
+                    run_date=stage2_end, args=[Course.Status.STAGE2,Course.Status.SELECT_END], replace_existing=True)
     # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
 
 
