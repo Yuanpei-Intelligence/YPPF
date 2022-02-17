@@ -37,6 +37,7 @@ from boottest.global_messages import (
     message_url,
     append_query,
 )
+import boottest.global_messages as my_messages
 from app import log
 from app import utils
 
