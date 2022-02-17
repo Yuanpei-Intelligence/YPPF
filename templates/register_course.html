@@ -108,13 +108,13 @@
                                                 <span class="rounded">
                                                     <button class="btn btn-outline-primary dropdown-toggle" type="button"
                                                         data-toggle="dropdown" aria-haspopup="true" aria-expanded="false"
-                                                        id="pricebutton1">{%if edit %}“{{course.get_type_display}}”类课程{% else %}选择课程类型{%endif%}
+                                                        id="pricebutton1">{%if edit %}{{course.get_type_display}}类课程{% else %}选择课程类型{%endif%}
                                                     </button>
                                                     <div class="dropdown-menu">
                                                         {% for course_type in course_type_all%}
                                                         <a class="dropdown-item" onclick="get_type_value($(this).text())"
                                                             id="type{{course_type.1}}" name="type{{course_type.1}}"
-                                                            value="{{course_type.1}}">“{{course_type.0}}”类课程</a>
+                                                            value="{{course_type.1}}">{{course_type.0}}类课程</a>
                                                         {% endfor %}
                                                     </div>
                                                 </span>
