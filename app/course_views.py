@@ -24,8 +24,9 @@ from app.course_utils import (
 )
 from app.utils import get_person_or_org
 
-from django.db import transaction
 from datetime import datetime
+
+from django.db import transaction
 
 __all__ = [
     'editCourseActivity',
@@ -104,7 +105,7 @@ def editCourseActivity(request, aid):
     end = activity.end.strftime("%Y-%m-%d %H:%M")
     # introduction = escape_for_templates(activity.introduction) # 暂定不需要简介
     edit = True  # 前端据此区分是编辑还是创建
-    
+
     # 判断本活动是否为长期定时活动
     course_time_tag = (activity.course_time is not None)
 
@@ -219,7 +220,7 @@ def showCourseActivity(request):
 
         if activity.organization_id != me:
             return redirect(message_url(wrong('您没有取消该课程活动的权限!'), request.path))
-        
+
         if activity.status in [
             Activity.Status.REJECT,
             Activity.Status.ABORT,
@@ -250,7 +251,7 @@ def showCourseActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='course_views[showCourseRecord]', record_user=True)
+#@log.except_captured(EXCEPT_REDIRECT, source='course_views[showCourseRecord]', record_user=True)
 def showCourseRecord(request):
     '''
     展示及修改学时数据
@@ -285,7 +286,7 @@ def showCourseRecord(request):
 
     # 是否可以编辑
     editable = course.status == Course.Status.END
-
+    messages = dict()
     # 获取前端可能的提示
     try:
         if request.GET.get("warn_code") is not None:
@@ -431,13 +432,25 @@ def selectCourse(request):
 
     html_display["is_myself"] = True
     html_display["current_year"] = CURRENT_ACADEMIC_YEAR
-    html_display["semester"] = Semester.now().value
+    html_display["semester"] = ("春" if Semester.now() == Semester.SPRING else "秋")
+
+    html_display["yx_election_start"] = get_setting("course/yx_election_start")
+    html_display["yx_election_end"] = get_setting("course/yx_election_end")
+    html_display["btx_election_start"] = get_setting("course/btx_election_start")
+    html_display["btx_election_end"] = get_setting("course/btx_election_end")
+
+    # 是否正在进行抽签
+    is_drawing = (datetime.strptime(html_display["yx_election_end"],
+                                    "%Y-%m-%d %H:%M:%S") <= datetime.now()
+                  and datetime.now() <= datetime.strptime(
+                      html_display["btx_election_start"], "%Y-%m-%d %H:%M:%S"))
+
+    # 选课是否已经全部结束
+    is_end = (datetime.now() > datetime.strptime(
+        html_display["btx_election_end"], "%Y-%m-%d %H:%M:%S"))
 
     unselected_courses = Course.objects.unselected(me)
     selected_courses = Course.objects.selected(me)
-
-    # TODO task 10 ljy 2022-02-13
-    # 前端完成后可以省略course_to_display函数，暂时保留便于对接
 
     # 未选的课程需要按照课程类型排序
     courses = {}
@@ -445,8 +458,8 @@ def selectCourse(request):
         courses[type] = course_to_display(unselected_courses.filter(type=type),
                                           me)
 
-    # 命名和前端分类保持一致
-    my_courses = course_to_display(selected_courses, me)
+    unselected_display = course_to_display(unselected_courses, me)
+    selected_display = course_to_display(selected_courses, me)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, "书院课程")
 
@@ -457,7 +470,7 @@ def selectCourse(request):
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(record_user=True,
                      record_request_args=True,
-                     source='course_views[courseDetail]')
+                     source='course_views[viewCourse]')
 def viewCourse(request):
     """
     展示一门课程的详细信息
@@ -480,15 +493,14 @@ def viewCourse(request):
     me = utils.get_person_or_org(request.user, user_type)
     course_display = course_to_display(course, me, detail=True)
 
-    # TODO: task 10 ljy 2022-02-07
-    # 和前端对接
+    bar_display = utils.get_sidebar_and_navbar(request.user, "课程详情")
 
-    return HttpResponse()
- 
+    return render(request, "course_info.html", locals())
+
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-#@log.except_captured(EXCEPT_REDIRECT, source='course_views[addCourse]', record_user=True)
+@log.except_captured(EXCEPT_REDIRECT, source='course_views[addCourse]', record_user=True)
 def addCourse(request, cid=None):
     """
     发起课程页
@@ -508,7 +520,7 @@ def addCourse(request, cid=None):
         # assert valid  已经在check_user_access检查过了
         me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
         if cid is None:
-            if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME: 
+            if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
                 return redirect(message_url(wrong('书院课程账号才能发起课程!')))
             #暂时仅支持一个课程账号一学期只能开一门课
             courses = Course.objects.activated().filter(organization=me)
@@ -532,7 +544,7 @@ def addCourse(request, cid=None):
     html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
     html_display["warn_message"] = request.GET.get(
             "warn_message", "")  # 提醒的具体内容
-    
+
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewCourse，可以不设计bar_display
     if request.method == "POST" and request.POST:
@@ -554,11 +566,11 @@ def addCourse(request, cid=None):
 
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     html_display["applicant_name"] = me.oname
-    html_display["app_avatar_path"] = me.get_user_ava() 
+    html_display["app_avatar_path"] = me.get_user_ava()
     html_display["today"] = datetime.now().strftime("%Y-%m-%d")
     course_type_all = [
        ["德" , Course.CourseType.MORAL] ,
-       ["智" , Course.CourseType.INTELLECTUAL] , 
+       ["智" , Course.CourseType.INTELLECTUAL] ,
        ["体" , Course.CourseType.PHYSICAL] ,
        ["美" , Course.CourseType.AESTHETICS],
        ["劳" , Course.CourseType.LABOUR],
@@ -567,7 +579,7 @@ def addCourse(request, cid=None):
     editable=False
     if edit and course.status == Course.Status.WAITING: #选课未开始才能修改
         editable = True
-    
+
     if edit:
         name = utils.escape_for_templates(course.name)
         organization = course.organization
@@ -585,10 +597,10 @@ def addCourse(request, cid=None):
         current_participants = course.current_participants
         QRcode=course.QRcode
 
- 
+
     if not edit:
         bar_display = utils.get_sidebar_and_navbar(request.user, "发起课程")
     else:
         bar_display = utils.get_sidebar_and_navbar(request.user, "修改课程")
-    
+
     return render(request, "register_course.html", locals())

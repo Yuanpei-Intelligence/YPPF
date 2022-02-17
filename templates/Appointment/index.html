@@ -108,8 +108,10 @@
 				</nav>
 			</header>
 			<!-- /Header -->
-			{% if warn_code %}
+			{% if warn_code == 1 %}
 			<div class="alert alert-warning  text-center" >{{ warn_message }}</div>
+			{% elif warn_code == 2 %}
+			<div class="alert alert-success  text-center" >{{ warn_message }}</div>
 			{% endif %}
 			{% if message_code %}
 			<div class="alert alert-warning  text-center" >{{ show_message }}</div>
@@ -199,7 +201,7 @@
 											<i class="col-0 my-auto fas fa-user-check text-success" data-toggle="tooltip" title="人数较少"></i>
 											{% elif crowd < 7 %}
 											<i class="col-0 my-auto fas fa-user-friends text-warning" data-toggle="tooltip" title="部分占用"></i>
-											{% else%}
+											{% else %}
 											<i class="col-0 my-auto fas fa-users text-danger" data-toggle="tooltip" title="人数较多"></i>
 											{% endif %}
 										</div>
@@ -411,7 +413,7 @@
 			</section>
 			<!-- /研讨室预约 -->
 		   
-			{% if russ_len >= 1%}
+			{% if russ_len >= 1 %}
 				<!-- 俄文楼预约 -->
 				<section class="section section-doctor" >
 					<div class="container-fluid" >
