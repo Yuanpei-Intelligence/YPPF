@@ -584,7 +584,7 @@ def send_message_check(me, request):
     elif len(title) > 10:
         new_len = sum([0.5 if judge_half_size(x) else 1 for x in list(title)])
         if new_len > 10:
-            return wrong("通知的标题不能超过10个全角字符！不然发出来的通知会很丑！") 
+            return wrong("通知的标题不能超过10个汉字或20个英文字母！不然发出来的通知会很丑！") 
 
     if len(url) == 0:
         url = None
