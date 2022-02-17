@@ -2,7 +2,7 @@
 
 import requests as requests
 import json
-from Appointment import *, hash_wechat_coder
+from Appointment import *
 import threading
 from Appointment.models import Participant, Room, Appoint, CardCheckInfo  # 数据库模型
 from django.contrib.auth.models import User
