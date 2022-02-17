@@ -23,7 +23,7 @@ import random
 import threading
 
 # 全局参数读取
-from Appointment import global_info
+from Appointment import *
 
 # 消息读取
 from boottest.global_messages import wrong, succeed, message_url
@@ -139,7 +139,7 @@ def cameracheck(request):   # 摄像头post的后端函数
             room.save()
 
     except Exception as e:
-        operation_writer(global_info.system_log, "房间"+str(rid) +
+        operation_writer(SYSTEM_LOG, "房间"+str(rid) +
                          "更新摄像头人数失败1: "+str(e), "views.cameracheck", "Error")
 
         return JsonResponse({'statusInfo': {
@@ -156,19 +156,19 @@ def cameracheck(request):   # 摄像头post的后端函数
         content = appointments[0]
         if room.Rid == "B107B":
             # 107b的监控不太靠谱，正下方看不到
-            num_need = min(max(global_info.today_min, num_need - 2), num_need)
+            num_need = min(max(GLOBAL_INFO.today_min, num_need - 2), num_need)
         elif room.Rid == "B217":
             # 地下室关灯导致判定不清晰，晚上更严重
             if content.Astart.hour >= 20:
-                num_need = min(max(global_info.today_min, num_need - 2), num_need)
+                num_need = min(max(GLOBAL_INFO.today_min, num_need - 2), num_need)
             else:
-                num_need = min(max(global_info.today_min, num_need - 1), num_need)
+                num_need = min(max(GLOBAL_INFO.today_min, num_need - 1), num_need)
         if content.Atime.date() == content.Astart.date():
             # 如果预约时间在使用时间的24h之内 则人数下限为2
-            num_need = min(global_info.today_min, num_need)
+            num_need = min(GLOBAL_INFO.today_min, num_need)
         if content.Atemp_flag == Appoint.Bool_flag.Yes:
             # 如果为临时预约 则人数下限为1 不作为合格标准 只是记录
-            num_need = min(global_info.temporary_min, num_need)
+            num_need = min(GLOBAL_INFO.temporary_min, num_need)
         try:
             if room.Rid in {"B109A", "B207"}:  # 康德报告厅&小舞台 不考虑违约
                 content.Astatus = Appoint.Status.CONFIRMED
@@ -189,7 +189,7 @@ def cameracheck(request):   # 摄像头post的后端函数
                             content.Acheck_status == Appoint.Check_status.UNSAVED:
                         # 说明是新的一分钟或者本分钟还没有记录
                         # 如果随机成功，记录新的检查结果
-                        if rand < global_info.check_rate:
+                        if rand < GLOBAL_INFO.check_rate:
                             content.Acheck_status = Appoint.Check_status.FAILED
                             content.Acamera_check_num += 1
                             if temp_stu_num >= num_need:  # 如果本次检测合规
@@ -215,7 +215,7 @@ def cameracheck(request):   # 摄像头post的后端函数
                 camera_lock.release()
                 # add end
         except Exception as e:
-            operation_writer(global_info.system_log, "预约"+str(content.Aid) +
+            operation_writer(SYSTEM_LOG, "预约"+str(content.Aid) +
                              "更新摄像头人数失败2: "+str(e), "views.cameracheck", "Error")
 
             return JsonResponse({'statusInfo': {
@@ -229,19 +229,19 @@ def cameracheck(request):   # 摄像头post的后端函数
                     content, Appoint.Reason.R_LATE)
                 # 该函数只是把appoint标记为迟到(填写reason)并修改状态为进行中，不发送微信提醒
                 if not status:
-                    operation_writer(global_info.system_log, "预约"+str(content.Aid) +
+                    operation_writer(SYSTEM_LOG, "预约"+str(content.Aid) +
                                      "设置为迟到时的返回值异常 "+tempmessage, "views.cameracheck", "Error")
         except Exception as e:
-            operation_writer(global_info.system_log, "预约"+str(content.Aid) +
+            operation_writer(SYSTEM_LOG, "预约"+str(content.Aid) +
                              "在迟到状态设置过程中: "+tempmessage, "views.cameracheck", "Error")
             # added by wxy: 违约原因:迟到
             # status, tempmessage = appoint_violate(
             #     content, Appoint.Reason.R_LATE)
             # if not status:
-            #     operation_writer(global_info.system_log, "预约"+str(content.Aid) +
+            #     operation_writer(SYSTEM_LOG, "预约"+str(content.Aid) +
             #                      "因迟到而违约,返回值出现异常: "+tempmessage, "views.cameracheck", "Error")
         # except Exception as e:
-        #     operation_writer(global_info.system_log, "预约"+str(content.Aid) +
+        #     operation_writer(SYSTEM_LOG, "预约"+str(content.Aid) +
         #                      "在迟到违约过程中: "+tempmessage, "views.cameracheck", "Error")
 
         return JsonResponse({}, status=200)  # 返回空就好
@@ -272,7 +272,7 @@ def cancelAppoint(request):
             reverse("Appointment:admin_index"),
             wrong("请不要恶意尝试取消不是自己发起的预约!")))
 
-    if (global_info.restrict_cancel_time
+    if (GLOBAL_INFO.restrict_cancel_time
             and appoint.Astart < datetime.now() + timedelta(minutes=30)):
         return redirect(message_url(
             reverse("Appointment:admin_index"),
@@ -311,7 +311,7 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
                     'message': 'invalid params',
                 }},
                 status=400)
-        if display_token != global_info.display_token:
+        if display_token != GLOBAL_INFO.display_token:
             return JsonResponse(
                 {'statusInfo': {
                     'message': 'invalid token:'+str(display_token),
@@ -348,7 +348,7 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
 def admin_index(request):   # 我的账户也主函数
 
     render_context = {}
-    render_context.update(login_url=global_info.login_url)
+    render_context.update(login_url=GLOBAL_INFO.login_url)
 
     my_messages.transfer_message_context(request.GET, render_context,
                                          normalize=True)
@@ -565,7 +565,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
     #                 now_appoint.Astatus = Appoint.Status.PROCESSING
     #                 now_appoint.save()
     # except Exception as e:
-    #     operation_writer(global_info.system_log,
+    #     operation_writer(SYSTEM_LOG,
     #                      "可以开门却不开门的致命错误，房间号为" +
     #                      str(Rid) + ",学生为"+str(Sid)+",错误为:"+str(e),
     #                      "views.doorcheck",
@@ -583,7 +583,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
 @identity_check(redirect_field_name='origin', auth_func=lambda x: True)
 def index(request):  # 主页
     render_context = {}
-    render_context.update(login_url=global_info.login_url)
+    render_context.update(login_url=GLOBAL_INFO.login_url)
     # 处理学院公告
     if (College_Announcement.objects.all()):
         try:
@@ -781,7 +781,7 @@ def arrange_talk_room(request):
     if check_type == "talk":
         if re_time.date() == datetime.now().date():
             is_today = True
-            show_min = global_info.today_min
+            show_min = GLOBAL_INFO.today_min
         room_list = Room.objects.filter(
             Rtitle__contains='研讨').filter(Rstatus=Room.Status.PERMITTED).order_by('Rmin', 'Rid')
     else:  # type == "russ"
@@ -896,7 +896,7 @@ def check_out(request):  # 预约表单提交
                 appoint_params['Rmin'] = room_object.Rmin
                 if datetime.now().strftime("%a") == appoint_params['weekday']:
                     appoint_params['Rmin'] = min(
-                        global_info.today_min, room_object.Rmin)
+                        GLOBAL_INFO.today_min, room_object.Rmin)
         appoint_params['Sid'] = request.user.username
         appoint_params['Sname'] = get_participant(appoint_params['Sid']).name
 
