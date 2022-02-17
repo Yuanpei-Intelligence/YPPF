@@ -238,7 +238,7 @@ def showCourseActivity(request):
         with transaction.atomic():
             activity = Activity.objects.select_for_update().get(id=aid)
             error = cancel_course_activity(request, activity, cancel_all)
-        
+
         # 无返回值表示取消成功，有则失败
         if error is None:
             html_display["warn_code"] = 2
