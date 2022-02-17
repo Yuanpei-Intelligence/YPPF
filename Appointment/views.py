@@ -25,6 +25,10 @@ import threading
 # 全局参数读取
 from Appointment import global_info
 
+# 消息读取
+from boottest.global_messages import wrong, succeed, message_url
+import boottest.global_messages as my_messages
+
 # utils对接工具
 from Appointment.utils.utils import send_wechat_message, appoint_violate, doortoroom, iptoroom, operation_writer, write_before_delete, cardcheckinfo_writer, check_temp_appoint, set_appoint_reason
 import Appointment.utils.web_func as web_func
@@ -307,10 +311,8 @@ def admin_index(request):   # 我的账户也主函数
     render_context = {}
     render_context.update(login_url=global_info.login_url)
 
-    if request.GET.get("warn_code", None) is not None:
-        warn_code = int(request.GET['warn_code'])
-        warning = request.GET['warning']
-        render_context.update(warn_code=warn_code, warning=warning)
+    my_messages.transfer_message_context(request.GET, render_context,
+                                         normalize=True)
 
     # 学生基本信息
     Pid = request.user.username
@@ -555,8 +557,7 @@ def index(request):  # 主页
             # print("无法顺利呈现公告，原因可能是没有将状态设置为YES或者超过一条状态被设置为YES")
 
     if request.GET.get("warn") is not None:
-        render_context.update(warn_code=1,
-                              warn_message=request.session.pop('warn_message'))
+        wrong(request.session.pop('warn_message'), render_context)
         
 
     #--------- 前端变量 ---------#
@@ -816,7 +817,6 @@ def arrange_talk_room(request):
 
 @identity_check(redirect_field_name='origin')
 def check_out(request):  # 预约表单提交
-    warn_code = 0
     try:
         if request.method == "GET":
             Rid = request.GET.get('Rid')
@@ -863,10 +863,12 @@ def check_out(request):  # 预约表单提交
 
     except:
         return redirect(reverse('Appointment:index'))
-    if request.method == "GET":
-        js_stu_list = web_func.get_student_chosen_list(request)
-        return render(request, "Appointment/checkout.html", locals())
-    elif request.method == 'POST':  # 提交预约信息
+    
+    # 准备上下文，此时预约的时间地点、发起人已经固定
+    render_context = {}
+    render_context.update(room_object=room_object, appoint_params=appoint_params)
+
+    if request.method == 'POST':  # 提交预约信息
         contents = dict(request.POST)
         for key in contents.keys():
             if key != "students":
@@ -881,14 +883,10 @@ def check_out(request):  # 预约表单提交
                 contents['non_yp_num'] = int(contents['non_yp_num'])
                 assert contents['non_yp_num'] >= 0
             except:
-                warn_code = 1
-                warning = "外院人数有误,请按要求输入!"
-                # return render(request, "Appointment/checkout.html", locals())
+                wrong("外院人数有误,请按要求输入!", render_context)
         # 处理用途未填写
         if contents['Ausage'] == "":
-            warn_code = 1
-            warning = "请输入房间用途!"
-            # return render(request, "Appointment/checkout.html", locals())
+            wrong("请输入房间用途!", render_context)
         # 处理单人预约
         if "students" not in contents.keys():
             contents['students'] = [contents['Sid']]
@@ -905,28 +903,32 @@ def check_out(request):  # 预约表单提交
                                        int(contents['endtime'].split(":")[0]),
                                        int(contents['endtime'].split(":")[1]),
                                        0)
-        if warn_code != 1:
+        if my_messages.get_warning(render_context)[0] is None:
             # 增加contents内容，这里添加的预约需要所有提醒，所以contents['new_require'] = 1
             contents['new_require'] = 1
             response = scheduler_func.addAppoint(
-                contents)  # 否则没必要执行 并且有warn_code&message
+                contents)  # 否则没必要执行
 
             if response.status_code == 200:  # 成功预约
-                urls = reverse(
-                    "Appointment:admin_index"
-                ) + "?warn_code=2&warning=预约" + room_object.Rtitle + "成功!"
-                return redirect(urls)
+                return redirect(message_url(
+                    succeed(f"预约{room_object.Rtitle}成功!"),
+                    reverse("Appointment:admin_index")))
             else:
                 add_dict = json.loads(response.content)['statusInfo']
-                warn_code = 1
-                warning = add_dict['message']
+                wrong(add_dict['message'], render_context)
 
+    js_stu_list = web_func.get_student_chosen_list(request)
+    render_context.update(js_stu_list=js_stu_list)
+
+    if request.method == 'POST':
         # 到这里说明预约失败 补充一些已有信息,避免重复填写
         js_stu_list = web_func.get_student_chosen_list(request)
         selected_stu_list = [
             w for w in js_stu_list if w['id'] in contents['students']]
         no_clause = True
-        return render(request, 'Appointment/checkout.html', locals())
+        render_context.update(selected_stu_list=selected_stu_list,
+                              no_clause=no_clause)
+    return render(request, 'Appointment/checkout.html', render_context)
 
 
 def logout(request):    # 登出系统
