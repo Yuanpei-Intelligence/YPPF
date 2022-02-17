@@ -1,0 +1,204 @@
+
+{% extends "base.html" %}
+
+{% load static %}
+
+
+{% block mainpage %}
+<style>
+    select[readonly] {
+  background: #eee; /*Simular campo inativo - Sugestão @GabrielRodrigues*/
+  pointer-events: none;
+  touch-action: none;
+}
+</style>
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+
+        <!--  BEGIN CUSTOM STYLE FILE  -->
+        <link rel="stylesheet" type="text/css" href="{% static "plugins/dropify/dropify.min.css" %}">
+        <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
+        <!--  END CUSTOM STYLE FILE  -->
+        
+            <div class="container">
+                {% if html_display.warn_code == 2 %}
+                <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+                {% elif html_display.warn_code == 1%}
+                <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+                {% endif %}
+                <div class="row layout-top-spacing">
+
+                    <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+                        <div class="row">
+                            <div class="col-md-12 mb-4">
+                                <div class="statbox widget box box-shadow">
+
+                                    <!--  BEGIN HEADER AREA  -->
+                                    <div class="widget-header">
+                                        <div class="row">
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                    <br>
+                                                    <br>
+                                                    <div align="center">
+                                                    <h3>反馈详情</h3>
+                                                    </div>
+                                                <br>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h4></h4>
+                                                        </div>
+                                                    <div align="right">
+                                                            <h4>
+                                                            <img src={{ app_avatar_path }} width="24" height="24" alt="avatar">
+                                                            <a href='/stuinfo/?name={{feedback_person.name}}'>
+                                                                <u>{{feedback_person.name}}</u></a>
+                                                            </h4>
+                                                    </div>
+                                                    </div>
+
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!--  BEGIN CONTENT AREA  -->
+                                    <div class="widget-content widget-content-area">
+                                        <form role="form" method="POST" enctype="multipart/form-data">
+
+                                            <div class="form-group">
+                                                <label>反馈类型</label>
+                                                <input hidden type="text" name="type" class="form-control"
+                                                    aria-label="Default" value="{{feedback_type}}">
+                                                <input type="text" name="show" class="form-control"
+                                                    aria-label="Default" disabled="disabled" value="{{feedback_type}}">
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>反馈标题</label>
+                                                {% if not is_new_feedback %}
+                                                <textarea type="text" name="title" class="form-control"
+                                                          aria-label="Default" placeholder="标题不能超过30字噢！请文明理性发言，否则会受到严厉惩罚！"
+                                                          {% if allow_form_edit == 0 %} disabled="disabled" {% endif %}>{{feedback.title}}</textarea>
+                                                {% else %}
+                                                <input type="text" name="title" class="form-control"
+                                                       aria-label="Default" placeholder="标题不能超过30字噢！请文明理性发言，否则会受到严厉惩罚！">
+                                                {% endif %}
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="aintro">接收小组</label>
+                                                <select class="form-control selectpicker" data-live-search = "true" id="org" name="org" {% if not allow_form_edit %} readonly="readonly"{% endif %}>
+                                                    {% for key, value in org_list.items %}
+                                                    {% if not value.disabled %}
+                                                    <option value="{{value.value}}" {% if value.selected %} selected {% endif %} >
+                                                        {{value.display}}
+                                                    </option>
+                                                    {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="aintro">反馈内容</label>
+                                                <textarea name="content" class="form-control" rows="6" placeholder=
+                                                        "反馈内容不能为空~"{%if allow_form_edit == 0 and is_new_feedback == 0 %} disabled="disabled" {%endif%}
+                                                >{% if not is_new_feedback %}{{feedback.content}}{% endif %}</textarea>
+                                            </div>
+
+                                            {% if is_new_feedback %}
+                                                <div class="form-group">
+                                                    <label for="aintro">是否同意公开</label>
+                                                    <input hidden name="publisher_public" value="">
+                                                    <div>
+                                                        <button type="button" class="btn btn-lg mb-4 mr-2"
+                                                        value="public" name="post_type" onclick="public.call(this)">公开</button>
+                                                        
+                                                        <button type="button" class="btn btn-lg mb-4 mr-2"
+                                                        value="private" name="post_type" onclick="private.call(this)">不公开</button>
+                                                    </div>
+                                                </div>
+                                            {% elif allow_form_edit %}
+                                                <div class="form-group">
+                                                    <label for="aintro">是否同意公开</label>
+                                                    <input hidden name="publisher_public" {% if feedback.publisher_public == True %} value="公开" {% else %} value="不公开" {% endif %}>
+                                                    <div>
+                                                        <button type="button" {% if feedback.publisher_public == True %} class="btn btn-primary btn-lg mb-4 mr-2" {% else %} class="btn btn-lg mb-4 mr-2" {% endif %}
+                                                        value="public" name="post_type" onclick="public.call(this)">公开</button>
+                                                        
+                                                        <button type="button" {% if feedback.publisher_public == False %} class="btn btn-primary btn-lg mb-4 mr-2" {% else %} class="btn btn-lg mb-4 mr-2" {% endif %}
+                                                        value="private" name="post_type" onclick="private.call(this)">不公开</button>
+                                                    </div>
+                                                </div>
+                                            {% else %}
+                                                <div class="form-group">
+                                                    <label for="aintro">是否同意公开</label>
+                                                    <input hidden name="publisher_public" value="">
+                                                    <div>
+                                                        <button type="button" {% if feedback.publisher_public == True %} class="btn btn-primary btn-lg mb-4 mr-2" {% else %} class="btn btn-lg mb-4 mr-2" {% endif %}
+                                                        value="public" name="post_type">公开</button>
+                                                        
+                                                        <button type="button" {% if feedback.publisher_public == False %} class="btn btn-primary btn-lg mb-4 mr-2" {% else %} class="btn btn-lg mb-4 mr-2" {% endif %}
+                                                        value="private" name="post_type">不公开</button>
+                                                    </div>
+                                                </div>
+                                            {% endif %}
+
+                                            {%if allow_form_edit %}
+                                                {% if not is_new_feedback %}
+                                                    <div align="center">
+                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                        value="modify" name="post_type" onclick="return confirm('确认修改反馈？')">修改反馈</button>
+                                                        
+                                                        <button type="submit" class="btn btn-lg mb-4 mr-2"
+                                                        value="submit_draft" name="post_type" onclick="return confirm('确认提交反馈？')">提交反馈</button>
+                                                    </div>
+                                                {% else %}
+                                                    <div align="center">
+                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                        value="save" name="post_type" onclick="return confirm('确认将反馈保存入草稿箱？没有选择“是否同意公开”的反馈将默认以“不公开”保存，若已选择请忽略此条~')">保存反馈</button>
+                                                        
+                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                        value="directly_submit" name="post_type" onclick="return confirm('确认直接提交反馈？')">提交反馈</button>
+                                                    </div>
+                                                {% endif %}
+                                            {% endif %}
+
+                                            
+                                        </form>
+                                        {% comment %} 
+                                        <br>
+                                        <hr>
+                                        {% include 'comment.html' %}  
+                                        {% endcomment %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        
+    </div>
+    <!--  END CONTENT AREA  -->
+
+
+{% endblock %}
+
+{% block add_js_file %}
+    <script src={% static "plugins/dropify/dropify.min.js" %}></script>
+    <script src={% static "assets/js/users/account-settings.js" %}></script>
+    <script>
+        function public() {
+            if (confirm("是否同意公开？个人同意公开后需要组织同意公开后方可公开~")){
+                this.setAttribute("class","btn btn-primary btn-lg mb-4 mr-2");
+                this.nextElementSibling.setAttribute("class","btn btn-lg mb-4 mr-2");
+                this.parentNode.previousElementSibling.setAttribute("value","公开");
+            }
+        }
+        function private() {
+            this.setAttribute("class","btn btn-primary btn-lg mb-4 mr-2");
+            this.previousElementSibling.setAttribute("class","btn btn-lg mb-4 mr-2");
+            this.parentNode.previousElementSibling.setAttribute("value","不公开");
+        }
+    </script>
+{% endblock %}
