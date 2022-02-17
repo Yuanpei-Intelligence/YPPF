@@ -1,4 +1,3 @@
-from email.policy import default
 from django.db import models, transaction
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
@@ -42,6 +41,8 @@ __all__ = [
     'CourseRecord',
     'PageLog',
     'ModuleLog',
+    'FeedbackType',
+    'Feedback',
 ]
 
 
@@ -97,7 +98,7 @@ class NaturalPerson(models.Model):
     first_time_login = models.BooleanField("首次登录", default=True)
     inform_share = models.BooleanField(default=True) # 是否第一次展示有关分享的帮助
     last_time_login = models.DateTimeField("上次登录时间", blank=True, null=True)
-    objects = NaturalPersonManager()
+    objects: NaturalPersonManager = NaturalPersonManager()
     QRcode = models.ImageField(upload_to=f"QRcode/", blank=True)
     visit_times = models.IntegerField("浏览次数",default=0) # 浏览主页的次数
 
@@ -295,7 +296,7 @@ class Semester(models.TextChoices):
     def now():
         '''返回本地设置中当前学期对应的Semester状态'''
         return get_setting("semester_data/semester", trans_func=Semester.get)
-    
+
     def match(sem1, sem2):
         try:
             if not isinstance(sem1, Semester):
@@ -326,6 +327,9 @@ class OrganizationTag(models.Model):
     name = models.CharField("标签名", max_length=10, blank=False)
     color = models.CharField("颜色", choices=ColorChoice.choices, max_length=10)
 
+    def __str__(self):
+        return self.name
+
 
 class OrganizationManager(models.Manager):
     def activated(self):
@@ -342,7 +346,7 @@ class Organization(models.Model):
     otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
     status = models.BooleanField("激活状态", default=True)  # 表示一个小组是否上线(或者是已经被下线)
 
-    objects = OrganizationManager()
+    objects: OrganizationManager = OrganizationManager()
 
     YQPoint = models.FloatField("元气值", default=0.0)
     introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
@@ -512,7 +516,7 @@ class Position(models.Model):
     )
     apply_pos = models.SmallIntegerField(verbose_name="申请职务等级", default=10)
     '''
-    objects = PositionManager()
+    objects: PositionManager = PositionManager()
 
     def get_pos_number(self): #返回对应的pos number 并作超出处理
         return min(len(self.org.otype.job_name_list), self.pos)
@@ -733,7 +737,7 @@ class Activity(CommentBase):
         "活动状态", choices=Status.choices, default=Status.REVIEWING, max_length=32
     )
 
-    objects = ActivityManager()
+    objects: ActivityManager = ActivityManager()
 
     class ActivityCategory(models.IntegerChoices):
         NORMAL = (0, "普通活动")
@@ -874,7 +878,7 @@ class Participant(models.Model):
         default=AttendStatus.APPLYING,
         max_length=32,
     )
-    objects = ParticipantManager()
+    objects: ParticipantManager = ParticipantManager()
 
 
 class YQPointDistribute(models.Model):
@@ -935,7 +939,7 @@ class QandA(models.Model):
 
     status = models.SmallIntegerField(choices=Status.choices, default=1)
 
-    objects = QandAManager()
+    objects: QandAManager = QandAManager()
 
 class NotificationManager(models.Manager):
     def activated(self):
@@ -1000,7 +1004,7 @@ class Notification(models.Model):
         null=True,
     )
 
-    objects = NotificationManager()
+    objects: NotificationManager = NotificationManager()
 
     def get_title_display(self):
         return str(self.title)
@@ -1314,7 +1318,7 @@ class CourseManager(models.Manager):
         ).exclude(status=Course.Status.ABORT)
 
     def selected(self, person: NaturalPerson):
-        # 返回当前学生所选的所有课程
+        # 返回当前学生所选的所有课程，选课失败也要算入
         # participant_set是对CourseParticipant的反向查询
         return self.activated().filter(participant_set__person=person,
                                        participant_set__status__in=[
@@ -1325,11 +1329,14 @@ class CourseManager(models.Manager):
 
 
     def unselected(self, person: NaturalPerson):
-        # 返回当前学生没选的所有课程
-        return self.activated().filter(
-            Q(participant_set=None)
-            | (Q(participant_set__person=person)
-               & Q(participant_set__status=CourseParticipant.Status.UNSELECT)))
+        # 返回当前学生没选上的所有课程
+        return self.activated().exclude(participant_set__person=person,
+                                        participant_set__status__in=[
+                                           CourseParticipant.Status.SELECT,
+                                           CourseParticipant.Status.SUCCESS,
+                                        ])
+
+
 
 
 class Course(models.Model):
@@ -1377,7 +1384,7 @@ class Course(models.Model):
     class Status(models.IntegerChoices):
         # 预选前和预选结束到补退选开始都是WAITING状态
         ABORT = (0, "已撤销")
-        WAITING = (1, "未开始选课")
+        WAITING = (1, "未开始")
         STAGE1 = (2, "预选")
         DRAWING = (3, "抽签中")
         STAGE2 = (4, "补退选")
@@ -1404,14 +1411,14 @@ class Course(models.Model):
     # 暂时只允许上传一张图片
     photo = models.ImageField(verbose_name="宣传图片",
                               upload_to=f"course/photo/%Y/",
-                              blank=True,default="/static/assets/img/announcepics/1.JPG")
+                              blank=True)
 
     # 课程群二维码
     QRcode = models.ImageField(upload_to=f"course/QRcode/%Y/",
                                blank=True,
                                null=True)
 
-    objects = CourseManager()
+    objects: CourseManager = CourseManager()
 
     def save(self, *args, **kwargs):
         self.bidding = round(self.bidding, 1)
@@ -1419,6 +1426,10 @@ class Course(models.Model):
 
     def __str__(self):
         return self.name
+
+    def get_photo_path(self):
+        # 假设课程的宣传图片一定存在
+        return MEDIA_URL + str(self.photo)
 
 
 class CourseTime(models.Model):
@@ -1540,3 +1551,66 @@ class ModuleLog(models.Model):
     explore_name = models.CharField('浏览器类型', max_length=32, null=True, blank=True)
     explore_version = models.CharField('浏览器版本', max_length=32, null=True, blank=True)
 
+
+class FeedbackType(models.Model):
+    class Meta:
+        verbose_name = "反馈类型"
+        verbose_name_plural = verbose_name
+
+    id = models.SmallIntegerField("反馈类型编号", unique=True, primary_key=True)
+    name = models.CharField("反馈类型名称", max_length=10)
+    org_type = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.name
+
+
+class Feedback(CommentBase):
+    class Meta:
+        verbose_name = "反馈"
+        verbose_name_plural = verbose_name
+
+    type = models.ForeignKey(FeedbackType, on_delete=models.CASCADE)
+    title = models.CharField("标题", max_length=30, blank=False)
+    content = models.TextField("内容", blank=False)
+    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    org = models.ForeignKey(Organization, on_delete=models.CASCADE)
+
+    class IssueStatus(models.IntegerChoices):
+        DRAFTED = (0, "草稿")
+        ISSUED = (1, "已发布")
+        DELETED = (2, "已删除")
+
+    class ReadStatus(models.IntegerChoices):
+        READ = (0, "已读")
+        UNREAD = (1, "未读")
+
+    class SolveStatus(models.IntegerChoices):
+        SOLVED = (0, "已解决")
+        SOLVING = (1, "解决中")
+        UNSOLVABLE = (2, "无法解决")
+
+    issue_status = models.SmallIntegerField(
+        '发布状态', choices=IssueStatus.choices, default=IssueStatus.DRAFTED
+    )
+    read_status = models.SmallIntegerField(
+        '阅读情况', choices=ReadStatus.choices, default=ReadStatus.UNREAD
+    )
+    solve_status = models.SmallIntegerField(
+        '解决进度', choices=SolveStatus.choices, default=SolveStatus.SOLVING
+    )
+
+    feedback_time = models.DateTimeField('反馈时间', default=datetime.now)
+    publisher_public = models.BooleanField('发布者是否公开', default=False)
+    org_public = models.BooleanField('组织是否公开', default=False)
+    public_time = models.DateTimeField('组织公开时间', default=datetime.now)
+
+    class PublicStatus(models.IntegerChoices):
+        PUBLIC = (0, '公开')
+        PRIVATE = (1, '未公开')
+        WITHDRAWAL = (2, '撤销公开')
+        FORCE_PRIVATE = (3, '强制不公开')
+
+    public_status = models.SmallIntegerField(
+        '公开状态', choices=PublicStatus.choices, default=PublicStatus.PRIVATE
+    )

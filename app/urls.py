@@ -83,7 +83,7 @@ urlpatterns = [
     path("sendMessage/", org_views.sendMessage, name="sendMessage"),
     # path("applyPosition/<str:oid>", views.apply_position, name="applyPosition"), 弃用多年
 ] + [
-    # 选课相关操作
+    # 发布选课相关操作
     path("addCourse/", course_views.addCourse, name="addCourse"),
     path("editCourse/<str:cid>", course_views.addCourse, name="editCourse"),
     # 课程相关操作
@@ -100,6 +100,7 @@ urlpatterns = [
     path("loadorgdata/", data_import.load_org_data, name="load_org_data"),
     path("loadorgtag/", data_import.load_org_tag, name="loag_org_tag"),
     path("loadoldorgtags/", data_import.load_tags_for_old_org, name="load_tags_for_old_org"),
+    path("loadfeedbackdata/", data_import.load_feedback_data, name="load_feedback_data"),
     # path("loadtransferinfo/",
     #      data_import.load_transfer_info,
     #      name="load_transfer_info"),        #服务器弃用
