@@ -431,10 +431,6 @@ def process_time(start, end) -> str:
     return f"周{chinese_display[start.weekday()]} {start_time}-{end_time}"
 
 
-@log.except_captured(return_value=[],
-                     record_args=True,
-                     status_code=log.STATE_WARNING,
-                     source='course_utils[course_to_display]')
 def course_to_display(courses, user, detail=False) -> list:
     """
     方便前端呈现课程信息
@@ -516,7 +512,6 @@ def course_to_display(courses, user, detail=False) -> list:
 
 @log.except_captured(return_value=True,
                      record_args=True,
-                     status_code=log.STATE_WARNING,
                      source='course_utils[draw_lots]')
 def draw_lots(course):
     """
