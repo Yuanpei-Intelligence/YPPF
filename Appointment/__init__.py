@@ -73,6 +73,8 @@ class LocalSetting():
         self.temporary_min = 1
         # 是否允许不存在学生自动注册
         self.allow_newstu_appoint = True
+        # 是否限制开始前的预约取消时间
+        self.restrict_cancel_time = False
 
         # 是否开启登录系统，默认为开启
         try:

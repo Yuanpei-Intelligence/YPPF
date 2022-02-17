@@ -253,6 +253,45 @@ def cameracheck(request):   # 摄像头post的后端函数
 @csrf_exempt
 @identity_check(redirect_field_name='origin')
 def cancelAppoint(request):
+    context = {}
+    try:
+        Aid = request.POST.get('cancel_btn')
+        appoints = Appoint.objects.filter(Astatus=Appoint.Status.APPOINTED)
+        appoint = appoints.get(Aid=Aid)
+    except:
+        return redirect(message_url(
+            reverse("Appointment:admin_index"),
+            wrong("预约不存在、已经开始或者已取消!")))
+
+    try:
+        # TODO: major_sid
+        Pid = request.user.username
+        assert appoint.major_student.Sid_id == Pid
+    except:
+        return redirect(message_url(
+            reverse("Appointment:admin_index"),
+            wrong("请不要恶意尝试取消不是自己发起的预约!")))
+
+    if (global_info.restrict_cancel_time
+            and appoint.Astart < datetime.now() + timedelta(minutes=30)):
+        return redirect(message_url(
+            reverse("Appointment:admin_index"),
+            wrong("不能取消开始时间在30分钟之内的预约!")))
+
+    with transaction.atomic():
+        appoint_room_name = appoint.Room.Rtitle
+        appoint.cancel()
+        scheduler_func.cancel_scheduler(appoint.Aid, "Problem")
+
+        # TODO: major_sid
+        operation_writer(appoint.major_student.Sid_id,
+                               f"取消了预约{appoint.Aid}",
+                               "scheduler_func.cancelAppoint", "OK")
+        succeed("成功取消对" + appoint_room_name + "的预约!", context)
+        print('will send cancel message')
+        scheduler_func.set_cancel_wechat(appoint)
+
+    return redirect(message_url(reverse("Appointment:admin_index"), context))
     return scheduler_func.cancelFunction(request)
 
 
@@ -558,7 +597,7 @@ def index(request):  # 主页
 
     if request.GET.get("warn") is not None:
         wrong(request.session.pop('warn_message'), render_context)
-        
+
 
     #--------- 前端变量 ---------#
 
@@ -629,12 +668,12 @@ def index(request):  # 主页
                 request_time[3:5]), int(request_time[6:10])
             re_time = datetime(year, month, day)  # 获取目前request时间的datetime结构
             if re_time.date() < datetime.now().date():  # 如果搜过去时间
-                render_context.update(search_code=1, 
+                render_context.update(search_code=1,
                                       search_message="请不要搜索已经过去的时间!")
                 return render(request, 'Appointment/index.html', render_context)
             elif re_time.date() - datetime.now().date() > timedelta(days=6):
                 # 查看了7天之后的
-                render_context.update(search_code=1, 
+                render_context.update(search_code=1,
                                       search_message="只能查看最近7天的情况!")
                 return render(request, 'Appointment/index.html', render_context)
             # 到这里 搜索没问题 进行跳转
@@ -863,7 +902,7 @@ def check_out(request):  # 预约表单提交
 
     except:
         return redirect(reverse('Appointment:index'))
-    
+
     # 准备上下文，此时预约的时间地点、发起人已经固定
     render_context = {}
     render_context.update(room_object=room_object, appoint_params=appoint_params)
