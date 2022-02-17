@@ -1,32 +1,13 @@
 from app.utils_dependency import *
 from app.models import (
-    NaturalPerson,
     Organization,
-    OrganizationType,
     Notification,
     FeedbackType,
     Feedback,
 )
 from app.notification_utils import (
     notification_create,
-    bulk_notification_create,
-    notification_status_change,
 )
-from app.wechat_send import (
-    publish_notifications,
-    WechatApp,
-    WechatMessageLevel,
-)
-from app.utils import (
-    get_person_or_org,
-    random_code_init,
-    if_image,
-)
-
-from datetime import datetime, timedelta
-
-from django.db.models import Q
-from django.contrib.auth.models import User
 
 __all__ = [
     'check_feedback',
