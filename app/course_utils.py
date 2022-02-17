@@ -786,6 +786,7 @@ def course_base_check(request):
                     pic = request.POST.get(f'picture{i+1}')
         context["photo"] = pic
         context["QRcode"] = request.FILES.get("QRcode")
+        assert context["photo"] is not None, "缺少课程预告图片！"
         assert if_image(context["QRcode"]) != 1, "微信群二维码图片文件类型错误！"
     except Exception as e:
         return wrong(str(e))
@@ -836,7 +837,7 @@ def create_course(request, course_id=None):
             return context
     except:
         return wrong("检查参数合法性时遇到不可预料的错误。如有需要，请联系管理员解决!")
-    default_photo="/static/assets/img/announcepics/1.JPG"
+
     # 编辑已有课程
     if course_id is not None:
         try:
@@ -883,7 +884,7 @@ def create_course(request, course_id=None):
                     type=context['type'],
                     capacity=context["capacity"],
                 )
-                course.photo = context['photo'] if context['photo'] is not None else default_photo
+                course.photo = context['photo']
                 if context['QRcode']:
                     course.QRcode = context["QRcode"]
                 course.save()
