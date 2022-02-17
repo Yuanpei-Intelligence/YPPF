@@ -101,7 +101,7 @@ def get_avatar(participant: Union[Participant, User]):
 
 
 # 用户验证、创建和更新
-def _create_account(request):
+def _create_account(request, **values):
     '''
     根据请求信息创建账户, 根据创建结果返回生成的对象或者`None`, noexcept
     '''
@@ -116,24 +116,25 @@ def _create_account(request):
             try:
                 given_name = get_name(request.user)
             except:
-                # TODO: task 1 pht 2022-1-26 将来仍无法读取信息应当报错
-                from Appointment.utils.utils import operation_writer
-                operation_writer(SYSTEM_LOG,
-                                f'创建未命名用户:学号为{request.user.username}',
-                                'identity._create_account',
-                                'Problem')
-                given_name = '未命名'
+                if values.get('given_name') is None:
+                    from Appointment.utils.utils import operation_writer
+                    operation_writer(SYSTEM_LOG,
+                                     f'找不到用户{request.user.username}的姓名',
+                                     'identity._create_account', 'Error')
 
             # 设置首字母
             pinyin_list = pypinyin.pinyin(given_name, style=pypinyin.NORMAL)
             pinyin_init = ''.join([w[0][0] for w in pinyin_list])
 
-            account = Participant.objects.create(
+            values.update(
                 Sid=request.user,
                 name=given_name,
-                credit=3,
                 pinyin=pinyin_init,
             )
+            values.setdefault('credit', 3)
+            values.setdefault('hidden', is_org(request.user))
+
+            account = Participant.objects.create(**values)
             return account
     except:
         return None
@@ -142,7 +143,7 @@ def _create_account(request):
 def _update_name(user: Union[Participant, User, str]):
     import pypinyin
     from django.db import transaction
-    
+
     participant = user
     if not isinstance(user, Participant):
         participant = get_participant(user)
@@ -188,7 +189,7 @@ def identity_check(
 
             if cur_part is not None and cur_part.name == '未命名' and update_name:
                 _update_name(cur_part)
-                
+
             if cur_part is None and _allow_create:
                 cur_part = _create_account(request)
 
