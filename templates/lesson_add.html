@@ -189,8 +189,17 @@
             showMessage(warnId, "结束时间要晚于开始时间！");
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
-        }      
-
+        }   
+        // 禁止修改课程开始时间到距离现在5分钟以内
+        const now = new Date(), delta = 5;
+        const safeTime = new Date(start1);
+        safeTime.setMinutes(safeTime.getMinutes() - delta);
+        if (now > safeTime) {
+            hideMessage(succId);
+            showMessage(warnId, "开始时间距离现在太近了，开始得晚一些吧~");
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
         return true;
     }
 
