@@ -130,7 +130,7 @@ def _create_account(request):
 
             # TODO: task 1 pht 2022-1-28 模型修改时需要调整
             account = Participant.objects.create(
-                Sid=request.user.username,
+                Sid=request.user,
                 name=given_name,
                 credit=3,
                 pinyin=pinyin_init,
