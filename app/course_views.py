@@ -288,7 +288,7 @@ def showCourseRecord(request):
     if len(course) == 0: # 尚未开课的情况
         return redirect(message_url(wrong('没有检测到该组织本学期开设的课程。')))
     # TODO: 报错 这是代码不应该出现的bug
-    assert len(course) >= 2, "检测到该组织的课程超过一门，属于不可预料的错误，请及时处理！"
+    assert len(course) <= 1, "检测到该组织的课程超过一门，属于不可预料的错误，请及时处理！"
     course = course.first()
 
     # 是否可以编辑
@@ -319,15 +319,16 @@ def showCourseRecord(request):
             else:
                 return redirect(message_url(
                     wrong('学时修改尚未开放。如有疑问，请联系管理员！'), request.path))
-        with transaction.atomic():
-            # 检查信息并进行修改
-            record_search = CourseRecord.objects.filter(
-                course=course,
-                year=year,
-                semester=semester,
-            ).select_for_update()
-            messages = check_post_and_modify(record_search, request.POST)
-            # TODO: 发送微信消息?不一定需要
+        else:
+            with transaction.atomic():
+                # 检查信息并进行修改
+                record_search = CourseRecord.objects.filter(
+                    course=course,
+                    year=year,
+                    semester=semester,
+                ).select_for_update()
+                messages = check_post_and_modify(record_search, request.POST)
+                # TODO: 发送微信消息?不一定需要
 
     # -------- GET 部分 --------
     # 如果进入这个页面时课程的状态(Course.Status)为未结束，那么只能查看不能修改，此时从函数读取

@@ -11,6 +11,7 @@ change_course_status: 改变课程的选课阶段
 remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 """
+from unicodedata import category
 from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
@@ -965,6 +966,13 @@ def finish_course(course):
     结束课程
     设置课程状态为END 生成学时表并通知同学该课程已结束。
     """
+    #若存在课程活动未结束则无法结束课程。
+    cur_activities_num = Activity.objects.activated().filter(organization_id=course.organization,category=Activity.ActivityCategory.COURSE).exclude(status__in=[Activity.Status.CANCELED,Activity.Status.END]).count()
+    try:
+        assert cur_activities_num == 0, "存在尚未结束的课程活动，请在所有课程活结束以后再结束课程。"
+    except Exception as e:
+        return wrong(str(e))
+
     try:
         # 取消发布每周定时活动
         course_times = course.time_set
