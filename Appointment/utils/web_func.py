@@ -197,21 +197,20 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
             # appoint.save()
 
 
-# 用于前端显示支持拼音搜索的人员列表
-# TODO: task 0 pht 2022-02-08 模型修改时同步修改，原来是session读的
 def get_student_chosen_list(request, get_all=False):
+    '''用于前端显示支持拼音搜索的人员列表, 形如[{id, text, pinyin}]'''
     js_stu_list = []
     Stu_all = Participant.objects.all()
-    for stu in Stu_all:
-        # 曾经是`(stu.superuser != 1 or get_all == True)`
-        # 因superuser只有不显示的作用，合并后舍弃
+    if not get_all:
+        Stu_all = Stu_all.exclude(hidden=True)
+    students = Stu_all.exclude(Sid_id=request.user.username)
+    for stu in students:
         Sid = stu.Sid_id
-        if Sid != request.user.username and (True or get_all == True):
-            js_stu_list.append({
-                "id": Sid,
-                "text": stu.name + "_" + Sid[:2],
-                "pinyin": stu.pinyin
-            })
+        js_stu_list.append({
+            "id": Sid,
+            "text": stu.name + "_" + Sid[:2],
+            "pinyin": stu.pinyin,
+        })
     return js_stu_list
 
 
@@ -239,7 +238,6 @@ def appoints2json(appoints):
 
 
 # added by wxy
-# TODO: task 0 pht 2022-02-08 模型修改时同步修改
 def get_appoints(Pid, kind, major=False, to_json=True):
     '''
     - Pid: Participant, User or str
@@ -339,7 +337,6 @@ def get_dayrange(span=7):   # 获取用户的违约预约
 
 
 # added by wxy
-# TODO: task 0 pht 2022-02-08 模型修改时同步修改
 def get_user_info(Pid):
     '''抓取用户信息的通用包，成功返回包含id, name, credit的字典'''
     try:
