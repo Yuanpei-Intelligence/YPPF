@@ -4,15 +4,11 @@
 
 包含与身份有关的工具函数
 
-可能依赖于app.utils
+依赖于app.API
 '''
 from Appointment import *
 from Appointment.models import Participant
-from app.utils import (
-    check_user_type,
-    get_person_or_org,
-    get_user_ava,
-)
+from app import API
 from typing import Union
 from django.contrib.auth.models import User
 
@@ -64,40 +60,33 @@ def _arg2user(participant: Union[Participant, User]):
 
 
 # 获取用户身份
-def _is_org_type(usertype):
-    return usertype == 'Organization'
+def is_valid(participant: Union[Participant, User]):
+    '''返回participant对象是否是一个有效的用户'''
+    user = _arg2user(participant)
+    return API.is_org(user)
 
 def is_org(participant: Union[Participant, User]):
     '''返回participant对象是否是组织'''
     user = _arg2user(participant)
-    return _is_org_type(check_user_type(user)[1])
+    return API.is_org(user)
 
 def is_person(participant: Union[Participant, User]):
     '''返回participant是否是个人'''
-    return not is_org(participant)
+    user = _arg2user(participant)
+    return API.is_person(user)
 
 
 # 获取用户信息
-def _get_userinfo(user: User):
-    '''返回User对象对应的(object, type)二元组'''
-    user_type = check_user_type(user)[1]
-    obj = get_person_or_org(user, user_type)
-    return obj, user_type
-
-
 def get_name(participant: Union[Participant, User]):
     '''返回participant(个人或组织)的名称'''
-    obj, user_type = _get_userinfo(_arg2user(participant))
-    if _is_org_type(user_type):
-        return obj.oname
-    else:
-        return obj.name
+    user = _arg2user(participant)
+    return API.get_display_name(user)
 
 
 def get_avatar(participant: Union[Participant, User]):
     '''返回participant的头像'''
-    obj, user_type = _get_userinfo(_arg2user(participant))
-    return get_user_ava(obj, user_type)
+    user = _arg2user(participant)
+    return API.get_avatar_url(user)
 
 
 # 用户验证、创建和更新
@@ -182,7 +171,7 @@ def identity_check(
 
             _allow_create = allow_create  # 作用域问题
 
-            if request.user.is_superuser or request.user.is_staff:
+            if not is_valid(request.user):
                 _allow_create = False
 
             cur_part = get_participant(request.user)
