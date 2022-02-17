@@ -99,4 +99,4 @@ class LocalSetting():
 
 GLOBAL_INFO = LocalSetting()
 hash_wechat_coder = MySHA256Hasher(secret=GLOBAL_INFO.wechat_salt)
-SYSTEM_LOG: str = SYSTEM_LOG
+SYSTEM_LOG: str = GLOBAL_INFO.system_log
