@@ -110,7 +110,7 @@
 			<!-- /Header -->
 			{% if warn_code == 1 %}
 			<div class="alert alert-warning  text-center" >{{ warn_message }}</div>
-			{% if warn_code == 2 %}
+			{% elif warn_code == 2 %}
 			<div class="alert alert-success  text-center" >{{ warn_message }}</div>
 			{% endif %}
 			{% if message_code %}
