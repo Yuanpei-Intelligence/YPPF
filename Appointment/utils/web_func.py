@@ -1,5 +1,5 @@
 import requests as requests
-from Appointment import global_info
+from Appointment import *
 from Appointment.models import Participant, Room, Appoint, College_Announcement
 from Appointment.utils.identity import get_participant
 from django.db.models import Q  # modified by wxy
@@ -27,30 +27,30 @@ def img_get_func(request):
 
     # 设置当头像无法加载时的位置
     default_img_name = 'pipi_square_iRGk72U.jpg'
-    img_path = global_info.this_url + "/media/avatar/" + default_img_name
+    img_path = GLOBAL_INFO.this_url + "/media/avatar/" + default_img_name
 
     # 尝试加载头像
     try:
-        if global_info.account_auth:
+        if GLOBAL_INFO.account_auth:
             Sid = request.session['Sid']
-            urls = global_info.img_url + "/getStuImg?stuId=" + Sid
+            urls = GLOBAL_INFO.img_url + "/getStuImg?stuId=" + Sid
             img_get = long_request.post(url=urls, verify=False, timeout=3)
 
             if img_get.status_code == 200:  # 接收到了学生信息
                 import json
                 img_path = json.loads(img_get.content)['path']
-                img_path = global_info.login_url + img_path
+                img_path = GLOBAL_INFO.login_url + img_path
                 # 存入缓存
                 request.session['img_path'] = img_path
                 return img_path, True
 
     except:
         utils.operation_writer(
-            global_info.system_log, f"从YPPF获取头像失败，原因需要查看代码", "web_func.img_get_func", "Problem")
+            SYSTEM_LOG, f"从YPPF获取头像失败，原因需要查看代码", "web_func.img_get_func", "Problem")
         return img_path, False
         # 接受失败，返回旧地址
     utils.operation_writer(
-            global_info.system_log, f"从YPPF获取头像失败，未登录或未返回", "web_func.img_get_func", "Problem")
+            SYSTEM_LOG, f"从YPPF获取头像失败，未登录或未返回", "web_func.img_get_func", "Problem")
     return img_path, False
 
 
@@ -86,21 +86,21 @@ def startAppoint(Aid):  # 开始预约时的定时程序
         appoint = Appoint.objects.get(Aid=Aid)
     except:
         utils.operation_writer(
-            global_info.system_log, f"预约{str(Aid)}意外消失", "web_func.startAppoint", "Error")
+            SYSTEM_LOG, f"预约{str(Aid)}意外消失", "web_func.startAppoint", "Error")
 
     if appoint.Astatus == Appoint.Status.APPOINTED:     # 顺利开始
         appoint.Astatus = Appoint.Status.PROCESSING
         appoint.save()
         utils.operation_writer(
-            global_info.system_log, f"预约{str(Aid)}成功开始: 状态变为进行中", "web_func.startAppoint")
+            SYSTEM_LOG, f"预约{str(Aid)}成功开始: 状态变为进行中", "web_func.startAppoint")
 
     elif appoint.Astatus == Appoint.Status.PROCESSING:  # 已经开始
         utils.operation_writer(
-            global_info.system_log, f"预约{str(Aid)}在检查时已经开始", "web_func.startAppoint")
+            SYSTEM_LOG, f"预约{str(Aid)}在检查时已经开始", "web_func.startAppoint")
 
     elif appoint.Astatus != Appoint.Status.CANCELED:    # 状态异常，本该不存在这个任务
         utils.operation_writer(
-            global_info.system_log, f"预约{str(Aid)}的状态异常: {appoint.get_status()}", "web_func.startAppoint", "Error")
+            SYSTEM_LOG, f"预约{str(Aid)}的状态异常: {appoint.get_status()}", "web_func.startAppoint", "Error")
 
 
 def finishAppoint(Aid):  # 结束预约时的定时程序
@@ -116,11 +116,11 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
         appoint = Appoint.objects.get(Aid=Aid)
     except:
         utils.operation_writer(
-            global_info.system_log, f"预约{str(Aid)}意外消失", "web_func.finishAppoint", "Error")
+            SYSTEM_LOG, f"预约{str(Aid)}意外消失", "web_func.finishAppoint", "Error")
 
 
     # 避免直接使用全局变量! by pht
-    adjusted_camera_qualified_check_rate = global_info.camera_qualified_check_rate
+    adjusted_camera_qualified_check_rate = GLOBAL_INFO.camera_qualified_check_rate
 
     # --- add by pht: 终止状态 --- #
     TERMINATE_STATUSES = [
@@ -152,7 +152,7 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
         else:
             #if appoint.Acamera_check_num == 0:
             #    utils.operation_writer(
-            #        global_info.system_log, f"预约{str(Aid)}的摄像头检测次数为零", "web_func.finishAppoint", "Error")
+            #        SYSTEM_LOG, f"预约{str(Aid)}的摄像头检测次数为零", "web_func.finishAppoint", "Error")
             # 检查人数是否足够
 
             # added by pht: 需要根据状态调整 出于复用性和简洁性考虑在本函数前添加函数
@@ -169,30 +169,30 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
                         appoint, Appoint.Reason.R_LATE)
                     if not status:
                         utils.operation_writer(
-                            global_info.system_log, f"预约{str(Aid)}因迟到而违约时出现异常: {tempmessage}", "web_func.finishAppoint", "Error")
+                            SYSTEM_LOG, f"预约{str(Aid)}因迟到而违约时出现异常: {tempmessage}", "web_func.finishAppoint", "Error")
                 else:
                     status, tempmessage = utils.appoint_violate(
                         appoint, Appoint.Reason.R_TOOLITTLE)
                     if not status:
                         utils.operation_writer(
-                            global_info.system_log, f"预约{str(Aid)}因人数不够而违约时出现异常: {tempmessage}", "web_func.finishAppoint", "Error")
+                            SYSTEM_LOG, f"预约{str(Aid)}因人数不够而违约时出现异常: {tempmessage}", "web_func.finishAppoint", "Error")
 
             else:   # 通过
                 appoint.Astatus = Appoint.Status.CONFIRMED
                 appoint.save()
                 utils.operation_writer(
-                    global_info.system_log, f"预约{str(Aid)}人数合格，已通过", "web_func.finishAppoint", "OK")
+                    SYSTEM_LOG, f"预约{str(Aid)}人数合格，已通过", "web_func.finishAppoint", "OK")
 
     else:
         if appoint.Astatus == Appoint.Status.CONFIRMED:   # 可能已经判定通过，如公共区域和俄文楼
             rid = appoint.Room.Rid
             if rid[:1] != 'R' and rid not in {'B109A', 'B207'}:
                 utils.operation_writer(
-                    global_info.system_log, f"预约{str(Aid)}提前合格: {rid}房间", "web_func.finishAppoint", "Problem")
+                    SYSTEM_LOG, f"预约{str(Aid)}提前合格: {rid}房间", "web_func.finishAppoint", "Problem")
 
         elif appoint.Astatus != Appoint.Status.CANCELED:    # 状态异常，多半是已经判定过了
             utils.operation_writer(
-                global_info.system_log, f"预约{str(Aid)}提前终止: {appoint.get_status()}", "web_func.finishAppoint", "Problem")
+                SYSTEM_LOG, f"预约{str(Aid)}提前终止: {appoint.get_status()}", "web_func.finishAppoint", "Problem")
             # appoint.Astatus = Appoint.Status.WAITING
             # appoint.save()
 

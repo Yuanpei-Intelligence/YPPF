@@ -6,7 +6,7 @@
 
 可能依赖于app.utils
 '''
-from Appointment import global_info
+from Appointment import *
 from Appointment.models import Participant
 from app.utils import (
     check_user_type,
@@ -105,7 +105,7 @@ def _create_account(request):
     '''
     根据请求信息创建账户, 根据创建结果返回生成的对象或者`None`, noexcept
     '''
-    if not global_info.allow_newstu_appoint:
+    if not GLOBAL_INFO.allow_newstu_appoint:
         return None
 
     import pypinyin
@@ -118,7 +118,7 @@ def _create_account(request):
             except:
                 # TODO: task 1 pht 2022-1-26 将来仍无法读取信息应当报错
                 from Appointment.utils.utils import operation_writer
-                operation_writer(global_info.system_log,
+                operation_writer(SYSTEM_LOG,
                                 f'创建未命名用户:学号为{request.user.username}',
                                 'identity._create_account',
                                 'Problem')
@@ -128,7 +128,6 @@ def _create_account(request):
             pinyin_list = pypinyin.pinyin(given_name, style=pypinyin.NORMAL)
             pinyin_init = ''.join([w[0][0] for w in pinyin_list])
 
-            # TODO: task 1 pht 2022-1-28 模型修改时需要调整
             account = Participant.objects.create(
                 Sid=request.user,
                 name=given_name,
