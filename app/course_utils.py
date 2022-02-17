@@ -214,16 +214,20 @@ def modify_course_activity(request, activity):
         course = course.first()
         schedule_start = course_time.start
         schedule_end = course_time.end
+        #设置CourseTime初始时间为对应的 周几:hour:minute:second
+        #设置周几
         schedule_start += timedelta(
             days=(context["start"].weekday()-schedule_start.weekday()))
-        schedule_start = schedule_start.replace(
-            hour=context["start"].hour, minute=context["start"].minute, second=context["start"].second)
         schedule_end += timedelta(
             days=(context["end"].weekday()-schedule_end.weekday()))
+        #设置每周上课时间：hour:minute:second
+        schedule_start = schedule_start.replace(
+            hour=context["start"].hour, minute=context["start"].minute, second=context["start"].second)
         schedule_end = schedule_end.replace(
             hour=context["end"].hour, minute=context["end"].minute, second=context["end"].second)
         course_time.start = schedule_start
         course_time.end = schedule_end
+        #设置地点
         course.classroom = context["location"]
         course.save()
         course_time.save()
@@ -301,6 +305,7 @@ def cancel_course_activity(request, activity, cancel_all=False):
 
     #取消该时段所有活动！
     if cancel_all:
+        #   设置结束 若cur_week > end_week 则每周定时任务无需执行
         activity.course_time.end_week = activity.course_time.cur_week - 1
         activity.course_time.save()
 
