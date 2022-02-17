@@ -136,9 +136,6 @@ def addSingleCourseActivity(request):
         except Exception as e:
             log.record_traceback(request, e)
             return EXCEPT_REDIRECT
-    elif request.method == "GET" and request.GET.get("warn_message", ""):
-        html_display["warn_msg"] = request.GET.get("warn_message")
-        html_display["warn_code"] = int(request.GET.get("warn_code"))
 
     # 前端使用量
     html_display["applicant_name"] = me.oname
