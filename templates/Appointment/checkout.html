@@ -116,8 +116,10 @@
         <!-- Page Content -->
         <div class="content">
             <div class="container">
-                {% if warn_code %}
-                <div class="alert alert-warning  text-center">{{ warning }}</div>
+                {% if warn_code == 1 %}
+                <div class="alert alert-warning  text-center">{{ warn_message }}</div>
+                {% elif warn_code == 2 %}
+                {% comment %} <div class="alert alert-success  text-center">{{ warn_message }}</div> {% endcomment %}
                 {% endif %}
                 <div class="row">
                     <div class="col-md-5 col-lg-4 theiaStickySidebar">
