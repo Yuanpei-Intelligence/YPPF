@@ -120,21 +120,25 @@
                                                                     <div class="modal-content">
                                                                         <div class="modal-header">
                                                                             <h5 class="modal-title" id="cancelActivityModalLabel">取消课程活动</h5>
-                                                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                                                <span aria-hidden="true">&times;</span>
-                                                                            </button>
+                                                                            
                                                                         </div>
                                                                         {% if act.course_time %}
+                                                                        <form method="POST" id="cancel-details">
                                                                         <div class="modal-body">
-                                                                            该活动为长期活动且活动取消后不可撤回操作，确认要取消吗？
+
+                                                                            <input type="radio" id="cancel_only" name="post_type" value="cancel_only" checked="checked"/>
+                                                                            <label for="cancel_only">仅取消当前活动</label>
+                                                                            <br/>
+                                                                            <input type="radio" id="cancel_all" name="post_type" value="cancel_all"/>
+                                                                            <label for="cancel_all">取消该时段所有活动</label>
                                                                         </div>
                                                                         <div class="modal-footer">
-                                                                            <form method="POST" id="cancel-details">
                                                                                 <input type="hidden" name="cancel-action" value="{{act.id}}">
-                                                                                <button type="button" class="btn btn-primary" onclick="this.form.submit()" name="post_type" value="cancel_only" data-dismiss="modal">仅取消当前活动</button>
-                                                                                <button type="button" class="btn btn-secondary" onclick="this.form.submit()" name="post_type" value="cancel_all"data-dismiss="modal">取消该时段所有活动</button>
-                                                                            </form>
+                                                                                <button type="button" class="btn btn-info"   data-dismiss="modal">再想想</button>
+                                                                                <button type="button" class="btn btn-danger" onclick="this.form.submit()" data-dismiss="modal">确认取消</button>
+                                                                            
                                                                         </div>
+                                                                    </form>
                                                                         {% else %}
                                                                         <div class="modal-body">
                                                                             活动取消后不可撤回操作，确认要取消吗？
