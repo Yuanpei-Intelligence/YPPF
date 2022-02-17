@@ -21,6 +21,7 @@ from app.course_utils import (
     create_course,
     cal_participate_num,
     check_post_and_modify,
+    finish_course
 )
 from app.utils import get_person_or_org
 
@@ -171,6 +172,13 @@ def showCourseActivity(request):
 
     if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
         return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
+    try:
+        html_display["warn_code"] = int(
+            request.GET.get("warn_code", 0))  # 是否有来自外部的消息
+    except:
+        return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
+    html_display["warn_message"] = request.GET.get(
+        "warn_message", "")  # 提醒的具体内容
 
     all_activity_list = (
         Activity.objects
@@ -251,7 +259,7 @@ def showCourseActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='course_views[showCourseRecord]', record_user=True)
+# @log.except_captured(EXCEPT_REDIRECT, source='course_views[showCourseRecord]', record_user=True)
 def showCourseRecord(request):
     '''
     展示及修改学时数据
@@ -277,9 +285,9 @@ def showCourseRecord(request):
         year=year,
         semester=semester,
     )
-    if len(course) == 0: # 尚未开课的情况
-        return redirect(message_url(wrong('没有检测到该组织本学期开设的课程。')))
-    # TODO: 报错 这是代码不应该出现的bug
+    if len(course) == 0:  # 尚未开课的情况
+        return redirect(message_url(wrong('没有检测到该组织本学期开设的课程。'), '/showCourseActivity/'))
+
     assert (len(course) >= 2,
             "检测到该组织的课程超过一门，属于不可预料的错误，请及时处理！")
     course = course.first()
@@ -302,8 +310,16 @@ def showCourseRecord(request):
         if not editable:
             # 由于未开放修改功能时前端无法通过表格和按钮修改和提交，
             # 所以如果出现POST请求，则为非法情况
-            return redirect(message_url(
-                wrong('学时修改尚未开放。如有疑问，请联系管理员！'), request.path))
+            post_type = str(request.POST.get("post_type"))
+            if post_type == "end":
+                with transaction.atomic():
+                    course = Course.objects.select_for_update().get(id=course.id)
+                    messages = finish_course(course)
+                if messages['warn_code'] == 2:
+                    return redirect(message_url(succeed("结束课程成功！"), '/showCourseRecord/'))
+            else:
+                return redirect(message_url(
+                    wrong('学时修改尚未开放。如有疑问，请联系管理员！'), request.path))
         with transaction.atomic():
             # 检查信息并进行修改
             record_search = CourseRecord.objects.filter(
@@ -316,10 +332,10 @@ def showCourseRecord(request):
 
     # -------- GET 部分 --------
     # 如果进入这个页面时课程的状态(Course.Status)为未结束，那么只能查看不能修改，此时从函数读取
+    # 每次进入都获取形如{id: times}的字典，这里id是naturalperson的主键id而不是userid
+    participate_raw = cal_participate_num(course)
     if not editable:
 
-        # 获取形如{id: times}的字典，这里id是naturalperson的主键id而不是userid
-        participate_raw = cal_participate_num(course)
         convert_dict = participate_raw    # 转换为字典方便查询, 这里已经是字典了
         # 选取人选
         participant_list = NaturalPerson.objects.activated().filter(
@@ -340,27 +356,30 @@ def showCourseRecord(request):
     # 否则可以修改表单，从CourseRecord读取
     else:
 
-        # 查找此课程本学期所有成员的学时表
-        record_search = CourseRecord.objects.filter(
-            course=course,
-            year=year,
-            semester=semester,
-        ).select_related(
-            "person"
-        )   # Prefetch person to use its name, stu_grade and avatar. Help speed up.
+        records_list = []
+        with transaction.atomic():
+            # 查找此课程本学期所有成员的学时表
+            record_search = CourseRecord.objects.filter(
+                course=course,
+                year=year,
+                semester=semester,
+            ).select_for_update().select_related(
+                "person"
+            )   # Prefetch person to use its name, stu_grade and avatar. Help speed up.
 
-        # 前端循环list
-        records_list = [
-            {
-                "pk": record.person.id,
-                "name": record.person.name,
-                "grade": record.person.stu_grade,
-                "avatar": record.person.get_user_ava(),
-                "times": record.attend_times,
-                "hours": record.total_hours
-            } for record in record_search
-        ]
-
+            # 前端循环list
+            for record in record_search:
+                # 每次都需要更新一下参与次数，避免出现手动调整签到但是未能记录在学时表的情况
+                record.attend_times = participate_raw[record.person.id]
+                records_list.append({
+                    "pk": record.person.id,
+                    "name": record.person.name,
+                    "grade": record.person.stu_grade,
+                    "avatar": record.person.get_user_ava(),
+                    "times": record.attend_times,
+                    "hours": record.total_hours
+                })
+            CourseRecord.objects.bulk_update(record_search, ["attend_times"])
 
     # 前端呈现信息，用于展示
     course_info = {

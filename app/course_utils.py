@@ -208,10 +208,9 @@ def modify_course_activity(request, activity):
     #修改所有该时段的时间、地点
     course_time = activity.course_time
     if context["post_type"] == "modify_all" and course_time:
-        course_time = CourseTime.objects.get(id=course_time.id)
+        course_time = CourseTime.objects.select_for_update().get(id=course_time.id)
         org = activity.organization_id
-        course = Course.objects.activated().filter(organization=org)
-        course = course.first()
+        course = course_time.course
         schedule_start = course_time.start
         schedule_end = course_time.end
         #设置CourseTime初始时间为对应的 周几:hour:minute:second
@@ -905,7 +904,7 @@ def create_course(request, course_id=None):
     return context
 
 
-def cal_participate_num(course: Course)-> Counter:
+def cal_participate_num(course: Course) -> Counter:
     """
     计算该课程对应组织所有成员的参与次数
     return {Naturalperson.id:参与次数}
@@ -917,11 +916,17 @@ def cal_participate_num(course: Course)-> Counter:
         status=Activity.Status.END,
         category=Activity.ActivityCategory.COURSE,
     )
+    #只有小组成员才可以有学时
+    members = Position.objects.activated().filter(pos__gte=1,
+                                                person__identity=NaturalPerson.Identity.STUDENT
+                                                ).values_list("person__person_id", flat=True)
     all_participants = (
         Participant.objects.activated(no_unattend=True)
-        .filter(activity_id__in=activities)
+        .filter(activity_id__in=activities,person_id__person_id__in=members)
     ).values_list("person_id", flat=True)
-    participate_num = Counter(all_participants)
+    participate_num = dict(Counter(all_participants))
+    #没有参加的参与次数设置为0 
+    participate_num.update({id: 0 for id in members if id not in participate_num})
     return participate_num
 
 
@@ -952,3 +957,61 @@ def check_post_and_modify(records, post_data):
         return wrong(str(e))
     except:
         return wrong("数据格式异常，请检查输入数据！")
+
+
+def finish_course(course):
+    """
+    结束课程
+    设置课程状态为END 生成学时表并通知同学该课程已结束。
+    """
+    try:
+        # 取消发布每周定时活动
+        course_times = course.time_set
+        for course_time in course_times.all():
+            course_time.end_week = course_time.cur_week
+            course_time.save()
+    except:
+        return wrong("取消课程每周定时活动时失败，请联系管理员！")
+    try:
+        # 生成学时表
+        participate_num = cal_participate_num(course)
+        participants = NaturalPerson.objects.activated().filter(
+            id__in=participate_num.keys())
+        course_record_list = []
+        for participant in participants:
+            # 如果存在相同学期的学时表，则不创建
+            if not CourseRecord.objects.filter(person=participant, course=course).exists():
+                course_record_list.append(CourseRecord(
+                    person=participant,
+                    course=course,
+                    attend_times=participate_num[participant.id],
+                    total_hours=2*participate_num[participant.id]
+                ))
+        CourseRecord.objects.bulk_create(course_record_list)
+    except:
+        return wrong("生成学时表失败，请联系管理员！")
+    try:
+        # 通知课程小组成员该课程已结束
+        title = f'课程结束通知！'
+        msg = f'{course.name}在本学期的课程已结束！'
+        publish_kws = {"app": WechatApp.TO_PARTICIPANT}
+        receivers = participants.values_list('person_id', flat=True)
+        receivers = User.objects.filter(id__in=receivers)
+        bulk_notification_create(
+            receivers=list(receivers),
+            sender=course.organization.organization_id,
+            typename=Notification.Type.NEEDREAD,
+            title=title,
+            content=msg,
+            URL=f"/viewCourse/?courseid={course.id}",
+            publish_to_wechat=True,
+            publish_kws=publish_kws,
+        )
+        # 设置课程状态
+    except:
+        return wrong("生成通知失败，请联系管理员！")
+    course.status = Course.Status.END
+    course.save()
+    return succeed("结束课程成功！")
+
+

@@ -77,9 +77,14 @@
 
           {% if editable %}
             <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value=""
-                onclick="return confirm('确认提交学时信息？学时更新后将会给全体参课成员发送消息！确认后请耐心等待，不要重复点击本按钮。')">
+                onclick="return confirm('确认提交学时信息？确认后请耐心等待，不要重复点击本按钮。')">
                 提交学时信息
             </button>
+          {% else %}
+          <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" name="post_type" value="end"
+            onclick="return confirm('确认结束课程？结束课程后每周定时活动将不再发布且学时表将自动创建。确认后请耐心等待，不要重复点击本按钮。')">
+          结束课程
+          </button>
           {% endif %}
         </form>
       </div>
