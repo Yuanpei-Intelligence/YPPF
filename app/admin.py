@@ -13,7 +13,7 @@ admin.site.site_header = '元培成长档案 - 管理后台'
 class NaturalPersonAdmin(admin.ModelAdmin):
     fieldsets = (
         [
-            "Commom Attributes",
+            "Common Attributes",
             {
                 "fields": (
                     "person_id", "name", "nickname", "gender", "identity", "status",
@@ -735,6 +735,16 @@ class CourseParticipantAdmin(admin.ModelAdmin):
     list_display = ["course", "person", "status",]
     search_fields = ("course__name", "person__name",)
 
+
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = ["type", "title", "person", "org", "feedback_time",]
+    search_fields = ("person__name", "org__oname",)
+
+@admin.register(FeedbackType)
+class FeedbackTypeAdmin(admin.ModelAdmin):
+    list_display = ["name","org_type",]
+    search_fields =  ("name","org_type",)
 
 admin.site.register(YQPointDistribute)
 admin.site.register(QandA)

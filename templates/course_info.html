@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% block mainpage %}
+
+
+<div id="content" class="main-content pb-3" style="overflow: hidden;">
+
+    {% if html_display.warn_code == 2 %}
+    <div class="alert alert-success text-center mb-0">{{html_display.warn_message}}</div>
+    {% elif html_display.warn_code == 1 %}
+    <div class="alert alert-warning text-center mb-0">{{html_display.warn_message}}</div>
+    {% endif %}
+
+    <!--TODO：不确定是不是这样写，course_display里只可能有一个元素，那就取第一个-->
+    {% with course_display.0 as course %}
+    <div style="text-align: center;">
+        <br>
+        <h4 class="text-primary">《{{course.name}}》书院课程详细信息</h4>
+        <br>
+    </div>
+    <div class="container-fluid">
+        <div class="statbox widget box box-shadow">
+            <table class="table table-responsive-sm table-active" style="word-break:break-all" >
+                <tbody class="table">
+                   
+                    <tr>
+                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 课程类型</th>
+                        <td width="30%"> 
+                            {{course.type}}
+                        </td>
+                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 开课周数</th>
+                        <td width="30%"> 
+                            {{course.times}}
+                        </td>
+                    </tr>
+                    <!--TODO : coursetodisplay字典里面加一个organization-->
+                    <tr>
+                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 开课组织</th>
+                        <td colspan="8"> 
+                            <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
+                            <a href="/orginfo/?name={{course.organization_name}}">
+                                <u>{{course.organization_name}}</u>
+                            </a>
+                        </td>
+                    </tr>
+                    <tr>
+                        <th width="20%" style="background-color: rgb(192, 190, 190); text-align: center;"> 课程简介</th>
+                        <td colspan="8"> 
+                            {{course.introduction}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 教学计划</th>
+                        <td colspan="8"> 
+                            {{course.teaching_plan}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 学时计算方式</th>
+                        <td colspan="8"> 
+                            {{course.record_cal_method}}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 宣传图片</th>
+                        <td colspan="8"> 
+                            <img width="40%" src={{ course.photo_path }}>
+                        </td>
+                    </tr>
+                  
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {% endwith %}
+
+</div>
+
+
+{% endblock %}

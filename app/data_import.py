@@ -12,7 +12,9 @@ from app.models import (
     Help,
     Course,
     CourseRecord,
-    Semester
+    Semester,
+    FeedbackType,
+    Feedback,
 )
 from app.utils import random_code_init
 
@@ -27,6 +29,7 @@ from datetime import datetime
 from boottest import local_dict
 from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
+from django.db import transaction
 
 
 def load_file(file):
@@ -336,7 +339,7 @@ def load_stu_data(request):
             user, created = User.objects.get_or_create(username=username)
             if not created:
                 exist_list.append(username)
-                # continue
+                continue
             # 这一步的PBKDF2加密算法太慢了
             user.set_password(password)
             user.save()
@@ -441,10 +444,7 @@ def load_CouRecord(request):
     # 学年，学期和课程的德智体美劳信息都是在文件的info这个sheet中读取的
     year = courserecord_file['info'].iloc[1,1]
     semester = courserecord_file['info'].iloc[2,1]
-    if semester in ['秋季', '秋']:
-        semester = 'Fall'
-    elif semester in ['春季', '春']:
-        semester = 'Spring'
+    semester = Semester.get(semester)
 
     course_type_all = {
        "德" : Course.CourseType.MORAL ,
@@ -549,7 +549,7 @@ def load_CouRecord(request):
             record = CourseRecord.objects.filter( #查询是否已经有记录
                 person = person[0],
                 year = year,
-                semester = Semester.get(semester),
+                semester = semester,
             )
             record_search_course = record.filter(course__name= course,)
             record_search_extra = record.filter(extra_name = course,)
@@ -560,7 +560,7 @@ def load_CouRecord(request):
                     attend_times = times,
                     total_hours = hours,
                     year = year,
-                    semester = Semester.get(semester),
+                    semester = semester,
                 )
                 if course_found: 
                     newrecord.course = course_get[0] 
@@ -649,5 +649,156 @@ def load_org_tag(request):
             )
         )
     OrganizationTag.objects.bulk_create(tag_list)
-    context = {"message": "导入组织类型标签信息成功！"}
+    context = {"message": "导入组织标签类型信息成功！"}
     return render(request, "debugging.html", context)
+
+
+def load_tags_for_old_org(request):
+    if not request.user.is_superuser:
+        context = {"message": "请先以超级账户登录后台后再操作！"}
+        return render(request, "debugging.html", context)
+    try:
+        org_tag_def = load_file("oldorgtags.csv")
+    except:
+        context = {"message": "没有找到oldorgtags.csv,请确认该文件已经在test_data中。"}
+        return render(request, "debugging.html", context)
+    error_dict = {}
+    org_num = 0
+    for _, tag_dict in org_tag_def.iterrows():
+        org_num += 1
+        err = False
+        with transaction.atomic():
+            try:
+                useroj = Organization.objects.select_for_update().get(oname=tag_dict[0])
+                for tag in tag_dict[1:]:
+                    useroj.tags.add(OrganizationTag.objects.get(name=tag))
+            except Exception as e:
+                if not(type(tag)==float and math.isnan(tag)): # 说明不是因遍历至空单元格导致的异常
+                    error_dict[tag_dict[0]] = e
+                    err = True
+            if not err:  # 只有未出现异常，组织的标签信息才被保存
+                useroj.save()
+    context = {
+        "message": '<br/>'.join((
+                    f"共尝试导入{org_num}个组织的标签信息",
+                    f"导入成功的组织：{org_num - len(error_dict)}个",
+                    f"导入失败的组织：{len(error_dict)}个",
+                    f'错误原因：' if error_dict else ''
+                    ) + tuple(f'{org}：{err}' for org, err in error_dict.items())
+                    )
+        }
+    return render(request, "debugging.html", context)
+
+
+def load_feedback():
+    '''该函数用于导入反馈详情的数据(csv)'''
+    try:
+        feedback_df = load_file("feedbackinf.csv")
+    except:
+        return "没有找到feedbackinf.csv,请确认该文件已经在test_data中。"
+    error_dict = {}
+    feedback_num = 0
+    for _, feedback_dict in feedback_df.iterrows():
+        feedback_num += 1
+        err = False
+        try:
+            type_id = FeedbackType.objects.get(name=feedback_dict["type"]).id
+            person_id = NaturalPerson.objects.get(name=feedback_dict["person"]).id
+            org_id = Organization.objects.get(oname=feedback_dict["org"]).id
+
+            feedback, mid = Feedback.objects.get_or_create(
+                type_id=type_id, person_id=person_id, org_id=org_id,
+            )
+
+            feedback.title = feedback_dict["title"]
+            feedback.content = feedback_dict["content"]
+            
+            issue_status_dict = {"草稿": 0, "已发布": 1, "已删除": 2,}
+            read_status_dict = {"已读": 0, "未读": 1,}
+            solve_status_dict = {"已解决": 0, "解决中": 1, "无法解决": 2,}
+            public_status_dict = {"公开": 0, "未公开": 1, "撤销公开": 2, "强制不公开": 3,}
+
+            assert feedback_dict["issue_status"] in issue_status_dict.keys()
+            feedback.issue_status = issue_status_dict[feedback_dict["issue_status"]]
+
+            assert feedback_dict["read_status"] in read_status_dict.keys()
+            feedback.read_status = read_status_dict[feedback_dict["read_status"]]
+
+            assert feedback_dict["solve_status"] in solve_status_dict.keys()
+            feedback.solve_status = solve_status_dict[feedback_dict["solve_status"]]
+
+            assert feedback_dict["public_status"] in public_status_dict.keys()
+            feedback.public_status = public_status_dict[feedback_dict["public_status"]]
+
+            if feedback_dict["publisher_public"].lower() == "true":
+                feedback.publisher_public = True
+            else:
+                feedback.publisher_public = False
+
+            if feedback_dict["org_public"].lower() == "true":
+                feedback.org_public = True
+            else:
+                feedback.org_public = False
+
+        except Exception as e:
+            err = True
+            error_dict["{}: {}".format(feedback_num, feedback_dict["title"])] = '''
+                填写状态信息有误，请再次检查发布/阅读/解决/公开状态(文字)是否填写正确！
+            ''' if isinstance(e,AssertionError) else e
+            feedback.delete()
+        
+        if not err:
+            feedback.save()
+
+    return '<br/>'.join((
+                    f"共尝试导入{feedback_num}条反馈的详细信息",
+                    f"导入成功的反馈：{feedback_num - len(error_dict)}条",
+                    f"导入失败的反馈：{len(error_dict)}条",
+                    f'错误原因：' if error_dict else ''
+                    ) + tuple(f'{fb}：{err}' for fb, err in error_dict.items()
+                    ) + ('',
+                    f"请注意：下面的字段必须填写对应的选项，否则反馈信息将无法保存！",
+                    f"（1）issue_status：草稿 / 已发布 / 已删除",
+                    f"（2）read_status：已读 / 未读",
+                    f"（3）solve_status：已解决 / 解决中 / 无法解决",
+                    f"（4）public_status：公开 / 未公开 / 撤销公开 / 强制不公开"
+                    ))
+
+
+def load_feedback_type():
+    '''该函数用于导入反馈类型的数据(csv)'''
+    try:
+        feedback_type_df = load_file("feedbacktype.csv")
+    except:
+        return "没有找到feedbacktype.csv,请确认该文件已经在test_data中。"
+    type_list = []
+    for _, type_dict in feedback_type_df.iterrows():
+        type_id = int(type_dict["id"])
+        type_name = type_dict["name"]
+        otype = type_dict["org_type"]
+        otype_id = OrganizationType.objects.get(otype_name=otype).otype_id
+        feedbacktype, mid = FeedbackType.objects.get_or_create(
+            id=type_id, org_type_id=otype_id,
+        )
+        feedbacktype.name = type_name
+        feedbacktype.save()
+    
+    FeedbackType.objects.bulk_create(type_list)
+    return "导入反馈类型信息成功！"
+
+
+def load_feedback_data(request):
+    if request.user.is_superuser:
+        load_type = request.GET.get("loadtype", None)
+        message = "加载失败！"
+        if load_type is None:
+            message = "没有传入loadtype参数:[detail或type]"
+        elif load_type == "type":
+            message = load_feedback_type()
+        elif load_type == "detail":
+            message = load_feedback()
+        else:
+            message = "没有得到loadtype参数:[detail或otype]"
+    else:
+        message = "请先以超级账户登录后台后再操作！"
+    return render(request, "debugging.html", locals())
