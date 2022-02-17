@@ -11,8 +11,6 @@ change_course_status: 改变课程的选课阶段
 remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 """
-from pymysql import NULL
-from torch import NoneType
 from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
@@ -27,7 +25,10 @@ from app.models import (
     CourseRecord,
     Semester,
 )
-from app.utils import get_person_or_org,if_image
+from app.utils import (
+    get_person_or_org,
+    if_image,
+)
 from app.notification_utils import (
     bulk_notification_create,
     notification_create,
@@ -46,7 +47,7 @@ from datetime import datetime, timedelta
 
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import F, Sum,Q
+from django.db.models import F, Sum, Prefetch
 
 from app.scheduler import scheduler
 
@@ -90,6 +91,7 @@ def course_activity_base_check(request):
     # 默认需要签到
     context["need_checkin"] = True
 
+    context["post_type"] = str(request.POST.get("post_type"))
     return context
 
 
@@ -203,6 +205,32 @@ def modify_course_activity(request, activity):
     activity.end = context["end"]
     activity.save()
 
+    #修改所有该时段的时间、地点
+    if context["post_type"] == "modify_all" and activity.course_time is not None:
+        course_time = CourseTime.objects.select_for_update().get(
+            id=activity.course_time.id)
+        course = course_time.course
+        schedule_start = course_time.start
+        schedule_end = course_time.end
+        #设置CourseTime初始时间为对应的 周几:hour:minute:second
+        #设置周几
+        schedule_start += timedelta(
+            days=(context["start"].weekday() - schedule_start.weekday()))
+        schedule_end += timedelta(
+            days=(context["end"].weekday() - schedule_end.weekday()))
+        #设置每周上课时间：hour:minute:second
+        schedule_start = schedule_start.replace(hour=context["start"].hour,
+                                                minute=context["start"].minute,
+                                                second=context["start"].second)
+        schedule_end = schedule_end.replace(hour=context["end"].hour,
+                                            minute=context["end"].minute,
+                                            second=context["end"].second)
+        course_time.start = schedule_start
+        course_time.end = schedule_end
+        #设置地点
+        course.classroom = context["location"]
+        course.save()
+        course_time.save()
     # 目前只要编辑了活动信息，无论活动处于什么状态，都通知全体选课同学
     # if activity.status != Activity.Status.APPLYING and activity.status != Activity.Status.WAITING:
     #     return
@@ -229,9 +257,9 @@ def modify_course_activity(request, activity):
     notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
 
 
-def cancel_course_activity(request, activity):
+def cancel_course_activity(request, activity, cancel_all=False):
     '''
-    取消单次课程活动，是cancel_activity的简化版，在聚合页面被调用
+    取消课程活动，是cancel_activity的简化版，在聚合页面被调用
 
     在聚合页面中，应确保activity是课程活动，并且应检查activity.status，
     如果不是WAITING或PROGRESSING，不应调用本函数
@@ -275,6 +303,11 @@ def cancel_course_activity(request, activity):
 
     activity.save()
 
+    #取消该时段所有活动！
+    if cancel_all:
+        # 设置结束 若cur_week >= end_week 则每周定时任务无需执行
+        activity.course_time.end_week = activity.course_time.cur_week
+        activity.course_time.save()
 
 def remaining_willingness_point(user):
     """
@@ -430,7 +463,7 @@ def process_time(start, end) -> str:
     return f"周{chinese_display[start.weekday()]} {start_time}-{end_time}"
 
 
-def course_to_display(courses, user, detail=False):
+def course_to_display(courses, user, detail=False) -> list:
     """
     方便前端呈现课程信息
 
@@ -443,57 +476,66 @@ def course_to_display(courses, user, detail=False):
     """
     display = []
 
-    # 预取，减少数据库查询次数
-    courses = courses.select_related("organization").prefetch_related(
-        "participant_set")
+    # TODO：task10 ljy 2022-02-14
+    # 在课程详情页的前端完成后，适当调整向前端传递的字段
+
+    if detail:
+        courses = courses.select_related('organization').prefetch_related(
+            "time_set")
+    else:
+        # 预取，同时不查询不需要的字段
+        courses = courses.defer(
+            "classroom",
+            "teacher",
+            "introduction",
+            "photo",
+            "teaching_plan",
+            "record_cal_method",
+        ).select_related('organization').prefetch_related(
+            Prefetch('participant_set',
+                     queryset=CourseParticipant.objects.filter(person=user),
+                     to_attr='participants'), "time_set")
 
     # 获取课程的基本信息
     for course in courses:
         course_info = {}
-        course_info["course_id"] = course.id
+
         course_info["name"] = course.name
-        course_info["capacity"] = course.capacity
-        course_info["current_participants"] = course.current_participants
         course_info["times"] = course.times  # 课程周数
         course_info["type"] = course.get_type_display()  # 课程类型
-        course_info["status"] = course.get_status_display()  # 课程所处的选课阶段
-        course_info["avatar_path"] = course.organization.avatar.name
-        # 暂时不用这些信息
-        # if course.stage1_start:
-        #     course_info["stage1_start"] = course.stage1_start.strftime(
-        #         "%Y-%m-%d %H:%M")
-        # if course.stage1_end:
-        #     course_info["stage1_end"] = course.stage1_end.strftime(
-        #         "%Y-%m-%d %H:%M")
-        # if course.stage2_start:
-        #     course_info["stage2_start"] = course.stage2_start.strftime(
-        #         "%Y-%m-%d %H:%M")
-        # if course.stage2_end:
-        #     course_info["stage2_end"] = course.stage2_end.strftime(
-        #         "%Y-%m-%d %H:%M")
-
-        # 当前学生的选课状态
-        if course.participant_set.exists():
-            course_info["student_status"] = course.participant_set.get(
-                course=course, person=user).get_status_display()
-        else:
-            course_info["student_status"] = "未选课"
+        course_info["avatar_path"] = course.organization.get_user_ava()
 
         course_time = []
         for time in course.time_set.all():
             course_time.append(process_time(time.start, time.end))
         course_info["time_set"] = course_time
 
-        # 在课程详情页才展示的信息
-
         if detail:
+            # 在课程详情页才展示的信息
             course_info["classroom"] = course.classroom
             course_info["teacher"] = course.teacher
             course_info["introduction"] = course.introduction
-            course_info["photo"] = course.photo.name  # 图片在media文件夹内的路径
+            course_info["teaching_plan"] = course.teaching_plan
+            course_info["record_cal_method"] = course.record_cal_method
+            course_info["photo_path"] = course.get_photo_path()
+            course_info["organization_name"] = course.organization.oname
+            display.append(course_info)
+            continue
 
-            # 暂时不启用意愿点机制
-            # course_info["bidding"] = int(course.bidding)
+        course_info["course_id"] = course.id
+        course_info["capacity"] = course.capacity
+        course_info["current_participants"] = course.current_participants
+        course_info["status"] = course.get_status_display()  # 课程所处的选课阶段
+
+        # 暂时不启用意愿点机制
+        # course_info["bidding"] = int(course.bidding)
+
+        # 当前学生的选课状态（注：course.participants是一个list）
+        if course.participants:
+            course_info["student_status"] = course.participants[
+                0].get_status_display()
+        else:
+            course_info["student_status"] = "未选课"
 
         display.append(course_info)
 
@@ -502,7 +544,6 @@ def course_to_display(courses, user, detail=False):
 
 @log.except_captured(return_value=True,
                      record_args=True,
-                     status_code=log.STATE_WARNING,
                      source='course_utils[draw_lots]')
 def draw_lots(course):
     """
@@ -602,7 +643,7 @@ def draw_lots(course):
                      record_args=True,
                      status_code=log.STATE_WARNING,
                      source='course_utils[change_course_status]')
-def change_course_status(course_id, cur_status, to_status):
+def change_course_status(cur_status, to_status):
     """
     作为定时任务，在课程设定的时间改变课程的选课阶段
 
@@ -611,43 +652,19 @@ def change_course_status(course_id, cur_status, to_status):
         id=f"course_{course_id}_{to_status}, run_date, args)
 
     参数:
-        course_id: course对象的主键
-        cur_status: course对象当前的选课状态
         to_status: 希望course变为的选课状态
-    
-    注意:
-        1、暂时没有做时间一致性的检查。考虑到在开课填表的时候，前端要进行时间的检查，
-        所以这里暂时可以不检查时间。
-        2、在开设课程的时候将该函数添加到定时任务中，可以参考活动开设的相关操作。
     """
-    try:
-        course = Course.objects.get(id=course_id)
-    except:
-        raise AssertionError("课程ID不存在")
 
-    # 分别是预选和补退选的开始和结束时间
-
-    stage1_start = course.stage1_start
-    stage1_end = course.stage1_end
-    stage2_start = course.stage2_start
-    stage2_end = course.stage2_end
-    now = datetime.now()
-
-    # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
     # 以下进行状态的合法性检查
-
     if cur_status is not None:
-        assert cur_status == course.status, \
-               f"希望的状态是{cur_status}，但实际状态为{course.status}"
         if cur_status == Course.Status.WAITING:
-            if now < stage1_end:  # 开始预选，那么当前时间一定比预选结束的时间早
-                assert to_status == Course.Status.STAGE1, \
-                f"不能从{cur_status}变更到{to_status}"
-            else:
-                assert to_status == Course.Status.STAGE2, \
-                f"不能从{cur_status}变更到{to_status}"
+            assert to_status == Course.Status.STAGE1, \
+            f"不能从{cur_status}变更到{to_status}"
         elif cur_status == Course.Status.STAGE1:
-            assert to_status == Course.Status.WAITING, \
+            assert to_status == Course.Status.DRAWING, \
+            f"不能从{cur_status}变更到{to_status}"
+        elif cur_status == Course.Status.DRAWING:
+            assert to_status == Course.Status.STAGE2, \
             f"不能从{cur_status}变更到{to_status}"
         elif cur_status == Course.Status.STAGE2:
             assert to_status == Course.Status.SELECT_END, \
@@ -656,42 +673,68 @@ def change_course_status(course_id, cur_status, to_status):
             raise AssertionError("选课已经结束，不能再变化状态")
     else:
         raise AssertionError("未提供当前状态，不允许进行选课状态修改")
-
-    if to_status == Course.Status.WAITING and now >= stage1_end:
-        # 预选结束，进行抽签
-        draw_lots(course)
-
-    # 其他情况只需要更新课程的选课阶段
-
+    courses = Course.objects.activated().filter(status=cur_status)
     with transaction.atomic():
-        Course.objects.select_for_update().filter(id=course_id).update(
-            status=to_status)
-
-    if to_status == Course.Status.SELECT_END:
-        # 将选课成功的同学批量加入小组
-        participants = CourseParticipant.objects.filter(
-            course=course,
-            status=CourseParticipant.Status.SUCCESS).select_related('person')
-        organization = course.organization
-        positions = []
-        for participant in participants:
-            # 检查是否已经加入小组
-            if not Position.objects.filter(person=participant.person,
-                                           org=organization).exists():
-                position = Position(person=participant.person,
-                                    org=organization,
-                                    in_semester=Semester.now())
-                positions.append(position)
-        if positions:
-            with transaction.atomic():
-                Position.objects.bulk_create(positions)
+        #更新目标状态
+        courses.select_for_update().update(status=to_status)
+        for course in courses:
+            if to_status == Course.Status.DRAWING:
+                # 预选结束，进行抽签
+                draw_lots(course)
+            elif to_status == Course.Status.SELECT_END:
+                # 选课结束，将选课成功的同学批量加入小组
+                participants = CourseParticipant.objects.filter(
+                    course=course,
+                    status=CourseParticipant.Status.SUCCESS).select_related(
+                        'person')
+                organization = course.organization
+                positions = []
+                for participant in participants:
+                    # 检查是否已经加入小组
+                    if not Position.objects.filter(person=participant.person,
+                                                   org=organization).exists():
+                        position = Position(person=participant.person,
+                                            org=organization,
+                                            in_semester=Semester.now())
+                        positions.append(position)
+                if positions:
+                    with transaction.atomic():
+                        Position.objects.bulk_create(positions)
 
 
 def str_to_time(stage: str):
+    """字符串转换成时间"""
+    return datetime.strptime(stage,'%Y-%m-%d %H:%M:%S')
+
+
+@log.except_captured(return_value=True,
+                     record_args=True,
+                     status_code=log.STATE_WARNING,
+                     source='course_utils[register_selection]')
+def register_selection():
     """
-    将读取的字符串转换成时间
+    添加定时任务，实现课程状态转变，每次发起课程时调用
     """
-    return datetime.strptime(stage, '%Y-%m-%d %H:%M')
+
+    # 预选和补退选的开始和结束时间
+
+    year = CURRENT_ACADEMIC_YEAR
+    semster = Semester.now()
+    stage1_start = str_to_time(get_setting("course/yx_election_start"))
+    stage1_end = str_to_time(get_setting("course/yx_election_end"))
+    stage2_start = str_to_time(get_setting("course/btx_election_start"))
+    stage2_end = str_to_time(get_setting("course/btx_election_end"))
+
+    # 定时任务：修改课程状态
+    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_start",
+                      run_date=stage1_start, args=[Course.Status.WAITING,Course.Status.STAGE1], replace_existing=True)
+    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_end",
+                      run_date=stage1_end, args=[Course.Status.STAGE1,Course.Status.DRAWING], replace_existing=True)
+    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_start",
+                    run_date=stage2_start, args=[Course.Status.DRAWING,Course.Status.STAGE2], replace_existing=True)
+    scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_end",
+                    run_date=stage2_end, args=[Course.Status.STAGE2,Course.Status.SELECT_END], replace_existing=True)
+    # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
 
 
 def course_base_check(request):
@@ -718,15 +761,17 @@ def course_base_check(request):
 
     # int类型合法性检查
 
-    context['type'] = int(request.POST.get("type", -1))  # 课程类型
-    context["capacity"] = int(request.POST.get("capacity", -1))
+    type_num = request.POST.get("type", -1)  # 课程类型
+    capacity = request.POST.get("capacity", -1)
     # context['times'] = int(request.POST["times"])    #课程上课周数
     try:
-        assert context['type'] != -1, "记得选择课程类型哦！"
-        assert 0 <= context['type'] < 5, "课程类型仅包括德智体美劳五种！"
-        assert context["capacity"] > 0, "课程容量应当大于0！"
+        assert type_num != "", "记得选择课程类型哦！"
+        assert 0 <= int(type_num) < 5, "课程类型仅包括德智体美劳五种！"
+        assert int(capacity) > 0, "课程容量应当大于0！"
     except Exception as e:
         return wrong(str(e))
+    context['type'] = int(type_num)
+    context['capacity'] = int(capacity)
 
     # 图片类型合法性检查
     try:
@@ -741,6 +786,7 @@ def course_base_check(request):
                     pic = request.POST.get(f'picture{i+1}')
         context["photo"] = pic
         context["QRcode"] = request.FILES.get("QRcode")
+        assert context["photo"] is not None, "缺少课程预告图片！"
         assert if_image(context["QRcode"]) != 1, "微信群二维码图片文件类型错误！"
     except Exception as e:
         return wrong(str(e))
@@ -784,8 +830,9 @@ def create_course(request, course_id=None):
     返回(course.id, created)
     '''
     context = dict()
-    context = course_base_check(request)
+
     try:
+        context = course_base_check(request)
         if context["warn_code"] == 1:  # 合法性检查出错！
             return context
     except:
@@ -807,7 +854,8 @@ def create_course(request, course_id=None):
                 course.type = context['type']
                 course.capacity = context["capacity"]
                 course.photo = context['photo'] if context['photo'] is not None else course.photo
-                course.QRcode = context["QRcode"] if context['QRcode'] is not None else NULL
+                if context['QRcode']:
+                    course.QRcode = context["QRcode"]
                 course.save()
 
                 for i in range(len(context['course_starts'])):
@@ -836,8 +884,9 @@ def create_course(request, course_id=None):
                     type=context['type'],
                     capacity=context["capacity"],
                 )
-                course.photo = context['photo'] if context['photo'] is not None else course.photo
-                course.QRcode = context["QRcode"] if context['QRcode'] else NULL
+                course.photo = context['photo']
+                if context['QRcode']:
+                    course.QRcode = context["QRcode"]
                 course.save()
 
                 for i in range(len(context['course_starts'])):
@@ -846,6 +895,7 @@ def create_course(request, course_id=None):
                         start=context['course_starts'][i],
                         end=context['course_ends'][i],
                     )
+            register_selection()    #每次发起课程，创建定时任务
         except:
             return wrong("创建课程时遇到不可预料的错误。如有需要，请联系管理员解决!")
         context["cid"] = course.id
@@ -902,4 +952,3 @@ def check_post_and_modify(records, post_data):
         return wrong(str(e))
     except:
         return wrong("数据格式异常，请检查输入数据！")
-

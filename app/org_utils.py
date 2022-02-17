@@ -1,5 +1,6 @@
 from app.utils_dependency import *
 from app.models import (
+    Activity,
     NaturalPerson,
     Position,
     Organization,
@@ -9,6 +10,7 @@ from app.models import (
     Notification,
     ModifyOrganization,
     Wishes,
+    Participant,
 )
 from app.notification_utils import (
     notification_create,
@@ -30,6 +32,7 @@ from datetime import datetime, timedelta
 
 from django.db.models import Q
 from django.contrib.auth.models import User
+import random
 
 __all__ = [
     'find_max_oname',
@@ -572,11 +575,16 @@ def send_message_check(me, request):
         return wrong("请填写通知的内容！")
     elif len(content) > 225:
         return wrong("通知的长度不能超过225个字！你超过了！")
+    
+    def judge_half_size(x):  # 半角字符且不是汉字
+        return ord(x) >= 32 and ord(x) <= 126 and not(x >= u'\u4e00' and x <= u'\u9fa5')
 
     if len(title) == 0:
         return wrong("不能不写通知的标题！补起来！")
     elif len(title) > 10:
-        return wrong("通知的标题不能超过10个字！不然发出来的通知会很丑！")
+        new_len = sum([0.5 if judge_half_size(x) else 1 for x in list(title)])
+        if new_len > 10:
+            return wrong("通知的标题不能超过10个汉字或20个英文字母！不然发出来的通知会很丑！") 
 
     if len(url) == 0:
         url = None
@@ -608,10 +616,13 @@ def send_message_check(me, request):
             receivers = NaturalPerson.objects.activated().exclude(
                 id__in=me.unsubscribers.all()).select_related('person_id')
             receivers = [receiver.person_id for receiver in receivers]
-        else:   # 检查过逻辑了，不可能是其他的
+        elif receiver_type == "小组成员":
             receivers = NaturalPerson.objects.activated().filter(
                 id__in=me.position_set.values_list('person_id', flat=True)
                 ).select_related('person_id')
+            receivers = [receiver.person_id for receiver in receivers]
+        else:  # 推广消息
+            receivers = get_promote_receiver(me)
             receivers = [receiver.person_id for receiver in receivers]
 
         # 创建通知
@@ -629,16 +640,59 @@ def send_message_check(me, request):
         return wrong("创建通知的时候出现错误！请联系管理员！")
     try:
         wechat_kws = {}
-        if receiver_type == "订阅用户":
-            wechat_kws['app'] = WechatApp.TO_SUBSCRIBER
-        else:   # 小组成员
+        if receiver_type == "小组成员":
             wechat_kws['app'] = WechatApp.TO_MEMBER
+        else:
+            wechat_kws['app'] = WechatApp.TO_SUBSCRIBER
         wechat_kws['filter_kws'] = {'bulk_identifier': bulk_identifier}
         assert publish_notifications(**wechat_kws)
     except:
         return wrong("发送微信的过程出现错误！请联系管理员！")
 
-    return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了!")
+    if receiver_type == "推广消息":
+        return succeed(f"成功创建知晓类消息，发送给所有推广算法匹配的用户了！共{len(receivers)}人。")
+    else:
+        return succeed(f"成功创建知晓类消息，发送给所有的{receiver_type}了！共{len(receivers)}人。")
+
+
+
+def get_promote_receiver(org, alpha=0.3, beta=0.16, gamma=0.09):
+    '''
+    获取该组织发送推广消息的对象，org为组织对象
+    alpha, beta, gamma分别为计算推送概率的参数
+    每个人被推送概率 = alpha + sqrt(beta * 活跃度) + sqrt(gamma * tag比重)
+    每个人的 tag比重 = 1 - Prod_{tag in org.tag}[ 1 - 参加这个tag的组织发起的活动数 / 参与的活动总数 ]
+    '''
+    # 准备发送对象：接受推广的np列表
+    raw_np_lst = list(NaturalPerson.objects.activated().filter(accept_promote=True))
+    # 初始化概率列表、tag比重列表
+    prob_lst = [alpha + (np.active_score * beta) ** 0.5 for np in raw_np_lst]
+    tag_weight_lst = [1.0] * len(raw_np_lst) # tag比重，初始化为1
+    # 每个人参与的活动列表
+    np2activity_lst = [
+        list(Participant.objects.filter(person_id=np).values_list('activity_id',flat=True)) \
+            for np in raw_np_lst
+    ]
+    # 下面计算tag比重
+    tag_considered = list(org.tags.all())
+    if len(tag_considered) > 0:
+        for tag in tag_considered:
+            # 先查找带有这个tag的组织
+            organization_with_tag = list(Organization.objects.filter(tags__in=[tag]))
+            # 再找这些组织关联的活动
+            activities_with_tag = list(Activity.objects.filter(organization_id__in=organization_with_tag))
+            # 计算tag比重
+            for idx, activity_list in enumerate(np2activity_lst):
+                if len(activity_list) == 0: continue
+                tag_weight = 1.0 * sum([activity in activities_with_tag for activity in activity_list]) \
+                    / (1.0 * len(activity_list))
+                tag_weight_lst[idx] *= (1-tag_weight)
+    # attention:
+    # 1. 若小组没有tag，tag_weight为0。
+    # 2. 若个人没有活动，tag_weight为0。
+    tag_weight_lst = [1.0-weight for weight in tag_weight_lst]
+    prob_lst = [prob + (tag_weight * gamma) ** 0.5 for prob, tag_weight in zip(prob_lst, tag_weight_lst)]
+    return [raw_np_lst[i] for i in range(len(raw_np_lst)) if prob_lst[i] >= random.random()]
 
 
 def get_tags(tag_names: str):

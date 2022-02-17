@@ -1,11 +1,21 @@
 from boottest import base_get_setting
+from boottest import DEBUG, LOGIN_URL
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 
 from django.conf import settings
 
-__PREFIX = 'underground/'
+__all__ = [
+    # 本应用的本地设置
+    'GLOBAL_INFO',
+    'get_setting', 'get_config',
+    # 全局设置的常量
+    'DEBUG',
+    # 本应用的常量
+    'hash_wechat_coder',
+    'SYSTEM_LOG',
+]
 
-DEBUG = settings.DEBUG
+PREFIX = 'underground/'
 
 
 def get_setting(path: str='', default=None, trans_func=None,
@@ -19,7 +29,7 @@ def get_setting(path: str='', default=None, trans_func=None,
     - 也可以判断结果类型，在范围外抛出异常，从而得到设定的default值
     '''
     return base_get_setting(
-        __PREFIX + path, default, trans_func, fuzzy_lookup, raise_exception)
+        PREFIX + path, default, trans_func, fuzzy_lookup, raise_exception)
 
 def get_config(path: str='', default=None, trans_func=None,
                fuzzy_lookup=False, raise_exception=False):
@@ -32,22 +42,21 @@ def get_config(path: str='', default=None, trans_func=None,
     - 也可以判断结果类型，在范围外抛出异常，从而得到设定的default值
     '''
     return base_get_setting(
-        __PREFIX + path, default, trans_func, fuzzy_lookup, raise_exception)
+        PREFIX + path, default, trans_func, fuzzy_lookup, raise_exception)
 
 
 class LocalSetting():
     def __init__(self):
         # 读取json文件, 包括url地址、输入输出位置等
         try:
-            # TODO: task 0 pht 2022-01-24 等待base_get_setting可以正确获取文件夹
-            load_json = get_setting(fuzzy_lookup=True)
+            load_json = get_setting()
         except:
             raise IOError("Can not found json settings.")
         
         self.json = load_json
 
         if DEBUG: print('Loading necessary field...')
-        self.login_url = settings.LOGIN_URL                 # 由陈子维学长提供的统一登录入口
+        self.login_url = LOGIN_URL                          # 由陈子维学长提供的统一登录入口
         self.img_url = get_setting('url/img_url')           # 跳过DNS解析的秘密访问入口,帮助加速头像
         self.wechat_url = base_get_setting('url/wechat_url')# 访问企业微信封装层的接口
         self.system_log = get_setting('system_log')
@@ -73,6 +82,8 @@ class LocalSetting():
         self.temporary_min = 1
         # 是否允许不存在学生自动注册
         self.allow_newstu_appoint = True
+        # 是否限制开始前的预约取消时间
+        self.restrict_cancel_time = False
 
         # 是否开启登录系统，默认为开启
         try:
@@ -86,5 +97,6 @@ class LocalSetting():
 
         # end
 
-global_info = LocalSetting()
-hash_wechat_coder = MySHA256Hasher(secret=global_info.wechat_salt)
+GLOBAL_INFO = LocalSetting()
+hash_wechat_coder = MySHA256Hasher(secret=GLOBAL_INFO.wechat_salt)
+SYSTEM_LOG: str = GLOBAL_INFO.system_log
