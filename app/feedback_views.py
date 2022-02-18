@@ -118,5 +118,7 @@ def modifyFeedback(request):
     app_avatar_path = feedback_person.get_user_ava()
     if not is_new_feedback:
         org_list[feedback.org.oname]['selected'] = True
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="反馈填写详情")
+    bar_display = utils.get_sidebar_and_navbar(
+        request.user, navbar_name="填写反馈" if is_new_feedback else "反馈详情"
+    )
     return render(request, "modify_feedback.html", locals())
