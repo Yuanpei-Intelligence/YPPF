@@ -14,7 +14,7 @@
     <div style="text-align: center;">
         <br>
         <h4 class="text-primary">{{html_display.current_year}}学年{{html_display.semester}}季学期书院课程选课页面</h4>
-        <!-- TODO : 从后端获取学期数据-->
+        {% comment %} 从后端获取学期数据 {% endcomment %}
         <br>
     </div>
 
@@ -51,7 +51,7 @@
     <!--  END SWITCH TAB  -->
 
     <div class="container-fluid tab-content" id="myTabContent">
-        <!--TODO : 后端对接bool值-->
+        {% comment %} 后端对接bool值 {% endcomment %}
         {% if is_drawing == True %}
         <div class="tab-pane fade show active" id="information" role="tabpanel">
             <div class="col-12 layout-top-spacing">
@@ -118,7 +118,7 @@
                                     <th scope="col" width="10%">课程周数</th>
                                     <th scope="col" width="10%">课程类型</th>
                                     <th scope="col" width="15%">状态</th>
-                                    <th scope="col" width="15%">容量/选课人数</th>
+                                    <th scope="col" width="15%">选课人数/容量</th>
                                     <th scope="col" >操作</th>
                                   </tr>
                                 </thead>
@@ -127,15 +127,14 @@
                                   {% for course in unselected_display %}
                                   <tr>
                                     <th scope="row">
-                                        <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
+                                        {% comment %} 课程小组头像路径 {% endcomment %}
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
-                                        <a href='/viewCourse/?courseid={{ course.course_id }}'><!--要做一个新的课程详情页来着..先放着-->
+                                        <a href='/viewCourse/?courseid={{ course.course_id }}'>{% comment %} 做一个新的课程详情页 {% endcomment %}
                                             <u>{{course.name}}</u>
                                         </a>
                                     </th>
                                     <td>
                                         {% for time in course.time_set %}
-                                        <!-- {{time.week}}&nbsp;{{time.start}}-{{time.end}}<br>-->
                                             {{time}}<br>
                                         {% endfor %}
                                         {% if course.time_set|length == 0 %}
@@ -144,7 +143,7 @@
                                     </td>
                                     <td>{{course.times}}</td>
                                     <td>{{course.type}}</td>
-                                    <!--注意这里的status是课程的，除了已撤销的四个都在这儿-->
+                                    {% comment %} 注意这里的status是课程的，除了已撤销的四个都在这儿 {% endcomment %}
                                     <td>
                                         {% if course.status == "未开始" %}
                                         <span class="badge badge-pill badge-dark">{{course.status}}</span>
@@ -158,7 +157,7 @@
                                         <span class="badge badge-pill badge-warning">{{course.status}}</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{course.capacity}}/{{course.current_participants}}</td>
+                                    <td>{{course.current_participants}}/{{course.capacity}}</td>
                                     <td>
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
@@ -203,7 +202,7 @@
                                     <th scope="col" width="10%">课程周数</th>
                                     <th scope="col" width="10%">课程类型</th>
                                     <th scope="col" width="15%">状态</th>
-                                    <th scope="col" width="15%">容量/选课人数</th>
+                                    <th scope="col" width="15%">选课人数/容量</th>
                                     <th scope="col" >操作</th>
                                   </tr>
                                 </thead>
@@ -212,15 +211,14 @@
                                   {% for course in typed_courses %}
                                   <tr>
                                     <th scope="row">
-                                        <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
+                                        {% comment %} 课程小组头像路径 {% endcomment %}
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
-                                        <a href='/viewCourse/?courseid={{ course.course_id }}'><!--要做一个新的课程详情页来着..先放着-->
+                                        <a href='/viewCourse/?courseid={{ course.course_id }}'>{% comment %} 做一个新的课程详情页 {% endcomment %}
                                             <u>{{course.name}}</u>
                                         </a>
                                     </th>
                                     <td>
                                         {% for time in course.time_set %}
-                                        <!-- {{time.week}}&nbsp;{{time.start}}-{{time.end}}<br>-->
                                             {{time}}<br>
                                         {% endfor %}
                                         {% if course.time_set|length == 0 %}
@@ -229,7 +227,7 @@
                                     </td>
                                     <td>{{course.times}}</td>
                                     <td>{{course.type}}</td>
-                                    <!--注意这里的status是课程的，除了已撤销的四个都在这儿-->
+                                    {% comment %} 注意这里的status是课程的，除了已撤销的四个都在这儿 {% endcomment %}
                                     <td>
                                         {% if course.status == "未开始" %}
                                         <span class="badge badge-pill badge-dark">{{course.status}}</span>
@@ -243,7 +241,7 @@
                                         <span class="badge badge-pill badge-warning">{{course.status}}</span>
                                         {% endif %}
                                     </td>
-                                    <td>{{course.capacity}}/{{course.current_participants}}</td>
+                                    <td>{{course.current_participants}}/{{course.capacity}}</td>
                                     <td>
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
@@ -298,7 +296,7 @@
                             <th scope="col" width="10%">课程周数</th>
                             <th scope="col" width="10%">课程类型</th>
                             <th scope="col" width="15%">状态</th>
-                            <th scope="col" width="15%">容量/选课人数</th>
+                            <th scope="col" width="15%">选课人数/容量</th>
                             <th scope="col" >操作</th>
                         </tr>
                     </thead>
@@ -309,13 +307,12 @@
                       <tr>
                         <th scope="row">
                             <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
-                            <a href='/viewCourse/?courseid={{ course.course_id }}'><!--要做一个新的课程详情页来着..先放着-->
+                            <a href='/viewCourse/?courseid={{ course.course_id }}'>{% comment %} 做一个新的课程详情页 {% endcomment %}
                                 <u>{{course.name}}</u>
                             </a>
                         </th>
                         <td>
                             {% for time in course.time_set %}
-                            <!-- {{time.week}}&nbsp;{{time.start}}-{{time.end}}<br>-->
                                 {{time}}<br>
                             {% endfor %}
                             {% if course.time_set|length == 0 %}
@@ -325,7 +322,7 @@
                         <td>{{course.times}}</td>
                         <td>{{course.type}}</td>
                         <td>
-                            <!--TODO : 对接后端bool值-->
+                            {% comment %} 对接后端bool值 {% endcomment %}
                             {% if is_drawing == True %}
                             <span class="badge badge-pill badge-info">抽签中</span>
                             {% elif course.student_status == "已选课" %}
@@ -336,7 +333,7 @@
                             <span class="badge badge-pill badge-danger">{{course.student_status}}</span>
                             {% endif %}
                         </td>
-                        <td>{{course.capacity}}/{{course.current_participants}}</td>
+                        <td>{{course.current_participants}}/{{course.capacity}}</td>
                         <td>
                             <form action="/selectCourse/" method="post">
                                 <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
