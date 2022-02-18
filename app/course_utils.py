@@ -99,7 +99,10 @@ def create_single_course_activity(request):
     '''
     创建单次课程活动，是create_activity的简化版
     '''
-    context = course_activity_base_check(request)
+    try:
+        context = course_activity_base_check(request)
+    except Exception as e:
+        return str(e), False
 
     # 查找是否有类似活动存在
     old_ones = Activity.objects.activated().filter(
@@ -161,10 +164,16 @@ def create_single_course_activity(request):
                       run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
     activity.save()
 
-    # 使用一张默认图片以便viewActivity, examineActivity等页面展示
-    tmp_pic = '/static/assets/img/announcepics/1.JPG'
+    # 使用活动所属课程的图片，用于viewActivity, examineActivity等页面展示
+    try:
+        course = Course.objects.activated().get(organization=org)
+        pic = course.photo
+        assert pic is not None
+    except:
+        # 找不到图片就用默认的第一张
+        pic = '/static/assets/img/announcepics/1.JPG'
     ActivityPhoto.objects.create(
-        image=tmp_pic, type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
+        image=pic, type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
     # 通知审核老师
     notification_create(
@@ -191,7 +200,10 @@ def modify_course_activity(request, activity):
     if activity.status != Activity.Status.WAITING:
         return "课程活动只有在等待状态才能修改。"
 
-    context = course_activity_base_check(request)
+    try:
+        context = course_activity_base_check(request)
+    except Exception as e:
+        return str(e)
 
     # 记录旧信息（以便发通知），写入新信息
     old_title = activity.title
