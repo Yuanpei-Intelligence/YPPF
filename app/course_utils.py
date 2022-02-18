@@ -12,7 +12,6 @@ remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 check_course_time_conflict: 检查当前选择的课是否与已选的课上课时间冲突
 """
-from unicodedata import category
 from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
@@ -66,6 +65,7 @@ __all__ = [
     'create_course',
     'cal_participate_num',
     'check_post_and_modify',
+    'finish_course',
 ]
 
 
@@ -987,15 +987,16 @@ def cal_participate_num(course: Course) -> Counter:
         category=Activity.ActivityCategory.COURSE,
     )
     #只有小组成员才可以有学时
-    members = Position.objects.activated().filter(pos__gte=1,
-                                                person__identity=NaturalPerson.Identity.STUDENT
-                                                ).values_list("person__person_id", flat=True)
+    members = Position.objects.activated().filter(
+        pos__gte=1,
+        person__identity=NaturalPerson.Identity.STUDENT,
+        ).values_list("person", flat=True)
     all_participants = (
         Participant.objects.activated(no_unattend=True)
-        .filter(activity_id__in=activities,person_id__person_id__in=members)
+        .filter(activity_id__in=activities, person_id_id__in=members)
     ).values_list("person_id", flat=True)
     participate_num = dict(Counter(all_participants))
-    #没有参加的参与次数设置为0 
+    #没有参加的参与次数设置为0
     participate_num.update({id: 0 for id in members if id not in participate_num})
     return participate_num
 
@@ -1035,11 +1036,15 @@ def finish_course(course):
     设置课程状态为END 生成学时表并通知同学该课程已结束。
     """
     #若存在课程活动未结束则无法结束课程。
-    cur_activities_num = Activity.objects.activated().filter(organization_id=course.organization,category=Activity.ActivityCategory.COURSE).exclude(status__in=[Activity.Status.CANCELED,Activity.Status.END]).count()
-    try:
-        assert cur_activities_num == 0, "存在尚未结束的课程活动，请在所有课程活结束以后再结束课程。"
-    except Exception as e:
-        return wrong(str(e))
+    cur_activities = Activity.objects.activated().filter(
+        organization_id=course.organization,
+        category=Activity.ActivityCategory.COURSE).exclude(
+            status__in=[
+                Activity.Status.CANCELED,
+                Activity.Status.END,
+            ])
+    if cur_activities.exists():
+        return wrong("存在尚未结束的课程活动，请在所有课程活结束以后再结束课程。")
 
     try:
         # 取消发布每周定时活动
@@ -1057,7 +1062,9 @@ def finish_course(course):
         course_record_list = []
         for participant in participants:
             # 如果存在相同学期的学时表，则不创建
-            if not CourseRecord.objects.filter(person=participant, course=course).exists():
+            if not CourseRecord.objects.current().filter(
+                    person=participant, course=course
+                    ).exists():
                 course_record_list.append(CourseRecord(
                     person=participant,
                     course=course,
@@ -1090,5 +1097,3 @@ def finish_course(course):
     course.status = Course.Status.END
     course.save()
     return succeed("结束课程成功！")
-
-

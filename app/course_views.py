@@ -173,13 +173,7 @@ def showCourseActivity(request):
 
     if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
         return redirect(message_url(wrong('只有书院课程组织才能查看此页面!')))
-    try:
-        html_display["warn_code"] = int(
-            request.GET.get("warn_code", 0))  # 是否有来自外部的消息
-    except:
-        return redirect(message_url(wrong('非法的状态码，请勿篡改URL!')))
-    html_display["warn_message"] = request.GET.get(
-        "warn_message", "")  # 提醒的具体内容
+    my_messages.transfer_message_context(request.GET, html_display)
 
     all_activity_list = (
         Activity.objects
@@ -294,15 +288,8 @@ def showCourseRecord(request):
 
     # 是否可以编辑
     editable = course.status == Course.Status.END
-    messages = dict()
     # 获取前端可能的提示
-    try:
-        if request.GET.get("warn_code") is not None:
-            warn_code = int(request.GET["warn_code"])
-            warn_message = request.GET["warn_message"]
-            messages = dict(warn_code=warn_code, warn_message=warn_message)
-    except:
-        pass
+    messages = my_messages.transfer_message_context(request.GET)
 
     # -------- POST 表单处理 --------
     # 默认状态为正常
@@ -315,8 +302,7 @@ def showCourseRecord(request):
                 with transaction.atomic():
                     course = Course.objects.select_for_update().get(id=course.id)
                     messages = finish_course(course)
-                if messages['warn_code'] == 2:
-                    return redirect(message_url(succeed("结束课程成功！"), '/showCourseRecord/'))
+                return redirect(message_url(messages, request.path))
             else:
                 return redirect(message_url(
                     wrong('学时修改尚未开放。如有疑问，请联系管理员！'), request.path))
@@ -336,7 +322,6 @@ def showCourseRecord(request):
     # 每次进入都获取形如{id: times}的字典，这里id是naturalperson的主键id而不是userid
     participate_raw = cal_participate_num(course)
     if not editable:
-
         convert_dict = participate_raw    # 转换为字典方便查询, 这里已经是字典了
         # 选取人选
         participant_list = NaturalPerson.objects.activated().filter(
