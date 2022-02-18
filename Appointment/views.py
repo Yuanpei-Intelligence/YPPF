@@ -259,8 +259,8 @@ def cancelAppoint(request):
         appoint = appoints.get(Aid=Aid)
     except:
         return redirect(message_url(
-            reverse("Appointment:admin_index"),
-            wrong("预约不存在、已经开始或者已取消!")))
+            wrong("预约不存在、已经开始或者已取消!"),
+            reverse("Appointment:admin_index")))
 
     try:
         # TODO: major_sid
@@ -268,14 +268,14 @@ def cancelAppoint(request):
         assert appoint.major_student.Sid_id == Pid
     except:
         return redirect(message_url(
-            reverse("Appointment:admin_index"),
-            wrong("请不要恶意尝试取消不是自己发起的预约!")))
+            wrong("请不要恶意尝试取消不是自己发起的预约!"),
+            reverse("Appointment:admin_index")))
 
     if (GLOBAL_INFO.restrict_cancel_time
             and appoint.Astart < datetime.now() + timedelta(minutes=30)):
         return redirect(message_url(
-            reverse("Appointment:admin_index"),
-            wrong("不能取消开始时间在30分钟之内的预约!")))
+            wrong("不能取消开始时间在30分钟之内的预约!"),
+            reverse("Appointment:admin_index")))
 
     with transaction.atomic():
         appoint_room_name = appoint.Room.Rtitle
@@ -290,7 +290,7 @@ def cancelAppoint(request):
         print('will send cancel message')
         scheduler_func.set_cancel_wechat(appoint)
 
-    return redirect(message_url(reverse("Appointment:admin_index"), context))
+    return redirect(message_url(context, reverse("Appointment:admin_index")))
     return scheduler_func.cancelFunction(request)
 
 
