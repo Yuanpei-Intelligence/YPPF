@@ -36,7 +36,6 @@ from app.notification_utils import (
 )
 from app.activity_utils import (
     changeActivityStatus,
-    check_ac_time,
     notifyActivity,
 )
 from app.wechat_send import WechatApp, WechatMessageLevel
@@ -53,6 +52,7 @@ from app.scheduler import scheduler
 
 
 __all__ = [
+    'check_ac_time_course',
     'course_activity_base_check',
     'create_single_course_activity',
     'modify_course_activity',
@@ -65,6 +65,17 @@ __all__ = [
     'cal_participate_num',
     'check_post_and_modify',
 ]
+
+
+# 时间合法性的检查：开始早于结束，开始晚于当前时间
+def check_ac_time_course(start_time, end_time):
+    now_time = datetime.now()
+    if not start_time < end_time:
+        return False
+    if now_time < start_time:
+        return True  # 时间所处范围正确
+
+    return False
 
 
 def course_activity_base_check(request):
@@ -86,7 +97,7 @@ def course_activity_base_check(request):
         request.POST["lesson_end"], "%Y-%m-%d %H:%M")  # 活动结束时间
     context["start"] = act_start
     context["end"] = act_end
-    assert check_ac_time(act_start, act_end), "活动时间非法"
+    assert check_ac_time_course(act_start, act_end), "活动时间非法"
 
     # 默认需要签到
     context["need_checkin"] = True
@@ -121,8 +132,18 @@ def create_single_course_activity(request):
     examine_teacher = NaturalPerson.objects.get(
         name=default_examiner_name, identity=NaturalPerson.Identity.TEACHER)
 
-    # 创建活动
+    # 获取组织
     org = get_person_or_org(request.user, "Organization")
+
+    # 获取活动所属课程的图片，用于viewActivity, examineActivity等页面展示
+    try:
+        course = Course.objects.activated().get(organization=org)
+        pic = course.photo
+        assert pic is not None
+    except:
+        return "获取课程图片失败", False
+
+    # 创建活动
     activity = Activity.objects.create(
         title=context["title"],
         organization_id=org,
@@ -164,14 +185,7 @@ def create_single_course_activity(request):
                       run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
     activity.save()
 
-    # 使用活动所属课程的图片，用于viewActivity, examineActivity等页面展示
-    try:
-        course = Course.objects.activated().get(organization=org)
-        pic = course.photo
-        assert pic is not None
-    except:
-        # 找不到图片就用默认的第一张
-        pic = '/static/assets/img/announcepics/1.JPG'
+    # 设置活动照片
     ActivityPhoto.objects.create(
         image=pic, type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
@@ -819,7 +833,7 @@ def course_base_check(request):
     ]
     try:
         for i in range(len(course_starts)):
-            assert check_ac_time(
+            assert check_ac_time_course(
                 course_starts[i], course_ends[i]), f'第{i+1}次上课时间起止时间有误！'
             # 课程每周同一次课的开始和结束时间应当处于同一天
             assert course_starts[i].date(
