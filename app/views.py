@@ -2074,6 +2074,6 @@ def publicFeedback(request):
     academic_feedback = public_feedback.filter(type__name = "学术反馈")
     right_feedback = public_feedback.filter(type__name = "权益反馈")
 
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="公开留言")
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="留言公开")
 
     return render(request, "publicFeedback.html", locals())
