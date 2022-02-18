@@ -685,7 +685,6 @@ def draw_lots(course):
             },
         )
 
-
 @log.except_captured(return_value=True,
                      record_args=True,
                      status_code=log.STATE_WARNING,
@@ -701,7 +700,6 @@ def change_course_status(cur_status, to_status):
     参数:
         to_status: 希望course变为的选课状态
     """
-
     # 以下进行状态的合法性检查
     if cur_status is not None:
         if cur_status == Course.Status.WAITING:
@@ -723,7 +721,6 @@ def change_course_status(cur_status, to_status):
     courses = Course.objects.activated().filter(status=cur_status)
     with transaction.atomic():
         #更新目标状态
-        courses.select_for_update().update(status=to_status)
         for course in courses:
             if to_status == Course.Status.DRAWING:
                 # 预选结束，进行抽签
@@ -747,6 +744,7 @@ def change_course_status(cur_status, to_status):
                 if positions:
                     with transaction.atomic():
                         Position.objects.bulk_create(positions)
+        courses.select_for_update().update(status=to_status)
 
 
 def str_to_time(stage: str):
