@@ -36,6 +36,7 @@ class Participant(models.Model):
     name = models.CharField('姓名', max_length=64)
     credit = models.IntegerField('信用分', default=3)
     pinyin = models.CharField('拼音', max_length=20, null=True)
+    hidden = models.BooleanField('可搜索', default=False)
 
     class Meta:
         verbose_name = '学生'
@@ -74,12 +75,12 @@ class Room(models.Model):
     class IsAllNight(models.IntegerChoices):
         Yes = 1
         No = 0
-    
+
     RIsAllNight = models.SmallIntegerField('是否通宵使用',
                                        choices=IsAllNight.choices,
                                        default=0)
-    
-    objects = RoomManager()
+
+    objects: RoomManager = RoomManager()
 
     class Meta:
         verbose_name = '房间'
@@ -167,7 +168,7 @@ class Appoint(models.Model):
                                           default=0)
     # --- end(2021.7.13) --- ##
 
-    objects = AppointManager()
+    objects: AppointManager = AppointManager()
 
     def cancel(self):
         self.Astatus = Appoint.Status.CANCELED
@@ -274,10 +275,10 @@ class CardCheckInfo(models.Model):
 
     ShouldOpenStatus = models.SmallIntegerField(
         '是否应该开门', choices=Status.choices, default=0)
-    
+
     Message = models.CharField(
         '记录信息', max_length=256, null=True)
-    
+
     class Meta:
         verbose_name = "刷卡记录"
         verbose_name_plural = verbose_name
