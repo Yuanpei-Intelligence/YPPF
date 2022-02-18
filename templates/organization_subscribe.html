@@ -24,7 +24,7 @@
                     {% if bar_display.help_paragraphs %}
                         {% include 'help_with_table.html' %}
                     {% endif %}
-                    <div id="tableDropdownWechat" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
+                    <!-- <div id="tableDropdownWechat" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
                         <div class="statbox widget box box-shadow">
                             <div class="widget-header">
                                 <div class="row">
@@ -68,7 +68,7 @@
                                 </div>
                             </div>
                         </div>
-                    </div>
+                    </div> -->
                     {% for otype, org_list in otype_infos %}
                     {% with type_id=otype.otype_id %}
                     <div id="tableDropdown{{type_id}}" class="col-lg-12 col-12 layout-spacing" style="text-align:center">
@@ -263,21 +263,21 @@
             .catch(() => { success: false });
         return success;
     }
-    async function save_wechat_receive_level(level){
-        const { success } = await fetch(`/saveSubscribeStatus`, {
-            headers: { "Content-Type": `text/plain` },
-            method: `POST`,
-            body: JSON.stringify({ level }),
-        })
-            .then((res) => res.json())
-            .catch(() => { success: false });
-        if (success) {
-            alert('成功修改微信通知设置！');
-        } else {
-            alert('微信通知设置修改失败！');
-        }
-        return success;
-    }
+    // async function save_wechat_receive_level(level){
+    //     const { success } = await fetch(`/saveSubscribeStatus`, {
+    //         headers: { "Content-Type": `text/plain` },
+    //         method: `POST`,
+    //         body: JSON.stringify({ level }),
+    //     })
+    //         .then((res) => res.json())
+    //         .catch(() => { success: false });
+    //     if (success) {
+    //         alert('成功修改微信通知设置！');
+    //     } else {
+    //         alert('微信通知设置修改失败！');
+    //     }
+    //     return success;
+    // }
     async function save_all(status){
         const { success } = await fetch(`/saveSubscribeStatus`, {
             headers: { "Content-Type": `text/plain` },
