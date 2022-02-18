@@ -53,6 +53,6 @@ def start_scheduler():
 if settings.MY_ENV in ["PRODUCT", "TEST", "SCHEDULER", "S_SCHEDULER"]:
     scheduler = Scheduler(start_scheduler())
 else:
-    # No read_add_job
+    # No real_add_job
     scheduler = BackgroundScheduler(timezone=settings.TIME_ZONE)
     scheduler.add_jobstore(DjangoJobStore(), "default")
