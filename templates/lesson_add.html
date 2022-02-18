@@ -222,7 +222,7 @@
         const safeTime = new Date(start1);
         if (now > safeTime) {
             hideMessage(succId);
-            showMessage(warnId, "开始时间要晚于当前时间");
+            showMessage(warnId, "开始时间要晚于当前时间！");
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
