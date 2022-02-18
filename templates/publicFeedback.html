@@ -57,29 +57,32 @@
                                                             </div>
 
                                                             {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
-                                                                <p style="color: 
+                                                                <p>
                                                                     {% if feedback.read_status == 1 %}
-                                                                        rgb(255, 95, 87);">{{feedback.get_read_status_display}}
-                                                                    {% elif feedback.solve_status == 3%}
-                                                                        grey;">{{feedback.get_read_status_display}} ---
-                                                                    {% else %}
-                                                                        rgb(254, 188, 61);">{{feedback.get_read_status_display}} {{feedback.get_solve_status_display}}
-                                                                    {% endif %}
+                                                                    <span class="badge badge-pill badge-danger"> {{feedback.get_read_status_display}} </span>
+                                                                {% elif feedback.solve_status == 3%}
+                                                                    <span class="badge badge-pill badge-primary">{{feedback.get_read_status_display}} </span>
+                                                                    <span class="badge badge-pill badge-primary">---</span>
+                                                                {% else %}
+                                                                    <span class="badge badge-pill badge-warning">{{feedback.get_read_status_display}} </span>
+                                                                    <span class="badge badge-pill badge-warning">{{feedback.get_solve_status_display}}</span>
+                                                                {% endif %}
                                                                 </p>
                                                             {% else %}
-                                                                <p style="color: 
+                                                                <p>
+                                                                    <span class="badge badge-pill 
                                                                     {% if feedback.solve_status == 0 %}
-                                                                        rgb(38, 201, 76);">
+                                                                        badge-success">
                                                                     {% else %}
-                                                                        grey;">
+                                                                        badge-primary">
                                                                     {% endif %}
-                                                                    {{feedback.get_solve_status_display}}
+                                                                    {{feedback.get_solve_status_display}} </span>
                                                                 </p>
                                                             {% endif %}
 
                                                             <p style="color: rgb(66, 67, 68);">
-                                                                <i class="fa fa-bookmark" style="width: 14px;"></i>
-                                                                <span class="ml-1">反馈给{{feedback.org.oname}}</span>
+                                                                <i class="fa fa-share-alt" style="width: 14px;"></i>
+                                                                <span class="ml-1">反馈至 {{feedback.org.oname}}</span>
                                                             </p>
 
                                                             <p style="color: rgb(66, 67, 68);">
@@ -119,29 +122,32 @@
                                                             </div>
                                                             
                                                             {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
-                                                                <p style="color: 
+                                                                <p>
                                                                     {% if feedback.read_status == 1 %}
-                                                                        rgb(255, 95, 87);">{{feedback.get_read_status_display}}
-                                                                    {% elif feedback.solve_status == 3%}
-                                                                        grey;">{{feedback.get_read_status_display}} ---
-                                                                    {% else %}
-                                                                        rgb(254, 188, 61);">{{feedback.get_read_status_display}} {{feedback.get_solve_status_display}}
-                                                                    {% endif %}
+                                                                    <span class="badge badge-pill badge-danger"> {{feedback.get_read_status_display}} </span>
+                                                                {% elif feedback.solve_status == 3%}
+                                                                    <span class="badge badge-pill badge-primary">{{feedback.get_read_status_display}} </span>
+                                                                    <span class="badge badge-pill badge-primary">---</span>
+                                                                {% else %}
+                                                                    <span class="badge badge-pill badge-warning">{{feedback.get_read_status_display}} </span>
+                                                                    <span class="badge badge-pill badge-warning">{{feedback.get_solve_status_display}}</span>
+                                                                {% endif %}
                                                                 </p>
                                                             {% else %}
-                                                                <p style="color: 
+                                                                <p>
+                                                                    <span class="badge badge-pill 
                                                                     {% if feedback.solve_status == 0 %}
-                                                                        rgb(38, 201, 76);">
+                                                                        badge-success">
                                                                     {% else %}
-                                                                        grey;">
+                                                                        badge-primary">
                                                                     {% endif %}
-                                                                    {{feedback.get_solve_status_display}}
+                                                                    {{feedback.get_solve_status_display}} </span>
                                                                 </p>
                                                             {% endif %}
 
                                                             <p style="color: rgb(66, 67, 68);">
-                                                                <i class="fa fa-bookmark" style="width: 14px;"></i>
-                                                                <span class="ml-1">反馈给{{feedback.org.oname}}</span>
+                                                                <i class="fa fa-share-alt" style="width: 14px;"></i>
+                                                                <span class="ml-1">反馈至 {{feedback.org.oname}}</span>
                                                             </p>
 
                                                             <p style="color: rgb(66, 67, 68);">
