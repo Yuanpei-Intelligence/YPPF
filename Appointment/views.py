@@ -112,7 +112,6 @@ def cameracheck(request):   # 摄像头post的后端函数
 
     # 获取摄像头信号，得到rid,最小人数
     try:
-        # TODO: task 0 服务器的安全性检查
         ip = request.META.get("REMOTE_ADDR")
         temp_stu_num = int(
             # eval(request.body.decode('unicode-escape'))['body']['people_num'])

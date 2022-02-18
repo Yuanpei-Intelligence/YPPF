@@ -246,7 +246,6 @@ def addAppoint(contents):  # 添加预约, main function
             status=400)
     # 再检查学号对不对
     students_id = contents['students']  # 存下学号列表
-    # TODO: task 0 pht 检查更新后Sid__in是否正常
     students = Participant.objects.filter(
         Sid__in=students_id).distinct()  # 获取学生objects
     try:

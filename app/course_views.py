@@ -207,9 +207,13 @@ def showCourseActivity(request):
 
     # 取消单次活动
     if request.method == "POST" and request.POST:
+        cancel_all = False
         # 获取待取消的活动
         try:
             aid = int(request.POST.get("cancel-action"))
+            post_type = str(request.POST.get("post_type"))
+            if post_type == "cancel_all":
+                cancel_all = True
             activity = Activity.objects.get(id=aid)
         except:
             return redirect(message_url(wrong('遇到不可预料的错误。如有需要，请联系管理员解决!'), request.path))
@@ -233,7 +237,7 @@ def showCourseActivity(request):
         # 取消活动
         with transaction.atomic():
             activity = Activity.objects.select_for_update().get(id=aid)
-            error = cancel_course_activity(request, activity)
+            error = cancel_course_activity(request, activity, cancel_all)
 
         # 无返回值表示取消成功，有则失败
         if error is None:
@@ -276,13 +280,12 @@ def showCourseRecord(request):
     if len(course) == 0: # 尚未开课的情况
         return redirect(message_url(wrong('没有检测到该组织本学期开设的课程。')))
     # TODO: 报错 这是代码不应该出现的bug
-    assert (len(course) >= 2,
-            "检测到该组织的课程超过一门，属于不可预料的错误，请及时处理！")
+    assert len(course) >= 2, "检测到该组织的课程超过一门，属于不可预料的错误，请及时处理！"
     course = course.first()
 
     # 是否可以编辑
     editable = course.status == Course.Status.END
-
+    messages = dict()
     # 获取前端可能的提示
     try:
         if request.GET.get("warn_code") is not None:

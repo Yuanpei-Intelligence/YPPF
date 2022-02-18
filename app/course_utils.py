@@ -91,6 +91,7 @@ def course_activity_base_check(request):
     # 默认需要签到
     context["need_checkin"] = True
 
+    context["post_type"] = str(request.POST.get("post_type"))
     return context
 
 
@@ -204,6 +205,32 @@ def modify_course_activity(request, activity):
     activity.end = context["end"]
     activity.save()
 
+    #修改所有该时段的时间、地点
+    if context["post_type"] == "modify_all" and activity.course_time is not None:
+        course_time = CourseTime.objects.select_for_update().get(
+            id=activity.course_time.id)
+        course = course_time.course
+        schedule_start = course_time.start
+        schedule_end = course_time.end
+        #设置CourseTime初始时间为对应的 周几:hour:minute:second
+        #设置周几
+        schedule_start += timedelta(
+            days=(context["start"].weekday() - schedule_start.weekday()))
+        schedule_end += timedelta(
+            days=(context["end"].weekday() - schedule_end.weekday()))
+        #设置每周上课时间：hour:minute:second
+        schedule_start = schedule_start.replace(hour=context["start"].hour,
+                                                minute=context["start"].minute,
+                                                second=context["start"].second)
+        schedule_end = schedule_end.replace(hour=context["end"].hour,
+                                            minute=context["end"].minute,
+                                            second=context["end"].second)
+        course_time.start = schedule_start
+        course_time.end = schedule_end
+        #设置地点
+        course.classroom = context["location"]
+        course.save()
+        course_time.save()
     # 目前只要编辑了活动信息，无论活动处于什么状态，都通知全体选课同学
     # if activity.status != Activity.Status.APPLYING and activity.status != Activity.Status.WAITING:
     #     return
@@ -230,9 +257,9 @@ def modify_course_activity(request, activity):
     notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
 
 
-def cancel_course_activity(request, activity):
+def cancel_course_activity(request, activity, cancel_all=False):
     '''
-    取消单次课程活动，是cancel_activity的简化版，在聚合页面被调用
+    取消课程活动，是cancel_activity的简化版，在聚合页面被调用
 
     在聚合页面中，应确保activity是课程活动，并且应检查activity.status，
     如果不是WAITING或PROGRESSING，不应调用本函数
@@ -276,6 +303,11 @@ def cancel_course_activity(request, activity):
 
     activity.save()
 
+    #取消该时段所有活动！
+    if cancel_all:
+        # 设置结束 若cur_week >= end_week 则每周定时任务无需执行
+        activity.course_time.end_week = activity.course_time.cur_week
+        activity.course_time.save()
 
 def remaining_willingness_point(user):
     """
@@ -431,10 +463,6 @@ def process_time(start, end) -> str:
     return f"周{chinese_display[start.weekday()]} {start_time}-{end_time}"
 
 
-@log.except_captured(return_value=[],
-                     record_args=True,
-                     status_code=log.STATE_WARNING,
-                     source='course_utils[course_to_display]')
 def course_to_display(courses, user, detail=False) -> list:
     """
     方便前端呈现课程信息
@@ -516,7 +544,6 @@ def course_to_display(courses, user, detail=False) -> list:
 
 @log.except_captured(return_value=True,
                      record_args=True,
-                     status_code=log.STATE_WARNING,
                      source='course_utils[draw_lots]')
 def draw_lots(course):
     """
@@ -631,8 +658,8 @@ def change_course_status(cur_status, to_status):
     # 以下进行状态的合法性检查
     if cur_status is not None:
         if cur_status == Course.Status.WAITING:
-                assert to_status == Course.Status.STAGE1, \
-                f"不能从{cur_status}变更到{to_status}"
+            assert to_status == Course.Status.STAGE1, \
+            f"不能从{cur_status}变更到{to_status}"
         elif cur_status == Course.Status.STAGE1:
             assert to_status == Course.Status.DRAWING, \
             f"不能从{cur_status}变更到{to_status}"
@@ -706,7 +733,7 @@ def register_selection():
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_start",
                     run_date=stage2_start, args=[Course.Status.DRAWING,Course.Status.STAGE2], replace_existing=True)
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_end",
-                    run_date=stage2_end, args=[Course.Status.STAGE2,Course.Status.SELECT_END], replace_existing=True)                
+                    run_date=stage2_end, args=[Course.Status.STAGE2,Course.Status.SELECT_END], replace_existing=True)
     # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
 
 
@@ -759,6 +786,7 @@ def course_base_check(request):
                     pic = request.POST.get(f'picture{i+1}')
         context["photo"] = pic
         context["QRcode"] = request.FILES.get("QRcode")
+        assert context["photo"] is not None, "缺少课程预告图片！"
         assert if_image(context["QRcode"]) != 1, "微信群二维码图片文件类型错误！"
     except Exception as e:
         return wrong(str(e))
@@ -809,7 +837,7 @@ def create_course(request, course_id=None):
             return context
     except:
         return wrong("检查参数合法性时遇到不可预料的错误。如有需要，请联系管理员解决!")
-    default_photo="/static/assets/img/announcepics/1.JPG"
+
     # 编辑已有课程
     if course_id is not None:
         try:
@@ -856,7 +884,7 @@ def create_course(request, course_id=None):
                     type=context['type'],
                     capacity=context["capacity"],
                 )
-                course.photo = context['photo'] if context['photo'] is not None else default_photo
+                course.photo = context['photo']
                 if context['QRcode']:
                     course.QRcode = context["QRcode"]
                 course.save()
