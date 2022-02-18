@@ -85,22 +85,18 @@
                                 <span class="badge badge-pill" style="color:white;
                                     {% if forloop.counter == 1 %}
                                         background-color: #0092c7;
-                                        ">德</span>
                                     {% elif forloop.counter == 2 %}
                                         background-color: #22c3aa;
-                                        ">智</span>
                                     {% elif forloop.counter == 3 %}
                                         background-color: #AD8976;
-                                        ">体</span>
                                     {% elif forloop.counter == 4 %}
                                         background-color: #f3b59b;
-                                        ">美</span>
                                     {% elif forloop.counter == 5 %}
                                         background-color: #f29c9c;
-                                        ">劳</span>
                                     {% else %}
-                                        ">{{ course_type_name }}</span>
+                                        background-color: #9E9EA3;
                                     {% endif %}
+                                    ">{{ course_type_name }}</span>
                             </a>
                         </li>
                         {% endfor %}
