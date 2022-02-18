@@ -775,11 +775,23 @@ def load_feedback_type():
     for _, type_dict in feedback_type_df.iterrows():
         type_id = int(type_dict["id"])
         type_name = type_dict["name"]
-        otype = type_dict["org_type"]
-        otype_id = OrganizationType.objects.get(otype_name=otype).otype_id
-        feedbacktype, mid = FeedbackType.objects.get_or_create(
-            id=type_id, org_type_id=otype_id,
-        )
+        flexible = int(type_dict["flexible"])
+        if flexible == 0:
+            feedbacktype, mid = FeedbackType.objects.get_or_create(id=type_id)
+        elif flexible == 1: 
+            otype = type_dict["org_type"]
+            otype_id = OrganizationType.objects.get(otype_name=otype).otype_id
+            feedbacktype, mid = FeedbackType.objects.get_or_create(
+                id=type_id, org_type_id=otype_id,
+            )
+        else:
+            otype = type_dict["org_type"]
+            org = type_dict["org"]
+            otype_id = OrganizationType.objects.get(otype_name=otype).otype_id
+            org_id = Organization.objects.get(oname=org).id
+            feedbacktype, mid = FeedbackType.objects.get_or_create(
+                id=type_id, org_type_id=otype_id, org_id=org_id,
+            )
         feedbacktype.name = type_name
         feedbacktype.save()
     
