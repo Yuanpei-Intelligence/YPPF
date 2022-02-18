@@ -143,8 +143,8 @@ class NaturalPerson(models.Model):
 
     class ReceiveLevel(models.IntegerChoices):
         # DEBUG = (-1000, '全部')
-        MORE = (0, '更多')
-        LESS = (500, '更少')
+        MORE = (0, '接收全部消息')
+        LESS = (500, '仅重要通知')
         # FATAL_ONLY = (1000, '仅重要')
         # NONE = (1001, '不接收')
 
@@ -1558,8 +1558,18 @@ class FeedbackType(models.Model):
         verbose_name_plural = verbose_name
 
     id = models.SmallIntegerField("反馈类型编号", unique=True, primary_key=True)
-    name = models.CharField("反馈类型名称", max_length=10)
-    org_type = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
+    name = models.CharField("反馈类型名称", max_length=20)
+    org_type = models.ForeignKey(OrganizationType, on_delete=models.CASCADE, null=True)
+    org = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True)
+    
+    class Flexible(models.IntegerChoices):
+        NO_DEFAULT = (0, "无默认值")
+        ORG_TYPE_DEFAULT = (1, "仅提供组织类型默认值")
+        ALL_DEFAULT = (2, "全部提供默认值")
+    
+    flexible = models.SmallIntegerField(
+        choices=Flexible.choices, default=Flexible.NO_DEFAULT
+    )
 
     def __str__(self):
         return self.name
