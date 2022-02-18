@@ -1,0 +1,185 @@
+{% extends "base.html" %}
+
+{% block add_css_file %}
+
+{% endblock %}
+
+
+{% block mainpage %}
+
+
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    {% if html_display.warn_code == 1 %}
+    <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+    {% elif html_display.warn_code == 2 %}
+    <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
+    {% endif %}
+        
+        <div class="container">
+            
+            <div class="row layout-top-spacing">
+                <div class="col-lg-12 col-12 layout-top-spacing">
+                    <div class="bio layout-spacing ">
+                        <div class="widget-content widget-content-area">
+                            <h3>留言公开</h3>
+                            
+                            <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                <li class="nav-item">
+                                    <a class="nav-link active" href="#home" data-toggle="tab">
+                                        <h5><i class="fa fa-envelope-o"></i> 权益反馈</h5>
+                                    </a>
+                                </li>
+
+                                <li class="nav-item">
+                                    <a class="nav-link" href="#done" data-toggle="tab">
+                                        <h5><i class="fa fa-envelope-o"></i> 学术反馈</h5>
+                                    </a>
+                                </li>
+
+                            </ul>
+
+                            <div id="myTabContent" class="tab-content">
+                                <div class="tab-pane fade in active show" id="home">
+                                    {% if right_feedback %}
+                                        <div class="bio-skill-box">
+                                            <div id="right_feedback" class="row">
+                                                {% for feedback in right_feedback %}
+                                                    <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                        <div class=" b-skills">
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <h5>
+                                                                        <!-- TODO：加个链接 -->
+                                                                        <u style="text-decoration: none">{{feedback.title}}</u><br />
+                                                                    </h5>
+                                                                </div>
+                                                            </div>
+
+                                                            {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
+                                                                <p style="color: 
+                                                                    {% if feedback.read_status == 1 %}
+                                                                        rgb(255, 95, 87);">{{feedback.get_read_status_display}}
+                                                                    {% elif feedback.solve_status == 3%}
+                                                                        grey;">{{feedback.get_read_status_display}} ---
+                                                                    {% else %}
+                                                                        rgb(254, 188, 61);">{{feedback.get_read_status_display}} {{feedback.get_solve_status_display}}
+                                                                    {% endif %}
+                                                                </p>
+                                                            {% else %}
+                                                                <p style="color: 
+                                                                    {% if feedback.solve_status == 0 %}
+                                                                        rgb(38, 201, 76);">
+                                                                    {% else %}
+                                                                        grey;">
+                                                                    {% endif %}
+                                                                    {{feedback.get_solve_status_display}}
+                                                                </p>
+                                                            {% endif %}
+
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-bookmark" style="width: 14px;"></i>
+                                                                <span class="ml-1">反馈给{{feedback.org.oname}}</span>
+                                                            </p>
+
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-bell" style="width: 14px;"></i>
+                                                                <span class="ml-1">{{feedback.public_time}} 公开</span>
+                                                            </p>
+
+                                                            <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
+                                                                <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                                <span class="ml-1">{{feedback.content}}</span>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <div style="margin-top: 40px; margin-bottom: -40px;">
+                                            <p style="text-align: center;">目前没有公开的权益反馈.</p>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                                <div class="tab-pane fade" id="done">
+                                    {% if academic_feedback %}
+                                        <div class="bio-skill-box">
+                                            <div class="row">
+                                                {% for feedback in academic_feedback %}
+                                                    <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                        <div class=" b-skills">
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <h5>
+                                                                        <!-- TODO：加个链接 -->
+                                                                        <u style="text-decoration: none">{{feedback.title}}</u><br />
+                                                                    </h5>
+                                                                </div>
+                                                            </div>
+                                                            
+                                                            {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
+                                                                <p style="color: 
+                                                                    {% if feedback.read_status == 1 %}
+                                                                        rgb(255, 95, 87);">{{feedback.get_read_status_display}}
+                                                                    {% elif feedback.solve_status == 3%}
+                                                                        grey;">{{feedback.get_read_status_display}} ---
+                                                                    {% else %}
+                                                                        rgb(254, 188, 61);">{{feedback.get_read_status_display}} {{feedback.get_solve_status_display}}
+                                                                    {% endif %}
+                                                                </p>
+                                                            {% else %}
+                                                                <p style="color: 
+                                                                    {% if feedback.solve_status == 0 %}
+                                                                        rgb(38, 201, 76);">
+                                                                    {% else %}
+                                                                        grey;">
+                                                                    {% endif %}
+                                                                    {{feedback.get_solve_status_display}}
+                                                                </p>
+                                                            {% endif %}
+
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-bookmark" style="width: 14px;"></i>
+                                                                <span class="ml-1">反馈给{{feedback.org.oname}}</span>
+                                                            </p>
+
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-bell" style="width: 14px;"></i>
+                                                                <span class="ml-1">{{feedback.public_time}} 公开</span>
+                                                            </p>
+
+                                                            <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
+                                                                <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                                <span class="ml-1">{{feedback.content}}</span>
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    {% else %}
+                                        <div style="margin-top: 40px; margin-bottom: -40px;">
+                                            <p style="text-align: center;">目前没有公开的学术反馈.</p>
+                                            <br>
+                                        </div>
+                                    {% endif %}
+
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    
+                </div>
+
+            </div>
+            
+        </div>
+        
+    
+</div>
+<!--  END CONTENT AREA  -->
+
+
+{% endblock %}

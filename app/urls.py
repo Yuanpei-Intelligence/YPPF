@@ -93,6 +93,8 @@ urlpatterns = [
     path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
     path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
     path("showCourseRecord/", course_views.showCourseRecord, name="showCourseRecord"),
+    path("feedbackbox/", views.feedbackbox, name="feedbackbox"),
+    path("publicFeedback/", views.publicFeedback, name="publicFeedback"),
 ] + [
     # 数据导入
     path("loadstudata/", data_import.load_stu_data, name="load_stu_data"),
