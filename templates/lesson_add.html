@@ -225,10 +225,12 @@
         }
     {% endif %}
 
+    {% if html_display.warn_code != 1 and html_display.warn_code != 2 %}
     if (document.referrer.endsWith("/addSingleCourseActivity/")) {
         document.getElementById("warn_msg").style.display = "";
         document.getElementById("warn_msg").innerHTML = "课程添加成功！";
     }
+    {% endif %}
 </script>
 
 <script type="text/javascript">
