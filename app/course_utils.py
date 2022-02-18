@@ -10,6 +10,7 @@ draw_lots: 预选阶段结束时执行抽签
 change_course_status: 改变课程的选课阶段
 remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
+check_course_time_conflict: 检查当前选择的课是否与已选的课上课时间冲突
 """
 from app.utils_dependency import *
 from app.models import (
@@ -354,6 +355,46 @@ def registration_status_check(course_status, cur_status, to_status):
                     and to_status == CourseParticipant.Status.SUCCESS))
 
 
+def check_course_time_conflict(current_course, user):
+    """
+    检查当前选择课程的时间和已选课程是否冲突
+    """
+    selected_courses = Course.objects.activated().filter(
+        participant_set__person=user,
+        participant_set__status__in=[
+            CourseParticipant.Status.SELECT,
+            CourseParticipant.Status.SUCCESS,
+        ]).prefetch_related("time_set")
+
+    def time_hash(time: datetime):
+        weekday = time.weekday()
+        hour = time.hour
+        minute = time.minute
+        return time.weekday() * 1440 + time.hour * 60 + time.minute
+
+    # 因为选择的课最多只能有6门，所以暂时用暴力算法
+    for current_course_time in current_course.time_set.all():
+
+        # 当前选择课程的上课时间
+        current_start_time = current_course_time.start
+        current_end_time = current_course_time.end
+
+        for course in selected_courses:
+            for course_time in course.time_set.all():
+                start_time = course_time.start
+                end_time = course_time.end
+
+                # 效率不高，有待改进
+                if not (time_hash(current_start_time) >= time_hash(end_time) or
+                        time_hash(current_end_time) <= time_hash(start_time)):
+                    # 发生冲突
+                    return True, \
+                           f"《{current_course.name}》和《{course.name}》的上课时间发生冲突！"
+
+    # 没有冲突
+    return False, ""
+
+
 @log.except_captured(return_value=True,
                      record_args=True,
                      status_code=log.STATE_WARNING,
@@ -404,6 +445,13 @@ def registration_status_change(course_id, user, action=None):
                     CourseParticipant.Status.SUCCESS,
                 ]).count() >= 6:
             context["warn_message"] = "每位同学同时预选或选上的课程数最多为6门！"
+            return context
+
+        # 检查选课时间是否冲突
+        is_conflict, message = check_course_time_conflict(course, user)
+
+        if is_conflict:
+            context["warn_message"] = message
             return context
 
     # 如果action为取消预选或退选，to_status直接使用初始值即可
