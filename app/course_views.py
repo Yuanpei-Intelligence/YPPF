@@ -28,6 +28,8 @@ from app.utils import get_person_or_org
 from datetime import datetime
 
 from django.db import transaction
+from io import BytesIO
+from openpyxl import Workbook
 
 __all__ = [
     'editCourseActivity',
@@ -304,6 +306,9 @@ def showCourseRecord(request):
             # 所以如果出现POST请求，则为非法情况
             return redirect(message_url(
                 wrong('学时修改尚未开放。如有疑问，请联系管理员！'), request.path))
+        if request.POST.get("download_course_record") is not None:
+            response = downloadCourseRecord(me)
+            return response
         with transaction.atomic():
             # 检查信息并进行修改
             record_search = CourseRecord.objects.filter(
@@ -608,3 +613,49 @@ def addCourse(request, cid=None):
         bar_display = utils.get_sidebar_and_navbar(request.user, "修改课程")
 
     return render(request, "register_course.html", locals())
+
+
+def downloadCourseRecord(me):
+    '''
+    返回需要导出的文件
+    '''
+    year = CURRENT_ACADEMIC_YEAR
+    semester = Semester.now()
+    course = Course.objects.activated().filter(organization = me)
+    if not course.exists():
+        return redirect(message_url(wrong('未查询到相应课程，请联系管理员。')))
+
+    records = CourseRecord.objects.filter(
+        year = year,
+        semester = semester,
+        course = course[0],
+    )
+    if not records.exists():
+        return redirect(message_url(wrong('未查询到相应课程记录，请联系管理员。')))
+
+    wb = Workbook()		# 生成一个工作簿（即一个Excel文件）
+    wb.encoding = 'utf-8'
+    sheet1 = wb.active	# 获取第一个工作表（sheet1）
+    sheet1.title = str(me.oname) 	# 给工作表1设置标题
+    row_one = ['姓名','年级','次数','学时']
+    for i in range(1, len(row_one)+1):	# 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
+        sheet1.cell(row=1, column=i).value=row_one[i-1]
+    for record in records:
+        max_row = sheet1.max_row + 1	# 获取到工作表的最大行数并加1
+        record_info = [
+            record.person.name, 
+            str(record.person.person_id), 
+            record.attend_times, 
+            record.total_hours ]
+        for x in range(1, len(record_info)+1):		# 将每一个对象的所有字段的信息写入一行内
+            sheet1.cell(row=max_row, column=x).value = record_info[x-1]
+            
+    output = BytesIO()
+    wb.save(output)	 # 将Excel文件内容保存到IO中
+    output.seek(0)	 # 重新定位到开始
+    ctime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    file_name = 'CourseRecord-{}'.format(ctime)	# 给文件名中添加日期时间
+    response = HttpResponse(content_type='application/msexcel')
+    response['Content-Disposition'] = 'attachment;filename={}.xlsx'.format(file_name)
+    wb.save(response)
+    return response
