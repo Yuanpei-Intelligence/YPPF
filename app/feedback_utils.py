@@ -44,7 +44,7 @@ def check_feedback(request, post_type):
     publisher_public = str(request.POST['publisher_public'])
     
     # 草稿不用检查标题、内容、公开的合法性，提交反馈需要检查！
-    if post_type in {"directly_submit", "submit_draft"}:
+    if post_type in ["directly_submit", "submit_draft"]:
         if len(title) >= 30:
             return wrong("标题不能超过30字哦！")
         if title == "":
@@ -76,7 +76,7 @@ def update_feedback(feedback, me, request):
     # 首先上锁
     with transaction.atomic():
         info = request.POST
-        post_type = info.get("post_type")
+        post_type = str(info.get("post_type"))
         
         context = check_feedback(request, post_type)
         if context['warn_code'] == 1:
@@ -85,16 +85,12 @@ def update_feedback(feedback, me, request):
         # TODO：删除草稿的功能
         if post_type == 'save':
             feedback = Feedback.objects.create(
-                type=FeedbackType.objects.select_for_update().get(
-                    name=info.get('type')
-                ),
-                title=info.get('title'),
-                content=info.get('content'),
+                type=FeedbackType.objects.get(name=str(info.get('type'))),
+                title=str(info.get('title')),
+                content=str(info.get('content')),
                 person=me,
-                org=Organization.objects.select_for_update().get(
-                    oname=info.get('org')
-                ),
-                publisher_public=True if info.get('publisher_public')=='公开' else False,
+                org=Organization.objects.get(oname=str(info.get('org'))),
+                publisher_public=True if str(info.get('publisher_public'))=='公开' else False,
                 issue_status=Feedback.IssueStatus.DRAFTED,
             )
             context = succeed("成功将反馈保存成草稿！")
@@ -103,57 +99,57 @@ def update_feedback(feedback, me, request):
         elif post_type == 'directly_submit':
             feedback = Feedback.objects.create(
                 type=FeedbackType.objects.select_for_update().get(
-                    name=info.get('type')
+                    name=str(info.get('type'))
                 ),
-                title=info.get('title'),
-                content=info.get('content'),
+                title=str(info.get('title')),
+                content=str(info.get('content')),
                 person=me,
                 org=Organization.objects.select_for_update().get(
-                    oname=info.get('org')
+                    oname=str(info.get('org'))
                 ),
-                publisher_public=True if info.get('publisher_public')=='公开' else False,
+                publisher_public=True if str(info.get('publisher_public'))=='公开' else False,
                 issue_status=Feedback.IssueStatus.ISSUED,
             )
             context = succeed(
-                "成功提交反馈“" + info.get('title') + "”！" +
-                "请耐心等待" + info.get('org') + "处理！"
+                "成功提交反馈“" + str(info.get('title')) + "”！" +
+                "请耐心等待" + str(info.get('org')) + "处理！"
             )
             context['feedback_id'] = feedback.id
             return context
         elif post_type == 'modify':
-            if feedback.type != FeedbackType.objects.get(name=info.get('type')):
+            if feedback.type != FeedbackType.objects.get(name=str(info.get('type'))):
                 return wrong("修改申请时不允许修改反馈类型。如确需修改，请取消后重新提交!")
-            publisher_public = True if info.get('publisher_public')=='公开' else False
-            if (feedback.title == info.get("title")
-                    and feedback.content == info.get('content')
+            publisher_public = True if str(info.get('publisher_public'))=='公开' else False
+            if (feedback.title == str(info.get("title"))
+                    and feedback.content == str(info.get('content'))
                     and feedback.publisher_public == publisher_public
-                    and feedback.org == Organization.objects.get(oname=info.get('org'))):
+                    and feedback.org == Organization.objects.get(oname=str(info.get('org')))):
                 return wrong("没有检测到修改！")
             Feedback.objects.filter(id=feedback.id).update(
-                title=info.get('title'),
-                content=info.get('content'),
+                title=str(info.get('title')),
+                content=str(info.get('content')),
                 publisher_public=publisher_public,
                 org=Organization.objects.select_for_update().get(
-                    oname=info.get('org')
+                    oname=str(info.get('org'))
                 ),
             )
-            context = succeed("成功修改反馈“" + info.get('title') + "”！点击“提交反馈”可提交~")
+            context = succeed("成功修改反馈“" + str(info.get('title')) + "”！点击“提交反馈”可提交~")
             context["feedback_id"] = feedback.id
             return context
         elif post_type == 'submit_draft':
-            publisher_public = True if info.get('publisher_public')=='公开' else False
+            publisher_public = True if str(info.get('publisher_public'))=='公开' else False
             Feedback.objects.filter(id=feedback.id).update(
-                title=info.get('title'),
-                content=info.get('content'),
+                title=str(info.get('title')),
+                content=str(info.get('content')),
                 publisher_public=publisher_public,
                 org=Organization.objects.select_for_update().get(
-                    oname=info.get('org')
+                    oname=str(info.get('org'))
                 ),
                 issue_status=Feedback.IssueStatus.ISSUED,
             )
             context = succeed(
-                "成功提交反馈“" + info.get('title') + "”！" +
-                "请耐心等待" + info.get('org') + "处理！"
+                "成功提交反馈“" + str(info.get('title')) + "”！" +
+                "请耐心等待" + str(info.get('org')) + "处理！"
             )
             context['feedback_id'] = feedback.id
             return context
@@ -165,7 +161,7 @@ def make_relevant_notification(feedback, info, me):
     在用户提交反馈后，向对应组织发送通知
     '''
     
-    post_type = info.get("post_type")
+    post_type = str(info.get("post_type"))
     feasible_post = [
         "directly_submit",
         "submit_draft",
@@ -173,7 +169,7 @@ def make_relevant_notification(feedback, info, me):
 
     # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
     sender = me.person_id
-    receiver = Organization.objects.get(oname=info.get('org')).organization_id
+    receiver = Organization.objects.get(oname=str(info.get('org'))).organization_id
     typename = (Notification.Type.NEEDDO
                 if post_type == 'new_submit'
                 else Notification.Type.NEEDREAD)

@@ -2047,7 +2047,7 @@ def modifyFeedback(request):
 
     if feedback_id is not None: # 如果存在对应反馈
         try:   # 尝试读取已有的Feedback存档
-            feedback = Feedback.objects.get(id = feedback_id)
+            feedback = Feedback.objects.get(id=feedback_id)
             # 接下来检查是否有权限check这个条目，应该是本人/对应组织
             assert (feedback.person == me) or (feedback.org == me)
         except: #恶意跳转
@@ -2069,7 +2069,6 @@ def modifyFeedback(request):
         接下来POST
     '''
 
-    # TODO：评论区的后端准备与前端呈现
     if request.method == "POST":
         context = update_feedback(feedback, me, request)
 
@@ -2085,7 +2084,7 @@ def modifyFeedback(request):
                 if request.POST.get('post_type') in feasible_post:
                     make_relevant_notification(feedback, request.POST, me)
             except:
-                raise NotImplementedError
+                raise NotImplementedError("返回了未知类型的post_type，请注意检查！")
 
         elif context["warn_code"] != 1: # 没有返回操作提示
             raise NotImplementedError("在处理反馈中出现了未预见状态，请联系管理员处理！")
