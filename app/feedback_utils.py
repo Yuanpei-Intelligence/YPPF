@@ -1,6 +1,7 @@
 from app.utils_dependency import *
 from app.models import (
     Organization,
+    OrganizationType,
     Notification,
     FeedbackType,
     Feedback,
@@ -31,8 +32,19 @@ def check_feedback(request, post_type):
         return context
     
     try:
-        org = str(request.POST.get("org"))
-        context["org"] = Organization.objects.get(oname=org)
+        otype = request.POST.get("otype")
+        if otype:
+            context["otype"] = OrganizationType.objects.get(otype_name=otype)
+    except:
+        context["warn_code"] = 1
+        # User can't see it. We use it for debugging.
+        context["warn_message"] = "数据库没有对应小组类型，请联系管理员！"
+        return context
+    
+    try:
+        org = request.POST.get("org")
+        if org:
+            context["org"] = Organization.objects.get(oname=org)
     except:
         context["warn_code"] = 1
         # User can't see it. We use it for debugging.
@@ -40,6 +52,8 @@ def check_feedback(request, post_type):
         return context
     
     title = str(request.POST["title"])
+    otype = str(request.POST.get("otype"))      # 接收小组类型
+    org = str(request.POST.get("org"))
     content = str(request.POST["content"])
     publisher_public = str(request.POST['publisher_public'])
     
@@ -50,6 +64,12 @@ def check_feedback(request, post_type):
         if title == "":
             return wrong("标题不能为空哦！")
         
+        if otype == "":
+            return wrong("不能不选择接收小组的类型哦！")
+        
+        if org == "":
+            return wrong("不选择接收小组就没有小组收到你的反馈了哦！请选择接收小组~")
+        
         if content == "":
             return wrong("反馈内容不能为空哦！")
         
@@ -58,6 +78,8 @@ def check_feedback(request, post_type):
 
     context["title"] = title                               # 反馈标题
     context["person"] = request.user                       # 反馈发出者
+    context["otype"] = str(request.POST.get("otype"))      # 接收小组类型
+    context["org"] = str(request.POST.get("org"))          # 接收小组
     context["content"] = str(request.POST.get("content"))  # 反馈内容
     context["publisher_public"] = True if request.POST.get("publisher_public")=="公开" else False
                                                            # 个人是否同意公开
@@ -89,7 +111,12 @@ def update_feedback(feedback, me, request):
                 title=str(info.get('title')),
                 content=str(info.get('content')),
                 person=me,
-                org=Organization.objects.get(oname=str(info.get('org'))),
+                org_type=OrganizationType.objects.get(
+                    otype_name=str(info.get('otype'))
+                ) if info.get('otype') else None,
+                org=Organization.objects.get(
+                    oname=str(info.get('org'))
+                ) if info.get('org') else None,
                 publisher_public=True if str(info.get('publisher_public'))=='公开' else False,
                 issue_status=Feedback.IssueStatus.DRAFTED,
             )
@@ -98,15 +125,12 @@ def update_feedback(feedback, me, request):
             return context
         elif post_type == 'directly_submit':
             feedback = Feedback.objects.create(
-                type=FeedbackType.objects.select_for_update().get(
-                    name=str(info.get('type'))
-                ),
+                type=FeedbackType.objects.get(name=str(info.get('type'))),
                 title=str(info.get('title')),
                 content=str(info.get('content')),
                 person=me,
-                org=Organization.objects.select_for_update().get(
-                    oname=str(info.get('org'))
-                ),
+                org_type=OrganizationType.objects.get(otype_name=str(info.get('otype'))),
+                org=Organization.objects.get(oname=str(info.get('org'))),
                 publisher_public=True if str(info.get('publisher_public'))=='公开' else False,
                 issue_status=Feedback.IssueStatus.ISSUED,
             )
@@ -129,9 +153,12 @@ def update_feedback(feedback, me, request):
                 title=str(info.get('title')),
                 content=str(info.get('content')),
                 publisher_public=publisher_public,
-                org=Organization.objects.select_for_update().get(
+                org_type=OrganizationType.objects.get(
+                    otype_name=str(info.get('otype'))
+                ) if info.get('otype') else None,
+                org=Organization.objects.get(
                     oname=str(info.get('org'))
-                ),
+                ) if info.get('org') else None,
             )
             context = succeed("成功修改反馈“" + str(info.get('title')) + "”！点击“提交反馈”可提交~")
             context["feedback_id"] = feedback.id
@@ -142,9 +169,8 @@ def update_feedback(feedback, me, request):
                 title=str(info.get('title')),
                 content=str(info.get('content')),
                 publisher_public=publisher_public,
-                org=Organization.objects.select_for_update().get(
-                    oname=str(info.get('org'))
-                ),
+                org_type=OrganizationType.objects.get(otype_name=str(info.get('otype'))),
+                org=Organization.objects.get(oname=str(info.get('org'))),
                 issue_status=Feedback.IssueStatus.ISSUED,
             )
             context = succeed(
