@@ -218,12 +218,11 @@
             return false;
         }   
         // 禁止修改课程开始时间到距离现在5分钟以内
-        const now = new Date(), delta = 5;
+        const now = new Date();
         const safeTime = new Date(start1);
-        safeTime.setMinutes(safeTime.getMinutes() - delta);
         if (now > safeTime) {
             hideMessage(succId);
-            showMessage(warnId, "开始时间距离现在太近了，开始得晚一些吧~");
+            showMessage(warnId, "开始时间要晚于当前时间");
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
@@ -249,7 +248,7 @@
         }
     {% endif %}
 
-    {% if html_display.warn_code != 1 and html_display.warn_code != 2 %}
+    {% if html_display.warn_code != 1 %}
     if (document.referrer.endsWith("/addSingleCourseActivity/")) {
         document.getElementById("warn_msg").style.display = "";
         document.getElementById("warn_msg").innerHTML = "课程添加成功！";
