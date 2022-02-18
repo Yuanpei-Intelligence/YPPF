@@ -115,6 +115,15 @@ def create_single_course_activity(request):
     except Exception as e:
         return str(e), False
 
+    # 获取组织
+    org = get_person_or_org(request.user, "Organization")
+
+    # 检查是否已经开课
+    try:
+        course = Course.objects.activated().get(organization=org)
+    except:
+        return "本学期尚未开设书院课程，请先发起选课！", False
+
     # 查找是否有类似活动存在
     old_ones = Activity.objects.activated().filter(
         title=context["title"],
@@ -132,13 +141,9 @@ def create_single_course_activity(request):
     examine_teacher = NaturalPerson.objects.get(
         name=default_examiner_name, identity=NaturalPerson.Identity.TEACHER)
 
-    # 获取组织
-    org = get_person_or_org(request.user, "Organization")
-
     # 获取活动所属课程的图片，用于viewActivity, examineActivity等页面展示
     try:
-        course = Course.objects.activated().get(organization=org)
-        pic = course.photo
+        pic = course.get_photo_path()
         assert pic is not None
     except:
         return "获取课程图片失败", False
