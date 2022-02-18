@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+
+{% block mainpage %}
+<style>
+    select[readonly] {
+        background: #eee;
+        /*Simular campo inativo - Sugestão @GabrielRodrigues*/
+        pointer-events: none;
+        touch-action: none;
+    }
+</style>
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+
+    <!--  BEGIN CUSTOM STYLE FILE  -->
+    <link rel="stylesheet" type="text/css" href="{% static " plugins/dropify/dropify.min.css" %}">
+    <link href="{% static " assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
+    <!--  END CUSTOM STYLE FILE  -->
+
+    <div class="container">
+        {% if html_display.warn_code == 2 %}
+        <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+        {% elif html_display.warn_code == 1%}
+        <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+        {% endif %}
+
+        <div class="row layout-top-spacing">
+
+            <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+                <div class="row">
+                    <div class="col-md-12 mb-4">
+                        <div class="statbox widget box box-shadow">
+
+                            <div class="pricing-header px-3 py-3 pt-md-5 pb-md-4 mx-auto mb-4 text-center">
+                                <h1 class="display-4 my-4 mb-4">元培生活：问答反馈中心</h1>
+                                <p class="lead">反馈中心，是一个好地方。</p>
+                                <p class="lead">反馈中心，是一个好地方。</p>
+                                <p class="lead">反馈中心，是一个好地方。</p>
+                                <p class="lead">反馈中心，是一个好地方。</p>
+                                <p class="lead">反馈中心，是一个好地方。</p>
+                                <p class="lead">选择你要反馈的类型，解决你的一切难题。</p>
+                            </div>
+
+                            <div class="container">
+                                <div class="card-deck mb-2 text-center">
+                                    {% for feedback_type in feedback_type_list %}
+                                    {% if forloop.counter0|divisibleby:"5" and forloop.counter0 != 0 %}
+                                    </div><div class="card-deck mb-2 text-center">
+                                    {% endif %}
+                                    <div class="card text-center mb-4">
+                                        <div class="card-header">
+                                            <h6 class="my-0 font-weight-normal">{{feedback_type.name}}</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <button type="button" class="btn btn-block btn-outline-primary">新建反馈</button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+</div>
+<!--  END CONTENT AREA  -->
+
+
+{% endblock %}
+
+{% block add_js_file %}
+<script src={% static "plugins/dropify/dropify.min.js" %}></script>
+<script src={% static "assets/js/users/account-settings.js" %}></script>
+{% endblock %}
