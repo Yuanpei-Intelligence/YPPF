@@ -1,4 +1,3 @@
-
 {% extends "base.html" %}
 
 {% load static %}
@@ -80,8 +79,9 @@
                                                           {% if allow_form_edit == 0 %} disabled="disabled" {% endif %}>{{feedback.title}}</textarea>
                                                 {% else %}
                                                 <input type="text" name="title" class="form-control"
-                                                       aria-label="Default" placeholder="标题不能超过30字噢！请文明理性发言，否则会受到严厉惩罚！">
+                                                       aria-label="Default" placeholder="标题不能超过30字噢！">
                                                 {% endif %}
+                                                <b><font>请文明理性发言，否则会受到严厉惩罚！</font></b>
                                             </div>
 
                                             <div class="form-group">
@@ -107,42 +107,23 @@
                                             {% if is_new_feedback %}
                                                 <div class="form-group">
                                                     <label for="aintro">是否同意公开</label>
-                                                    <input hidden name="publisher_public" value="">
-                                                    <div>
-                                                        <button type="button" class="btn btn-lg mb-4 mr-2"
-                                                        value="public" name="post_type" onclick="public.call(this)">公开</button>
-                                                        
-                                                        <button type="button" class="btn btn-lg mb-4 mr-2"
-                                                        value="private" name="post_type" onclick="private.call(this)">不公开</button>
-                                                    </div>
-                                                </div>
-                                            {% elif allow_form_edit %}
-                                                <div class="form-group">
-                                                    <label for="aintro">是否同意公开</label>
-                                                    <input hidden name="publisher_public" {% if feedback.publisher_public == True %} value="公开" {% else %} value="不公开" {% endif %}>
-                                                    <div>
-                                                        <button type="button" {% if feedback.publisher_public == True %} class="btn btn-primary btn-lg mb-4 mr-2" {% else %} class="btn btn-lg mb-4 mr-2" {% endif %}
-                                                        value="public" name="post_type" onclick="public.call(this)">公开</button>
-                                                        
-                                                        <button type="button" {% if feedback.publisher_public == False %} class="btn btn-primary btn-lg mb-4 mr-2" {% else %} class="btn btn-lg mb-4 mr-2" {% endif %}
-                                                        value="private" name="post_type" onclick="private.call(this)">不公开</button>
-                                                    </div>
+                                                    <select class="form-control" id="publisher_public" name="publisher_public" onchange="public_confirm.call(this)">
+                                                        <option>公开</option>
+                                                        <option selected>不公开</option>
+                                                    </select>
                                                 </div>
                                             {% else %}
                                                 <div class="form-group">
                                                     <label for="aintro">是否同意公开</label>
-                                                    <input hidden name="publisher_public" value="">
-                                                    <div>
-                                                        <button type="button" {% if feedback.publisher_public == True %} class="btn btn-primary btn-lg mb-4 mr-2" {% else %} class="btn btn-lg mb-4 mr-2" {% endif %}
-                                                        value="public" name="post_type">公开</button>
-                                                        
-                                                        <button type="button" {% if feedback.publisher_public == False %} class="btn btn-primary btn-lg mb-4 mr-2" {% else %} class="btn btn-lg mb-4 mr-2" {% endif %}
-                                                        value="private" name="post_type">不公开</button>
-                                                    </div>
+                                                    <select class="form-control" id="publisher_public" name="publisher_public" onchange="public_confirm.call(this)" {% if not allow_form_edit %} readonly="readonly" {% endif %}>
+                                                        <option {% if feedback.publisher_public == True %} selected {% endif %}>公开</option>
+                                                        <option {% if feedback.publisher_public == False %} selected {% endif %}>不公开</option>
+                                                    </select>
                                                 </div>
                                             {% endif %}
 
-                                            {%if allow_form_edit %}
+                                            <br/>
+                                            {% if allow_form_edit %}
                                                 {% if not is_new_feedback %}
                                                     <div align="center">
                                                         <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
@@ -154,7 +135,7 @@
                                                 {% else %}
                                                     <div align="center">
                                                         <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
-                                                        value="save" name="post_type" onclick="return confirm('确认将反馈保存入草稿箱？没有选择“是否同意公开”的反馈将默认以“不公开”保存，若已选择请忽略此条~')">保存反馈</button>
+                                                        value="save" name="post_type" onclick="return confirm('确认将反馈保存入草稿箱？')">保存反馈</button>
                                                         
                                                         <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
                                                         value="directly_submit" name="post_type" onclick="return confirm('确认直接提交反馈？')">提交反馈</button>
@@ -188,6 +169,11 @@
     <script src={% static "plugins/dropify/dropify.min.js" %}></script>
     <script src={% static "assets/js/users/account-settings.js" %}></script>
     <script>
+        function public_confirm() {
+            if (this.value == "公开")
+                if (!confirm("是否同意公开？个人同意公开后需要组织同意公开后方可公开~"))
+                    this.value = "不公开";
+        }
         function public() {
             if (confirm("是否同意公开？个人同意公开后需要组织同意公开后方可公开~")){
                 this.setAttribute("class","btn btn-primary btn-lg mb-4 mr-2");
