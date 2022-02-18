@@ -1337,8 +1337,6 @@ class CourseManager(models.Manager):
                                         ])
 
 
-
-
 class Course(models.Model):
     """
     助教发布课程需要填写的信息
@@ -1483,6 +1481,22 @@ class CourseParticipant(models.Model):
     )
 
 
+class CourseRecordManager(models.Manager):
+    def current(self):
+        # 选择当前学期的学时
+        return self.filter(
+            year=current_year(),
+            semester__contains=Semester.now().value,
+        )
+
+    def past(self):
+        # 只存在当前学期和过去的，非本学期即是过去
+        return self.exclude(
+            year=current_year(),
+            semester__contains=Semester.now().value,
+        )
+
+
 class CourseRecord(models.Model):
     class Meta:
         verbose_name = "学时表"
@@ -1507,6 +1521,8 @@ class CourseRecord(models.Model):
     )
     total_hours = models.FloatField("总计参加学时")
     attend_times = models.IntegerField("参加课程次数", default=0)
+
+    objects: CourseRecordManager = CourseRecordManager()
 
     def get_course_name(self):
         if self.course is not None:
