@@ -45,12 +45,8 @@
                         </div>
                         <h3></h3>
                         <div class="container">
-                            <div class="card-deck mb-2 text-center">
+                            <div class="card-columns">
                                 {% for feedback_type in feedback_type_list %}
-                                {% if forloop.counter0|divisibleby:"5" and forloop.counter0 != 0 %}
-                            </div>
-                            <div class="card-deck mb-2 text-center">
-                                {% endif %}
                                 <div class="card text-center mb-4">
                                     <div class="card-header">
                                         <h6 class="my-0 font-weight-normal">{{feedback_type.name}}</h6>
