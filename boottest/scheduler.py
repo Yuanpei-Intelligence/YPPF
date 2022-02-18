@@ -9,6 +9,8 @@ from django.conf import settings
 from apscheduler.schedulers.background import BackgroundScheduler
 from django_apscheduler.jobstores import DjangoJobStore
 
+from boottest import local_dict, base_get_setting
+
 class Scheduler():
 
     def __init__(self, wrapped_schedule):
@@ -50,7 +52,7 @@ def start_scheduler():
 
     return scheduler
 
-if settings.MY_ENV in ["PRODUCT", "TEST", "SCHEDULER", "S_SCHEDULER"]:
+if base_get_setting("use_scheduler"):
     scheduler = Scheduler(start_scheduler())
 else:
     # No real_add_job
