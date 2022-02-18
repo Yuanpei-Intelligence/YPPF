@@ -21,7 +21,7 @@ from app.course_utils import (
     create_course,
     cal_participate_num,
     check_post_and_modify,
-    str_to_time
+    str_to_time,
 )
 from app.utils import get_person_or_org
 
@@ -440,14 +440,11 @@ def selectCourse(request):
     html_display["btx_election_end"] = get_setting("course/btx_election_end")
 
     # 是否正在进行抽签
-    is_drawing = (datetime.strptime(html_display["yx_election_end"],
-                                    "%Y-%m-%d %H:%M:%S") <= datetime.now()
-                  and datetime.now() <= datetime.strptime(
-                      html_display["btx_election_start"], "%Y-%m-%d %H:%M:%S"))
+    is_drawing = (str_to_time(html_display["yx_election_end"]) <= datetime.now()
+                   <= str_to_time(html_display["btx_election_start"]))
 
     # 选课是否已经全部结束
-    is_end = (datetime.now() > datetime.strptime(
-        html_display["btx_election_end"], "%Y-%m-%d %H:%M:%S"))
+    is_end = (datetime.now() > str_to_time(html_display["btx_election_end"]))
 
     unselected_courses = Course.objects.unselected(me)
     selected_courses = Course.objects.selected(me)
@@ -551,7 +548,7 @@ def addCourse(request, cid=None):
         if not edit:
 
             #增加截止开课的时间点
-            add_course_DDL = str_to_time(get_setting("btx_election_end"))
+            add_course_DDL = str_to_time(get_setting("course/btx_election_end"))
             if datetime.now() > add_course_DDL:
                 return redirect(message_url(succeed("已超过选课时间节点，无法发起课程！"),
                                         f'/showCourseActivity/'))

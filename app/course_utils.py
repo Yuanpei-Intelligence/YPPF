@@ -367,9 +367,6 @@ def check_course_time_conflict(current_course, user):
         ]).prefetch_related("time_set")
 
     def time_hash(time: datetime):
-        weekday = time.weekday()
-        hour = time.hour
-        minute = time.minute
         return time.weekday() * 1440 + time.hour * 60 + time.minute
 
     # 因为选择的课最多只能有6门，所以暂时用暴力算法
@@ -393,6 +390,36 @@ def check_course_time_conflict(current_course, user):
 
     # 没有冲突
     return False, ""
+    '''
+    # 循环较少的写法
+    from django.db.models import Q
+    conflict_course_names = set()
+    for current_course_time in current_course.time_set.all():
+        # 冲突时间
+        conflict_times = CourseTime.objects.filter(
+            # 已选的课程
+            Q(course__in=selected_courses),
+            # 开始比当前的结束时间早
+            (Q(start__week_day=current_course_time.end.weekday() + 1,
+               start__time__lte=current_course_time.end.time())
+             | Q(start__week_day__lt=current_course_time.end.weekday() + 1))
+            # 结束比当前的开始时间晚
+            & (Q(end__week_day=current_course_time.start.weekday() + 1,
+                 end__time__gte=current_course_time.start.time())
+               | Q(end__week_day__gt=current_course_time.start.weekday() + 1))
+        )
+        if conflict_times.exists():
+            # return True, f'《{conflict_times.first().course.name}》'
+            conflict_course_names.union(
+                conflict_times.values_list('course__name', flat=True))
+
+    conflict_count = len(conflict_course_names)
+    # 有冲突
+    if conflict_count:
+        return conflict_count, f'《{"》《".join(conflict_course_names)}》'
+    # 没有冲突
+    return conflict_count, ""
+    '''
 
 
 @log.except_captured(return_value=True,
@@ -410,9 +437,7 @@ def registration_status_change(course_id, user, action=None):
     注意: 
         非选课阶段，不应该进入这个函数！
     """
-    context = {}
-    context["warn_code"] = 1
-    context["warn_message"] = "在修改选课状态的过程中发生错误，请联系管理员！"
+    context = wrong("在修改选课状态的过程中发生错误，请联系管理员！")
 
     # 在外部保证课程ID是存在的
     course = Course.objects.get(id=course_id)
@@ -423,8 +448,7 @@ def registration_status_change(course_id, user, action=None):
 
     if (course_status != Course.Status.STAGE1
             and course_status != Course.Status.STAGE2):
-        context["warn_message"] = "在非选课阶段不能选课！"
-        return context
+        return wrong("在非选课阶段不能选课！")
 
     # 选课信息
     participant_info, _ = CourseParticipant.objects.get_or_create(
@@ -444,15 +468,14 @@ def registration_status_change(course_id, user, action=None):
                     CourseParticipant.Status.SELECT,
                     CourseParticipant.Status.SUCCESS,
                 ]).count() >= 6:
-            context["warn_message"] = "每位同学同时预选或选上的课程数最多为6门！"
-            return context
+            return wrong("每位同学同时预选或选上的课程数最多为6门！")
 
         # 检查选课时间是否冲突
         is_conflict, message = check_course_time_conflict(course, user)
 
         if is_conflict:
-            context["warn_message"] = message
-            return context
+            return wrong(message)
+            return wrong(f'与{is_conflict}门已选课程时间冲突: {message}')
 
     # 如果action为取消预选或退选，to_status直接使用初始值即可
 
@@ -460,8 +483,7 @@ def registration_status_change(course_id, user, action=None):
     try:
         registration_status_check(course_status, cur_status, to_status)
     except AssertionError:
-        context["warn_message"] = "非法的选课状态修改！"
-        return context
+        return wrong("非法的选课状态修改！")
 
     # 暂时不使用意愿点选课
     # if (course_status == Course.Status.STAGE1
@@ -476,15 +498,13 @@ def registration_status_change(course_id, user, action=None):
                     current_participants=F("current_participants") - 1)
                 CourseParticipant.objects.filter(
                     course__id=course_id, person=user).update(status=to_status)
-                context["warn_code"] = 2
-                context["warn_message"] = "成功取消选课！"
+                succeed("成功取消选课！", context)
             else:
                 # 处理并发问题
                 course = Course.objects.select_for_update().get(id=course_id)
                 if (course_status == Course.Status.STAGE2
                         and course.current_participants >= course.capacity):
-                    context["warn_code"] = 1
-                    context["warn_message"] = "选课人数已满！"
+                    wrong("选课人数已满！", context)
                 else:
                     course.current_participants = course.current_participants + 1
                     course.save()
@@ -493,8 +513,7 @@ def registration_status_change(course_id, user, action=None):
                     CourseParticipant.objects.filter(
                         course__id=course_id,
                         person=user).update(status=to_status)
-                    context["warn_code"] = 2
-                    context["warn_message"] = "选课成功！"
+                    succeed("选课成功！", context)
     except:
         return context
     return context
@@ -685,6 +704,7 @@ def draw_lots(course):
             },
         )
 
+
 @log.except_captured(return_value=True,
                      record_args=True,
                      status_code=log.STATE_WARNING,
@@ -719,8 +739,9 @@ def change_course_status(cur_status, to_status):
     else:
         raise AssertionError("未提供当前状态，不允许进行选课状态修改")
     courses = Course.objects.activated().filter(status=cur_status)
+    if to_status == Course.Status.SELECT_END:
+        courses = courses.select_related('organization')
     with transaction.atomic():
-        #更新目标状态
         for course in courses:
             if to_status == Course.Status.DRAWING:
                 # 预选结束，进行抽签
@@ -744,6 +765,7 @@ def change_course_status(cur_status, to_status):
                 if positions:
                     with transaction.atomic():
                         Position.objects.bulk_create(positions)
+        #更新目标状态
         courses.select_for_update().update(status=to_status)
 
 
