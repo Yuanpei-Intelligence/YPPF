@@ -656,7 +656,7 @@ def draw_lots(course):
     receivers = CourseParticipant.objects.filter(
         course=course,
         status=CourseParticipant.Status.SUCCESS,
-    ).values_list("person", flat=True)
+    ).values_list("person__person_id", flat=True)
     receivers = User.objects.filter(id__in=receivers)
     sender = course.organization.organization_id
     typename = Notification.Type.NEEDREAD
@@ -686,7 +686,7 @@ def draw_lots(course):
     receivers = CourseParticipant.objects.filter(
         course=course,
         status=CourseParticipant.Status.FAILED,
-    ).values_list("person", flat=True)
+    ).values_list("person__person_id", flat=True)
     receivers = User.objects.filter(id__in=receivers)
     content = f"很抱歉通知您，您未选上课程《{course.name}》。"
     if len(receivers) > 0:
