@@ -1429,7 +1429,11 @@ class Course(models.Model):
 
     def get_photo_path(self):
         # 假设课程的宣传图片一定存在
-        return MEDIA_URL + str(self.photo)
+        photo_path = str(self.photo)
+        if photo_path[0] == 'c':
+            return MEDIA_URL + str(self.photo)
+        else:
+            return photo_path
 
 
 class CourseTime(models.Model):
