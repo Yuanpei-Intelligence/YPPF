@@ -419,16 +419,13 @@ def selectCourse(request):
             assert Course.objects.activated().filter(id=course_id).exists()
 
         except:
-            html_display["warn_code"] = 1  # 失败
-            html_display["warn_message"] = "出现预料之外的错误！如有需要，请联系管理员。"
+            wrong("出现预料之外的错误！如有需要，请联系管理员。", html_display)
         try:
             # 对学生的选课状态进行变更
             context = registration_status_change(course_id, me, action)
-            html_display["warn_code"] = context["warn_code"]
-            html_display["warn_message"] = context["warn_message"]
+            my_messages.transfer_message_context(context, html_display)
         except:
-            html_display["warn_code"] = 1  # 意外失败
-            html_display["warn_message"] = "选课过程出现错误！请联系管理员。"
+            wrong("选课过程出现错误！请联系管理员。", html_display)
 
     html_display["is_myself"] = True
     html_display["current_year"] = CURRENT_ACADEMIC_YEAR
@@ -451,8 +448,9 @@ def selectCourse(request):
 
     # 未选的课程需要按照课程类型排序
     courses = {}
-    for type in Course.CourseType.values:
-        courses[type] = course_to_display(unselected_courses.filter(type=type),
+    for type, label in Course.CourseType.choices:
+        # 前端使用键呈现
+        courses[label] = course_to_display(unselected_courses.filter(type=type),
                                           me)
 
     unselected_display = course_to_display(unselected_courses, me)
