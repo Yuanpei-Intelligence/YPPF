@@ -470,12 +470,17 @@ def stuinfo(request, name=None):
             )['total_hours__sum'] or 0)
 
             # 每个人的规定学时，按年级讨论
-            if int(oneself.stu_grade) <= 2018:
+            try:
+                # 本科生
+                if int(oneself.stu_grade) <= 2018:
+                    ruled_hours = 0
+                elif int(oneself.stu_grade) == 2019:
+                    ruled_hours = 32
+                else:
+                    ruled_hours = 64
+            except:
+                # 其它，如老师和住宿辅导员等
                 ruled_hours = 0
-            elif int(oneself.stu_grade) == 2019:
-                ruled_hours = 32
-            else:
-                ruled_hours = 64
 
             # 计算总学时
             total_hours_sum = sum(progress_list)
