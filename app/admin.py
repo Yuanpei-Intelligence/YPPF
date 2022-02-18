@@ -743,8 +743,8 @@ class FeedbackAdmin(admin.ModelAdmin):
 
 @admin.register(FeedbackType)
 class FeedbackTypeAdmin(admin.ModelAdmin):
-    list_display = ["name","org_type",]
-    search_fields =  ("name","org_type",)
+    list_display = ["name","org_type","org",]
+    search_fields =  ("name","org_type","org",)
 
 admin.site.register(YQPointDistribute)
 admin.site.register(QandA)
