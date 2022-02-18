@@ -18,7 +18,7 @@ __all__ = [
 PREFIX = 'underground/'
 
 
-def get_setting(path: str='', default=None, trans_func=None,
+def get_setting(path: str='', trans_func=None, default=None,
                fuzzy_lookup=False, raise_exception=True):
     '''
     默认值更宽松的`get_setting`, 适合可选本地设置
@@ -31,7 +31,7 @@ def get_setting(path: str='', default=None, trans_func=None,
     return base_get_setting(
         PREFIX + path, default, trans_func, fuzzy_lookup, raise_exception)
 
-def get_config(path: str='', default=None, trans_func=None,
+def get_config(path: str='', trans_func=None, default=None,
                fuzzy_lookup=False, raise_exception=False):
     '''
     默认值更宽松的`get_setting`, 适合可选本地设置

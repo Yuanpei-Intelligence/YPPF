@@ -21,7 +21,8 @@ from app.course_utils import (
     create_course,
     cal_participate_num,
     check_post_and_modify,
-    finish_course
+    finish_course,
+    str_to_time,
 )
 from app.utils import get_person_or_org
 
@@ -288,7 +289,7 @@ def showCourseRecord(request):
     if len(course) == 0: # 尚未开课的情况
         return redirect(message_url(wrong('没有检测到该组织本学期开设的课程。')))
     # TODO: 报错 这是代码不应该出现的bug
-    assert len(course) <= 1, "检测到该组织的课程超过一门，属于不可预料的错误，请及时处理！"
+    assert len(course) == 1, "检测到该组织的课程超过一门，属于不可预料的错误，请及时处理！"
     course = course.first()
 
     # 是否可以编辑
@@ -459,14 +460,11 @@ def selectCourse(request):
     html_display["btx_election_end"] = get_setting("course/btx_election_end")
 
     # 是否正在进行抽签
-    is_drawing = (datetime.strptime(html_display["yx_election_end"],
-                                    "%Y-%m-%d %H:%M:%S") <= datetime.now()
-                  and datetime.now() <= datetime.strptime(
-                      html_display["btx_election_start"], "%Y-%m-%d %H:%M:%S"))
+    is_drawing = (str_to_time(html_display["yx_election_end"]) <= datetime.now()
+                   <= str_to_time(html_display["btx_election_start"]))
 
     # 选课是否已经全部结束
-    is_end = (datetime.now() > datetime.strptime(
-        html_display["btx_election_end"], "%Y-%m-%d %H:%M:%S"))
+    is_end = (datetime.now() > str_to_time(html_display["btx_election_end"]))
 
     unselected_courses = Course.objects.unselected(me)
     selected_courses = Course.objects.selected(me)
@@ -568,6 +566,13 @@ def addCourse(request, cid=None):
     # 在这个界面，不会返回render，而是直接跳转到viewCourse，可以不设计bar_display
     if request.method == "POST" and request.POST:
         if not edit:
+
+            #增加截止开课的时间点
+            add_course_DDL = str_to_time(get_setting("course/btx_election_end"))
+            if datetime.now() > add_course_DDL:
+                return redirect(message_url(succeed("已超过选课时间节点，无法发起课程！"),
+                                        f'/showCourseActivity/'))
+            #发起选课
             context=create_course(request)
             html_display["warn_code"] = context["warn_code"]
             if html_display["warn_code"] == 2:
