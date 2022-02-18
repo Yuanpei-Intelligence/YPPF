@@ -17,6 +17,7 @@ from app.models import (
     Course,
     CourseTime,
     Semester,
+    Feedback,
 )
 from app.activity_utils import (
     changeActivityStatus,
@@ -286,6 +287,19 @@ def update_active_score_per_day(days=14):
                 active_score=F('active_score') + 1 / days)
 
 
+def public_feedback_per_day():
+    '''查找距离组织公开反馈24h内没被审核的反馈，将其公开'''
+    time = datetime.now() - timedelta(days=1)
+    with transaction.atomic():
+        Feedback.objects.filter(
+            issue_status=ISSUED,
+            public_status=PRIVATE,
+            publisher_public=True,
+            org_public=True,
+            public_time__lte=time,
+        ).select_for_update().update(public_status=PUBLIC)
+
+
 def start_scheduler(with_scheduled_job=True, debug=False):
     '''
     noexcept
@@ -329,6 +343,13 @@ def start_scheduler(with_scheduled_job=True, debug=False):
                               "interval",
                               id=current_job,
                               minutes=5,
+                              replace_existing=True)
+            current_job = "feedback_public_updater"
+            if debug: print(f"adding scheduled job '{current_job}'")
+            scheduler.add_job(public_feedback_per_day,
+                              "interval",
+                              id=current_job,
+                              hour=1,
                               replace_existing=True)
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"
