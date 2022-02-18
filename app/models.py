@@ -143,8 +143,8 @@ class NaturalPerson(models.Model):
 
     class ReceiveLevel(models.IntegerChoices):
         # DEBUG = (-1000, '全部')
-        MORE = (0, '更多')
-        LESS = (500, '更少')
+        MORE = (0, '接收全部消息')
+        LESS = (500, '仅重要通知')
         # FATAL_ONLY = (1000, '仅重要')
         # NONE = (1001, '不接收')
 
@@ -1430,7 +1430,11 @@ class Course(models.Model):
 
     def get_photo_path(self):
         # 假设课程的宣传图片一定存在
-        return MEDIA_URL + str(self.photo)
+        photo_path = str(self.photo)
+        if photo_path[0] == 'c':
+            return MEDIA_URL + str(self.photo)
+        else:
+            return photo_path
 
 
 class CourseTime(models.Model):
