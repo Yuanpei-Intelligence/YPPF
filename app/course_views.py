@@ -551,7 +551,7 @@ def addCourse(request, cid=None):
         if not edit:
 
             #增加截止开课的时间点
-            add_course_DDL = str_to_time(get_setting("btx_election_end"))
+            add_course_DDL = str_to_time(get_setting("course/btx_election_end"))
             if datetime.now() > add_course_DDL:
                 return redirect(message_url(succeed("已超过选课时间节点，无法发起课程！"),
                                         f'/showCourseActivity/'))
