@@ -719,9 +719,13 @@ def register_selection():
     year = str(CURRENT_ACADEMIC_YEAR)
     semster = str(Semester.now())
     stage1_start = str_to_time(get_setting("course/yx_election_start"))
+    stage1_start = max(stage1_start, datetime.now() + timedelta(seconds=5))
     stage1_end = str_to_time(get_setting("course/yx_election_end"))
+    stage1_end = max(stage1_end, datetime.now() + timedelta(seconds=10))
     stage2_start = str_to_time(get_setting("course/btx_election_start"))
+    stage2_start = max(stage2_start, datetime.now() + timedelta(seconds=15))
     stage2_end = str_to_time(get_setting("course/btx_election_end"))
+    stage2_end = max(stage2_end, datetime.now() + timedelta(seconds=20))
     # 定时任务：修改课程状态
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_start",
                       run_date=stage1_start, args=[Course.Status.WAITING,Course.Status.STAGE1], replace_existing=True)
