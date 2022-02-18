@@ -84,8 +84,22 @@
                                             </div>
 
                                             <div class="form-group">
+                                                <label for="aintro">接收小组类型</label>
+                                                <select class="form-control selectpicker" data-live-search="true" id="otype" name="otype" onchange="change_org_list.call(this)" 
+                                                {% if not allow_form_edit %} readonly="readonly"{% endif %}>
+                                                    {% for key, value in org_type_list.items %}
+                                                    {% if not value.disabled %}
+                                                    <option value="{{value.value}}" {% if value.selected %} selected {% endif %} >
+                                                        {{value.display}}
+                                                    </option>
+                                                    {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
                                                 <label for="aintro">接收小组</label>
-                                                <select class="form-control selectpicker" data-live-search = "true" id="org" name="org" {% if not allow_form_edit %} readonly="readonly"{% endif %}>
+                                                <select class="form-control selectpicker" data-live-search="true" id="org" name="org" {% if not allow_form_edit %} readonly="readonly"{% endif %}>
                                                     {% for key, value in org_list.items %}
                                                     {% if not value.disabled %}
                                                     <option value="{{value.value}}" {% if value.selected %} selected {% endif %} >
@@ -187,17 +201,23 @@
                 if (!confirm("是否同意公开？个人同意公开后需要组织同意公开后方可公开~"))
                     this.value = "不公开";
         }
-        function public() {
-            if (confirm("是否同意公开？个人同意公开后需要组织同意公开后方可公开~")){
-                this.setAttribute("class","btn btn-primary btn-lg mb-4 mr-2");
-                this.nextElementSibling.setAttribute("class","btn btn-lg mb-4 mr-2");
-                this.parentNode.previousElementSibling.setAttribute("value","公开");
+        function change_org_list() {
+            var all_orgs = document.getElementById('org')
+            var all_org_list = {{all_org_list|safe}};
+            all_orgs.innerHTML = '';
+            for (i = 0; i < all_org_list.length; i += 1) {
+                if (all_org_list[i][0] == this.value) {
+                    for (j = 1; j < all_org_list[i].length; j += 1){
+                        all_orgs.add(create_option(all_org_list[i][j]),null);
+                    }
+                }
             }
         }
-        function private() {
-            this.setAttribute("class","btn btn-primary btn-lg mb-4 mr-2");
-            this.previousElementSibling.setAttribute("class","btn btn-lg mb-4 mr-2");
-            this.parentNode.previousElementSibling.setAttribute("value","不公开");
+        function create_option(name) {
+            var opt = document.createElement("OPTION");
+            opt.value = name;
+            opt.text = name;
+            return opt;
         }
     </script>
 {% endblock %}

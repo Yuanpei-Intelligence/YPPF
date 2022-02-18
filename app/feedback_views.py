@@ -27,7 +27,7 @@ def modifyFeedback(request):
     # 设置feedback为None, 如果非None则自动覆盖
     feedback = None
     # TODO: 一个选择反馈类型的表单，将反馈类型传到此处！
-    feedback_type = "学术反馈"
+    feedback_type = "书院课程反馈"
 
     # 根据是否有newid来判断是否是第一次
     feedback_id = request.GET.get("feedback_id", None)
@@ -95,6 +95,16 @@ def modifyFeedback(request):
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
 
     # 首先是写死的前端量
+    org_type_list = {
+        otype.otype_name:{
+            'value'   : otype.otype_name,
+            'display' : otype.otype_name,  # 前端呈现的使用量
+            'disabled' : False,  # 是否禁止选择这个量
+            'selected' : False   # 是否默认选中这个量
+        }
+        for otype in OrganizationType.objects.all()
+    }
+    
     org_list = {
         org.oname:{
             'value'   : org.oname,
@@ -102,9 +112,14 @@ def modifyFeedback(request):
             'disabled' : False,  # 是否禁止选择这个量
             'selected' : False   # 是否默认选中这个量
         }
-        for org in Organization.objects.filter(
-            otype_id=FeedbackType.objects.get(name=feedback_type).org_type_id
-        )
+        for org in Organization.objects.all()
+    }
+
+    org_type_list[''] = {
+        'value': '', 'display': '', 'disabled': False, 'selected': False,
+    }
+    org_list[''] = {
+        'value': '', 'display': '', 'disabled': False, 'selected': False,
     }
 
     # 用户写表格?
@@ -116,8 +131,50 @@ def modifyFeedback(request):
     # 用于前端展示
     feedback_person = me if is_new_feedback else feedback.person
     app_avatar_path = feedback_person.get_user_ava()
+    all_org_types = [otype.otype_name for otype in OrganizationType.objects.all()]
+    all_org_list = []
+    for otype in all_org_types:
+        all_org_list.append(([otype,] +
+            [org.oname for org in Organization.objects.filter(
+                otype=OrganizationType.objects.get(otype_name=otype)
+            )]) if otype != '' else [otype,] 
+        )
     if not is_new_feedback:
-        org_list[feedback.org.oname]['selected'] = True
+        if feedback.org_type is not None:
+            org_type_list[feedback.org_type.otype_name]['selected'] = True
+            for org in Organization.objects.exclude(
+                    otype=OrganizationType.objects.get(
+                        otype_name=feedback.org_type.otype_name)
+                    ):
+                org_list[org.oname]['disabled'] = True
+        else:
+            org_type_list['']['selected'] = True
+            for org in org_list.keys():
+                org_list[org]['disabled'] = True
+        if feedback.org is not None:
+            org_list[feedback.org.oname]['selected'] = True
+        else:
+            org_list['']['selected'] = True
+    else:
+        if FeedbackType.objects.get(name=feedback_type).org_type is not None:
+            org_type_list[
+                FeedbackType.objects.get(name=feedback_type).org_type.otype_name
+            ]['selected'] = True
+            for org in Organization.objects.exclude(
+                    otype=OrganizationType.objects.get(
+                        otype_name=FeedbackType.objects.get(name=feedback_type).org_type.otype_name)
+                    ):
+                org_list[org.oname]['disabled'] = True
+        else:
+            org_type_list['']['selected'] = True
+            for org in org_list.keys():
+                org_list[org]['disabled'] = True
+        if FeedbackType.objects.get(name=feedback_type).org is not None:
+            org_list[
+                FeedbackType.objects.get(name=feedback_type).org.oname
+            ]['selected'] = True
+        else:
+            org_list['']['selected'] = True
     bar_display = utils.get_sidebar_and_navbar(
         request.user, navbar_name="填写反馈" if is_new_feedback else "反馈详情"
     )

@@ -793,6 +793,7 @@ def load_feedback_type():
                 id=type_id, org_type_id=otype_id, org_id=org_id,
             )
         feedbacktype.name = type_name
+        feedbacktype.flexible = flexible
         feedbacktype.save()
     
     FeedbackType.objects.bulk_create(type_list)
