@@ -398,7 +398,6 @@ def registration_status_change(course_id, user, action=None):
 
         # 选课不能超过6门
         if CourseParticipant.objects.filter(
-                course=course,
                 person=user,
                 status__in=[
                     CourseParticipant.Status.SELECT,
