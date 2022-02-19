@@ -1589,8 +1589,8 @@ class Feedback(CommentBase):
     title = models.CharField("标题", max_length=30, blank=False)
     content = models.TextField("内容", blank=False)
     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
-    org_type = models.ForeignKey(OrganizationType, on_delete=models.CASCADE, null=True)
-    org = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True)
+    org_type = models.ForeignKey(OrganizationType, on_delete=models.CASCADE, null=True, blank=True)
+    org = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
 
     class IssueStatus(models.IntegerChoices):
         DRAFTED = (0, "草稿")
