@@ -650,7 +650,7 @@ def downloadCourseRecord(me):
         max_row += 1
         record_info = [
             record.person.name, 
-            str(record.person.person_id), 
+            str(record.person.person_id)[:2], 
             record.attend_times, 
             record.total_hours ]
         for x in range(len(record_info)):		# 将每一个对象的所有字段的信息写入一行内
