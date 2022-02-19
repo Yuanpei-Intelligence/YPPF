@@ -757,7 +757,7 @@ def change_course_status(cur_status, to_status):
                 positions = []
                 for participant in participants:
                     # 检查是否已经加入小组
-                    if not Position.objects.filter(person=participant.person,
+                    if not Position.objects.activated().filter(person=participant.person,
                                                    org=organization).exists():
                         position = Position(person=participant.person,
                                             org=organization,

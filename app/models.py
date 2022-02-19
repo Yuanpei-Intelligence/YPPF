@@ -1381,15 +1381,6 @@ class Course(models.Model):
                                  blank=True)
     teacher = models.CharField("授课教师", max_length=48, default="", blank=True)
 
-    # 不确定能否统一选课的情况，先用最保险的方法
-    # 如果由助教填写，表单验证时要着重检查这一部分。预选结束时间和补退选开始时间不应该相隔太近。
-    stage1_start = models.DateTimeField("预选开始时间", blank=True, null=True)
-    stage1_end = models.DateTimeField("预选结束时间", blank=True, null=True)
-    stage2_start = models.DateTimeField("补退选开始时间", blank=True, null=True)
-    stage2_end = models.DateTimeField("补退选结束时间", blank=True, null=True)
-
-    bidding = models.FloatField("意愿点价格", default=0.0)
-
     introduction = models.TextField("课程简介", blank=True, default="这里暂时没有介绍哦~")
     teaching_plan = models.TextField("教学计划", blank=True, default="暂无")
     record_cal_method = models.TextField("学时计算方式", blank=True, default="暂无")
