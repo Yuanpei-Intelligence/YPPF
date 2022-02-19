@@ -561,6 +561,7 @@ def check_account_setting(request, user_type):
         attr_dict['gender'] = request.POST['gender']
         attr_dict['birthday'] = request.POST['birthday']
         attr_dict['accept_promote'] = request.POST['accept_promote']
+        attr_dict['wechat_receive_level'] = request.POST['wechat_receive_level']
         attr_dict['wallpaper'] = request.FILES.get("wallpaper")
 
         show_dict = dict()
