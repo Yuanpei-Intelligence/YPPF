@@ -749,3 +749,5 @@ class FeedbackTypeAdmin(admin.ModelAdmin):
 admin.site.register(YQPointDistribute)
 admin.site.register(QandA)
 admin.site.register(OrganizationTag)
+admin.site.register(PageLog)
+admin.site.register(ModuleLog)

@@ -88,12 +88,18 @@ def editCourseActivity(request, aid):
                 activity = Activity.objects.select_for_update().get(id=aid)
                 org = get_person_or_org(request.user, "Organization")
                 assert activity.organization_id == org
-                modify_course_activity(request, activity)
+                error_msg = modify_course_activity(request, activity)
+                if error_msg is not None:
+                    return redirect(message_url(wrong(error_msg), request.path))
             html_display["warn_msg"] = "修改成功。"
             html_display["warn_code"] = 2
         except Exception as e:
             log.record_traceback(request, e)
             return EXCEPT_REDIRECT
+    
+    elif request.method == "GET":
+        html_display["warn_code"], html_display["warn_msg"] = my_messages.get_request_message(request)
+
 
     # 前端使用量
     html_display["applicant_name"] = me.oname
@@ -135,11 +141,23 @@ def addSingleCourseActivity(request):
         log.record_traceback(request, e)
         return EXCEPT_REDIRECT
 
+    # 检查是否已经开课
+    try:
+        course = Course.objects.activated().get(organization=me)
+    except:
+        return redirect(message_url(wrong('本学期尚未开设书院课程，请先发起选课！'), 
+        '/showCourseActivity'))
+
     if request.method == "POST" and request.POST:
         # 创建活动
         try:
             with transaction.atomic():
-                aid, created = create_single_course_activity(request)
+                msg_or_aid, created = create_single_course_activity(request)
+                if isinstance(msg_or_aid, int):
+                    aid = msg_or_aid
+                else:
+                    msg = msg_or_aid
+                    return redirect(message_url(wrong(msg), request.path))
                 if not created:
                     return redirect(message_url(
                         succeed('存在信息相同的课程活动，已为您自动跳转!'),
@@ -148,6 +166,10 @@ def addSingleCourseActivity(request):
         except Exception as e:
             log.record_traceback(request, e)
             return EXCEPT_REDIRECT
+    
+    elif request.method == "GET":
+        html_display["warn_code"], html_display["warn_msg"] = my_messages.get_request_message(request)
+
 
     # 前端使用量
     html_display["applicant_name"] = me.oname
@@ -207,6 +229,9 @@ def showCourseActivity(request):
 
     bar_display = utils.get_sidebar_and_navbar(
         request.user, navbar_name="我的活动")
+
+    if request.method == "GET":
+        html_display["warn_code"], html_display["warn_message"] = my_messages.get_request_message(request)
 
     # 取消单次活动
     if request.method == "POST" and request.POST:
