@@ -73,7 +73,7 @@
             <div class="col-12 layout-top-spacing">
                 <div class="statbox widget box box-shadow">
                     <!-- Nav pills -->
-                    <ul class="nav nav-pills" role="tablist">
+                    <ul class="nav nav-pills" role="tablist" style="flex-wrap: nowrap; overflow-x: auto">
                         <li class="nav-item">
                             <a class="nav-link active" data-toggle="pill" href="#all">
                                 <span class="badge badge-pill badge-secondary">全部课程</span>
@@ -109,9 +109,8 @@
     
                                 <thead>
                                   <tr>
-                                    <th scope="col" width="20%">课程名称</th>
-                                    <th scope="col" width="20%">上课时间</th>
-                                    <th scope="col" width="10%">课程周数</th>
+                                    <th scope="col" width="25%">课程名称</th>
+                                    <th scope="col" width="25%">上课时间</th>
                                     <th scope="col" width="10%">课程类型</th>
                                     <th scope="col" width="15%">状态</th>
                                     <th scope="col" width="15%">选课人数/容量</th>
@@ -137,7 +136,6 @@
                                             时间待定
                                         {% endif %}
                                     </td>
-                                    <td>{{course.times}}</td>
                                     <td>{{course.type}}</td>
                                     {% comment %} 注意这里的status是课程的，除了已撤销的四个都在这儿 {% endcomment %}
                                     <td>
@@ -193,9 +191,8 @@
     
                                 <thead>
                                   <tr>
-                                    <th scope="col" width="20%">课程名称</th>
-                                    <th scope="col" width="20%">上课时间</th>
-                                    <th scope="col" width="10%">课程周数</th>
+                                    <th scope="col" width="25%">课程名称</th>
+                                    <th scope="col" width="25%">上课时间</th>
                                     <th scope="col" width="10%">课程类型</th>
                                     <th scope="col" width="15%">状态</th>
                                     <th scope="col" width="15%">选课人数/容量</th>
@@ -221,7 +218,6 @@
                                             时间待定
                                         {% endif %}
                                     </td>
-                                    <td>{{course.times}}</td>
                                     <td>{{course.type}}</td>
                                     {% comment %} 注意这里的status是课程的，除了已撤销的四个都在这儿 {% endcomment %}
                                     <td>
@@ -287,9 +283,8 @@
     
                     <thead>
                         <tr>
-                            <th scope="col" width="20%">课程名称</th>
-                            <th scope="col" width="20%">上课时间</th>
-                            <th scope="col" width="10%">课程周数</th>
+                            <th scope="col" width="25%">课程名称</th>
+                            <th scope="col" width="25%">上课时间</th>
                             <th scope="col" width="10%">课程类型</th>
                             <th scope="col" width="15%">状态</th>
                             <th scope="col" width="15%">选课人数/容量</th>
@@ -315,7 +310,6 @@
                                 时间待定
                             {% endif %}
                         </td>
-                        <td>{{course.times}}</td>
                         <td>{{course.type}}</td>
                         <td>
                             {% comment %} 对接后端bool值 {% endcomment %}
