@@ -318,6 +318,7 @@ def get_person_receivers(all_receiver_ids, level=None):
     if level is not None:
         receivers = receivers.filter(wechat_receive_level__lte=level)
     receivers = list(receivers.values_list("person_id__username", flat=True))
+    return receivers
 
 
 @log.except_captured(False, record_args=True, source='wechat_send[publish_notification]')
