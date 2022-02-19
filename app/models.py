@@ -1425,7 +1425,6 @@ class Course(models.Model):
     objects: CourseManager = CourseManager()
 
     def save(self, *args, **kwargs):
-        self.bidding = round(self.bidding, 1)
         super().save(*args, **kwargs)
 
     def __str__(self):
