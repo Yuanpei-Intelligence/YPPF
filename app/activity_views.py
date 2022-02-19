@@ -289,10 +289,9 @@ def viewActivity(request, aid=None):
         aQRcode = get_activity_QRcode(activity)
 
     # 活动宣传图片 ( 一定存在 )
-    photo = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
-    firstpic = str(photo.image)
-    if firstpic[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
-        firstpic = MEDIA_URL + firstpic
+    photo: ActivityPhoto = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
+    # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+    firstpic = photo.get_image_path()
 
     # 总结图片，不一定存在
     summary_photo_exists = False
