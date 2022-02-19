@@ -1,0 +1,294 @@
+{% extends "base.html" %} {% load static %} {% block mainpage %}
+
+<div class="main-content pb-3" id="content">
+  <div class="container">
+    {% if html_display.warn_code == 2 %}
+    <div class="alert alert-success text-center" id="success_msg">
+      {{ html_display.warn_msg }}
+    </div>
+    {% else %}
+    <div
+      class="alert alert-success text-center"
+      id="success_msg"
+      style="display: none"
+    ></div>
+    {% endif %} {% if html_display.warn_code == 1 %}
+    <div class="alert alert-warning text-center" id="warn_msg">
+      {{ html_display.warn_msg }}
+    </div>
+    {% else %}
+    <div
+      class="alert alert-warning text-center"
+      id="warn_msg"
+      style="display: none"
+    >
+      test
+    </div>
+    {% endif %}
+    <div class="row layout-top-spacing">
+      <div class="col-12 layout-spacing mb-4">
+        <div class="widget box box-shadow">
+          <div class="widget-header">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h4>反馈详情</h4>
+              </div>
+            </div>
+            <div class="widget-content widget-content-area">
+              <h4 class="lead">【{{feedback.type}}】{{feedback.title}}</h4>
+              <p>{{feedback.content}}</p>
+              <div class="d-flex justify-content-start">
+                {% if read_editable %}
+                <form
+                  role="form"
+                  method="POST"
+                  enctype="multipart/form-data"
+                  onsubmit="return confirm('确认标记为已读吗？')"
+                >
+                  <div class="d-flex justify-content-between">
+                    <div>
+                      <button
+                        type="submit"
+                        class="btn btn-primary btn-block mb-4 mr-2"
+                        name="option"
+                        value="read"
+                      >
+                        标记为已读
+                      </button>
+                    </div>
+                  </div>
+                </form>
+                {% endif %} {% if solve_editable %}
+                <form
+                  role="form"
+                  method="POST"
+                  enctype="multipart/form-data"
+                  name="solve_edit"
+                >
+                  <input type="hidden" name="option" value="solve" />
+                  <input type="hidden" name="solve_status" value="" />
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-block mb-4 mr-2 dropdown-toggle dropdown-toggle-split"
+                    data-toggle="dropdown"
+                  >
+                    修改解决状态
+                  </button>
+                  <div class="dropdown-menu">
+                    <button
+                      type="submit"
+                      class="dropdown-item"
+                      onclick="solveFeedback('solve');"
+                    >
+                      已解决
+                    </button>
+                    <button
+                      type="submit"
+                      class="dropdown-item"
+                      onclick="solveFeedback('unsolable');"
+                    >
+                      无法解决
+                    </button>
+                  </div>
+                </form>
+                {% endif %} {% if make_private %}
+                <form
+                  role="form"
+                  method="POST"
+                  enctype="multipart/form-data"
+                  onsubmit="return confirm('确认对所有学生和小组隐藏话题吗？')"
+                >
+                  <div class="d-flex justify-content-between">
+                    <div>
+                      <button
+                        type="submit"
+                        class="btn btn-primary btn-block mb-4 mr-2"
+                        name="option"
+                        value="private"
+                      >
+                        隐藏话题
+                      </button>
+                    </div>
+                  </div>
+                </form>
+                {% endif %} {% if make_public %}
+                <form
+                  role="form"
+                  method="POST"
+                  enctype="multipart/form-data"
+                  onsubmit="return confirm('确认对所有学生和小组公开话题吗？')"
+                >
+                  <div class="d-flex justify-content-start">
+                    <button
+                      type="submit"
+                      class="btn btn-primary btn-block mb-4 mr-2"
+                      name="option"
+                      value="public"
+                    >
+                      公开话题
+                    </button>
+                  </div>
+                </form>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {% for comment in comments %}
+      <div class="col-12 layout-spacing mb-4">
+        <div class="widget box box-shadow">
+          <div class="widget-header">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h4>{{comment.time}}</h4>
+              </div>
+              <div class="">
+                <img
+                  src="{{comment.ava}}"                  
+                  width="24"
+                  height="24"
+                  alt="avatar"
+                />
+                <a href="{{comment.URL}}"
+                  ><u>{{comment.commentator_name}}</u></a
+                >
+              </div>
+            </div>
+
+            <div class="widget-content widget-content-area">
+              <p>{{ comment.text }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endfor %} {% if commentable %}
+      <div class="col-12 layout-spacing mb-4">
+        <div class="widget box box-shadow">
+          <div class="widget-header">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <h4>添加评论</h4>
+              </div>
+            </div>
+            <div class="widget-content widget-content-area">
+              <form
+                role="form"
+                method="POST"
+                enctype="multipart/form-data"
+                onsubmit="return check_comment_inputs()"
+              >
+                <div class="form-group">
+                  <textarea
+                    type="text"
+                    id="comment"
+                    name="comment"
+                    class="form-control"
+                    aria-label="Default"
+                    rows="3"
+                    placeholder="说点什么吧~"
+                  ></textarea>
+                  <br />
+
+                  <div class="form-group">
+                    <div class="custom-file" lang="zh">
+                      <input
+                        onchange="showFilename(this.files)"
+                        type="file"
+                        class="custom-file-input"
+                        id="customFile"
+                        name="comment_images"
+                        accept="image/*"
+                        multiple
+                      />
+                      <label
+                        id="uploadfile"
+                        class="custom-file-label"
+                        for="customFile"
+                        >相关图片</label
+                      >
+                    </div>
+                  </div>
+                </div>
+                <br />
+                <div class="d-flex justify-content-between">
+                  <div class="" style="text-align: right">
+                    <button
+                      type="submit"
+                      class="btn btn-primary btn-block mb-4 mr-2"
+                      name="comment_submit"
+                      value="{{feedback.id}}"
+                    >
+                      回复
+                    </button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %} {% block add_js_file %}
+<script type="text/javascript">
+  function check_comment_inputs() {
+    var images = document.getElementById("customFile").files;
+    var comments = document.getElementById("comment").value;
+    var formats = ["jpg", "bmp", "png", "jpeg", "rgb", "tif"];
+    if (images.length == 0 && comments == "") {
+      document.getElementById("warn_msg").style.display = "";
+      document.getElementById("warn_msg").innerHTML = "不能发布空评论";
+      document.body.scrollTop = document.documentElement.scrollTop = 0;
+      return false;
+    }
+    // 这个限制 html 好像自带，可以不用
+    for (var i = 0; i < images.length; i++) {
+      var name = images[i].name.toLowerCase();
+      var format = name.substring(name.lastIndexOf(".") + 1);
+      var flag = false;
+      var fileMaxSize = 3072;
+      for (var j = 0; j < formats.length; j++) {
+        if (formats[j] == format) {
+          flag = true;
+          break;
+        }
+      }
+      //检查图片大小
+      if (images[i].size / 1024 > fileMaxSize) {
+        document.getElementById("warn_msg").style.display = "";
+        document.getElementById("warn_msg").innerHTML = "图片大小不应该超过3M";
+        document.body.scrollTop = document.documentElement.scrollTop = 0;
+        return false;
+      }
+      if (!flag) {
+        document.getElementById("warn_msg").style.display = "";
+        document.getElementById("warn_msg").innerHTML = "仅支持图片类型文件。";
+        document.body.scrollTop = document.documentElement.scrollTop = 0;
+        return false;
+      }
+    }
+    return true;
+  }
+  function solveFeedback(opt) {
+    document.solve_edit.solve_status.value = opt;
+    if (opt == "solve") {
+      var edit = confirm("确认修改该反馈为“已解决”吗？");
+    } else if (opt == "unsolvable") {
+      var edit = confirm("确认修改该反馈为“无法解决”吗？");
+    }
+    if (edit) {
+      document.solve_edit.submit();
+    }
+  }
+</script>
+{%endblock%} {%block add_css_file%}
+<style>
+  .custom-file-input:lang(zh) ~ .custom-file-label::after {
+    content: "上传";
+  }
+</style>
+{%endblock%}

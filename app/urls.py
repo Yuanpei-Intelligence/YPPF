@@ -19,6 +19,7 @@ from . import (
     reimbursement_views,
     YQPoint_views,
     course_views,
+    feedback_views,
 )
 from django.conf import settings
 
@@ -112,6 +113,9 @@ urlpatterns = [
     #      name="load_notification_info"),    #服务器弃用
     path("loadhelp/", data_import.load_help, name="load_help"),
     path("loadcourecord/", data_import.load_CouRecord,  name="load_cou_record"),
+] + [
+    # 反馈中心
+    path("viewFeedback/<str:fid>", feedback_views.viewFeedback, name="viewFeedback"),
 ] + [
     # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
