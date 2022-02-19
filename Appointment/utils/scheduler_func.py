@@ -269,10 +269,10 @@ def addAppoint(contents):  # 添加预约, main function
         current_time = datetime.now()   # 获取当前时间，只获取一次，防止多次获取得到不同时间
         if current_time.date() != contents['Astart'].date():    # 若不为当天
             real_min = room.Rmin
-        elif contents['Atemp_flag'] == False:                  # 当天预约，放宽限制
-            real_min = min(room.Rmin, GLOBAL_INFO.today_min)
-        else:                                                   # 临时预约，放宽限制
+        elif contents['Atemp_flag']:                            # 临时预约，放宽限制
             real_min = min(room.Rmin, GLOBAL_INFO.temporary_min)
+        else:                                                   # 当天预约，放宽限制
+            real_min = min(room.Rmin, GLOBAL_INFO.today_min)
         # ----- modify end : 2021.7.10 ----- #
 
         assert len(students) + contents[
