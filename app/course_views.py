@@ -476,7 +476,7 @@ def selectCourse(request):
 
     unselected_courses = Course.objects.unselected(me)
     selected_courses = Course.objects.selected(me)
-
+    
     # 未选的课程需要按照课程类型排序
     courses = {}
     for type, label in Course.CourseType.choices:
