@@ -74,10 +74,9 @@ def check_ac_time_course(start_time, end_time):
     now_time = datetime.now()
     if not start_time < end_time:
         return False
-    if now_time < start_time:
-        return True  # 时间所处范围正确
-
-    return False
+    if not now_time < start_time:
+        return False
+    return True
 
 
 def course_activity_base_check(request):
@@ -85,37 +84,37 @@ def course_activity_base_check(request):
     context = dict()
 
     # 读取活动名称和地点，检查合法性
-    context["title"] = request.POST["title"]
+    context["title"] = request.POST.get("title", "")
     # context["introduction"] = request.POST["introduction"] # 暂定不需要简介
-    context["location"] = request.POST["location"]
+    context["location"] = request.POST.get("location", "")
     assert len(context["title"]) > 0, "标题不能为空"
     # assert len(context["introduction"]) > 0 # 暂定不需要简介
     assert len(context["location"]) > 0, "地点不能为空"
 
     # 读取活动时间，检查合法性
-    act_start = datetime.strptime(
-        request.POST["lesson_start"], "%Y-%m-%d %H:%M")  # 活动开始时间
-    act_end = datetime.strptime(
-        request.POST["lesson_end"], "%Y-%m-%d %H:%M")  # 活动结束时间
+    try:
+        act_start = datetime.strptime(
+            request.POST["lesson_start"], "%Y-%m-%d %H:%M")  # 活动开始时间
+        act_end = datetime.strptime(
+            request.POST["lesson_end"], "%Y-%m-%d %H:%M")  # 活动结束时间
+    except:
+        raise AssertionError("活动时间非法")
     context["start"] = act_start
     context["end"] = act_end
     assert check_ac_time_course(act_start, act_end), "活动时间非法"
 
     # 默认需要签到
     context["need_checkin"] = True
-
-    context["post_type"] = str(request.POST.get("post_type"))
+    context["post_type"] = str(request.POST.get("post_type", ""))
     return context
 
 
 def create_single_course_activity(request):
     '''
     创建单次课程活动，是create_activity的简化版
+    错误提示通过AssertionError抛出
     '''
-    try:
-        context = course_activity_base_check(request)
-    except Exception as e:
-        return str(e), False
+    context = course_activity_base_check(request)
 
     # 获取组织和课程
     org = get_person_or_org(request.user, "Organization")
@@ -139,11 +138,8 @@ def create_single_course_activity(request):
         name=default_examiner_name, identity=NaturalPerson.Identity.TEACHER)
 
     # 获取活动所属课程的图片，用于viewActivity, examineActivity等页面展示
-    try:
-        pic = course.get_photo_path()
-        assert pic is not None
-    except:
-        return "获取课程图片失败", False
+    image = str(course.photo)
+    assert image, "获取课程图片失败"
 
     # 创建活动
     activity = Activity.objects.create(
@@ -189,7 +185,7 @@ def create_single_course_activity(request):
 
     # 设置活动照片
     ActivityPhoto.objects.create(
-        image=pic, type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
+        image=image, type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
     # 通知审核老师
     notification_create(
@@ -210,16 +206,13 @@ def create_single_course_activity(request):
 def modify_course_activity(request, activity):
     '''
     修改单次课程活动信息，是modify_activity的简化版
-    成功无返回值，失败返回错误消息
+    错误提示通过AssertionError抛出
     '''
     # 课程活动无需报名，在开始前都是等待中的状态
-    if activity.status != Activity.Status.WAITING:
-        return "课程活动只有在等待状态才能修改。"
+    assert activity.status == Activity.Status.WAITING, \
+            "课程活动只有在等待状态才能修改。"
 
-    try:
-        context = course_activity_base_check(request)
-    except Exception as e:
-        return str(e)
+    context = course_activity_base_check(request)
 
     # 记录旧信息（以便发通知），写入新信息
     old_title = activity.title
@@ -788,7 +781,7 @@ def change_course_status(cur_status, to_status):
                         position = Position(person=participant.person,
                                             org=organization,
                                             in_semester=Semester.now())
-                        
+
                         positions.append(position)
                 if positions:
                     with transaction.atomic():
@@ -841,12 +834,17 @@ def course_base_check(request):
     # 字符串字段合法性检查
     try:
         # name, introduction, classroom 创建时不能为空
-        context["name"] = str(request.POST["name"])
-        context['teacher'] = str(request.POST["teacher"])
-        context["introduction"] = str(request.POST["introduction"])
-        context["classroom"] = str(request.POST["classroom"])
-        context["teaching_plan"] = str(request.POST["teaching_plan"])
-        context["record_cal_method"] = str(request.POST["record_cal_method"])
+        context = my_messages.read_content(
+            request.POST,
+            "name",
+            'teacher',
+            "introduction",
+            "classroom",
+            "teaching_plan",
+            "record_cal_method",
+            _trans_func=str,
+            _default="",
+        )
         assert len(context["name"]) > 0, "课程名称不能为空！"
         assert len(context["introduction"]) > 0, "课程介绍不能为空！"
         assert len(context["teaching_plan"]) > 0, "教学计划不能为空！"
@@ -857,17 +855,20 @@ def course_base_check(request):
 
     # int类型合法性检查
 
-    type_num = request.POST.get("type", -1)  # 课程类型
+    type_num = request.POST.get("type", "")  # 课程类型
     capacity = request.POST.get("capacity", -1)
     # context['times'] = int(request.POST["times"])    #课程上课周数
     try:
-        assert type_num != "", "记得选择课程类型哦！"
-        assert 0 <= int(type_num) < 5, "课程类型仅包括德智体美劳五种！"
-        assert int(capacity) > 0, "课程容量应当大于0！"
-    except Exception as e:
-        return wrong(str(e))
-    context['type'] = int(type_num)
-    context['capacity'] = int(capacity)
+        cur_info = "记得选择课程类型哦！"
+        type_num = int(type_num)
+        cur_info = "课程类型仅包括德智体美劳五种！"
+        assert 0 <= type_num < 5
+        cur_info = "课程容量应当大于0！"
+        assert int(capacity) > 0
+    except:
+        return wrong(cur_info)
+    context['type'] = type_num
+    context['capacity'] = capacity
 
     # 图片类型合法性检查
     try:
@@ -915,8 +916,7 @@ def course_base_check(request):
     org = get_person_or_org(request.user, "Organization")
     context['organization'] = org
 
-    context["warn_code"] = 2
-    context["warn_message"] = "合法性检查通过！"
+    succeed("合法性检查通过！", context)
     return context
 
 
