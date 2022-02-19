@@ -19,6 +19,7 @@ from . import (
     reimbursement_views,
     YQPoint_views,
     course_views,
+    feedback_views,
 )
 from django.conf import settings
 
@@ -93,6 +94,9 @@ urlpatterns = [
     path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
     path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
     path("showCourseRecord/", course_views.showCourseRecord, name="showCourseRecord"),
+] + [
+    # 反馈中心
+    path("feedback/", feedback_views.feedbackWelcome, name="feadbackWelcome")
 ] + [
     # 数据导入
     path("loadstudata/", data_import.load_stu_data, name="load_stu_data"),
