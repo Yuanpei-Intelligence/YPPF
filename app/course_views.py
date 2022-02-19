@@ -139,6 +139,13 @@ def addSingleCourseActivity(request):
         log.record_traceback(request, e)
         return EXCEPT_REDIRECT
 
+    # 检查是否已经开课
+    try:
+        course = Course.objects.activated().get(organization=me)
+    except:
+        return redirect(message_url(wrong('本学期尚未开设书院课程，请先发起选课！'), 
+        '/showCourseActivity'))
+
     if request.method == "POST" and request.POST:
         # 创建活动
         try:
@@ -219,6 +226,9 @@ def showCourseActivity(request):
 
     bar_display = utils.get_sidebar_and_navbar(
         request.user, navbar_name="我的活动")
+
+    if request.method == "GET":
+        html_display["warn_code"], html_display["warn_message"] = my_messages.get_request_message(request)
 
     # 取消单次活动
     if request.method == "POST" and request.POST:
