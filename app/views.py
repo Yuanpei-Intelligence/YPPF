@@ -4,6 +4,7 @@ from app.models import (
     Freshman,
     Position,
     Organization,
+    OrganizationTag,
     OrganizationType,
     ModifyPosition,
     Activity,
@@ -167,33 +168,10 @@ def index(request):
             html_display["warn_message"] = local_dict["msg"]["406"]
 
     # 所有跳转，现在不管是不是post了
-    if arg_origin is not None:
-        if request.user.is_authenticated:
-
-            if not check_cross_site(request, arg_origin):
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
-                return redirect(message_url(html_display))
-
-            is_inner, arg_origin = utils.get_std_inner_url(arg_origin)
-            if is_inner:  # 非外部链接，合法性已经检查过
-                return redirect(arg_origin)  # 不需要加密验证
-
-            is_underground, arg_origin = utils.get_std_underground_url(arg_origin)
-            if not is_underground:
-                return redirect(arg_origin)
-
-            timeStamp = str(int(datetime.utcnow().timestamp())) # UTC 统一服务器
-            username = request.user.username    # session["username"] 已废弃
-            en_pw = hash_coder.encode(username + timeStamp)
-            try:
-                userinfo = NaturalPerson.objects.get(person_id__username=username)
-                arg_origin = append_query(arg_origin,
-                    Sid=username, timeStamp=timeStamp, Secret=en_pw, name=userinfo.name)
-            except:
-                arg_origin = append_query(arg_origin,
-                    Sid=username, timeStamp=timeStamp, Secret=en_pw)
-            return redirect(arg_origin)
+    if arg_origin is not None and request.user.is_authenticated:
+        if not check_cross_site(request, arg_origin):
+            return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
+        return redirect(arg_origin)
 
     return render(request, "index.html", locals())
 
@@ -450,25 +428,25 @@ def stuinfo(request, name=None):
             # 把当前学期的活动去除
             course_me_past = (
                 course_me.exclude(
-                    year=int(local_dict["semester_data"]["year"]), 
-                    semester=local_dict["semester_data"]["semester"])
+                    year=CURRENT_ACADEMIC_YEAR,
+                    semester=Semester.now())
             )
 
             # 无效学时，在前端呈现
             course_no_use = (
                 course_me_past
                 .filter(total_hours__lt=8)
-                .exclude(year=20, semester=Semester.FALL, total_hours__gte=6)
-                .exclude(year=21, semester=Semester.SPRING, total_hours__gte=6)
+                .exclude(year=2020, semester=Semester.FALL, total_hours__gte=6)
+                .exclude(year=2021, semester=Semester.SPRING, total_hours__gte=6)
             )
-            
+
             # 特判，需要一定时长才能计入总学时
             course_me_past = (
                 course_me_past
-                .exclude(year=20, semester=Semester.FALL, total_hours__lt=6)
-                .exclude(year=21, semester=Semester.SPRING, total_hours__lt=6)
-                .exclude(year=21, semester=Semester.FALL, total_hours__lt=8) # 21秋开始，需要至少8学时
-                .exclude(year__gt=21, total_hours__lt=8)
+                .exclude(year=2020, semester=Semester.FALL, total_hours__lt=6)
+                .exclude(year=2021, semester=Semester.SPRING, total_hours__lt=6)
+                .exclude(year=2021, semester=Semester.FALL, total_hours__lt=8) # 21秋开始，需要至少8学时
+                .exclude(year__gt=2021, total_hours__lt=8)
             )
 
             course_me_past = course_me_past.order_by('year', '-semester')
@@ -492,12 +470,17 @@ def stuinfo(request, name=None):
             )['total_hours__sum'] or 0)
 
             # 每个人的规定学时，按年级讨论
-            if int(oneself.stu_grade) <= 2018:
+            try:
+                # 本科生
+                if int(oneself.stu_grade) <= 2018:
+                    ruled_hours = 0
+                elif int(oneself.stu_grade) == 2019:
+                    ruled_hours = 32
+                else:
+                    ruled_hours = 64
+            except:
+                # 其它，如老师和住宿辅导员等
                 ruled_hours = 0
-            elif int(oneself.stu_grade) == 2019:
-                ruled_hours = 32
-            else:
-                ruled_hours = 64
 
             # 计算总学时
             total_hours_sum = sum(progress_list)
@@ -510,7 +493,7 @@ def stuinfo(request, name=None):
 
 
         # ------------------ 活动参与 ------------------ #
-        
+
         participants = Participant.objects.activated().filter(person_id=person)
         activities = Activity.objects.activated().filter(
             Q(id__in=participants.values("activity_id")),
@@ -660,6 +643,7 @@ def orginfo(request, name=None):
         # 下面是小组信息
 
         org = Organization.objects.activated().get(oname=name)
+        org_tags = org.tags.all()
 
     except:
         return redirect(message_url(wrong('该小组不存在!')))
@@ -1034,13 +1018,17 @@ def accountSetting(request):
 
             # 合法性检查
             attr_dict, show_dict, html_display = utils.check_account_setting(request, user_type)
-            attr_check_list = [attr for attr in attr_dict.keys() if attr not in ['gender', 'ava', 'wallpaper']]
+            attr_check_list = [attr for attr in attr_dict.keys() if attr not in ['gender', 'ava', 'wallpaper', 'accept_promote', 'wechat_receive_level']]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
             modify_info = []
             if attr_dict['gender'] != useroj.get_gender_display():
                 modify_info.append(f'gender: {useroj.get_gender_display()}->{attr_dict["gender"]}')
+            if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
+                modify_info.append(f'accept_promote: {useroj.get_accept_promote_display()}->{attr_dict["accept_promote"]}')
+            if attr_dict['wechat_receive_level'] != useroj.get_wechat_receive_level_display():
+                modify_info.append(f'wechat_receive_level: {useroj.get_wechat_receive_level_display()}->{attr_dict["wechat_receive_level"]}')
             if attr_dict['ava']:
                 modify_info.append(f'avatar: {attr_dict["ava"]}')
             if attr_dict['wallpaper']:
@@ -1054,6 +1042,10 @@ def accountSetting(request):
 
             if attr_dict['gender'] != useroj.gender:
                 useroj.gender = NaturalPerson.Gender.MALE if attr_dict['gender'] == '男' else NaturalPerson.Gender.FEMALE
+            if attr_dict['wechat_receive_level'] != useroj.wechat_receive_level:
+                useroj.wechat_receive_level = NaturalPerson.ReceiveLevel.MORE if attr_dict['wechat_receive_level'] == '接受全部消息' else NaturalPerson.ReceiveLevel.LESS
+            if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
+                useroj.accept_promote = True if attr_dict['accept_promote'] == '是' else False
             for attr in attr_check_list:
                 if attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]:
                     setattr(useroj, attr, attr_dict[attr])
@@ -1082,6 +1074,8 @@ def accountSetting(request):
 
         useroj = Organization.objects.get(organization_id=user)
         former_wallpaper = utils.get_user_wallpaper(me, "Organization")
+        org_tags = list(useroj.tags.all())
+        all_tags = list(OrganizationTag.objects.all())
         if request.method == "POST" and request.POST:
 
             ava = request.FILES.get("avatar")
@@ -1097,13 +1091,24 @@ def accountSetting(request):
                 modify_info.append(f'avatar: {ava}')
             if wallpaper:
                 modify_info.append(f'wallpaper: {wallpaper}')
-            modify_info += [f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}'
-                            for attr in attr_check_list
-                            if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr])]
+            attr = 'introduction'
+            if (attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]):
+                modify_info += [f'{attr}: {getattr(useroj, attr)}->{attr_dict[attr]}']
+            attr = 'tags_modify'
+            if attr_dict[attr] != "":
+                modify_info += [f'{attr}: {attr_dict[attr]}']
 
-            for attr in attr_check_list:
-                if getattr(useroj, attr) != attr_dict[attr] and attr_dict[attr] != "":
-                    setattr(useroj, attr, attr_dict[attr])
+            attr = 'introduction'
+            if attr_dict[attr] != "" and str(getattr(useroj, attr)) != attr_dict[attr]:
+                setattr(useroj, attr, attr_dict[attr])
+            if attr_dict['tags_modify'] != "":
+                for modify in attr_dict['tags_modify'].split(';'):
+                    if modify != "":
+                        action, tag_name = modify.split(" ")
+                        if action == 'add':
+                            useroj.tags.add(OrganizationTag.objects.get(name=tag_name))
+                        else:
+                            useroj.tags.remove(OrganizationTag.objects.get(name=tag_name))
             if ava is None:
                 pass
             else:
@@ -1778,17 +1783,17 @@ def saveSubscribeStatus(request):
                     return JsonResponse({"success":False})
                 for org in org_list:
                     me.unsubscribe_list.add(org)
-        elif "level" in params.keys():
-            try:
-                level = params['level']
-                assert level in ['less', 'more']
-            except:
-                return JsonResponse({"success":False})
-            me.wechat_receive_level = (
-                NaturalPerson.ReceiveLevel.MORE
-                if level == 'more' else
-                NaturalPerson.ReceiveLevel.LESS
-            )
+        # elif "level" in params.keys():
+        #     try:
+        #         level = params['level']
+        #         assert level in ['less', 'more']
+        #     except:
+        #         return JsonResponse({"success":False})
+        #     me.wechat_receive_level = (
+        #         NaturalPerson.ReceiveLevel.MORE
+        #         if level == 'more' else
+        #         NaturalPerson.ReceiveLevel.LESS
+        #     )
         me.save()
 
     return JsonResponse({"success": True})
@@ -1978,35 +1983,43 @@ def QAcenter(request):
     return render(request, "QandA_center.html", locals())
 
 
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(EXCEPT_REDIRECT, log=False)
 def eventTrackingFunc(request):
     # unpack request:
-    logTime = int(request.POST['Time'])
-    logTime = datetime.fromtimestamp(logTime/1000)
-    logUrl = request.POST['Url'] # 由于对PV/PD埋点的JavaScript脚本在base.html中实现，所以所有页面的PV/PD都会被track
     logType = int(request.POST['Type'])
-    logPlatform = request.POST['Platform']
-    logExploreName, logExploreVer = request.POST['Explore'].split()
+    logUrl = request.POST['Url']
+    try:
+        logTime = int(request.POST['Time'])
+        logTime = datetime.fromtimestamp(logTime / 1000)
+    except:
+        logTime = datetime.now()
+    # 由于对PV/PD埋点的JavaScript脚本在base.html中实现，所以所有页面的PV/PD都会被track
+    logPlatform = request.POST.get('Platform', None)
+    try:
+        logExploreName, logExploreVer = request.POST['Explore'].rsplit(maxsplit=1)
+    except:
+        logExploreName, logExploreVer = None, None
 
-    # modify the dataset
-    _, user_type, _ = utils.check_user_type(request.user)
-    me = get_person_or_org(request.user, user_type)
-    if isinstance(me, NaturalPerson):
-        me = me.person_id
-    else:
-        me = me.organization_id
-    
-    if logType in [2,3]: # 是Module类的埋点
-        logModuleName = request.POST['Name']
-        log = ModuleLog(Page=logUrl, ModuleName=logModuleName, Type=logType, Time=logTime, User=me, 
-            Platform=logPlatform, ExploreName=logExploreName, ExploreVer=logExploreVer)
-    else: # 是Page类的埋点
-        log = PageLog(Page=logUrl, Type=logType, Time=logTime, User=me,
-            Platform=logPlatform, ExploreName=logExploreName, ExploreVer=logExploreVer)
-    log.save()
-    
-    # pack response: 
-    response = json.dumps({
-        'status' : 'ok',
-    })
+    kwargs = {}
+    kwargs.update(
+        user=request.user,
+        type=logType,
+        page=logUrl,
+        time=logTime,
+        platform=logPlatform,
+        explore_name=logExploreName,
+        explore_version=logExploreVer,
+    )
+    if logType in ModuleLog.CountType.values:
+        # Module类埋点
+        kwargs.update(
+            module_name=request.POST['Name'],
+        )
+        ModuleLog.objects.create(**kwargs)
+    elif logType in PageLog.CountType.values:
+        # Page类的埋点
+        PageLog.objects.create(**kwargs)
 
-    return HttpResponse(response)
+    return JsonResponse({'status': 'ok'})

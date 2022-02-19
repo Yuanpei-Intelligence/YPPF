@@ -68,7 +68,7 @@ def get_person_or_org(user, user_type=None):
             return user.organization
     return (
         NaturalPerson.objects.get(person_id=user)
-        if user_type == "Person"
+        if user_type == UTYPE_PER
         else Organization.objects.get(organization_id=user)
     )
 
@@ -81,18 +81,18 @@ def check_user_type(user):
     if user.is_superuser or user.is_staff:
         if user.is_staff:
             for user_type, model_name in [
-                ("Organization", "organization"),
-                ("Person", "naturalperson"),
+                (UTYPE_ORG, "organization"),
+                (UTYPE_PER, "naturalperson"),
                 ]:
                 if hasattr(user, model_name):
                     html_display["user_type"] = user_type
                     return True, user_type, html_display
         return False, "", html_display
     if user.username[:2] == "zz":
-        user_type = "Organization"
+        user_type = UTYPE_ORG
         html_display["user_type"] = user_type
     else:
-        user_type = "Person"
+        user_type = UTYPE_PER
         html_display["user_type"] = user_type
 
     return True, user_type, html_display
@@ -104,7 +104,7 @@ def get_user_ava(obj, user_type):
     except:
         ava = ""
     if not ava:
-        if user_type == "Person":
+        if user_type == UTYPE_PER:
             return MEDIA_URL + "avatar/person_default.jpg"
         else:
             return MEDIA_URL + "avatar/org_default.png"
@@ -113,7 +113,7 @@ def get_user_ava(obj, user_type):
 
 
 def get_user_wallpaper(person, user_type):
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         return MEDIA_URL + (str(person.wallpaper) or "wallpaper/person_wall_default.jpg")
     else:
         return MEDIA_URL + (str(person.wallpaper) or "wallpaper/org_wall_default.jpg")
@@ -214,6 +214,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     else:
         bar_display["profile_name"] = "小组主页"
         bar_display["profile_url"] = "/orginfo/"
+        bar_display["is_course"] = me.otype.otype_name == COURSE_TYPENAME
 
     bar_display["navbar_name"] = navbar_name
     # title_name默认与navbar_name相同
@@ -273,6 +274,8 @@ def url_check(arg_url):
     log.operation_writer(SYSTEM_LOG, f'URL检查不合格: {arg_url}', 'utils[url_check]', log.STATE_WARNING)
     return False
 
+def url2site(url):
+    return urllib.parse.urlparse(url).netloc
 
 def site_match(site, url, path_check_level=0, scheme_check=False):
     '''检查是否是同一个域名，也可以检查路径是否相同
@@ -293,11 +296,57 @@ def site_match(site, url, path_check_level=0, scheme_check=False):
             return False
     return True
 
+
+def get_std_url(arg_url: str, site_url: str, path_dir=None, match_func=None):
+    '''
+    检查是否匹配，返回(is_match, standard_url)，匹配时规范化url，否则返回原url
+
+    Args
+    ----
+    - arg_url: 需要判断的url或者None，后者返回(False, site_url)
+    - site_url: 规范的网址，其scheme, netloc和path部分被用于参考
+    - path_dir: 需要保持一致的路径部分，默认为空
+    - match_func: 检查匹配的函数，默认为site_match(site_url, arg_url)
+    '''
+    if match_func is None:
+        match_func = lambda x: site_match(site_url, x)
+
+    if arg_url is None:
+        return False, site_url
+
+    if match_func(arg_url):
+        site_parse = urllib.parse.urlparse(site_url)
+        arg_parse = urllib.parse.urlparse(arg_url)
+        
+        def in_dir(path, path_dir):
+            return path.startswith(path_dir) or path == path_dir.rstrip('/')
+        
+        std_path = arg_parse.path
+        if path_dir:
+            if (in_dir(site_parse.path, path_dir) and not in_dir(std_path, path_dir)):
+                std_path = path_dir.rstrip('/') + std_path
+            elif (not in_dir(site_parse.path, path_dir) and in_dir(std_path, path_dir)):
+                std_path = std_path.split(path_dir.rstrip('/'), 1)[1]
+    
+        std_parse = [
+            site_parse.scheme,
+            site_parse.netloc,
+            std_path,
+            arg_parse.params,
+            arg_parse.query,
+            arg_parse.fragment,
+        ]
+        arg_url = urllib.parse.urlunparse(std_parse)
+        return True, arg_url
+    return False, arg_url
+
+
 def get_std_underground_url(underground_url):
     '''检查是否是地下室网址，返回(is_underground, standard_url)
     - 如果是，规范化网址，否则返回原URL
     - 如果参数为None，返回URL为地下室网址'''
     site_url = local_dict["url"]["base_url"]
+    return get_std_url(underground_url, site_url)
     if underground_url is None:
         underground_url = site_url
     if site_match(site_url, underground_url):
@@ -312,6 +361,11 @@ def get_std_inner_url(inner_url):
     - 如果是，规范化网址，否则返回原URL
     - 如果参数为None，返回URL为主页相对地址'''
     site_url = LOGIN_URL
+    return get_std_url(
+        inner_url, '/welcome/',
+        match_func=lambda x: (site_match(site_url, x)
+                           or site_match('', x, scheme_check=True)),
+    )
     if inner_url is None:
         inner_url = '/welcome/'
     if site_match(site_url, inner_url):
@@ -325,16 +379,13 @@ def get_std_inner_url(inner_url):
 
 # 允许进行 cross site 授权时，return True
 def check_cross_site(request, arg_url):
-    if arg_url is None:
-        return True
-    # 这里 base_url 最好可以改一下
-    appointment = local_dict["url"]["base_url"]
-    appointment_base = re.findall("^https?://([^/]*)/", appointment)[0]
-    appointment_base = f"^https?://{appointment_base}/"
-    if re.match(appointment_base, arg_url):
-        valid, user_type, html_display = check_user_type(request.user)
-        if not valid or user_type == "Organization":
-            return False
+    netloc = url2site(arg_url)
+    if netloc not in [
+        '',  # 内部相对地址
+        url2site(local_dict["url"]["base_url"]),  # 地下室
+        url2site(LOGIN_URL),  # yppf
+    ]:
+        return False
     return True
 
 
@@ -489,6 +540,8 @@ def check_account_setting(request, user_type):
         attr_dict['ava'] = request.FILES.get("avatar")
         attr_dict['gender'] = request.POST['gender']
         attr_dict['birthday'] = request.POST['birthday']
+        attr_dict['accept_promote'] = request.POST['accept_promote']
+        attr_dict['wechat_receive_level'] = request.POST['wechat_receive_level']
         attr_dict['wallpaper'] = request.FILES.get("wallpaper")
 
         show_dict = dict()
@@ -525,6 +578,7 @@ def check_account_setting(request, user_type):
         html_display['warn_code'] = 0
         html_display['warn_message'] = ""
         attr_dict['introduction'] = request.POST['introduction']
+        attr_dict['tags_modify'] = request.POST['tags_modify']
     return attr_dict, show_dict, html_display
 
 #获取未报销的活动
