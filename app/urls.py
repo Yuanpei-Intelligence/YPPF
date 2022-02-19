@@ -95,6 +95,9 @@ urlpatterns = [
     path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
     path("showCourseRecord/", course_views.showCourseRecord, name="showCourseRecord"),
 ] + [
+    # 反馈中心
+    path("feedback/", feedback_views.feedbackWelcome, name="feadbackWelcome")
+] + [
     # 数据导入
     path("loadstudata/", data_import.load_stu_data, name="load_stu_data"),
     path("loadfreshman/", data_import.load_freshman_info, name="load_freshman"),

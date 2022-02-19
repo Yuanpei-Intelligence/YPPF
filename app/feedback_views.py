@@ -3,6 +3,12 @@ from app.models import (
     Feedback,
     NaturalPerson,
     Organization,
+    OrganizationType,
+    Feedback,
+    FeedbackType,
+)
+from app.utils import (
+    get_person_or_org,
 )
 from app.comment_utils import addComment, showComment
 from django.db import transaction
@@ -185,3 +191,22 @@ def viewFeedback(request, fid):
     title = feedback.title
     comments = showComment(feedback)
     return render(request, "feedback_info.html", locals())
+
+
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(source='feedback_views[feedbackWelcome]', record_user=True)
+def feedbackWelcome(request):
+    '''
+    【我要留言】的初始化页面，呈现反馈提醒、选择反馈类型
+    '''
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = get_person_or_org(request.user)
+    my_messages.transfer_message_context(request.GET, html_display)
+
+    feedback_type_list = list(FeedbackType.objects.all())
+    
+    bar_display = utils.get_sidebar_and_navbar(
+        request.user, navbar_name="我要留言"
+    )
+    return render(request, "feedback_welcome.html", locals())
