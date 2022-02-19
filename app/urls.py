@@ -95,6 +95,9 @@ urlpatterns = [
     path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
     path("showCourseRecord/", course_views.showCourseRecord, name="showCourseRecord"),
 ] + [
+    # 反馈中心
+    path("feedback/", feedback_views.feedbackWelcome, name="feadbackWelcome")
+] + [
     # 数据导入
     path("loadstudata/", data_import.load_stu_data, name="load_stu_data"),
     path("loadfreshman/", data_import.load_freshman_info, name="load_freshman"),
@@ -114,10 +117,11 @@ urlpatterns = [
     path("loadhelp/", data_import.load_help, name="load_help"),
     path("loadcourecord/", data_import.load_CouRecord,  name="load_cou_record"),
 ] + [
-    path("feedbackinit/", feedback_views.feedbackWelcome, name="feadback_welcome")
-] + [
     # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
+] + [
+    # 反馈中心
+    path("modifyFeedback/", feedback_views.modifyFeedback, name="modifyFeedback"),
 ]
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
