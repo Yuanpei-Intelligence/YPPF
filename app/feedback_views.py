@@ -9,11 +9,34 @@ from app.models import (
 from app.utils import (
     get_person_or_org,
 )
-
 from app.feedback_utils import (
     update_feedback,
     make_relevant_notification,
 )
+
+__all__ = [
+    'feedbackWelcome',
+    'modifyFeedback',
+]
+
+
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(source='feedback_views[feedbackWelcome]', record_user=True)
+def feedbackWelcome(request):
+    '''
+    【我要留言】的初始化页面，呈现反馈提醒、选择反馈类型
+    '''
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = get_person_or_org(request.user)
+    my_messages.transfer_message_context(request.GET, html_display)
+
+    feedback_type_list = list(FeedbackType.objects.all())
+    
+    bar_display = utils.get_sidebar_and_navbar(
+        request.user, navbar_name="我要留言"
+    )
+    return render(request, "feedback_welcome.html", locals())
 
 
 @login_required(redirect_field_name='origin')
@@ -32,12 +55,10 @@ def modifyFeedback(request):
     feedback_type = "书院课程反馈"
 
     # 根据是否有newid来判断是否是第一次
-    feedback_id = request.GET.get("feedback_id", None)
+    feedback_id = request.GET.get("feedback_id")
 
     # 获取前端页面中可能存在的提示
-    if request.GET.get("warn_code", None) is not None:
-        html_display["warn_code"] = int(request.GET.get("warn_code"))
-        html_display["warn_message"] = request.GET.get("warn_message")
+    my_messages.transfer_message_context(request.GET, html_display)
 
     if feedback_id is not None: # 如果存在对应反馈
         try:   # 尝试读取已有的Feedback存档
@@ -45,11 +66,7 @@ def modifyFeedback(request):
             # 接下来检查是否有权限check这个条目，应该是本人/对应组织
             assert (feedback.person == me) or (feedback.org == me)
         except: #恶意跳转
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "您没有权限访问该网址！"
-            return redirect("/welcome/" +
-                            "?warn_code=1&warn_message={warn_message}".format(
-                                warn_message=html_display["warn_message"]))
+            return redirect(message_url(wrong("您没有权限访问该网址！")))
         is_new_feedback = False # 前端使用量, 表示是已有的反馈还是新的
 
     else:
@@ -78,15 +95,17 @@ def modifyFeedback(request):
                 if request.POST.get('post_type') in feasible_post:
                     make_relevant_notification(feedback, request.POST, me)
             except:
-                raise NotImplementedError("返回了未知类型的post_type，请注意检查！")
+                return redirect(message_url(
+                                wrong("返回了未知类型的post_type，请注意检查！"),
+                                request.path))
 
         elif context["warn_code"] != 1: # 没有返回操作提示
-            raise NotImplementedError("在处理反馈中出现了未预见状态，请联系管理员处理！")
+            return redirect(message_url(
+                            wrong("在处理反馈中出现了未预见状态，请联系管理员处理！"),
+                            request.path))
 
         # 准备用户提示量
-        html_display["warn_code"] = context["warn_code"]
-        html_display["warn_message"] = context["warn_message"]
-        warn_code, warn_message = context["warn_code"], context["warn_message"]
+        my_messages.transfer_message_context(context, html_display)
 
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
         if feedback is None:
@@ -181,22 +200,3 @@ def modifyFeedback(request):
         request.user, navbar_name="填写反馈" if is_new_feedback else "反馈详情"
     )
     return render(request, "modify_feedback.html", locals())
-
-
-@login_required(redirect_field_name='origin')
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='feedback_views[feedbackWelcome]', record_user=True)
-def feedbackWelcome(request):
-    '''
-    【我要留言】的初始化页面，呈现反馈提醒、选择反馈类型
-    '''
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    me = get_person_or_org(request.user)
-    my_messages.transfer_message_context(request.GET, html_display)
-
-    feedback_type_list = list(FeedbackType.objects.all())
-    
-    bar_display = utils.get_sidebar_and_navbar(
-        request.user, navbar_name="我要留言"
-    )
-    return render(request, "feedback_welcome.html", locals())
