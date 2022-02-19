@@ -2,12 +2,13 @@ from app.views_dependency import *
 from app.models import (
     Organization,
     OrganizationType,
-    FeedbackType,
     Feedback,
+    FeedbackType,
 )
 from app.utils import (
     get_person_or_org,
 )
+
 
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
@@ -18,6 +19,7 @@ def feedbackWelcome(request):
     '''
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user)
+    my_messages.transfer_message_context(request.GET, html_display)
 
     feedback_type_list = list(FeedbackType.objects.all())
     
