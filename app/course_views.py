@@ -621,14 +621,15 @@ def downloadCourseRecord(me):
     '''
     year = CURRENT_ACADEMIC_YEAR
     semester = Semester.now()
-    course = Course.objects.activated().filter(organization = me)
-    if not course.exists():
+    try:
+        course = Course.objects.activated().get(organization = me)
+    except:
         return redirect(message_url(wrong('未查询到相应课程，请联系管理员。')))
 
     records = CourseRecord.objects.filter(
         year = year,
         semester = semester,
-        course = course[0],
+        course = course,
     )
     if not records.exists():
         return redirect(message_url(wrong('未查询到相应课程记录，请联系管理员。')))
@@ -637,18 +638,19 @@ def downloadCourseRecord(me):
     wb.encoding = 'utf-8'
     sheet1 = wb.active	# 获取第一个工作表（sheet1）
     sheet1.title = str(me.oname) 	# 给工作表1设置标题
-    row_one = ['姓名','年级','次数','学时']
-    for i in range(1, len(row_one)+1):	# 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
-        sheet1.cell(row=1, column=i).value=row_one[i-1]
+    sheet_header = ['姓名','年级','次数','学时']
+    for i in range(len(sheet_header)):	# 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
+        sheet1.cell(row=1, column=i+1).value=sheet_header[i]
+    max_row = sheet1.max_row
     for record in records:
-        max_row = sheet1.max_row + 1	# 获取到工作表的最大行数并加1
+        max_row += 1
         record_info = [
             record.person.name, 
             str(record.person.person_id), 
             record.attend_times, 
             record.total_hours ]
-        for x in range(1, len(record_info)+1):		# 将每一个对象的所有字段的信息写入一行内
-            sheet1.cell(row=max_row, column=x).value = record_info[x-1]
+        for x in range(len(record_info)):		# 将每一个对象的所有字段的信息写入一行内
+            sheet1.cell(row=max_row, column=x+1).value = record_info[x]
             
     output = BytesIO()
     wb.save(output)	 # 将Excel文件内容保存到IO中
