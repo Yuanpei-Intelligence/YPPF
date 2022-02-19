@@ -342,20 +342,20 @@ def remaining_willingness_point(user):
     计算剩余的意愿点
     """
     raise NotImplementedError("暂时不使用意愿点")
-    # 当前用户已经预选的课
-    # 由于participant可能为空，重新启用的时候注意修改代码
-    courses = Course.objects.filter(
-        participant_set__person=user,
-        participant_set__status=CourseParticipant.Status.SELECT)
+    # # 当前用户已经预选的课
+    # # 由于participant可能为空，重新启用的时候注意修改代码
+    # courses = Course.objects.filter(
+    #     participant_set__person=user,
+    #     participant_set__status=CourseParticipant.Status.SELECT)
 
-    initial_point = 99  # 初始意愿点
-    cost_point = courses.aggregate(Sum('bidding'))  # 已经使用的意愿点
+    # initial_point = 99  # 初始意愿点
+    # cost_point = courses.aggregate(Sum('bidding'))  # 已经使用的意愿点
 
-    if cost_point:
-        # cost_point可能为None
-        return initial_point - cost_point['bidding__sum']
-    else:
-        return initial_point
+    # if cost_point:
+    #     # cost_point可能为None
+    #     return initial_point - cost_point['bidding__sum']
+    # else:
+    #     return initial_point
 
 
 def registration_status_check(course_status, cur_status, to_status):
@@ -788,6 +788,7 @@ def change_course_status(cur_status, to_status):
                         position = Position(person=participant.person,
                                             org=organization,
                                             in_semester=Semester.now())
+                        
                         positions.append(position)
                 if positions:
                     with transaction.atomic():
