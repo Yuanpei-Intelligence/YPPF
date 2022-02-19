@@ -115,14 +115,9 @@ def create_single_course_activity(request):
     except Exception as e:
         return str(e), False
 
-    # 获取组织
+    # 获取组织和课程
     org = get_person_or_org(request.user, "Organization")
-
-    # 检查是否已经开课
-    try:
-        course = Course.objects.activated().get(organization=org)
-    except:
-        return "本学期尚未开设书院课程，请先发起选课！", False
+    course = Course.objects.activated().get(organization=org)
 
     # 查找是否有类似活动存在
     old_ones = Activity.objects.activated().filter(
