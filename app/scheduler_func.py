@@ -53,6 +53,7 @@ __all__ = [
     'get_weather',
     'update_active_score_per_day',
     'longterm_launch_course',
+    'public_feedback_per_day',
 ]
 
 
@@ -292,12 +293,13 @@ def public_feedback_per_day():
     time = datetime.now() - timedelta(days=1)
     with transaction.atomic():
         Feedback.objects.filter(
-            issue_status=ISSUED,
-            public_status=PRIVATE,
+            issue_status=Feedback.IssueStatus.ISSUED,
+            public_status=Feedback.PublicStatus.PRIVATE,
             publisher_public=True,
             org_public=True,
             public_time__lte=time,
-        ).select_for_update().update(public_status=PUBLIC)
+        ).select_for_update().update(
+            public_status=Feedback.PublicStatus.PUBLIC)
 
 
 def start_scheduler(with_scheduled_job=True, debug=False):
@@ -347,7 +349,7 @@ def start_scheduler(with_scheduled_job=True, debug=False):
             current_job = "feedback_public_updater"
             if debug: print(f"adding scheduled job '{current_job}'")
             scheduler.add_job(public_feedback_per_day,
-                              "interval",
+                              "cron",
                               id=current_job,
                               hour=1,
                               replace_existing=True)
