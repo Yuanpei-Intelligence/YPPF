@@ -719,7 +719,6 @@ class CourseAdmin(admin.ModelAdmin):
     list_display = [
         "name",
         "organization",
-        "bidding",
         "current_participants",
     ]
 
