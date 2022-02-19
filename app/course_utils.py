@@ -140,10 +140,8 @@ def create_single_course_activity(request):
 
     # 获取活动所属课程的图片，用于viewActivity, examineActivity等页面展示
     try:
-        pic = str(course.photo)
+        pic = course.get_photo_path()
         assert pic is not None
-        if pic[0] == 'c': # 表明是用户上传的图片而非默认图片
-            pic = MEDIA_URL + pic
     except:
         return "获取课程图片失败", False
 
