@@ -17,6 +17,7 @@ __all__ = [
 ]
 
 
+
 def check_feedback(request, post_type):
     '''返回feedback的context字典，如果是提交反馈则检查feedback参数的合法性'''
     context = dict()
