@@ -25,7 +25,7 @@ admin.site.register(College_Announcement)
 class ParticipantAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
-    search_fields = ('Sid_id', 'name', 'pinyin')
+    search_fields = ('Sid__username', 'name', 'pinyin')
     list_display = ('Sid', 'name', 'credit')
     list_display_links = ('Sid', 'name')
     list_editable = ('credit', )
