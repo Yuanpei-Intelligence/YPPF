@@ -290,13 +290,8 @@
 
                                                 {% for pic in defaultpics %}
                                                 <div class="col-xl-4 col-lg-4 col-md-4 mb-5">
-                                                    {% if pic.id == "picture1" %}
                                                     <input class="form-check-input" type="checkbox" value={{pic.src}}
-                                                        id={{pic.id}} name={{pic.id}} checked="checked">
-                                                    {% else %}
-                                                    <input class="form-check-input" type="checkbox" value={{pic.src}}
-                                                        id={{pic.id}} name={{pic.id}}>
-                                                    {% endif %}
+                                                        id={{pic.id}} name={{pic.id}} {% if forloop.first %} checked {% endif %} >
                                                     <label class="form-check-label" for="defaultCheck1">
                                                         <img src={{pic.src}} class="img-fluid">
                                                     </label>
