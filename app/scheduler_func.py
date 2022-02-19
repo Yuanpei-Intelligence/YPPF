@@ -192,7 +192,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
     # 当前课程在学期已举办的活动
     conducted_num = Activity.objects.activated().filter(
         organization_id=course.organization,
-        status=Activity.ActivityCategory.COURSE).count()
+        category=Activity.ActivityCategory.COURSE).count()
     # 发起活动，并设置报名
     with transaction.atomic():
         week_time = CourseTime.objects.select_for_update().get(id=weektime_id)

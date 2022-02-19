@@ -471,12 +471,17 @@ def stuinfo(request, name=None):
             )['total_hours__sum'] or 0)
 
             # 每个人的规定学时，按年级讨论
-            if int(oneself.stu_grade) <= 2018:
+            try:
+                # 本科生
+                if int(oneself.stu_grade) <= 2018:
+                    ruled_hours = 0
+                elif int(oneself.stu_grade) == 2019:
+                    ruled_hours = 32
+                else:
+                    ruled_hours = 64
+            except:
+                # 其它，如老师和住宿辅导员等
                 ruled_hours = 0
-            elif int(oneself.stu_grade) == 2019:
-                ruled_hours = 32
-            else:
-                ruled_hours = 64
 
             # 计算总学时
             total_hours_sum = sum(progress_list)
@@ -1014,7 +1019,7 @@ def accountSetting(request):
 
             # 合法性检查
             attr_dict, show_dict, html_display = utils.check_account_setting(request, user_type)
-            attr_check_list = [attr for attr in attr_dict.keys() if attr not in ['gender', 'ava', 'wallpaper', 'accept_promote']]
+            attr_check_list = [attr for attr in attr_dict.keys() if attr not in ['gender', 'ava', 'wallpaper', 'accept_promote', 'wechat_receive_level']]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
@@ -1023,6 +1028,8 @@ def accountSetting(request):
                 modify_info.append(f'gender: {useroj.get_gender_display()}->{attr_dict["gender"]}')
             if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
                 modify_info.append(f'accept_promote: {useroj.get_accept_promote_display()}->{attr_dict["accept_promote"]}')
+            if attr_dict['wechat_receive_level'] != useroj.get_wechat_receive_level_display():
+                modify_info.append(f'wechat_receive_level: {useroj.get_wechat_receive_level_display()}->{attr_dict["wechat_receive_level"]}')
             if attr_dict['ava']:
                 modify_info.append(f'avatar: {attr_dict["ava"]}')
             if attr_dict['wallpaper']:
@@ -1036,6 +1043,8 @@ def accountSetting(request):
 
             if attr_dict['gender'] != useroj.gender:
                 useroj.gender = NaturalPerson.Gender.MALE if attr_dict['gender'] == '男' else NaturalPerson.Gender.FEMALE
+            if attr_dict['wechat_receive_level'] != useroj.wechat_receive_level:
+                useroj.wechat_receive_level = NaturalPerson.ReceiveLevel.MORE if attr_dict['wechat_receive_level'] == '接受全部消息' else NaturalPerson.ReceiveLevel.LESS
             if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
                 useroj.accept_promote = True if attr_dict['accept_promote'] == '是' else False
             for attr in attr_check_list:
@@ -1775,17 +1784,17 @@ def saveSubscribeStatus(request):
                     return JsonResponse({"success":False})
                 for org in org_list:
                     me.unsubscribe_list.add(org)
-        elif "level" in params.keys():
-            try:
-                level = params['level']
-                assert level in ['less', 'more']
-            except:
-                return JsonResponse({"success":False})
-            me.wechat_receive_level = (
-                NaturalPerson.ReceiveLevel.MORE
-                if level == 'more' else
-                NaturalPerson.ReceiveLevel.LESS
-            )
+        # elif "level" in params.keys():
+        #     try:
+        #         level = params['level']
+        #         assert level in ['less', 'more']
+        #     except:
+        #         return JsonResponse({"success":False})
+        #     me.wechat_receive_level = (
+        #         NaturalPerson.ReceiveLevel.MORE
+        #         if level == 'more' else
+        #         NaturalPerson.ReceiveLevel.LESS
+        #     )
         me.save()
 
     return JsonResponse({"success": True})

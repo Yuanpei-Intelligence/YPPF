@@ -9,7 +9,7 @@ from django.db import transaction  # 原子化更改数据库
 from Appointment.utils.scheduler_func import addAppoint, scheduler
 import Appointment.utils.scheduler_func as scheduler_func
 from Appointment.utils.utils import operation_writer, send_wechat_message
-from Appointment import global_info
+from Appointment import *
 
 
 import pypinyin
@@ -25,7 +25,7 @@ admin.site.register(College_Announcement)
 class ParticipantAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
-    search_fields = ('Sid_id', 'name', 'pinyin')
+    search_fields = ('Sid__username', 'name', 'pinyin')
     list_display = ('Sid', 'name', 'credit')
     list_display_links = ('Sid', 'name')
     list_editable = ('credit', )
@@ -272,7 +272,7 @@ class AppointAdmin(admin.ModelAdmin):
                                                 ],
                                           id=f'{appoint.Aid}_confirm_admin_wechat',
                                           next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
-                        operation_writer(global_info.system_log, str(appoint.Aid)+"号预约被管理员从WAITING改为CONFIRMED" +
+                        operation_writer(SYSTEM_LOG, str(appoint.Aid)+"号预约被管理员从WAITING改为CONFIRMED" +
                                  "发起人："+str(appoint.major_student), "admin.confirm", "OK")
                     elif appoint.Astatus == Appoint.Status.VIOLATED:
                         appoint.Astatus = Appoint.Status.JUDGED
@@ -298,7 +298,7 @@ class AppointAdmin(admin.ModelAdmin):
                                                 ],
                                           id=f'{appoint.Aid}_confirm_admin_wechat',
                                           next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
-                        operation_writer(global_info.system_log, str(appoint.Aid)+"号预约被管理员从VIOLATED改为JUDGED" +
+                        operation_writer(SYSTEM_LOG, str(appoint.Aid)+"号预约被管理员从VIOLATED改为JUDGED" +
                                  "发起人："+str(appoint.major_student), "admin.confirm", "OK")
 
                     else:  # 不允许更改
@@ -362,7 +362,7 @@ class AppointAdmin(admin.ModelAdmin):
                                         ],
                                   id=f'{appoint.Aid}_violate_admin_wechat',
                                   next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
-                operation_writer(global_info.system_log, str(
+                operation_writer(SYSTEM_LOG, str(
                     appoint.Aid)+"号预约被管理员设为违约"+"发起人："+str(appoint.major_student), "admin.violate", "OK")
         except:
             return self.message_user(request=request,
@@ -401,7 +401,7 @@ class AppointAdmin(admin.ModelAdmin):
                 if datetime.now() < start:              # 如果未开始，修改开始提醒
                     scheduler_func.set_start_wechat(appoint, notify_new=False)
             except Exception as e:
-                operation_writer(global_info.system_log,
+                operation_writer(SYSTEM_LOG,
                                  "出现更新定时任务失败的问题: " + str(e),
                                  "admin.longterm",
                                  "Error")
@@ -474,7 +474,7 @@ class AppointAdmin(admin.ModelAdmin):
                         newappoint.save()
                         '''
             except Exception as e:
-                operation_writer(global_info.system_log, "学生" + str(appoint.major_student) +
+                operation_writer(SYSTEM_LOG, "学生" + str(appoint.major_student) +
                                  "出现添加长线化预约失败的问题:"+str(e), "admin.longterm", "Problem")
                 return self.message_user(request=request,
                                          message=str(e),
