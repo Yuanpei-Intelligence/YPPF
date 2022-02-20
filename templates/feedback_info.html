@@ -105,6 +105,8 @@
                     <textarea name="content" class="form-control" rows="6" placeholder="反馈内容不能为空~" {% if not is_new_feedback %}disabled="disabled"{% endif %}>{% if not is_new_feedback %}{{feedback.content}}{% endif %}</textarea>
                   </div>
 
+
+
                   {% if is_new_feedback %}
                   <div class="form-group">
                     <label for="aintro">是否同意公开
@@ -114,7 +116,7 @@
                         </svg>
                       </a>
                     </label>
-                    <select class="form-control" id="publisher_public" name="publisher_public" onchange="public_confirm.call(this)">
+                    <select class="form-control selectpicker" data-live-search = "true" id="publisher_public" name="publisher_public" onchange="public_confirm.call(this)">
                       <option value="public">公开反馈</option>
                       <option value="private" selected>隐藏反馈</option>
                     </select>
@@ -123,16 +125,18 @@
                   {% if read_editable %}
                   <div class="form-group">
                     <label for="aintro">标记已读状态</label>
-                    <select class="form-control" id="read" name="read_status" onchange="read_confirm.call(this)">
-                      <option value="unread" {%if read == "未读" %}selected{%endif%}>未读</option>
-                      <option value="read" {%if read == "已读" %}selected{%endif%}>已读</option>
+                    <select class="form-control selectpicker" id="read" name="read_status" onchange="read_confirm()">
+                      <div class="dropdown-menu">
+                        <option value="unread" {%if read == "未读" %}selected{%endif%}>未读</option>
+                        <option value="read" {%if read == "已读" %}selected{%endif%}>已读</option>
+                      </div>
                     </select>
                   </div>
                   {% endif %}
                   {% if solve_editable %}
                   <div class="form-group">
                     <label for="aintro">标记解决状态</label>
-                    <select class="form-control" id="solve" name="solve_status" onchange="read_confirm.call(this)">
+                    <select class="form-control selectpicker" id="solve" name="solve_status" onchange="read_confirm.call(this)">
                       <option value="solving" {%if solve == "解决中" %}selected{%endif%}>解决中</option>
                       <option value="solve" {%if solve == "已解决" %}selected{%endif%}>已解决</option>
                       <option value="unsolvable" {%if solve == "无法解决" %}selected{%endif%}>无法解决</option>
@@ -168,9 +172,9 @@
                       </a>
                     </label>
                     {% endif %}
-                    <select class="form-control" id="publisher_public" name="public_status" onchange="public_confirm.call(this)">
-                      <option value="public" {%if public%}select{%endif%}>公开反馈</option>
-                      <option value="private" {%if not public%}select{%endif%}>{%if login_identity == "teacher"%}强制{%endif%}隐藏反馈</option>
+                    <select class="form-control selectpicker" data-live-search="true" id="publisher_public" name="public_status" onchange="public_confirm">
+                      <option value="private" select>{%if login_identity == "teacher"%}强制{%endif%}隐藏反馈</option>
+                      <option value="public">公开反馈</option>
                     </select>
                   </div>
                   {% endif %}
@@ -216,29 +220,40 @@
 <script src={% static "plugins/dropify/dropify.min.js" %}></script>
 <script src={% static "assets/js/users/account-settings.js" %}></script>
 <script>
-  function public_confirm() {
-    if (this.value == "public")
-      if (!confirm("是否同意公开？个人和小组均同意公开后，该反馈将向所有人公开~"))
-        this.value = "private";
-  }
+  function type_change() {
+    var selector = document.getElementById('apply_type');
+    if ("退出小组" === selecter.value) {
+      document.getElementById('position_group').hidden = true;
+    } else {
+      document.getElementById('position_group').hidden = false;
+      // document.getElementById('maxpeople').placeholder = "";
+    }
+  };
+  type_change(); // 渲染的时候就需要调用一下
   function read_confirm() {
+    document.feedback.solve_status.hidden = true;
     if (this.value == "read") {
       if (!confirm("确认修改反馈状态为已读？")) {
         this.value = "unread";
       }
     }
   }
+  function public_confirm() {
+    if (this.value == "public")
+      if (!confirm("是否同意公开？个人和小组均同意公开后，该反馈将向所有人公开~"))
+        this.value = "private";
+  }
   function change_org_list() {
-      var all_orgs = document.getElementById('org')
-      var all_org_list = {{all_org_list|safe}};
-      all_orgs.innerHTML = '';
-      for (i = 0; i < all_org_list.length; i += 1) {
-          if (all_org_list[i][0] == this.value) {
-              for (j = 1; j < all_org_list[i].length; j += 1){
-                  all_orgs.add(create_option(all_org_list[i][j]),null);
-              }
-          }
+    var all_orgs = document.getElementById('org')
+    var all_org_list = {{all_org_list|safe}};
+    all_orgs.innerHTML = '';
+    for (i = 0; i < all_org_list.length; i += 1) {
+      if (all_org_list[i][0] == this.value) {
+        for (j = 1; j < all_org_list[i].length; j += 1){
+          all_orgs.add(create_option(all_org_list[i][j]),null);
+        }
       }
+    }
   }
   function create_option(name) {
       var opt = document.createElement("OPTION");
