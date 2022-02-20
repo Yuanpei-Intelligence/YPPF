@@ -18,9 +18,6 @@
     text-align: right!important;
 }
 </style>
-{% endblock %}
-
-{% block mainpage %}
 <style>
     select[readonly] {
         background: #eee;
@@ -29,6 +26,9 @@
         touch-action: none;
     }
 </style>
+{% endblock %}
+
+{% block mainpage %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -48,34 +48,50 @@
                 <div class="bio layout-spacing">
                     <div class="widget-content widget-content-area" id="feedback-welcome">
                         <div class="pricing-header px-3 py-3 pb-md-4 mx-auto text-center">
-                            <h1 class="display-4 my-4 mb-4">元培生活</h1>
-                            <h1>问答反馈中心</h1>
-                            <h4 class="lead mb-2">欢迎你来到这里。</h4>
-                            <h4 class="lead">这是学生权益诉求的集中地，也是信息交流的便捷平台，在这里我们用共同关心搭建共同生活的家园。</h4>
+                            <!-- <h1 class="display-4 my-4 mb-4">元培生活</h1> -->
+                            <h4 class="text-center mb-4">问答反馈中心</h4>
+                            <h6>欢迎你来到这里。</h6>
+                            <h6>这是学生权益诉求的集中地，也是信息交流的便捷平台，在这里我们用共同关心搭建共同生活的家园。</h6>
                             </br>
                             <h6>如果你在学习与生活中产生困惑，无法凭借自己一个人的力量解决；</h6>
                             <h6>在对宿舍楼、地下室的硬件设施的使用中遇到问题；</h6>
                             <h6>对改善公共空间环境、改进学生组织工作有好的意见与想法；</h6>
-                            <h6>或是有其他想要和组织迫切交流的观点；</h6>
+                            <h6>或是有其他想要和组织迫切交流的观点：</h6>
                             <h6>都可以点击下方“我要留言”向组织反馈~</h6>
                             </br>
-                            <h4 class="lead my-2 mb-2">只要有需求，就能有回应，希望在互动交流里，我们的共同生活能趋向更好的平衡。</h4>
+                            <h6 class="my-0 mb-2">只要有需求，就能有回应，希望在互动交流里，我们的共同生活能趋向更好的平衡。</h6>
                         </div>
-                        <!-- <h3></h3> -->
-                        <!-- <div class="container">
-                            <div class="card-columns">
-                                {% for feedback_type in feedback_type_list %}
-                                <div class="card text-center mb-4">
-                                    <div class="card-header">
-                                        <h6 class="my-0 font-weight-normal">{{feedback_type.name}}</h6>
-                                    </div>
-                                    <div class="card-body">
-                                        <button type="button" class="btn btn-block btn-outline-primary">我要留言</button>
+                        <div class="container pb-2">
+                            <div class="row">
+                                <div class="col-12 col-lg-12 col-md-6">
+                                    <div class="card text-center mb-4">
+                                        <div class="card-header">
+                                            <h6 class="my-0 font-weight-normal">权益反馈</h6>
+                                        </div>
+                                        <a href="/modifyFeedback/">
+                                            <div class="card-body">
+                                                <button type="button" class="btn btn-block btn-outline-primary" 
+                                                    onclick="">我要留言</button>
+                                            </div>
+                                        </a>
                                     </div>
                                 </div>
-                                {% endfor %}
+                                <div class="col-12 col-lg-12 col-md-6">
+                                    <div class="card text-center mb-4">
+                                        <div class="card-header">
+                                            <h6 class="my-0 font-weight-normal">学术反馈</h6>
+                                        </div>
+                                        <a href="/modifyFeedback/">
+                                            <div class="card-body">
+                                                <button type="button" class="btn btn-block btn-outline-primary" 
+                                                    onclick="">我要留言</button>
+                                            </div>
+                                        </a>
+                                    </div>
+                                </div>
                             </div>
-                        </div> -->
+                            
+                        </div>
                     </div>
                 </div>
             </div>
@@ -237,7 +253,8 @@
             </div>            
         
         
-        </div>
+            </div>
+        <!-- 让留言公开部分和我要留言一样长 -->
         <script type="text/javascript">
             const ref = document.getElementById("feedback-welcome");
             const publicBox = document.getElementById("publicFeedbackBox");
@@ -253,7 +270,7 @@
         </script>
         </div>
         <div class="row layout-top-spacing mt-0">
-            <!-- 审核界面 -->
+            <!-- 审核界面，非教师不显示 -->
             {% if is_teacher %}
             <div class="col-12 layout-top-spacing">
                 <div class="bio layout-spacing ">
@@ -420,6 +437,7 @@
                 </div>                
             </div>
             {% endif %}
+            <!-- 展示自己的反馈记录 -->
             <div class="col-12">
                 <div class="bio layout-spacing mb-4">
                     <div class="widget-content widget-content-area">
