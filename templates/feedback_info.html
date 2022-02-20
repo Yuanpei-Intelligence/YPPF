@@ -4,6 +4,7 @@
 
 
 {% block mainpage %}
+
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
   <div class="container">
@@ -116,16 +117,16 @@
                         </svg>
                       </a>
                     </label>
-                    <select class="form-control selectpicker" data-live-search = "true" id="publisher_public" name="publisher_public" onchange="public_confirm.call(this)">
+                    <select class="form-control selectpicker" data-live-search = "true" id="publisher_public" name="publisher_public" onchange="public_confirm.call(this);">
                       <option value="public">公开反馈</option>
                       <option value="private" selected>隐藏反馈</option>
                     </select>
                   </div>
                   {% else %}
                   {% if read_editable %}
-                  <div class="form-group">
+                  <div class="form-group" name="read_status">
                     <label for="aintro">标记已读状态</label>
-                    <select class="form-control selectpicker" id="read" name="read_status" onchange="read_confirm()">
+                    <select class="form-control selectpicker" id="read_status" onchange="read_confirm.call(this);">
                       <div class="dropdown-menu">
                         <option value="unread" {%if read == "未读" %}selected{%endif%}>未读</option>
                         <option value="read" {%if read == "已读" %}selected{%endif%}>已读</option>
@@ -134,9 +135,9 @@
                   </div>
                   {% endif %}
                   {% if solve_editable %}
-                  <div class="form-group">
+                  <div class="form-group" id="solve_status">
                     <label for="aintro">标记解决状态</label>
-                    <select class="form-control selectpicker" id="solve" name="solve_status" onchange="read_confirm.call(this)">
+                    <select class="form-control selectpicker" id="solve_select" onchange="solve_confirm.call(this);">
                       <option value="solving" {%if solve == "解决中" %}selected{%endif%}>解决中</option>
                       <option value="solve" {%if solve == "已解决" %}selected{%endif%}>已解决</option>
                       <option value="unsolvable" {%if solve == "无法解决" %}selected{%endif%}>无法解决</option>
@@ -144,7 +145,7 @@
                   </div>
                   {% endif %}
                   {% if public_editable %}
-                  <div class="form-group">
+                  <div class="form-group" id="public_status">
                     {% if login_identity == "publisher" %}
                     <label for="aintro">本人是否同意公开
                       <a data-toggle="tooltip" data-placement="bottom" title="“公开”表示当小组和反馈者均同意公开时，反馈留言将会公开给所有用户，但不会公开反馈者的身份。">
@@ -172,7 +173,7 @@
                       </a>
                     </label>
                     {% endif %}
-                    <select class="form-control selectpicker" data-live-search="true" id="publisher_public" name="public_status" onchange="public_confirm">
+                    <select class="form-control selectpicker" data-live-search="true" id="publisher_public" name="public_status" onchange="public_confirm.call(this);">
                       <option value="private" select>{%if login_identity == "teacher"%}强制{%endif%}隐藏反馈</option>
                       <option value="public">公开反馈</option>
                     </select>
@@ -217,49 +218,67 @@
 {% endblock %}
 
 {% block add_js_file %}
-<script src={% static "plugins/dropify/dropify.min.js" %}></script>
-<script src={% static "assets/js/users/account-settings.js" %}></script>
-<script>
-  function type_change() {
-    var selector = document.getElementById('apply_type');
-    if ("退出小组" === selecter.value) {
-      document.getElementById('position_group').hidden = true;
-    } else {
-      document.getElementById('position_group').hidden = false;
-      // document.getElementById('maxpeople').placeholder = "";
+  <script src={% static "plugins/dropify/dropify.min.js" %}></script>
+  <script src={% static "assets/js/users/account-settings.js" %}></script>
+  <script>
+    var slove_status = document.getElementById("solve_status");
+    var read_status = document.getElementById("read_status");
+    var solve_select = document.getElementById("solve_select");
+    var public_select = document.getElementById("publisher_public");
+    if(read_status.value == "unread"){
+      solve_status.hidden = true;
+      public_status.hidden = true;
     }
-  };
-  type_change(); // 渲染的时候就需要调用一下
-  function read_confirm() {
-    document.feedback.solve_status.hidden = true;
-    if (this.value == "read") {
-      if (!confirm("确认修改反馈状态为已读？")) {
-        this.value = "unread";
-      }
+    if(solve_select.value == "solving"){
+      public_status.hidden = true;
     }
-  }
-  function public_confirm() {
-    if (this.value == "public")
-      if (!confirm("是否同意公开？个人和小组均同意公开后，该反馈将向所有人公开~"))
-        this.value = "private";
-  }
-  function change_org_list() {
-    var all_orgs = document.getElementById('org')
-    var all_org_list = {{all_org_list|safe}};
-    all_orgs.innerHTML = '';
-    for (i = 0; i < all_org_list.length; i += 1) {
-      if (all_org_list[i][0] == this.value) {
-        for (j = 1; j < all_org_list[i].length; j += 1){
-          all_orgs.add(create_option(all_org_list[i][j]),null);
+    function public_confirm() {
+      if (this.value == "public")
+        if (!confirm("是否同意公开？个人和小组均同意公开后，该反馈将向所有人公开~"))
+          this.value = "private";
+    }
+    function solve_confirm() {
+      if (this.value == "solve") {
+        if (!confirm("确认修改反馈状态为已解决？")) {
+          this.value = "solving";
+          public_status.hidden = true;
         }
+        else
+          public_status.hidden = false;
+      }
+      else if(this.value == "unsolvable"){
+        if(!confirm("确认修改反馈状态为【无法解决】？")){
+          this.value = "solving";
+          public_status.hidden = true;
+        }
+        else
+          public_status.hidden = false;
+      }
+      if(this.value=='solving'){
+        public_status.hidden = true;
+        public_select.value = "private";
       }
     }
-  }
-  function create_option(name) {
-      var opt = document.createElement("OPTION");
-      opt.value = name;
-      opt.text = name;
-      return opt;
-  }
-</script>
+    function read_confirm(){
+      if (this.value == "read") {
+        if (!confirm("确认修改反馈状态为已读？")) {
+          this.value = "unread";
+          slove_status.hidden = true;
+        }
+        slove_status.hidden = false;
+      }
+      if(this.value== "unread"){
+        slove_status.hidden = true;
+        public_status.hidden = true;
+        solve_select.value = "solving";
+        public_select.value = "private";
+      }
+    }
+    function create_option(name) {
+        var opt = document.createElement("OPTION");
+        opt.value = name;
+        opt.text = name;
+        return opt;
+    }
+  </script>
 {% endblock %}
