@@ -591,8 +591,8 @@ def course_to_display(courses, user, detail=False) -> list:
     for course in courses:
         course_info = {}
 
+        # 选课页面和详情页面共用的信息
         course_info["name"] = course.name
-        course_info["times"] = course.times  # 课程周数
         course_info["type"] = course.get_type_display()  # 课程类型
         course_info["avatar_path"] = course.organization.get_user_ava()
 
@@ -603,6 +603,7 @@ def course_to_display(courses, user, detail=False) -> list:
 
         if detail:
             # 在课程详情页才展示的信息
+            course_info["times"] = course.times  # 课程周数
             course_info["classroom"] = course.classroom
             course_info["teacher"] = course.teacher
             course_info["introduction"] = course.introduction
@@ -839,7 +840,7 @@ def register_selection(wait_for: timedelta=None):
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_end",
                       run_date=stage2_end, args=[Course.Status.STAGE2, Course.Status.SELECT_END], replace_existing=True)
     # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
-
+    
 def course_base_check(request):
     """
     选课单变量合法性检查并准备变量
