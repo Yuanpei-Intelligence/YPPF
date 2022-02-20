@@ -28,9 +28,9 @@
                         <td width="30%"> 
                             {{course.type}}
                         </td>
-                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 开课周数</th>
+                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 上课地点</th>
                         <td width="30%"> 
-                            {{course.times}}
+                            {{course.classroom}}
                         </td>
                     </tr>
                     <!--TODO : coursetodisplay字典里面加一个organization-->
@@ -70,9 +70,17 @@
                     <tr>
                         <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 宣传图片</th>
                         <td colspan="8"> 
-                            <img width="40%" src={{ course.photo_path }}>
+                            <img width="80%" src={{ course.photo_path }}>
                         </td>
                     </tr>
+                    {% if course.QRcode %}
+                    <tr>
+                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 课程群二维码</th>
+                        <td colspan="8"> 
+                            <img width="40%" src={{ course.QRcode }}>
+                        </td>
+                    </tr>
+                    {% endif%}
                   
                 </tbody>
             </table>
