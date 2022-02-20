@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+
+{% block mainpage %}
+<style>
+    select[readonly] {
+        background: #eee;
+        /*Simular campo inativo - Sugestão @GabrielRodrigues*/
+        pointer-events: none;
+        touch-action: none;
+    }
+</style>
+
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    {% if html_display.warn_code == 1 %}
+    <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+    {% elif html_display.warn_code == 2 %}
+    <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
+    {% endif %}
+
+    <div class="container">
+
+        <div class="row layout-top-spacing">
+            {% if bar_display.help_paragraphs %}
+            {% include 'help.html' %}
+            {% endif %}
+            <div class="col-lg-12 col-12 layout-top-spacing">
+                <div class="bio layout-spacing ">
+                    <div class="widget-content widget-content-area">
+                        <div class="pricing-header px-3 py-3 pt-md-5 pb-md-4 mx-auto mb-4 text-center">
+                            <h1 class="display-4 my-4 mb-4">元培生活：问答反馈中心</h1>
+                            <h4 class="lead mb-2">欢迎你来到这里。</h4>
+                            <h4 class="lead">这是学生权益诉求的集中地，也是信息交流的便捷平台，在这里我们用共同关心搭建共同生活的家园。</h4>
+                            </br>
+                            <h6>如果你在学习与生活中产生困惑，无法凭借自己一个人的力量解决；</h6>
+                            <h6>在对宿舍楼、地下室的硬件设施的使用中遇到问题；</h6>
+                            <h6>对改善公共空间环境、改进学生组织工作有好的意见与想法；</h6>
+                            <h6>或是有其他想要和组织迫切交流的观点；</h6>
+                            <h6>都可以点击下方“我要留言”向组织反馈~</h6>
+                            </br>
+                            <h4 class="lead my-2 mb-2">只要有需求，就能有回应，希望在互动交流里，我们的共同生活能趋向更好的平衡。</h4>
+                        </div>
+                        <h3></h3>
+                        <div class="container">
+                            <div class="card-columns">
+                                {% for feedback_type in feedback_type_list %}
+                                <div class="card text-center mb-4">
+                                    <div class="card-header">
+                                        <h6 class="my-0 font-weight-normal">{{feedback_type.name}}</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <button type="button" class="btn btn-block btn-outline-primary">我要留言</button>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+
+</div>
+<!--  END CONTENT AREA  -->
+
+{% endblock %}
+
+{% block add_js_file %}
+<script src={% static "plugins/dropify/dropify.min.js" %}></script>
+<script src={% static "assets/js/users/account-settings.js" %}></script>
+{% endblock %}

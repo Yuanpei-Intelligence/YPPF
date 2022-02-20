@@ -19,7 +19,7 @@ from django.conf import settings
 
 
 # 寻找本地设置
-def base_get_setting(path: str='', default=None, trans_func=None,
+def base_get_setting(path: str='', trans_func=None, default=None,
                 fuzzy_lookup=False, raise_exception=True):
     '''
     提供/或\\分割的setting路径，尝试寻找对应路径的设置，失败时返回default
@@ -62,4 +62,5 @@ MEDIA_URL = settings.MEDIA_URL
 LOGIN_URL = settings.LOGIN_URL
 
 # 全局设置变量
-# 暂无
+UNDERGROUND_URL: str = base_get_setting('url/base_url')
+WECHAT_URL: str = base_get_setting('url/wechat_url')

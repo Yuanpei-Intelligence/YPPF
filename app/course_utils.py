@@ -10,6 +10,7 @@ draw_lots: 预选阶段结束时执行抽签
 change_course_status: 改变课程的选课阶段
 remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
+check_course_time_conflict: 检查当前选择的课是否与已选的课上课时间冲突
 """
 from app.utils_dependency import *
 from app.models import (
@@ -36,15 +37,17 @@ from app.notification_utils import (
 )
 from app.activity_utils import (
     changeActivityStatus,
-    check_ac_time,
     notifyActivity,
 )
 from app.wechat_send import WechatApp, WechatMessageLevel
 
+import openpyxl
 from random import sample
+from urllib.parse import quote
 from collections import Counter
 from datetime import datetime, timedelta
 
+from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import F, Sum, Prefetch
@@ -53,6 +56,7 @@ from app.scheduler import scheduler
 
 
 __all__ = [
+    'check_ac_time_course',
     'course_activity_base_check',
     'create_single_course_activity',
     'modify_course_activity',
@@ -64,7 +68,19 @@ __all__ = [
     'create_course',
     'cal_participate_num',
     'check_post_and_modify',
+    'finish_course',
+    'download_course_record',
 ]
+
+
+# 时间合法性的检查：开始早于结束，开始晚于当前时间
+def check_ac_time_course(start_time, end_time):
+    now_time = datetime.now()
+    if not start_time < end_time:
+        return False
+    if not now_time < start_time:
+        return False
+    return True
 
 
 def course_activity_base_check(request):
@@ -72,34 +88,41 @@ def course_activity_base_check(request):
     context = dict()
 
     # 读取活动名称和地点，检查合法性
-    context["title"] = request.POST["title"]
+    context["title"] = request.POST.get("title", "")
     # context["introduction"] = request.POST["introduction"] # 暂定不需要简介
-    context["location"] = request.POST["location"]
+    context["location"] = request.POST.get("location", "")
     assert len(context["title"]) > 0, "标题不能为空"
     # assert len(context["introduction"]) > 0 # 暂定不需要简介
     assert len(context["location"]) > 0, "地点不能为空"
 
     # 读取活动时间，检查合法性
-    act_start = datetime.strptime(
-        request.POST["lesson_start"], "%Y-%m-%d %H:%M")  # 活动开始时间
-    act_end = datetime.strptime(
-        request.POST["lesson_end"], "%Y-%m-%d %H:%M")  # 活动结束时间
+    try:
+        act_start = datetime.strptime(
+            request.POST["lesson_start"], "%Y-%m-%d %H:%M")  # 活动开始时间
+        act_end = datetime.strptime(
+            request.POST["lesson_end"], "%Y-%m-%d %H:%M")  # 活动结束时间
+    except:
+        raise AssertionError("活动时间非法")
     context["start"] = act_start
     context["end"] = act_end
-    assert check_ac_time(act_start, act_end), "活动时间非法"
+    assert check_ac_time_course(act_start, act_end), "活动时间非法"
 
     # 默认需要签到
     context["need_checkin"] = True
-
-    context["post_type"] = str(request.POST.get("post_type"))
+    context["post_type"] = str(request.POST.get("post_type", ""))
     return context
 
 
 def create_single_course_activity(request):
     '''
     创建单次课程活动，是create_activity的简化版
+    错误提示通过AssertionError抛出
     '''
     context = course_activity_base_check(request)
+
+    # 获取组织和课程
+    org = get_person_or_org(request.user, "Organization")
+    course = Course.objects.activated().get(organization=org)
 
     # 查找是否有类似活动存在
     old_ones = Activity.objects.activated().filter(
@@ -118,8 +141,11 @@ def create_single_course_activity(request):
     examine_teacher = NaturalPerson.objects.get(
         name=default_examiner_name, identity=NaturalPerson.Identity.TEACHER)
 
+    # 获取活动所属课程的图片，用于viewActivity, examineActivity等页面展示
+    image = str(course.photo)
+    assert image, "获取课程图片失败"
+
     # 创建活动
-    org = get_person_or_org(request.user, "Organization")
     activity = Activity.objects.create(
         title=context["title"],
         organization_id=org,
@@ -161,10 +187,9 @@ def create_single_course_activity(request):
                       run_date=activity.end, args=[activity.id, Activity.Status.PROGRESSING, Activity.Status.END])
     activity.save()
 
-    # 使用一张默认图片以便viewActivity, examineActivity等页面展示
-    tmp_pic = '/static/assets/img/announcepics/1.JPG'
+    # 设置活动照片
     ActivityPhoto.objects.create(
-        image=tmp_pic, type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
+        image=image, type=ActivityPhoto.PhotoType.ANNOUNCE, activity=activity)
 
     # 通知审核老师
     notification_create(
@@ -185,11 +210,11 @@ def create_single_course_activity(request):
 def modify_course_activity(request, activity):
     '''
     修改单次课程活动信息，是modify_activity的简化版
-    成功无返回值，失败返回错误消息
+    错误提示通过AssertionError抛出
     '''
     # 课程活动无需报名，在开始前都是等待中的状态
-    if activity.status != Activity.Status.WAITING:
-        return "课程活动只有在等待状态才能修改。"
+    assert activity.status == Activity.Status.WAITING, \
+            "课程活动只有在等待状态才能修改。"
 
     context = course_activity_base_check(request)
 
@@ -314,20 +339,20 @@ def remaining_willingness_point(user):
     计算剩余的意愿点
     """
     raise NotImplementedError("暂时不使用意愿点")
-    # 当前用户已经预选的课
-    # 由于participant可能为空，重新启用的时候注意修改代码
-    courses = Course.objects.filter(
-        participant_set__person=user,
-        participant_set__status=CourseParticipant.Status.SELECT)
+    # # 当前用户已经预选的课
+    # # 由于participant可能为空，重新启用的时候注意修改代码
+    # courses = Course.objects.filter(
+    #     participant_set__person=user,
+    #     participant_set__status=CourseParticipant.Status.SELECT)
 
-    initial_point = 99  # 初始意愿点
-    cost_point = courses.aggregate(Sum('bidding'))  # 已经使用的意愿点
+    # initial_point = 99  # 初始意愿点
+    # cost_point = courses.aggregate(Sum('bidding'))  # 已经使用的意愿点
 
-    if cost_point:
-        # cost_point可能为None
-        return initial_point - cost_point['bidding__sum']
-    else:
-        return initial_point
+    # if cost_point:
+    #     # cost_point可能为None
+    #     return initial_point - cost_point['bidding__sum']
+    # else:
+    #     return initial_point
 
 
 def registration_status_check(course_status, cur_status, to_status):
@@ -354,6 +379,73 @@ def registration_status_check(course_status, cur_status, to_status):
                     and to_status == CourseParticipant.Status.SUCCESS))
 
 
+def check_course_time_conflict(current_course, user):
+    """
+    检查当前选择课程的时间和已选课程是否冲突
+    """
+    selected_courses = Course.objects.activated().filter(
+        participant_set__person=user,
+        participant_set__status__in=[
+            CourseParticipant.Status.SELECT,
+            CourseParticipant.Status.SUCCESS,
+        ]).prefetch_related("time_set")
+
+    def time_hash(time: datetime):
+        return time.weekday() * 1440 + time.hour * 60 + time.minute
+
+    # 因为选择的课最多只能有6门，所以暂时用暴力算法
+    for current_course_time in current_course.time_set.all():
+
+        # 当前选择课程的上课时间
+        current_start_time = current_course_time.start
+        current_end_time = current_course_time.end
+
+        for course in selected_courses:
+            for course_time in course.time_set.all():
+                start_time = course_time.start
+                end_time = course_time.end
+
+                # 效率不高，有待改进
+                if not (time_hash(current_start_time) >= time_hash(end_time) or
+                        time_hash(current_end_time) <= time_hash(start_time)):
+                    # 发生冲突
+                    return True, \
+                           f"《{current_course.name}》和《{course.name}》的上课时间发生冲突！"
+
+    # 没有冲突
+    return False, ""
+    '''
+    # 循环较少的写法
+    from django.db.models import Q
+    conflict_course_names = set()
+    for current_course_time in current_course.time_set.all():
+        # 冲突时间
+        conflict_times = CourseTime.objects.filter(
+            # 已选的课程
+            Q(course__in=selected_courses),
+            # 开始比当前的结束时间早
+            (Q(start__week_day=current_course_time.end.weekday() + 1,
+               start__time__lte=current_course_time.end.time())
+             | Q(start__week_day__lt=current_course_time.end.weekday() + 1))
+            # 结束比当前的开始时间晚
+            & (Q(end__week_day=current_course_time.start.weekday() + 1,
+                 end__time__gte=current_course_time.start.time())
+               | Q(end__week_day__gt=current_course_time.start.weekday() + 1))
+        )
+        if conflict_times.exists():
+            # return True, f'《{conflict_times.first().course.name}》'
+            conflict_course_names.union(
+                conflict_times.values_list('course__name', flat=True))
+
+    conflict_count = len(conflict_course_names)
+    # 有冲突
+    if conflict_count:
+        return conflict_count, f'《{"》《".join(conflict_course_names)}》'
+    # 没有冲突
+    return conflict_count, ""
+    '''
+
+
 @log.except_captured(return_value=True,
                      record_args=True,
                      status_code=log.STATE_WARNING,
@@ -369,9 +461,7 @@ def registration_status_change(course_id, user, action=None):
     注意: 
         非选课阶段，不应该进入这个函数！
     """
-    context = {}
-    context["warn_code"] = 1
-    context["warn_message"] = "在修改选课状态的过程中发生错误，请联系管理员！"
+    context = wrong("在修改选课状态的过程中发生错误，请联系管理员！")
 
     # 在外部保证课程ID是存在的
     course = Course.objects.get(id=course_id)
@@ -382,8 +472,7 @@ def registration_status_change(course_id, user, action=None):
 
     if (course_status != Course.Status.STAGE1
             and course_status != Course.Status.STAGE2):
-        context["warn_message"] = "在非选课阶段不能选课！"
-        return context
+        return wrong("在非选课阶段不能选课！")
 
     # 选课信息
     participant_info, _ = CourseParticipant.objects.get_or_create(
@@ -403,8 +492,14 @@ def registration_status_change(course_id, user, action=None):
                     CourseParticipant.Status.SELECT,
                     CourseParticipant.Status.SUCCESS,
                 ]).count() >= 6:
-            context["warn_message"] = "每位同学同时预选或选上的课程数最多为6门！"
-            return context
+            return wrong("每位同学同时预选或选上的课程数最多为6门！")
+
+        # 检查选课时间是否冲突
+        is_conflict, message = check_course_time_conflict(course, user)
+
+        if is_conflict:
+            return wrong(message)
+            return wrong(f'与{is_conflict}门已选课程时间冲突: {message}')
 
     # 如果action为取消预选或退选，to_status直接使用初始值即可
 
@@ -412,8 +507,7 @@ def registration_status_change(course_id, user, action=None):
     try:
         registration_status_check(course_status, cur_status, to_status)
     except AssertionError:
-        context["warn_message"] = "非法的选课状态修改！"
-        return context
+        return wrong("非法的选课状态修改！")
 
     # 暂时不使用意愿点选课
     # if (course_status == Course.Status.STAGE1
@@ -428,15 +522,13 @@ def registration_status_change(course_id, user, action=None):
                     current_participants=F("current_participants") - 1)
                 CourseParticipant.objects.filter(
                     course__id=course_id, person=user).update(status=to_status)
-                context["warn_code"] = 2
-                context["warn_message"] = "成功取消选课！"
+                succeed("成功取消选课！", context)
             else:
                 # 处理并发问题
                 course = Course.objects.select_for_update().get(id=course_id)
                 if (course_status == Course.Status.STAGE2
                         and course.current_participants >= course.capacity):
-                    context["warn_code"] = 1
-                    context["warn_message"] = "选课人数已满！"
+                    wrong("选课人数已满！", context)
                 else:
                     course.current_participants = course.current_participants + 1
                     course.save()
@@ -445,8 +537,7 @@ def registration_status_change(course_id, user, action=None):
                     CourseParticipant.objects.filter(
                         course__id=course_id,
                         person=user).update(status=to_status)
-                    context["warn_code"] = 2
-                    context["warn_message"] = "选课成功！"
+                    succeed("选课成功！", context)
     except:
         return context
     return context
@@ -499,8 +590,8 @@ def course_to_display(courses, user, detail=False) -> list:
     for course in courses:
         course_info = {}
 
+        # 选课页面和详情页面共用的信息
         course_info["name"] = course.name
-        course_info["times"] = course.times  # 课程周数
         course_info["type"] = course.get_type_display()  # 课程类型
         course_info["avatar_path"] = course.organization.get_user_ava()
 
@@ -511,6 +602,7 @@ def course_to_display(courses, user, detail=False) -> list:
 
         if detail:
             # 在课程详情页才展示的信息
+            course_info["times"] = course.times  # 课程周数
             course_info["classroom"] = course.classroom
             course_info["teacher"] = course.teacher
             course_info["introduction"] = course.introduction
@@ -589,7 +681,7 @@ def draw_lots(course):
     receivers = CourseParticipant.objects.filter(
         course=course,
         status=CourseParticipant.Status.SUCCESS,
-    ).values_list("person", flat=True)
+    ).values_list("person__person_id", flat=True)
     receivers = User.objects.filter(id__in=receivers)
     sender = course.organization.organization_id
     typename = Notification.Type.NEEDREAD
@@ -619,7 +711,7 @@ def draw_lots(course):
     receivers = CourseParticipant.objects.filter(
         course=course,
         status=CourseParticipant.Status.FAILED,
-    ).values_list("person", flat=True)
+    ).values_list("person__person_id", flat=True)
     receivers = User.objects.filter(id__in=receivers)
     content = f"很抱歉通知您，您未选上课程《{course.name}》。"
     if len(receivers) > 0:
@@ -653,7 +745,6 @@ def change_course_status(cur_status, to_status):
     参数:
         to_status: 希望course变为的选课状态
     """
-
     # 以下进行状态的合法性检查
     if cur_status is not None:
         if cur_status == Course.Status.WAITING:
@@ -673,9 +764,9 @@ def change_course_status(cur_status, to_status):
     else:
         raise AssertionError("未提供当前状态，不允许进行选课状态修改")
     courses = Course.objects.activated().filter(status=cur_status)
+    if to_status == Course.Status.SELECT_END:
+        courses = courses.select_related('organization')
     with transaction.atomic():
-        #更新目标状态
-        courses.select_for_update().update(status=to_status)
         for course in courses:
             if to_status == Course.Status.DRAWING:
                 # 预选结束，进行抽签
@@ -690,15 +781,18 @@ def change_course_status(cur_status, to_status):
                 positions = []
                 for participant in participants:
                     # 检查是否已经加入小组
-                    if not Position.objects.filter(person=participant.person,
+                    if not Position.objects.activated().filter(person=participant.person,
                                                    org=organization).exists():
                         position = Position(person=participant.person,
                                             org=organization,
                                             in_semester=Semester.now())
+
                         positions.append(position)
                 if positions:
                     with transaction.atomic():
                         Position.objects.bulk_create(positions)
+        #更新目标状态
+        courses.select_for_update().update(status=to_status)
 
 
 def str_to_time(stage: str):
@@ -710,7 +804,7 @@ def str_to_time(stage: str):
                      record_args=True,
                      status_code=log.STATE_WARNING,
                      source='course_utils[register_selection]')
-def register_selection():
+def register_selection(wait_for: timedelta=None):
     """
     添加定时任务，实现课程状态转变，每次发起课程时调用
     """
@@ -718,14 +812,17 @@ def register_selection():
     # 预选和补退选的开始和结束时间
     year = str(CURRENT_ACADEMIC_YEAR)
     semster = str(Semester.now())
+    now = datetime.now()
+    if wait_for is not None:
+        now = wait_for + wait_for
     stage1_start = str_to_time(get_setting("course/yx_election_start"))
-    stage1_start = max(stage1_start, datetime.now() + timedelta(seconds=5))
+    stage1_start = max(stage1_start, now + timedelta(seconds=5))
     stage1_end = str_to_time(get_setting("course/yx_election_end"))
-    stage1_end = max(stage1_end, datetime.now() + timedelta(seconds=10))
+    stage1_end = max(stage1_end, now + timedelta(seconds=10))
     stage2_start = str_to_time(get_setting("course/btx_election_start"))
-    stage2_start = max(stage2_start, datetime.now() + timedelta(seconds=15))
+    stage2_start = max(stage2_start, now + timedelta(seconds=15))
     stage2_end = str_to_time(get_setting("course/btx_election_end"))
-    stage2_end = max(stage2_end, datetime.now() + timedelta(seconds=20))
+    stage2_end = max(stage2_end, now + timedelta(seconds=20))
     # 定时任务：修改课程状态
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_start",
                       run_date=stage1_start, args=[Course.Status.WAITING,Course.Status.STAGE1], replace_existing=True)
@@ -745,12 +842,17 @@ def course_base_check(request):
     # 字符串字段合法性检查
     try:
         # name, introduction, classroom 创建时不能为空
-        context["name"] = str(request.POST["name"])
-        context['teacher'] = str(request.POST["teacher"])
-        context["introduction"] = str(request.POST["introduction"])
-        context["classroom"] = str(request.POST["classroom"])
-        context["teaching_plan"] = str(request.POST["teaching_plan"])
-        context["record_cal_method"] = str(request.POST["record_cal_method"])
+        context = my_messages.read_content(
+            request.POST,
+            "name",
+            'teacher',
+            "introduction",
+            "classroom",
+            "teaching_plan",
+            "record_cal_method",
+            _trans_func=str,
+            _default="",
+        )
         assert len(context["name"]) > 0, "课程名称不能为空！"
         assert len(context["introduction"]) > 0, "课程介绍不能为空！"
         assert len(context["teaching_plan"]) > 0, "教学计划不能为空！"
@@ -761,17 +863,20 @@ def course_base_check(request):
 
     # int类型合法性检查
 
-    type_num = request.POST.get("type", -1)  # 课程类型
+    type_num = request.POST.get("type", "")  # 课程类型
     capacity = request.POST.get("capacity", -1)
     # context['times'] = int(request.POST["times"])    #课程上课周数
     try:
-        assert type_num != "", "记得选择课程类型哦！"
-        assert 0 <= int(type_num) < 5, "课程类型仅包括德智体美劳五种！"
-        assert int(capacity) > 0, "课程容量应当大于0！"
-    except Exception as e:
-        return wrong(str(e))
-    context['type'] = int(type_num)
-    context['capacity'] = int(capacity)
+        cur_info = "记得选择课程类型哦！"
+        type_num = int(type_num)
+        cur_info = "课程类型仅包括德智体美劳五种！"
+        assert 0 <= type_num < 5
+        cur_info = "课程容量应当大于0！"
+        assert int(capacity) > 0
+    except:
+        return wrong(cur_info)
+    context['type'] = type_num
+    context['capacity'] = capacity
 
     # 图片类型合法性检查
     try:
@@ -806,7 +911,7 @@ def course_base_check(request):
     ]
     try:
         for i in range(len(course_starts)):
-            assert check_ac_time(
+            assert check_ac_time_course(
                 course_starts[i], course_ends[i]), f'第{i+1}次上课时间起止时间有误！'
             # 课程每周同一次课的开始和结束时间应当处于同一天
             assert course_starts[i].date(
@@ -819,8 +924,7 @@ def course_base_check(request):
     org = get_person_or_org(request.user, "Organization")
     context['organization'] = org
 
-    context["warn_code"] = 2
-    context["warn_message"] = "合法性检查通过！"
+    succeed("合法性检查通过！", context)
     return context
 
 
@@ -905,7 +1009,7 @@ def create_course(request, course_id=None):
     return context
 
 
-def cal_participate_num(course: Course)-> Counter:
+def cal_participate_num(course: Course) -> Counter:
     """
     计算该课程对应组织所有成员的参与次数
     return {Naturalperson.id:参与次数}
@@ -917,11 +1021,18 @@ def cal_participate_num(course: Course)-> Counter:
         status=Activity.Status.END,
         category=Activity.ActivityCategory.COURSE,
     )
+    #只有小组成员才可以有学时
+    members = Position.objects.activated().filter(
+        pos__gte=1,
+        person__identity=NaturalPerson.Identity.STUDENT,
+        ).values_list("person", flat=True)
     all_participants = (
         Participant.objects.activated(no_unattend=True)
-        .filter(activity_id__in=activities)
+        .filter(activity_id__in=activities, person_id_id__in=members)
     ).values_list("person_id", flat=True)
-    participate_num = Counter(all_participants)
+    participate_num = dict(Counter(all_participants))
+    #没有参加的参与次数设置为0
+    participate_num.update({id: 0 for id in members if id not in participate_num})
     return participate_num
 
 
@@ -952,3 +1063,112 @@ def check_post_and_modify(records, post_data):
         return wrong(str(e))
     except:
         return wrong("数据格式异常，请检查输入数据！")
+
+
+def finish_course(course):
+    """
+    结束课程
+    设置课程状态为END 生成学时表并通知同学该课程已结束。
+    """
+    #若存在课程活动未结束则无法结束课程。
+    cur_activities = Activity.objects.activated().filter(
+        organization_id=course.organization,
+        category=Activity.ActivityCategory.COURSE).exclude(
+            status__in=[
+                Activity.Status.CANCELED,
+                Activity.Status.END,
+            ])
+    if cur_activities.exists():
+        return wrong("存在尚未结束的课程活动，请在所有课程活结束以后再结束课程。")
+
+    try:
+        # 取消发布每周定时活动
+        course_times = course.time_set
+        for course_time in course_times.all():
+            course_time.end_week = course_time.cur_week
+            course_time.save()
+    except:
+        return wrong("取消课程每周定时活动时失败，请联系管理员！")
+    try:
+        # 生成学时表
+        participate_num = cal_participate_num(course)
+        participants = NaturalPerson.objects.activated().filter(
+            id__in=participate_num.keys())
+        course_record_list = []
+        for participant in participants:
+            # 如果存在相同学期的学时表，则不创建
+            if not CourseRecord.objects.current().filter(
+                    person=participant, course=course
+                    ).exists():
+                course_record_list.append(CourseRecord(
+                    person=participant,
+                    course=course,
+                    attend_times=participate_num[participant.id],
+                    total_hours=2*participate_num[participant.id]
+                ))
+        CourseRecord.objects.bulk_create(course_record_list)
+    except:
+        return wrong("生成学时表失败，请联系管理员！")
+    try:
+        # 通知课程小组成员该课程已结束
+        title = f'课程结束通知！'
+        msg = f'{course.name}在本学期的课程已结束！'
+        publish_kws = {"app": WechatApp.TO_PARTICIPANT}
+        receivers = participants.values_list('person_id', flat=True)
+        receivers = User.objects.filter(id__in=receivers)
+        bulk_notification_create(
+            receivers=list(receivers),
+            sender=course.organization.organization_id,
+            typename=Notification.Type.NEEDREAD,
+            title=title,
+            content=msg,
+            URL=f"/viewCourse/?courseid={course.id}",
+            publish_to_wechat=True,
+            publish_kws=publish_kws,
+        )
+        # 设置课程状态
+    except:
+        return wrong("生成通知失败，请联系管理员！")
+    course.status = Course.Status.END
+    course.save()
+    return succeed("结束课程成功！")
+
+
+def download_course_record(course, year, semester):
+    '''
+    返回需要导出的文件
+    '''
+    records = CourseRecord.objects.filter(
+        course=course,
+        year=year,
+        semester=semester,
+    ).select_related('person')
+
+    wb = openpyxl.Workbook()  # 生成一个工作簿（即一个Excel文件）
+    wb.encoding = 'utf-8'
+    # 获取第一个工作表（sheet1）
+    sheet1 = wb.active
+    # 给工作表设置标题
+    # sheet1.title = str(course)  # 中文符号如：无法被解读
+    # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
+    sheet_header = ['课程', '姓名', '学号', '次数', '学时', "学年", "学期"]
+    sheet1.append(sheet_header)
+    for record in records:
+        record_info = [
+            str(course),
+            record.person.name,
+            record.person.person_id.username,
+            record.attend_times,
+            record.total_hours,
+            year,
+            semester,
+        ]
+        # 将每一个对象的所有字段的信息写入一行内
+        sheet1.append(record_info)
+
+    ctime = datetime.now().strftime('%Y-%m-%d %H:%M')
+    file_name = f'{course}-{ctime}'  # 给文件名中添加日期时间
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
+    wb.save(response)
+    return response

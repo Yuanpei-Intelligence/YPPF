@@ -37,6 +37,7 @@ urlpatterns = [
     #path('get-csrf', views.getToken, name='getToken'),
     path('',views.index,name="root"),
     path('index',views.index,name="index"),
+    path('agreement',views.agreement,name="agreement"),
     path('arrange_time',views.arrange_time,name='arrange_time'),
     path('check_out',views.check_out,name='check_out'),
     path('admin-index.html', views.admin_index, name='admin_index'), #added by wxy

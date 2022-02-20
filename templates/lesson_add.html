@@ -22,12 +22,12 @@
 <div class="main-content pb-3" id="content">
     <div class="container">
         {% if html_display.warn_code == 2 %}
-        <div class="alert alert-success  text-center" id="success_msg" >{{ html_display.warn_msg }}</div>
+        <div class="alert alert-success  text-center" id="success_msg" >{{ html_display.warn_message }}</div>
         {% else %}
         <div class="alert alert-success  text-center" id="success_msg" style="display: none;"></div>
         {% endif %}
         {% if html_display.warn_code == 1 %}
-        <div class="alert alert-warning  text-center" id="warn_msg" >{{ html_display.warn_msg }}</div>
+        <div class="alert alert-warning  text-center" id="warn_msg" >{{ html_display.warn_message }}</div>
         {% else %}
         <div class="alert alert-warning  text-center" id="warn_msg" style="display: none;">test</div>
         {% endif %}
@@ -147,18 +147,18 @@
                                     <table>
                                         <tr>
                                             <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
-                                                     name="post_type"
-                                                     value="modify_only"
+                                                    name="post_type"
+                                                    value="modify_only"
                                                     onclick="return confirm('确认修改活动信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')""
                                             >仅修改当前活动
                                             </button>
                                         </tr>
                                         <tr>
                                             <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
-                                                     name="post_type"
+                                                    name="post_type"
                                                     value="modify_all"
                                                     onclick="return confirm('确认修改活动信息？由于需要发送通知，点击提交后请耐心等待，不要重复点击！')""
-                                            >修改当前时段所有活动
+                                            >修改未来同时段所有活动
                                             </button>
                                         </tr>
                                     </table>
@@ -216,8 +216,16 @@
             showMessage(warnId, "结束时间要晚于开始时间！");
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
-        }      
-
+        }   
+        // 禁止修改课程开始时间到距离现在5分钟以内
+        const now = new Date();
+        const safeTime = new Date(start1);
+        if (now > safeTime) {
+            hideMessage(succId);
+            showMessage(warnId, "开始时间要晚于当前时间！");
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
         return true;
     }
 
@@ -240,10 +248,12 @@
         }
     {% endif %}
 
+    {% if html_display.warn_code == 2 %}
     if (document.referrer.endsWith("/addSingleCourseActivity/")) {
         document.getElementById("warn_msg").style.display = "";
         document.getElementById("warn_msg").innerHTML = "课程添加成功！";
     }
+    {% endif %}
 </script>
 
 <script type="text/javascript">

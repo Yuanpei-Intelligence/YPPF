@@ -105,19 +105,25 @@ def update_feedback(feedback, me, request):
             return context
         
         # TODO：删除草稿的功能
+        content = dict(
+            title=str(info.get('title')),
+            content=str(info.get('content')),
+            person=me,
+            org_type=OrganizationType.objects.get(
+                otype_name=str(info.get('otype'))
+            ) if info.get('otype') else None,
+            org=Organization.objects.get(
+                oname=str(info.get('org'))
+            ) if info.get('org') else None,
+            publisher_public=(str(info.get('publisher_public')) == '公开'),
+        )
+        if post_type == 'save' or post_type == 'directly_submit':
+            content.update(
+                type=FeedbackType.objects.get(name=str(info.get('type'))),
+            )
         if post_type == 'save':
             feedback = Feedback.objects.create(
-                type=FeedbackType.objects.get(name=str(info.get('type'))),
-                title=str(info.get('title')),
-                content=str(info.get('content')),
-                person=me,
-                org_type=OrganizationType.objects.get(
-                    otype_name=str(info.get('otype'))
-                ) if info.get('otype') else None,
-                org=Organization.objects.get(
-                    oname=str(info.get('org'))
-                ) if info.get('org') else None,
-                publisher_public=True if str(info.get('publisher_public'))=='公开' else False,
+                **content,
                 issue_status=Feedback.IssueStatus.DRAFTED,
             )
             context = succeed("成功将反馈保存成草稿！")
@@ -125,13 +131,7 @@ def update_feedback(feedback, me, request):
             return context
         elif post_type == 'directly_submit':
             feedback = Feedback.objects.create(
-                type=FeedbackType.objects.get(name=str(info.get('type'))),
-                title=str(info.get('title')),
-                content=str(info.get('content')),
-                person=me,
-                org_type=OrganizationType.objects.get(otype_name=str(info.get('otype'))),
-                org=Organization.objects.get(oname=str(info.get('org'))),
-                publisher_public=True if str(info.get('publisher_public'))=='公开' else False,
+                **content,
                 issue_status=Feedback.IssueStatus.ISSUED,
             )
             context = succeed(
@@ -150,27 +150,14 @@ def update_feedback(feedback, me, request):
                     and feedback.org == Organization.objects.get(oname=str(info.get('org')))):
                 return wrong("没有检测到修改！")
             Feedback.objects.filter(id=feedback.id).update(
-                title=str(info.get('title')),
-                content=str(info.get('content')),
-                publisher_public=publisher_public,
-                org_type=OrganizationType.objects.get(
-                    otype_name=str(info.get('otype'))
-                ) if info.get('otype') else None,
-                org=Organization.objects.get(
-                    oname=str(info.get('org'))
-                ) if info.get('org') else None,
+                **content,
             )
             context = succeed("成功修改反馈“" + str(info.get('title')) + "”！点击“提交反馈”可提交~")
             context["feedback_id"] = feedback.id
             return context
         elif post_type == 'submit_draft':
-            publisher_public = True if str(info.get('publisher_public'))=='公开' else False
             Feedback.objects.filter(id=feedback.id).update(
-                title=str(info.get('title')),
-                content=str(info.get('content')),
-                publisher_public=publisher_public,
-                org_type=OrganizationType.objects.get(otype_name=str(info.get('otype'))),
-                org=Organization.objects.get(oname=str(info.get('org'))),
+                **content,
                 issue_status=Feedback.IssueStatus.ISSUED,
             )
             context = succeed(

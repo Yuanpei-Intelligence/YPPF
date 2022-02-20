@@ -176,7 +176,7 @@ def message_url(context: Union[dict, list], url: str='/welcome/')-> str:
 # 读取其它目录类内容
 def read_key(
     content: Mapping, key: str,
-    default=None, trans_func: Callable=None, raise_exception=False,
+    trans_func: Callable=None, default=None, raise_exception=False,
     ):
     '''
     读取键
@@ -261,13 +261,13 @@ def read_content(
     '''
     result = [] if _flat else {}
     for key in _keys:
-        value = read_key(_content, key, _default, _trans_func, _raise)
+        value = read_key(_content, key, _trans_func, _default, _raise)
         result.append(value) if _flat else result.setdefault(key, value)
     for key, args in _fields.items():
         if callable(args):
-            value = read_key(_content, key, _default, args, _raise)
+            value = read_key(_content, key, args, _default, _raise)
         elif isinstance(args, (str, bytes)):
-            value = read_key(_content, key, args, _trans_func, _raise)
+            value = read_key(_content, key, _trans_func, args, _raise)
         else:
             try:
                 args = list(args[:3])
@@ -277,12 +277,12 @@ def read_content(
                 if len(args) > 0 and len(args) < 3 and callable(args[0]):
                     args = [_default] + args
                 args = args + [_default, _trans_func, _raise][len(args):]
-            value = read_key(_content, key, *args)
+            value = read_key(_content, key, args[1], args[0], args[2])
         result.append(value) if _flat else result.setdefault(key, value)
     return tuple(result) if _flat else result
 
 
-def read_GET(request, key: str, default=None, trans_func=None, raise_exception=False):
+def read_GET(request, key: str, trans_func=None, default=None, raise_exception=False):
     '''
     读取GET参数
 
@@ -292,10 +292,10 @@ def read_GET(request, key: str, default=None, trans_func=None, raise_exception=F
     - raise_exception: 键不存在时是否抛出异常, 默认不抛出
     - 调用者保证`request`是一个请求，否则行为未定义
     '''
-    return read_key(request.GET, key, default, trans_func, raise_exception)
+    return read_key(request.GET, key, trans_func, default, raise_exception)
 
 
-def read_POST(request, key: str, default=None, trans_func=None, raise_exception=False):
+def read_POST(request, key: str, trans_func=None, default=None, raise_exception=False):
     '''
     读取POST参数
 
@@ -305,4 +305,4 @@ def read_POST(request, key: str, default=None, trans_func=None, raise_exception=
     - raise_exception: 键不存在时是否抛出异常, 默认不抛出
     - 调用者保证`request`是一个请求，否则行为未定义
     '''
-    return read_key(request.POST, key, default, trans_func, raise_exception)
+    return read_key(request.POST, key, trans_func, default, raise_exception)

@@ -31,7 +31,7 @@ img {
         {%if comment.len > 0 %}
             <div style="max-height:1000px;overflow:auto;">
             {%for image in comment.comment_photos.all%}
-            <img  src={{image.imagepath}} >
+            <img  src={{image.get_image_path}} >
             <!--移动端图片大小需要修正!-->
             {%endfor%}
             </div>

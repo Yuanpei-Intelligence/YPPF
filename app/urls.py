@@ -87,13 +87,18 @@ urlpatterns = [
     # 发布选课相关操作
     path("addCourse/", course_views.addCourse, name="addCourse"),
     path("editCourse/<str:cid>", course_views.addCourse, name="editCourse"),
-    # 课程相关操作
+    # 选课相关操作
     path("selectCourse/", course_views.selectCourse, name="selectCourse"),
     path("viewCourse/", course_views.viewCourse, name="viewCourse"),
+    # 课程相关操作
     path("addSingleCourseActivity/", course_views.addSingleCourseActivity, name="addSingleCourseActivity"),
     path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
     path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
     path("showCourseRecord/", course_views.showCourseRecord, name="showCourseRecord"),
+] + [
+    # 反馈中心
+    path("feedback/", feedback_views.feedbackWelcome, name="feadbackWelcome"),
+    path("modifyFeedback/", feedback_views.modifyFeedback, name="modifyFeedback"),
 ] + [
     # 数据导入
     path("loadstudata/", data_import.load_stu_data, name="load_stu_data"),

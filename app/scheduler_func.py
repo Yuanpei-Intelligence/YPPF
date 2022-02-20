@@ -17,6 +17,7 @@ from app.models import (
     Course,
     CourseTime,
     Semester,
+    Feedback,
 )
 from app.activity_utils import (
     changeActivityStatus,
@@ -52,6 +53,7 @@ __all__ = [
     'get_weather',
     'update_active_score_per_day',
     'longterm_launch_course',
+    'public_feedback_per_day',
 ]
 
 
@@ -192,7 +194,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
     # 当前课程在学期已举办的活动
     conducted_num = Activity.objects.activated().filter(
         organization_id=course.organization,
-        status=Activity.ActivityCategory.COURSE).count()
+        category=Activity.ActivityCategory.COURSE).count()
     # 发起活动，并设置报名
     with transaction.atomic():
         week_time = CourseTime.objects.select_for_update().get(id=weektime_id)
@@ -286,6 +288,20 @@ def update_active_score_per_day(days=14):
                 active_score=F('active_score') + 1 / days)
 
 
+def public_feedback_per_day():
+    '''查找距离组织公开反馈24h内没被审核的反馈，将其公开'''
+    time = datetime.now() - timedelta(days=1)
+    with transaction.atomic():
+        Feedback.objects.filter(
+            issue_status=Feedback.IssueStatus.ISSUED,
+            public_status=Feedback.PublicStatus.PRIVATE,
+            publisher_public=True,
+            org_public=True,
+            public_time__lte=time,
+        ).select_for_update().update(
+            public_status=Feedback.PublicStatus.PUBLIC)
+
+
 def start_scheduler(with_scheduled_job=True, debug=False):
     '''
     noexcept
@@ -329,6 +345,13 @@ def start_scheduler(with_scheduled_job=True, debug=False):
                               "interval",
                               id=current_job,
                               minutes=5,
+                              replace_existing=True)
+            current_job = "feedback_public_updater"
+            if debug: print(f"adding scheduled job '{current_job}'")
+            scheduler.add_job(public_feedback_per_day,
+                              "cron",
+                              id=current_job,
+                              hour=1,
                               replace_existing=True)
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"

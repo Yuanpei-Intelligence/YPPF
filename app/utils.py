@@ -127,7 +127,7 @@ def get_user_left_navbar(person, is_myself, html_display):
     raise NotImplementedError(
         "old left_navbar function has been abandoned, please use `get_sidebar_and_navbar` instead!"
     )
-    html_display["underground_url"] = local_dict["url"]["base_url"]
+    html_display["underground_url"] = UNDERGROUND_URL
 
     my_org_id_list = Position.objects.activated().filter(person=person).filter(is_admin=True)
     html_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
@@ -144,7 +144,7 @@ def get_org_left_navbar(org, is_myself, html_display):
         "old left_navbar function has been abandoned, please use `get_sidebar_and_navbar` instead!"
     )
     html_display["switch_org_name"] = org.oname
-    html_display["underground_url"] = local_dict["url"]["base_url"]
+    html_display["underground_url"] = UNDERGROUND_URL
     html_display["org"] = org
     return html_display
 
@@ -201,7 +201,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         bar_display["person_type"] = me.identity
 
         # 个人需要地下室跳转
-        bar_display["underground_url"] = local_dict["url"]["base_url"]
+        bar_display["underground_url"] = UNDERGROUND_URL
 
         # 个人所管理的小组列表
         # my_org_id_list = Position.objects.activated().filter(person=me, is_admin=True).select_related("org")
@@ -345,7 +345,7 @@ def get_std_underground_url(underground_url):
     '''检查是否是地下室网址，返回(is_underground, standard_url)
     - 如果是，规范化网址，否则返回原URL
     - 如果参数为None，返回URL为地下室网址'''
-    site_url = local_dict["url"]["base_url"]
+    site_url = UNDERGROUND_URL
     return get_std_url(underground_url, site_url)
     if underground_url is None:
         underground_url = site_url
@@ -382,7 +382,7 @@ def check_cross_site(request, arg_url):
     netloc = url2site(arg_url)
     if netloc not in [
         '',  # 内部相对地址
-        url2site(local_dict["url"]["base_url"]),  # 地下室
+        url2site(UNDERGROUND_URL),  # 地下室
         url2site(LOGIN_URL),  # yppf
     ]:
         return False
