@@ -716,8 +716,9 @@ def agreement(request):
                 participant = get_participant(request.user, update=True)
                 participant.agree_time = datetime.now().date()
                 participant.save()
+            my_messages.succeed('签署成功！', render_context)
         except:
-            pass
+            my_messages.wrong('签署失败，请重试！', render_context)
     return render(request, 'Appointment/agreement.html', render_context)
 
 
