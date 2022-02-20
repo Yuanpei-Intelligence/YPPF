@@ -2,7 +2,6 @@
 
 {% load static %}
 
-
 {% block mainpage %}
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -83,7 +82,7 @@
               </div>
               <!--  BEGIN CONTENT AREA  -->
               <div class="widget-content widget-content-area">
-                <form role="form" name="feedback" method="POST" enctype="multipart/form-data">
+                <form action="/viewFeedback/{{feedback.id}}" role="form" name="feedback" method="POST" enctype="multipart/form-data">
                   <div class="form-group">
                     <label>反馈类型</label>
                     <input hidden type="text" name="type" class="form-control" aria-label="Default" value="{{feedback.type}}">
