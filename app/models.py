@@ -1645,7 +1645,7 @@ class Feedback(CommentBase):
         PUBLIC = (0, '公开')
         PRIVATE = (1, '未公开')
         WITHDRAWAL = (2, '撤销公开')
-        FORCE_PRIVATE = (3, '强制不公开')
+        FORCE_PRIVATE = (3, '不予公开')
 
     public_status = models.SmallIntegerField(
         '公开状态', choices=PublicStatus.choices, default=PublicStatus.PRIVATE
