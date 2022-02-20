@@ -99,6 +99,7 @@ urlpatterns = [
     # 反馈中心
     path("feedback/", feedback_views.feedback_homepage, name="feadbackWelcome"),
     path("modifyFeedback/", feedback_views.modifyFeedback, name="modifyFeedback"),
+    path("viewFeedback/<str:fid>", feedback_views.viewFeedback, name="viewFeedback"),
 ] + [
     # 数据导入
     path("loadstudata/", data_import.load_stu_data, name="load_stu_data"),

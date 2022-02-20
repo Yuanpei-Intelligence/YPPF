@@ -581,6 +581,7 @@ def course_to_display(courses, user, detail=False) -> list:
             "photo",
             "teaching_plan",
             "record_cal_method",
+            "QRcode"
         ).select_related('organization').prefetch_related(
             Prefetch('participant_set',
                      queryset=CourseParticipant.objects.filter(person=user),
@@ -609,7 +610,10 @@ def course_to_display(courses, user, detail=False) -> list:
             course_info["teaching_plan"] = course.teaching_plan
             course_info["record_cal_method"] = course.record_cal_method
             course_info["photo_path"] = course.get_photo_path()
+            course_info["QRcode"] = course.QRcode
             course_info["organization_name"] = course.organization.oname
+            if course.QRcode:
+                course_info["QRcode"] = MEDIA_URL + str(course.QRcode)
             display.append(course_info)
             continue
 
@@ -636,98 +640,99 @@ def course_to_display(courses, user, detail=False) -> list:
 @log.except_captured(return_value=True,
                      record_args=True,
                      source='course_utils[draw_lots]')
-def draw_lots(course):
+def draw_lots():
     """
     等额抽签选出成功选课的学生，并修改学生的选课状态
 
     参数:
         course: 待抽签的课程
     """
-    participants = CourseParticipant.objects.filter(
-        course=course,
-        status=CourseParticipant.Status.SELECT).select_related()
-
-    participants_num = participants.count()
-    if participants_num <= 0:
-        return
-
-    participants_id = list(participants.values_list("id", flat=True))
-    capacity = course.capacity
-
-    if participants_num <= capacity:
-        # 选课人数少于课程容量，不用抽签
+    courses = Course.objects.activated().filter(status=Course.Status.DRAWING)
+    for course in courses:
         with transaction.atomic():
-            CourseParticipant.objects.filter(
-                course=course).select_for_update().update(
-                    status=CourseParticipant.Status.SUCCESS)
-            Course.objects.filter(id=course.id).select_for_update().update(
-                current_participants=participants_num)
-    else:
-        # 抽签；可能实现得有一些麻烦
-        lucky_ones = sample(participants_id, capacity)
-        unlucky_ones = list(set(participants_id).difference(set(lucky_ones)))
-        with transaction.atomic():
-            # 不确定是否要加悲观锁
-            CourseParticipant.objects.filter(
-                id__in=lucky_ones).select_for_update().update(
-                    status=CourseParticipant.Status.SUCCESS)
-            CourseParticipant.objects.filter(
-                id__in=unlucky_ones).select_for_update().update(
-                    status=CourseParticipant.Status.FAILED)
-            Course.objects.filter(id=course.id).select_for_update().update(
-                current_participants=capacity)
+            participants = CourseParticipant.objects.filter(
+                course=course,
+                status=CourseParticipant.Status.SELECT).select_related()
 
-    # 给选课成功的同学发送通知
-    receivers = CourseParticipant.objects.filter(
-        course=course,
-        status=CourseParticipant.Status.SUCCESS,
-    ).values_list("person__person_id", flat=True)
-    receivers = User.objects.filter(id__in=receivers)
-    sender = course.organization.organization_id
-    typename = Notification.Type.NEEDREAD
-    title = Notification.Title.ACTIVITY_INFORM
-    content = f"您好！您已成功选上课程《{course.name}》！"
+            participants_num = participants.count()
+            if participants_num <= 0:
+                continue
 
-    # 课程详情页面
-    URL = f"/viewCourse/?courseid={course.id}"
+            participants_id = list(participants.values_list("id", flat=True))
+            capacity = course.capacity
 
-    # 批量发送通知
-    bulk_notification_create(
-        receivers=receivers,
-        sender=sender,
-        typename=typename,
-        title=title,
-        content=content,
-        URL=URL,
-        publish_to_wechat=True,
-        publish_kws={
-            "app": WechatApp.TO_PARTICIPANT,
-            "level": WechatMessageLevel.IMPORTANT,
-        },
-    )
+            if participants_num <= capacity:
+                # 选课人数少于课程容量，不用抽签
+                CourseParticipant.objects.filter(
+                    course=course).select_for_update().update(
+                        status=CourseParticipant.Status.SUCCESS)
+                Course.objects.filter(id=course.id).select_for_update().update(
+                    current_participants=participants_num)
+            else:
+                # 抽签；可能实现得有一些麻烦
+                lucky_ones = sample(participants_id, capacity)
+                unlucky_ones = list(set(participants_id).difference(set(lucky_ones)))
+                # 不确定是否要加悲观锁
+                CourseParticipant.objects.filter(
+                    id__in=lucky_ones).select_for_update().update(
+                        status=CourseParticipant.Status.SUCCESS)
+                CourseParticipant.objects.filter(
+                    id__in=unlucky_ones).select_for_update().update(
+                        status=CourseParticipant.Status.FAILED)
+                Course.objects.filter(id=course.id).select_for_update().update(
+                    current_participants=capacity)
 
-    # 给选课失败的同学发送通知
+            # 给选课成功的同学发送通知
+            receivers = CourseParticipant.objects.filter(
+                course=course,
+                status=CourseParticipant.Status.SUCCESS,
+            ).values_list("person__person_id", flat=True)
+            receivers = User.objects.filter(id__in=receivers)
+            sender = course.organization.organization_id
+            typename = Notification.Type.NEEDREAD
+            title = Notification.Title.ACTIVITY_INFORM
+            content = f"您好！您已成功选上课程《{course.name}》！"
 
-    receivers = CourseParticipant.objects.filter(
-        course=course,
-        status=CourseParticipant.Status.FAILED,
-    ).values_list("person__person_id", flat=True)
-    receivers = User.objects.filter(id__in=receivers)
-    content = f"很抱歉通知您，您未选上课程《{course.name}》。"
-    if len(receivers) > 0:
-        bulk_notification_create(
-            receivers=receivers,
-            sender=sender,
-            typename=typename,
-            title=title,
-            content=content,
-            URL=URL,
-            publish_to_wechat=True,
-            publish_kws={
-                "app": WechatApp.TO_PARTICIPANT,
-                "level": WechatMessageLevel.IMPORTANT,
-            },
-        )
+            # 课程详情页面
+            URL = f"/viewCourse/?courseid={course.id}"
+
+            # 批量发送通知
+            bulk_notification_create(
+                receivers=receivers,
+                sender=sender,
+                typename=typename,
+                title=title,
+                content=content,
+                URL=URL,
+                publish_to_wechat=True,
+                publish_kws={
+                    "app": WechatApp.TO_PARTICIPANT,
+                    "level": WechatMessageLevel.IMPORTANT,
+                },
+            )
+
+            # 给选课失败的同学发送通知
+
+            receivers = CourseParticipant.objects.filter(
+                course=course,
+                status=CourseParticipant.Status.FAILED,
+            ).values_list("person__person_id", flat=True)
+            receivers = User.objects.filter(id__in=receivers)
+            content = f"很抱歉通知您，您未选上课程《{course.name}》。"
+            if len(receivers) > 0:
+                bulk_notification_create(
+                    receivers=receivers,
+                    sender=sender,
+                    typename=typename,
+                    title=title,
+                    content=content,
+                    URL=URL,
+                    publish_to_wechat=True,
+                    publish_kws={
+                        "app": WechatApp.TO_PARTICIPANT,
+                        "level": WechatMessageLevel.IMPORTANT,
+                    },
+                )
 
 
 @log.except_captured(return_value=True,
@@ -768,10 +773,7 @@ def change_course_status(cur_status, to_status):
         courses = courses.select_related('organization')
     with transaction.atomic():
         for course in courses:
-            if to_status == Course.Status.DRAWING:
-                # 预选结束，进行抽签
-                draw_lots(course)
-            elif to_status == Course.Status.SELECT_END:
+            if to_status == Course.Status.SELECT_END:
                 # 选课结束，将选课成功的同学批量加入小组
                 participants = CourseParticipant.objects.filter(
                     course=course,
@@ -819,22 +821,26 @@ def register_selection(wait_for: timedelta=None):
     stage1_start = max(stage1_start, now + timedelta(seconds=5))
     stage1_end = str_to_time(get_setting("course/yx_election_end"))
     stage1_end = max(stage1_end, now + timedelta(seconds=10))
+    publish_time = str_to_time(get_setting("course/publish_time"))
+    publish_time = max(publish_time, now + timedelta(seconds=15))
     stage2_start = str_to_time(get_setting("course/btx_election_start"))
-    stage2_start = max(stage2_start, now + timedelta(seconds=15))
+    stage2_start = max(stage2_start, now + timedelta(seconds=20))
     stage2_end = str_to_time(get_setting("course/btx_election_end"))
-    stage2_end = max(stage2_end, now + timedelta(seconds=20))
+    stage2_end = max(stage2_end, now + timedelta(seconds=25))
     # 定时任务：修改课程状态
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_start",
-                      run_date=stage1_start, args=[Course.Status.WAITING,Course.Status.STAGE1], replace_existing=True)
+                      run_date=stage1_start, args=[Course.Status.WAITING, Course.Status.STAGE1], replace_existing=True)
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_end",
-                      run_date=stage1_end, args=[Course.Status.STAGE1,Course.Status.DRAWING], replace_existing=True)
+                      run_date=stage1_end, args=[Course.Status.STAGE1, Course.Status.DRAWING], replace_existing=True)
+    scheduler.add_job(
+        draw_lots, "date", id=f"course_selection_{year+semster}_publish", run_date=publish_time, replace_existing=True)
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_start",
-                    run_date=stage2_start, args=[Course.Status.DRAWING,Course.Status.STAGE2], replace_existing=True)
+                      run_date=stage2_start, args=[Course.Status.DRAWING, Course.Status.STAGE2], replace_existing=True)
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_end",
-                    run_date=stage2_end, args=[Course.Status.STAGE2,Course.Status.SELECT_END], replace_existing=True)
+                      run_date=stage2_end, args=[Course.Status.STAGE2, Course.Status.SELECT_END], replace_existing=True)
     # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
 
-def course_base_check(request):
+def course_base_check(request,if_new=None):
     """
     选课单变量合法性检查并准备变量
     """
@@ -891,7 +897,8 @@ def course_base_check(request):
                     pic = request.POST.get(f'picture{i+1}')
         context["photo"] = pic
         context["QRcode"] = request.FILES.get("QRcode")
-        assert context["photo"] is not None, "缺少课程预告图片！"
+        if if_new is None:
+            assert context["photo"] is not None, "缺少课程预告图片！"
         assert if_image(context["QRcode"]) != 1, "微信群二维码图片文件类型错误！"
     except Exception as e:
         return wrong(str(e))
@@ -936,7 +943,7 @@ def create_course(request, course_id=None):
     context = dict()
 
     try:
-        context = course_base_check(request)
+        context = course_base_check(request,course_id)
         if context["warn_code"] == 1:  # 合法性检查出错！
             return context
     except:
@@ -1025,6 +1032,7 @@ def cal_participate_num(course: Course) -> Counter:
     members = Position.objects.activated().filter(
         pos__gte=1,
         person__identity=NaturalPerson.Identity.STUDENT,
+        org=org,
         ).values_list("person", flat=True)
     all_participants = (
         Participant.objects.activated(no_unattend=True)

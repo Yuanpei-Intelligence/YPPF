@@ -59,7 +59,7 @@
                                         <h4 class="text-center mb-4">
                                             问答反馈中心
                                             {% if is_person %}
-                                            <a href="../addfeedback/"><i class="fa fa-plus-square" aria-hidden="true" style="color: #1b55e2;"></i></a>
+                                            <a href="/modifyFeedback/"><i class="fa fa-plus-square" aria-hidden="true" style="color: #1b55e2;"></i></a>
                                             {% endif %} 
                                         </h4>
                                         <h6>欢迎你来到这里。</h6>
@@ -466,7 +466,7 @@
                                                                         <i class="fa fa-undo"></i>
                                                                     </button>
                                                                 </form>
-                                                                <a href="">
+                                                                <a href="/viewFeedback/{{feedback.id}}">
                                                                     <button class="btn btn-outline">
                                                                         <i class="fa fa-eye"></i>
                                                                     </button>
@@ -530,11 +530,14 @@
                                                                 </h5>
                                                             </div>
                                                             <div>
-                                                                <div class="btn-group" role="group">
-                                                                    <button class="btn btn-outline">
-                                                                        <i class="fa fa-eye"></i>
-                                                                    </button>
-                                                                </div>
+                                                                <a href="/viewFeedback/{{feedback.id}}">
+                                                                    <div class="btn-group" role="group">
+                                                                        <button class="btn btn-outline">
+                                                                            <i class="fa fa-eye"></i>
+                                                                        </button>
+                                                                    </div>  
+                                                                </a>
+                                                                
                                                             </div>
                                                         </div>
                                                         
