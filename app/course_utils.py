@@ -655,7 +655,7 @@ def draw_lots():
 
             participants_num = participants.count()
             if participants_num <= 0:
-                return
+                continue
 
             participants_id = list(participants.values_list("id", flat=True))
             capacity = course.capacity
@@ -840,7 +840,7 @@ def register_selection(wait_for: timedelta=None):
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_end",
                       run_date=stage2_end, args=[Course.Status.STAGE2, Course.Status.SELECT_END], replace_existing=True)
     # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
-    
+
 def course_base_check(request):
     """
     选课单变量合法性检查并准备变量
