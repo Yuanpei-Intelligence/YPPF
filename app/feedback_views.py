@@ -15,6 +15,9 @@ from app.feedback_utils import (
     update_feedback,
     make_relevant_notification,
 )
+from app.comment_utils import addComment, showComment
+from django.db import transaction
+
 
 __all__ = [
     'feedbackWelcome',
@@ -22,18 +25,10 @@ __all__ = [
 ]
 
 
-from app.comment_utils import addComment, showComment
-from django.db import transaction
-
-
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='views[viewActivity]', record_user=True)
+# @log.except_captured(EXCEPT_REDIRECT, source='views[viewActivity]', record_user=True)
 def viewFeedback(request, fid):
-    """
-    1. 使用 GET 方法访问，展示该反馈的详情页。
-    2. 使用 POST 方法访问，可以添加评论以及修改状态。
-    """
     # 查找fid对应的反馈条目
     fid = int(fid)
     feedback = Feedback.objects.get(id=fid)
@@ -41,26 +36,35 @@ def viewFeedback(request, fid):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
 
+    # 获取前端页面中可能存在的提示
+    my_messages.transfer_message_context(request.GET, html_display)
+
     # 添加评论和修改活动状态
     if request.method == "POST" and request.POST:
-        option = request.POST.get("option")
+        print(request.POST)
         # 添加评论
-        if option == "comment":
+        if request.POST.get("comment_submit"):
             # 确定通知消息的发送人，互相发送给对方
             if user_type == "Person" and feedback.person == me:
-                receiver = feedback.org
+                receiver = feedback.org.organization_id
             elif user_type == "Organization" and feedback.org == me:
-                receiver = feedback.person
+                receiver = feedback.person.person_id
             # TODO: 当评论者是其他人的时候（公开反馈），要向哪些人发送通知提醒？
             # 之前评论过的学生/老师可以收到提醒吗？
             # 暂时没有发送任何消息提醒，addComment函数不支持向多人发送提醒
             else:
-                receiver = None
+                receiver = [
+                    feedback.org.organization_id,
+                    feedback.person.person_id,
+                ]
             addComment(request, feedback, receiver)
         # 以下为调整反馈的状态
+        public = request.POST.get("public_status")
+        read = request.POST.get("read_status")
+        solve = request.POST.get("solve_status")
         # 一、公开反馈信息
-        elif option == "public":
-            # 组织选择公开反馈
+        # 组织选择公开反馈
+        if public == "public":
             if user_type == "Organization" and feedback.org == me:
                 with transaction.atomic():
                     feedback = Feedback.objects.select_for_update().get(id=fid)
@@ -84,11 +88,22 @@ def viewFeedback(request, fid):
                     ):
                         feedback.public_status = Feedback.PublicStatus.PUBLIC
                     feedback.save()
+            # 教师可以公开所有反馈
+            elif (
+                user_type == "Person" and me.identity == NaturalPerson.Identity.TEACHER
+            ):
+                with transaction.atomic():
+                    feedback = Feedback.objects.select_for_update().get(id=fid)
+                    if (feedback.publisher_public == True and feedback.org_public == True):
+                        feedback.public_status = Feedback.PublicStatus.PUBLIC
+                    else:
+                        feedback.public_status = Feedback.PublicStatus.PRIVATE
+                    feedback.save()
             # 其他人没有公开反馈权限
             else:
                 redirect(message_url(wrong("没有公开该反馈的权限！")))
         # 二、隐藏反馈信息
-        elif option == "private":
+        if public == "private":
             # 组织选择隐藏反馈
             if user_type == "Organization" and feedback.org == me:
                 with transaction.atomic():
@@ -120,57 +135,78 @@ def viewFeedback(request, fid):
             else:
                 redirect(message_url(wrong("没有隐藏该反馈的权限！")))
         # 三、修改已读状态
-        elif option == "read":
+        if read:
             # 只有组织可以修改已读状态
             if user_type == "Organization" and feedback.org == me:
                 with transaction.atomic():
                     feedback = Feedback.objects.select_for_update().get(id=fid)
-                    feedback.read_status = Feedback.ReadStatus.READ
+                    if read == "read":
+                        feedback.read_status = Feedback.ReadStatus.READ
+                    elif read == "unread":
+                        feedback.read_status = Feedback.ReadStatus.UNREAD
                     feedback.save()
             # 其他人没有标记已读权限
             else:
                 redirect(message_url(wrong("没有修改已读状态的权限！")))
         # 四、修改解决状态
-        elif option == "solve":
-            print(request.POST)
+        if solve:
             # 只有组织可以修改解决状态
             if user_type == "Organization" and feedback.org == me:
                 with transaction.atomic():
                     feedback = Feedback.objects.select_for_update().get(id=fid)
                     # 修改为已解决
-                    if request.POST["solve_status"] == "solve":
+                    if solve == "solve":
                         feedback.solve_status = Feedback.SolveStatus.SOLVED
                     # 修改为无法解决
-                    elif request.POST["solve_status"] == "unsolvable":
+                    elif solve == "unsolvable":
                         feedback.solve_status = Feedback.SolveStatus.UNSOLVABLE
+                    elif solve == "solving":
+                        feedback.solve_status = Feedback.SolveStatus.SOLVING
                     feedback.save()
             # 其他人没有修改解决状态权限
             else:
                 redirect(message_url(wrong("没有修改解决状态的权限！")))
+        # 五、撤销反馈
+        if request.POST.get("post_type") == "cancel":
+            # 只有发布者可以撤销反馈
+            if feedback.person == me:
+                with transaction.atomic():
+                    feedback = Feedback.objects.select_for_update().get(id=fid)
+                    feedback.issue_status = Feedback.IssueStatus.DELETED
+                feedback.save()
+                redirect(message_url(succeed("已成功撤销反馈！")))
 
     # 使用 GET 方法访问，展示页面
     # 首先确定不同用户对反馈的评论和修改权限
+    read = feedback.get_read_status_display()
+    solve = feedback.get_solve_status_display()
     commentable = False
-    make_public = False
-    make_private = False
+    public = False
+    public_editable = False
     read_editable = False
     solve_editable = False
+    cancel_editable = False  # 不允许修改反馈标题和反馈内容
+    form_editable = False
     # 当前登录用户为发布者
     if user_type == "Person" and feedback.person == me:
         login_identity = "publisher"
+        form_editable = True
         commentable = True
         # 发布者可修改自身公开状态
+        public_editable = True
         if feedback.publisher_public:
-            make_private = True
-        else:
-            make_public = True
+            public = True
+        # 发布者可撤销
+        cancel_editable = True
     # 当前登录用户为老师
     elif user_type == "Person" and me.identity == NaturalPerson.Identity.TEACHER:
         login_identity = "teacher"
+        form_editable = True
         commentable = True
-        # 老师只有隐藏反馈权限
+        # 老师可修改反馈公开状态
+        public_editable = True
         if feedback.public_status == Feedback.PublicStatus.PUBLIC:
-            make_private = True
+            public = True
     # 当前登录用户为发布者和老师以外的个人
     elif user_type == "Person":
         # 检查当前个人是否具有访问权限，只有公开反馈有访问权限
@@ -184,14 +220,14 @@ def viewFeedback(request, fid):
         # 检查当前小组是否具有访问权限，只有被反馈小组有权限
         if feedback.org == me:
             login_identity = "org"
+            form_editable = True
             commentable = True
             read_editable = True
             solve_editable = True
             # 组织可修改自身公开状态
+            public_editable = True
             if feedback.org_public:
-                make_private = True
-            else:
-                make_public = True
+                public = True
         else:
             return redirect(message_url(wrong("非受反馈小组没有访问该反馈的权限")))
     # 其他用户（好像也没有除小组和个人以外的用户？先写上else保证不会遗漏）
