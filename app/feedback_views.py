@@ -71,6 +71,7 @@ def feedback_homepage(request):
         .filter(
             Q(solve_status=Feedback.SolveStatus.SOLVED)
             | Q(solve_status=Feedback.SolveStatus.UNSOLVABLE)
+            | Q(issue_status=Feedback.IssueStatus.DELETED)
         )
     )
 
