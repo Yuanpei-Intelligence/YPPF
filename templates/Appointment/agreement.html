@@ -36,7 +36,7 @@
 			<div class="container-fluid">
 				<div class="row align-items-center">
 					<div class="col-md-12 col-12">
-						<h4 class="breadcrumb-title"><a href='index'>主页</a> / 用户协议</h4>
+						<h4 class="breadcrumb-title"><a href='index'>主页</a> / 无占座协议</h4>
 						<!--<h4 class="breadcrumb-title">选择时间</h4>-->
 					</div>
 
@@ -102,9 +102,9 @@
         
                                             <div class="d-flex justify-content-between">
                                                 <button type="submit" id="confirm" name="type"
-                                                    class="btn btn-lg btn-primary" value="confirm"
+                                                    class="btn btn-primary" value="confirm"
                                                     style="display:block;margin:0 auto"
-                                                    onclick="return confirm(`确定同意用户协议吗？确认后将无法修改！`)"
+                                                    onclick="return confirm(`确定同意无占座协议吗？确认后将无法修改！`)"
                                                     {% if not agree_time %}
                                                     >同意</button>
                                                     {% else %}
@@ -112,7 +112,7 @@
                                                     >已签署({{agree_time}})</button>
                                                     {% endif %}
                                                 &nbsp;
-                                                <button type="submit" class="btn btn-lg btn-mute" value=""
+                                                <button type="submit" class="btn btn-outline-primary" value=""
                                                     style="display:block;margin:0 auto">返回</button>
                                             </div>
                                             <br/>
