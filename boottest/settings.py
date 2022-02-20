@@ -32,7 +32,7 @@ LOGIN_URL = base_get_setting('url/login_url')
 SECRET_KEY = "k+8az5x&aq_!*@%v17(ptpeo@gp2$u-uc30^fze3u_+rqhb#@9"
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ["*"]
 
