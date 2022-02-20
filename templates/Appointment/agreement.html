@@ -106,15 +106,16 @@
                                                     style="display:block;margin:0 auto"
                                                     onclick="return confirm(`确定同意用户协议吗？确认后将无法修改！`)"
                                                     {% if not agree_time %}
+                                                    >同意</button>
+                                                    {% else %}
                                                     disabled
                                                     >已签署({{agree_time}})</button>
-                                                    {% else %}
-                                                    >同意</button>
                                                     {% endif %}
                                                 &nbsp;
                                                 <button type="submit" class="btn btn-lg btn-mute" value=""
                                                     style="display:block;margin:0 auto">返回</button>
                                             </div>
+                                            <br/>
                                         </div>
                                         <!-- </div> -->
                                     </div>
