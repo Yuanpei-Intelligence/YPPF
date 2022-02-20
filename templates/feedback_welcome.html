@@ -91,12 +91,9 @@
                                                             <div class="d-flex justify-content">
                                                                 <div>
                                                                     <h5>
-                                                                        <a href='/viewFeedback/{{feedback.id}}'><u>{{feedback.title}}</u></a>
-                                                                    </h5>
-                                                                </div>
-                                                                <div class="ml-1">
+                                                                    <a href='/viewFeedback/{{feedback.id}}'>{{feedback.title}}</a>
                                                                     {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
-                                                                    <p>
+                                                                    
                                                                     {% if feedback.read_status == 1 %}
                                                                     <span class="badge badge-pill badge-danger"> {{feedback.get_read_status_display}} </span>
                                                                     {% elif feedback.solve_status == 3 %}
@@ -106,9 +103,9 @@
                                                                     <span class="badge badge-pill badge-warning">{{feedback.get_read_status_display}} </span>
                                                                     <span class="badge badge-pill badge-warning">{{feedback.get_solve_status_display}}</span>
                                                                     {% endif %}
-                                                                    </p>
+                                                                    
                                                                 {% else %}
-                                                                <p>
+                                                                
                                                                     <span class="badge badge-pill 
                                                                     {% if feedback.solve_status == 0 %}
                                                                         badge-success"
@@ -116,8 +113,11 @@
                                                                         badge-primary"
                                                                     {% endif %}>
                                                                     {{feedback.get_solve_status_display}} </span>
-                                                                </p>
                                                                 {% endif %}
+                                                                    </h5>
+                                                                </div>
+                                                                <div class="ml-1">
+                                                                    
                                                                 </div>
                                                             </div>
                                                             <p style="color: rgb(66, 67, 68);">
@@ -210,26 +210,20 @@
                                                             <div class="d-flex justify-content-between">
                                                                 <div>
                                                                     <h5>
-                                                                        <a href='/viewFeedback/{{feedback.id}}'><u>{{feedback.title}}</u></a>
-                                                                    </h5>
-                                                                </div>
-                                                            </div>
-
-                                                            <p>
-                                                                {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
-                                                                    <p>
+                                                                        <a href='/viewFeedback/{{feedback.id}}'>{{feedback.title}}</a>
+                                                                        {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
                                                                         {% if feedback.read_status == 1 %}
                                                                         <span class="badge badge-pill badge-danger"> {{feedback.get_read_status_display}} </span>
-                                                                    {% elif feedback.solve_status == 3%}
+                                                                        {% elif feedback.solve_status == 3%}
                                                                         <span class="badge badge-pill badge-primary">{{feedback.get_read_status_display}} </span>
                                                                         <span class="badge badge-pill badge-primary">---</span>
-                                                                    {% else %}
+                                                                        {% else %}
                                                                         <span class="badge badge-pill badge-warning">{{feedback.get_read_status_display}} </span>
                                                                         <span class="badge badge-pill badge-warning">{{feedback.get_solve_status_display}}</span>
-                                                                    {% endif %}
-                                                                    </p>
-                                                                {% else %}
-                                                                    <p>
+                                                                        {% endif %}
+                                                                   
+                                                                        {% else %}
+                                                                  
                                                                         <span class="badge badge-pill 
                                                                         {% if feedback.solve_status == 0 %}
                                                                             badge-success">
@@ -237,9 +231,12 @@
                                                                             badge-primary">
                                                                         {% endif %}
                                                                         {{feedback.get_solve_status_display}} </span>
-                                                                    </p>
-                                                                {% endif %}
-                                                            </p>
+                                                                   
+                                                                        {% endif %}
+                                                                    </h5>
+                                                                </div>
+                                                            </div>
+                                                    
 
                                                             <p style="color: rgb(66, 67, 68);">
                                                                 <i class="fa fa-bookmark" style="width: 14px;"></i>
@@ -282,35 +279,30 @@
                                                             <div class="d-flex justify-content-between">
                                                                 <div>
                                                                     <h5>
-                                                                        <a href='/viewFeedback/{{feedback.id}}'><u>{{feedback.title}}</u></a>
+                                                                        <a href='/viewFeedback/{{feedback.id}}'>{{feedback.title}}</a>
+                                                                        {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
+                                                                        {% if feedback.read_status == 1 %}
+                                                                        <span class="badge badge-pill badge-danger"> {{feedback.get_read_status_display}} </span>
+                                                                        {% elif feedback.solve_status == 3%}
+                                                                        <span class="badge badge-pill badge-primary">{{feedback.get_read_status_display}} </span>
+                                                                        <span class="badge badge-pill badge-primary">---</span>
+                                                                        {% else %}
+                                                                        <span class="badge badge-pill badge-warning">{{feedback.get_read_status_display}} </span>
+                                                                        <span class="badge badge-pill badge-warning">{{feedback.get_solve_status_display}}</span>
+                                                                        {% endif %}
+                                                                        {% else %}
+                                                                        <span class="badge badge-pill 
+                                                                        {% if feedback.solve_status == 0 %}
+                                                                            badge-success">
+                                                                        {% else %}
+                                                                            badge-primary">
+                                                                        {% endif %}
+                                                                        {{feedback.get_solve_status_display}} </span>
+                                                                        {% endif %}
                                                                     </h5>
                                                                 </div>
                                                             </div>
                                                             
-                                                            {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
-                                                                <p>
-                                                                    {% if feedback.read_status == 1 %}
-                                                                    <span class="badge badge-pill badge-danger"> {{feedback.get_read_status_display}} </span>
-                                                                {% elif feedback.solve_status == 3%}
-                                                                    <span class="badge badge-pill badge-primary">{{feedback.get_read_status_display}} </span>
-                                                                    <span class="badge badge-pill badge-primary">---</span>
-                                                                {% else %}
-                                                                    <span class="badge badge-pill badge-warning">{{feedback.get_read_status_display}} </span>
-                                                                    <span class="badge badge-pill badge-warning">{{feedback.get_solve_status_display}}</span>
-                                                                {% endif %}
-                                                                </p>
-                                                            {% else %}
-                                                                <p>
-                                                                    <span class="badge badge-pill 
-                                                                    {% if feedback.solve_status == 0 %}
-                                                                        badge-success">
-                                                                    {% else %}
-                                                                        badge-primary">
-                                                                    {% endif %}
-                                                                    {{feedback.get_solve_status_display}} </span>
-                                                                </p>
-                                                            {% endif %}
-
                                                             <p style="color: rgb(66, 67, 68);">
                                                                 <i class="fa fa-share-alt" style="width: 14px;"></i>
                                                                 <span class="ml-1">反馈至 {{feedback.org.oname}}</span>
@@ -381,16 +373,15 @@
                                     {% if draft_feedback %}
                                     <div id="undone-feedback" class="row">
                                         {% for feedback in draft_feedback %}
-                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                            <div class="col-12 col-xl-4 col-lg-6 mb-xl-4 col-md-6 mb-4">
                                                 <div class="b-skills">
                                                     <div class="d-flex justify-content-between">
                                                         <div class="d-flex justify-content-start">
                                                             <h5>
                                                                 {{feedback.title}}
                                                             </h5>
-                                                            <p class="ml-1">
-                                                                <span class="badge badge-success">草稿</span>
-                                                            </p>
+                                                            <span class="badge badge-success">草稿</span>
+                                                            
                                                         </div>
                                                         <div class="btn-group" role="group">
                                                             <form method="POST">
@@ -448,14 +439,12 @@
                                 <div class="bio-skill-box">
                                     <div id="undone-feedback" class="row">
                                         {% for feedback in undone_feedback %}
-                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                            <div class="col-12 col-xl-4 col-lg-6 mb-xl-4 col-md-6 mb-4">
                                                 <div class=" b-skills">
                                                     <div class="d-flex justify-content-between">
                                                         <div class="d-flex justify-content-start">
                                                             <h5>
-                                                                <a href='/viewFeedback/{{feedback.id}}'><u>{{feedback.title}}</u></a>
-                                                            </h5>
-                                                            <p class="ml-1">
+                                                                <a href='/viewFeedback/{{feedback.id}}'>{{feedback.title}}</a>
                                                                 {% if feedback.read_status == 1 %}
                                                                     <span class="badge badge-pill badge-danger"> {{feedback.get_read_status_display}} </span>
                                                                 {% elif feedback.solve_status == 3%}
@@ -465,7 +454,7 @@
                                                                     <span class="badge badge-pill badge-warning">{{feedback.get_read_status_display}} </span>
                                                                     <span class="badge badge-pill badge-warning">{{feedback.get_solve_status_display}}</span>
                                                                 {% endif %}
-                                                            </p>
+                                                            </h5>
                                                         </div>
                                                         <div>
                                                             <div class="btn-group" role="group">
@@ -525,14 +514,12 @@
                                     <div class="bio-skill-box">
                                         <div class="row">
                                             {% for feedback in done_feedback %}
-                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                <div class="col-12 col-xl-4 col-lg-6 mb-xl-4 col-md-6 mb-4">
                                                     <div class=" b-skills">
                                                         <div class="d-flex justify-content-between">
                                                             <div class="d-flex justify-content-start">
                                                                 <h5>
-                                                                    <a href='/viewFeedback/{{feedback.id}}'><u>{{feedback.title}}</u></a>
-                                                                </h5>
-                                                                <p class="ml-1">
+                                                                    <a href='/viewFeedback/{{feedback.id}}'>{{feedback.title}}</a>
                                                                     <span class="badge badge-pill 
                                                                     {% if feedback.solve_status == 0 %}
                                                                         badge-success">
@@ -540,7 +527,7 @@
                                                                         badge-primary">
                                                                     {% endif %}
                                                                     {{feedback.get_solve_status_display}} </span>
-                                                                </p>
+                                                                </h5>
                                                             </div>
                                                             <div>
                                                                 <div class="btn-group" role="group">
