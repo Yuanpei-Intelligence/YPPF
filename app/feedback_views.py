@@ -199,7 +199,7 @@ def modifyFeedback(request):
         else:
             org_list['']['selected'] = True
     else: # feedback_type 默认选中“35楼生活权益反馈”，默认选中项将在前端实时更新。
-        feedback_type = "35楼生活权益反馈"
+        feedback_type = list(feedback_type_list.keys())[0]
         if FeedbackType.objects.get(name=feedback_type).org_type is not None:
             org_type_list[
                 FeedbackType.objects.get(name=feedback_type).org_type.otype_name
