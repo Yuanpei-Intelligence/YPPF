@@ -165,7 +165,7 @@ def cameracheck(request):   # 摄像头post的后端函数
         if content.Atime.date() == content.Astart.date():
             # 如果预约时间在使用时间的24h之内 则人数下限为2
             num_need = min(GLOBAL_INFO.today_min, num_need)
-        if content.Atemp_flag == Appoint.Bool_flag.Yes:
+        if content.Atemp_flag:
             # 如果为临时预约 则人数下限为1 不作为合格标准 只是记录
             num_need = min(GLOBAL_INFO.temporary_min, num_need)
         try:
@@ -446,9 +446,9 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
         cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：禁止使用")
         return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
 
-    if room.Rstatus == Room.Status.SUSPENDED:   # 自习室
+    if room.Rstatus == Room.Status.UNLIMITED:   # 自习室
 
-        if room.RIsAllNight == Room.IsAllNight.Yes:  # 通宵自习室
+        if room.RIsAllNight:  # 通宵自习室
             cardcheckinfo_writer(student, room, True, True, f"刷卡开门：通宵自习室")
             return JsonResponse({"code": 0, "openDoor": "true"}, status=200)
 
@@ -594,8 +594,8 @@ def index(request):  # 主页
             render_context.update(message_code=0)
             # print("无法顺利呈现公告，原因可能是没有将状态设置为YES或者超过一条状态被设置为YES")
 
-    if request.GET.get("warn") is not None:
-        wrong(request.session.pop('warn_message'), render_context)
+    # 获取可能的全局消息
+    my_messages.transfer_message_context(request.GET, render_context, normalize=True)
 
 
     #--------- 前端变量 ---------#
@@ -625,7 +625,7 @@ def index(request):  # 主页
 
     #--------- 地下室状态：left tab ---------#
     suspended_room_list = room_list.filter(
-        Rstatus=Room.Status.SUSPENDED).order_by('-Rtitle')                          # 开放房间
+        Rstatus=Room.Status.UNLIMITED).order_by('-Rtitle')                          # 开放房间
     statistics_info = [(room, (room.Rpresent * 10) // (room.Rmax or 1))
                        for room in suspended_room_list]                             # 开放房间人数统计
 
@@ -676,8 +676,9 @@ def index(request):  # 主页
                                       search_message="只能查看最近7天的情况!")
                 return render(request, 'Appointment/index.html', render_context)
             # 到这里 搜索没问题 进行跳转
-            urls = reverse("Appointment:arrange_talk") + "?year=" + str(
-                year) + "&month=" + str(month) + "&day=" + str(day) + "&type=" + check_type
+            urls = my_messages.append_query(
+                reverse("Appointment:arrange_talk"),
+                year=year, month=month, day=day, type=check_type)
             # YHT: added for Russian search
             return redirect(urls)
 
@@ -696,8 +697,7 @@ def arrange_time(request):
             room_object = check[0]
 
         except:
-            # todo 加一个提示
-            redirect(reverse('Appointment:index'))
+            return redirect(reverse('Appointment:index'))
 
     dayrange_list = web_func.get_dayrange()
 
@@ -714,12 +714,13 @@ def arrange_time(request):
                 room_object.Rstart.minute >= 30)
 
             for i in range(time_range + 1):  # 对每半个小时
-                day['timesection'].append({})
-                day['timesection'][-1]['starttime'] = str(
+                timesection = {}
+                timesection['starttime'] = str(
                     temp_hour + (i + temp_minute) // 2).zfill(2) + ":" + str(
                     (i + temp_minute) % 2 * 30).zfill(2)
-                day['timesection'][-1]['status'] = 0  # 0可用 1已经预约 2已过
-                day['timesection'][-1]['id'] = i
+                timesection['status'] = 0  # 0可用 1已经预约 2已过
+                timesection['id'] = i
+                day['timesection'].append(timesection)
         # 筛选可能冲突的预约
         appoints = Appoint.objects.not_canceled().filter(
             Room_id=Rid,

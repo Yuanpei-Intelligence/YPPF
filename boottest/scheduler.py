@@ -23,13 +23,14 @@ class Scheduler():
         def wrapper(*args, **kwargs):
             target_method(*args, **kwargs)
             if self.remote_scheduler is None and self.remain_times > 0:
-                self.retry_count -= 1
+                self.remain_times -= 1
                 self.remote_scheduler = rpyc.connect(
                     "localhost", settings.MY_RPC_PORT,
                     config={"allow_all_attrs": True}).root
             if self.remote_scheduler is not None:
-                print('remote scheduler not found, job may not be executed.')
                 self.remote_scheduler.wakeup()
+            else:
+                logging.warning('remote scheduler not found, job may not be executed.')
         update_wrapper(wrapper, target_method)
         return wrapper
 
