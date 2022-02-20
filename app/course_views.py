@@ -381,6 +381,8 @@ def showCourseRecord(request):
             for record in record_search:
                 # 每次都需要更新一下参与次数，避免出现手动调整签到但是未能记录在学时表的情况
                 record.attend_times = participate_raw[record.person.id]
+                if int(record.total_hours) != record.total_hours:
+                    record.total_hours = int(record.total_hours)
                 records_list.append({
                     "pk": record.person.id,
                     "name": record.person.name,
