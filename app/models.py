@@ -1638,6 +1638,7 @@ class Feedback(CommentBase):
     )
 
     feedback_time = models.DateTimeField('反馈时间', auto_now_add=True)
+    # anonymous = models.BooleanField("发布者是否匿名", default=True)
     publisher_public = models.BooleanField('发布者是否公开', default=False)
     org_public = models.BooleanField('组织是否公开', default=False)
     public_time = models.DateTimeField('组织公开时间', default=datetime.now)
@@ -1646,7 +1647,7 @@ class Feedback(CommentBase):
         PUBLIC = (0, '公开')
         PRIVATE = (1, '未公开')
         WITHDRAWAL = (2, '撤销公开')
-        FORCE_PRIVATE = (3, '强制不公开')
+        FORCE_PRIVATE = (3, '不予公开')
 
     public_status = models.SmallIntegerField(
         '公开状态', choices=PublicStatus.choices, default=PublicStatus.PRIVATE
