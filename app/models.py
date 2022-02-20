@@ -50,6 +50,20 @@ def current_year()-> int:
     '''不导出的函数，用于实时获取学年设置'''
     return CURRENT_ACADEMIC_YEAR
 
+def image_url(image, enable_abs=False)-> str:
+    '''不导出的函数，返回类似/media/path的url相对路径'''
+    # ImageField将None和空字符串都视为<ImageFieldFile: None>
+    # 即django.db.models.fields.files.ImageFieldFile对象
+    # 该类有以下属性：
+    # __str__: 返回一个字符串，与数据库表示相匹配，None会被转化为''
+    # url: 非空时返回MEDIA_URL + str(self)， 否则抛出ValueError
+    # path: 文件的绝对路径，可以是绝对路径但文件必须从属于MEDIA_ROOT，否则报错
+    # enable_abs将被废弃
+    path = str(image)
+    if enable_abs and path.startswith('/'):
+        return path
+    return MEDIA_URL + path
+
 
 class NaturalPersonManager(models.Manager):
     def activated(self):
@@ -161,13 +175,10 @@ class NaturalPerson(models.Model):
         return str(self.name)
 
     def get_user_ava(self):
-        try:
-            avatar = self.avatar
-        except:
-            avatar = ""
+        avatar = self.avatar
         if not avatar:
             avatar = "avatar/person_default.jpg"
-        return MEDIA_URL + str(avatar)
+        return image_url(avatar)
 
     def get_accept_promote_display(self):
         return "是" if self.accept_promote else "否"
@@ -369,13 +380,10 @@ class Organization(models.Model):
         super().save(*args, **kwargs)
 
     def get_user_ava(self):
-        try:
-            avatar = self.avatar
-        except:
-            avatar = ""
+        avatar = self.avatar
         if not avatar:
             avatar = "avatar/org_default.png"
-        return MEDIA_URL + str(avatar)
+        return image_url(avatar)
 
     def get_subscriber_num(self, activated=True):
         if activated:
@@ -795,6 +803,9 @@ class ActivityPhoto(models.Model):
     activity = models.ForeignKey(Activity, related_name="photos", on_delete=models.CASCADE)
     time = models.DateTimeField("上传时间", auto_now_add=True)
 
+    def get_image_path(self):
+        return image_url(self.image, enable_abs=True)
+
 
 class TransferRecord(models.Model):
     class Meta:
@@ -907,6 +918,7 @@ class YQPointDistribute(models.Model):
         verbose_name = "元气值发放"
         verbose_name_plural = verbose_name
 
+
 class QandAManager(models.Manager):
     def activated(self, sender_flag=False, receiver_flag=False):
         if sender_flag:
@@ -914,6 +926,7 @@ class QandAManager(models.Manager):
         if receiver_flag:
             return self.exclude(status__in=[QandA.Status.IGNORE_RECEIVER,QandA.Status.DELETE])
         return self.exclude(status=QandA.Status.DELETE)
+
 
 class QandA(models.Model):
     # 问答类
@@ -941,9 +954,11 @@ class QandA(models.Model):
 
     objects: QandAManager = QandAManager()
 
+
 class NotificationManager(models.Manager):
     def activated(self):
         return self.exclude(status=Notification.Status.DELETE)
+
 
 class Notification(models.Model):
     class Meta:
@@ -1038,8 +1053,8 @@ class CommentPhoto(models.Model):
     )
 
     # 路径无法加上相应图片
-    def imagepath(self):
-        return MEDIA_URL + str(self.image)
+    def get_image_path(self):
+        return image_url(self.image)
 
 
 class ModifyOrganization(CommentBase):
@@ -1091,13 +1106,10 @@ class ModifyOrganization(CommentBase):
         return display
 
     def get_user_ava(self):
-        try:
-            avatar = self.avatar
-        except:
-            avatar = ""
+        avatar = self.avatar
         if not avatar:
-            avatar = "avatar/person_default.jpg"
-        return MEDIA_URL + str(avatar)
+            avatar = "avatar/org_default.png"
+        return image_url(avatar)
 
     def is_pending(self):   #表示是不是pending状态
         return self.status == ModifyOrganization.Status.PENDING
@@ -1223,6 +1235,7 @@ class Reimbursement(CommentBase):
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
     record = models.ForeignKey(TransferRecord, on_delete=models.CASCADE) #转账信息的记录
     examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
+
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
 
@@ -1246,6 +1259,7 @@ class Reimbursement(CommentBase):
 
     def is_pending(self):   #表示是不是pending状态
         return self.status == Reimbursement.ReimburseStatus.WAITING
+
 
 class ReimbursementPhoto(models.Model):
     class Meta:
@@ -1274,6 +1288,7 @@ class Help(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
 
 class Wishes(models.Model):
     class Meta:
@@ -1331,13 +1346,12 @@ class CourseManager(models.Manager):
 
     def unselected(self, person: NaturalPerson):
         # 返回当前学生没选上的所有课程
-        return self.activated().exclude(participant_set__person=person,
-                                        participant_set__status__in=[
-                                           CourseParticipant.Status.SELECT,
-                                           CourseParticipant.Status.SUCCESS,
-                                        ])
-
-
+        my_course_list = self.activated().filter(participant_set__person=person,
+                                                       participant_set__status__in=[
+                                                           CourseParticipant.Status.SELECT,
+                                                           CourseParticipant.Status.SUCCESS,
+                                                       ]).values_list("id", flat=True)
+        return self.activated().exclude(id__in=my_course_list)
 
 
 class Course(models.Model):
@@ -1368,15 +1382,6 @@ class Course(models.Model):
                                  default="",
                                  blank=True)
     teacher = models.CharField("授课教师", max_length=48, default="", blank=True)
-
-    # 不确定能否统一选课的情况，先用最保险的方法
-    # 如果由助教填写，表单验证时要着重检查这一部分。预选结束时间和补退选开始时间不应该相隔太近。
-    stage1_start = models.DateTimeField("预选开始时间", blank=True, null=True)
-    stage1_end = models.DateTimeField("预选结束时间", blank=True, null=True)
-    stage2_start = models.DateTimeField("补退选开始时间", blank=True, null=True)
-    stage2_end = models.DateTimeField("补退选结束时间", blank=True, null=True)
-
-    bidding = models.FloatField("意愿点价格", default=0.0)
 
     introduction = models.TextField("课程简介", blank=True, default="这里暂时没有介绍哦~")
     teaching_plan = models.TextField("教学计划", blank=True, default="暂无")
@@ -1422,19 +1427,14 @@ class Course(models.Model):
     objects: CourseManager = CourseManager()
 
     def save(self, *args, **kwargs):
-        self.bidding = round(self.bidding, 1)
         super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name
 
     def get_photo_path(self):
-        # 假设课程的宣传图片一定存在
-        photo_path = str(self.photo)
-        if photo_path[0] == 'c':
-            return MEDIA_URL + str(self.photo)
-        else:
-            return photo_path
+        # 暂不要求课程的宣传图片必须存在 报错更令人烦恼
+        return image_url(self.photo, enable_abs=True)
 
 
 class CourseTime(models.Model):
@@ -1484,6 +1484,22 @@ class CourseParticipant(models.Model):
     )
 
 
+class CourseRecordManager(models.Manager):
+    def current(self):
+        # 选择当前学期的学时
+        return self.filter(
+            year=current_year(),
+            semester__contains=Semester.now().value,
+        )
+
+    def past(self):
+        # 只存在当前学期和过去的，非本学期即是过去
+        return self.exclude(
+            year=current_year(),
+            semester__contains=Semester.now().value,
+        )
+
+
 class CourseRecord(models.Model):
     class Meta:
         verbose_name = "学时表"
@@ -1508,6 +1524,8 @@ class CourseRecord(models.Model):
     )
     total_hours = models.FloatField("总计参加学时")
     attend_times = models.IntegerField("参加课程次数", default=0)
+
+    objects: CourseRecordManager = CourseRecordManager()
 
     def get_course_name(self):
         if self.course is not None:
@@ -1562,10 +1580,12 @@ class FeedbackType(models.Model):
         verbose_name = "反馈类型"
         verbose_name_plural = verbose_name
 
-    id = models.SmallIntegerField("反馈类型编号", unique=True, primary_key=True)
+    id = models.SmallIntegerField("反馈类型编号", primary_key=True)
     name = models.CharField("反馈类型名称", max_length=20)
-    org_type = models.ForeignKey(OrganizationType, on_delete=models.CASCADE, null=True)
-    org = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True)
+    org_type = models.ForeignKey(
+        OrganizationType, on_delete=models.CASCADE, null=True, blank=True)
+    org = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
     
     class Flexible(models.IntegerChoices):
         NO_DEFAULT = (0, "无默认值")
@@ -1589,8 +1609,8 @@ class Feedback(CommentBase):
     title = models.CharField("标题", max_length=30, blank=False)
     content = models.TextField("内容", blank=False)
     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
-    org_type = models.ForeignKey(OrganizationType, on_delete=models.CASCADE, null=True)
-    org = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True)
+    org_type = models.ForeignKey(OrganizationType, on_delete=models.CASCADE, null=True, blank=True)
+    org = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
 
     class IssueStatus(models.IntegerChoices):
         DRAFTED = (0, "草稿")
@@ -1616,7 +1636,7 @@ class Feedback(CommentBase):
         '解决进度', choices=SolveStatus.choices, default=SolveStatus.SOLVING
     )
 
-    feedback_time = models.DateTimeField('反馈时间', default=datetime.now)
+    feedback_time = models.DateTimeField('反馈时间', auto_now_add=True)
     publisher_public = models.BooleanField('发布者是否公开', default=False)
     org_public = models.BooleanField('组织是否公开', default=False)
     public_time = models.DateTimeField('组织公开时间', default=datetime.now)
@@ -1630,3 +1650,10 @@ class Feedback(CommentBase):
     public_status = models.SmallIntegerField(
         '公开状态', choices=PublicStatus.choices, default=PublicStatus.PRIVATE
     )
+
+    def __str__(self):
+        return self.title
+
+    def save(self, *args, **kwargs):
+        self.typename = "feedback"
+        super().save(*args, **kwargs)

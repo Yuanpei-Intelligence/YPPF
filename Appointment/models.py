@@ -17,7 +17,7 @@ class College_Announcement(models.Model):
     show = models.SmallIntegerField('是否显示',
                                     choices=Show_Status.choices,
                                     default=0)
-    announcement = models.CharField('通知内容', max_length=256, null=True)
+    announcement = models.CharField('通知内容', max_length=256, blank=True)
 
     class Meta:
         verbose_name = "全院公告"
@@ -25,7 +25,7 @@ class College_Announcement(models.Model):
 
 
 class Participant(models.Model):
-    Sid = models.ForeignKey(
+    Sid = models.OneToOneField(
         User,
         related_name='+',
         on_delete=models.CASCADE,
@@ -37,6 +37,10 @@ class Participant(models.Model):
     credit = models.IntegerField('信用分', default=3)
     pinyin = models.CharField('拼音', max_length=20, null=True)
     hidden = models.BooleanField('可搜索', default=False)
+
+    # TODO: pht 2022-02-20 通过新的模型实现，允许每个房间有自己的规则
+    # 用户许可的字段，需要许可的房间刷卡时检查是否通过了许可
+    agree_time = models.DateField('上次许可时间', null=True, blank=True)
 
     class Meta:
         verbose_name = '学生'
@@ -63,22 +67,18 @@ class Room(models.Model):
 
     # Rstatus 标记当前房间是否允许预约，可由管理员修改
     class Status(models.IntegerChoices):
-        PERMITTED = 0  # 允许预约
-        SUSPENDED = 1  # 暂定使用
-        FORBIDDEN = 2  # 禁止使用
+        PERMITTED = 0, '允许预约'  # 允许预约
+        UNLIMITED = 1, '无需预约'  # 允许使用
+        FORBIDDEN = 2, '禁止使用'  # 禁止使用
 
     Rstatus = models.SmallIntegerField('房间状态',
                                        choices=Status.choices,
                                        default=0)
 
-    # RIsAllNight 标记当前房间是否可以通宵使用，可由管理员修改（主要针对自习室）
-    class IsAllNight(models.IntegerChoices):
-        Yes = 1
-        No = 0
-
-    RIsAllNight = models.SmallIntegerField('是否通宵使用',
-                                       choices=IsAllNight.choices,
-                                       default=0)
+    # 标记当前房间是否可以通宵使用，可由管理员修改（主要针对自习室）
+    RIsAllNight = models.SmallIntegerField('可通宵使用', default=0)
+    # 是否需要许可，目前通过要求阅读固定须知实现，未来可拓展为许可模型（关联房间和个人）
+    RneedAgree = models.BooleanField('需要许可', default=False)
 
     objects: RoomManager = RoomManager()
 
@@ -159,13 +159,7 @@ class Appoint(models.Model):
     # end
 
     # --- add by lhw --- #
-    class Bool_flag(models.IntegerChoices):
-        Yes = 1
-        No = 0
-
-    Atemp_flag = models.SmallIntegerField('是否为临时预约',
-                                          choices=Bool_flag.choices,
-                                          default=0)
+    Atemp_flag = models.SmallIntegerField('临时预约标识', default=0)
     # --- end(2021.7.13) --- ##
 
     objects: AppointManager = AppointManager()
@@ -240,7 +234,8 @@ class Appoint(models.Model):
                 {
                     'Sname': student.name,  # 参与人姓名
                     'Sid': student.Sid_id,
-                } for student in self.students.all() # if student.Sid != self.major_student.Sid
+                } for student in self.students.all()
+                # if student.Sid != self.major_student.Sid
             ]
         }
         try:
@@ -263,7 +258,8 @@ class CardCheckInfo(models.Model):
                                  on_delete=models.SET_NULL,
                                  verbose_name='房间号')
     Cardstudent = models.ForeignKey(
-        Participant, on_delete=models.CASCADE, verbose_name='刷卡者', null=True, blank=True, db_index=True)
+        Participant, on_delete=models.CASCADE, verbose_name='刷卡者',
+        null=True, blank=True, db_index=True)
     Cardtime = models.DateTimeField('刷卡时间', auto_now_add=True)
 
     class Status(models.IntegerChoices):
@@ -277,7 +273,7 @@ class CardCheckInfo(models.Model):
         '是否应该开门', choices=Status.choices, default=0)
 
     Message = models.CharField(
-        '记录信息', max_length=256, null=True)
+        '记录信息', max_length=256, null=True, blank=True)
 
     class Meta:
         verbose_name = "刷卡记录"

@@ -9,21 +9,28 @@ from django.conf import settings
 from apscheduler.schedulers.background import BackgroundScheduler
 from django_apscheduler.jobstores import DjangoJobStore
 
+from boottest import base_get_setting
+
 class Scheduler():
 
-    def __init__(self, wrapped_schedule, remote_scheduler):
+    def __init__(self, wrapped_schedule):
         self.wrapped_schedule = wrapped_schedule
-        self.remote_scheduler = remote_scheduler
-    
-    # def wakeup(self):
-    #     self.remote_scheduler.wakeup()
+        self.remote_scheduler = None
+        self.remain_times = 3
 
     def __getattr__(self, name):
-        # self.remote_scheduler.wakeup()
         target_method = getattr(self.wrapped_schedule, name)
         def wrapper(*args, **kwargs):
             target_method(*args, **kwargs)
-            self.remote_scheduler.wakeup()
+            if self.remote_scheduler is None and self.remain_times > 0:
+                self.remain_times -= 1
+                self.remote_scheduler = rpyc.connect(
+                    "localhost", settings.MY_RPC_PORT,
+                    config={"allow_all_attrs": True}).root
+            if self.remote_scheduler is not None:
+                self.remote_scheduler.wakeup()
+            else:
+                logging.warning('remote scheduler not found, job may not be executed.')
         update_wrapper(wrapper, target_method)
         return wrapper
 
@@ -52,25 +59,9 @@ def start_scheduler():
 
     return scheduler
 
-
-if settings.MY_ENV in ["PRODUCT", "TEST"]:
-    port_number = settings.MY_RPC_PORT
-    import time
-    for i in range(3):
-        try:
-            remote_scheduler = rpyc.connect("localhost", port_number, config={"allow_all_attrs": True}).root
-            break
-        except:
-            time.sleep(1)
-    scheduler = Scheduler(start_scheduler(), remote_scheduler)
-    logging.info("connect to remote scheduler server")
-elif settings.MY_ENV in ["SCHEDULER"]:
-    # 不理解为什么跑 command 也会调到 views.py
-    # 总之必须定义一个 scheduler 但不会被真正使用到
-    scheduler = None
+if base_get_setting("use_scheduler", bool, False, raise_exception=False):
+    scheduler = Scheduler(start_scheduler())
 else:
+    # No real_add_job
     scheduler = BackgroundScheduler(timezone=settings.TIME_ZONE)
     scheduler.add_jobstore(DjangoJobStore(), "default")
-    # If you do not want to run the scheduler, annotate the next line
-    logging.info("start scheduler with executor")
-    scheduler.start()

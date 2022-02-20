@@ -1,6 +1,7 @@
 from boottest import base_get_setting
-from boottest import DEBUG, LOGIN_URL
+from boottest import DEBUG, LOGIN_URL, UNDERGROUND_URL, WECHAT_URL
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
+import boottest.global_messages as my_messages
 
 from django.conf import settings
 
@@ -10,6 +11,8 @@ __all__ = [
     'get_setting', 'get_config',
     # 全局设置的常量
     'DEBUG',
+    # 全局消息
+    'my_messages',
     # 本应用的常量
     'hash_wechat_coder',
     'SYSTEM_LOG',
@@ -18,7 +21,7 @@ __all__ = [
 PREFIX = 'underground/'
 
 
-def get_setting(path: str='', default=None, trans_func=None,
+def get_setting(path: str='', trans_func=None, default=None,
                fuzzy_lookup=False, raise_exception=True):
     '''
     默认值更宽松的`get_setting`, 适合可选本地设置
@@ -31,7 +34,7 @@ def get_setting(path: str='', default=None, trans_func=None,
     return base_get_setting(
         PREFIX + path, default, trans_func, fuzzy_lookup, raise_exception)
 
-def get_config(path: str='', default=None, trans_func=None,
+def get_config(path: str='', trans_func=None, default=None,
                fuzzy_lookup=False, raise_exception=False):
     '''
     默认值更宽松的`get_setting`, 适合可选本地设置
@@ -56,9 +59,9 @@ class LocalSetting():
         self.json = load_json
 
         if DEBUG: print('Loading necessary field...')
-        self.login_url = LOGIN_URL                          # 由陈子维学长提供的统一登录入口
-        self.img_url = get_setting('url/img_url')           # 跳过DNS解析的秘密访问入口,帮助加速头像
-        self.wechat_url = base_get_setting('url/wechat_url')# 访问企业微信封装层的接口
+        self.login_url = LOGIN_URL              # 由陈子维学长提供的统一登录入口
+        self.this_url = UNDERGROUND_URL         # 地下室的访问入口
+        self.wechat_url = WECHAT_URL            # 访问企业微信封装层的接口
         self.system_log = get_setting('system_log')
 
         if DEBUG: print('Loading token field...')
