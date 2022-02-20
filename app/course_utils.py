@@ -647,8 +647,8 @@ def draw_lots():
         course: 待抽签的课程
     """
     courses = Course.objects.activated().filter(status=Course.Status.DRAWING)
-    with transaction.atomic():
-        for course in courses:
+    for course in courses:
+        with transaction.atomic():
             participants = CourseParticipant.objects.filter(
                 course=course,
                 status=CourseParticipant.Status.SELECT).select_related()
@@ -662,26 +662,24 @@ def draw_lots():
 
             if participants_num <= capacity:
                 # 选课人数少于课程容量，不用抽签
-                with transaction.atomic():
-                    CourseParticipant.objects.filter(
-                        course=course).select_for_update().update(
-                            status=CourseParticipant.Status.SUCCESS)
-                    Course.objects.filter(id=course.id).select_for_update().update(
-                        current_participants=participants_num)
+                CourseParticipant.objects.filter(
+                    course=course).select_for_update().update(
+                        status=CourseParticipant.Status.SUCCESS)
+                Course.objects.filter(id=course.id).select_for_update().update(
+                    current_participants=participants_num)
             else:
                 # 抽签；可能实现得有一些麻烦
                 lucky_ones = sample(participants_id, capacity)
                 unlucky_ones = list(set(participants_id).difference(set(lucky_ones)))
-                with transaction.atomic():
-                    # 不确定是否要加悲观锁
-                    CourseParticipant.objects.filter(
-                        id__in=lucky_ones).select_for_update().update(
-                            status=CourseParticipant.Status.SUCCESS)
-                    CourseParticipant.objects.filter(
-                        id__in=unlucky_ones).select_for_update().update(
-                            status=CourseParticipant.Status.FAILED)
-                    Course.objects.filter(id=course.id).select_for_update().update(
-                        current_participants=capacity)
+                # 不确定是否要加悲观锁
+                CourseParticipant.objects.filter(
+                    id__in=lucky_ones).select_for_update().update(
+                        status=CourseParticipant.Status.SUCCESS)
+                CourseParticipant.objects.filter(
+                    id__in=unlucky_ones).select_for_update().update(
+                        status=CourseParticipant.Status.FAILED)
+                Course.objects.filter(id=course.id).select_for_update().update(
+                    current_participants=capacity)
 
             # 给选课成功的同学发送通知
             receivers = CourseParticipant.objects.filter(
