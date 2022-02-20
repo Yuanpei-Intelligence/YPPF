@@ -23,16 +23,13 @@ from app.course_utils import (
     check_post_and_modify,
     finish_course,
     str_to_time,
+    download_course_record,
 )
 from app.utils import get_person_or_org
 
 from datetime import datetime
 
 from django.db import transaction
-from io import BytesIO
-from openpyxl import Workbook
-import re
-from zhon.hanzi import punctuation
 
 __all__ = [
     'editCourseActivity',
@@ -309,30 +306,37 @@ def showCourseRecord(request):
     # -------- POST 表单处理 --------
     # 默认状态为正常
     if request.method == "POST" and request.POST:
+        post_type = str(request.POST.get("post_type", ""))
         if not editable:
             # 由于未开放修改功能时前端无法通过表格和按钮修改和提交，
             # 所以如果出现POST请求，则为非法情况
-            post_type = str(request.POST.get("post_type"))
             if post_type == "end":
                 with transaction.atomic():
                     course = Course.objects.select_for_update().get(id=course.id)
                     messages = finish_course(course)
                 return redirect(message_url(messages, request.path))
+            elif post_type == "download":
+                return redirect(message_url(
+                    wrong('请先结课再下载学时数据！'), request.path))
             else:
                 return redirect(message_url(
                     wrong('学时修改尚未开放。如有疑问，请联系管理员！'), request.path))
+        # 获取记录的QuerySet
+        record_search = CourseRecord.objects.filter(
+            course=course,
+            year=year,
+            semester=semester,
+        )
         # 导出学时为表格
-        if request.POST.get("download_course_record") is not None:
-            response = downloadCourseRecord(me,year,semester)
-            return response
+        if post_type == "download":
+            if not record_search.exists():
+                return redirect(message_url(
+                    wrong('未查询到相应课程记录，请联系管理员。'), request.path))
+            return download_course_record(course, year, semester)
         # 不是其他post类型时的默认行为
         with transaction.atomic():
             # 检查信息并进行修改
-            record_search = CourseRecord.objects.filter(
-                course=course,
-                year=year,
-                semester=semester,
-            ).select_for_update()
+            record_search = record_search.select_for_update()
             messages = check_post_and_modify(record_search, request.POST)
             # TODO: 发送微信消息?不一定需要
 
@@ -469,7 +473,7 @@ def selectCourse(request):
 
     unselected_courses = Course.objects.unselected(me)
     selected_courses = Course.objects.selected(me)
-    
+
     # 未选的课程需要按照课程类型排序
     courses = {}
     for type, label in Course.CourseType.choices:
@@ -534,35 +538,31 @@ def addCourse(request, cid=None):
     """
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
-    try:
-        valid, user_type, html_display = utils.check_user_type(request.user)
-        # assert valid  已经在check_user_access检查过了
-        me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
-        if cid is None:
-            if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
-                return redirect(message_url(wrong('书院课程账号才能发起课程!')))
-            #暂时仅支持一个课程账号一学期只能开一门课
-            courses = Course.objects.activated().filter(organization=me)
-            if courses.exists():
-                cid = courses[0].id
-                return redirect(message_url(
-                            succeed('您已在本学期创建过课程，已为您自动跳转!'),
-                            f'/editCourse/{cid}'))
-            edit = False
-        else:
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    # assert valid  已经在check_user_access检查过了
+    me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
+    if cid is None:
+        if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
+            return redirect(message_url(wrong('书院课程账号才能发起课程!')))
+        #暂时仅支持一个课程账号一学期只能开一门课
+        courses = Course.objects.activated().filter(organization=me)
+        if courses.exists():
+            cid = courses[0].id
+            return redirect(message_url(
+                        succeed('您已在本学期创建过课程，已为您自动跳转!'),
+                        f'/editCourse/{cid}'))
+        edit = False
+    else:
+        try:
             cid = int(cid)
             course = Course.objects.get(id=cid)
-            if course.organization != me:
-                return redirect(message_url(wrong("无法修改其他小组的课程!")))
-            edit = True
-        html_display["is_myself"] = True
-    except Exception as e:
-        log.record_traceback(request, e)
-        return EXCEPT_REDIRECT
+        except:
+            return redirect(message_url(wrong("课程不存在!")))
+        if course.organization != me:
+            return redirect(message_url(wrong("无法修改其他小组的课程!")))
+        edit = True
 
-    html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
-    html_display["warn_message"] = request.GET.get(
-            "warn_message", "")  # 提醒的具体内容
+    my_messages.transfer_message_context(request.GET, html_display)
 
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewCourse，可以不设计bar_display
@@ -575,7 +575,7 @@ def addCourse(request, cid=None):
                 return redirect(message_url(succeed("已超过选课时间节点，无法发起课程！"),
                                         f'/showCourseActivity/'))
             #发起选课
-            context=create_course(request)
+            context = create_course(request)
             html_display["warn_code"] = context["warn_code"]
             if html_display["warn_code"] == 2:
                 return redirect(message_url(succeed("创建课程成功！为您自动跳转到编辑界面。"),
@@ -630,55 +630,3 @@ def addCourse(request, cid=None):
         bar_display = utils.get_sidebar_and_navbar(request.user, "修改课程")
 
     return render(request, "register_course.html", locals())
-
-
-def downloadCourseRecord(me,year,semester):
-    '''
-    返回需要导出的文件
-    '''
-    year = CURRENT_ACADEMIC_YEAR
-    semester = Semester.now()
-    try:
-        course = Course.objects.activated().get(organization = me)
-    except:
-        return redirect(message_url(wrong('未查询到相应课程，请联系管理员。')))
-
-    records = CourseRecord.objects.filter(
-        year = year,
-        semester = semester,
-        course = course,
-    )
-    if not records.exists():
-        return redirect(message_url(wrong('未查询到相应课程记录，请联系管理员。')))
-
-    wb = Workbook()		# 生成一个工作簿（即一个Excel文件）
-    wb.encoding = 'utf-8'
-    sheet1 = wb.active	# 获取第一个工作表（sheet1）
-    sheet1.title = re.sub('[{}]'.format(punctuation),"",str(me.oname)) # 给工作表设置标题
-    sheet_header = ['课程','姓名','学号','次数','学时',"学年","学期"]
-    for i in range(len(sheet_header)):	# 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
-        sheet1.cell(row=1, column=i+1).value=sheet_header[i]
-    max_row = sheet1.max_row
-    for record in records:
-        max_row += 1
-        record_info = [
-            str(me.oname),
-            record.person.name, 
-            str(record.person.person_id), 
-            record.attend_times, 
-            record.total_hours,
-            str(year),
-            str(semester) ]
-        for x in range(len(record_info)):		# 将每一个对象的所有字段的信息写入一行内
-            sheet1.cell(row=max_row, column=x+1).value = record_info[x]
-            
-    output = BytesIO()
-    wb.save(output)	 # 将Excel文件内容保存到IO中
-    output.seek(0)	 # 重新定位到开始
-    ctime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    file_name = str(me.oname)+'-{}'.format(ctime)	# 给文件名中添加日期时间
-    file_name = re.sub('[{}]'.format(punctuation),"",file_name) #去除中文符号
-    response = HttpResponse(content_type='application/msexcel')
-    response['Content-Disposition'] = 'attachment;filename={}.xlsx'.format(file_name).encode('utf-8')
-    wb.save(response)
-    return response
