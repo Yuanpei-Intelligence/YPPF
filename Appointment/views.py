@@ -458,7 +458,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
                 usage="刷卡开门",
                 announcement="",
                 num=1,
-                reason=message,
+                reason='',
                 url='/agreement',
             )
             return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
