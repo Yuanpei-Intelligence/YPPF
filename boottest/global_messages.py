@@ -261,7 +261,7 @@ def read_content(
     '''
     result = [] if _flat else {}
     for key in _keys:
-        value = read_key(_content, key, _default, _trans_func, _raise)
+        value = read_key(_content, key, _trans_func, _default, _raise)
         result.append(value) if _flat else result.setdefault(key, value)
     for key, args in _fields.items():
         if callable(args):
