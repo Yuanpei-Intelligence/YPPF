@@ -75,8 +75,16 @@
 							<!--<a href="admin/index.html" target="_blank">Admin</a>-->
 						</li>
 						<li>
+							<a href="agreement">用户协议</a>
+						</li>
+						<li>
 							<a href="{{login_url}}">成长档案</a>
 						</li>
+						{% if show_admin %}
+						<li>
+							<a href="admin">管理后台</a>
+						</li>
+						{% endif %}
 						<li class="login-link">
 							<a href="logout">注销</a>
 						</li>

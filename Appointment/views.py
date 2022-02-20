@@ -347,7 +347,10 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
 def admin_index(request):   # 我的账户也主函数
 
     render_context = {}
-    render_context.update(login_url=GLOBAL_INFO.login_url)
+    render_context.update(
+        login_url=GLOBAL_INFO.login_url,
+        show_admin=(request.user.is_superuser or request.user.is_staff),
+    )
 
     my_messages.transfer_message_context(request.GET, render_context,
                                          normalize=True)
@@ -398,6 +401,7 @@ def admin_index(request):   # 我的账户也主函数
 def admin_credit(request):
 
     Pid = request.user.username
+    show_admin=(request.user.is_superuser or request.user.is_staff)
 
     # 头像信息
     img_path = get_avatar(request.user)
