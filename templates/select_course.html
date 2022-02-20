@@ -14,7 +14,6 @@
     <div style="text-align: center;">
         <br>
         <h4 class="text-primary">{{html_display.current_year}}学年{{html_display.semester}}书院选课</h4>
-        <!-- TODO : 从后端获取学期数据-->
         <br>
     </div>
 
@@ -53,7 +52,6 @@
     </div>
 
     <div class="container-fluid tab-content" id="myTabContent">
-        <!--TODO : 后端对接bool值-->
         {% if is_drawing == True %}
         <div class="tab-pane fade show active" id="information" role="tabpanel">
             <div class="col-12 layout-top-spacing">
@@ -91,25 +89,25 @@
                         </li>
                         {% for course_type_name in courses.keys %}
                         <li class="nav-item">
-                             <a class="nav-link" data-toggle="pill" href="#menu{{ forloop.counter }}">
-                                 <span class="badge badge-pill" style="color:white;
-                                     {% if forloop.counter == 1 %}
-                                         background-color: #0092c7;
-                                     {% elif forloop.counter == 2 %}
-                                         background-color: #22c3aa;
-                                     {% elif forloop.counter == 3 %}
-                                         background-color: #AD8976;
-                                     {% elif forloop.counter == 4 %}
-                                         background-color: #f3b59b;
-                                     {% elif forloop.counter == 5 %}
-                                         background-color: #f29c9c;
-                                     {% else %}
-                                         background-color: #9E9EA3;
-                                     {% endif %}
-                                     ">{{ course_type_name }}</span>
-                              </a>
-                         </li>
-                         {% endfor %}
+                            <a class="nav-link" data-toggle="pill" href="#menu{{ forloop.counter }}">
+                                <span class="badge badge-pill" style="color:white;
+                                    {% if forloop.counter == 1 %}
+                                        background-color: #0092c7;
+                                    {% elif forloop.counter == 2 %}
+                                        background-color: #22c3aa;
+                                    {% elif forloop.counter == 3 %}
+                                        background-color: #AD8976;
+                                    {% elif forloop.counter == 4 %}
+                                        background-color: #f3b59b;
+                                    {% elif forloop.counter == 5 %}
+                                        background-color: #f29c9c;
+                                    {% else %}
+                                        background-color: #9E9EA3;
+                                    {% endif %}
+                                    ">{{ course_type_name }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
                     </ul>
 
                     <!-- Tab panes -->
@@ -132,24 +130,22 @@
                                   {% for course in unselected_display %}
                                   <tr>
                                     <th scope="row">
-                                        <!--TODO : 课程小组头像路径（后端调用get_user_ava获得）-->
+                                        {% comment %} 课程小组头像路径（后端调用get_user_ava获得）{% endcomment %}
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
-                                        <a href='/viewCourse/?courseid={{ course.course_id }}'><!--要做一个新的课程详情页来着..先放着-->
+                                        <a href='/viewCourse/?courseid={{ course.course_id }}'>
                                             <u>{{course.name}}</u>
                                         </a>
                                     </th>
                                     <td>
                                         {% for time in course.time_set %}
-                                        <!-- {{time.week}}&nbsp;{{time.start}}-{{time.end}}<br>-->
                                             {{time}}<br>
                                         {% endfor %}
                                         {% if course.time_set|length == 0 %}
                                             时间待定
                                         {% endif %}
                                     </td>
-                                    <td>{{course.times}}</td>
                                     <td>{{course.type}}</td>
-                                    <!--注意这里的status是课程的，除了已撤销的四个都在这儿-->
+                                    {% comment %} 注意这里的status是课程的，除了已撤销的四个都在这儿 {% endcomment %}
                                     <td>
                                         {% if course.status == "未开始" %}
                                         <span class="badge badge-pill badge-dark">{{course.status}}</span>
@@ -294,7 +290,7 @@
         <div class="tab-pane fade" id="mycourses" role="tabpanel">
             <div class="col-12 layout-top-spacing">
                 <br>
-                <p style="text-align: center;">暂时没有课程哦！</p>
+                <p style="text-align: center;">你还没有选课哦！</p>
             </div>
         </div>
 
@@ -322,23 +318,20 @@
                       <tr>
                         <th scope="row">
                             <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
-                            <a href='/viewCourse/?courseid={{ course.course_id }}'><!--要做一个新的课程详情页来着..先放着-->
+                            <a href='/viewCourse/?courseid={{ course.course_id }}'>
                                 <u>{{course.name}}</u>
                             </a>
                         </th>
                         <td>
                             {% for time in course.time_set %}
-                            <!-- {{time.week}}&nbsp;{{time.start}}-{{time.end}}<br>-->
                                 {{time}}<br>
                             {% endfor %}
                             {% if course.time_set|length == 0 %}
                                 时间待定
                             {% endif %}
                         </td>
-                        <td>{{course.times}}</td>
                         <td>{{course.type}}</td>
                         <td>
-                            <!--TODO : 对接后端bool值-->
                             {% if is_drawing == True %}
                             <span class="badge badge-pill badge-info">抽签中</span>
                             {% elif course.student_status == "已选课" %}
