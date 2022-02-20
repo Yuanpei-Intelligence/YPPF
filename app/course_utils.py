@@ -1145,7 +1145,7 @@ def download_course_record(course, year, semester):
     # 获取第一个工作表（sheet1）
     sheet1 = wb.active
     # 给工作表设置标题
-    sheet1.title = str(course)
+    # sheet1.title = str(course)  # 中文符号如：无法被解读
     # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
     sheet_header = ['课程', '姓名', '学号', '次数', '学时', "学年", "学期"]
     sheet1.append(sheet_header)
@@ -1163,7 +1163,7 @@ def download_course_record(course, year, semester):
         sheet1.append(record_info)
 
     ctime = datetime.now().strftime('%Y-%m-%d %H:%M')
-    file_name = f'{sheet1.title}-{ctime}'  # 给文件名中添加日期时间
+    file_name = f'{course}-{ctime}'  # 给文件名中添加日期时间
     response = HttpResponse(content_type='application/vnd.ms-excel')
     response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
     wb.save(response)
