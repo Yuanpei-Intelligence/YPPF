@@ -216,6 +216,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
         activity.need_checkin = True  # 需要签到
         activity.recorded = True
         activity.course_time = week_time
+        activity.current_participants = course.capacity
         activity.save()
         ActivityPhoto.objects.create(image=course.photo,
                                      type=ActivityPhoto.PhotoType.ANNOUNCE,
