@@ -56,8 +56,10 @@ def feedback_homepage(request):
 
     if user_type == "Person":
         my_feedback = issued_feedback.filter(person_id=me)
+        my_all_feedback = Feedback.objects.filter(person_id=me)
     else:
         my_feedback = issued_feedback.filter(org_id=me)
+        my_all_feedback = Feedback.objects.filter(org_id=me)
 
     undone_feedback = (
         my_feedback
@@ -67,7 +69,7 @@ def feedback_homepage(request):
         )
     )
     done_feedback = (
-        my_feedback
+        my_all_feedback
         .filter(
             Q(solve_status=Feedback.SolveStatus.SOLVED)
             | Q(solve_status=Feedback.SolveStatus.UNSOLVABLE)
@@ -82,9 +84,7 @@ def feedback_homepage(request):
         .filter(issue_status=Feedback.IssueStatus.ISSUED)
         .order_by("-feedback_time")
     )
-    academic_feedback = public_feedback.filter(type__name = "学术反馈")
-    right_feedback = public_feedback.filter(type__name = "权益反馈")
-
+    
     # -----------------------------反馈草稿---------------------------------
     # 准备需要呈现的内容
     # 这里应该呈现：所有person为自己的feedback
