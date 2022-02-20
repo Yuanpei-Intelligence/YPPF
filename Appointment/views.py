@@ -347,7 +347,10 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
 def admin_index(request):   # 我的账户也主函数
 
     render_context = {}
-    render_context.update(login_url=GLOBAL_INFO.login_url)
+    render_context.update(
+        login_url=GLOBAL_INFO.login_url,
+        show_admin=(request.user.is_superuser or request.user.is_staff),
+    )
 
     my_messages.transfer_message_context(request.GET, render_context,
                                          normalize=True)
@@ -355,6 +358,9 @@ def admin_index(request):   # 我的账户也主函数
     # 学生基本信息
     Pid = request.user.username
     my_info = web_func.get_user_info(Pid)
+    participant = get_participant(Pid)
+    if participant.agree_time is not None:
+        my_info['agree_time'] = str(participant.agree_time)
 
     # 头像信息
     img_path = get_avatar(request.user)
@@ -395,6 +401,7 @@ def admin_index(request):   # 我的账户也主函数
 def admin_credit(request):
 
     Pid = request.user.username
+    show_admin=(request.user.is_superuser or request.user.is_staff)
 
     # 头像信息
     img_path = get_avatar(request.user)
@@ -445,6 +452,23 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
     if room.Rstatus == Room.Status.FORBIDDEN:   # 禁止使用的房间
         cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：禁止使用")
         return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
+    
+    if room.RneedAgree:
+        if student.agree_time is None:
+            cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：未签署协议")
+            send_wechat_message(
+                stuid_list=[Sid],
+                start_time=datetime.now(),
+                room=room,
+                message_type="need_agree",
+                major_student=student,
+                usage="刷卡开门",
+                announcement="",
+                num=1,
+                reason='',
+                url='/agreement',
+            )
+            return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
 
     if room.Rstatus == Room.Status.UNLIMITED:   # 自习室
 
@@ -582,7 +606,10 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
 @identity_check(redirect_field_name='origin', auth_func=lambda x: True)
 def index(request):  # 主页
     render_context = {}
-    render_context.update(login_url=GLOBAL_INFO.login_url)
+    render_context.update(
+        login_url=GLOBAL_INFO.login_url,
+        show_admin=(request.user.is_superuser or request.user.is_staff),
+    )
     # 处理学院公告
     if (College_Announcement.objects.all()):
         try:
@@ -594,8 +621,8 @@ def index(request):  # 主页
             render_context.update(message_code=0)
             # print("无法顺利呈现公告，原因可能是没有将状态设置为YES或者超过一条状态被设置为YES")
 
-    if request.GET.get("warn") is not None:
-        wrong(request.session.pop('warn_message'), render_context)
+    # 获取可能的全局消息
+    my_messages.transfer_message_context(request.GET, render_context, normalize=True)
 
 
     #--------- 前端变量 ---------#
@@ -676,12 +703,36 @@ def index(request):  # 主页
                                       search_message="只能查看最近7天的情况!")
                 return render(request, 'Appointment/index.html', render_context)
             # 到这里 搜索没问题 进行跳转
-            urls = reverse("Appointment:arrange_talk") + "?year=" + str(
-                year) + "&month=" + str(month) + "&day=" + str(day) + "&type=" + check_type
+            urls = my_messages.append_query(
+                reverse("Appointment:arrange_talk"),
+                year=year, month=month, day=day, type=check_type)
             # YHT: added for Russian search
             return redirect(urls)
 
     return render(request, 'Appointment/index.html', render_context)
+
+
+@csrf_exempt
+@identity_check(redirect_field_name='origin')
+def agreement(request):
+    render_context = {}
+    participant = get_participant(request.user)
+    if request.method == 'POST' and request.POST.get('type', '') == 'confirm':
+        try:
+            with transaction.atomic():
+                participant = get_participant(request.user, update=True)
+                participant.agree_time = datetime.now().date()
+                participant.save()
+            return redirect(message_url(
+                succeed('协议签署成功!'),
+                reverse("Appointment:admin_index")))
+        except:
+            my_messages.wrong('签署失败，请重试！', render_context)
+    elif request.method == 'POST':
+        return redirect(reverse("Appointment:index"))
+    if participant.agree_time is not None:
+        render_context.update(agree_time=str(participant.agree_time))
+    return render(request, 'Appointment/agreement.html', render_context)
 
 
 @identity_check(redirect_field_name='origin')
@@ -696,8 +747,7 @@ def arrange_time(request):
             room_object = check[0]
 
         except:
-            # todo 加一个提示
-            redirect(reverse('Appointment:index'))
+            return redirect(reverse('Appointment:index'))
 
     dayrange_list = web_func.get_dayrange()
 
@@ -714,12 +764,13 @@ def arrange_time(request):
                 room_object.Rstart.minute >= 30)
 
             for i in range(time_range + 1):  # 对每半个小时
-                day['timesection'].append({})
-                day['timesection'][-1]['starttime'] = str(
+                timesection = {}
+                timesection['starttime'] = str(
                     temp_hour + (i + temp_minute) // 2).zfill(2) + ":" + str(
                     (i + temp_minute) % 2 * 30).zfill(2)
-                day['timesection'][-1]['status'] = 0  # 0可用 1已经预约 2已过
-                day['timesection'][-1]['id'] = i
+                timesection['status'] = 0  # 0可用 1已经预约 2已过
+                timesection['id'] = i
+                day['timesection'].append(timesection)
         # 筛选可能冲突的预约
         appoints = Appoint.objects.not_canceled().filter(
             Room_id=Rid,

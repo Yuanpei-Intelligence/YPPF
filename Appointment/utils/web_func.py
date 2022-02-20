@@ -15,44 +15,6 @@ web_func.py中保留所有在views.py中使用到了和web发生交互但不直�
 函数比较乱，建议实现新函数时先在这里面找找有没有能用的。
 '''
 
-# 拉取用户头像使用的threads
-long_request = requests.session()
-
-# 获取用户头像的函数,返回路径&是否得到真正头像
-def img_get_func(request):
-    raise NotImplementedError
-    if request.session.get("img_path", None) is not None:
-        # 有缓存
-        return request.session['img_path'], False
-
-    # 设置当头像无法加载时的位置
-    default_img_name = 'pipi_square_iRGk72U.jpg'
-    img_path = GLOBAL_INFO.this_url + "/media/avatar/" + default_img_name
-
-    # 尝试加载头像
-    try:
-        if GLOBAL_INFO.account_auth:
-            Sid = request.session['Sid']
-            urls = GLOBAL_INFO.img_url + "/getStuImg?stuId=" + Sid
-            img_get = long_request.post(url=urls, verify=False, timeout=3)
-
-            if img_get.status_code == 200:  # 接收到了学生信息
-                import json
-                img_path = json.loads(img_get.content)['path']
-                img_path = GLOBAL_INFO.login_url + img_path
-                # 存入缓存
-                request.session['img_path'] = img_path
-                return img_path, True
-
-    except:
-        utils.operation_writer(
-            SYSTEM_LOG, f"从YPPF获取头像失败，原因需要查看代码", "web_func.img_get_func", "Problem")
-        return img_path, False
-        # 接受失败，返回旧地址
-    utils.operation_writer(
-            SYSTEM_LOG, f"从YPPF获取头像失败，未登录或未返回", "web_func.img_get_func", "Problem")
-    return img_path, False
-
 
 # added by pht
 # 用于调整不同情况下判定标准的不同
@@ -87,6 +49,7 @@ def startAppoint(Aid):  # 开始预约时的定时程序
     except:
         utils.operation_writer(
             SYSTEM_LOG, f"预约{str(Aid)}意外消失", "web_func.startAppoint", "Error")
+        return
 
     if appoint.Astatus == Appoint.Status.APPOINTED:     # 顺利开始
         appoint.Astatus = Appoint.Status.PROCESSING
@@ -117,6 +80,7 @@ def finishAppoint(Aid):  # 结束预约时的定时程序
     except:
         utils.operation_writer(
             SYSTEM_LOG, f"预约{str(Aid)}意外消失", "web_func.finishAppoint", "Error")
+        return
 
 
     # 避免直接使用全局变量! by pht
@@ -237,7 +201,6 @@ def appoints2json(appoints):
     return [appoint.toJson() for appoint in appoints]
 
 
-# added by wxy
 def get_appoints(Pid, kind, major=False, to_json=True):
     '''
     - Pid: Participant, User or str
@@ -284,9 +247,6 @@ def timerange2idlist(Rid, Astart, Afinish, max_id):
     rightid = min(get_time_id(room, Afinish.time(), 'leftopen'), max_id) + 1
     return range(leftid, rightid)
 
-# 工具函数，用于前端展示预约
-
-
 
 def get_hour_time(room, timeid):  # for room , consider its time id
     endtime_id = get_time_id(
@@ -301,7 +261,6 @@ def get_hour_time(room, timeid):  # for room , consider its time id
     return opentime.strftime("%H:%M"), True
 
 
-
 def get_time_id(room,
                 ttime,
                 mode="rightopen"):  # for room. consider a time's timeid
@@ -310,9 +269,9 @@ def get_time_id(room,
     # 超过开始时间
     delta = timedelta(hours=ttime.hour - room.Rstart.hour,
                       minutes=ttime.minute - room.Rstart.minute)  # time gap
-    hour = int(delta.total_seconds()) // 3600
-    minute = int(delta.total_seconds() % 3600) // 60
-    second = int(delta.total_seconds()) % 60
+    second = int(delta.total_seconds())
+    minute, second = divmod(second, 60)
+    hour, minute = divmod(minute, 60)
     #print("time_span:", hour, ":", minute,":",second)
     if mode == "rightopen":  # 左闭右开, 注意时间段[6:00,6:30) 是第一段
         half = 0 if minute < 30 else 1
@@ -324,15 +283,17 @@ def get_time_id(room,
 
 
 def get_dayrange(span=7):   # 获取用户的违约预约
-    timerange_list = [{} for i in range(span)]
+    timerange_list = []
     present_day = datetime.now()
     for i in range(span):
+        timerange = {}
         aday = present_day + timedelta(days=i)
-        timerange_list[i]['weekday'] = aday.strftime("%a")
-        timerange_list[i]['date'] = aday.strftime("%d %b")
-        timerange_list[i]['year'] = aday.year
-        timerange_list[i]['month'] = aday.month
-        timerange_list[i]['day'] = aday.day
+        timerange['weekday'] = aday.strftime("%a")
+        timerange['date'] = aday.strftime("%d %b")
+        timerange['year'] = aday.year
+        timerange['month'] = aday.month
+        timerange['day'] = aday.day
+        timerange_list.append(timerange)
     return timerange_list
 
 
