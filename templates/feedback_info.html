@@ -123,9 +123,9 @@
                   </div>
                   {% else %}
                   {% if read_editable %}
-                  <div class="form-group" name="read_status">
+                  <div class="form-group">
                     <label for="aintro">标记已读状态</label>
-                    <select class="form-control selectpicker" id="read_status" onchange="read_confirm.call(this);">
+                    <select class="form-control selectpicker" id="read_status" name="read_status" onchange="read_confirm.call(this);">
                       <div class="dropdown-menu">
                         <option value="unread" {%if read == "未读" %}selected{%endif%}>未读</option>
                         <option value="read" {%if read == "已读" %}selected{%endif%}>已读</option>
@@ -136,7 +136,7 @@
                   {% if solve_editable %}
                   <div class="form-group" id="solve_status">
                     <label for="aintro">标记解决状态</label>
-                    <select class="form-control selectpicker" id="solve_select" onchange="solve_confirm.call(this);">
+                    <select class="form-control selectpicker" id="solve_select" name="solve_status" onchange="solve_confirm.call(this);">
                       <option value="solving" {%if solve == "解决中" %}selected{%endif%}>解决中</option>
                       <option value="solve" {%if solve == "已解决" %}selected{%endif%}>已解决</option>
                       <option value="unsolvable" {%if solve == "无法解决" %}selected{%endif%}>无法解决</option>

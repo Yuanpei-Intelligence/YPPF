@@ -62,13 +62,13 @@ def viewFeedback(request, fid):
             else:
                 return redirect(message_url(wrong("没有评论权限！"), f"/viewFeedback/{feedback.id}"))
             # 满足以上条件后可以添加评论
-            addComment(request, feedback, receiver)
+            addComment(request, feedback, receiver, anonymous_flag=True, notification_title="反馈评论通知")
             return redirect(message_url(succeed("成功添加1条评论！"), f"/viewFeedback/{feedback.id}"))
 
         # 以下为调整反馈的状态
         public = request.POST.get("public_status")
-        read = request.POST.get("read_status")
-        solve = request.POST.get("solve_status")
+        read = request.POST.get("read_status", "unread")
+        solve = request.POST.get("solve_status", "solving")
         # 成功反馈信息
         succeed_message = []
         # 一、修改已读状态
@@ -227,7 +227,7 @@ def viewFeedback(request, fid):
         """
         # 如果有任何数据库操作，都需要提示操作成功
         if succeed_message:
-            return redirect(message_url(succeed("\n".join(succeed_message)), f"/viewFeedback/{feedback.id}"))
+            return redirect(message_url(succeed("，".join(succeed_message)), f"/viewFeedback/{feedback.id}"))
 
     # 使用 GET 方法访问，展示页面
     # 首先确定不同用户对反馈的评论和修改权限
@@ -338,7 +338,7 @@ def modifyFeedback(request):
     # 设置feedback为None, 如果非None则自动覆盖
     feedback = None
     # TODO: 一个选择反馈类型的表单，将反馈类型传到此处！
-    feedback_type = "学术反馈"
+    feedback_type = "其他反馈"
 
     # 根据是否有newid来判断是否是第一次
     feedback_id = request.GET.get("feedback_id")
