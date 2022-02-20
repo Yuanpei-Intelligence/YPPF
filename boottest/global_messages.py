@@ -124,7 +124,7 @@ def _move(context, warn_code, warn_message, alert_message=None):
     return count
 
 def transfer_message_context(source: dict, context=None,
-                             with_alert=False, normalize=False):
+                             with_alert=False, normalize=True):
     '''
     将来源中的全局消息导出到context
     如果未提供context，则创建一个新字典

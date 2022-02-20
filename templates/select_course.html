@@ -13,12 +13,21 @@
 
     <div style="text-align: center;">
         <br>
-        <h4 class="text-primary">{{html_display.current_year}}学年{{html_display.semester}}书院选课</h4>
+        <h4 class="text-primary">{{html_display.current_year}}学年{{html_display.semester}}季学期书院课程选课页面
+            {% if html_display.status == "预选" %}
+            <span class="badge badge-pill badge-secondary" style="font-size:14px">{{html_display.status}}</span>
+            {% elif html_display.status == "抽签中" %}
+            <span class="badge badge-pill badge-secondary" style="font-size:14px">{{html_display.status}}</span>
+            {% elif html_display.status == "补退选" %}
+            <span class="badge badge-pill badge-info" style="font-size:14px">{{html_display.status}}</span>
+            {% endif %}</h4>
+        {% comment %} 从后端获取学期数据 {% endcomment %}
         <br>
     </div>
 
     <div style="text-align: left; margin-left: 2%;">
         <p style="margin-bottom: 0%;">预选时间：{{html_display.yx_election_start}}至{{html_display.yx_election_end}}</p>
+        <p style="margin-bottom: 0%;">公布抽签结果：{{html_display.publish_time}}</p>
         <p style="margin-top: 0%;">补退选时间：{{html_display.btx_election_start}}至{{html_display.btx_election_end}}</p>
     </div>
 
@@ -39,12 +48,6 @@
         <li class="nav-item">
             <b class="nav-link" data-toggle="tab" role="tab" href="#mycourses">
                 我的课程
-                <a data-toggle="tooltip" data-placement="bottom" title="展示你已预选课的书院课程，是否选课成功见预选结束后的抽签结果">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
-                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
-                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
-                    </svg>
-                </a>
             </b>
         </li>
     </ul>
@@ -120,7 +123,6 @@
                                     <th scope="col" width="25%">课程名称</th>
                                     <th scope="col" width="25%">上课时间</th>
                                     <th scope="col" width="10%">课程类型</th>
-                                    <th scope="col" width="15%">状态</th>
                                     <th scope="col" width="15%">选课人数/容量</th>
                                     <th scope="col" >操作</th>
                                   </tr>
@@ -146,19 +148,7 @@
                                     </td>
                                     <td>{{course.type}}</td>
                                     {% comment %} 注意这里的status是课程的，除了已撤销的四个都在这儿 {% endcomment %}
-                                    <td>
-                                        {% if course.status == "未开始" %}
-                                        <span class="badge badge-pill badge-dark">{{course.status}}</span>
-                                        {% elif course.status == "预选" %}
-                                        <span class="badge badge-pill badge-secondary">{{course.status}}</span>
-                                        {% elif course.status == "补退选" %}
-                                        <span class="badge badge-pill badge-info">{{course.status}}</span>
-                                        {% elif course.status == "选课结束" %}
-                                        <span class="badge badge-pill badge-primary">{{course.status}}</span>
-                                        {% else %}
-                                        <span class="badge badge-pill badge-warning">{{course.status}}</span>
-                                        {% endif %}
-                                    </td>
+                                    
                                     <td>{{course.current_participants}}/{{course.capacity}}</td>
                                     <td>
                                         <form action="/selectCourse/" method="post">
