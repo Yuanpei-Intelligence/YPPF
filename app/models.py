@@ -1436,6 +1436,9 @@ class Course(models.Model):
         # 暂不要求课程的宣传图片必须存在 报错更令人烦恼
         return image_url(self.photo, enable_abs=True)
 
+    def get_QRcode_path(self):
+        return image_url(self.QRcode, enable_abs=True)
+
 
 class CourseTime(models.Model):
     """
