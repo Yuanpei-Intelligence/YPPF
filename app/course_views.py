@@ -23,6 +23,7 @@ from app.course_utils import (
     check_post_and_modify,
     finish_course,
     str_to_time,
+    download_course_record,
 )
 from app.utils import get_person_or_org
 
@@ -305,27 +306,37 @@ def showCourseRecord(request):
     # -------- POST 表单处理 --------
     # 默认状态为正常
     if request.method == "POST" and request.POST:
+        post_type = str(request.POST.get("post_type", ""))
         if not editable:
             # 由于未开放修改功能时前端无法通过表格和按钮修改和提交，
             # 所以如果出现POST请求，则为非法情况
-            post_type = str(request.POST.get("post_type"))
             if post_type == "end":
                 with transaction.atomic():
                     course = Course.objects.select_for_update().get(id=course.id)
                     messages = finish_course(course)
                 return redirect(message_url(messages, request.path))
+            elif post_type == "download":
+                return redirect(message_url(
+                    wrong('请先结课再下载学时数据！'), request.path))
             else:
                 return redirect(message_url(
                     wrong('学时修改尚未开放。如有疑问，请联系管理员！'), request.path))
-
+        # 获取记录的QuerySet
+        record_search = CourseRecord.objects.filter(
+            course=course,
+            year=year,
+            semester=semester,
+        )
+        # 导出学时为表格
+        if post_type == "download":
+            if not record_search.exists():
+                return redirect(message_url(
+                    wrong('未查询到相应课程记录，请联系管理员。'), request.path))
+            return download_course_record(course, year, semester)
         # 不是其他post类型时的默认行为
         with transaction.atomic():
             # 检查信息并进行修改
-            record_search = CourseRecord.objects.filter(
-                course=course,
-                year=year,
-                semester=semester,
-            ).select_for_update()
+            record_search = record_search.select_for_update()
             messages = check_post_and_modify(record_search, request.POST)
             # TODO: 发送微信消息?不一定需要
 
@@ -527,35 +538,31 @@ def addCourse(request, cid=None):
     """
 
     # 检查：不是超级用户，必须是小组，修改是必须是自己
-    try:
-        valid, user_type, html_display = utils.check_user_type(request.user)
-        # assert valid  已经在check_user_access检查过了
-        me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
-        if cid is None:
-            if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
-                return redirect(message_url(wrong('书院课程账号才能发起课程!')))
-            #暂时仅支持一个课程账号一学期只能开一门课
-            courses = Course.objects.activated().filter(organization=me)
-            if courses.exists():
-                cid = courses[0].id
-                return redirect(message_url(
-                            succeed('您已在本学期创建过课程，已为您自动跳转!'),
-                            f'/editCourse/{cid}'))
-            edit = False
-        else:
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    # assert valid  已经在check_user_access检查过了
+    me = utils.get_person_or_org(request.user, user_type) # 这里的me应该为小组账户
+    if cid is None:
+        if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
+            return redirect(message_url(wrong('书院课程账号才能发起课程!')))
+        #暂时仅支持一个课程账号一学期只能开一门课
+        courses = Course.objects.activated().filter(organization=me)
+        if courses.exists():
+            cid = courses[0].id
+            return redirect(message_url(
+                        succeed('您已在本学期创建过课程，已为您自动跳转!'),
+                        f'/editCourse/{cid}'))
+        edit = False
+    else:
+        try:
             cid = int(cid)
             course = Course.objects.get(id=cid)
-            if course.organization != me:
-                return redirect(message_url(wrong("无法修改其他小组的课程!")))
-            edit = True
-        html_display["is_myself"] = True
-    except Exception as e:
-        log.record_traceback(request, e)
-        return EXCEPT_REDIRECT
+        except:
+            return redirect(message_url(wrong("课程不存在!")))
+        if course.organization != me:
+            return redirect(message_url(wrong("无法修改其他小组的课程!")))
+        edit = True
 
-    html_display["warn_code"] = int(request.GET.get("warn_code", 0))  # 是否有来自外部的消息
-    html_display["warn_message"] = request.GET.get(
-            "warn_message", "")  # 提醒的具体内容
+    my_messages.transfer_message_context(request.GET, html_display)
 
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewCourse，可以不设计bar_display
@@ -568,7 +575,7 @@ def addCourse(request, cid=None):
                 return redirect(message_url(succeed("已超过选课时间节点，无法发起课程！"),
                                         f'/showCourseActivity/'))
             #发起选课
-            context=create_course(request)
+            context = create_course(request)
             html_display["warn_code"] = context["warn_code"]
             if html_display["warn_code"] == 2:
                 return redirect(message_url(succeed("创建课程成功！为您自动跳转到编辑界面。"),
