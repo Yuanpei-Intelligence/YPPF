@@ -694,9 +694,9 @@ def send_message_check(me, request):
 #     prob_lst = [prob + (tag_weight * gamma) ** 0.5 for prob, tag_weight in zip(prob_lst, tag_weight_lst)]
 #     return [raw_np_lst[i] for i in range(len(raw_np_lst)) if prob_lst[i] >= random.random()]
 
-def get_promote_receiver(org, alpha=0.3, beta=0.2):
+def get_promote_receiver(org, alpha=0.1, beta=0.1):
     '''
-    每个人收到推送的概率= 0.3 + 0.2 * max（for 组织in person的关注）（(组织的tag与org的tag的交集数）/ 该组织tag数）
+    每个人收到推送的概率= 0.1 + 0.1 * max（for 组织in person的关注）（(组织的tag与org的tag的交集数）/ 该组织tag数）
     '''
     # 准备发送对象：接受推广的np列表
     raw_np_lst = list(NaturalPerson.objects.activated().filter(accept_promote=True))
