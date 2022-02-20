@@ -839,7 +839,7 @@ def register_selection(wait_for: timedelta=None):
                       run_date=stage2_end, args=[Course.Status.STAGE2, Course.Status.SELECT_END], replace_existing=True)
     # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
 
-def course_base_check(request):
+def course_base_check(request,if_new=None):
     """
     选课单变量合法性检查并准备变量
     """
@@ -896,7 +896,8 @@ def course_base_check(request):
                     pic = request.POST.get(f'picture{i+1}')
         context["photo"] = pic
         context["QRcode"] = request.FILES.get("QRcode")
-        assert context["photo"] is not None, "缺少课程预告图片！"
+        if if_new is None:
+            assert context["photo"] is not None, "缺少课程预告图片！"
         assert if_image(context["QRcode"]) != 1, "微信群二维码图片文件类型错误！"
     except Exception as e:
         return wrong(str(e))
@@ -941,7 +942,7 @@ def create_course(request, course_id=None):
     context = dict()
 
     try:
-        context = course_base_check(request)
+        context = course_base_check(request,course_id)
         if context["warn_code"] == 1:  # 合法性检查出错！
             return context
     except:

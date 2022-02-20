@@ -596,7 +596,7 @@ def addCourse(request, cid=None):
                 return redirect(message_url(wrong('当前课程状态不允许修改!'),
                                             f'/editCourse/{course.id}'))
             context = create_course(request, course.id)
-            course = Course.objects.get(id=context["cid"])
+        course = Course.objects.get(id=context["cid"])
         html_display["warn_code"] = context["warn_code"]
         html_display["warn_message"] = context["warn_message"]
 
