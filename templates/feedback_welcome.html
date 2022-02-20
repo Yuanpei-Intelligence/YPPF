@@ -48,7 +48,7 @@
                 <div class="bio layout-spacing">
                     <div class="widget-content widget-content-area">
                         <div class="row">
-                            <div class="col-4 pb-2">
+                            <div class="col-lg-4 col-md-5 col-sm-12 pb-2">
                                 <div class="border-right pb-0" id="feedback-welcome" style="border-color: lightgray!important;">
                                     <div class="pricing-header px-3 py-3 pb-md-4 mx-auto text-center">
                                         <!-- <h1 class="display-4 my-4 mb-4">元培生活</h1> -->
@@ -80,17 +80,16 @@
                                 </div>
                                 
                             </div>
-                            <div class="col-8 pb-2" style="height: 100%;">
+                            <div class="col pb-2" style="height: 100%;">
                                 <!-- 留言公开 -->
                                 <!-- <h3>留言公开</h3> -->
                                 <div id="publicFeedbackTab" class="tab-content">
                                     <div class="tab-pane fade in active show" id="right">
-                                        <div class="bio-skill-box pb-0 " style="overflow-y: scroll; overflow-x: hidden;" id="publicFeedbackBox" 
-                                            >
-                                            {% if right_feedback %}
+                                        <div class="bio-skill-box pb-0 align-items-center" style="overflow-y: scroll; overflow-x: hidden;" id="publicFeedbackBox">
+                                            {% if feedbacks %}
                                             <div id="right_feedback" class="row">
-                                                {% for feedback in right_feedback %}
-                                                    <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                {% for feedback in feedbacks %}
+                                                    <div class="col-12 col-xl-6 col-lg-6 mb-xl-4 mb-4 ">
                                                         <div class=" b-skills">
                                                             <div class="d-flex justify-content-between">
                                                                 <div>
@@ -104,22 +103,22 @@
                                                                 <p>
                                                                     {% if feedback.read_status == 1 %}
                                                                     <span class="badge badge-pill badge-danger"> {{feedback.get_read_status_display}} </span>
-                                                                {% elif feedback.solve_status == 3%}
+                                                                    {% elif feedback.solve_status == 3 %}
                                                                     <span class="badge badge-pill badge-primary">{{feedback.get_read_status_display}} </span>
                                                                     <span class="badge badge-pill badge-primary">---</span>
-                                                                {% else %}
+                                                                    {% else %}
                                                                     <span class="badge badge-pill badge-warning">{{feedback.get_read_status_display}} </span>
                                                                     <span class="badge badge-pill badge-warning">{{feedback.get_solve_status_display}}</span>
-                                                                {% endif %}
+                                                                    {% endif %}
                                                                 </p>
                                                             {% else %}
                                                                 <p>
                                                                     <span class="badge badge-pill 
                                                                     {% if feedback.solve_status == 0 %}
-                                                                        badge-success">
+                                                                        badge-success"
                                                                     {% else %}
-                                                                        badge-primary">
-                                                                    {% endif %}
+                                                                        badge-primary"
+                                                                    {% endif %}>
                                                                     {{feedback.get_solve_status_display}} </span>
                                                                 </p>
                                                             {% endif %}
@@ -150,7 +149,7 @@
                                             {% endif %}
                                             <!-- 一些手写的卡片，debug用 -->
                                             <div class="row">
-                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                <div class="col-12 col-xl-6 col-lg-6 mb-xl-4 mb-4 ">
                                                     <div class=" b-skills">
                                                         <div class="d-flex justify-content-between">
                                                             <div>
@@ -181,7 +180,7 @@
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                <div class="col-12 col-xl-6 col-lg-6 mb-xl-4 mb-4 ">
                                                     <div class=" b-skills">
                                                         <div class="d-flex justify-content-between">
                                                             <div>
@@ -212,7 +211,7 @@
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                <div class="col-12 col-xl-6 col-lg-6 mb-xl-4 mb-4 ">
                                                 <div class=" b-skills">
                                                     <div class="d-flex justify-content-between">
                                                         <div>
@@ -243,7 +242,7 @@
                                                     </p>
                                                 </div>
                                                 </div>
-                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                <div class="col-12 col-xl-6 col-lg-6 mb-xl-4 mb-4 ">
                                                     <div class=" b-skills">
                                                         <div class="d-flex justify-content-between">
                                                             <div>
@@ -274,7 +273,7 @@
                                                         </p>
                                                     </div>
                                                 </div>
-                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                <div class="col-12 col-xl-6 col-lg-6 mb-xl-4 mb-4 ">
                                                         <div class=" b-skills">
                                                             <div class="d-flex justify-content-between">
                                                                 <div>
@@ -371,7 +370,7 @@
                                             </div>
                                         </div>
                                     </div>
-                            </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -387,10 +386,14 @@
             function fit() {
                 publicBox.style.height = (ref.offsetHeight - publicBox.offsetTop) + "px";
                 publicTab.style.height = (ref.offsetHeight - publicTab.offsetTop) + "px";
+                if(this.innerWidth < 767) {
+                    ref.classList.remove("border-right");
+                }
             }
             window.addEventListener(`load`, fit);
             window.addEventListener(`resize`, fit);
             new ResizeObserver(fit).observe(ref);
+            
         </script>
         </div>
         <div class="row layout-top-spacing mt-0">
