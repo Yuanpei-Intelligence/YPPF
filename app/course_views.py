@@ -642,20 +642,20 @@ def downloadCourseRecord(me,year,semester):
     wb.encoding = 'utf-8'
     sheet1 = wb.active	# 获取第一个工作表（sheet1）
     sheet1.title = str(me.oname) 	# 给工作表1设置标题
-    sheet_header = ['姓名','年级','次数','学时','学年','学期']
+    sheet_header = ['课程','姓名','学号','次数','学时',"学年","学期"]
     for i in range(len(sheet_header)):	# 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
         sheet1.cell(row=1, column=i+1).value=sheet_header[i]
     max_row = sheet1.max_row
     for record in records:
         max_row += 1
         record_info = [
+            str(me.oname),
             record.person.name, 
-            str(record.person.person_id)[:2], 
+            str(record.person.person_id), 
             record.attend_times, 
             record.total_hours,
             str(year),
-            str(semester),
-            ]
+            str(semester) ]
         for x in range(len(record_info)):		# 将每一个对象的所有字段的信息写入一行内
             sheet1.cell(row=max_row, column=x+1).value = record_info[x]
             
@@ -663,8 +663,8 @@ def downloadCourseRecord(me,year,semester):
     wb.save(output)	 # 将Excel文件内容保存到IO中
     output.seek(0)	 # 重新定位到开始
     ctime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-    file_name = 'CourseRecord-{}'.format(ctime)	# 给文件名中添加日期时间
+    file_name = str(me.oname)+'-{}'.format(ctime)	# 给文件名中添加日期时间
     response = HttpResponse(content_type='application/msexcel')
-    response['Content-Disposition'] = 'attachment;filename={}.xlsx'.format(file_name)
+    response['Content-Disposition'] = 'attachment;filename={}.xlsx'.format(file_name).encode('utf-8')
     wb.save(response)
     return response
