@@ -150,7 +150,8 @@ def addSingleCourseActivity(request):
                     return redirect(message_url(
                         succeed('存在信息相同的课程活动，已为您自动跳转!'),
                         f'/viewActivity/{aid}'))
-                return redirect(f"/editCourseActivity/{aid}")
+                return redirect(message_url(succeed('活动创建成功！'), 
+                                            f'/showCourseActivity/'))
         except AssertionError as err_info:
             return redirect(message_url(wrong(str(err_info)), request.path))
         except Exception as e:
