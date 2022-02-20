@@ -9,6 +9,11 @@ from app.models import (
 from app.notification_utils import (
     notification_create,
 )
+from app.wechat_send import (
+    WechatApp,
+    WechatMessageLevel,
+)
+
 
 __all__ = [
     'check_feedback',
@@ -200,4 +205,19 @@ def make_relevant_notification(feedback, info, me):
         URL=None,
         relate_instance=relate_instance,
         anonymous_flag=True,
+    )
+
+
+@log.except_captured(source='feedback_utils[examine_notification]')
+def examine_notification(feedback):
+    examin_teacher = feedback.org.otype.incharge.person_id
+    notification_create(
+        receiver=examin_teacher,
+        sender=feedback.org.organization_id,
+        typename=Notification.Type.NEEDDO,
+        title=Notification.Title.VERIFY_INFORM,
+        content=f"{feedback.org.oname}申请公开一条反馈信息",
+        URL=f"/viewFeedback/{feedback.id}",
+        publish_to_wechat=True,
+        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
     )
