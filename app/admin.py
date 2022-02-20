@@ -661,7 +661,7 @@ class CourseAdmin(admin.ModelAdmin):
                                  message='已设置定时任务!')
 
     @as_action("更新课程状态 延迟2分钟", actions)
-    def refresh_status(self, request, queryset):
+    def refresh_status_delay2(self, request, queryset):
         from app.course_utils import register_selection
         from datetime import timedelta
         register_selection(wait_for=timedelta(minutes=2))
