@@ -120,6 +120,25 @@
                     </select>
                   </div>
                   {% else %}
+                  {% if read_editable %}
+                  <div class="form-group">
+                    <label for="aintro">标记已读状态</label>
+                    <select class="form-control" id="read" name="read_status" onchange="read_confirm.call(this)">
+                      <option value="unread" {%if read == "未读" %}selected{%endif%}>未读</option>
+                      <option value="read" {%if read == "已读" %}selected{%endif%}>已读</option>
+                    </select>
+                  </div>
+                  {% endif %}
+                  {% if solve_editable %}
+                  <div class="form-group">
+                    <label for="aintro">标记解决状态</label>
+                    <select class="form-control" id="solve" name="solve_status" onchange="read_confirm.call(this)">
+                      <option value="solving" {%if solve == "解决中" %}selected{%endif%}>解决中</option>
+                      <option value="solve" {%if solve == "已解决" %}selected{%endif%}>已解决</option>
+                      <option value="unsolvable" {%if solve == "无法解决" %}selected{%endif%}>无法解决</option>
+                    </select>
+                  </div>
+                  {% endif %}
                   {% if public_editable %}
                   <div class="form-group">
                     {% if login_identity == "publisher" %}
@@ -150,27 +169,8 @@
                     </label>
                     {% endif %}
                     <select class="form-control" id="publisher_public" name="public_status" onchange="public_confirm.call(this)">
-                      <option value="public" {%if public%}selected{%endif%}>公开反馈</option>
-                      <option value="private" {%if not public%}selected{%endif%}>{%if login_identity == "teacher"%}强制{%endif%}隐藏反馈</option>
-                    </select>
-                  </div>
-                  {% endif %}
-                  {% if read_editable %}
-                  <div class="form-group">
-                    <label for="aintro">标记已读状态</label>
-                    <select class="form-control" id="read" name="read_status" onchange="read_confirm.call(this)">
-                      <option value="unread" {%if read == "未读" %}selected{%endif%}>未读</option>
-                      <option value="read" {%if read == "已读" %}selected{%endif%}>已读</option>
-                    </select>
-                  </div>
-                  {% endif %}
-                  {% if solve_editable %}
-                  <div class="form-group">
-                    <label for="aintro">标记解决状态</label>
-                    <select class="form-control" id="solve" name="solve_status" onchange="read_confirm.call(this)">
-                      <option value="solving" {%if solve == "解决中" %}selected{%endif%}>解决中</option>
-                      <option value="solve" {%if solve == "已解决" %}selected{%endif%}>已解决</option>
-                      <option value="unsolvable" {%if solve == "无法解决" %}selected{%endif%}>无法解决</option>
+                      <option value="public" {%if public%}select{%endif%}>公开反馈</option>
+                      <option value="private" {%if not public%}select{%endif%}>{%if login_identity == "teacher"%}强制{%endif%}隐藏反馈</option>
                     </select>
                   </div>
                   {% endif %}
