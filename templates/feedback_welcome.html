@@ -46,41 +46,28 @@
             <!-- 我要留言 -->
             <div class="col-12 layout-top-spacing">
                 <div class="bio layout-spacing">
-                    <div class="row widget-content widget-content-area" id="feedback-welcome">
-                        <div class="col-4 border-right">
-                            <div class="pricing-header px-3 py-3 pb-md-4 mx-auto text-center">
-                                <!-- <h1 class="display-4 my-4 mb-4">元培生活</h1> -->
-                                <h4 class="text-center mb-4">问答反馈中心</h4>
-                                <h6>欢迎你来到这里。</h6>
-                                <h6>这是学生权益诉求的集中地，也是信息交流的便捷平台，在这里我们用共同关心搭建共同生活的家园。</h6>
-                                </br>
-                                <h6>如果你在学习与生活中产生困惑，无法凭借自己一个人的力量解决；</h6>
-                                <h6>在对宿舍楼、地下室的硬件设施的使用中遇到问题；</h6>
-                                <h6>对改善公共空间环境、改进学生组织工作有好的意见与想法；</h6>
-                                <h6>或是有其他想要和组织迫切交流的观点：</h6>
-                                <h6>都可以点击下方“我要留言”向组织反馈~</h6>
-                                </br>
-                                <h6 class="my-0 mb-2">只要有需求，就能有回应，希望在互动交流里，我们的共同生活能趋向更好的平衡。</h6>
-                            </div>
-                            <div class="container pb-2">
-                                <div class="row">
-                                    <div class="col-12 col-lg-12 col-md-6">
-                                        <div class="card text-center mb-4">
-                                            <div class="card-header">
-                                                <h6 class="my-0 font-weight-normal">权益反馈</h6>
-                                            </div>
-                                            <a href="/modifyFeedback/">
-                                                <div class="card-body">
-                                                    <button type="button" class="btn btn-block btn-outline-primary" 
-                                                        onclick="">我要留言</button>
-                                                </div>
-                                            </a>
-                                        </div>
+                    <div class="widget-content widget-content-area">
+                        <div class="row">
+                            <div class="col-4 pb-2">
+                                <div class="border-right pb-0" id="feedback-welcome" style="border-color: lightgray!important;">
+                                    <div class="pricing-header px-3 py-3 pb-md-4 mx-auto text-center">
+                                        <!-- <h1 class="display-4 my-4 mb-4">元培生活</h1> -->
+                                        <h4 class="text-center mb-4">问答反馈中心</h4>
+                                        <h6>欢迎你来到这里。</h6>
+                                        <h6>这是学生权益诉求的集中地，也是信息交流的便捷平台，在这里我们用共同关心搭建共同生活的家园。</h6>
+                                        </br>
+                                        <h6>如果你在学习与生活中产生困惑，无法凭借自己一个人的力量解决；</h6>
+                                        <h6>在对宿舍楼、地下室的硬件设施的使用中遇到问题；</h6>
+                                        <h6>对改善公共空间环境、改进学生组织工作有好的意见与想法；</h6>
+                                        <h6>或是有其他想要和组织迫切交流的观点：</h6>
+                                        <h6>都可以点击下方“我要留言”向组织反馈~</h6>
+                                        </br>
+                                        <h6 class="my-0 mb-2">只要有需求，就能有回应，希望在互动交流里，我们的共同生活能趋向更好的平衡。</h6>
                                     </div>
-                                    <div class="col-12 col-lg-12 col-md-6">
+                                    <div class="container pb-0">
                                         <div class="card text-center mb-4">
                                             <div class="card-header">
-                                                <h6 class="my-0 font-weight-normal">学术反馈</h6>
+                                                <h6 class="my-0 font-weight-normal">发起反馈</h6>
                                             </div>
                                             <a href="/modifyFeedback/">
                                                 <div class="card-body">
@@ -93,240 +80,16 @@
                                 </div>
                                 
                             </div>
-                        </div>
-                        <div class="col-8">
-                            <!-- 留言公开 -->
-                        <!-- <div class="bio layout-spacing">
-                            <div class="widget-content widget-content-area" style="height: 100%;"> -->
-                            <!-- <h3>留言公开</h3> -->
-                            <div id="publicFeedbackTab" class="tab-content">
-                                <div class="tab-pane fade in active show" id="right">
-                                    <div class="bio-skill-box pb-0" style="overflow-y: scroll; overflow-x: hidden;" id="publicFeedbackBox">
-                                        <!-- {% if right_feedback %}
-                                        <div id="right_feedback" class="row">
-                                            {% for feedback in right_feedback %}
-                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
-                                                    <div class=" b-skills">
-                                                        <div class="d-flex justify-content-between">
-                                                            <div>
-                                                                <h5>
-                                                                    <a href='/viewFeedback/{{feedback.id}}'><u>{{feedback.title}}</u></a>
-                                                                </h5>
-                                                            </div>
-                                                        </div>
-
-                                                        {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
-                                                            <p>
-                                                                {% if feedback.read_status == 1 %}
-                                                                <span class="badge badge-pill badge-danger"> {{feedback.get_read_status_display}} </span>
-                                                            {% elif feedback.solve_status == 3%}
-                                                                <span class="badge badge-pill badge-primary">{{feedback.get_read_status_display}} </span>
-                                                                <span class="badge badge-pill badge-primary">---</span>
-                                                            {% else %}
-                                                                <span class="badge badge-pill badge-warning">{{feedback.get_read_status_display}} </span>
-                                                                <span class="badge badge-pill badge-warning">{{feedback.get_solve_status_display}}</span>
-                                                            {% endif %}
-                                                            </p>
-                                                        {% else %}
-                                                            <p>
-                                                                <span class="badge badge-pill 
-                                                                {% if feedback.solve_status == 0 %}
-                                                                    badge-success">
-                                                                {% else %}
-                                                                    badge-primary">
-                                                                {% endif %}
-                                                                {{feedback.get_solve_status_display}} </span>
-                                                            </p>
-                                                        {% endif %}
-
-                                                        <p style="color: rgb(66, 67, 68);">
-                                                            <i class="fa fa-share-alt" style="width: 14px;"></i>
-                                                            <span class="ml-1">反馈至 {{feedback.org.oname}}</span>
-                                                        </p>
-
-                                                        <p style="color: rgb(66, 67, 68);">
-                                                            <i class="fa fa-bell" style="width: 14px;"></i>
-                                                            <span class="ml-1">{{feedback.public_time}} 公开</span>
-                                                        </p>
-
-                                                        <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
-                                                            <i class="fa fa-envelope" style="width: 14px;"></i>
-                                                            <span class="ml-1">{{feedback.content}}</span>
-                                                        </p>
-                                                    </div>
-                                                </div>
-                                            {% endfor %}
-                                        </div>
-                                        {% else %}
-                                        <div style="margin-top: 40px; margin-bottom: -40px;">
-                                            <p style="text-align: center;">目前没有公开的权益反馈.</p>
-                                            <br>
-                                        </div>
-                                        {% endif %} -->
-                                        <!-- 一些手写的卡片，debug用 -->
-                                        <div class="row">
-                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
-                                                <div class=" b-skills">
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <h5>
-                                                                <a href='/viewFeedback/{{feedback.id}}'><u>lorem</u></a>
-                                                            </h5>
-                                                        </div>
-                                                    </div>
-        
-                                                        <p>
-                                                            <span class="badge badge-pill badge-danger">已经解决</span>
-                                                            
-                                                        </p>
-        
-                                                    <p style="color: rgb(66, 67, 68);">
-                                                        <i class="fa fa-share-alt" style="width: 14px;"></i>
-                                                        <span class="ml-1">反馈至 青年志愿者协会</span>
-                                                    </p>
-        
-                                                    <p style="color: rgb(66, 67, 68);">
-                                                        <i class="fa fa-bell" style="width: 14px;"></i>
-                                                        <span class="ml-1">未公开</span>
-                                                    </p>
-        
-                                                    <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
-                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
-                                                        <span class="ml-1">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Dolore, itaque.</span>
-                                                    </p>
-                                                </div>
-                                        </div>
-                                        <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
-                                            <div class=" b-skills">
-                                                <div class="d-flex justify-content-between">
-                                                    <div>
-                                                        <h5>
-                                                            <a href='/viewFeedback/{{feedback.id}}'><u>lorem</u></a>
-                                                        </h5>
-                                                    </div>
-                                                </div>
-        
-                                                    <p>
-                                                        <span class="badge badge-pill badge-danger">已经解决</span>
-                                                        
-                                                    </p>
-        
-                                                <p style="color: rgb(66, 67, 68);">
-                                                    <i class="fa fa-share-alt" style="width: 14px;"></i>
-                                                    <span class="ml-1">反馈至 青年志愿者协会</span>
-                                                </p>
-        
-                                                <p style="color: rgb(66, 67, 68);">
-                                                    <i class="fa fa-bell" style="width: 14px;"></i>
-                                                    <span class="ml-1">未公开</span>
-                                                </p>
-        
-                                                <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
-                                                    <i class="fa fa-envelope" style="width: 14px;"></i>
-                                                    <span class="ml-1">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Dolore, itaque.</span>
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
-                                        <div class=" b-skills">
-                                            <div class="d-flex justify-content-between">
-                                                <div>
-                                                    <h5>
-                                                        <a href='/viewFeedback/{{feedback.id}}'><u>lorem</u></a>
-                                                    </h5>
-                                                </div>
-                                            </div>
-        
-                                                <p>
-                                                    <span class="badge badge-pill badge-danger">已经解决</span>
-                                                    
-                                                </p>
-        
-                                            <p style="color: rgb(66, 67, 68);">
-                                                <i class="fa fa-share-alt" style="width: 14px;"></i>
-                                                <span class="ml-1">反馈至 青年志愿者协会</span>
-                                            </p>
-        
-                                            <p style="color: rgb(66, 67, 68);">
-                                                <i class="fa fa-bell" style="width: 14px;"></i>
-                                                <span class="ml-1">未公开</span>
-                                            </p>
-        
-                                            <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
-                                                <i class="fa fa-envelope" style="width: 14px;"></i>
-                                                <span class="ml-1">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Dolore, itaque.</span>
-                                            </p>
-                                        </div>
-                                        </div>
-                                        <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
-                                            <div class=" b-skills">
-                                                <div class="d-flex justify-content-between">
-                                                    <div>
-                                                        <h5>
-                                                            <a href='/viewFeedback/{{feedback.id}}'><u>lorem</u></a>
-                                                        </h5>
-                                                    </div>
-                                                </div>
-        
-                                                    <p>
-                                                        <span class="badge badge-pill badge-danger">已经解决</span>
-                                                        
-                                                    </p>
-        
-                                                <p style="color: rgb(66, 67, 68);">
-                                                    <i class="fa fa-share-alt" style="width: 14px;"></i>
-                                                    <span class="ml-1">反馈至 青年志愿者协会</span>
-                                                </p>
-        
-                                                <p style="color: rgb(66, 67, 68);">
-                                                    <i class="fa fa-bell" style="width: 14px;"></i>
-                                                    <span class="ml-1">未公开</span>
-                                                </p>
-        
-                                                <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
-                                                    <i class="fa fa-envelope" style="width: 14px;"></i>
-                                                    <span class="ml-1">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Dolore, itaque.</span>
-                                                </p>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
-                                                <div class=" b-skills">
-                                                    <div class="d-flex justify-content-between">
-                                                        <div>
-                                                            <h5>
-                                                                <a href='/viewFeedback/{{feedback.id}}'><u>lorem</u></a>
-                                                            </h5>
-                                                        </div>
-                                                    </div>
-        
-                                                        <p>
-                                                            <span class="badge badge-pill badge-danger">已经解决</span>
-                                                            
-                                                        </p>
-        
-                                                    <p style="color: rgb(66, 67, 68);">
-                                                        <i class="fa fa-share-alt" style="width: 14px;"></i>
-                                                        <span class="ml-1">反馈至 青年志愿者协会</span>
-                                                    </p>
-        
-                                                    <p style="color: rgb(66, 67, 68);">
-                                                        <i class="fa fa-bell" style="width: 14px;"></i>
-                                                        <span class="ml-1">未公开</span>
-                                                    </p>
-        
-                                                    <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
-                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
-                                                        <span class="ml-1">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Dolore, itaque.</span>
-                                                    </p>
-                                                </div>
-                                        </div>
-                                        </div>
-                                    </div>
-                                    <div class="tab-pane fade" id="academic">
-                                        <div class="bio-skill-box">
-                                            {% if academic_feedback %}
-                                            <div class="row">
-                                                {% for feedback in academic_feedback %}
+                            <div class="col-8 pb-2" style="height: 100%;">
+                                <!-- 留言公开 -->
+                                <!-- <h3>留言公开</h3> -->
+                                <div id="publicFeedbackTab" class="tab-content">
+                                    <div class="tab-pane fade in active show" id="right">
+                                        <div class="bio-skill-box pb-0 " style="overflow-y: scroll; overflow-x: hidden;" id="publicFeedbackBox" 
+                                            >
+                                            {% if right_feedback %}
+                                            <div id="right_feedback" class="row">
+                                                {% for feedback in right_feedback %}
                                                     <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
                                                         <div class=" b-skills">
                                                             <div class="d-flex justify-content-between">
@@ -336,7 +99,7 @@
                                                                     </h5>
                                                                 </div>
                                                             </div>
-                                                            
+    
                                                             {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
                                                                 <p>
                                                                     {% if feedback.read_status == 1 %}
@@ -360,17 +123,17 @@
                                                                     {{feedback.get_solve_status_display}} </span>
                                                                 </p>
                                                             {% endif %}
-
+    
                                                             <p style="color: rgb(66, 67, 68);">
                                                                 <i class="fa fa-share-alt" style="width: 14px;"></i>
                                                                 <span class="ml-1">反馈至 {{feedback.org.oname}}</span>
                                                             </p>
-
+    
                                                             <p style="color: rgb(66, 67, 68);">
                                                                 <i class="fa fa-bell" style="width: 14px;"></i>
                                                                 <span class="ml-1">{{feedback.public_time}} 公开</span>
                                                             </p>
-
+    
                                                             <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
                                                                 <i class="fa fa-envelope" style="width: 14px;"></i>
                                                                 <span class="ml-1">{{feedback.content}}</span>
@@ -381,34 +144,254 @@
                                             </div>
                                             {% else %}
                                             <div style="margin-top: 40px; margin-bottom: -40px;">
-                                                <p style="text-align: center;">目前没有公开的学术反馈.</p>
+                                                <p style="text-align: center;">目前没有公开的权益反馈.</p>
                                                 <br>
                                             </div>
                                             {% endif %}
+                                            <!-- 一些手写的卡片，debug用 -->
+                                            <div class="row">
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                    <div class=" b-skills">
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <h5>
+                                                                    <a href='/viewFeedback/{{feedback.id}}'><u>lorem</u></a>
+                                                                </h5>
+                                                            </div>
+                                                        </div>
+            
+                                                            <p>
+                                                                <span class="badge badge-pill badge-danger">已经解决</span>
+                                                                
+                                                            </p>
+            
+                                                        <p style="color: rgb(66, 67, 68);">
+                                                            <i class="fa fa-share-alt" style="width: 14px;"></i>
+                                                            <span class="ml-1">反馈至 青年志愿者协会</span>
+                                                        </p>
+            
+                                                        <p style="color: rgb(66, 67, 68);">
+                                                            <i class="fa fa-bell" style="width: 14px;"></i>
+                                                            <span class="ml-1">未公开</span>
+                                                        </p>
+            
+                                                        <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
+                                                            <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                            <span class="ml-1">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Dolore, itaque.</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                    <div class=" b-skills">
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <h5>
+                                                                    <a href='/viewFeedback/{{feedback.id}}'><u>lorem</u></a>
+                                                                </h5>
+                                                            </div>
+                                                        </div>
+                
+                                                            <p>
+                                                                <span class="badge badge-pill badge-danger">已经解决</span>
+                                                                
+                                                            </p>
+                
+                                                        <p style="color: rgb(66, 67, 68);">
+                                                            <i class="fa fa-share-alt" style="width: 14px;"></i>
+                                                            <span class="ml-1">反馈至 青年志愿者协会</span>
+                                                        </p>
+                
+                                                        <p style="color: rgb(66, 67, 68);">
+                                                            <i class="fa fa-bell" style="width: 14px;"></i>
+                                                            <span class="ml-1">未公开</span>
+                                                        </p>
+                
+                                                        <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
+                                                            <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                            <span class="ml-1">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Dolore, itaque.</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                <div class=" b-skills">
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h5>
+                                                                <a href='/viewFeedback/{{feedback.id}}'><u>lorem</u></a>
+                                                            </h5>
+                                                        </div>
+                                                    </div>
+                
+                                                        <p>
+                                                            <span class="badge badge-pill badge-danger">已经解决</span>
+                                                            
+                                                        </p>
+                
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-share-alt" style="width: 14px;"></i>
+                                                        <span class="ml-1">反馈至 青年志愿者协会</span>
+                                                    </p>
+                
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-bell" style="width: 14px;"></i>
+                                                        <span class="ml-1">未公开</span>
+                                                    </p>
+                
+                                                    <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
+                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                        <span class="ml-1">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Dolore, itaque.</span>
+                                                    </p>
+                                                </div>
+                                                </div>
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                    <div class=" b-skills">
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <h5>
+                                                                    <a href='/viewFeedback/{{feedback.id}}'><u>lorem</u></a>
+                                                                </h5>
+                                                            </div>
+                                                        </div>
+                
+                                                            <p>
+                                                                <span class="badge badge-pill badge-danger">已经解决</span>
+                                                                
+                                                            </p>
+                
+                                                        <p style="color: rgb(66, 67, 68);">
+                                                            <i class="fa fa-share-alt" style="width: 14px;"></i>
+                                                            <span class="ml-1">反馈至 青年志愿者协会</span>
+                                                        </p>
+                
+                                                        <p style="color: rgb(66, 67, 68);">
+                                                            <i class="fa fa-bell" style="width: 14px;"></i>
+                                                            <span class="ml-1">未公开</span>
+                                                        </p>
+                
+                                                        <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
+                                                            <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                            <span class="ml-1">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Dolore, itaque.</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                        <div class=" b-skills">
+                                                            <div class="d-flex justify-content-between">
+                                                                <div>
+                                                                    <h5>
+                                                                        <a href='/viewFeedback/{{feedback.id}}'><u>lorem</u></a>
+                                                                    </h5>
+                                                                </div>
+                                                            </div>
+                
+                                                                <p>
+                                                                    <span class="badge badge-pill badge-danger">已经解决</span>
+                                                                    
+                                                                </p>
+                
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-share-alt" style="width: 14px;"></i>
+                                                                <span class="ml-1">反馈至 青年志愿者协会</span>
+                                                            </p>
+                
+                                                            <p style="color: rgb(66, 67, 68);">
+                                                                <i class="fa fa-bell" style="width: 14px;"></i>
+                                                                <span class="ml-1">未公开</span>
+                                                            </p>
+                
+                                                            <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
+                                                                <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                                <span class="ml-1">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Dolore, itaque.</span>
+                                                            </p>
+                                                        </div>
+                                                </div>
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                    <div class=" b-skills">
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <h5>
+                                                                    <a href='/viewFeedback/{{feedback.id}}'><u>lorem</u></a>
+                                                                </h5>
+                                                            </div>
+                                                        </div>
+            
+                                                            <p>
+                                                                <span class="badge badge-pill badge-danger">已经解决</span>
+                                                                
+                                                            </p>
+            
+                                                        <p style="color: rgb(66, 67, 68);">
+                                                            <i class="fa fa-share-alt" style="width: 14px;"></i>
+                                                            <span class="ml-1">反馈至 青年志愿者协会</span>
+                                                        </p>
+            
+                                                        <p style="color: rgb(66, 67, 68);">
+                                                            <i class="fa fa-bell" style="width: 14px;"></i>
+                                                            <span class="ml-1">未公开</span>
+                                                        </p>
+            
+                                                        <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
+                                                            <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                            <span class="ml-1">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Dolore, itaque.</span>
+                                                        </p>
+                                                    </div>
+                                                
+                                                </div>
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                    <div class=" b-skills">
+                                                        <div class="d-flex justify-content-between">
+                                                            <div>
+                                                                <h5>
+                                                                    <a href='/viewFeedback/{{feedback.id}}'><u>lorem</u></a>
+                                                                </h5>
+                                                            </div>
+                                                        </div>
+            
+                                                            <p>
+                                                                <span class="badge badge-pill badge-danger">已经解决</span>
+                                                                
+                                                            </p>
+            
+                                                        <p style="color: rgb(66, 67, 68);">
+                                                            <i class="fa fa-share-alt" style="width: 14px;"></i>
+                                                            <span class="ml-1">反馈至 青年志愿者协会</span>
+                                                        </p>
+            
+                                                        <p style="color: rgb(66, 67, 68);">
+                                                            <i class="fa fa-bell" style="width: 14px;"></i>
+                                                            <span class="ml-1">未公开</span>
+                                                        </p>
+            
+                                                        <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
+                                                            <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                            <span class="ml-1">Lorem ipsum dolor sit amet, consectetur adipisicing elit. Dolore, itaque.</span>
+                                                        </p>
+                                                    </div>
+                                            </div>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                            </div>
+                            </div>
                         </div>
-                        </div>
-                        
                     </div>
                 </div>
             </div>
             
         <!-- 让留言公开部分和我要留言一样长 -->
-            <!-- <script type="text/javascript">
-                const ref = document.getElementById("feedback-welcome");
-                const publicBox = document.getElementById("publicFeedbackBox");
-                const publicTab = document.getElementById("publicFeedbackTab");
-                /* ---------------- fit public tab according to screen height ---------------- */
-                function fit() {
-                    publicBox.style.height = (ref.offsetHeight - publicBox.offsetTop) + "px";
-                    publicTab.style.height = (ref.offsetHeight - publicTab.offsetTop) + "px";
-                }
-                window.addEventListener(`load`, fit);
-                window.addEventListener(`resize`, fit);
-                new ResizeObserver(fit).observe(ref);
-            </script> -->
+        <script type="text/javascript">
+            const ref = document.getElementById("feedback-welcome");
+            const publicBox = document.getElementById("publicFeedbackBox");
+            const publicTab = document.getElementById("publicFeedbackTab");
+            /* ---------------- fit public tab according to screen height ---------------- */
+            function fit() {
+                publicBox.style.height = (ref.offsetHeight - publicBox.offsetTop) + "px";
+                publicTab.style.height = (ref.offsetHeight - publicTab.offsetTop) + "px";
+            }
+            window.addEventListener(`load`, fit);
+            window.addEventListener(`resize`, fit);
+            new ResizeObserver(fit).observe(ref);
+        </script>
         </div>
         <div class="row layout-top-spacing mt-0">
             <!-- 审核界面 -->
