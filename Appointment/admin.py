@@ -1,18 +1,26 @@
-from Appointment.models import Participant, Room, Appoint, College_Announcement, CardCheckInfo
-from django.contrib import admin, messages
 import string
+import pypinyin
+from datetime import datetime, timedelta
+
+from django.contrib import admin, messages
 from django.utils.safestring import mark_safe
 from django.utils.html import format_html, format_html_join
-from datetime import datetime, timedelta, timezone, time, date
-from django.http import JsonResponse  # Json响应
+
 from django.db import transaction  # 原子化更改数据库
-from Appointment.utils.scheduler_func import addAppoint, scheduler
-import Appointment.utils.scheduler_func as scheduler_func
-from Appointment.utils.utils import operation_writer, send_wechat_message
+from django.db.models import F
+
 from Appointment import *
+from Appointment.utils import scheduler_func, utils
+from Appointment.utils.scheduler_func import addAppoint, scheduler
+from Appointment.utils.utils import operation_writer, send_wechat_message
+from Appointment.models import (
+    Participant,
+    Room,
+    Appoint,
+    College_Announcement,
+    CardCheckInfo,
+)
 
-
-import pypinyin
 
 # Register your models here.
 admin.site.site_title = '元培地下室管理后台'
@@ -29,11 +37,12 @@ class ParticipantAdmin(admin.ModelAdmin):
     list_display = ('Sid', 'name', 'credit')
     list_display_links = ('Sid', 'name')
     list_editable = ('credit', )
-    list_filter = ('credit', )
+    list_filter = ('credit', 'hidden')
     fieldsets = (['基本信息', {
         'fields': (
             'Sid',
             'name',
+            'hidden',
         ),
     }], [
         '显示全部', {
@@ -53,15 +62,10 @@ class ParticipantAdmin(admin.ModelAdmin):
         try:
             with transaction.atomic():
                 stu_all = Participant.objects.all()
-                for stu in stu_all:
-                    if stu.credit <= 2:
-                        print(stu)
-                        stu.credit += 1
-                        stu.save()
+                stu_all.filter(credit__lt=3).select_for_update().update(
+                    credit=F('credit') + 1
+                )
                 return self.message_user(request, '操作成功!')
-            return self.message_user(request=request,
-                                     message='操作失败!请与开发者联系!',
-                                     level=messages.WARNING)
         except:
             return self.message_user(request=request,
                                      message='操作失败!请与开发者联系!',
