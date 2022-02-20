@@ -124,7 +124,7 @@ def _move(context, warn_code, warn_message, alert_message=None):
     return count
 
 def transfer_message_context(source: dict, context=None,
-                             with_alert=False, normalize=False):
+                             with_alert=False, normalize=True):
     '''
     将来源中的全局消息导出到context
     如果未提供context，则创建一个新字典
@@ -261,7 +261,7 @@ def read_content(
     '''
     result = [] if _flat else {}
     for key in _keys:
-        value = read_key(_content, key, _default, _trans_func, _raise)
+        value = read_key(_content, key, _trans_func, _default, _raise)
         result.append(value) if _flat else result.setdefault(key, value)
     for key, args in _fields.items():
         if callable(args):

@@ -41,10 +41,9 @@ from app.activity_utils import (
 )
 from app.wechat_send import WechatApp, WechatMessageLevel
 
-import re
 import openpyxl
-from zhon import hanzi
 from random import sample
+from urllib.parse import quote
 from collections import Counter
 from datetime import datetime, timedelta
 
@@ -582,6 +581,7 @@ def course_to_display(courses, user, detail=False) -> list:
             "photo",
             "teaching_plan",
             "record_cal_method",
+            "QRcode"
         ).select_related('organization').prefetch_related(
             Prefetch('participant_set',
                      queryset=CourseParticipant.objects.filter(person=user),
@@ -591,8 +591,8 @@ def course_to_display(courses, user, detail=False) -> list:
     for course in courses:
         course_info = {}
 
+        # 选课页面和详情页面共用的信息
         course_info["name"] = course.name
-        course_info["times"] = course.times  # 课程周数
         course_info["type"] = course.get_type_display()  # 课程类型
         course_info["avatar_path"] = course.organization.get_user_ava()
 
@@ -603,6 +603,7 @@ def course_to_display(courses, user, detail=False) -> list:
 
         if detail:
             # 在课程详情页才展示的信息
+            course_info["times"] = course.times  # 课程周数
             course_info["classroom"] = course.classroom
             course_info["teacher"] = course.teacher
             course_info["introduction"] = course.introduction
@@ -610,6 +611,8 @@ def course_to_display(courses, user, detail=False) -> list:
             course_info["record_cal_method"] = course.record_cal_method
             course_info["photo_path"] = course.get_photo_path()
             course_info["organization_name"] = course.organization.oname
+            if course.QRcode:
+                course_info["QRcode"] = MEDIA_URL + str(course.QRcode)
             display.append(course_info)
             continue
 
@@ -636,98 +639,99 @@ def course_to_display(courses, user, detail=False) -> list:
 @log.except_captured(return_value=True,
                      record_args=True,
                      source='course_utils[draw_lots]')
-def draw_lots(course):
+def draw_lots():
     """
     等额抽签选出成功选课的学生，并修改学生的选课状态
 
     参数:
         course: 待抽签的课程
     """
-    participants = CourseParticipant.objects.filter(
-        course=course,
-        status=CourseParticipant.Status.SELECT).select_related()
-
-    participants_num = participants.count()
-    if participants_num <= 0:
-        return
-
-    participants_id = list(participants.values_list("id", flat=True))
-    capacity = course.capacity
-
-    if participants_num <= capacity:
-        # 选课人数少于课程容量，不用抽签
+    courses = Course.objects.activated().filter(status=Course.Status.DRAWING)
+    for course in courses:
         with transaction.atomic():
-            CourseParticipant.objects.filter(
-                course=course).select_for_update().update(
-                    status=CourseParticipant.Status.SUCCESS)
-            Course.objects.filter(id=course.id).select_for_update().update(
-                current_participants=participants_num)
-    else:
-        # 抽签；可能实现得有一些麻烦
-        lucky_ones = sample(participants_id, capacity)
-        unlucky_ones = list(set(participants_id).difference(set(lucky_ones)))
-        with transaction.atomic():
-            # 不确定是否要加悲观锁
-            CourseParticipant.objects.filter(
-                id__in=lucky_ones).select_for_update().update(
-                    status=CourseParticipant.Status.SUCCESS)
-            CourseParticipant.objects.filter(
-                id__in=unlucky_ones).select_for_update().update(
-                    status=CourseParticipant.Status.FAILED)
-            Course.objects.filter(id=course.id).select_for_update().update(
-                current_participants=capacity)
+            participants = CourseParticipant.objects.filter(
+                course=course,
+                status=CourseParticipant.Status.SELECT).select_related()
 
-    # 给选课成功的同学发送通知
-    receivers = CourseParticipant.objects.filter(
-        course=course,
-        status=CourseParticipant.Status.SUCCESS,
-    ).values_list("person__person_id", flat=True)
-    receivers = User.objects.filter(id__in=receivers)
-    sender = course.organization.organization_id
-    typename = Notification.Type.NEEDREAD
-    title = Notification.Title.ACTIVITY_INFORM
-    content = f"您好！您已成功选上课程《{course.name}》！"
+            participants_num = participants.count()
+            if participants_num <= 0:
+                continue
 
-    # 课程详情页面
-    URL = f"/viewCourse/?courseid={course.id}"
+            participants_id = list(participants.values_list("id", flat=True))
+            capacity = course.capacity
 
-    # 批量发送通知
-    bulk_notification_create(
-        receivers=receivers,
-        sender=sender,
-        typename=typename,
-        title=title,
-        content=content,
-        URL=URL,
-        publish_to_wechat=True,
-        publish_kws={
-            "app": WechatApp.TO_PARTICIPANT,
-            "level": WechatMessageLevel.IMPORTANT,
-        },
-    )
+            if participants_num <= capacity:
+                # 选课人数少于课程容量，不用抽签
+                CourseParticipant.objects.filter(
+                    course=course).select_for_update().update(
+                        status=CourseParticipant.Status.SUCCESS)
+                Course.objects.filter(id=course.id).select_for_update().update(
+                    current_participants=participants_num)
+            else:
+                # 抽签；可能实现得有一些麻烦
+                lucky_ones = sample(participants_id, capacity)
+                unlucky_ones = list(set(participants_id).difference(set(lucky_ones)))
+                # 不确定是否要加悲观锁
+                CourseParticipant.objects.filter(
+                    id__in=lucky_ones).select_for_update().update(
+                        status=CourseParticipant.Status.SUCCESS)
+                CourseParticipant.objects.filter(
+                    id__in=unlucky_ones).select_for_update().update(
+                        status=CourseParticipant.Status.FAILED)
+                Course.objects.filter(id=course.id).select_for_update().update(
+                    current_participants=capacity)
 
-    # 给选课失败的同学发送通知
+            # 给选课成功的同学发送通知
+            receivers = CourseParticipant.objects.filter(
+                course=course,
+                status=CourseParticipant.Status.SUCCESS,
+            ).values_list("person__person_id", flat=True)
+            receivers = User.objects.filter(id__in=receivers)
+            sender = course.organization.organization_id
+            typename = Notification.Type.NEEDREAD
+            title = Notification.Title.ACTIVITY_INFORM
+            content = f"您好！您已成功选上课程《{course.name}》！"
 
-    receivers = CourseParticipant.objects.filter(
-        course=course,
-        status=CourseParticipant.Status.FAILED,
-    ).values_list("person__person_id", flat=True)
-    receivers = User.objects.filter(id__in=receivers)
-    content = f"很抱歉通知您，您未选上课程《{course.name}》。"
-    if len(receivers) > 0:
-        bulk_notification_create(
-            receivers=receivers,
-            sender=sender,
-            typename=typename,
-            title=title,
-            content=content,
-            URL=URL,
-            publish_to_wechat=True,
-            publish_kws={
-                "app": WechatApp.TO_PARTICIPANT,
-                "level": WechatMessageLevel.IMPORTANT,
-            },
-        )
+            # 课程详情页面
+            URL = f"/viewCourse/?courseid={course.id}"
+
+            # 批量发送通知
+            bulk_notification_create(
+                receivers=receivers,
+                sender=sender,
+                typename=typename,
+                title=title,
+                content=content,
+                URL=URL,
+                publish_to_wechat=True,
+                publish_kws={
+                    "app": WechatApp.TO_PARTICIPANT,
+                    "level": WechatMessageLevel.IMPORTANT,
+                },
+            )
+
+            # 给选课失败的同学发送通知
+
+            receivers = CourseParticipant.objects.filter(
+                course=course,
+                status=CourseParticipant.Status.FAILED,
+            ).values_list("person__person_id", flat=True)
+            receivers = User.objects.filter(id__in=receivers)
+            content = f"很抱歉通知您，您未选上课程《{course.name}》。"
+            if len(receivers) > 0:
+                bulk_notification_create(
+                    receivers=receivers,
+                    sender=sender,
+                    typename=typename,
+                    title=title,
+                    content=content,
+                    URL=URL,
+                    publish_to_wechat=True,
+                    publish_kws={
+                        "app": WechatApp.TO_PARTICIPANT,
+                        "level": WechatMessageLevel.IMPORTANT,
+                    },
+                )
 
 
 @log.except_captured(return_value=True,
@@ -768,10 +772,7 @@ def change_course_status(cur_status, to_status):
         courses = courses.select_related('organization')
     with transaction.atomic():
         for course in courses:
-            if to_status == Course.Status.DRAWING:
-                # 预选结束，进行抽签
-                draw_lots(course)
-            elif to_status == Course.Status.SELECT_END:
+            if to_status == Course.Status.SELECT_END:
                 # 选课结束，将选课成功的同学批量加入小组
                 participants = CourseParticipant.objects.filter(
                     course=course,
@@ -804,7 +805,7 @@ def str_to_time(stage: str):
                      record_args=True,
                      status_code=log.STATE_WARNING,
                      source='course_utils[register_selection]')
-def register_selection():
+def register_selection(wait_for: timedelta=None):
     """
     添加定时任务，实现课程状态转变，每次发起课程时调用
     """
@@ -812,23 +813,30 @@ def register_selection():
     # 预选和补退选的开始和结束时间
     year = str(CURRENT_ACADEMIC_YEAR)
     semster = str(Semester.now())
+    now = datetime.now()
+    if wait_for is not None:
+        now = wait_for + wait_for
     stage1_start = str_to_time(get_setting("course/yx_election_start"))
-    stage1_start = max(stage1_start, datetime.now() + timedelta(seconds=5))
+    stage1_start = max(stage1_start, now + timedelta(seconds=5))
     stage1_end = str_to_time(get_setting("course/yx_election_end"))
-    stage1_end = max(stage1_end, datetime.now() + timedelta(seconds=10))
+    stage1_end = max(stage1_end, now + timedelta(seconds=10))
+    publish_time = str_to_time(get_setting("course/publish_time"))
+    publish_time = max(publish_time, now + timedelta(seconds=15))
     stage2_start = str_to_time(get_setting("course/btx_election_start"))
-    stage2_start = max(stage2_start, datetime.now() + timedelta(seconds=15))
+    stage2_start = max(stage2_start, now + timedelta(seconds=20))
     stage2_end = str_to_time(get_setting("course/btx_election_end"))
-    stage2_end = max(stage2_end, datetime.now() + timedelta(seconds=20))
+    stage2_end = max(stage2_end, now + timedelta(seconds=25))
     # 定时任务：修改课程状态
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_start",
-                      run_date=stage1_start, args=[Course.Status.WAITING,Course.Status.STAGE1], replace_existing=True)
+                      run_date=stage1_start, args=[Course.Status.WAITING, Course.Status.STAGE1], replace_existing=True)
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_end",
-                      run_date=stage1_end, args=[Course.Status.STAGE1,Course.Status.DRAWING], replace_existing=True)
+                      run_date=stage1_end, args=[Course.Status.STAGE1, Course.Status.DRAWING], replace_existing=True)
+    scheduler.add_job(
+        draw_lots, "date", id=f"course_selection_{year+semster}_publish", run_date=publish_time, replace_existing=True)
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_start",
-                    run_date=stage2_start, args=[Course.Status.DRAWING,Course.Status.STAGE2], replace_existing=True)
+                      run_date=stage2_start, args=[Course.Status.DRAWING, Course.Status.STAGE2], replace_existing=True)
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage2_end",
-                    run_date=stage2_end, args=[Course.Status.STAGE2,Course.Status.SELECT_END], replace_existing=True)
+                      run_date=stage2_end, args=[Course.Status.STAGE2, Course.Status.SELECT_END], replace_existing=True)
     # 状态随时间的变化: WAITING-STAGE1-WAITING-STAGE2-END
 
 def course_base_check(request):
@@ -1146,31 +1154,26 @@ def download_course_record(course, year, semester):
     # 获取第一个工作表（sheet1）
     sheet1 = wb.active
     # 给工作表设置标题
-    sheet1.title = re.sub(f'[{hanzi.punctuation}]', "", str(course))
+    # sheet1.title = str(course)  # 中文符号如：无法被解读
+    # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
     sheet_header = ['课程', '姓名', '学号', '次数', '学时', "学年", "学期"]
-    for i, header in enumerate(sheet_header):
-        # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
-        sheet1.cell(row=1, column=i + 1).value = header
-    max_row = sheet1.max_row
+    sheet1.append(sheet_header)
     for record in records:
-        max_row += 1
         record_info = [
             str(course),
             record.person.name,
-            str(record.person.person_id),
+            record.person.person_id.username,
             record.attend_times,
             record.total_hours,
-            str(year),
-            str(semester),
+            year,
+            semester,
         ]
         # 将每一个对象的所有字段的信息写入一行内
-        for i, info in enumerate(record_info):
-            sheet1.cell(row=max_row, column=i + 1).value = info
+        sheet1.append(record_info)
 
     ctime = datetime.now().strftime('%Y-%m-%d %H:%M')
     file_name = f'{course}-{ctime}'  # 给文件名中添加日期时间
-    file_name = re.sub(f'[{hanzi.punctuation}]', "", file_name)  #去除中文符号
-    response = HttpResponse(content_type='application/msexcel')
-    response['Content-Disposition'] = f'attachment;filename={file_name}.xlsx'
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
     wb.save(response)
     return response
