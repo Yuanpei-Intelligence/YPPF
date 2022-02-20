@@ -19,6 +19,7 @@ from boottest import (
     # settings相关常量
     DEBUG, MEDIA_URL, LOGIN_URL,
     # 全局的其它常量
+    UNDERGROUND_URL, WECHAT_URL,
 )
 from boottest.global_messages import (
     WRONG, SUCCEED,
@@ -30,6 +31,7 @@ __all__ = [
     'get_setting', 'get_config',
     # 全局设置的常量
     'DEBUG', 'MEDIA_URL', 'LOGIN_URL',
+    'UNDERGROUND_URL', 'WECHAT_URL',
     # 全局消息的常量
     'WRONG', 'SUCCEED',
     # Log记录的常量

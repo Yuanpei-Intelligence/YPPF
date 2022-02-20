@@ -590,8 +590,8 @@ def course_to_display(courses, user, detail=False) -> list:
     for course in courses:
         course_info = {}
 
+        # 选课页面和详情页面共用的信息
         course_info["name"] = course.name
-        course_info["times"] = course.times  # 课程周数
         course_info["type"] = course.get_type_display()  # 课程类型
         course_info["avatar_path"] = course.organization.get_user_ava()
 
@@ -602,6 +602,7 @@ def course_to_display(courses, user, detail=False) -> list:
 
         if detail:
             # 在课程详情页才展示的信息
+            course_info["times"] = course.times  # 课程周数
             course_info["classroom"] = course.classroom
             course_info["teacher"] = course.teacher
             course_info["introduction"] = course.introduction
@@ -803,7 +804,7 @@ def str_to_time(stage: str):
                      record_args=True,
                      status_code=log.STATE_WARNING,
                      source='course_utils[register_selection]')
-def register_selection():
+def register_selection(wait_for: timedelta=None):
     """
     添加定时任务，实现课程状态转变，每次发起课程时调用
     """
@@ -811,14 +812,17 @@ def register_selection():
     # 预选和补退选的开始和结束时间
     year = str(CURRENT_ACADEMIC_YEAR)
     semster = str(Semester.now())
+    now = datetime.now()
+    if wait_for is not None:
+        now = wait_for + wait_for
     stage1_start = str_to_time(get_setting("course/yx_election_start"))
-    stage1_start = max(stage1_start, datetime.now() + timedelta(seconds=5))
+    stage1_start = max(stage1_start, now + timedelta(seconds=5))
     stage1_end = str_to_time(get_setting("course/yx_election_end"))
-    stage1_end = max(stage1_end, datetime.now() + timedelta(seconds=10))
+    stage1_end = max(stage1_end, now + timedelta(seconds=10))
     stage2_start = str_to_time(get_setting("course/btx_election_start"))
-    stage2_start = max(stage2_start, datetime.now() + timedelta(seconds=15))
+    stage2_start = max(stage2_start, now + timedelta(seconds=15))
     stage2_end = str_to_time(get_setting("course/btx_election_end"))
-    stage2_end = max(stage2_end, datetime.now() + timedelta(seconds=20))
+    stage2_end = max(stage2_end, now + timedelta(seconds=20))
     # 定时任务：修改课程状态
     scheduler.add_job(change_course_status, "date", id=f"course_selection_{year+semster}_stage1_start",
                       run_date=stage1_start, args=[Course.Status.WAITING,Course.Status.STAGE1], replace_existing=True)
@@ -1145,7 +1149,7 @@ def download_course_record(course, year, semester):
     # 获取第一个工作表（sheet1）
     sheet1 = wb.active
     # 给工作表设置标题
-    sheet1.title = str(course)
+    # sheet1.title = str(course)  # 中文符号如：无法被解读
     # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
     sheet_header = ['课程', '姓名', '学号', '次数', '学时', "学年", "学期"]
     sheet1.append(sheet_header)
@@ -1163,7 +1167,7 @@ def download_course_record(course, year, semester):
         sheet1.append(record_info)
 
     ctime = datetime.now().strftime('%Y-%m-%d %H:%M')
-    file_name = f'{sheet1.title}-{ctime}'  # 给文件名中添加日期时间
+    file_name = f'{course}-{ctime}'  # 给文件名中添加日期时间
     response = HttpResponse(content_type='application/vnd.ms-excel')
     response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
     wb.save(response)

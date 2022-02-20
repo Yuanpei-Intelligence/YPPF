@@ -57,13 +57,9 @@ if USE_SCHEDULER:
 
 # 全局变量 用来发送和确认默认的导航网址
 DEFAULT_URL = LOGIN_URL
-THIS_URL = LOGIN_URL  # 增加默认url前缀
-if THIS_URL[-1:] == "/" and THIS_URL[-2:] != "//":
-    THIS_URL = THIS_URL[:-1]  # 去除尾部的/
-WECHAT_URL = base_get_setting("url/wechat_url")
-if WECHAT_URL[-1:] == "/" and WECHAT_URL[-2:] != "//":
-    WECHAT_URL = WECHAT_URL[:-1]  # 去除尾部的/
-INVITE_URL = WECHAT_URL + '/invite_user'
+THIS_URL = LOGIN_URL.rstrip('/')        # 增加默认url前缀, 去除尾部的/
+WECHAT_SITE = WECHAT_URL.rstrip('/')    # 去除尾部的/
+INVITE_URL = WECHAT_SITE + '/invite_user'
 wechat_coder = MySHA256Hasher(base_get_setting("hash/wechat"))
 
 # 发送应用设置
@@ -165,9 +161,9 @@ def app2absolute_url(app):
         url = APP2URL.get('default', '')
     if not url.startswith('http'):
         if not url:
-            url = WECHAT_URL
+            url = WECHAT_SITE
         else:
-            url = WECHAT_URL + '/' + url.lstrip('/')
+            url = WECHAT_SITE + '/' + url.lstrip('/')
     return url
 
 
