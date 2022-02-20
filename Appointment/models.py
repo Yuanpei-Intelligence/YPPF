@@ -76,7 +76,7 @@ class Room(models.Model):
                                        default=0)
 
     # 标记当前房间是否可以通宵使用，可由管理员修改（主要针对自习室）
-    RIsAllNight = models.SmallIntegerField('可通宵使用', default=0)
+    RIsAllNight = models.BooleanField('可通宵使用', default=False)
     # 是否需要许可，目前通过要求阅读固定须知实现，未来可拓展为许可模型（关联房间和个人）
     RneedAgree = models.BooleanField('需要许可', default=False)
 
