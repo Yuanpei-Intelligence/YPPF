@@ -51,8 +51,6 @@ def modifyFeedback(request):
     
     # 设置feedback为None, 如果非None则自动覆盖
     feedback = None
-    # TODO: 一个选择反馈类型的表单，将反馈类型传到此处！
-    feedback_type = "书院课程反馈"
 
     # 根据是否有newid来判断是否是第一次
     feedback_id = request.GET.get("feedback_id")
@@ -110,12 +108,24 @@ def modifyFeedback(request):
         # 为了保证稳定性，完成POST操作后同意全体回调函数，进入GET状态
         if feedback is None:
             return redirect(message_url(context, '/modifyFeedback/'))
-        else:
+        elif feedback.issue_status == Feedback.IssueStatus.DRAFTED:
             return redirect(message_url(context, f'/modifyFeedback/?feedback_id={feedback.id}'))
+        else: # 发布，feedback.issue_status == Feedback.IssueStatus.ISSUED
+            return redirect(message_url(context, f'/viewFeedback/feedback_id={feedback.id}'))
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
 
     # 首先是写死的前端量
+    feedback_type_list = {
+        fbtype.name:{
+            'value'   : fbtype.name,
+            'display' : fbtype.name,  # 前端呈现的使用量
+            'disabled' : False,  # 是否禁止选择这个量
+            'selected' : False   # 是否默认选中这个量
+        }
+        for fbtype in FeedbackType.objects.all()
+    }
+    
     org_type_list = {
         otype.otype_name:{
             'value'   : otype.otype_name,
@@ -158,9 +168,21 @@ def modifyFeedback(request):
         all_org_list.append(([otype,] +
             [org.oname for org in Organization.objects.filter(
                 otype=OrganizationType.objects.get(otype_name=otype)
-            )]) if otype != '' else [otype,] 
+            )]) if otype != '' else ([otype,] + [
+                org.oname for org in Organization.objects.all()
+            ])
+        )
+    fbtype_to_org = [] #存有多个列表，每个列表为[fbtype, orgtype, org]，用于前端变换下拉选项
+    for fbtype in feedback_type_list.keys():
+        fbtype_obj = FeedbackType.objects.get(name=fbtype)
+        fbtype_to_org.append([fbtype,] + ([
+            fbtype_obj.org_type.otype_name,
+        ] if fbtype_obj.org_type else ['',]) + ([
+            fbtype_obj.org.oname,
+        ] if fbtype_obj.org else ['',])
         )
     if not is_new_feedback:
+        feedback_type_list[feedback.type.name]['selected'] = True
         if feedback.org_type is not None:
             org_type_list[feedback.org_type.otype_name]['selected'] = True
             for org in Organization.objects.exclude(
@@ -176,7 +198,8 @@ def modifyFeedback(request):
             org_list[feedback.org.oname]['selected'] = True
         else:
             org_list['']['selected'] = True
-    else:
+    else: # feedback_type 默认选中“35楼生活权益反馈”，默认选中项将在前端实时更新。
+        feedback_type = "35楼生活权益反馈"
         if FeedbackType.objects.get(name=feedback_type).org_type is not None:
             org_type_list[
                 FeedbackType.objects.get(name=feedback_type).org_type.otype_name
