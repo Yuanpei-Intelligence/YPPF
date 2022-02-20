@@ -247,6 +247,7 @@ def viewFeedback(request, fid):
         # 未结束反馈可修改为已结束
         if feedback.solve_status == Feedback.SolveStatus.SOLVING:
             solve_editable = True
+            commentable = True
         # 未公开反馈，且老师没有设置成强制隐藏时，组织可修改自身公开状态
         if (not feedback.org_public) and feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE:
             public_editable = True
@@ -260,6 +261,13 @@ def viewFeedback(request, fid):
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="反馈信息")
     title = feedback.title
     comments = showComment(feedback)
+    # 发布者需要匿名
+    for comment in comments:
+        if comment.commentator == feedback.person.person_id:
+            comment.comentator = None
+            comment.commentator_name = "匿名用户"
+            comment.ava = MEDIA_URL + "avatar/person_default.jpg"
+            comment.URL = None
     return render(request, "feedback_info.html", locals())
 
 
@@ -291,11 +299,11 @@ def modifyFeedback(request):
     '''
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user)
-    
+
     # 设置feedback为None, 如果非None则自动覆盖
     feedback = None
     # TODO: 一个选择反馈类型的表单，将反馈类型传到此处！
-    feedback_type = "书院课程反馈"
+    feedback_type = "学术反馈"
 
     # 根据是否有newid来判断是否是第一次
     feedback_id = request.GET.get("feedback_id")

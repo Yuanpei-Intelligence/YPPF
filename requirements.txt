@@ -11,3 +11,5 @@ tqdm
 pillow
 pypinyin
 rpyc
+openpyxl
+zhon
