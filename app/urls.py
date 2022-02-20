@@ -99,6 +99,7 @@ urlpatterns = [
     # 反馈中心
     path("feedback/", feedback_views.feedbackWelcome, name="feadbackWelcome"),
     path("modifyFeedback/", feedback_views.modifyFeedback, name="modifyFeedback"),
+    path("viewFeedback/<str:fid>", feedback_views.viewFeedback, name="viewFeedback"),
 ] + [
     # 数据导入
     path("loadstudata/", data_import.load_stu_data, name="load_stu_data"),
@@ -118,9 +119,6 @@ urlpatterns = [
     #      name="load_notification_info"),    #服务器弃用
     path("loadhelp/", data_import.load_help, name="load_help"),
     path("loadcourecord/", data_import.load_CouRecord,  name="load_cou_record"),
-] + [
-    # 反馈中心
-    path("viewFeedback/<str:fid>", feedback_views.viewFeedback, name="viewFeedback"),
 ] + [
     # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
