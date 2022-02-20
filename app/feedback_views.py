@@ -87,12 +87,12 @@ def feedback_homepage(request):
     # -----------------------------反馈草稿---------------------------------
     # 准备需要呈现的内容
     # 这里应该呈现：所有person为自己的feedback
-    feedback_list = Feedback.objects.filter(person=me)
-    draft_feedback = feedback_list.filter(issue_status=Feedback.IssueStatus.DRAFTED)
+    draft_feedback = my_feedback.filter(issue_status=Feedback.IssueStatus.DRAFTED)
 
     # -----------------------------老师审核---------------------------------
-    is_teacher = me.identity == NaturalPerson.Identity.TEACHER
-    teacher_incharge = me.incharge.all()
+    
+    is_teacher = me.identity == NaturalPerson.Identity.TEACHER if is_person else False
+    teacher_incharge = me.incharge.all() if is_teacher else False
     wait_public = (
         issued_feedback
         .filter()
@@ -102,6 +102,8 @@ def feedback_homepage(request):
 
     if request.method == "POST":
         option = request.POST.get("option")
+        if not is_person:
+            return redirect(message_url(wrong('组织不可以撤回/删除反馈!'), request.path))
         if option != "delete" and option != "withdraw":
             return redirect(message_url(wrong('无效的请求!'), request.path))
         if option == "delete":
@@ -117,6 +119,26 @@ def feedback_homepage(request):
                 with transaction.atomic():
                     del_feedback.issue_status = Feedback.IssueStatus.DELETED
                     del_feedback.save()
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "成功删除反馈草稿"
+        elif option == "withdraw":
+            try:
+                del_feedback = Feedback.objects.get(id=request.POST["id"])
+            except Exception:
+                return redirect(message_url(wrong("不存在这样的反馈！"), request.path))
+            if del_feedback.issue_status != Feedback.IssueStatus.ISSUED:
+                return redirect(message_url(wrong('不能撤回没有发布的反馈！'), request.path))
+            elif del_feedback.issue_status == Feedback.IssueStatus.DELETED:
+                return redirect(message_url(wrong('这条反馈已经被撤回啦！'), request.path))
+            elif (del_feedback.solve_status == Feedback.SolveStatus.SOLVED 
+                or del_feedback.solve_status == Feedback.SolveStatus.UNSOLVABLE):
+                return redirect(message_url(wrong('不能撤回已经发布的反馈！'), request.path))
+            else:
+                with transaction.atomic():
+                    del_feedback.issue_status = Feedback.IssueStatus.DELETED
+                    del_feedback.save()
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "成功撤回反馈"
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="反馈中心")
 
