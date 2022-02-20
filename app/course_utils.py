@@ -820,7 +820,7 @@ def register_selection(wait_for: timedelta=None):
     stage1_start = max(stage1_start, now + timedelta(seconds=5))
     stage1_end = str_to_time(get_setting("course/yx_election_end"))
     stage1_end = max(stage1_end, now + timedelta(seconds=10))
-    publish_time = str_to_time(get_setting("course/pubulish_time"))
+    publish_time = str_to_time(get_setting("course/publish_time"))
     publish_time = max(publish_time, now + timedelta(seconds=15))
     stage2_start = str_to_time(get_setting("course/btx_election_start"))
     stage2_start = max(stage2_start, now + timedelta(seconds=20))
