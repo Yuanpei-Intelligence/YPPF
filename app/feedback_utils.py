@@ -17,7 +17,6 @@ __all__ = [
 ]
 
 
-
 def check_feedback(request, post_type):
     '''返回feedback的context字典，如果是提交反馈则检查feedback参数的合法性'''
     context = dict()
@@ -107,6 +106,7 @@ def update_feedback(feedback, me, request):
         
         # TODO：删除草稿的功能
         content = dict(
+            type=FeedbackType.objects.get(name=str(info.get('type'))),
             title=str(info.get('title')),
             content=str(info.get('content')),
             person=me,
@@ -118,10 +118,6 @@ def update_feedback(feedback, me, request):
             ) if info.get('org') else None,
             publisher_public=(str(info.get('publisher_public')) == '公开'),
         )
-        if post_type == 'save' or post_type == 'directly_submit':
-            content.update(
-                type=FeedbackType.objects.get(name=str(info.get('type'))),
-            )
         if post_type == 'save':
             feedback = Feedback.objects.create(
                 **content,
@@ -142,13 +138,14 @@ def update_feedback(feedback, me, request):
             context['feedback_id'] = feedback.id
             return context
         elif post_type == 'modify':
-            if feedback.type != FeedbackType.objects.get(name=str(info.get('type'))):
-                return wrong("修改申请时不允许修改反馈类型。如确需修改，请取消后重新提交!")
             publisher_public = True if str(info.get('publisher_public'))=='公开' else False
             if (feedback.title == str(info.get("title"))
+                    and feedback.type == FeedbackType.objects.get(name=str(info.get('type')))
                     and feedback.content == str(info.get('content'))
                     and feedback.publisher_public == publisher_public
-                    and feedback.org == Organization.objects.get(oname=str(info.get('org')))):
+                    and feedback.org == (Organization.objects.get(oname=str(info.get('org'))) 
+                            if str(info.get('org')) else None)
+                    ):
                 return wrong("没有检测到修改！")
             Feedback.objects.filter(id=feedback.id).update(
                 **content,

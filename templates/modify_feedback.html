@@ -61,13 +61,19 @@
                                     <!--  BEGIN CONTENT AREA  -->
                                     <div class="widget-content widget-content-area">
                                         <form role="form" method="POST" enctype="multipart/form-data">
-
+                                            
                                             <div class="form-group">
-                                                <label>反馈类型</label>
-                                                <input hidden type="text" name="type" class="form-control"
-                                                    aria-label="Default" value="{{feedback_type}}">
-                                                <input type="text" name="show" class="form-control"
-                                                    aria-label="Default" disabled="disabled" value="{{feedback_type}}">
+                                                <label for="aintro">反馈类型</label>
+                                                <select class="form-control selectpicker" data-live-search="true" id="type" name="type" onchange="change_org_type_and_org.call(this)" 
+                                                {% if not allow_form_edit %} readonly="readonly"{% endif %}>
+                                                    {% for key, value in feedback_type_list.items %}
+                                                    {% if not value.disabled %}
+                                                    <option value="{{value.value}}" {% if value.selected %} selected {% endif %} >
+                                                        {{value.display}}
+                                                    </option>
+                                                    {% endif %}
+                                                    {% endfor %}
+                                                </select>
                                             </div>
 
                                             <div class="form-group">
@@ -85,11 +91,11 @@
 
                                             <div class="form-group">
                                                 <label for="aintro">接收小组类型</label>
-                                                <select class="form-control selectpicker" data-live-search="true" id="otype" name="otype" onchange="change_org_list.call(this)" 
+                                                <select class="form-control selectpicker" data-live-search="true" id="otype" name="otype" onchange="change_org_list.call(this, this.value)" 
                                                 {% if not allow_form_edit %} readonly="readonly"{% endif %}>
                                                     {% for key, value in org_type_list.items %}
                                                     {% if not value.disabled %}
-                                                    <option value="{{value.value}}" {% if value.selected %} selected {% endif %} >
+                                                    <option id="otype_{{value.value}}" value="{{value.value}}" {% if value.selected %} selected {% endif %} >
                                                         {{value.display}}
                                                     </option>
                                                     {% endif %}
@@ -102,7 +108,7 @@
                                                 <select class="form-control selectpicker" data-live-search="true" id="org" name="org" {% if not allow_form_edit %} readonly="readonly"{% endif %}>
                                                     {% for key, value in org_list.items %}
                                                     {% if not value.disabled %}
-                                                    <option value="{{value.value}}" {% if value.selected %} selected {% endif %} >
+                                                    <option id="org_{{value.value}}" value="{{value.value}}" {% if value.selected %} selected {% endif %} >
                                                         {{value.display}}
                                                     </option>
                                                     {% endif %}
@@ -201,20 +207,38 @@
                 if (!confirm("是否同意公开？个人同意公开后需要组织同意公开后方可公开~"))
                     this.value = "不公开";
         }
-        function change_org_list() {
-            var all_orgs = document.getElementById('org')
+        function change_org_type_and_org() {
+            var all_org_types = document.getElementById('otype');
+            var all_orgs = document.getElementById('org');
+            var fbtype_to_org = {{fbtype_to_org|safe}};
+            for (i = 0; i < fbtype_to_org.length; i += 1) {
+                if (fbtype_to_org[i][0] == this.value) {
+                    org_type = fbtype_to_org[i][1];
+                    org = fbtype_to_org[i][2];
+                    document.getElementById("otype_"+org_type).selected = true;
+                    change_org_list(org_type);
+                    document.getElementById("org_"+org).selected = true;
+                    break;
+                }
+            }
+        }
+        function change_org_list(otype) {
+            var all_orgs = document.getElementById('org');
             var all_org_list = {{all_org_list|safe}};
             all_orgs.innerHTML = '';
             for (i = 0; i < all_org_list.length; i += 1) {
-                if (all_org_list[i][0] == this.value) {
+                if (all_org_list[i][0] == otype) {
                     for (j = 1; j < all_org_list[i].length; j += 1){
                         all_orgs.add(create_option(all_org_list[i][j]),null);
                     }
+                    all_orgs.add(create_option(''),null);
+                    break;
                 }
             }
         }
         function create_option(name) {
             var opt = document.createElement("OPTION");
+            opt.id = "org_" + name;
             opt.value = name;
             opt.text = name;
             return opt;
