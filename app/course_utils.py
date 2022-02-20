@@ -41,10 +41,14 @@ from app.activity_utils import (
 )
 from app.wechat_send import WechatApp, WechatMessageLevel
 
+import re
+import openpyxl
+from zhon import hanzi
 from random import sample
 from collections import Counter
 from datetime import datetime, timedelta
 
+from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import F, Sum, Prefetch
@@ -66,6 +70,7 @@ __all__ = [
     'cal_participate_num',
     'check_post_and_modify',
     'finish_course',
+    'download_course_record',
 ]
 
 
@@ -1124,3 +1129,48 @@ def finish_course(course):
     course.status = Course.Status.END
     course.save()
     return succeed("结束课程成功！")
+
+
+def download_course_record(course, year, semester):
+    '''
+    返回需要导出的文件
+    '''
+    records = CourseRecord.objects.filter(
+        course=course,
+        year=year,
+        semester=semester,
+    ).select_related('person')
+
+    wb = openpyxl.Workbook()  # 生成一个工作簿（即一个Excel文件）
+    wb.encoding = 'utf-8'
+    # 获取第一个工作表（sheet1）
+    sheet1 = wb.active
+    # 给工作表设置标题
+    sheet1.title = re.sub(f'[{hanzi.punctuation}]', "", str(course))
+    sheet_header = ['课程', '姓名', '学号', '次数', '学时', "学年", "学期"]
+    for i, header in enumerate(sheet_header):
+        # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
+        sheet1.cell(row=1, column=i + 1).value = header
+    max_row = sheet1.max_row
+    for record in records:
+        max_row += 1
+        record_info = [
+            str(course),
+            record.person.name,
+            str(record.person.person_id),
+            record.attend_times,
+            record.total_hours,
+            str(year),
+            str(semester),
+        ]
+        # 将每一个对象的所有字段的信息写入一行内
+        for i, info in enumerate(record_info):
+            sheet1.cell(row=max_row, column=i + 1).value = info
+
+    ctime = datetime.now().strftime('%Y-%m-%d %H:%M')
+    file_name = f'{course}-{ctime}'  # 给文件名中添加日期时间
+    file_name = re.sub(f'[{hanzi.punctuation}]', "", file_name)  #去除中文符号
+    response = HttpResponse(content_type='application/msexcel')
+    response['Content-Disposition'] = f'attachment;filename={file_name}.xlsx'
+    wb.save(response)
+    return response
