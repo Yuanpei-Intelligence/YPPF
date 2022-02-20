@@ -1031,6 +1031,7 @@ def cal_participate_num(course: Course) -> Counter:
     members = Position.objects.activated().filter(
         pos__gte=1,
         person__identity=NaturalPerson.Identity.STUDENT,
+        org=org,
         ).values_list("person", flat=True)
     all_participants = (
         Participant.objects.activated(no_unattend=True)

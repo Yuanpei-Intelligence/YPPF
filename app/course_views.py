@@ -138,6 +138,9 @@ def addSingleCourseActivity(request):
     except:
         return redirect(message_url(wrong('本学期尚未开设书院课程，请先发起选课！'), 
                                     '/showCourseActivity/'))
+    if course.status != Course.Status.SELECT_END:
+        return redirect(message_url(wrong('选课尚未结束，不能发起课程！'), 
+                                    '/showCourseActivity/'))
 
     my_messages.transfer_message_context(request.GET, html_display)
 
@@ -453,6 +456,7 @@ def selectCourse(request):
             # 对学生的选课状态进行变更
             context = registration_status_change(course_id, me, action)
             my_messages.transfer_message_context(context, html_display)
+            return redirect(message_url(context, request.path))
         except:
             wrong("选课过程出现错误！请联系管理员。", html_display)
 
@@ -596,7 +600,6 @@ def addCourse(request, cid=None):
                 return redirect(message_url(wrong('当前课程状态不允许修改!'),
                                             f'/editCourse/{course.id}'))
             context = create_course(request, course.id)
-        course = Course.objects.get(id=context["cid"])
         html_display["warn_code"] = context["warn_code"]
         html_display["warn_message"] = context["warn_message"]
 

@@ -234,7 +234,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
         week_time.save()
 
     # 通知参与成员,创建定时任务并修改活动状态
-    notifyActivity(activity.id, "newActivity")
+    notifyActivity(activity.id, "newCourseActivity")
 
     scheduler.add_job(notifyActivity, "date", id=f"activity_{activity.id}_remind",
                       run_date=activity.start - timedelta(minutes=15), args=[activity.id, "remind"], replace_existing=True)
