@@ -88,7 +88,10 @@ def viewFeedback(request, fid):
             # 其他人没有标记已读权限
             else:
                 return redirect(message_url(wrong("没有修改已读状态的权限！"), f"/viewFeedback/{feedback.id}"))
+
+
         # 二、修改解决状态
+        feedback = Feedback.objects.get(id=fid)
         # 只有已读条目才可以修改解决状态；只有已解决/无法解决的条目才可以修改后续状态
         if solve != "solving" and feedback.solve_status == Feedback.SolveStatus.SOLVING:
             # 只有组织可以修改解决状态
@@ -112,7 +115,9 @@ def viewFeedback(request, fid):
             # 其他人没有修改解决状态权限
             else:
                 return redirect(message_url(wrong("没有修改解决状态的权限！"), f"/viewFeedback/{feedback.id}"))
+
         # 三、公开反馈信息
+        feedback = Feedback.objects.get(id=fid)
         if public == "public":
             # 组织选择公开反馈
             if user_type == "Organization" and feedback.org == me:
@@ -164,7 +169,9 @@ def viewFeedback(request, fid):
             # 其他人没有公开反馈权限
             else:
                 return redirect(message_url(wrong("没有公开该反馈的权限！"), f"/viewFeedback/{feedback.id}"))
+
         # 四、隐藏反馈信息
+        feedback = Feedback.objects.get(id=fid)
         if public == "private":
             # 小组和个人公开反馈后，暂不允许恢复隐藏状态
             # 组织选择隐藏反馈
