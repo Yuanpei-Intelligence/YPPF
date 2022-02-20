@@ -731,7 +731,7 @@ def agreement(request):
     elif request.method == 'POST':
         return redirect(reverse("Appointment:index"))
     if participant.agree_time is not None:
-        render_context(agree_time=str(participant.agree_time))
+        render_context.update(agree_time=str(participant.agree_time))
     return render(request, 'Appointment/agreement.html', render_context)
 
 
