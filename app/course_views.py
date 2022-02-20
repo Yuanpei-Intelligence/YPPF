@@ -150,7 +150,8 @@ def addSingleCourseActivity(request):
                     return redirect(message_url(
                         succeed('存在信息相同的课程活动，已为您自动跳转!'),
                         f'/viewActivity/{aid}'))
-                return redirect(f"/editCourseActivity/{aid}")
+                return redirect(message_url(succeed('活动创建成功！'), 
+                                            f'/showCourseActivity/'))
         except AssertionError as err_info:
             return redirect(message_url(wrong(str(err_info)), request.path))
         except Exception as e:
@@ -463,13 +464,22 @@ def selectCourse(request):
     html_display["yx_election_end"] = get_setting("course/yx_election_end")
     html_display["btx_election_start"] = get_setting("course/btx_election_start")
     html_display["btx_election_end"] = get_setting("course/btx_election_end")
-
+    html_display["publish_time"] = get_setting("course/publish_time")
+    html_display["status"] = None
+    if str_to_time(html_display["yx_election_start"]) > datetime.now():
+        html_display["status"] = "未开始"
+    elif (str_to_time(html_display["yx_election_start"])) <= datetime.now() < (str_to_time(html_display["yx_election_end"])):
+        html_display["status"] = "预选"
+    elif (str_to_time(html_display["yx_election_end"])) <= datetime.now() < (str_to_time(html_display["publish_time"])):
+        html_display["status"]="抽签中"
+    elif (str_to_time(html_display["btx_election_start"])) <= datetime.now() < (str_to_time(html_display["btx_election_end"])):
+        html_display["status"]="补退选"
     # 是否正在进行抽签
     is_drawing = (str_to_time(html_display["yx_election_end"]) <= datetime.now()
-                   <= str_to_time(html_display["btx_election_start"]))
+                   <= str_to_time(html_display["publish_time"]))
 
     # 选课是否已经全部结束
-    is_end = (datetime.now() > str_to_time(html_display["btx_election_end"]))
+    #is_end = (datetime.now() > str_to_time(html_display["btx_election_end"]))
 
     unselected_courses = Course.objects.unselected(me)
     selected_courses = Course.objects.selected(me)
