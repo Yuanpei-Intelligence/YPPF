@@ -31,6 +31,8 @@ from datetime import datetime
 from django.db import transaction
 from io import BytesIO
 from openpyxl import Workbook
+import re
+from zhon.hanzi import punctuation
 
 __all__ = [
     'editCourseActivity',
@@ -641,7 +643,7 @@ def downloadCourseRecord(me,year,semester):
     wb = Workbook()		# 生成一个工作簿（即一个Excel文件）
     wb.encoding = 'utf-8'
     sheet1 = wb.active	# 获取第一个工作表（sheet1）
-    sheet1.title = str(me.oname) 	# 给工作表1设置标题
+    sheet1.title = re.sub('[{}]'.format(punctuation),"",str(me.oname)) # 给工作表设置标题
     sheet_header = ['课程','姓名','学号','次数','学时',"学年","学期"]
     for i in range(len(sheet_header)):	# 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
         sheet1.cell(row=1, column=i+1).value=sheet_header[i]
@@ -664,6 +666,7 @@ def downloadCourseRecord(me,year,semester):
     output.seek(0)	 # 重新定位到开始
     ctime = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     file_name = str(me.oname)+'-{}'.format(ctime)	# 给文件名中添加日期时间
+    file_name = re.sub('[{}]'.format(punctuation),"",file_name) #去除中文符号
     response = HttpResponse(content_type='application/msexcel')
     response['Content-Disposition'] = 'attachment;filename={}.xlsx'.format(file_name).encode('utf-8')
     wb.save(response)
