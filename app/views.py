@@ -449,8 +449,8 @@ def stuinfo(request, name=None):
                 .exclude(year__gt=2021, total_hours__lt=8)
             )
 
-            course_me_past = course_me_past.order_by('year', '-semester')
-            course_no_use = course_no_use.order_by('year', '-semester')
+            course_me_past = course_me_past.order_by('year', 'semester')
+            course_no_use = course_no_use.order_by('year', 'semester')
 
             progress_list = []
 
