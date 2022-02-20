@@ -220,7 +220,7 @@ def examine_notification(feedback):
         typename=Notification.Type.NEEDDO,
         title=Notification.Title.VERIFY_INFORM,
         content=f"{feedback.org.oname}申请公开一条反馈信息",
-        URL=f"/viewFeedback/{feedback.fid}",
+        URL=f"/viewFeedback/{feedback.id}",
         publish_to_wechat=True,
         publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
     )

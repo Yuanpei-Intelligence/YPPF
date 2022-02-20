@@ -10,7 +10,7 @@
         "PASSWORD": "$PASSWORD$"
     },
     "url": {
-        "base_url": "http://$BASEMENT_IP$/appointment/index",
+        "base_url": "http://$BASEMENT_IP$/",
         "login_url": "http://$THIS_IP$",
         "email_url": "http://$OUTER_IP$/email/",
         "wechat_url": "http://$OUTER_IP$"
@@ -27,9 +27,6 @@
     ],
     "underground": {
         "system_log":   "Appoint_Sys",
-        "url":{
-            "img_url":      "http://$THIS_IP$/$IMG_PATH$"
-        },
         "token":{
             "display":      "$DISPLAY_TOKEN$"
         }
@@ -102,7 +99,8 @@
         "yx_election_start":"2022-02-16 10:00:00",
         "yx_election_end":"2022-02-16 12:00:00",
         "btx_election_start":"2022-02-16 12:00:00",
-        "btx_election_end":"2022-02-16 14:00:00"
+        "btx_election_end":"2022-02-16 14:00:00",
+        "pubulish_time":"2022-02-20 20:35:00"
     },
     "audit_teacher": {
         "Funds": "YPadmin"

@@ -88,11 +88,12 @@ class ParticipantAdmin(admin.ModelAdmin):
 class RoomAdmin(admin.ModelAdmin):
     list_display = ('Rid', 'Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish',
                     'Rstatus_display', 'RIsAllNight', 'Rpresent', 'Rlatest_time',
+                    'RneedAgree',
                     )  # 'is_delete'
     list_display_links = ('Rid', )
-    list_editable = ('Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish')
+    list_editable = ('Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish', 'RneedAgree')
     search_fields = ('Rid', 'Rtitle')
-    list_filter = ('Rstatus', 'RIsAllNight')  # 'is_delete'
+    list_filter = ('Rstatus', 'RIsAllNight', 'RneedAgree')  # 'is_delete'
     fieldsets = (
         [
             '基本信息', {
@@ -105,6 +106,7 @@ class RoomAdmin(admin.ModelAdmin):
                     'Rfinish',
                     'Rstatus',
                     'RIsAllNight',
+                    'RneedAgree',
                 ),
             }
         ],
