@@ -75,7 +75,7 @@
                                 </div>
                                 
                             </div>
-                            <div class="col pb-2" style="height: 100%;">
+                            <div class="col-lg-8 col-md-7 col-12 pb-2" style="height: 100%;">
                                 <!-- 留言公开 -->
                                 <!-- <h3>留言公开</h3> -->
                                 <div id="publicFeedbackTab" class="tab-content">
@@ -92,9 +92,9 @@
                                                                         <a href='/viewFeedback/{{feedback.id}}'><u>{{feedback.title}}</u></a>
                                                                     </h5>
                                                                 </div>
-                                                                <div>
+                                                                <div class="ml-1">
                                                                     {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
-                                                                    <p class="ml-1">
+                                                                    <p>
                                                                     {% if feedback.read_status == 1 %}
                                                                     <span class="badge badge-pill badge-danger"> {{feedback.get_read_status_display}} </span>
                                                                     {% elif feedback.solve_status == 3 %}
@@ -128,7 +128,7 @@
                                                             </p>
                                                             <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
                                                                 <i class="fa fa-envelope" style="width: 14px;"></i>
-                                                                <span class="ml-1">{{feedback.content}}</span>
+                                                                {{feedback.content}}
                                                             </p>
                                                         </div>
                                                     </div>
@@ -362,10 +362,10 @@
 
                             <div id="myTabContent" class="tab-content">
                                 <div class="tab-pane fade in active show" id="wait">
-                                    {% if wait_public %}
+                                    {% if my_wait_public %}
                                         <div class="bio-skill-box">
                                             <div id="undone-feedback" class="row">
-                                                {% for feedback in wait_public %}
+                                                {% for feedback in my_wait_public %}
                                                     <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
                                                         <div class=" b-skills">
                                                             <div class="d-flex justify-content-between">
@@ -434,10 +434,10 @@
                                     {% endif %}
                                 </div>
                                 <div class="tab-pane fade" id="public">
-                                    {% if done_feedback %}
+                                    {% if my_public_feedback %}
                                         <div class="bio-skill-box">
                                             <div class="row">
-                                                {% for feedback in public_feedback %}
+                                                {% for feedback in my_public_feedback %}
                                                     <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
                                                         <div class=" b-skills">
                                                             <div class="d-flex justify-content-between">
@@ -546,12 +546,21 @@
                                                     <div class="d-flex justify-content-between">
                                                         <div>
                                                             <h5>
-                                                                <a href='/viewFeedback/{{feedback.id}}'><u>{{feedback.title}}</u></a>
+                                                                {{feedback.title}}
                                                             </h5>
                                                         </div>
-                                                        <div>
-                                                            <a href="/modifyFeedback/">
-                                                            <button type="button" class="btn btn-info mb-0 mr-2">修改 / 删除</button>
+                                                        <div class="btn-group" role="group">
+                                                            <form method="POST">
+                                                                <input type="hidden" name="option" value="delete">
+                                                                <input type="hidden" name="id" value="{{feedback.id}}">
+                                                                <button class="btn btn-outline" onclick="" type="submit">
+                                                                    <i class="fa fa-trash-alt"></i>
+                                                                </button>
+                                                            </form>
+                                                            <a href="">
+                                                                <button class="btn btn-outline" onclick="">
+                                                                    <i class="fa fa-pencil-alt"></i>
+                                                                </button>
                                                             </a>
                                                         </div>
                                                     </div>
@@ -589,44 +598,6 @@
                                         <br>
                                     </div>
                                     {% endif %}
-                                    <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
-                                        <div class="b-skills">
-                                            <div class="d-flex justify-content-between">
-                                                <div>
-                                                    <h5>
-                                                        <a href='/viewFeedback/{{feedback.id}}'>Lorem</a>
-                                                    </h5>
-                                                </div>
-                                                <div>
-                                                    
-                                                </div>
-                                            </div>
-
-                                            <p>
-                                                <span class="badge badge-success">草稿</span>
-                                            </p>
-
-                                            <p style="color: rgb(66, 67, 68);">
-                                                <i class="fa fa-bookmark" style="width: 14px;"></i>
-                                                <span class="ml-1">lorem</span>
-                                            </p>
-
-                                            <p style="color: rgb(66, 67, 68);">
-                                                <i class="fa fa-share-alt" style="width: 14px;"></i>
-                                                <span class="ml-1">反馈至 lorem</span>
-                                            </p>
-
-                                            <p style="color: rgb(66, 67, 68);">
-                                                <i class="fa fa-bell" style="width: 14px;"></i>
-                                                <span class="ml-1">lorem 发出</span>
-                                            </p>
-
-                                            <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
-                                                <i class="fa fa-envelope" style="width: 14px;"></i>
-                                                <span class="ml-1">Lorem ipsum dolor sit amet consectetur adipisicing elit. Id facere voluptatibus ex impedit perferendis numquam velit omnis quasi, odit magnam.</span>
-                                            </p>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>  
                             <!-- 未完成 -->
@@ -642,6 +613,9 @@
                                                             <h5>
                                                                 <a href='/viewFeedback/{{feedback.id}}'><u>{{feedback.title}}</u></a>
                                                             </h5>
+                                                        </div>
+                                                        <div>
+                                                            <form action=""></form>
                                                         </div>
                                                     </div>
 
@@ -761,4 +735,5 @@
 {% block add_js_file %}
 <script src={% static "plugins/dropify/dropify.min.js" %}></script>
 <script src={% static "assets/js/users/account-settings.js" %}></script>
+
 {% endblock %}
