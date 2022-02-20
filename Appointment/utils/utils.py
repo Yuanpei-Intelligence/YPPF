@@ -120,7 +120,7 @@ send_message = requests.session()
 # , credit=''):
 def send_wechat_message(
     stuid_list,
-    starttime,
+    start_time,
     room,
     message_type,
     major_student,
@@ -132,14 +132,14 @@ def send_wechat_message(
 ):
     '''
     stuid_list: Iter[sid] 学号列表，不是学生!
-    starttime: datetime | Any, 后者调用str方法
+    start_time: datetime | Any, 后者调用str方法
     room: 将被调用str方法，所以可以不是实际的房间
     major_student: str, 人名 不是学号！
     '''
     # --- modify by pht: 适当简化了代码 --- #
 
-    try:starttime = starttime.strftime("%Y-%m-%d %H:%M")
-    except:starttime = str(starttime)
+    try:start_time = start_time.strftime("%Y-%m-%d %H:%M")
+    except:start_time = str(start_time)
     room = str(room)
 
     # 之后会呈现的信息只由以下的标题和两个列表拼接而成
@@ -192,6 +192,11 @@ def send_wechat_message(
             ]
         if reason:
             extra_info = [reason] + extra_info
+    elif message_type == 'need_agree':  # 需要签署协议
+        title = '您刷卡的房间需要签署协议'
+        show_main_student = False
+        show_appoint_info = False
+        extra_info = ['点击本消息即可快捷跳转到用户协议页面']
     elif message_type == 'temp_appointment':  # 临时预约
         title = '您发起了一条临时预约'
     elif message_type == 'temp_appointment_fail':  # 临时预约失败
@@ -202,7 +207,7 @@ def send_wechat_message(
     else:
         # todo: 记得测试一下!为什么之前出问题的log就找不到呢TAT
         operation_writer(SYSTEM_LOG,
-                        f'{starttime} {room} {message_type} ' + "出错，原因：unknown message_type", "utils.send_wechat_message",
+                        f'{start_time} {room} {message_type} ' + "出错，原因：unknown message_type", "utils.send_wechat_message",
                          "Problem")
         return
     
@@ -213,7 +218,7 @@ def send_wechat_message(
             title = title + '\n'
 
         if show_time_and_place:    # 目前所有信息都显示时间地点
-            appoint_info += [f'时间：{starttime}', f'地点：{room}']
+            appoint_info += [f'时间：{start_time}', f'地点：{room}']
         
         if show_main_student:
             appoint_info += [f'发起者：{major_student}']
@@ -255,7 +260,7 @@ def send_wechat_message(
             # 正常连接永远返回200状态码
             # 只有能正常连接的时候才解析json数据，否则可能报错--pht
             operation_writer(SYSTEM_LOG,
-                             f'{starttime} {room} {message_type} '+
+                             f'{start_time} {room} {message_type} '+
                              f"向微信发消息失败，原因：状态码{response.status_code}异常",
                              "utils.send_wechat_message",
                              "Problem")
@@ -263,7 +268,7 @@ def send_wechat_message(
         response = response.json()
         if response['status'] == 200:
             operation_writer(SYSTEM_LOG,
-                             f'{starttime} {room} {message_type} '+
+                             f'{start_time} {room} {message_type} '+
                              "向微信发消息成功", "utils.send_wechat_message",
                              "OK")
             return
@@ -283,7 +288,7 @@ def send_wechat_message(
         if retry_enabled:
             if has_code and code != 206:
                 operation_writer(SYSTEM_LOG,
-                                f'{starttime} {room} {message_type} '+
+                                f'{start_time} {room} {message_type} '+
                                 f"企业微信返回了异常的错误码：{code}",
                                 "utils.send_wechat_message",
                                 "Problem")
@@ -307,14 +312,14 @@ def send_wechat_message(
             if has_code:
                 err_msg = f'{code} ' + err_msg
             operation_writer(SYSTEM_LOG,
-                             f'{starttime} {room} {message_type} '+
+                             f'{start_time} {room} {message_type} '+
                              f"向微信发消息失败，原因：{err_msg}",
                              "utils.send_wechat_message",
                              "Problem")
             return
     # 重发都失败了
     operation_writer(SYSTEM_LOG,
-                    f'{starttime} {room} {message_type} '+
+                    f'{start_time} {room} {message_type} '+
                      "向微信发消息失败，原因：多次发送失败. 发起者为: " +
                      str(major_student), "utils.send_wechat_message",
                      "Problem")
@@ -461,7 +466,7 @@ def operation_writer(user, message, source, status_code="OK")-> None:
         if status_code == "Error" and GLOBAL_INFO.debug_stuids:
             send_wechat_message(
                 stuid_list=GLOBAL_INFO.debug_stuids,
-                starttime=datetime.now(),
+                start_time=datetime.now(),
                 room='地下室后台',
                 message_type="admin",
                 major_student="地下室系统",
