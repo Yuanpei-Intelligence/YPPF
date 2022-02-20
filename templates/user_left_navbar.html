@@ -36,7 +36,7 @@
                 </a>
             </li>
             <li class="menu">
-                <a href="#dashboard4" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                <a href="#dashboard4" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle"  onclick="ModuleTrackFunction(3,'反馈中心')">
                     <div class="">
                         <!-- settings -->
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -56,16 +56,16 @@
                     </div>
                 </a>
                 <ul class="collapse submenu list-unstyled" id="dashboard4" data-parent="#accordionExample">
-                    <li>
+                    <li onclick="ModuleTrackFunction(3,'我要留言')">
                         <a href="/feedback/">我要留言</a>
                     </li>
-                    <li>
+                    <li onclick="ModuleTrackFunction(3,'草稿箱')">
                         <a href="">草稿箱</a>
                     </li>
-                    <li>
+                    <li onclick="ModuleTrackFunction(3,'查看我的反馈')">
                         <a href="#">查看我的反馈</a>
                     </li>
-                    <li>
+                    <li onclick="ModuleTrackFunction(3,'查看公开反馈')">
                         <a href="#">查看公开反馈</a>
                     </li>
                 </ul>
@@ -184,7 +184,7 @@
                 </a>
             </li>
 
-            <li class="menu">
+            <li class="menu" onclick="ModuleTrackFunction(3,'问答中心')">
                 <a href="/QAcenter/" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -283,7 +283,7 @@
             {% endif %}
 
             <li class="menu">
-                <a href="#dashboard3" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                <a href="#dashboard3" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" onclick="ModuleTrackFunction(3,'账户设置')">
                     <div class="">
                         <!-- settings -->
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -304,10 +304,10 @@
                     </div>
                 </a>
                 <ul class="collapse submenu list-unstyled" id="dashboard3" data-parent="#accordionExample">
-                    <li>
+                    <li onclick="ModuleTrackFunction(3,'信息与隐私')">
                         <a href="/userAccountSetting/">信息与隐私</a>
                     </li>
-                    <li>
+                    <li onclick="ModuleTrackFunction(3,'修改密码')">
                         <a href="/modpw/">修改密码</a>
                     </li>
                 </ul>

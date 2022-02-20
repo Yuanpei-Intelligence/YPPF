@@ -185,11 +185,13 @@ def identity_check(
             if not auth_func(cur_part):
                 # TODO: task 0 lzp, log it and notify admin
                 if not cur_part:
-                    request.session['warn_message'] = ('创建地下室账户失败，请联系管理员为您解决。'
-                                                       '在此之前，您可以查看实时人数。')
+                    warn_message = ('创建地下室账户失败，请联系管理员为您解决。'
+                                    '在此之前，您可以查看实时人数。')
                 else:
-                    request.session['warn_message'] = ('您访问了未授权的页面，如需访问请先登录。')
-                return redirect(reverse('Appointment:index') + '?warn=1')
+                    warn_message = ('您访问了未授权的页面，如需访问请先登录。')
+                return redirect(my_messages.message_url(
+                                    my_messages.wrong(warn_message),
+                                    reverse('Appointment:index')))
 
             return view_function(request, *args, **kwargs)
         return _wrapped_view

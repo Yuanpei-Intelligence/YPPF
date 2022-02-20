@@ -22,12 +22,12 @@
 <div class="main-content pb-3" id="content">
     <div class="container">
         {% if html_display.warn_code == 2 %}
-        <div class="alert alert-success  text-center" id="success_msg" >{{ html_display.warn_msg }}</div>
+        <div class="alert alert-success  text-center" id="success_msg" >{{ html_display.warn_message }}</div>
         {% else %}
         <div class="alert alert-success  text-center" id="success_msg" style="display: none;"></div>
         {% endif %}
         {% if html_display.warn_code == 1 %}
-        <div class="alert alert-warning  text-center" id="warn_msg" >{{ html_display.warn_msg }}</div>
+        <div class="alert alert-warning  text-center" id="warn_msg" >{{ html_display.warn_message }}</div>
         {% else %}
         <div class="alert alert-warning  text-center" id="warn_msg" style="display: none;">test</div>
         {% endif %}
@@ -248,7 +248,7 @@
         }
     {% endif %}
 
-    {% if html_display.warn_code != 1 %}
+    {% if html_display.warn_code == 2 %}
     if (document.referrer.endsWith("/addSingleCourseActivity/")) {
         document.getElementById("warn_msg").style.display = "";
         document.getElementById("warn_msg").innerHTML = "课程添加成功！";
