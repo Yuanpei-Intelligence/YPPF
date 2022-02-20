@@ -610,7 +610,7 @@ def course_to_display(courses, user, detail=False) -> list:
             course_info["teaching_plan"] = course.teaching_plan
             course_info["record_cal_method"] = course.record_cal_method
             course_info["photo_path"] = course.get_photo_path()
-            course_info["QRcode"] = course.QRcode
+            course_info["QRcode"] = course.get_QRcode_path()
             course_info["organization_name"] = course.organization.oname
             if course.QRcode:
                 course_info["QRcode"] = MEDIA_URL + str(course.QRcode)
