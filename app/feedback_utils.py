@@ -9,13 +9,17 @@ from app.models import (
 from app.notification_utils import (
     notification_create,
 )
+from app.wechat_send import (
+    WechatApp,
+    WechatMessageLevel,
+)
+
 
 __all__ = [
     'check_feedback',
     'update_feedback',
     'make_relevant_notification',
 ]
-
 
 
 def check_feedback(request, post_type):
@@ -107,6 +111,7 @@ def update_feedback(feedback, me, request):
         
         # TODO：删除草稿的功能
         content = dict(
+            type=FeedbackType.objects.get(name=str(info.get('type'))),
             title=str(info.get('title')),
             content=str(info.get('content')),
             person=me,
@@ -118,10 +123,6 @@ def update_feedback(feedback, me, request):
             ) if info.get('org') else None,
             publisher_public=(str(info.get('publisher_public')) == '公开'),
         )
-        if post_type == 'save' or post_type == 'directly_submit':
-            content.update(
-                type=FeedbackType.objects.get(name=str(info.get('type'))),
-            )
         if post_type == 'save':
             feedback = Feedback.objects.create(
                 **content,
@@ -142,13 +143,14 @@ def update_feedback(feedback, me, request):
             context['feedback_id'] = feedback.id
             return context
         elif post_type == 'modify':
-            if feedback.type != FeedbackType.objects.get(name=str(info.get('type'))):
-                return wrong("修改申请时不允许修改反馈类型。如确需修改，请取消后重新提交!")
             publisher_public = True if str(info.get('publisher_public'))=='公开' else False
             if (feedback.title == str(info.get("title"))
+                    and feedback.type == FeedbackType.objects.get(name=str(info.get('type')))
                     and feedback.content == str(info.get('content'))
                     and feedback.publisher_public == publisher_public
-                    and feedback.org == Organization.objects.get(oname=str(info.get('org')))):
+                    and feedback.org == (Organization.objects.get(oname=str(info.get('org'))) 
+                            if str(info.get('org')) else None)
+                    ):
                 return wrong("没有检测到修改！")
             Feedback.objects.filter(id=feedback.id).update(
                 **content,
@@ -200,7 +202,22 @@ def make_relevant_notification(feedback, info, me):
         typename=typename,
         title=title,
         content=content,
-        URL=None,
+        URL=f"/viewFeedback/{feedback.id}",
         relate_instance=relate_instance,
         anonymous_flag=True,
+    )
+
+
+@log.except_captured(source='feedback_utils[examine_notification]')
+def examine_notification(feedback):
+    examin_teacher = feedback.org.otype.incharge.person_id
+    notification_create(
+        receiver=examin_teacher,
+        sender=feedback.org.organization_id,
+        typename=Notification.Type.NEEDDO,
+        title=Notification.Title.VERIFY_INFORM,
+        content=f"{feedback.org.oname}申请公开一条反馈信息",
+        URL=f"/viewFeedback/{feedback.id}",
+        publish_to_wechat=True,
+        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
     )

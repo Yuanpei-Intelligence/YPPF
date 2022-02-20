@@ -73,6 +73,26 @@ def get_person_or_org(user, user_type=None):
     )
 
 
+def get_user_by_name(name):
+    """通过 name/oname 获取 user 对象，用于导入评论者
+    Comment只接受User对象
+    Args:
+        name/oname
+    Returns:
+        user<object>: 用户对象
+        user_type: 用户类型
+    """
+    try:
+        person = NaturalPerson.objects.get(name=name)
+        return person.person_id, "Person"
+    except:
+        try:
+            org = Organization.objects.get(oname=name)
+            return org.organization_id, "Organization"
+        except:
+            print(f"{name} is neither natural person nor organization!")
+
+
 # YWolfeee, Aug 16
 # check_user_type只是获得user的类型，其他用于呈现html_display的内容全部转移到get_siderbar_and_navbar中
 # 同步开启一个html_display，方便拓展前端逻辑的呈现
