@@ -1,6 +1,7 @@
 from boottest import base_get_setting
 from boottest import DEBUG, LOGIN_URL, UNDERGROUND_URL, WECHAT_URL
 from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
+import boottest.global_messages as my_messages
 
 from django.conf import settings
 
@@ -10,6 +11,8 @@ __all__ = [
     'get_setting', 'get_config',
     # 全局设置的常量
     'DEBUG',
+    # 全局消息
+    'my_messages',
     # 本应用的常量
     'hash_wechat_coder',
     'SYSTEM_LOG',

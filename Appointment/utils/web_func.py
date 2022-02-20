@@ -269,9 +269,9 @@ def get_time_id(room,
     # 超过开始时间
     delta = timedelta(hours=ttime.hour - room.Rstart.hour,
                       minutes=ttime.minute - room.Rstart.minute)  # time gap
-    hour = int(delta.total_seconds()) // 3600
-    minute = int(delta.total_seconds() % 3600) // 60
-    second = int(delta.total_seconds()) % 60
+    second = int(delta.total_seconds())
+    minute, second = divmod(second, 60)
+    hour, minute = divmod(minute, 60)
     #print("time_span:", hour, ":", minute,":",second)
     if mode == "rightopen":  # 左闭右开, 注意时间段[6:00,6:30) 是第一段
         half = 0 if minute < 30 else 1
@@ -283,15 +283,17 @@ def get_time_id(room,
 
 
 def get_dayrange(span=7):   # 获取用户的违约预约
-    timerange_list = [{} for i in range(span)]
+    timerange_list = []
     present_day = datetime.now()
     for i in range(span):
+        timerange = {}
         aday = present_day + timedelta(days=i)
-        timerange_list[i]['weekday'] = aday.strftime("%a")
-        timerange_list[i]['date'] = aday.strftime("%d %b")
-        timerange_list[i]['year'] = aday.year
-        timerange_list[i]['month'] = aday.month
-        timerange_list[i]['day'] = aday.day
+        timerange['weekday'] = aday.strftime("%a")
+        timerange['date'] = aday.strftime("%d %b")
+        timerange['year'] = aday.year
+        timerange['month'] = aday.month
+        timerange['day'] = aday.day
+        timerange_list.append(timerange)
     return timerange_list
 
 
