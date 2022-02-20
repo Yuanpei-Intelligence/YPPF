@@ -255,22 +255,22 @@
         
             </div>
         <!-- 让留言公开部分和我要留言一样长 -->
-        <script type="text/javascript">
-            const ref = document.getElementById("feedback-welcome");
-            const publicBox = document.getElementById("publicFeedbackBox");
-            const publicTab = document.getElementById("publicFeedbackTab");
-            /* ---------------- fit public tab according to screen height ---------------- */
-            function fit() {
-                publicBox.style.height = (ref.offsetHeight - publicBox.offsetTop) + "px";
-                publicTab.style.height = (ref.offsetHeight - publicTab.offsetTop) + "px";
-            }
-            window.addEventListener(`load`, fit);
-             window.addEventListener(`resize`, fit);
-            new ResizeObserver(fit).observe(ref);
-        </script>
+            <script type="text/javascript">
+                const ref = document.getElementById("feedback-welcome");
+                const publicBox = document.getElementById("publicFeedbackBox");
+                const publicTab = document.getElementById("publicFeedbackTab");
+                /* ---------------- fit public tab according to screen height ---------------- */
+                function fit() {
+                    publicBox.style.height = (ref.offsetHeight - publicBox.offsetTop) + "px";
+                    publicTab.style.height = (ref.offsetHeight - publicTab.offsetTop) + "px";
+                }
+                window.addEventListener(`load`, fit);
+                window.addEventListener(`resize`, fit);
+                new ResizeObserver(fit).observe(ref);
+            </script>
         </div>
         <div class="row layout-top-spacing mt-0">
-            <!-- 审核界面，非教师不显示 -->
+            <!-- 审核界面 -->
             {% if is_teacher %}
             <div class="col-12 layout-top-spacing">
                 <div class="bio layout-spacing ">
@@ -437,11 +437,14 @@
                 </div>                
             </div>
             {% endif %}
-            <!-- 展示自己的反馈记录 -->
             <div class="col-12">
                 <div class="bio layout-spacing mb-4">
                     <div class="widget-content widget-content-area">
-                        <h3>反馈记录</h3>
+                        <div>
+                            <h3>反馈记录
+                            <a href="../addfeedback/"><i class="fa fa-plus" aria-hidden="true"></i></a>
+                            </h3>
+                        </div>
                         
                         <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified" role="tablist">
                             <li class="nav-item">
@@ -479,16 +482,9 @@
                                                             </h5>
                                                         </div>
                                                         <div>
-                                                            <div class="btn-group btn-group-sm" role="group">
-                                                                <button class="btn btn-outline" onclick=""
-                                                                    >
-                                                                    <i class="fa fa-trash-alt"></i>
-                                                                </button>
-                                                                <button class="btn btn-outline" onclick=""
-                                                                    >
-                                                                    <i class="fa fa-pencil-alt"></i>
-                                                                </button>
-                                                            </div>
+                                                            <a href="/modifyFeedback/">
+                                                            <button type="button" class="btn btn-info mb-4 mr-2">修改 / 删除</button>
+                                                            </a>
                                                         </div>
                                                     </div>
 
@@ -525,43 +521,6 @@
                                         <br>
                                     </div>
                                     {% endif %}
-                                    <!-- 以下是一个草稿箱的例子，可以参考 -->
-                                    <!-- <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
-                                        <div class="b-skills">
-                                            <div class="d-flex justify-content-between">
-                                                <div>
-                                                    <h5>
-                                                        <a href=''><u>Lorem</u></a>
-                                                    </h5>
-                                                </div>
-                                                
-                                            </div>
-
-                                            <p>
-                                                <span class="badge badge-success">草稿</span>
-                                            </p>
-
-                                            <p style="color: rgb(66, 67, 68);">
-                                                <i class="fa fa-bookmark" style="width: 14px;"></i>
-                                                <span class="ml-1">Lorem</span>
-                                            </p>
-
-                                            <p style="color: rgb(66, 67, 68);">
-                                                <i class="fa fa-share-alt" style="width: 14px;"></i>
-                                                <span class="ml-1">反馈至Lorem</span>
-                                            </p>
-
-                                            <p style="color: rgb(66, 67, 68);">
-                                                <i class="fa fa-bell" style="width: 14px;"></i>
-                                                <span class="ml-1">Lorem</span>
-                                            </p>
-
-                                            <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
-                                                <i class="fa fa-envelope" style="width: 14px;"></i>
-                                                <span class="ml-1">Lorem ipsum dolor sit amet consectetur adipisicing elit. Dolorum, eius.</span>
-                                            </p>
-                                        </div>
-                                    </div> -->
                                 </div>
                             </div>                        
                             <div class="tab-pane fade" id="home" role="tabpanel">
