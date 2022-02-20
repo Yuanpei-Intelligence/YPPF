@@ -1636,6 +1636,7 @@ class Feedback(CommentBase):
     )
 
     feedback_time = models.DateTimeField('反馈时间', auto_now_add=True)
+    # anonymous = models.BooleanField("发布者是否匿名", default=True)
     publisher_public = models.BooleanField('发布者是否公开', default=False)
     org_public = models.BooleanField('组织是否公开', default=False)
     public_time = models.DateTimeField('组织公开时间', default=datetime.now)
