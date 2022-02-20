@@ -48,28 +48,27 @@ def editCourseActivity(request, aid):
     编辑单次书院课程活动，addActivity的简化版
     """
     # 检查用户身份
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
     try:
-        valid, user_type, html_display = utils.check_user_type(request.user)
-        # assert valid  已经在check_user_access检查过了
-        me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
         aid = int(aid)
         activity = Activity.objects.get(id=aid)
-        if user_type == "Person":
-            html_display = utils.user_login_org(
-                request, activity.organization_id)
-            if html_display['warn_code'] == 1:
-                return redirect(message_url(wrong(html_display["warn_message"])))
-            else:  # 成功以小组账号登陆
-                # 防止后边有使用，因此需要赋值
-                user_type = "Organization"
-                request.user = activity.organization_id.organization_id  # 小组对应user
-                me = activity.organization_id  # 小组
-        if activity.organization_id != me:
-            return redirect(message_url(wrong("无法修改其他课程小组的活动!")))
-        html_display["is_myself"] = True
-    except Exception as e:
-        log.record_traceback(request, e)
-        return EXCEPT_REDIRECT
+    except:
+        return redirect(message_url(wrong("活动不存在!")))
+    
+    if user_type == "Person":
+        my_messages.transfer_message_context(
+            utils.user_login_org(request, activity.organization_id),
+            html_display,
+        )
+        if html_display['warn_code'] == 1:
+            return redirect(message_url(html_display))
+        else:
+            # 登陆成功，重新加载
+            return redirect(message_url(html_display, request.get_full_path()))
+
+    if activity.organization_id != me:
+        return redirect(message_url(wrong("无法修改其他课程小组的活动!")))
 
     # 这个页面只能修改书院课程活动(category=1)
     if activity.category != Activity.ActivityCategory.COURSE:
@@ -80,20 +79,23 @@ def editCourseActivity(request, aid):
         return redirect(message_url(wrong('当前活动状态不允许修改!'),
                                     f'/viewActivity/{activity.id}'))
 
+    my_messages.transfer_message_context(request.GET, html_display)
+
     if request.method == "POST" and request.POST:
         # 修改活动
         try:
             # 只能修改自己的活动
             with transaction.atomic():
                 activity = Activity.objects.select_for_update().get(id=aid)
-                org = get_person_or_org(request.user, "Organization")
-                assert activity.organization_id == org
+                assert activity.organization_id == me, "无法修改其他课程小组的活动!"
                 modify_course_activity(request, activity)
-            html_display["warn_msg"] = "修改成功。"
-            html_display["warn_code"] = 2
+            succeed("修改成功。", html_display)
+        except AssertionError as err_info:
+            return redirect(message_url(wrong(str(err_info)),
+                                        request.get_full_path()))
         except Exception as e:
-            log.record_traceback(request, e)
-            return EXCEPT_REDIRECT
+            return redirect(message_url(wrong("修改课程活动失败!"),
+                                        request.get_full_path()))
 
     # 前端使用量
     html_display["applicant_name"] = me.oname
@@ -122,18 +124,21 @@ def addSingleCourseActivity(request):
     创建单次书院课程活动，addActivity的简化版
     """
     # 检查用户身份
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
+    if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
+        return redirect(message_url(wrong('书院课程小组账号才能开设课程活动!')))
+    if me.oname == YQP_ONAME:
+        return redirect("/showActivity/")  # TODO: 可以重定向到书院课程聚合页面
+
+    # 检查是否已经开课
     try:
-        valid, user_type, html_display = utils.check_user_type(request.user)
-        # assert valid  已经在check_user_access检查过了
-        me = utils.get_person_or_org(request.user, user_type)  # 这里的me应该为小组账户
-        if user_type != "Organization" or me.otype.otype_name != COURSE_TYPENAME:
-            return redirect(message_url(wrong('书院课程小组账号才能开设课程活动!')))
-        if me.oname == YQP_ONAME:
-            return redirect("/showActivity")  # TODO: 可以重定向到书院课程聚合页面
-        html_display["is_myself"] = True
-    except Exception as e:
-        log.record_traceback(request, e)
-        return EXCEPT_REDIRECT
+        course = Course.objects.activated().get(organization=me)
+    except:
+        return redirect(message_url(wrong('本学期尚未开设书院课程，请先发起选课！'), 
+                                    '/showCourseActivity/'))
+
+    my_messages.transfer_message_context(request.GET, html_display)
 
     if request.method == "POST" and request.POST:
         # 创建活动
@@ -145,9 +150,12 @@ def addSingleCourseActivity(request):
                         succeed('存在信息相同的课程活动，已为您自动跳转!'),
                         f'/viewActivity/{aid}'))
                 return redirect(f"/editCourseActivity/{aid}")
+        except AssertionError as err_info:
+            return redirect(message_url(wrong(str(err_info)), request.path))
         except Exception as e:
-            log.record_traceback(request, e)
-            return EXCEPT_REDIRECT
+            return redirect(message_url(wrong("课程活动创建失败!"), request.path))
+    
+
 
     # 前端使用量
     html_display["applicant_name"] = me.oname
@@ -207,6 +215,9 @@ def showCourseActivity(request):
 
     bar_display = utils.get_sidebar_and_navbar(
         request.user, navbar_name="我的活动")
+
+    if request.method == "GET":
+        html_display["warn_code"], html_display["warn_message"] = my_messages.get_request_message(request)
 
     # 取消单次活动
     if request.method == "POST" and request.POST:

@@ -165,7 +165,7 @@ def cameracheck(request):   # 摄像头post的后端函数
         if content.Atime.date() == content.Astart.date():
             # 如果预约时间在使用时间的24h之内 则人数下限为2
             num_need = min(GLOBAL_INFO.today_min, num_need)
-        if content.Atemp_flag == Appoint.Bool_flag.Yes:
+        if content.Atemp_flag:
             # 如果为临时预约 则人数下限为1 不作为合格标准 只是记录
             num_need = min(GLOBAL_INFO.temporary_min, num_need)
         try:
@@ -446,9 +446,9 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
         cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：禁止使用")
         return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
 
-    if room.Rstatus == Room.Status.SUSPENDED:   # 自习室
+    if room.Rstatus == Room.Status.UNLIMITED:   # 自习室
 
-        if room.RIsAllNight == Room.IsAllNight.Yes:  # 通宵自习室
+        if room.RIsAllNight:  # 通宵自习室
             cardcheckinfo_writer(student, room, True, True, f"刷卡开门：通宵自习室")
             return JsonResponse({"code": 0, "openDoor": "true"}, status=200)
 
@@ -625,7 +625,7 @@ def index(request):  # 主页
 
     #--------- 地下室状态：left tab ---------#
     suspended_room_list = room_list.filter(
-        Rstatus=Room.Status.SUSPENDED).order_by('-Rtitle')                          # 开放房间
+        Rstatus=Room.Status.UNLIMITED).order_by('-Rtitle')                          # 开放房间
     statistics_info = [(room, (room.Rpresent * 10) // (room.Rmax or 1))
                        for room in suspended_room_list]                             # 开放房间人数统计
 
