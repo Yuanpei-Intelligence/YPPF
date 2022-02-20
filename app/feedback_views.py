@@ -6,17 +6,20 @@ from app.models import (
     OrganizationType,
     Feedback,
     FeedbackType,
+    NaturalPerson,
 )
 from app.utils import (
     get_person_or_org,
 )
+from django.db.models import Q
+from django.db import transaction
+from datetime import date, datetime, timedelta
 from app.feedback_utils import (
     examine_notification,
     update_feedback,
     make_relevant_notification,
 )
 from app.comment_utils import addComment, showComment
-from django.db import transaction
 
 
 __all__ = [
@@ -322,6 +325,114 @@ def feedbackWelcome(request):
     bar_display = utils.get_sidebar_and_navbar(
         request.user, navbar_name="我要留言"
     )
+    return render(request, "feedback_welcome.html", locals())
+
+
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(source='feedback_views[feedback_homepage]', record_user=True)
+def feedback_homepage(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    is_person = True if user_type == "Person" else False
+    me = get_person_or_org(request.user, user_type)
+    myname = me.name if is_person else me.oname
+
+    # -----------------------------反馈记录---------------------------------
+    issued_feedback = (
+        Feedback.objects
+        .filter(issue_status=Feedback.IssueStatus.ISSUED)
+        .order_by("-feedback_time")
+    )
+
+    if user_type == "Person":
+        my_feedback = issued_feedback.filter(person_id=me)
+        my_all_feedback = Feedback.objects.filter(person_id=me)
+    else:
+        my_feedback = issued_feedback.filter(org_id=me)
+        my_all_feedback = Feedback.objects.filter(org_id=me)
+
+    undone_feedback = (
+        my_feedback
+        .filter(
+            Q(solve_status=Feedback.SolveStatus.SOLVING)
+            | Q(solve_status=Feedback.SolveStatus.UNMARKED)
+        )
+    )
+    done_feedback = (
+        my_all_feedback
+        .filter(
+            Q(solve_status=Feedback.SolveStatus.SOLVED)
+            | Q(solve_status=Feedback.SolveStatus.UNSOLVABLE)
+            | Q(issue_status=Feedback.IssueStatus.DELETED)
+        )
+    )
+
+    # -----------------------------留言公开---------------------------------
+    public_feedback = (
+        Feedback.objects
+        .filter(public_status=Feedback.PublicStatus.PUBLIC)
+        .filter(issue_status=Feedback.IssueStatus.ISSUED)
+        .order_by("-feedback_time")
+    )
+    
+    # -----------------------------反馈草稿---------------------------------
+    # 准备需要呈现的内容
+    # 这里应该呈现：所有person为自己的feedback
+    draft_feedback = my_feedback.filter(issue_status=Feedback.IssueStatus.DRAFTED)
+
+    # -----------------------------老师审核---------------------------------
+    
+    is_teacher = me.identity == NaturalPerson.Identity.TEACHER if is_person else False
+    teacher_incharge = me.incharge.all() if is_teacher else False
+    wait_public = (
+        issued_feedback
+        .filter()
+        .filter(publisher_public=True, org_public=True)
+        .filter(public_status=Feedback.PublicStatus.PRIVATE)
+    )
+
+    if request.method == "POST":
+        option = request.POST.get("option")
+        if not is_person:
+            return redirect(message_url(wrong('组织不可以撤回/删除反馈!'), request.path))
+        if option != "delete" and option != "withdraw":
+            return redirect(message_url(wrong('无效的请求!'), request.path))
+        if option == "delete":
+            try:
+                del_feedback = Feedback.objects.get(id=request.POST["id"])
+            except Exception:
+                return redirect(message_url(wrong("不存在这样的反馈！"), request.path))
+            if del_feedback.issue_status == Feedback.IssueStatus.ISSUED:
+                return redirect(message_url(wrong('不能删除已经发布的反馈！'), request.path))
+            elif del_feedback.issue_status == Feedback.IssueStatus.DELETED:
+                return redirect(message_url(wrong('这条反馈已经被删除啦！'), request.path))
+            else:
+                with transaction.atomic():
+                    del_feedback.issue_status = Feedback.IssueStatus.DELETED
+                    del_feedback.save()
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "成功删除反馈草稿"
+        elif option == "withdraw":
+            try:
+                del_feedback = Feedback.objects.get(id=request.POST["id"])
+            except Exception:
+                return redirect(message_url(wrong("不存在这样的反馈！"), request.path))
+            if del_feedback.issue_status != Feedback.IssueStatus.ISSUED:
+                return redirect(message_url(wrong('不能撤回没有发布的反馈！'), request.path))
+            elif del_feedback.issue_status == Feedback.IssueStatus.DELETED:
+                return redirect(message_url(wrong('这条反馈已经被撤回啦！'), request.path))
+            elif (del_feedback.solve_status == Feedback.SolveStatus.SOLVED 
+                or del_feedback.solve_status == Feedback.SolveStatus.UNSOLVABLE):
+                return redirect(message_url(wrong('不能撤回已经发布的反馈！'), request.path))
+            else:
+                with transaction.atomic():
+                    del_feedback.issue_status = Feedback.IssueStatus.DELETED
+                    del_feedback.save()
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "成功撤回反馈"
+
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="反馈中心")
+
     return render(request, "feedback_welcome.html", locals())
 
 

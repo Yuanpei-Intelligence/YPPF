@@ -2,7 +2,6 @@
 
 {% block mainpage %}
 
-
 <div id="content" class="main-content pb-3" style="overflow: hidden;">
 
     {% if html_display.warn_code == 2 %}
@@ -11,85 +10,304 @@
     <div class="alert alert-warning text-center mb-0">{{html_display.warn_message}}</div>
     {% endif %}
 
-    <!--TODO：不确定是不是这样写，course_display里只可能有一个元素，那就取第一个-->
     {% with course_display.0 as course %}
-    <div style="text-align: center;">
-        <br>
-        <h4 class="text-primary">《{{course.name}}》书院课程详细信息</h4>
-        <br>
+     <!--  BEGIN UPPER SECTION  -->
+    <div class="d-flex m-0 p-0 overflow-hidden">
+
+         <!--  BEGIN BLURRED BG  -->
+         <div class="w-100" id="bg" style="background-image: url({{ course.photo_path }}); filter: blur(20px); -webkit-filter: blur(20px); background-position: center; background-repeat: no-repeat; background-size: cover;">
+         
+             <div class="w-100 h-100 m-0 p-0">
+                 <div class="row w-100 m-0" style="height: 40%;"></div>
+                 <div class="row w-100 m-0" style="height: 40%; background: -webkit-linear-gradient(top, #ffffff00 0%, #ffffffaa 100%);"></div>
+                 <div class="row w-100 m-0" style="height: 20%; background-color: #ffffff;"></div>
+             </div>
+         </div>
+         <!--  END BLURRED BG  -->
+
+         <!--  BEGIN FRONT SCENE  -->
+        <div style="position: absolute; width: 100%; top: -8px;">  <!--  hide the top corner  -->
+
+
+            <!--  BEGIN PHOTO  -->
+            <div id="front-photo" style="position: absolute; width: 66%; height: 30vh; margin-left: 17%; margin-right: 17%; padding-left: 80px; padding-right: 80px;">
+                <div id="style1" class="carousel slide style-custom-1 h-100" data-ride="carousel">
+                    <div class="h-100 carousel-item active">
+                        <img class="d-block w-100 slide-image" style="width: 100%; height: 100%; object-fit: cover;" src={{ course.photo_path }}></img>
+                    </div>
+                    <!-- {% if summary_photo_exists %} -->
+                            <!-- {%for summary_photo in summary_photos.all %} -->
+                            <div class="h-100 carousel-item">
+                                <img class="d-block w-100 slide-image" style="width: 100%; height: 100%; object-fit: cover;" src="/media/1.jpg"></img>
+                            </div>
+                            
+                            <!-- {%endfor%}
+                    {% endif %} -->
+               </div>
+            </div>
+            <!--  END PHOTO  -->
+            
+            <div id="front-scene" style="width: 66%; height: 80%; margin: auto;">
+                <div id="front-photo-place-holder" style="height: 30vh;"></div>
+
+
+                <!--  BEGIN HEADING  -->
+                <div style="width: 100%; height: max-content; margin-top: 10px;">
+                    <!-- -------------------------------- time --------------------------------- -->
+                    <!-- <b class="text-danger">{{ activity.start }} - {{ activity.end }}</b> -->
+
+                    <!-- -------------------------------- title -------------------------------- -->
+                    <div class="flex d-flex justify-content-start">
+                        <img src={{ course.avatar_path }} width="30" height="30" alt="avatar">
+                        <h3 class="flex text-dark" style="font-weight: bolder;"> {{course.name}}</h3>
+                    </div>
+                    
+                    <!-- --------------------------- org and status ---------------------------- -->
+                    <div class="d-flex justify-content-between" style="margin-top: -8px; font-size: small; color:gray;">
+                        <div class="flex">
+                            <b>{{ org_name }}</b>
+                        </div>
+                    </div>
+                </div>
+                <!--  END HEADING  -->
+
+                <!-- ------------------------------ div line ------------------------------- -->
+                <div id="div-line" style="width: 100%; height: 1px; margin: auto; margin-top: 5px; background-color:rgba(0, 0, 0, 0.2)"></div>
+
+            </div>
+
+            <!-- ----------------------------- adapt width ----------------------------- -->
+            <script type="text/javascript">
+                setTimeout(resizeWidth, 0);
+                window.addEventListener(`load`, resizeWidth);
+                window.addEventListener(`resize`, resizeWidth);
+
+                const front_scene = document.querySelector(`#front-scene`);
+                const fron_photo = document.querySelector(`#front-photo`);
+                const fron_photo_ph = document.querySelector(`#front-photo-place-holder`);
+                const fron_img = fron_photo.querySelector(`img`);
+                const calendar = document.querySelector(`#calendar`);
+                const cal_inn = calendar.querySelector(`div`);
+                function resizeWidth(event) {
+                    const lower = document.querySelector(`#lower`);
+                    if (this.innerWidth <= 767) {
+                        lower.style.width = `95%`;
+                        front_scene.style.width = `83%`;
+                        fron_photo.style.marginLeft = `0%`;
+                        fron_photo.style.marginRight = `0%`;
+                        fron_photo.style.paddingLeft = `0px`;
+                        fron_photo.style.paddingRight = `0px`;
+                        fron_photo.style.width = `100%`;
+                        fron_photo_ph.style.marginBottom = `30px`;
+                        fron_img.style.borderRadius = `0px`;
+                        fron_img.style.boxShadow = `none`;
+                        calendar.style.left = `8%`;
+                        cal_inn.style.top = `-50px`;
+                    } else {
+                        lower.style.width = `70%`;
+                        front_scene.style.width = `66%`;
+                        fron_photo.style.marginLeft = `17%`;
+                        fron_photo.style.marginRight = `17%`;
+                        fron_photo.style.paddingLeft = `80px`;
+                        fron_photo.style.paddingRight = `80px`;
+                        fron_photo.style.width = `66%`;
+                        fron_photo_ph.style.marginBottom = `0px`;
+                        fron_img.style.borderRadius = `8px`;
+                        fron_img.style.boxShadow = `1px 1px 16px 2px rgba(0, 0, 0, 0.12)`;
+                        calendar.style.left = `17%`;
+                        cal_inn.style.top = `-70px`;
+                    }
+                }
+            </script>
+
+            <!-- -------------------------- constrain height --------------------------- -->
+            <script type="text/javascript">
+                setTimeout(resizeHeight, 0);
+                window.addEventListener(`load`, resizeHeight);
+                window.addEventListener(`resize`, resizeHeight);
+
+                const bg = document.querySelector(`#bg`);
+                const div_line = document.querySelector(`#div-line`);
+                function resizeHeight(event){
+                    bg.style.height = `${div_line.offsetTop - 8}px`
+                };
+            </script>
+
+        </div>
+        <!--  END FRONT SCENE  -->
+
     </div>
-    <div class="container-fluid">
-        <div class="statbox widget box box-shadow">
-            <table class="table table-responsive-sm table-active" style="word-break:break-all" >
-                <tbody class="table">
-                   
-                    <tr>
-                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 课程类型</th>
-                        <td width="30%"> 
-                            {{course.type}}
-                        </td>
-                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 上课地点</th>
-                        <td width="30%"> 
-                            {{course.classroom}}
-                        </td>
-                    </tr>
-                    <!--TODO : coursetodisplay字典里面加一个organization-->
-                    <tr>
-                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 开课组织</th>
-                        <td colspan="8"> 
-                            <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
-                            <a href="/orginfo/?name={{course.organization_name}}">
-                                <u>{{course.organization_name}}</u>
-                            </a>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th width="20%" style="background-color: rgb(192, 190, 190); text-align: center;"> 上课地点</th>
-                        <td colspan="8"> 
-                            {{course.classroom}}
-                        </td>
-                    </tr>
-                    <tr>
-                        <th width="20%" style="background-color: rgb(192, 190, 190); text-align: center;"> 课程简介</th>
-                        <td colspan="8"> 
-                            {{course.introduction}}
-                        </td>
-                    </tr>
-                    <tr>
-                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 教学计划</th>
-                        <td colspan="8"> 
-                            {{course.teaching_plan}}
-                        </td>
-                    </tr>
-                    <tr>
-                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 学时计算方式</th>
-                        <td colspan="8"> 
-                            {{course.record_cal_method}}
-                        </td>
-                    </tr>
-                    <tr>
-                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 宣传图片</th>
-                        <td colspan="8"> 
-                            <img width="80%" src={{ course.photo_path }}>
-                        </td>
-                    </tr>
-                    {% if course.QRcode %}
-                    <tr>
-                        <th width="20%" style="text-align: center;background-color: rgb(192, 190, 190);"> 课程群二维码</th>
-                        <td colspan="8"> 
-                            <img width="40%" src={{ course.QRcode }}>
-                        </td>
-                    </tr>
-                    {% endif%}
-                  
-                </tbody>
-            </table>
+    <!--  END UPPER SECTION  -->
+    <div class="row m-0 mx-auto" id="lower" style="width: 70%;">
+        <div class="col-md-9 col-sm-12 px-1">
+
+            <div class="container w-100 px-0">
+                <!--  BEGIN ACTIVITY INFORMATION  -->
+                <div class="statbox widget box box-shadow layout-top-spacing">
+
+                    <div class="widget-header">
+                        <div class="d-flex justify-content-between">
+                            <h4 style="padding-left: 12px;">课程信息</h4>
+                        </div>
+                    </div>
+
+                    <div class="widget-content widget-content-area">
+
+                        <!--  活动信息  -->
+                        <div class="code-section-container show-code my-0">
+
+                            <div class="media-body">
+
+                                <p class="meta-time">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-activity" viewBox="0 0 16 16">
+                                        <path fill-rule="evenodd" d="M6 2a.5.5 0 0 1 .47.33L10 12.036l1.53-4.208A.5.5 0 0 1 12 7.5h3.5a.5.5 0 0 1 0 1h-3.15l-1.88 5.17a.5.5 0 0 1-.94 0L6 3.964 4.47 8.171A.5.5 0 0 1 4 8.5H.5a.5.5 0 0 1 0-1h3.15l1.88-5.17A.5.5 0 0 1 6 2Z"/>
+                                    </svg>
+                                    <span class="ml-3">
+                                        <span style="font-weight:bold" >课程类型：</span>{{course.type}}
+                                    </span>
+                                </p>
+
+                                <p class="meta-time">
+                                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor"
+                                        stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+                                        class="css-i6dzq1">
+                                        <circle cx="12" cy="12" r="10"></circle>
+                                        <polyline points="12 6 12 12 16 14"></polyline>
+                                    </svg>
+                                    <span class="ml-3">
+                                        <span style="font-weight:bold" >开课周数：</span>{{course.times}}
+                                    </span>
+                                </p>
+
+                                <p class="meta-time">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-easel" viewBox="0 0 16 16">
+                                        <path d="M8 0a.5.5 0 0 1 .473.337L9.046 2H14a1 1 0 0 1 1 1v7a1 1 0 0 1-1 1h-1.85l1.323 3.837a.5.5 0 1 1-.946.326L11.092 11H8.5v3a.5.5 0 0 1-1 0v-3H4.908l-1.435 4.163a.5.5 0 1 1-.946-.326L3.85 11H2a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1h4.954L7.527.337A.5.5 0 0 1 8 0zM2 3v7h12V3H2z"/>
+                                    </svg>
+                                    <span class="ml-3">
+                                        <span style="font-weight:bold" >课程简介：</span>
+                                        <p>
+                                            <svg viewBox="0 0 24 24" width="18" height="18">
+                                                <line x1="16" y1="8" x2="2" y2="22"></line>
+                                                <line x1="17.5" y1="15" x2="9" y2="15"></line>
+                                            </svg>
+                                            {{course.introduction}}
+                                        </p>
+                                    </span>
+                                </p>
+
+                                <p>
+                                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor"
+                                        stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"
+                                        class="css-i6dzq1">
+                                        <path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path>
+                                        <line x1="16" y1="8" x2="2" y2="22"></line>
+                                        <line x1="17.5" y1="15" x2="9" y2="15"></line>
+                                    </svg>
+                                    <span class="ml-3">
+                                        <span style="font-weight:bold" >教学计划：</span>
+                                        <p>
+                                            <svg viewBox="0 0 24 24" width="18" height="18">
+                                                <line x1="16" y1="8" x2="2" y2="22"></line>
+                                                <line x1="17.5" y1="15" x2="9" y2="15"></line>
+                                            </svg>
+                                            {{course.teaching_plan}}
+                                        </p>
+                                    </span>
+                                </p>
+
+                                <!-- <p>
+                                    <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><circle cx="12" cy="12" r="10"></circle><rect x="9" y="9" width="6" height="6"></rect></svg>
+                                    <span class="ml-3">
+                                        {{ price }}&nbsp;元气值
+                                    </span>
+                                </p> -->
+
+                                <p>
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" class="bi bi-calculator" viewBox="0 0 16 16">
+                                        <path d="M12 1a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h8zM4 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2H4z"/>
+                                        <path d="M4 2.5a.5.5 0 0 1 .5-.5h7a.5.5 0 0 1 .5.5v2a.5.5 0 0 1-.5.5h-7a.5.5 0 0 1-.5-.5v-2zm0 4a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm3-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm3-6a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-1zm0 3a.5.5 0 0 1 .5-.5h1a.5.5 0 0 1 .5.5v4a.5.5 0 0 1-.5.5h-1a.5.5 0 0 1-.5-.5v-4z"/>
+                                      </svg>
+                                    <span class="ml-3">
+                                        <span style="font-weight:bold" >学时计算方式：</span>
+                                        <p>
+                                            <svg viewBox="0 0 24 24" width="18" height="18">
+                                                <line x1="16" y1="8" x2="2" y2="22"></line>
+                                                <line x1="17.5" y1="15" x2="9" y2="15"></line>
+                                            </svg>
+                                            {{course.record_cal_method}}
+                                        </p>
+                                    </span>
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+                <!--  END ACTIVITY INFORMATION  -->
+
+                <!--  BEGIN ORGANIZAOR & PARTICIPANTS  -->
+                <div class="statbox widget box box-shadow layout-top-spacing">
+
+                    <div class="widget-header">
+                        <div class="row">
+                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                <h4 style="padding-left: 12px;">人员信息</h4>
+                            </div>
+                        </div>
+                    </div>
+
+
+                    <div class="widget-content widget-content-area">
+
+                        <h5>发起者</h5>
+                        <div class="d-flex justify-content-start">
+                            <div style="width: max-content; border-radius: 25px; ">
+                                <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
+                                <a href="/orginfo/?name={{course.organization_name}}">
+                                    <u>{{course.organization_name}}</u>
+                                </a>
+                            </div>
+                            <span class="flex flex-grow-1 mx-3">
+                                <div class="d-flex justify-content-between">
+                                    <a href='/orginfo/?name={{course.organization_name}}'><u><h5 class="flex" style="height: 21px;">{{ org_name }}</h5></u></a>
+                                    <p class="mb-0" style="color: gray;">{{ course.organization_type }}</p>
+                                </div>
+                                <p class="mb-0" style="color: gray;">{{ course.organization.introduction }}</p>
+                            </span>
+                        </div>
+    
+                    </div>
+
+                </div>
+                <!--  END ORGANIZAOR & PARTICIPANTS  -->
+            </div>
+            {% if not course.QRcode is None %}
+             <!--  BEGIN QR CODE  -->
+             <div class="container w-100 px-0 layout-top-spacing">
+                <div class="statbox widget box box-shadow">
+
+                    <div class="widget-header">
+                        <div class="row">
+                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                <h4>签到二维码</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="widget-content widget-content-area">
+                        <img style="width:200px; height: 200px;" id="qrcode" src="{{course.QRcode}}" alt="check-in QR code" class="mx-auto d-block">
+                    </div>
+
+                </div>
+            </div>
+            <!--  END QR CODE  -->
+            {% else %}
+                <p> 无二维码</p>
+            {% endif %}
         </div>
     </div>
-
     {% endwith %}
-
 </div>
-
-
 {% endblock %}
