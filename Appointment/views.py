@@ -445,6 +445,23 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
     if room.Rstatus == Room.Status.FORBIDDEN:   # 禁止使用的房间
         cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：禁止使用")
         return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
+    
+    if room.RneedAgree:
+        if student.agree_time is None:
+            cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：未签署协议")
+            send_wechat_message(
+                stuid_list=[Sid],
+                start_time=datetime.now(),
+                room=room,
+                message_type="need_agree",
+                major_student=student,
+                usage="刷卡开门",
+                announcement="",
+                num=1,
+                reason=message,
+                url='/agreement',
+            )
+            return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
 
     if room.Rstatus == Room.Status.UNLIMITED:   # 自习室
 
@@ -582,7 +599,10 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
 @identity_check(redirect_field_name='origin', auth_func=lambda x: True)
 def index(request):  # 主页
     render_context = {}
-    render_context.update(login_url=GLOBAL_INFO.login_url)
+    render_context.update(
+        login_url=GLOBAL_INFO.login_url,
+        show_admin=(request.user.is_superuser or request.user.is_staff),
+    )
     # 处理学院公告
     if (College_Announcement.objects.all()):
         try:
@@ -683,6 +703,22 @@ def index(request):  # 主页
             return redirect(urls)
 
     return render(request, 'Appointment/index.html', render_context)
+
+
+@csrf_exempt
+@identity_check(redirect_field_name='origin')
+def agreement(request):
+    render_context = {}
+    participant = get_participant(request.user)
+    if request.method == 'POST' and request.POST.get('type', '') == 'confirm':
+        try:
+            with transaction.atomic():
+                participant = get_participant(request.user, update=True)
+                participant.agree_time = datetime.now().date()
+                participant.save()
+        except:
+            pass
+    return render(request, 'Appointment/agreement.html', render_context)
 
 
 @identity_check(redirect_field_name='origin')
