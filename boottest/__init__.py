@@ -62,4 +62,5 @@ MEDIA_URL = settings.MEDIA_URL
 LOGIN_URL = settings.LOGIN_URL
 
 # 全局设置变量
-# 暂无
+UNDERGROUND_URL: str = base_get_setting('url/base_url')
+WECHAT_URL: str = base_get_setting('url/wechat_url')

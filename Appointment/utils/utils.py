@@ -128,6 +128,7 @@ def send_wechat_message(
     announcement,
     num,
     reason='',
+    url=None,
 ):
     '''
     stuid_list: Iter[sid] 学号列表，不是学生!
@@ -232,13 +233,16 @@ def send_wechat_message(
     # --- modify end(2021.9.1) --- #
 
     secret = hash_wechat_coder.encode(message)
+    url = url if url is not None else '/admin-index.html'
+    if url.startswith('/'):
+        url = GLOBAL_INFO.this_url.rstrip('/') + '/' + url.lstrip('/')
     post_data = {
         'touser': stuid_list,
         'toall': True,
         'content': message,
         'secret': secret,
         'card': True,
-        'url': 'https://underground.yuanpei.life/appointment/admin-index.html',
+        'url': url,
         'btntxt': '预约详情',
     }
     response = send_message.post(
@@ -273,6 +277,8 @@ def send_wechat_message(
                 has_code else
                 ('部分' in response['data']['errMsg'])  # 部分或全部发送失败/部分发送失败
             )
+        # 别重发了
+        retry_enabled = False
 
         if retry_enabled:
             if has_code and code != 206:
@@ -289,7 +295,7 @@ def send_wechat_message(
                 'content': message,
                 'secret': secret,
                 'card': True,
-                'url': 'https://underground.yuanpei.life/appointment/admin-index.html',
+                'url': url,
                 'btntxt': '预约详情',
             }
             response = send_message.post(

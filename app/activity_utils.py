@@ -437,7 +437,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
 def get_activity_QRcode(activity):
     auth_code = hash_coder.encode(str(activity.id))
     url_components = [
-        local_dict["url"]["login_url"].strip("/"),
+        LOGIN_URL.strip("/"),
         "checkinActivity",
         f"{activity.id}?auth={auth_code}",
     ]
