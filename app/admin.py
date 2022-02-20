@@ -690,3 +690,6 @@ admin.site.register(QandA)
 admin.site.register(OrganizationTag)
 admin.site.register(PageLog)
 admin.site.register(ModuleLog)
+
+admin.site.register(Comment)
+admin.site.register(CommentPhoto)
