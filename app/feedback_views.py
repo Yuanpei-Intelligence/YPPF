@@ -397,7 +397,7 @@ def modifyFeedback(request):
         elif feedback.issue_status == Feedback.IssueStatus.DRAFTED:
             return redirect(message_url(context, f'/modifyFeedback/?feedback_id={feedback.id}'))
         else: # 发布，feedback.issue_status == Feedback.IssueStatus.ISSUED
-            return redirect(message_url(context, f'/viewFeedback/feedback_id={feedback.id}'))
+            return redirect(message_url(context, f'/viewFeedback/{feedback.id}'))
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
 
