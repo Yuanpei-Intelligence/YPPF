@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+{% block mainpage %}
+
+<!--  BEGIN CONTENT PART  -->
+<div id="content" class="main-content">
+
+    <div class="layout-px-spacing">
+
+        {% if html_display.first_signin %}
+        <div class="alert alert-success  text-center">今日首次签到，获得0.5积分!</div>
+        {% endif %}
+        {% if html_display.warn_code == 2 %}
+        <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+        {% elif html_display.warn_code == 1 %}
+        <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+        {% endif %}
+
+        <!-- BEGIN UPPER AREA -->
+        <div class="row ">
+            <!--1. 头条新闻-->
+            <div class="col-xl-8 col-lg-8 col-md-7 col-sm-12 layout-top-spacing">
+                <!-- 目前是guidance -->
+                <div id="style1" class="carousel slide style-custom-1" data-ride="carousel">
+                    <ol class="carousel-indicators">
+                        {% for _ in photo_display %}
+                        <li data-target="#style1" {% if forloop.first %}class="active"{% endif %}></li>
+                        {% endfor %}
+                        {% for _ in guidepics %}
+                        <li data-target="#style1" {% if forloop.first and not photo_display %}class="active"{% endif %}></li>
+                        {% endfor %}
+                    </ol>
+                    <div class="carousel-inner">
+                        {% for photo in photo_display %}
+                        <div class="carousel-item{% if forloop.first %} active{% endif %}">
+                            <a href="/viewActivity/{{photo.activity_id}}">
+                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
+                                    src={{photo.image}}>
+                                <div class="caption" style="position: absolute; text-align: center; background-color: #ffffffaa; width: 100%; height: 79px; bottom: 22px; padding: 10px; padding-left: 20%; padding-right: 20%;">
+                                    <h2 class="mb-0 caption-h">{{photo.activity.title}}</h2>
+                                    <p class="mb-0 caption-p" style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">{{photo.activity.introduction}}</p>
+                              </div>
+                            </a>
+                        </div>
+                        {% endfor %}
+                        <!--
+                        <div class="carousel-item {% if not photo_display %} active{% endif %}">
+                            {% if firsturl %}
+                            <a href="{{ firsturl }}">
+                            {% endif %}
+                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
+                                    src="/static/assets/img/guidepics/{{ firstpic }}" %}>
+                            {% if firsturl %}
+                            </a>
+                            {% endif %}
+                        </div>
+                        -->
+                        {% for pic, url in guidepics %}
+                        <div class="carousel-item{% if forloop.first and not photo_display %} active{% endif %}">
+                            {% if url %}
+                            <a href="{{ url }}">
+                            {% endif %}
+                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
+                                    src="/static/assets/img/guidepics/{{ pic }}" %}>
+                            {% if url %}
+                            </a>
+                            {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <a class="carousel-control-prev" href="#style1" role="button" data-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="sr-only">Previous</span>
+                    </a>
+                    <a class="carousel-control-next" href="#style1" role="button" data-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="sr-only">Next</span>
+                    </a>
+                </div>
+                <!--
+                <div id="style1" class="carousel slide style-custom-1" data-ride="carousel">
+                    <ol class="carousel-indicators">
+                        <li data-target="#style1 active"></li>
+                        {% for photo in photos %}
+                        <li data-target="#style1"></li>
+                        {% endfor %}
+                    </ol>
+                    <div class="carousel-inner">
+                        <div class="carousel-item active">
+                            {% if photo_display|length == 0 %}
+                            <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
+                                src={{homepagephoto}}>
+                            {% else %}
+                            <a href="/viewActivity/{{firstpic.activity_id}}">
+                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
+                                    src={{firstpic.image}}>
+                            </a>
+                            {% endif %}
+                        </div>
+                        {% for photo in photos %}
+                        <div class="carousel-item">
+                            <a href="/viewActivity/{{photo.activity_id}}">
+                                <img class="d-block w-100 slide-image" style="height: 50vh; object-fit: cover;"
+                                    src={{photo.image}}>
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    <a class="carousel-control-prev" href="#style1" role="button" data-slide="prev">
+                        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                        <span class="sr-only">Previous</span>
+                    </a>
+                    <a class="carousel-control-next" href="#style1" role="button" data-slide="next">
+                        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                        <span class="sr-only">Next</span>
+                    </a>
+                </div>
+                -->
+            </div>
+
+            <!-- 4&5 天气和歌曲 -->
+            <div class="col-xl-4 col-lg-4 col-md-5 col-sm-12 layout-top-spacing d-flex flex-column bio education ">
+
+                <!-- BEGIN HEIGHT CONSTRAIN -->
+                <script type="text/javascript">
+                    const ref = document.querySelector(`#style1`);
+                    const photos = ref.querySelectorAll(`img`);
+                    /* ---------------- fit wallpaper according to screen height ---------------- */
+                    setTimeout(resize, 0);
+                    window.addEventListener(`load`, resize);
+                    window.addEventListener(`resize`, resize);
+                    function resize() {
+                        if (this.innerWidth <= 767) {
+                            photos.forEach((photo) => (photo.style.height = `30vh`));
+                            document.querySelectorAll(`.caption`).forEach((caption) => caption.style.height = `69px`);
+                            document.querySelectorAll(`.caption-h`).forEach((heading) => (heading.style.fontSize = `22px`, heading.style.lineHeight = `30px`));
+                            document.querySelectorAll(`.caption-p`).forEach((paragraph) => (paragraph.style.fontSize = `12px`, paragraph.style.lineHeight = `19px`));
+                        } else {
+                            photos.forEach((photo) => (photo.style.height = `50vh`));
+                            document.querySelectorAll(`.caption`).forEach((caption) => caption.style.height = `79px`);
+                            document.querySelectorAll(`.caption-h`).forEach((heading) => (heading.style.fontSize = `32px`, heading.style.lineHeight = `38px`));
+                            document.querySelectorAll(`.caption-p`).forEach((paragraph) => (paragraph.style.fontSize = `14px`, paragraph.style.lineHeight = `21px`));
+                        }
+                    }
+                    /* ---------------------- constrain height of wishwall ---------------------- */
+                    const fit = () => {
+                        const bar = document.querySelector(`#custom-wishes`);
+                        bar.style.height = `${ref.offsetHeight - bar.offsetTop - bar.parentElement.offsetTop}px`;
+                    }; // sorry I really don't feel like using bootstrap
+                    new ResizeObserver(fit).observe(ref);
+                </script>
+                <!-- END HEIGHT CONSTRAIN -->
+
+                <!-- BEGIN OVERRIDE TIMELINE BREAKPOINT -->
+                <style>
+                    /* default timeline turns into block on small screen, and it's bad */
+                    /* override it */
+                    @media (max-width: 575px) {
+                        .education .widget-content-area .timeline-alter .item-timeline {
+                            display: flex;
+                            text-align: left;
+                        }
+
+                        .education .widget-content-area .timeline-alter .item-timeline .t-meta-date p {
+                            margin: 0;
+                        }
+                    }
+                </style>
+                <!-- END OVERRIDE TIMELINE BREAKPOINT -->
+
+                <!-- BEGIN RT WEATHER -->
+                <div class="widget-content widget-content-area mb-2 mx-0">
+                    <h5>实时天气</h5>
+                    <div class="pl-0 pt-1 pb-3 d-flex justify-content-between">
+                        <span>
+                            地区：北京 天气：{{ html_display.weather.description }} <br />
+                            气温：{{ html_display.weather.temp }} &#8451
+                            体感温度：{{ html_display.weather.temp_feel }} &#8451 <br />
+                            上次更新：{{last_update}}
+                        </span>
+                        <div>
+                            <!-- <img
+                                src="http://www.weather.com.cn/m/i/weatherpic/29x20/{{ html_display.weather.weatherinfo.img1 }}">
+                            <img
+                                src="http://www.weather.com.cn/m/i/weatherpic/29x20/{{ html_display.weather.weatherinfo.img2 }}"> -->
+                            <img src="http://openweathermap.org/img/wn/{{html_display.weather.icon}}@2x.png"
+                                alt="it supposed to be a weather icon" style="width: 50px; height: 50px;">
+                        </div>
+
+                    </div>
+                </div>
+                <!-- END RT WEATHER -->
+
+                <!-- BEGIN WISHWALL -->
+                <div class="widget-content widget-content-area mt-2 mx-0 bio">
+                    <div class="d-flex justify-content-between">
+                        <h5>心愿墙</h5>
+                        <!-- <a href="#myModal" class="mb-2 edit-profile" data-toggle="modal"> -->
+                        <a onclick="alert(`心愿墙暂未启用，敬请期待！`);" class="mb-2 edit-profile" data-toggle="modal"
+                            style="color: gainsboro;">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                                class="feather feather-edit-3">
+                                <path d="M12 20h9"></path>
+                                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                            </svg>
+                        </a>
+                    </div>
+
+                    <!-- BEGIN MODAL-->
+                    <div class="modal fade" id="myModal">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+
+                                <!-- 模态框头部 -->
+                                <div class="modal-header">
+                                    <h4 class="modal-title">添加心愿</h4>
+                                    <button type="button" class="close" data-dismiss="modal">&times;</button>
+                                </div>
+
+                                <form method="POST">
+                                    <!-- 模态框主体 -->
+                                    <div class="modal-body">
+                                        <div class="form-group">
+                                            <textarea id="wish" name="wish" class="form-control" rows="4"
+                                                placeholder="填写你的心愿，你的心愿是匿名的哦！（请共同创建文明友善的发言环境，否则可能面临封号和处分等风险）"></textarea>
+                                        </div>
+                                        <div class="form-group">
+                                            <p>背景颜色</p>
+                                            <div class="radio">
+                                                <div class="row">
+                                                    {% for pic in backgroundpics %}
+                                                    <div class="col-2 mb-5">
+                                                        <label>
+                                                            <input name="backgroundcolor" value={{ pic.color }}
+                                                                type="radio">
+                                                            <img src={{ pic.src }} class="img-fluid">
+                                                        </label>
+                                                    </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 模态框底部 -->
+                                    <div class="modal-footer">
+                                        <button type="submit" class="btn btn-primary">提交</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- END MODAL -->
+
+                    <!-- BEGIN WISHES -->
+                    <div class="bio-skill-box p-0" id="custom-wishes"
+                        style="min-height: 15vh; overflow-y: scroll; overflow-x: visible;">
+                        {% if wishes|length == 0 %}
+                        <p class="mx-auto" style="text-align: center;">暂时没有心愿！</p>
+                        {% else %}
+                        {% for wish in wishes %}
+                        <div class="b-skills my-3 p-0 w-100" style="background-color:{{ wish.background }};">
+                            <div class="p-3 w-100" style="overflow: visible;">
+                                <p class="w-100 m-0" style="line-height: 20px; max-height: 100px; overflow: hidden;">
+                                    {{ wish.text }}</p>
+                            </div>
+                        </div>
+
+                        {% endfor %}
+                        {% endif %}
+                    </div>
+                    <!-- END WISHES -->
+
+                </div>
+                <!-- END WISHWALL -->
+
+                <!-- <div class=" widget-content widget-content-area mt-2 mx-0">
+                    <h5>今日活动</h5>
+                    <div class="timeline-alter px-0 py-1" style="overflow-y: scroll; overflow-x: show;"
+                        id="custom-activities">
+                        {% if html_display.today_activities|length == 0 %}
+                        <br />
+                        <p style="text-align: center; ">没有今天开始的活动！</p>
+                        {% endif %}
+                        {% for activity, start in html_display.today_activities %}
+                        <div class="item-timeline">
+                            <div class="t-meta-date pb-0">
+                                {{ start }}
+                            </div>
+                            <div class="t-dot" data-original-title="" title="">
+                            </div>
+                            <div style="padding: 10px; width: 70%;">
+                                <a class="row m-0" href="/viewActivity/{{ activity.id }}">
+                                    <h5
+                                        style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        <u>{{ activity.title }}</u>
+                                    </h5>
+                                </a>
+                                <div class="d-flex justify-content-between">
+                                    <b class="flex"
+                                        style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        {{ activity.organization_id }}</b>
+
+                                    {% if activity.status == "等待中" %}
+                                    <span class="flex badge badge-pill badge-info">{{ activity.status }}</span>
+                                    {% elif activity.status == "已取消" or activity.status == "已结束" %}
+                                    <span class="badge badge-pill badge-danger">{{ activity.status }}</span>
+                                    {% else %}
+                                    <span class="badge badge-pill badge-success">{{ activity.status }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+
+                        {% endfor %}
+                    </div>
+                </div> -->
+                <!-- END ACTIVITIES -->
+            </div>
+
+        </div>
+
+        <div class="row">
+
+
+            <div class="col-12 layout-top-spacing bio">
+                <div class="widget-content widget-content-area">
+                    <h3>反馈记录</h3>
+                    <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#home" data-toggle="tab">
+                                <h5><i class="fa fa-envelope-o"></i> 进行中</h5>
+                            </a>
+                        </li>
+
+                        <li class="nav-item">
+                            <a class="nav-link" href="#done" data-toggle="tab">
+                                <h5><i class="fa fa-envelope-o"></i> 已结束</h5>
+                            </a>
+                        </li>
+
+                    </ul>
+
+                    <div id="myTabContent" class="tab-content">
+                        <div class="tab-pane fade in active show" id="home">
+                            {% if undone_feedback %}
+                                <div class="bio-skill-box">
+                                    <div id="undone-feedback" class="row">
+                                        {% for feedback in undone_feedback %}
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                <div class=" b-skills">
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h5>
+                                                                <a href='/viewFeedback/{{feedback.id}}'><u>{{feedback.title}}</u></a>
+                                                            </h5>
+                                                        </div>
+                                                    </div>
+
+                                                    <p>
+                                                        {% if feedback.read_status == 1 %}
+                                                            <span class="badge badge-pill badge-danger"> {{feedback.get_read_status_display}} </span>
+                                                        {% elif feedback.solve_status == 3%}
+                                                            <span class="badge badge-pill badge-primary">{{feedback.get_read_status_display}} </span>
+                                                            <span class="badge badge-pill badge-primary">---</span>
+                                                        {% else %}
+                                                            <span class="badge badge-pill badge-warning">{{feedback.get_read_status_display}} </span>
+                                                            <span class="badge badge-pill badge-warning">{{feedback.get_solve_status_display}}</span>
+                                                        {% endif %}
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-bookmark" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{feedback.type.name}}</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-share-alt" style="width: 14px;"></i>
+                                                        <span class="ml-1">反馈至 {{feedback.org.oname}}</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-bell" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{feedback.feedback_time}} 发出</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
+                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{feedback.content}}</span>
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div style="margin-top: 40px; margin-bottom: -40px;">
+                                    <p style="text-align: center;">您没有在进行中的反馈.</p>
+                                    <br>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="tab-pane fade" id="done">
+                            {% if done_feedback %}
+                                <div class="bio-skill-box">
+                                    <div class="row">
+                                        {% for feedback in done_feedback %}
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                <div class=" b-skills">
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h5>
+                                                                <a href='/viewFeedback/{{feedback.id}}'><u>{{feedback.title}}</u></a>
+                                                            </h5>
+                                                        </div>
+                                                    </div>
+                                                    
+                                                    <p>
+                                                        <span class="badge badge-pill 
+                                                        {% if feedback.solve_status == 0 %}
+                                                            badge-success">
+                                                        {% else %}
+                                                            badge-primary">
+                                                        {% endif %}
+                                                        {{feedback.get_solve_status_display}} </span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-bookmark" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{feedback.type.name}}</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-share-alt" style="width: 14px;"></i>
+                                                        <span class="ml-1">反馈至 {{feedback.org.oname}}</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68);">
+                                                        <i class="fa fa-bell" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{feedback.feedback_time}} 发出</span>
+                                                    </p>
+
+                                                    <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
+                                                        <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                        <span class="ml-1">{{feedback.content}}</span>
+                                                </div>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            {% else %}
+                                <div style="margin-top: 40px; margin-bottom: -40px;">
+                                    <p style="text-align: center;">您没有已完成的反馈.</p>
+                                    <br>
+                                </div>
+                            {% endif %}
+
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+
+        </div>
+    </div>
+    <!--  END CONTENT PART  -->
+
+</div>
+
+{% endblock %}

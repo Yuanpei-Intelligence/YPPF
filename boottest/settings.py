@@ -102,11 +102,11 @@ DATABASES = {
     # create database underground charset='utf8mb4';
     "default": {
         "ENGINE": "django.db.backends.mysql",
-        "NAME": base_get_setting('database/NAME'), # local_dict["database"]["NAME"],
+        "NAME": "YPPF", # local_dict["database"]["NAME"],
         "HOST": "127.0.0.1",
         "PORT": 3306,
-        "USER": base_get_setting('database/USER'), # local_dict["database"]["USER"],
-        "PASSWORD": base_get_setting('database/PASSWORD'), # local_dict["database"]["PASSWORD"],
+        "USER": "root", # local_dict["database"]["USER"],
+        "PASSWORD": "20020702", # local_dict["database"]["PASSWORD"],
         'OPTIONS': {
             'charset': 'utf8mb4',
         #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",

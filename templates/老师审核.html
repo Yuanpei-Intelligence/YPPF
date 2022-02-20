@@ -1,0 +1,197 @@
+{% extends "base.html" %}
+
+{% block mainpage %}
+
+
+<!--  BEGIN CONTENT AREA  -->
+<div id="content" class="main-content">
+    {% if html_display.warn_code == 1 %}
+    <div class="alert alert-warning  text-center">{{ html_display.warn_message }}</div>
+    {% elif html_display.warn_code == 2 %}
+    <div class="alert alert-success  text-center">{{ html_display.warn_message }}</div>
+    {% endif %}
+        
+        <div class="container">
+            
+            <div class="row layout-top-spacing">
+                <div class="col-lg-12 col-12 layout-top-spacing">
+                    <div class="bio layout-spacing ">
+                        <div class="widget-content widget-content-area">
+                            <h3>审核页面</h3>
+                            {% if is_teacher %}
+                                <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
+                                    <li class="nav-item">
+                                        <a class="nav-link active" href="#home" data-toggle="tab">
+                                            <h5><i class="fa fa-envelope-o"></i> 待审核</h5>
+                                        </a>
+                                    </li>
+
+                                    <li class="nav-item">
+                                        <a class="nav-link" href="#done" data-toggle="tab">
+                                            <h5><i class="fa fa-envelope-o"></i> 已公开</h5>
+                                        </a>
+                                    </li>
+
+                                </ul>
+
+                                <div id="myTabContent" class="tab-content">
+                                    <div class="tab-pane fade in active show" id="home">
+                                        {% if wait_public %}
+                                            <div class="bio-skill-box">
+                                                <div id="undone-feedback" class="row">
+                                                    {% for feedback in wait_public %}
+                                                        <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                            <div class=" b-skills">
+                                                                <div class="d-flex justify-content-between">
+                                                                    <div>
+                                                                        <h5>
+                                                                            <a href='/viewFeedback/{{feedback.id}}'><u>{{feedback.title}}</u></a>
+                                                                        </h5>
+                                                                    </div>
+                                                                </div>
+
+                                                                <p>
+                                                                    {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
+                                                                        <p>
+                                                                            {% if feedback.read_status == 1 %}
+                                                                            <span class="badge badge-pill badge-danger"> {{feedback.get_read_status_display}} </span>
+                                                                        {% elif feedback.solve_status == 3%}
+                                                                            <span class="badge badge-pill badge-primary">{{feedback.get_read_status_display}} </span>
+                                                                            <span class="badge badge-pill badge-primary">---</span>
+                                                                        {% else %}
+                                                                            <span class="badge badge-pill badge-warning">{{feedback.get_read_status_display}} </span>
+                                                                            <span class="badge badge-pill badge-warning">{{feedback.get_solve_status_display}}</span>
+                                                                        {% endif %}
+                                                                        </p>
+                                                                    {% else %}
+                                                                        <p>
+                                                                            <span class="badge badge-pill 
+                                                                            {% if feedback.solve_status == 0 %}
+                                                                                badge-success">
+                                                                            {% else %}
+                                                                                badge-primary">
+                                                                            {% endif %}
+                                                                            {{feedback.get_solve_status_display}} </span>
+                                                                        </p>
+                                                                    {% endif %}
+                                                                </p>
+
+                                                                <p style="color: rgb(66, 67, 68);">
+                                                                    <i class="fa fa-bookmark" style="width: 14px;"></i>
+                                                                    <span class="ml-1">{{feedback.type.name}}</span>
+                                                                </p>
+
+                                                                <p style="color: rgb(66, 67, 68);">
+                                                                    <i class="fa fa-share-alt" style="width: 14px;"></i>
+                                                                    <span class="ml-1">反馈至 {{feedback.org.oname}}</span>
+                                                                </p>
+
+                                                                <p style="color: rgb(66, 67, 68);">
+                                                                    <i class="fa fa-bell" style="width: 14px;"></i>
+                                                                    <span class="ml-1">{{feedback.feedback_time}} 发出</span>
+                                                                </p>
+
+                                                                <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
+                                                                    <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                                    <span class="ml-1">{{feedback.content}}</span>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <div style="margin-top: 40px; margin-bottom: -40px;">
+                                                <p style="text-align: center;">没有待审核的反馈.</p>
+                                                <br>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                    <div class="tab-pane fade" id="done">
+                                        {% if done_feedback %}
+                                            <div class="bio-skill-box">
+                                                <div class="row">
+                                                    {% for feedback in public_feedback %}
+                                                        <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                                            <div class=" b-skills">
+                                                                <div class="d-flex justify-content-between">
+                                                                    <div>
+                                                                        <h5>
+                                                                            <a href='/viewFeedback/{{feedback.id}}'><u>{{feedback.title}}</u></a>
+                                                                        </h5>
+                                                                    </div>
+                                                                </div>
+                                                                
+                                                                {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
+                                                                    <p>
+                                                                        {% if feedback.read_status == 1 %}
+                                                                        <span class="badge badge-pill badge-danger"> {{feedback.get_read_status_display}} </span>
+                                                                    {% elif feedback.solve_status == 3%}
+                                                                        <span class="badge badge-pill badge-primary">{{feedback.get_read_status_display}} </span>
+                                                                        <span class="badge badge-pill badge-primary">---</span>
+                                                                    {% else %}
+                                                                        <span class="badge badge-pill badge-warning">{{feedback.get_read_status_display}} </span>
+                                                                        <span class="badge badge-pill badge-warning">{{feedback.get_solve_status_display}}</span>
+                                                                    {% endif %}
+                                                                    </p>
+                                                                {% else %}
+                                                                    <p>
+                                                                        <span class="badge badge-pill 
+                                                                        {% if feedback.solve_status == 0 %}
+                                                                            badge-success">
+                                                                        {% else %}
+                                                                            badge-primary">
+                                                                        {% endif %}
+                                                                        {{feedback.get_solve_status_display}} </span>
+                                                                    </p>
+                                                                {% endif %}
+
+                                                                <p style="color: rgb(66, 67, 68);">
+                                                                    <i class="fa fa-share-alt" style="width: 14px;"></i>
+                                                                    <span class="ml-1">反馈至 {{feedback.org.oname}}</span>
+                                                                </p>
+
+                                                                <p style="color: rgb(66, 67, 68);">
+                                                                    <i class="fa fa-bell" style="width: 14px;"></i>
+                                                                    <span class="ml-1">{{feedback.public_time}} 公开</span>
+                                                                </p>
+
+                                                                <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
+                                                                    <i class="fa fa-envelope" style="width: 14px;"></i>
+                                                                    <span class="ml-1">{{feedback.content}}</span>
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                    {% endfor %}
+                                                </div>
+                                            </div>
+                                        {% else %}
+                                            <div style="margin-top: 40px; margin-bottom: -40px;">
+                                                <p style="text-align: center;">目前没有公开的反馈.</p>
+                                                <br>
+                                            </div>
+                                        {% endif %}
+
+                                    </div>
+                                </div>
+                            {% else %}
+                                <p style="text-align: center;"> 非老师账户无法查看此界面！</p>
+                                <br>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    
+                </div>
+
+            </div>
+            
+        </div>
+        
+    
+</div>
+<!--  END CONTENT AREA  -->
+
+
+
+{% endblock %}
