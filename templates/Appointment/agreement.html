@@ -47,6 +47,11 @@
 
 		<!-- Page Content -->
 		<div class="content">
+			{% if warn_code == 1 %}
+			<div class="alert alert-warning  text-center" >{{ warn_message }}</div>
+			{% elif warn_code == 2 %}
+			<div class="alert alert-success  text-center" >{{ warn_message }}</div>
+			{% endif %}
 			<div class="container">
 
                 <div class="form-container outer">
@@ -83,7 +88,8 @@
                                             <br/>
         
                                             <div class="d-flex justify-content-between">
-                                                <button type="submit" id="type" name="confirm" class="btn btn-lg btn-primary" value="yes"
+                                                <button type="submit" id="confirm" name="type"
+                                                    class="btn btn-lg btn-primary" value="confirm"
                                                     style="display:block;margin:0 auto">同意</button>
                                                 &nbsp;
                                                 <button type="submit" class="btn btn-lg btn-mute" value=""
