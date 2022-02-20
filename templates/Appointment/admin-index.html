@@ -75,8 +75,16 @@
 							<!--<a href="admin/index.html" target="_blank">Admin</a>-->
 						</li>
 						<li>
+							<a href="agreement">用户协议</a>
+						</li>
+						<li>
 							<a href="{{login_url}}">成长档案</a>
 						</li>
+						{% if show_admin %}
+						<li>
+							<a href="admin">管理后台</a>
+						</li>
+						{% endif %}
 						<li class="login-link">
 							<a href="logout">注销</a>
 						</li>
@@ -110,7 +118,14 @@
 										<img src="{{img_path}}" alt="User Image">
 									</a>
 									<div class="profile-det-info">
-										<h3>{{my_info.name}}</h3>
+										<h3>
+											{{my_info.name}}
+											{% if my_info.agree_time %}
+												<span id="ret" class="badge badge-pill badge-success">已签署协议</span>
+											{% else %}
+												<span id="ret" class="badge badge-pill badge-danger">未签署协议</span>
+											{% endif %}
+										</h3>
 
 										<div class="patient-details">
 											<h5 class="mb-0">{{my_info.id}}</h5>
