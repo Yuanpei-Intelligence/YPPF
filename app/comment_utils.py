@@ -17,7 +17,7 @@ from app.wechat_send import (
 
 
 @log.except_captured(source='comment_utils[addComment]', record_user=True)
-def addComment(request, comment_base, receiver=None):
+def addComment(request, comment_base, receiver=None, anonymous_flag=None, notification_title=None):
     """添加评论
     Args:
         request<WSGIRequest>: 传入的 request，其中 POST 参数至少应当包括：
@@ -35,8 +35,9 @@ def addComment(request, comment_base, receiver=None):
     sender = get_person_or_org(request.user)
     if user_type == "Organization":
         sender_name = sender.oname
+        anonymous_flag = False
     else:
-        sender_name = sender.name
+        sender_name = sender.name if anonymous_flag is None else "匿名者"
     context = dict()
     typename = comment_base.typename
     content = {
@@ -88,7 +89,7 @@ def addComment(request, comment_base, receiver=None):
         if len(text) >= 32:
             text = text[:31] + "……"
         if len(text) > 0:
-            content[typename] += f':{text}'
+            content[typename] += f'：{text}'
         else:
             content[typename] += "。"
         
@@ -107,11 +108,12 @@ def addComment(request, comment_base, receiver=None):
                         rec,
                         request.user,
                         Notification.Type.NEEDREAD,
-                        Notification.Title.VERIFY_INFORM,
+                        Notification.Title.VERIFY_INFORM if notification_title is None else notification_title,
                         content[typename],
                         URL[typename],
                         publish_to_wechat=True,
                         publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+                        anonymous_flag=anonymous_flag,
                     )
             # 向一个用户发布消息
             else:
@@ -119,11 +121,12 @@ def addComment(request, comment_base, receiver=None):
                     receiver,
                     request.user,
                     Notification.Type.NEEDREAD,
-                    Notification.Title.VERIFY_INFORM,
+                    Notification.Title.VERIFY_INFORM if notification_title is None else notification_title,
                     content[typename],
                     URL[typename],
                     publish_to_wechat=True,
                     publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+                    anonymous_flag=anonymous_flag,
                 )
         context["new_comment"] = new_comment
         context["warn_code"] = 2
