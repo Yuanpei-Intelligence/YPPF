@@ -519,13 +519,14 @@
                                                             <div class="d-flex justify-content-start">
                                                                 <h5>
                                                                     <a href='/viewFeedback/{{feedback.id}}'>{{feedback.title}}</a>
-                                                                    <span class="badge badge-pill 
-                                                                    {% if feedback.solve_status == 0 %}
-                                                                        badge-success">
+                                                                    
+                                                                    {% if feedback.issue_status == 2 %}
+                                                                    <span class="badge badge-pill badge-danger"> 已删除 </span>
+                                                                    {% elif feedback.solve_status == 0 %}
+                                                                    <span class="badge badge-pill badge-success"> {{feedback.get_solve_status_display}} </span>
                                                                     {% else %}
-                                                                        badge-primary">
+                                                                    <span class="badge badge-pill badge-primary"> {{feedback.get_solve_status_display}} </span>
                                                                     {% endif %}
-                                                                    {{feedback.get_solve_status_display}} </span>
                                                                 </h5>
                                                             </div>
                                                             <div>
