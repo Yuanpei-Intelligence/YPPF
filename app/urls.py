@@ -97,7 +97,7 @@ urlpatterns = [
     path("showCourseRecord/", course_views.showCourseRecord, name="showCourseRecord"),
 ] + [
     # 反馈中心
-    path("feedback/", feedback_views.feedbackWelcome, name="feadbackWelcome"),
+    path("feedback/", feedback_views.feedback_homepage, name="feadbackWelcome"),
     path("modifyFeedback/", feedback_views.modifyFeedback, name="modifyFeedback"),
     path("viewFeedback/<str:fid>", feedback_views.viewFeedback, name="viewFeedback"),
 ] + [

@@ -1436,6 +1436,9 @@ class Course(models.Model):
         # 暂不要求课程的宣传图片必须存在 报错更令人烦恼
         return image_url(self.photo, enable_abs=True)
 
+    def get_QRcode_path(self):
+        return image_url(self.QRcode, enable_abs=True)
+
 
 class CourseTime(models.Model):
     """
@@ -1625,6 +1628,7 @@ class Feedback(CommentBase):
         SOLVED = (0, "已解决")
         SOLVING = (1, "解决中")
         UNSOLVABLE = (2, "无法解决")
+        UNMARKED = (3, "未标记")
 
     issue_status = models.SmallIntegerField(
         '发布状态', choices=IssueStatus.choices, default=IssueStatus.DRAFTED
@@ -1633,7 +1637,7 @@ class Feedback(CommentBase):
         '阅读情况', choices=ReadStatus.choices, default=ReadStatus.UNREAD
     )
     solve_status = models.SmallIntegerField(
-        '解决进度', choices=SolveStatus.choices, default=SolveStatus.SOLVING
+        '解决进度', choices=SolveStatus.choices, default=SolveStatus.UNMARKED
     )
 
     feedback_time = models.DateTimeField('反馈时间', auto_now_add=True)
