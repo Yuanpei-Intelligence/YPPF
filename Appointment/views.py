@@ -355,6 +355,9 @@ def admin_index(request):   # 我的账户也主函数
     # 学生基本信息
     Pid = request.user.username
     my_info = web_func.get_user_info(Pid)
+    participant = get_participant(Pid)
+    if participant.agree_time is not None:
+        my_info['agree_time'] = str(participant.agree_time)
 
     # 头像信息
     img_path = get_avatar(request.user)
@@ -716,9 +719,15 @@ def agreement(request):
                 participant = get_participant(request.user, update=True)
                 participant.agree_time = datetime.now().date()
                 participant.save()
-            my_messages.succeed('签署成功！', render_context)
+            return redirect(message_url(
+                succeed('协议签署成功!'),
+                reverse("Appointment:admin_index")))
         except:
             my_messages.wrong('签署失败，请重试！', render_context)
+    elif request.method == 'POST':
+        return redirect(reverse("Appointment:index"))
+    if participant.agree_time is not None:
+        render_context(agree_time=str(participant.agree_time))
     return render(request, 'Appointment/agreement.html', render_context)
 
 
