@@ -202,7 +202,7 @@ def make_relevant_notification(feedback, info, me):
         typename=typename,
         title=title,
         content=content,
-        URL=None,
+        URL=f"/viewFeedback/{feedback.id}",
         relate_instance=relate_instance,
         anonymous_flag=True,
     )
