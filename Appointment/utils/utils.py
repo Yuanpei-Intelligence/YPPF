@@ -445,7 +445,7 @@ def write_before_delete(appoint_list):
 
 # 通用日志写入程序 写入时间(datetime.now()),操作主体(Sid),操作说明(Str),写入函数(Str)
 # 参数说明：第一为Sid也是文件名，第二位消息，第三位来源的函数名（类别）
-def operation_writer(user, message, source, status_code="OK"):
+def operation_writer(user, message, source, status_code="OK")-> None:
     lock.acquire()
     try:
         if isinstance(user, User):
