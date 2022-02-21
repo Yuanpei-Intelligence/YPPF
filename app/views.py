@@ -424,13 +424,8 @@ def stuinfo(request, name=None):
 
         # 只有是自己的主页时才显示学时
         if is_myself:
-            course_me = CourseRecord.objects.filter(person_id=oneself)
             # 把当前学期的活动去除
-            course_me_past = (
-                course_me.exclude(
-                    year=CURRENT_ACADEMIC_YEAR,
-                    semester=Semester.now())
-            )
+            course_me_past = CourseRecord.objects.past().filter(person_id=oneself)
 
             # 无效学时，在前端呈现
             course_no_use = (
@@ -449,8 +444,8 @@ def stuinfo(request, name=None):
                 .exclude(year__gt=2021, total_hours__lt=8)
             )
 
-            course_me_past = course_me_past.order_by('year', '-semester')
-            course_no_use = course_no_use.order_by('year', '-semester')
+            course_me_past = course_me_past.order_by('year', 'semester')
+            course_no_use = course_no_use.order_by('year', 'semester')
 
             progress_list = []
 

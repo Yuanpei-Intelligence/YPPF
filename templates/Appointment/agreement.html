@@ -1,0 +1,213 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+	<meta charset="utf-8">
+	<title>Underground Appointment</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+
+	<!-- Favicons -->
+	<link href="{% static 'Appointment/assets/img/yp_favicon.png' %} " rel="icon">
+
+	<!-- Bootstrap CSS -->
+	<link rel="stylesheet" href="{% static 'Appointment/assets/css/bootstrap.min.css' %}">
+
+	<!-- Fontawesome CSS -->
+	<link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fontawesome/css/fontawesome.min.css' %} ">
+	<link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fontawesome/css/all.min.css' %} ">
+
+	<!-- Main CSS -->
+	<link rel="stylesheet" href="{% static 'Appointment/assets/css/style.css' %} ">
+
+	<!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+	<!--[if lt IE 9]>
+			<script src="{% static 'Appointment/assets/js/html5shiv.min.js"></script>
+			<script src="{% static 'Appointment/assets/js/respond.min.js"></script>
+		<![endif]-->
+		
+</head>
+
+<body>
+
+	<!-- Main Wrapper -->
+	<div class="main-wrapper">
+		<div class="breadcrumb-bar">
+			<div class="container-fluid">
+				<div class="row align-items-center">
+					<div class="col-md-12 col-12">
+						<h4 class="breadcrumb-title"><a href='index'>主页</a> / 无占座协议</h4>
+						<!--<h4 class="breadcrumb-title">选择时间</h4>-->
+					</div>
+
+				</div>
+			</div>
+		</div>
+		<!-- /Breadcrumb -->
+
+		<!-- Page Content -->
+		<div class="content">
+			<div class="container-fluid">
+			{% if warn_code == 1 %}
+			<div class="alert alert-warning  text-center" >{{ warn_message }}</div>
+			{% elif warn_code == 2 %}
+			<div class="alert alert-success  text-center" >{{ warn_message }}</div>
+			{% endif %}
+
+                <div class="form-container outer">
+
+                    <center>
+                        <div class="form-form">
+                            <div class="form-content">
+        
+                                <form class="text-left" id="form" method="POST">
+        
+                                    <div class="widget-content widget-content-area">
+        
+                                        <div class="widget-header">
+                                            <div class="row">
+                                                <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                    <h3 style="text-align: center; padding-top: 20px; padding-bottom: 20px;">申请使用35楼地下空间无占座自习室承诺书</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        
+                                        <!-- <div class="row"> -->
+                                        <div class="col">
+                                            <br/>
+                                            <p><b>我自愿申请使用35楼地下“无占座自习室”使用权，并承诺遵守以下规定：</b></p>
+                                            <br/>
+                                            <br/>
+                                            <p>1.  严格遵守35楼地下空间使用规则；</p>
+                                            <br/>
+                                            <p>2.  自习座位使用后，及时将全部个人物品带离；</p>
+                                            <br/>
+                                            <p>3.  自习过程中短暂离开座位时，正确填写占座贴并使用计时器记录离开时间，离开时间<b>不超过一小时；</b></p>
+                                            <br/>
+                                            <p>4.  认可未使用或未正确使用占座贴及计时器，或者占座超过一小时后，此座位为占座座位；</p>
+                                            <br/>
+                                            <p>5.  对于无占座自习室内占座座位，<b>同意具有“无占座自习室”使用权限的同学及物业管理人员有权将座位物品清理到临时存放处，并将座位提供给其他同学使用；</b></p>
+                                            <br/>
+                                            <p>6.  认同临时存放处为公共空间，学院及物业管理部门会每晚24点对其进行清理；</p>
+                                            <br/>
+                                            <p>7.  物业管理人员及学院等管理团队对清理的物品没有保管责任和义务，如物品遗失由使用者个人负责；</p>
+                                            <br/>
+                                            <p>8.  违反“无占座自习室”使用规定，学院将取消“无占座自习室”使用权限并扣除信用积分；</p>
+                                            <br/>
+                                            <p>9.  对使用“无占座自习室”过程中出现的任何问题，请通过内联权益部、年级主任或住宿辅导员联系学院解决。</p>
+                                            <br/>
+                                            <br/>
+                                            <p>以上内容解释权归学院所有。</p>
+                                            <br/>
+        
+                                            <div class="d-flex justify-content-between">
+                                                <button type="submit" id="confirm" name="type"
+                                                    class="btn btn-primary" value="confirm"
+                                                    style="display:block;margin:0 auto"
+                                                    onclick="return window.confirm('确定同意无占座协议吗？确认后将无法修改！')"
+                                                    {% if not agree_time %}
+                                                    >同意</button>
+                                                    {% else %}
+                                                    disabled
+                                                    >已签署({{agree_time}})</button>
+                                                    {% endif %}
+                                                &nbsp;
+                                                <button type="submit" class="btn btn-outline-primary" value=""
+                                                    style="display:block;margin:0 auto">返回</button>
+                                            </div>
+                                            <br/>
+                                        </div>
+                                        <!-- </div> -->
+                                    </div>
+                                </form>
+        
+        
+                            </div>
+                        </div>
+                    </center>
+                </div>
+			</div>
+
+		</div>
+		<!-- /Page Content -->
+
+		<!-- Footer -->
+		<footer class="footer">
+
+
+			<!-- Footer Bottom -->
+			<div class="footer-bottom">
+				<div class="container-fluid">
+
+					<!-- Copyright -->
+					<div class="copyright">
+						<div class="row">
+							<div class=" col-lg-1">
+								<div class="footer-logo">
+									<img src="{% static 'Appointment/assets/img/yuan_logo_white.png' %} " alt="logo">
+								</div>
+
+							</div>
+							<div class=" col-lg-11">
+
+								<!-- Copyright Menu -->
+								<div class="copyright-menu">
+
+									<ul class="policy-menu">
+										<li><a href="https://yuanpei.pku.edu.cn">智慧校园开发组 元培学院</a></li>
+									</ul>
+									<ul class="policy-menu">
+										<li><a>&copy; All rights Reserved.</a></li>
+									</ul>
+								</div>
+								<!-- /Copyright Menu -->
+
+							</div>
+						</div>
+					</div>
+					<!-- /Copyright -->
+
+				</div>
+			</div>
+			<!-- /Footer Bottom -->
+
+		</footer>
+		<!-- /Footer -->
+
+	</div>
+	<!-- /Main Wrapper -->
+
+	<script type="text/javascript">
+	</script>
+
+	<!-- jQuery -->
+	<script src="{% static 'Appointment/assets/js/jquery.min.js' %} "></script>
+
+	<!-- Bootstrap Core JS -->
+	<script src="{% static 'Appointment/assets/js/popper.min.js' %} "></script>
+	<script src="{% static 'Appointment/assets/js/bootstrap.min.js' %}"></script>
+
+	<!-- Custom JS -->
+	<script src="{% static 'Appointment/assets/js/script.js' %} "></script>
+
+    {% if not agree_time %}
+    <script>
+        var countdown = 3;
+        var btn = document.getElementById('confirm');
+        function settime() {
+            if (countdown == 0) {
+                btn.removeAttribute("disabled");
+                btn.innerHTML="同意";
+            } else {
+                btn.setAttribute("disabled", true);
+                btn.innerHTML="同意(" + countdown + ")";
+                countdown--;
+                setTimeout("settime()",1000);
+            }
+        }
+        settime()
+    </script>
+    {% endif %}
+
+</body>
+</html>
