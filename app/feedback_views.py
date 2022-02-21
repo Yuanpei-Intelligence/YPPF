@@ -44,7 +44,6 @@ def viewFeedback(request, fid):
 
     # 添加评论和修改活动状态
     if request.method == "POST" and request.POST:
-        print(request.POST)
         # 添加评论
         if request.POST.get("comment_submit"):
             # 只有未完成反馈可以发送评论
@@ -378,7 +377,7 @@ def feedback_homepage(request):
     # -----------------------------反馈草稿---------------------------------
     # 准备需要呈现的内容
     # 这里应该呈现：所有person为自己的feedback
-    draft_feedback = my_feedback.filter(issue_status=Feedback.IssueStatus.DRAFTED)
+    draft_feedback = my_all_feedback.filter(issue_status=Feedback.IssueStatus.DRAFTED)
 
     # -----------------------------老师审核---------------------------------
     
