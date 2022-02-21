@@ -39,7 +39,7 @@ class ParticipantAdmin(admin.ModelAdmin):
     list_display_links = ('Sid', 'name')
     list_editable = ('credit', )
 
-    class AgreeFilter(admin.EmptyFieldListFilter):
+    class AgreeFilter(admin.SimpleListFilter):
         title = '签署状态'
         parameter_name = 'Agree'
     
