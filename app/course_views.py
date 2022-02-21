@@ -436,8 +436,8 @@ def selectCourse(request):
     # if not is_staff:
     #     html_display["willing_point"] = remaining_willingness_point(me)
 
+    my_messages.transfer_message_context(request.GET, html_display)
     # 学生选课或者取消选课
-
     if request.method == 'POST':
 
         # 参数: 课程id，操作action: select/cancel
@@ -455,7 +455,6 @@ def selectCourse(request):
         try:
             # 对学生的选课状态进行变更
             context = registration_status_change(course_id, me, action)
-            my_messages.transfer_message_context(context, html_display)
             return redirect(message_url(context, request.path))
         except:
             wrong("选课过程出现错误！请联系管理员。", html_display)
