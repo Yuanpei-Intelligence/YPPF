@@ -38,10 +38,27 @@ class ParticipantAdmin(admin.ModelAdmin):
     list_display = ('Sid', 'name', 'credit', 'hidden', )
     list_display_links = ('Sid', 'name')
     list_editable = ('credit', )
-    list_filter = (
-        'credit', 'hidden',
-        ('agree_time', admin.EmptyFieldListFilter),
-        )
+
+    class AgreeFilter(admin.EmptyFieldListFilter):
+        title = '签署状态'
+        parameter_name = 'Agree'
+    
+        def lookups(self, request, model_admin):
+            '''针对字段值设置过滤器的显示效果'''
+            return (
+                ('true', "已签署"),
+                ('false', "未签署"),
+            )
+        
+        def queryset(self, request, queryset):
+            '''定义过滤器的过滤动作'''
+            if self.value() == 'true':
+                return queryset.exclude(agree_time__isnull=True)
+            elif self.value() == 'false':
+                return queryset.filter(agree_time__isnull=True)
+            return queryset
+
+    list_filter = ('credit', 'hidden', AgreeFilter)
     fieldsets = (['基本信息', {
         'fields': (
             'Sid',
