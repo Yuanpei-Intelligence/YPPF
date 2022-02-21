@@ -35,10 +35,13 @@ class ParticipantAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
     search_fields = ('Sid__username', 'name', 'pinyin')
-    list_display = ('Sid', 'name', 'credit')
+    list_display = ('Sid', 'name', 'credit', 'hidden', )
     list_display_links = ('Sid', 'name')
     list_editable = ('credit', )
-    list_filter = ('credit', 'hidden')
+    list_filter = (
+        'credit', 'hidden',
+        ('agree_time', admin.EmptyFieldListFilter),
+        )
     fieldsets = (['基本信息', {
         'fields': (
             'Sid',
@@ -49,7 +52,7 @@ class ParticipantAdmin(admin.ModelAdmin):
         '显示全部', {
             'classes': ('collapse', ),
             'description': '默认信息，不建议修改！',
-            'fields': ('credit', 'pinyin'),
+            'fields': ('credit', 'pinyin', 'agree_time'),
         }
     ])
 
@@ -182,6 +185,7 @@ class AppointAdmin(admin.ModelAdmin):
                 return queryset.exclude(Astatus=Appoint.Status.CANCELED)
             elif self.value() == 'false':
                 return queryset.filter(Astatus=Appoint.Status.CANCELED)
+            return queryset
 
     list_filter = ('Astart', 'Atime', 'Astatus', ActivateFilter, 'Atemp_flag')
 
