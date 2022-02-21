@@ -23,8 +23,9 @@ from Appointment.models import (
 
 
 # Register your models here.
-admin.site.site_title = '元培地下室管理后台'
-admin.site.site_header = '元培地下室 - 管理后台'
+# 合并后无需修改
+# admin.site.site_title = '元培地下室管理后台'
+# admin.site.site_header = '元培地下室 - 管理后台'
 
 admin.site.register(College_Announcement)
 
