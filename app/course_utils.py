@@ -12,6 +12,7 @@ remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 check_course_time_conflict: 检查当前选择的课是否与已选的课上课时间冲突
 """
+from sqlalchemy import null
 from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
@@ -611,6 +612,7 @@ def course_to_display(courses, user, detail=False) -> list:
             course_info["record_cal_method"] = course.record_cal_method
             course_info["photo_path"] = course.get_photo_path()
             course_info["QRcode"] = course.get_QRcode_path()
+            course_info["have_QRcode"] = bool(course.QRcode)
             course_info["organization_name"] = course.organization.oname
             if course.QRcode:
                 course_info["QRcode"] = MEDIA_URL + str(course.QRcode)
