@@ -36,7 +36,11 @@ class Participant(models.Model):
     name = models.CharField('姓名', max_length=64)
     credit = models.IntegerField('信用分', default=3)
     pinyin = models.CharField('拼音', max_length=20, null=True)
-    hidden = models.BooleanField('可搜索', default=False)
+    hidden = models.BooleanField('不可搜索', default=False)
+
+    # TODO: pht 2022-02-20 通过新的模型实现，允许每个房间有自己的规则
+    # 用户许可的字段，需要许可的房间刷卡时检查是否通过了许可
+    agree_time = models.DateField('上次许可时间', null=True, blank=True)
 
     class Meta:
         verbose_name = '学生'
@@ -72,7 +76,7 @@ class Room(models.Model):
                                        default=0)
 
     # 标记当前房间是否可以通宵使用，可由管理员修改（主要针对自习室）
-    RIsAllNight = models.SmallIntegerField('可通宵使用', default=0)
+    RIsAllNight = models.BooleanField('可通宵使用', default=False)
     # 是否需要许可，目前通过要求阅读固定须知实现，未来可拓展为许可模型（关联房间和个人）
     RneedAgree = models.BooleanField('需要许可', default=False)
 

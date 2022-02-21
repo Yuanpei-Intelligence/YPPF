@@ -23,8 +23,9 @@ from Appointment.models import (
 
 
 # Register your models here.
-admin.site.site_title = '元培地下室管理后台'
-admin.site.site_header = '元培地下室 - 管理后台'
+# 合并后无需修改
+# admin.site.site_title = '元培地下室管理后台'
+# admin.site.site_header = '元培地下室 - 管理后台'
 
 admin.site.register(College_Announcement)
 
@@ -88,11 +89,12 @@ class ParticipantAdmin(admin.ModelAdmin):
 class RoomAdmin(admin.ModelAdmin):
     list_display = ('Rid', 'Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish',
                     'Rstatus_display', 'RIsAllNight', 'Rpresent', 'Rlatest_time',
+                    'RneedAgree',
                     )  # 'is_delete'
     list_display_links = ('Rid', )
-    list_editable = ('Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish')
+    list_editable = ('Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish', 'RneedAgree')
     search_fields = ('Rid', 'Rtitle')
-    list_filter = ('Rstatus', 'RIsAllNight')  # 'is_delete'
+    list_filter = ('Rstatus', 'RIsAllNight', 'RneedAgree')  # 'is_delete'
     fieldsets = (
         [
             '基本信息', {
@@ -105,6 +107,7 @@ class RoomAdmin(admin.ModelAdmin):
                     'Rfinish',
                     'Rstatus',
                     'RIsAllNight',
+                    'RneedAgree',
                 ),
             }
         ],

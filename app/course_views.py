@@ -138,6 +138,9 @@ def addSingleCourseActivity(request):
     except:
         return redirect(message_url(wrong('本学期尚未开设书院课程，请先发起选课！'), 
                                     '/showCourseActivity/'))
+    if course.status != Course.Status.SELECT_END:
+        return redirect(message_url(wrong('选课尚未结束，不能发起课程！'), 
+                                    '/showCourseActivity/'))
 
     my_messages.transfer_message_context(request.GET, html_display)
 
@@ -150,7 +153,8 @@ def addSingleCourseActivity(request):
                     return redirect(message_url(
                         succeed('存在信息相同的课程活动，已为您自动跳转!'),
                         f'/viewActivity/{aid}'))
-                return redirect(f"/editCourseActivity/{aid}")
+                return redirect(message_url(succeed('活动创建成功！'), 
+                                            f'/showCourseActivity/'))
         except AssertionError as err_info:
             return redirect(message_url(wrong(str(err_info)), request.path))
         except Exception as e:
@@ -380,6 +384,8 @@ def showCourseRecord(request):
             for record in record_search:
                 # 每次都需要更新一下参与次数，避免出现手动调整签到但是未能记录在学时表的情况
                 record.attend_times = participate_raw[record.person.id]
+                if int(record.total_hours) != record.total_hours:
+                    record.total_hours = int(record.total_hours)
                 records_list.append({
                     "pk": record.person.id,
                     "name": record.person.name,
@@ -452,6 +458,7 @@ def selectCourse(request):
             # 对学生的选课状态进行变更
             context = registration_status_change(course_id, me, action)
             my_messages.transfer_message_context(context, html_display)
+            return redirect(message_url(context, request.path))
         except:
             wrong("选课过程出现错误！请联系管理员。", html_display)
 
@@ -463,13 +470,22 @@ def selectCourse(request):
     html_display["yx_election_end"] = get_setting("course/yx_election_end")
     html_display["btx_election_start"] = get_setting("course/btx_election_start")
     html_display["btx_election_end"] = get_setting("course/btx_election_end")
-
+    html_display["publish_time"] = get_setting("course/publish_time")
+    html_display["status"] = None
+    if str_to_time(html_display["yx_election_start"]) > datetime.now():
+        html_display["status"] = "未开始"
+    elif (str_to_time(html_display["yx_election_start"])) <= datetime.now() < (str_to_time(html_display["yx_election_end"])):
+        html_display["status"] = "预选"
+    elif (str_to_time(html_display["yx_election_end"])) <= datetime.now() < (str_to_time(html_display["publish_time"])):
+        html_display["status"]="抽签中"
+    elif (str_to_time(html_display["btx_election_start"])) <= datetime.now() < (str_to_time(html_display["btx_election_end"])):
+        html_display["status"]="补退选"
     # 是否正在进行抽签
     is_drawing = (str_to_time(html_display["yx_election_end"]) <= datetime.now()
-                   <= str_to_time(html_display["btx_election_start"]))
+                   <= str_to_time(html_display["publish_time"]))
 
     # 选课是否已经全部结束
-    is_end = (datetime.now() > str_to_time(html_display["btx_election_end"]))
+    #is_end = (datetime.now() > str_to_time(html_display["btx_election_end"]))
 
     unselected_courses = Course.objects.unselected(me)
     selected_courses = Course.objects.selected(me)
@@ -586,7 +602,6 @@ def addCourse(request, cid=None):
                 return redirect(message_url(wrong('当前课程状态不允许修改!'),
                                             f'/editCourse/{course.id}'))
             context = create_course(request, course.id)
-            course = Course.objects.get(id=context["cid"])
         html_display["warn_code"] = context["warn_code"]
         html_display["warn_message"] = context["warn_message"]
 

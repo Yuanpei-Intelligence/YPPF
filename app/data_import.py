@@ -15,8 +15,9 @@ from app.models import (
     Semester,
     FeedbackType,
     Feedback,
+    Comment,
 )
-from app.utils import random_code_init
+from app.utils import random_code_init, get_user_by_name
 
 import os
 import math
@@ -522,7 +523,10 @@ def load_CouRecord(request):
             hours = course_df.iloc[i, 4]    
             record_view = str(course)+' '+str(sid)+' '+str(name)+' '+str(times)+' '+str(hours)
             if (type(name)!=str and sid is numpy.nan): continue  #允许中间有空行
-            if (type(sid) not in [int,float] or type(times) not in [int,float] or type(hours) not in [int,float]):
+            if ((type(sid)not in [float,numpy.float64] and not str(sid).isdigit()) 
+                or (type(times) not in [int,float] and not str(times).isdigit())
+                or (type(hours) not in [int,float] and not str(hours).isdigit())):
+                # 读取表格时可能sid,times,hours为str类型，所以增加判定规则
                 info_show["type error"].append(record_view)
                 continue
             
@@ -599,7 +603,7 @@ def load_CouRecord(request):
             if person[1].exists():
                 for message in person[1]:
                     context['message'] += '<div style="color:cadetblue;">'+message.name +' '+ message.person_id.username+'</div>'
-            if person[2].exists():
+            if person[2]!=None and person[2].exists():
                 for message in person[2]:
                     context['message'] += '<div style="color:cadetblue;">'+message.name +' '+ message.person_id.username+'</div>'
             elif not person[1].exists():
@@ -800,16 +804,58 @@ def load_feedback_type():
     return "导入反馈类型信息成功！"
 
 
+def load_feedback_comments():
+    '''该函数用于导入反馈的评论(feedbackcomments.csv)
+    需要先导入feedbackinf.csv'''
+    try:
+        feedback_df = load_file("feedbackcomments.csv")
+    except:
+        return "没有找到feedbackcomments.csv,请确认该文件已经在test_data中。"
+    error_dict = {}
+    comment_num = 0
+    for _, comment_dict in feedback_df.iterrows():
+        comment_num += 1
+        err = False
+        try:
+            feedback = Feedback.objects.get(id=comment_dict["fid"])
+            commentator, commentator_type = get_user_by_name(comment_dict["commentator"])
+            comment_time = datetime.strptime(comment_dict["time"], "%m/%d/%Y %H:%M %p")
+
+            comment = Comment.objects.create(
+                commentbase=feedback, commentator=commentator, text=comment_dict["text"], time=comment_time
+            )
+
+        except Exception as e:
+            err = True
+            error_dict["{}: {}".format(comment_num, comment_dict["fid"])] = '''
+                填写状态信息有误，请再次检查发布/阅读/解决/公开状态(文字)是否填写正确！
+            ''' if isinstance(e,AssertionError) else e
+            comment.delete()
+
+        if not err:
+            comment.save()
+
+    return '<br/>'.join((
+                    f"共尝试导入{comment}条反馈评论",
+                    f"导入成功的反馈：{comment_num - len(error_dict)}条",
+                    f"导入失败的反馈：{len(error_dict)}条",
+                    f'错误原因：' if error_dict else ''
+                    ) + tuple(f'{fb}：{err}' for fb, err in error_dict.items()
+                    ))
+
+
 def load_feedback_data(request):
     if request.user.is_superuser:
         load_type = request.GET.get("loadtype", None)
         message = "加载失败！"
         if load_type is None:
-            message = "没有传入loadtype参数:[detail或type]"
+            message = "没有传入loadtype参数:[detail,type或comment]"
         elif load_type == "type":
             message = load_feedback_type()
         elif load_type == "detail":
             message = load_feedback()
+        elif load_type == "comment":
+            message = load_feedback_comments()
         else:
             message = "没有得到loadtype参数:[detail或otype]"
     else:
