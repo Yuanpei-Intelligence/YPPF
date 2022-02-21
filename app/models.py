@@ -1455,7 +1455,7 @@ class Course(models.Model):
         return image_url(self.photo, enable_abs=True)
 
     def get_QRcode_path(self):
-        return image_url(self.QRcode, enable_abs=True)
+        return image_url(self.QRcode)
 
 
 class CourseTime(models.Model):
