@@ -638,14 +638,13 @@
                                 
                                 <div id="act2" class="tab-pane fade">
                                 <div class="bio-skill-box ">
-                                    {% comment %} 后端对接：history_activity_list{% endcomment %}
-                                    {% if history_activity_list|length == 0 %}
+                                    {% if history_activity_list_participantrec|length == 0 %}
                                     <br />
                                     <p style="text-align: center;">没有该类别的活动</p>
                                     <br />
                                     {% endif %}
                                     <div class="row">
-                                        {% for act in history_activity_list %}
+                                        {% for act in history_activity_list_participantrec %}
                                         <div class="col-12 col-xl-4 col-lg-6 mb-xl-5 mb-5 ">
                                             <a href="/viewActivity/{{rec.act.id}}">
                                                 <div class="d-flex b-skills">
