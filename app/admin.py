@@ -328,6 +328,7 @@ class ActivityAdmin(admin.ModelAdmin):
     
     list_filter =   (
                         "status", "inner", "need_checkin", "valid",
+                        'category',
                         "organization_id__otype", "source",
                         ErrorFilter,
                         'endbefore', "capacity", "year",
@@ -443,8 +444,10 @@ class ActivityAdmin(admin.ModelAdmin):
 @admin.register(Participant)
 class ParticipantAdmin(admin.ModelAdmin):
     list_display = ["id", 'activity_id', "person_id", "status",]
-    search_fields = ('id', "activity_id__title", "person_id__name",)
-    list_filter =   ("status", )
+    search_fields = ('id','activity_id__id',
+                     "activity_id__title", "person_id__name",)
+    list_filter =   ("status", 'activity_id__category',
+                     'activity_id__year', 'activity_id__semester',)
 
 
 @admin.register(Notification)
