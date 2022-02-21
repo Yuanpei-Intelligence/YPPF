@@ -135,7 +135,7 @@
                                                             <label class="custom-control-label"
                                                                 for="{{username}}_{{type_id}}"
                                                                 id="checkbox2{{username}}_{{type_id}}">
-                                                                <font color="5F747B"
+                                                                <font color="120089"
                                                                     id="font{{username}}_{{type_id}}">已订阅</font>
                                                             </label>
                                                         </div>
@@ -226,7 +226,7 @@
         for (var i = 0; i < lst.length; i += 1) {
             if (!lst[i].checked) {
                 if (success) {
-                    change_single_status(lst[i], "F3FDFF", "5F747B", "已订阅");
+                    change_single_status(lst[i], "F3FDFF", "120089", "已订阅");
                     const num = lst[i].parentNode.parentNode.parentNode.querySelector(`span.num_sub`);
                     num.textContent = Number(num.textContent) + 1;
                     lst[i].checked = true;
@@ -247,7 +247,7 @@
         } else {
             const success = await save_subscribe_status.call(this, true);
             if (success) {
-                change_single_status(this, "F3FDFF", "5F747B", "已订阅");
+                change_single_status(this, "F3FDFF", "120089", "已订阅");//5F747B
                 num.textContent = Number(num.textContent) + 1;
             }
             else this.checked = false;

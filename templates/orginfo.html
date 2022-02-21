@@ -77,13 +77,13 @@
                                 <input type="checkbox" class="custom-control-input" id="switch button"
                                     onclick="change_status.call(this);this.blur();" checked {% if not allow_unsubscribe %} disabled {% endif %}>
                                 <label class="custom-control-label" for="switch button">
-                                    <font color="5F747B" id="subscribe">已订阅</font>
+                                    <font color="120089" id="subscribe">已订阅</font>
                                 </label>
                                 {% else %}
                                 <input type="checkbox" class="custom-control-input" id="switch button"
                                     onclick="change_status.call(this);this.blur();">
                                 <label class="custom-control-label" for="switch button">
-                                    <font color="E1E1E1" id="subscribe">未订阅</font>
+                                    <font color="d03b16" id="subscribe">未订阅</font>
                                 </label>
                                 {% endif %}
                             </div>
@@ -94,13 +94,13 @@
                                 <input type="checkbox" class="custom-control-input" id="button"
                                     onclick="change_position_show.call(this);this.blur();" checked>
                                 <label class="custom-control-label" for="button">
-                                    <font color="5F747B" id="show_post">展示我的职位</font>
+                                    <font color="120089" id="show_post">展示我的职位</font>
                                 </label>
                                 {% else %}
                                 <input type="checkbox" class="custom-control-input" id="button"
                                     onclick="change_position_show.call(this);this.blur();">
                                 <label class="custom-control-label" for="button">
-                                    <font color="E1E1E1" id="show_post">隐藏我的职位</font>
+                                    <font color="d03b16" id="show_post">隐藏我的职位</font>
                                 </label>
                                 {% endif %}
                             </div>
@@ -615,7 +615,7 @@
         if (!this.checked) {
             const success = await save_subscribe_status.call(this, false);
             if (success) {
-                document.getElementById(`subscribe`).color = "E1E1E1";
+                document.getElementById(`subscribe`).color = "d03b16";
                 document.getElementById(`subscribe`).innerHTML = "未订阅";
             }
             else {
@@ -625,7 +625,7 @@
         } else {
             const success = await save_subscribe_status.call(this, true);
             if (success) {
-                document.getElementById(`subscribe`).color = "5F747B";
+                document.getElementById(`subscribe`).color = "120089";
                 document.getElementById(`subscribe`).innerHTML = "已订阅";
             }
             else this.checked = false;
@@ -635,7 +635,7 @@
         if (!this.checked) {
             const success = await save_show_position_status.call(this, false);
             if (success) {
-                document.getElementById(`show_post`).color = "E1E1E1";
+                document.getElementById(`show_post`).color = "d03b16";
                 document.getElementById(`show_post`).innerHTML = "隐藏我的职位";
                 document.getElementById('{{my_position.id}}').hidden = true;
             }
@@ -646,7 +646,7 @@
         } else {
             const success = await save_show_position_status.call(this, true);
             if (success) {
-                document.getElementById(`show_post`).color = "5F747B";
+                document.getElementById(`show_post`).color = "120089";
                 document.getElementById(`show_post`).innerHTML = "展示我的职位";
                 document.getElementById('{{my_position.id}}').hidden = false;
             }
