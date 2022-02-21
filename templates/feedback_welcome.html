@@ -78,14 +78,14 @@
                                 </div>
                                 
                             </div>
-                            <div class="col-lg-8 col-md-7 col-12 pb-2" style="height: 100%;">
+                            <div class="col-lg-8 col-md-7 col-12 pb-2">
                                 <!-- 留言公开 -->
                                 <!-- <h3>留言公开</h3> -->
                                 <div id="publicFeedbackTab" class="tab-content">
                                     <div class="tab-pane fade in active show" id="right">
                                         <div class="bio-skill-box pb-0 align-items-center" style="overflow-y: scroll; overflow-x: hidden;" id="publicFeedbackBox">
                                             {% if public_feedback %}
-                                            <div id="right_feedback" class="row">
+                                            <div id="public-feedback" class="row">
                                                 {% for feedback in public_feedback %}
                                                     <div class="col-12 col-xl-6 col-lg-6 mb-xl-4 mb-4 ">
                                                         <div class="b-skills">
@@ -138,7 +138,7 @@
                                                 {% endfor %}
                                             </div>
                                             {% else %}
-                                            <div style="margin-top: 32%;">
+                                            <div style="margin-top: 32%;" id="noPublicFeedback">
                                                 <p style="text-align: center;">目前没有公开的权益反馈.</p>
                                                 <br>
                                             </div>
@@ -157,14 +157,23 @@
             const ref = document.getElementById("feedback-welcome");
             const publicBox = document.getElementById("publicFeedbackBox");
             const publicTab = document.getElementById("publicFeedbackTab");
+            const hasPublicFeedback = (document.getElementById("public-feedback") !== null);
             /* ---------------- fit public tab according to screen height ---------------- */
             function fit() {
-                console.log(this.innerWidth);
                 if(this.innerWidth < 767) {
+                    console.log(publicBox.style.height);
                     $("#border-right").hide();
                     document.querySelector("#border-bottom").classList.remove("fade");
-                    publicBox.style.maxHeight = (ref.offsetHeight - publicBox.offsetTop) + "px";
-                    publicTab.style.maxHeight = (ref.offsetHeight - publicTab.offsetTop) + "px";
+                    // publicBox.style.maxHeight = (ref.offsetHeight - publicBox.offsetTop) + "px";
+                    // publicTab.style.maxHeight = (ref.offsetHeight - publicTab.offsetTop) + "px";
+                    if (hasPublicFeedback) {
+                        const card = document.querySelector(".b-skills");
+                        publicTab.style.height = publicBox.style.height = card.style.height;
+                    }
+                    else {
+                        publicTab.style.height = publicBox.style.height = "100px";
+                        document.getElementById("noPublicFeedback").style.marginTop = "10px";
+                    }
                 }
                 else {
                     publicBox.style.height = (ref.offsetHeight - publicBox.offsetTop) + "px";
