@@ -357,6 +357,16 @@ class ActivityAdmin(admin.ModelAdmin):
                     ]).count()
             activity.save()
         return self.message_user(request=request, message='修改成功!')
+    
+    @as_action('设为 普通活动', actions, update=True)
+    def set_normal_category(self, request, queryset):
+        queryset.update(category=Activity.ActivityCategory.NORMAL)
+        return self.message_user(request=request, message='修改成功!')
+
+    @as_action('设为 课程活动', actions, update=True)
+    def set_course_category(self, request, queryset):
+        queryset.update(category=Activity.ActivityCategory.COURSE)
+        return self.message_user(request=request, message='修改成功!')
 
     @as_action("进入 等待中 状态")
     def to_waiting(self, request, queryset):
@@ -714,6 +724,16 @@ class CourseRecordAdmin(admin.ModelAdmin):
                 return queryset.filter(course__type=self.value())
             return queryset
     list_filter = (TypeFilter, 'year', 'semester')
+
+    actions = []
+
+    @as_action('更新来源名称', actions, update=True)
+    def update_extra_name(self, request, queryset):
+        records = queryset.filter(course__isnull=False)
+        for record in records.select_related('course'):
+            record.extra_name = record.course.name
+            record.save()
+        return self.message_user(request=request, message='已更新关联学时名称!')
 
 
 @admin.register(Feedback)
