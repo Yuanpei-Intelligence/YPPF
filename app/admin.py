@@ -7,8 +7,11 @@ from django.db import transaction
 from django.utils.safestring import mark_safe
 
 # Register your models here.
-admin.site.site_title = '元培成长档案管理后台'
-admin.site.site_header = '元培成长档案 - 管理后台'
+admin.site.site_title = '元培智慧校园管理后台'
+admin.site.site_header = '元培智慧校园 - 管理后台'
+# 合并后只需声明一次
+# admin.site.site_title = '元培成长档案管理后台'
+# admin.site.site_header = '元培成长档案 - 管理后台'
 
 
 def as_action(description=None, /, register_to=None, *,
@@ -325,6 +328,7 @@ class ActivityAdmin(admin.ModelAdmin):
     
     list_filter =   (
                         "status", "inner", "need_checkin", "valid",
+                        'category',
                         "organization_id__otype", "source",
                         ErrorFilter,
                         'endbefore', "capacity", "year",
@@ -440,8 +444,10 @@ class ActivityAdmin(admin.ModelAdmin):
 @admin.register(Participant)
 class ParticipantAdmin(admin.ModelAdmin):
     list_display = ["id", 'activity_id', "person_id", "status",]
-    search_fields = ('id', "activity_id__title", "person_id__name",)
-    list_filter =   ("status", )
+    search_fields = ('id','activity_id__id',
+                     "activity_id__title", "person_id__name",)
+    list_filter =   ("status", 'activity_id__category',
+                     'activity_id__year', 'activity_id__semester',)
 
 
 @admin.register(Notification)
@@ -673,6 +679,41 @@ class CourseAdmin(admin.ModelAdmin):
 class CourseParticipantAdmin(admin.ModelAdmin):
     list_display = ["course", "person", "status",]
     search_fields = ("course__name", "person__name",)
+
+
+@admin.register(CourseRecord)
+class CourseRecordAdmin(admin.ModelAdmin):
+    list_display = [
+        'get_course_name', 'person',
+        'year', 'semester',
+        'attend_times', 'total_hours',
+    ]
+    search_fields = (
+        'course__name', 'extra_name',
+        'person__name', 'person__person_id__username',
+    )
+    class TypeFilter(admin.SimpleListFilter):
+        title = '学时类别'
+        parameter_name = 'type' # 过滤器使用的过滤字段
+    
+        def lookups(self, request, model_admin):
+            '''针对字段值设置过滤器的显示效果'''
+            # 自带一个None, '全部'
+            return (
+                ('null', '无'),
+                ('any', '任意'),
+            ) + tuple(Course.CourseType.choices)
+        
+        def queryset(self, request, queryset):
+            '''定义过滤器的过滤动作'''
+            if self.value() == 'null':
+                return queryset.filter(course__isnull=True)
+            elif self.value() == 'any':
+                return queryset.exclude(course__isnull=True)
+            elif self.value() in map(str, Course.CourseType.values):
+                return queryset.filter(course__type=self.value())
+            return queryset
+    list_filter = (TypeFilter, 'year', 'semester')
 
 
 @admin.register(Feedback)

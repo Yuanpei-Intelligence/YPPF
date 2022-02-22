@@ -446,6 +446,47 @@
 
                     </div>
                     <!--  END JOINED ORGANIZATIONS  -->
+                    
+                    <!--  BEGIN HISTORY ORGANIZATIONS  -->
+                    <div class="widget-content widget-content-area my-3">
+
+                        <div class="row">
+                            <h3 class="col mb-0">历史小组</h3>
+                        </div>
+
+                        <div class="bio-skill-box">
+                            {% if html_display.history_orgs_info is None %}
+                            <p style="text-align: center;">没有历史小组</p>
+                            {% else %}
+                            <div class="row">
+                                {% for org, ava, pos in html_display.history_orgs_info %}
+                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
+                                    <div
+                                        style="padding-left: 2%;padding-right: 2%; background-image: url({{ ava }}); background-size: 55%; background-repeat: no-repeat; background-position: right;">
+                                        <div class=" b-skills row" style="background-color: #ffffffcc;">
+                                            <div class="col-9 container-fluid">
+                                                <a href="/orginfo/?name={{ org.oname }}">
+                                                    <h5>{{ org.oname }}</h5>
+                                                </a>
+                                                <p
+                                                    style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                    {{ org.introduction }}</p>
+                                                <!-- where's the custom static css file? -->
+                                            </div>
+                                            <div class="col-3 pr-0">
+                                                <p><b class="text-muted">{{ pos }}</b></p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+
+                            </div>
+                            {% endif %}
+                        </div>
+
+                    </div>
+                    <!--  END HISTORY ORGANIZATIONS  -->
 
                     <!--  BEGIN HIDDEN ORGANIZATIONS  -->
                     {% if html_display.is_myself == True %}
@@ -506,7 +547,7 @@
                         {% if html_display.is_myself %}
                             <div class="row">
                                 <h3 class="col mb-0">我的学时
-                                    <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="仅统计过往学期。如果学时统计有误，请通过相关途径联系管理员。">
+                                    <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="仅统计过往学期。如果学时统计有误，请联系对应课程助教。">
                                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
                                             class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                                             <path
@@ -692,6 +733,74 @@
 
                             {% endif %}
                         </div>
+                                            
+                         <div class="row">
+                            <h3 class="col mb-0">历史活动</h3>
+                        </div>
+
+                        <div class="row bio bio-skill-box">
+                            {% if html_display.history_act_info is None %}
+                            <p class="w-100" style="text-align: center;">没有历史活动</p>
+                            {% else %}
+                            {% for act in html_display.history_act_info %}
+                            <div class="col-sm-12 col-md-6 mb-3 custom-activity-card ">
+                                <a href="/viewActivity/{{ act.id }}">
+                                    <div class="d-flex b-skills">
+                                        <div class="text-nowrap mw-100">
+                                            <div class="d-flex justify-content-between">
+                                                <h5 style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+
+                                                    {% if act.status == "等待中" %}
+                                                    <span class="badge badge-pill badge-warning">
+                                                        等待开始
+                                                    {% else %}
+                                                    {% if act.status == "审核中" %}
+                                                    <span class="flex badge badge-pill badge-secondary">
+                                                    {% elif act.status == "已取消" %}
+                                                    <span class="badge badge-pill badge-dark">
+                                                    {% elif act.status == "未过审" or act.status == "已撤销" or act.status == "已结束" %}
+                                                    <span class="badge badge-pill badge-danger">
+                                                    {% elif act.status == "报名中" %}
+                                                    <span class="badge badge-pill badge-info">
+                                                    {% elif act.status == "进行中" %}
+                                                    <span class="badge badge-pill badge-success">
+                                                    {% endif %}
+                                                        {{ act.status }}
+                                                    {% endif %}
+                                                    </span>
+
+                                                    {{ act.title }}
+                                                </h5>
+                                            </div>
+
+                                            <p
+                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-sitemap" style="width: 20px;"></i>
+                                                <span class="ml-1">{{ act.organization_id }}</span>
+                                            </p>
+
+                                            <p
+                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-clock" style="width: 20px;"></i>
+                                                <span class="ml-1">{{ act.start }} - {{ act.end }}</span>
+                                            </p>
+
+                                            <p
+                                                style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                <i class="fa fa-info-circle" style="width: 20px;"></i>
+                                                <span class="ml-1">{{ act.introduction }}</span>
+                                            </p>
+                                        </div>
+                                    </div>
+                                </a>
+                            </div>
+
+                            {% endfor %}
+
+                            {% endif %}
+                        </div>
+                                            
+                                            
                     </div>
                 </div>
             </div>
