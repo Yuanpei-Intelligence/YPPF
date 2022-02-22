@@ -644,7 +644,7 @@
                                     <br />
                                     {% endif %}
                                     <div class="row">
-                                        {% for act in history_activity_list_participantrec %}
+                                        {% for rec in history_activity_list_participantrec %}
                                         <div class="col-12 col-xl-4 col-lg-6 mb-xl-5 mb-5 ">
                                             <a href="/viewActivity/{{rec.act.id}}">
                                                 <div class="d-flex b-skills">
@@ -653,62 +653,62 @@
                                                         <div class="d-flex justify-content-between">
                                                             <h5
                                                                 style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-
-                                                                {% if act.status == "已取消" %}
+                                        
+                                                                {% if rec.act.status == "已取消" %}
                                                                 <span class="badge badge-pill badge-dark">
                                                                 {% else %}
                                                                 <span class="badge badge-pill badge-danger">
                                                                 {% endif %}
-                                                                    {{ act.status }}
+                                                                    {{ rec.act.status }}
                                                                 </span>
-
-                                                                {{ act.title }}
-
+                                        
+                                                                {{ rec.act.title }}
+                                        
                                                             </h5>
                                                         </div>
-
-                                                        <p>{{ act.introduction }}</p>
-
+                                        
+                                                        <p>{{ rec.act.introduction }}</p>
+                                        
                                                         <div class="d-flex justify-content-start">
                                                             <p class="flex mr-3" style="width: 20px;">
                                                                 <i class="fa fa-clock"></i>
                                                             </p>
                                                             <p class="flex">
-                                                                {{ act.start }}
+                                                                {{ rec.act.start }}
                                                             </p>
                                                         </div>
-
+                                        
                                                         <div class="d-flex justify-content-start">
                                                             <p class="flex mr-3" style="width: 20px;">
                                                                 <i class="fa fa-users"></i>
                                                             </p>
                                                             <p class="flex">
-                                                                {{ act.current_participants }}
+                                                                {{ rec.act.current_participants }}
                                                                 /
-                                                                {{ act.capacity }}
+                                                                {{ rec.act.capacity }}
                                                             </p>
                                                         </div>
-
+                                        
                                                         <div class="row">
                                                             <div class="col d-flex justify-content-start">
                                                                 <p class="flex mr-3" style="width: 20px;">
                                                                     <i class="fa fa-money-bill"></i>
                                                                 </p>
                                                                 <p class="flex">
-                                                                    元气值{{ act.YQPoint }}
+                                                                    元气值{{ rec.act.YQPoint }}
                                                                 </p>
                                                             </div>
-
+                                        
                                                             <div class="col d-flex justify-content-start">
                                                                 <p class="flex mr-3" style="width: 20px;">
                                                                     <i class="fa fa-location-arrow"></i>
                                                                 </p>
                                                                 <p class="flex">
-                                                                    {{ act.location }}
+                                                                    {{ rec.act.location }}
                                                                 </p>
                                                             </div>
                                                         </div>
-
+                                        
                                                     </div>
                                                 </div>
                                             </a>
