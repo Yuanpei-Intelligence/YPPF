@@ -22,7 +22,7 @@ __all__ = [
 ]
 
 
-def check_feedback(request, post_type):
+def check_feedback(request, post_type, me):
     '''返回feedback的context字典，如果是提交反馈则检查feedback参数的合法性'''
     context = dict()
     context["warn_code"] = 0
@@ -81,6 +81,9 @@ def check_feedback(request, post_type):
         if publisher_public == "":
             return wrong("必须选择同意/不同意公开~")
 
+        if OrganizationType.objects.get(otype_name=otype).incharge == me:
+            return wrong("老师您好，本系统暂不支持给您管理的小组发送反馈！抱歉。")
+
     context["title"] = title                               # 反馈标题
     context["person"] = request.user                       # 反馈发出者
     context["otype"] = str(request.POST.get("otype"))      # 接收小组类型
@@ -105,7 +108,7 @@ def update_feedback(feedback, me, request):
         info = request.POST
         post_type = str(info.get("post_type"))
         
-        context = check_feedback(request, post_type)
+        context = check_feedback(request, post_type, me)
         if context['warn_code'] == 1:
             return context
         
