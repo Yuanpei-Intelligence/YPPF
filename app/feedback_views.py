@@ -387,17 +387,26 @@ def feedback_homepage(request):
     # 准备需要呈现的内容
     # 这里应该呈现：所有person为自己的feedback
     draft_feedback = my_all_feedback.filter(issue_status=Feedback.IssueStatus.DRAFTED)
-
     # -----------------------------老师审核---------------------------------
     
     is_teacher = me.identity == NaturalPerson.Identity.TEACHER if is_person else False
-    teacher_incharge = me.incharge.all() if is_teacher else False
-    my_wait_public = (
+    my_wait_public = []
+    my_public_feedback = []
+    wait_public = (
         issued_feedback
-        .filter()
         .filter(publisher_public=True, org_public=True)
         .filter(public_status=Feedback.PublicStatus.PRIVATE)
     )
+    if is_teacher:
+        for feedback in wait_public:
+            can_show = me.incharge.filter(otype_id=feedback.org.otype_id)
+            if can_show.exists():
+                my_wait_public.append(feedback)
+        
+        for feedback in public_feedback:
+            can_show = me.incharge.filter(otype_id=feedback.org.otype_id)
+            if can_show.exists():
+                my_public_feedback.append(feedback)
 
     if request.method == "POST":
         option = request.POST.get("option")
