@@ -234,6 +234,7 @@ def viewActivity(request, aid=None):
     start_month = activity.start.month
     start_date = activity.start.day
     duration = activity.end - activity.start
+    duration = duration - timedelta(microseconds=duration.microseconds)
     prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     introduction = activity.introduction

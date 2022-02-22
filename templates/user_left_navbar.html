@@ -35,10 +35,10 @@
                     </div>
                 </a>
             </li>
-            <li class="menu" onclick="ModuleTrackFunction(3,'反馈中心')">
-                <a href="#dashboard4" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+            <li class="menu">
+                <a href="/feedback/" aria-expanded="false" class="dropdown-toggle">
                     <div class="">
-                        <!-- settings -->
+                        <!-- feedbacks -->
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
                             stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="21 8 21 21 3 21 3 8" />
@@ -47,28 +47,7 @@
                         </svg>
                         <span>反馈中心</span>
                     </div>
-                    <div>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
-                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
-                            class="feather feather-chevron-right">
-                            <polyline points="9 18 15 12 9 6"></polyline>
-                        </svg>
-                    </div>
                 </a>
-                <ul class="collapse submenu list-unstyled" id="dashboard4" data-parent="#accordionExample">
-                    <li>
-                        <a href="/feedback/">我要留言</a>
-                    </li>
-                    <li>
-                        <a href="">草稿箱</a>
-                    </li>
-                    <li>
-                        <a href="#">查看我的反馈</a>
-                    </li>
-                    <li onclick="ModuleTrackFunction(3,'查看公开反馈')">
-                        <a href="#">查看公开反馈</a>
-                    </li>
-                </ul>
             </li>
             <li class="menu">
                 <a href="/myYQPoint/" aria-expanded="false" class="dropdown-toggle">
@@ -283,7 +262,7 @@
             {% endif %}
 
             <li class="menu">
-                <a href="#dashboard3" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle">
+                <a href="#dashboard3" data-toggle="collapse" aria-expanded="false" class="dropdown-toggle" onclick="ModuleTrackFunction(3,'账户设置')">
                     <div class="">
                         <!-- settings -->
                         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none"
@@ -304,10 +283,10 @@
                     </div>
                 </a>
                 <ul class="collapse submenu list-unstyled" id="dashboard3" data-parent="#accordionExample">
-                    <li>
+                    <li onclick="ModuleTrackFunction(3,'信息与隐私')">
                         <a href="/userAccountSetting/">信息与隐私</a>
                     </li>
-                    <li>
+                    <li onclick="ModuleTrackFunction(3,'修改密码')">
                         <a href="/modpw/">修改密码</a>
                     </li>
                 </ul>

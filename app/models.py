@@ -15,6 +15,7 @@ __all__ = [
     'OrganizationType',
     'OrganizationTag',
     'Semester',
+    'select_current',
     'Organization',
     'Position',
     'Course',
@@ -49,6 +50,24 @@ __all__ = [
 def current_year()-> int:
     '''不导出的函数，用于实时获取学年设置'''
     return CURRENT_ACADEMIC_YEAR
+
+
+def select_current(queryset,
+                   _year_field='year', _semester_field='semester', *,
+                   noncurrent=False, exact=False):
+    '''
+    获取学期的对应筛选结果
+        exact: 学期必须完全匹配(全年和单一学期将不再匹配)
+        noncurrent: 取反结果, 如果为None则直接返回queryset.all()
+    '''
+    if noncurrent is None:
+        return queryset.all()
+    kwargs = {_year_field: current_year()}
+    if not exact:
+        _semester_field += '__contains'
+    kwargs[_semester_field] = Semester.now().value
+    return queryset.exclude(**kwargs) if noncurrent else queryset.filter(**kwargs)
+
 
 def image_url(image, enable_abs=False)-> str:
     '''不导出的函数，返回类似/media/path的url相对路径'''
@@ -400,13 +419,16 @@ class Organization(models.Model):
 
 class PositionManager(models.Manager):
     def current(self):
-        return self.filter(
-            in_year=current_year(),
-            in_semester__contains=Semester.now().value,
-        )
+        return select_current(self, 'in_year', 'in_semester')
 
-    def activated(self):
-        return self.current().filter(status=Position.Status.INSERVICE)
+    def noncurrent(self):
+        return select_current(self, 'in_year', 'in_semester', noncurrent=True)
+
+    def activated(self, noncurrent=False):
+        return select_current(
+            self.filter(status=Position.Status.INSERVICE),
+            'in_year', 'in_semester',
+            noncurrent=noncurrent)
 
     def create_application(self, person, org, apply_type, apply_pos):
         raise NotImplementedError('该函数已废弃')
@@ -531,17 +553,14 @@ class Position(models.Model):
 
 
 class ActivityManager(models.Manager):
-    def activated(self, only_displayable=True):
+    def activated(self, only_displayable=True, noncurrent=False):
         # 选择学年相同，并且学期相同或者覆盖的
         # 请保证query_range是一个queryset，将manager的行为包装在query_range计算完之前
         if only_displayable:
             query_range = self.displayable()
         else:
             query_range = self.all()
-        return query_range.filter(
-            year=current_year(),
-            semester__contains=Semester.now().value,
-        )
+        return select_current(query_range, noncurrent=noncurrent)
 
     def displayable(self):
         # REVIEWING, ABORT 状态的活动，只对创建者和审批者可见，对其他人不可见
@@ -557,40 +576,41 @@ class ActivityManager(models.Manager):
         # 一周内结束的活动
         nowtime = datetime.now()
         mintime = nowtime - timedelta(days = 7)
-        return self.activated().filter(end__gt = mintime).filter(status=Activity.Status.END)
+        return select_current(
+            self.filter(end__gt=mintime, status=Activity.Status.END))
 
     def get_recent_activity(self):
         # 开始时间在前后一周内，除了取消和审核中的活动。按时间逆序排序
         nowtime = datetime.now()
-        mintime = nowtime - timedelta(days = 7)
-        maxtime = nowtime + timedelta(days = 7)
-        return self.activated().filter(start__gt = mintime).filter(start__lt = maxtime).filter(
+        mintime = nowtime - timedelta(days=7)
+        maxtime = nowtime + timedelta(days=7)
+        return select_current(self.filter(
+            start__gt=mintime,
+            start__lt=maxtime,
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
                 Activity.Status.PROGRESSING,
                 Activity.Status.END
             ]
-        ).order_by("-start")
+        )).order_by("-start")
 
     def get_newlyreleased_activity(self):
         # 最新一周内发布的活动，按发布的时间逆序
         nowtime = datetime.now()
-        return self.activated().filter(publish_time__gt = nowtime - timedelta(days = 7)).filter(
+        return select_current(self.filter(
+            publish_time__gt=nowtime - timedelta(days=7),
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
                 Activity.Status.PROGRESSING
             ]
-        ).order_by("-publish_time")
+        )).order_by("-publish_time")
 
     def get_today_activity(self):
         # 开始时间在今天的活动,且不展示结束的活动。按开始时间由近到远排序
         nowtime = datetime.now()
         return self.filter(
-            year=current_year(),
-            semester__contains=Semester.now().value,
-        ).filter(
             status__in=[
                 Activity.Status.APPLYING,
                 Activity.Status.WAITING,
@@ -1325,13 +1345,11 @@ class ModifyRecord(models.Model):
 
 
 class CourseManager(models.Manager):
-    def activated(self):
+    def activated(self, noncurrent=False):
         # 选择当前学期的开设课程
         # 不显示已撤销的课程信息
-        return self.filter(
-            year=current_year(),
-            semester__contains=Semester.now().value,
-        ).exclude(status=Course.Status.ABORT)
+        return select_current(
+            self.exclude(status=Course.Status.ABORT), noncurrent=noncurrent)
 
     def selected(self, person: NaturalPerson):
         # 返回当前学生所选的所有课程，选课失败也要算入
@@ -1346,11 +1364,12 @@ class CourseManager(models.Manager):
 
     def unselected(self, person: NaturalPerson):
         # 返回当前学生没选上的所有课程
-        return self.activated().filter(participant_set__person=person,
-                                        participant_set__status__in=[
-                                           CourseParticipant.Status.FAILED,
-                                           CourseParticipant.Status.UNSELECT,
-                                        ])
+        my_course_list = self.activated().filter(participant_set__person=person,
+                                                       participant_set__status__in=[
+                                                           CourseParticipant.Status.SELECT,
+                                                           CourseParticipant.Status.SUCCESS,
+                                                       ]).values_list("id", flat=True)
+        return self.activated().exclude(id__in=my_course_list)
 
 
 class Course(models.Model):
@@ -1435,6 +1454,9 @@ class Course(models.Model):
         # 暂不要求课程的宣传图片必须存在 报错更令人烦恼
         return image_url(self.photo, enable_abs=True)
 
+    def get_QRcode_path(self):
+        return image_url(self.QRcode)
+
 
 class CourseTime(models.Model):
     """
@@ -1486,17 +1508,11 @@ class CourseParticipant(models.Model):
 class CourseRecordManager(models.Manager):
     def current(self):
         # 选择当前学期的学时
-        return self.filter(
-            year=current_year(),
-            semester__contains=Semester.now().value,
-        )
+        return select_current(self)
 
     def past(self):
         # 只存在当前学期和过去的，非本学期即是过去
-        return self.exclude(
-            year=current_year(),
-            semester__contains=Semester.now().value,
-        )
+        return select_current(self, noncurrent=True)
 
 
 class CourseRecord(models.Model):
@@ -1585,12 +1601,12 @@ class FeedbackType(models.Model):
         OrganizationType, on_delete=models.CASCADE, null=True, blank=True)
     org = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
-    
+
     class Flexible(models.IntegerChoices):
         NO_DEFAULT = (0, "无默认值")
         ORG_TYPE_DEFAULT = (1, "仅提供组织类型默认值")
         ALL_DEFAULT = (2, "全部提供默认值")
-    
+
     flexible = models.SmallIntegerField(
         choices=Flexible.choices, default=Flexible.NO_DEFAULT
     )
@@ -1624,6 +1640,7 @@ class Feedback(CommentBase):
         SOLVED = (0, "已解决")
         SOLVING = (1, "解决中")
         UNSOLVABLE = (2, "无法解决")
+        UNMARKED = (3, "未标记")
 
     issue_status = models.SmallIntegerField(
         '发布状态', choices=IssueStatus.choices, default=IssueStatus.DRAFTED
@@ -1632,10 +1649,11 @@ class Feedback(CommentBase):
         '阅读情况', choices=ReadStatus.choices, default=ReadStatus.UNREAD
     )
     solve_status = models.SmallIntegerField(
-        '解决进度', choices=SolveStatus.choices, default=SolveStatus.SOLVING
+        '解决进度', choices=SolveStatus.choices, default=SolveStatus.UNMARKED
     )
 
     feedback_time = models.DateTimeField('反馈时间', auto_now_add=True)
+    # anonymous = models.BooleanField("发布者是否匿名", default=True)
     publisher_public = models.BooleanField('发布者是否公开', default=False)
     org_public = models.BooleanField('组织是否公开', default=False)
     public_time = models.DateTimeField('组织公开时间', default=datetime.now)
@@ -1644,7 +1662,7 @@ class Feedback(CommentBase):
         PUBLIC = (0, '公开')
         PRIVATE = (1, '未公开')
         WITHDRAWAL = (2, '撤销公开')
-        FORCE_PRIVATE = (3, '强制不公开')
+        FORCE_PRIVATE = (3, '不予公开')
 
     public_status = models.SmallIntegerField(
         '公开状态', choices=PublicStatus.choices, default=PublicStatus.PRIVATE
