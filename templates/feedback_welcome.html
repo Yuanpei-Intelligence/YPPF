@@ -378,17 +378,18 @@
                                                             </h5> 
                                                         </div>
                                                         <div class="btn-group" role="group">
-                                                            <a data-toggle="tooltip" title="删除">
                                                                 <form method="POST">
+                                                                    <a data-toggle="tooltip" title="删除" onclick="return confirm('确认要删除反馈草稿吗？')" type="submit">
                                                                     <input type="hidden" name="option" value="delete">
                                                                     <input type="hidden" name="id" value="{{feedback.id}}">
-                                                                        <button class="btn btn-outline" onclick="return confirm('确认要删除反馈草稿吗？')" type="submit">
-                                                                            <i class="fa fa-trash-alt"></i>
-                                                                        </button>
+                                                                        <h5><i class="fa fa-trash-alt"></i></h5>
+                                                                    </a>
                                                                 </form>
-                                                            </a>
-                                                            <a class="btn btn-outline" href="/modifyFeedback/?feedback_id={{feedback.id}}" data-toggle="tooltip" title="修改">
-                                                                <i class="fa fa-pencil-alt"></i>
+                                                            &nbsp;&nbsp;&nbsp;&nbsp;
+                                                            <a href="/modifyFeedback/?feedback_id={{feedback.id}}" data-toggle="tooltip" title="修改">
+                                                                <h5>
+                                                                    <i class="fa fa-pencil-alt"></i>
+                                                                </h5>
                                                             </a>
                                                         </div>
                                                     </div>
@@ -450,19 +451,18 @@
                                                         <div>
                                                             <div class="btn-group" role="group">
                                                                 {% if is_person %}
-                                                                <a data-toggle="tooltip" title="撤回">
-                                                                    <form method="POST">
-                                                                        <button class="btn btn-outline" type="submit" 
-                                                                            onclick="return confirm('确认要撤回反馈吗？')">
-                                                                            <input type="hidden" value="withdraw" name="option">
-                                                                            <input type="hidden" name="id" value="{{feedback.id}}">
-                                                                            <i class="fa fa-undo"></i>
-                                                                        </button>
-                                                                    </form>
+                                                                <form method="POST">
+                                                                    <a data-toggle="tooltip" title="撤回" type="submit" 
+                                                                        onclick="return confirm('确认要撤回反馈吗？')">
+                                                                        <input type="hidden" value="withdraw" name="option">
+                                                                        <input type="hidden" name="id" value="{{feedback.id}}">
+                                                                        <h5><i class="fa fa-undo"></i></h5>
                                                                 </a>
+                                                                </form>
+                                                                &nbsp;&nbsp;&nbsp;&nbsp;
                                                                 {% endif %}
-                                                                <a class="btn btn-outline" href="/viewFeedback/{{feedback.id}}" data-toggle="tooltip" title="查看">
-                                                                    <i class="fa fa-eye"></i>
+                                                                <a href="/viewFeedback/{{feedback.id}}" data-toggle="tooltip" title="查看">
+                                                                    <h5><i class="fa fa-eye"></i></h5>
                                                                 </a>
                                                             </div>
                                                         </div>
@@ -523,8 +523,8 @@
                                                                 </h5>
                                                             </div>
                                                             <div>
-                                                                <a class="btn btn-outline" href="/viewFeedback/{{feedback.id}}" data-toggle="tooltip" title="查看">
-                                                                    <i class="fa fa-eye"></i>
+                                                                <a href="/viewFeedback/{{feedback.id}}" data-toggle="tooltip" title="查看">
+                                                                    <h5><i class="fa fa-eye"></i></h5>
                                                                 </a>
                                                             </div>
                                                         </div>
