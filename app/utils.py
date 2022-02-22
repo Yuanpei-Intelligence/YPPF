@@ -82,15 +82,11 @@ def get_user_by_name(name):
         user<object>: 用户对象
         user_type: 用户类型
     """
-    try:
-        person = NaturalPerson.objects.get(name=name)
-        return person.person_id, "Person"
-    except:
-        try:
-            org = Organization.objects.get(oname=name)
-            return org.organization_id, "Organization"
-        except:
-            print(f"{name} is neither natural person nor organization!")
+    try: return NaturalPerson.objects.get(name=name).person_id, UTYPE_PER
+    except: pass
+    try: return Organization.objects.get(oname=name).organization_id, UTYPE_ORG
+    except: pass
+    print(f"{name} is neither natural person nor organization!")
 
 
 # YWolfeee, Aug 16
