@@ -478,8 +478,13 @@ def load_CouRecord(request):
                     name = orga_found[0].oname,
                     organization = orga_found[0],
                     type = course_type_all[course_type],
+                    status = Course.Status.END,
                     year = year,
                     semester = semester,
+                    photo = (
+                        '/static/assets/img/announcepics/'
+                        f'{course_type_all[course_type].value+1}.JPG'
+                    ),
                 )
 
     # ---- 以下为读取其他sheet并导入学时记录   -------
@@ -523,7 +528,10 @@ def load_CouRecord(request):
             hours = course_df.iloc[i, 4]    
             record_view = str(course)+' '+str(sid)+' '+str(name)+' '+str(times)+' '+str(hours)
             if (type(name)!=str and sid is numpy.nan): continue  #允许中间有空行
-            if (type(sid) not in [int,float] or type(times) not in [int,float] or type(hours) not in [int,float]):
+            if ((type(sid)not in [float,numpy.float64] and not str(sid).isdigit()) 
+                or (type(times) not in [int,float] and not str(times).isdigit())
+                or (type(hours) not in [int,float] and not str(hours).isdigit())):
+                # 读取表格时可能sid,times,hours为str类型，所以增加判定规则
                 info_show["type error"].append(record_view)
                 continue
             
@@ -600,7 +608,7 @@ def load_CouRecord(request):
             if person[1].exists():
                 for message in person[1]:
                     context['message'] += '<div style="color:cadetblue;">'+message.name +' '+ message.person_id.username+'</div>'
-            if person[2].exists():
+            if person[2]!=None and person[2].exists():
                 for message in person[2]:
                     context['message'] += '<div style="color:cadetblue;">'+message.name +' '+ message.person_id.username+'</div>'
             elif not person[1].exists():

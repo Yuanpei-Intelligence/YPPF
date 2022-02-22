@@ -69,6 +69,9 @@ class LocalSetting():
         self.wechat_salt = base_get_setting('hash/wechat')
         self.display_token = get_setting('token/display')
 
+        # 读取学期开始，用于过滤既往预约
+        self.semester_start = base_get_setting("semester_data/semester_start")
+
         # 设置全局参数
         # added by wxy 人数检查
         # 修改这两个变量以决定检查的宽严

@@ -67,8 +67,8 @@
                                         </br>
                                         <h6>如果你在学习与生活中产生自己无法解答的困惑；</h6>
                                         <h6>对改善公共空间环境、改进学生组织工作有好的建议；</h6>
-                                        <h6>或是有其他想要和组织迫切交流的观点，</h6>
-                                        <h6>都可以点击下方“我要留言”向组织反馈。</h6>
+                                        <h6>或是有其他想要和组织迫切交流的观点：</h6>
+                                        <h6>都可以点击上方的“+”向组织反馈。</h6>
                                         </br>
                                         <h6 class="my-0 mb-2">
                                             只要有需求，就能有回应。希望依靠互动交流，我们能为更好的元培助力，也让彼此和自己变得更好。
@@ -387,8 +387,7 @@
                                                             <h5>
                                                                 {{feedback.title}}
                                                             </h5>
-                                                            <span class="badge badge-success">草稿</span>
-                                                            
+                                                            <!-- <span class="badge badge-success">草稿</span> -->  
                                                         </div>
                                                         <div class="btn-group" role="group">
                                                             <form method="POST">
@@ -398,7 +397,7 @@
                                                                     <i class="fa fa-trash-alt"></i>
                                                                 </button>
                                                             </form>
-                                                            <a href="">
+                                                            <a href="/modifyFeedback/?feedback_id={{feedback.id}}">
                                                                 <button class="btn btn-outline" onclick="">
                                                                     <i class="fa fa-pencil-alt"></i>
                                                                 </button>
@@ -420,7 +419,7 @@
 
                                                     <p style="color: rgb(66, 67, 68);">
                                                         <i class="fa fa-bell" style="width: 14px;"></i>
-                                                        <span class="ml-1">{{feedback.feedback_time}} 发出</span>
+                                                        <span class="ml-1">{{feedback.feedback_time}} 保存</span>
                                                     </p>
 
                                                     <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">

@@ -78,7 +78,8 @@
     },
     "semester_data": {
         "year": "2021",
-        "semester": "Fall"
+        "semester": "Spring",
+        "semester_start": "2022-02-21 00:00:00"
     },
     "help_message": {
         "个人主页": "将其在微信中打开，就可以在聊天/朋友圈中分享你自己啦",
