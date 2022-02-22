@@ -93,7 +93,7 @@
                   <div class="form-group">
                     <label>反馈标题</label>
                     {% if not is_new_feedback %}
-                      <textarea type="text" name="title" class="form-control" aria-label="Default" placeholder="标题不能超过30字噢！" {% if not is_new_feedback %}disabled="disabled"{% endif %}>{{feedback.title}}</textarea>
+                      <textarea type="text" name="title" rows="1" class="form-control" aria-label="Default" placeholder="标题不能超过30字噢！" {% if not is_new_feedback %}disabled="disabled"{% endif %}>{{feedback.title}}</textarea>
                     {% else %}
                       <input type="text" name="title" class="form-control"
                                                       aria-label="Default" placeholder="标题不能超过30字噢！">
