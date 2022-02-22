@@ -47,8 +47,8 @@ def viewFeedback(request, fid):
         # 添加评论
         if request.POST.get("comment_submit"):
             # 只有未完成反馈可以发送评论
-            if feedback.solve_status != Feedback.SolveStatus.SOLVING:
-                return redirect(message_url(wrong("只有“解决中”的反馈可以评论！"), f"/viewFeedback/{feedback.id}"))
+            if feedback.solve_status not in (Feedback.SolveStatus.SOLVING,Feedback.SolveStatus.UNMARKED):
+                return redirect(message_url(wrong("已结束的反馈不能评论！"), f"/viewFeedback/{feedback.id}"))
             # 确定通知消息的发送人，互相发送给对方
             if user_type == "Person" and feedback.person == me:
                 receiver = feedback.org.organization_id
