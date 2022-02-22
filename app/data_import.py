@@ -74,32 +74,70 @@ def load_org():
     msg = ''
     for _, org_dict in org_df.iterrows():
         try:
-            username = org_dict["organization_id"]
+            username = org_dict.get("organization_id", "")
             password = 'YPPFtest' if DEBUG else random_code_init(username)
+            # 现在找不到直接出错
+            org_found = True
             if username[:2] == "zz":
                 oname = org_dict["oname"]
                 type_id = org_dict["otype_id"]
                 persons = org_dict.get("person", "待定")
                 pos = max(0, int(org_dict.get("pos", 0)))
-                user, mid = User.objects.get_or_create(username=username)
-                user.set_password(password)
-                user.save()
-                orgtype, mid = OrganizationType.objects.get_or_create(otype_id=type_id)
-                org, mid = Organization.objects.get_or_create(
+                user, created = User.objects.get_or_create(username=username)
+                if created:
+                    user.set_password(password)
+                    user.save()
+                # 组织类型必须已经创建
+                orgtype = OrganizationType.objects.get(otype_id=type_id)
+                org, created = Organization.objects.get_or_create(
                     organization_id=user, otype=orgtype
                 )
                 org.oname = oname
                 org.save()
                 msg += '<br/>成功创建组织：'+oname
+            # 否则不会创建用户，只会查找或修改已有的组织
+            else:
+                # 先尝试以组织名检索
+                oname = username
+                orgs = Organization.objects.filter(oname=oname)
+                if not len(orgs):
+                    orgs = Organization.objects.filter(oname__contains=oname)
+                oname = org_dict["oname"]
+                if len(orgs) == 1:
+                    # 如果只有一个，一定是所需的组织，重命名
+                    org = orgs.first()
+                    origin_oname = org.oname
+                    org.oname = oname
+                    org.save()
+                    msg += f'<br/>重命名组织：{origin_oname}->{oname}'
+                else:
+                    # 直接读取名称
+                    orgs = Organization.objects.filter(oname=oname)
+                    if not len(orgs):
+                        orgs = Organization.objects.filter(oname__contains=oname)
+                    assert len(orgs) == 1, f'未找到组织：{oname}'
+                    org = orgs[0]
+                    oname = org.oname
+                    msg += f'<br/>检索到已存在组织：{oname}'
 
+            if org_found:
+                # 必须是本学期的才更新，否则创建
+                all_positions = Position.objects.current()
+                pos_display = org.otype.get_name(pos)
                 for person in persons.split(','):
                     people = NaturalPerson.objects.get(name=person)
-                    position, mid = Position.objects.get_or_create(
-                        person=people, org=org, status=Position.Status.INSERVICE,
-                        pos=pos, is_admin=True,
-                    )
+                    # 获得其当前的职位
+                    get_kws = dict(person=people, org=org)
+                    position, created = all_positions.get_or_create(**get_kws)
+                    # 更新为可用职位
+                    position.status = Position.Status.INSERVICE
+                    position.pos = pos
+                    position.is_admin = True
+                    if created and org.otype.otype_name == COURSE_TYPENAME:
+                        # 书院课程以学期为单位更新
+                        position.in_semester = Semester.now()
                     position.save()
-                    msg += '<br/>&emsp;&emsp;成功增加负责人：'+person
+                    msg += f'<br/>&emsp;&emsp;成功增加{pos_display}：{person}'
         except Exception as e:
             msg += '<br/>未能创建组织'+oname+',原因：'+str(e)
     if YQP_ONAME:
