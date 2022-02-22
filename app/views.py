@@ -402,8 +402,11 @@ def stuinfo(request, name=None):
         person_history_orgs_pos = [
             person_history_poss.get(org=org).pos for org in person_history_orgs
         ]  # ta在小组中的职位
+        
+        sems = {"Fall":"秋","Spring":"春","Fall+Spring":"全年"}
+        
         person_history_orgs_pos = [
-            org.otype.get_name(pos)
+            org.otype.get_name(pos)+' '+str(person_history_poss.get(org=org).in_year)+sems[person_history_poss.get(org=org).in_semester]
             for pos, org in zip(person_history_orgs_pos, person_history_orgs)
         ]  # ta在小组中的职位
         html_display["history_orgs_info"] = (
