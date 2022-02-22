@@ -438,8 +438,8 @@ def selectCourse(request):
     # if not is_staff:
     #     html_display["willing_point"] = remaining_willingness_point(me)
 
+    my_messages.transfer_message_context(request.GET, html_display)
     # 学生选课或者取消选课
-
     if request.method == 'POST':
 
         # 参数: 课程id，操作action: select/cancel
@@ -457,7 +457,6 @@ def selectCourse(request):
         try:
             # 对学生的选课状态进行变更
             context = registration_status_change(course_id, me, action)
-            my_messages.transfer_message_context(context, html_display)
             return redirect(message_url(context, request.path))
         except:
             wrong("选课过程出现错误！请联系管理员。", html_display)
@@ -472,20 +471,25 @@ def selectCourse(request):
     html_display["btx_election_end"] = get_setting("course/btx_election_end")
     html_display["publish_time"] = get_setting("course/publish_time")
     html_display["status"] = None
+    is_drawing = False  # 是否正在进行抽签
+
     if str_to_time(html_display["yx_election_start"]) > datetime.now():
         html_display["status"] = "未开始"
-    elif (str_to_time(html_display["yx_election_start"])) <= datetime.now() < (str_to_time(html_display["yx_election_end"])):
+    elif (str_to_time(html_display["yx_election_start"])) <= datetime.now() < (
+            str_to_time(html_display["yx_election_end"])):
         html_display["status"] = "预选"
-    elif (str_to_time(html_display["yx_election_end"])) <= datetime.now() < (str_to_time(html_display["publish_time"])):
-        html_display["status"]="抽签中"
-    elif (str_to_time(html_display["btx_election_start"])) <= datetime.now() < (str_to_time(html_display["btx_election_end"])):
-        html_display["status"]="补退选"
-    # 是否正在进行抽签
-    is_drawing = (str_to_time(html_display["yx_election_end"]) <= datetime.now()
-                   <= str_to_time(html_display["publish_time"]))
+    elif (str_to_time(
+            html_display["yx_election_end"])) <= datetime.now() < (str_to_time(
+                html_display["publish_time"])):
+        html_display["status"] = "抽签中"
+        is_drawing = True
+    elif (str_to_time(
+            html_display["btx_election_start"])) <= datetime.now() < (
+                str_to_time(html_display["btx_election_end"])):
+        html_display["status"] = "补退选"
 
     # 选课是否已经全部结束
-    #is_end = (datetime.now() > str_to_time(html_display["btx_election_end"]))
+    # is_end = (datetime.now() > str_to_time(html_display["btx_election_end"]))
 
     unselected_courses = Course.objects.unselected(me)
     selected_courses = Course.objects.selected(me)
