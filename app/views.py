@@ -454,18 +454,13 @@ def stuinfo(request, name=None):
             # 无效学时，在前端呈现
             course_no_use = (
                 course_me_past
-                .filter(total_hours__lt=8)
-                .exclude(year=2020, semester=Semester.FALL, total_hours__gte=6)
-                .exclude(year=2021, semester=Semester.SPRING, total_hours__gte=6)
+                .filter(year__gte=2021, total_hours__lt=8)
             )
 
             # 特判，需要一定时长才能计入总学时
             course_me_past = (
                 course_me_past
-                .exclude(year=2020, semester=Semester.FALL, total_hours__lt=6)
-                .exclude(year=2021, semester=Semester.SPRING, total_hours__lt=6)
-                .exclude(year=2021, semester=Semester.FALL, total_hours__lt=8) # 21秋开始，需要至少8学时
-                .exclude(year__gt=2021, total_hours__lt=8)
+                .exclude(year__gte=2021, total_hours__lt=8)
             )
 
             course_me_past = course_me_past.order_by('year', 'semester')
