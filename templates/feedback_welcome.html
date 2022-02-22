@@ -376,8 +376,8 @@
                             <!-- 草稿箱 -->
                             {% if is_person %}
                             <div class="tab-pane fade" id="draft" role="tabpanel">
+                                {% if draft_feedback %}
                                 <div class="bio-skill-box">
-                                    {% if draft_feedback %}
                                     <div id="undone-feedback" class="row">
                                         {% for feedback in draft_feedback %}
                                             <div class="col-12 col-xl-4 col-lg-6 mb-xl-4 col-md-6 mb-4">
@@ -431,13 +431,13 @@
                                             </div>
                                         {% endfor %}
                                     </div>
-                                    {% else %}
-                                    <div style="margin-top: 40px; margin-bottom: -40px;">
-                                        <p style="text-align: center;">您没有反馈草稿。</p>
-                                        <br>
-                                    </div>
-                                    {% endif %}
                                 </div>
+                                {% else %}
+                                <div style="margin-top: 40px; margin-bottom: -40px;">
+                                    <p style="text-align: center;">您没有反馈草稿。</p>
+                                    <br>
+                                </div>
+                                {% endif %}
                             </div> 
                             {% endif %} 
                             <!-- 未完成 -->
