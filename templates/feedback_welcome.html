@@ -364,8 +364,8 @@
                             <!-- 草稿箱 -->
                             {% if is_person %}
                             <div class="tab-pane fade" id="draft" role="tabpanel">
+                                {% if draft_feedback %}
                                 <div class="bio-skill-box">
-                                    {% if draft_feedback %}
                                     <div id="undone-feedback" class="row">
                                         {% for feedback in draft_feedback %}
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
@@ -417,13 +417,13 @@
                                             </div>
                                         {% endfor %}
                                     </div>
-                                    {% else %}
+                                </div>
+                                {% else %}
                                     <div style="margin-top: 40px; margin-bottom: -40px;">
                                         <p style="text-align: center;">您没有反馈草稿。</p>
                                         <br>
                                     </div>
-                                    {% endif %}
-                                </div>
+                                {% endif %}
                             </div> 
                             {% endif %} 
                             <!-- 未完成 -->
@@ -451,21 +451,20 @@
                                                         </div>
                                                         <div>
                                                             <div class="btn-group" role="group">
+                                                                {% if is_person %}
                                                                 <a data-toggle="tooltip" title="撤回">
                                                                     <form method="POST">
                                                                         <button class="btn btn-outline" type="submit" 
-                                                                            onclick="return confirm('确认要撤回反馈吗？')"
-                                                                            {% if not is_person %} disabled {% endif %}>
+                                                                            onclick="return confirm('确认要撤回反馈吗？')">
                                                                             <input type="hidden" value="withdraw" name="option">
                                                                             <input type="hidden" name="id" value="{{feedback.id}}">
                                                                             <i class="fa fa-undo"></i>
                                                                         </button>
                                                                     </form>
                                                                 </a>
-                                                                <a href="/viewFeedback/{{feedback.id}}" data-toggle="tooltip" title="查看">
-                                                                    <button class="btn btn-outline">
-                                                                        <i class="fa fa-eye"></i>
-                                                                    </button>
+                                                                {% endif %}
+                                                                <a class="btn btn-outline" href="/viewFeedback/{{feedback.id}}" data-toggle="tooltip" title="查看">
+                                                                    <i class="fa fa-eye"></i>
                                                                 </a>
                                                             </div>
                                                         </div>
@@ -528,9 +527,9 @@
                                                             <div>
                                                                 <a href="/viewFeedback/{{feedback.id}}">
                                                                     <div class="btn-group" role="group">
-                                                                        <button class="btn btn-outline" data-toggle="tooltip" title="查看">
+                                                                        <a class="btn btn-outline" data-toggle="tooltip" title="查看">
                                                                             <i class="fa fa-eye"></i>
-                                                                        </button>
+                                                                        </a>
                                                                     </div>  
                                                                 </a>
                                                             </div>
