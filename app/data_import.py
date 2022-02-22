@@ -478,8 +478,13 @@ def load_CouRecord(request):
                     name = orga_found[0].oname,
                     organization = orga_found[0],
                     type = course_type_all[course_type],
+                    status = Course.Status.END,
                     year = year,
                     semester = semester,
+                    photo = (
+                        '/static/assets/img/announcepics/'
+                        f'{course_type_all[course_type].value+1}.JPG'
+                    ),
                 )
 
     # ---- 以下为读取其他sheet并导入学时记录   -------
