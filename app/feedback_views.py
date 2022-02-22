@@ -287,7 +287,8 @@ def viewFeedback(request, fid):
             and feedback.issue_status != Feedback.IssueStatus.DELETED:
             read_editable = True
         # 未结束反馈可修改为已结束，并且可以评论
-        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED):
+        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             solve_editable = True
             commentable = True
         # 未公开反馈，且个人愿意公开，老师没有设置成不予公开时，组织可修改自身公开状态
@@ -436,7 +437,7 @@ def feedback_homepage(request):
                     del_feedback.issue_status = Feedback.IssueStatus.DELETED
                     del_feedback.save()
                     html_display["warn_code"] = 2
-                    html_display["warn_message"] = "成功撤回反馈"
+                    html_display["warn_message"] = "成功撤回反馈！"
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="反馈中心")
 
