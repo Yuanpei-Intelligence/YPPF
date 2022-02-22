@@ -44,7 +44,7 @@ def create_user(id, rand_pw=False, reset_pw=None, **defaults):
         if created or reset_pw is not None:
             stage = 'get password'
             password = reset_pw
-            if not isinstance(reset_pw, str):
+            if not isinstance(password, str):
                 password = random_code_init(id) if rand_pw else id 
             stage = 'set password'
             user.set_password(password)
@@ -66,11 +66,39 @@ def create_person(name, user, **defaults):
     except: raise RuntimeError(f'{stage} failed')
 
 
+def create_org(name, user, otype, **defaults):
+    '''create organization locally, but why not call `get_or_create`?'''
+    try:
+        stage = 'get user'
+        user = user if isinstance(user, User) else User.objects.get(username=user)
+        stage = 'get organization type'
+        if not isinstance(otype, OrganizationType):
+            if isinstance(otype, int):
+                otype = OrganizationType.objects.get(pk=otype)
+            elif OrganizationType.objects.filter(otype_name=otype).exists():
+                otype = OrganizationType.objects.get(otype_name=otype)
+            else:
+                otype = OrganizationType.objects.get(otype_name__contains=otype)
+        stage = 'create organization'
+        org, created = Organization.objects.get_or_create(
+            organization_id=user, oname=name, otype=otype, defaults=defaults)
+        return org
+    except RuntimeError: raise
+    except: raise RuntimeError(f'{stage} failed')
+
+
 def create_person_account(name, pid, rand_pw=False, reset_pw=None, **defaults):
     '''create person user locally'''
     user = create_user(pid, rand_pw=rand_pw, reset_pw=reset_pw)
     person = create_person(name, user, **defaults)
     return person
+
+
+def create_org_account(name, oid, otype, rand_pw=False, reset_pw=None, **defaults):
+    '''create organization user locally'''
+    user = create_user(oid, rand_pw=rand_pw, reset_pw=reset_pw)
+    org = create_org(name, user, otype, **defaults)
+    return org
 
 
 def load_file(file):
