@@ -23,8 +23,9 @@ from Appointment.models import (
 
 
 # Register your models here.
-admin.site.site_title = '元培地下室管理后台'
-admin.site.site_header = '元培地下室 - 管理后台'
+# 合并后无需修改
+# admin.site.site_title = '元培地下室管理后台'
+# admin.site.site_header = '元培地下室 - 管理后台'
 
 admin.site.register(College_Announcement)
 
@@ -34,10 +35,30 @@ class ParticipantAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
     search_fields = ('Sid__username', 'name', 'pinyin')
-    list_display = ('Sid', 'name', 'credit')
+    list_display = ('Sid', 'name', 'credit', 'hidden', )
     list_display_links = ('Sid', 'name')
     list_editable = ('credit', )
-    list_filter = ('credit', 'hidden')
+
+    class AgreeFilter(admin.SimpleListFilter):
+        title = '签署状态'
+        parameter_name = 'Agree'
+    
+        def lookups(self, request, model_admin):
+            '''针对字段值设置过滤器的显示效果'''
+            return (
+                ('true', "已签署"),
+                ('false', "未签署"),
+            )
+        
+        def queryset(self, request, queryset):
+            '''定义过滤器的过滤动作'''
+            if self.value() == 'true':
+                return queryset.exclude(agree_time__isnull=True)
+            elif self.value() == 'false':
+                return queryset.filter(agree_time__isnull=True)
+            return queryset
+
+    list_filter = ('credit', 'hidden', AgreeFilter)
     fieldsets = (['基本信息', {
         'fields': (
             'Sid',
@@ -48,7 +69,7 @@ class ParticipantAdmin(admin.ModelAdmin):
         '显示全部', {
             'classes': ('collapse', ),
             'description': '默认信息，不建议修改！',
-            'fields': ('credit', 'pinyin'),
+            'fields': ('credit', 'pinyin', 'agree_time'),
         }
     ])
 
@@ -181,6 +202,7 @@ class AppointAdmin(admin.ModelAdmin):
                 return queryset.exclude(Astatus=Appoint.Status.CANCELED)
             elif self.value() == 'false':
                 return queryset.filter(Astatus=Appoint.Status.CANCELED)
+            return queryset
 
     list_filter = ('Astart', 'Atime', 'Astatus', ActivateFilter, 'Atemp_flag')
 

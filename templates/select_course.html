@@ -13,14 +13,9 @@
 
     <div style="text-align: center;">
         <br>
-        <h4 class="text-primary">{{html_display.current_year}}学年{{html_display.semester}}季学期书院课程选课页面
-            {% if html_display.status == "预选" %}
-            <span class="badge badge-pill badge-secondary" style="font-size:14px">{{html_display.status}}</span>
-            {% elif html_display.status == "抽签中" %}
-            <span class="badge badge-pill badge-secondary" style="font-size:14px">{{html_display.status}}</span>
-            {% elif html_display.status == "补退选" %}
-            <span class="badge badge-pill badge-info" style="font-size:14px">{{html_display.status}}</span>
-            {% endif %}</h4>
+        <h4 class="text-primary">
+            {{html_display.current_year}}学年{{html_display.semester}}季学期书院课程选课页面 - {{html_display.status}}
+        </h4>
         {% comment %} 从后端获取学期数据 {% endcomment %}
         <br>
     </div>
@@ -123,8 +118,8 @@
 
                                     <th scope="col" width="25%" style="min-width: 160px;">课程名称</th>
                                     <th scope="col" width="25%" style="min-width: 160px;">上课时间</th>
-                                    <th scope="col" width="10%" style="min-width: 80px;">课程类型</th>
-                                    <th scope="col" width="15%" style="min-width: 120px;">选课人数/容量</th>
+                                    <th scope="col" width="15%" style="min-width: 80px;">课程类型</th>
+                                    <th scope="col" width="20%" style="min-width: 120px;">选课人数/容量</th>
                                     <th scope="col" style="min-width: 60px;" >操作</th>
 
                                   </tr>
@@ -192,7 +187,8 @@
                                 <div id="menu{{ forloop.counter }}" class="tab-pane fade">
                                     <div class="col-12 layout-top-spacing">
                                         <br>
-                                        <p style="text-align: center;">暂时没有课程哦！</p>
+                                        <p style="text-align: center;">暂时没有此类课程哦！</p>
+                                        <br>
                                     </div>
                                 </div>
 
@@ -205,8 +201,8 @@
                                         <tr>
                                             <th scope="col" width="25%" style="min-width: 160px;">课程名称</th>
                                             <th scope="col" width="25%" style="min-width: 160px;">上课时间</th>
-                                            <th scope="col" width="10%" style="min-width: 80px;">课程类型</th>
-                                            <th scope="col" width="15%" style="min-width: 120px;">选课人数/容量</th>
+                                            <th scope="col" width="15%" style="min-width: 80px;">课程类型</th>
+                                            <th scope="col" width="20%" style="min-width: 120px;">选课人数/容量</th>
                                             <th scope="col" style="min-width: 60px;" >操作</th>
                                         </tr>
                                         </thead>

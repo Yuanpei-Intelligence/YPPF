@@ -104,7 +104,7 @@
                                                 <button type="submit" id="confirm" name="type"
                                                     class="btn btn-primary" value="confirm"
                                                     style="display:block;margin:0 auto"
-                                                    onclick="return confirm(`确定同意无占座协议吗？确认后将无法修改！`)"
+                                                    onclick="return window.confirm('确定同意无占座协议吗？确认后将无法修改！')"
                                                     {% if not agree_time %}
                                                     >同意</button>
                                                     {% else %}
