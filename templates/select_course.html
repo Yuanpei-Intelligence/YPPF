@@ -14,7 +14,10 @@
     <div style="text-align: center;">
         <br>
         <h4 class="text-primary">
-            {{html_display.current_year}}学年{{html_display.semester}}季学期书院课程选课页面 - {{html_display.status}}
+            {{html_display.current_year}}学年{{html_display.semester}}季学期书院课程选课页面
+            {% if html_display.status %}
+            - {{html_display.status}}
+            {% endif %}
         </h4>
         {% comment %} 从后端获取学期数据 {% endcomment %}
         <br>
@@ -117,7 +120,7 @@
                                   <tr>
 
                                     <th scope="col" width="25%" style="min-width: 160px;">课程名称</th>
-                                    <th scope="col" width="25%" style="min-width: 160px;">上课时间</th>
+                                    <th scope="col" width="30%" style="min-width: 160px;">上课时间</th>
                                     <th scope="col" width="15%" style="min-width: 80px;">课程类型</th>
                                     <th scope="col" width="20%" style="min-width: 120px;">选课人数/容量</th>
                                     <th scope="col" style="min-width: 60px;" >操作</th>
@@ -200,7 +203,7 @@
                                         <thead>
                                         <tr>
                                             <th scope="col" width="25%" style="min-width: 160px;">课程名称</th>
-                                            <th scope="col" width="25%" style="min-width: 160px;">上课时间</th>
+                                            <th scope="col" width="30%" style="min-width: 160px;">上课时间</th>
                                             <th scope="col" width="15%" style="min-width: 80px;">课程类型</th>
                                             <th scope="col" width="20%" style="min-width: 120px;">选课人数/容量</th>
                                             <th scope="col" style="min-width: 60px;" >操作</th>
@@ -226,20 +229,6 @@
                                                 {% endif %}
                                             </td>
                                             <td>{{course.type}}</td>
-                                            {% comment %} 注意这里的status是课程的，除了已撤销的四个都在这儿 {% endcomment %}
-                                            <td>
-                                                {% if course.status == "未开始" %}
-                                                <span class="badge badge-pill badge-dark">{{course.status}}</span>
-                                                {% elif course.status == "预选" %}
-                                                <span class="badge badge-pill badge-secondary">{{course.status}}</span>
-                                                {% elif course.status == "补退选" %}
-                                                <span class="badge badge-pill badge-info">{{course.status}}</span>
-                                                {% elif course.status == "选课结束" %}
-                                                <span class="badge badge-pill badge-primary">{{course.status}}</span>
-                                                {% else %}
-                                                <span class="badge badge-pill badge-warning">{{course.status}}</span>
-                                                {% endif %}
-                                            </td>
                                             <td>{{course.current_participants}}/{{course.capacity}}</td>
                                             <td>
                                                 <form action="/selectCourse/" method="post">
@@ -389,8 +378,5 @@
     </div>
 
 </div>
-
-
-
 
 {% endblock %}
