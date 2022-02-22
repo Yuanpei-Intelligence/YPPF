@@ -32,6 +32,46 @@ from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
 from django.db import transaction
 
+# local tools
+def create_user(id, rand_pw=False, reset_pw=None, **defaults):
+    '''create user locally'''
+    try:
+        stage = 'convert userid'
+        id = str(id)
+        stage = 'create user'
+        user, created = User.objects.get_or_create(
+            username=id, defaults=defaults)
+        if created or reset_pw is not None:
+            stage = 'get password'
+            password = reset_pw
+            if not isinstance(reset_pw, str):
+                password = random_code_init(id) if rand_pw else id 
+            stage = 'set password'
+            user.set_password(password)
+            user.save()
+    except RuntimeError: raise
+    except: raise RuntimeError(f'{stage} failed')
+
+
+def create_person(name, user, **defaults):
+    '''create naturalperson locally, but why not call `get_or_create`?'''
+    try:
+        stage = 'get user'
+        user = user if isinstance(user, User) else User.objects.get(username=user)
+        stage = 'create naturalperson'
+        person, created = NaturalPerson.objects.get_or_create(
+            person_id=user, name=name, defaults=defaults)
+        return person
+    except RuntimeError: raise
+    except: raise RuntimeError(f'{stage} failed')
+
+
+def create_person_account(name, pid, rand_pw=False, reset_pw=None, **defaults):
+    '''create person user locally'''
+    user = create_user(pid, rand_pw=rand_pw, reset_pw=reset_pw)
+    person = create_person(name, user, **defaults)
+    return person
+
 
 def load_file(file):
     return pd.read_csv(f"test_data/{file}", dtype=object, encoding="utf-8")
