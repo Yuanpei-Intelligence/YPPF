@@ -36,7 +36,7 @@ class Participant(models.Model):
     name = models.CharField('姓名', max_length=64)
     credit = models.IntegerField('信用分', default=3)
     pinyin = models.CharField('拼音', max_length=20, null=True)
-    hidden = models.BooleanField('可搜索', default=False)
+    hidden = models.BooleanField('不可搜索', default=False)
 
     # TODO: pht 2022-02-20 通过新的模型实现，允许每个房间有自己的规则
     # 用户许可的字段，需要许可的房间刷卡时检查是否通过了许可
