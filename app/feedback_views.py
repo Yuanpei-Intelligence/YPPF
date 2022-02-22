@@ -44,7 +44,6 @@ def viewFeedback(request, fid):
 
     # 添加评论和修改活动状态
     if request.method == "POST" and request.POST:
-        print(request.POST)
         # 添加评论
         if request.POST.get("comment_submit"):
             # 只有未完成反馈可以发送评论
@@ -83,6 +82,7 @@ def viewFeedback(request, fid):
                     feedback = Feedback.objects.select_for_update().get(id=fid)
                     if read == "read":
                         feedback.read_status = Feedback.ReadStatus.READ
+                        feedback.solve_status = Feedback.SolveStatus.SOLVING
                     # 已读条目不允许恢复为未读
                     # elif read == "unread":
                     #     feedback.read_status = Feedback.ReadStatus.UNREAD
@@ -96,7 +96,7 @@ def viewFeedback(request, fid):
         # 二、修改解决状态
         feedback = Feedback.objects.get(id=fid)
         # 只有已读条目才可以修改解决状态；只有已解决/无法解决的条目才可以修改后续状态
-        if solve != "solving" and feedback.solve_status == Feedback.SolveStatus.SOLVING:
+        if feedback.solve_status == Feedback.SolveStatus.SOLVING:
             # 只有组织可以修改解决状态
             if user_type == "Organization" and feedback.org == me:
                 # 只有已读条目才可以修改解决状态：
@@ -110,11 +110,9 @@ def viewFeedback(request, fid):
                     # 修改为无法解决
                     elif solve == "unsolvable":
                         feedback.solve_status = Feedback.SolveStatus.UNSOLVABLE
-                    # 不能修改为解决中
-                    # elif solve == "solving":
-                    #     feedback.solve_status = Feedback.SolveStatus.SOLVING
                     feedback.save()
-                    succeed_message.append(f"成功修改解决状态为【{feedback.get_solve_status_display()}】")
+                    if solve != "solving":
+                        succeed_message.append(f"成功修改解决状态为【{feedback.get_solve_status_display()}】")
             # 其他人没有修改解决状态权限
             else:
                 return redirect(message_url(wrong("没有修改解决状态的权限！"), f"/viewFeedback/{feedback.id}"))
@@ -125,7 +123,7 @@ def viewFeedback(request, fid):
             # 组织选择公开反馈
             if user_type == "Organization" and feedback.org == me:
                 # 只有完成的反馈可以公开。另外组织已公开的反馈必然已完成
-                if feedback.solve_status == Feedback.SolveStatus.SOLVING:
+                if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED):
                     return redirect(message_url(wrong("只有已解决/无法解决的反馈才可以公开"), f"/viewFeedback/{feedback.id}"))
                 # 若老师不予公开，则不允许修改
                 if feedback.public_status == Feedback.PublicStatus.FORCE_PRIVATE:
@@ -136,7 +134,7 @@ def viewFeedback(request, fid):
                     feedback = Feedback.objects.select_for_update().get(id=fid)
                     feedback.org_public = True
                     feedback.save()
-                    succeed_message.append("成功修改组织公开状态为【公开】！待发布者公开并通过学院审核后，该反馈将向所有人公开。")
+                    succeed_message.append("成功修改组织公开状态为【公开】！通过学院审核后，该反馈将向所有人公开。")
                 # 此时若发布者也选择公开，则向老师发送通知消息，提醒审核
                 if feedback.publisher_public:
                     examine_notification(feedback)
@@ -247,30 +245,37 @@ def viewFeedback(request, fid):
     if user_type == "Person" and feedback.person == me:
         login_identity = "publisher"
         # 未结束反馈发布者可评论，可撤销
-        if feedback.solve_status == Feedback.SolveStatus.SOLVING:
+        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             commentable = True
             # 撤销反馈功能迁移到反馈聚合页面
             # cancel_editable = True
         # 未公开反馈，且老师没有设置成不予公开时，发布者可修改自身公开状态
-        if (not feedback.publisher_public) and feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE:
+        if (not feedback.publisher_public) and feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             public_editable = True
     # 二、当前登录用户为老师
     elif user_type == "Person" and me.identity == NaturalPerson.Identity.TEACHER:
         login_identity = "teacher"
         # 未结束反馈可评论
-        if feedback.solve_status == Feedback.SolveStatus.SOLVING:
+        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             commentable = True
         # 所有反馈老师可修改公开状态
-        public_editable = True
-        if feedback.public_status == Feedback.PublicStatus.PUBLIC:
+        if feedback.issue_status != Feedback.IssueStatus.DELETED:
+            public_editable = True
+        if feedback.public_status == Feedback.PublicStatus.PUBLIC \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             public = True
         # 未结束反馈可评论
-        if feedback.solve_status == Feedback.SolveStatus.SOLVING:
+        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             commentable = True
     # 三、当前登录用户为发布者和老师以外的个人
     elif user_type == "Person":
         # 检查当前个人是否具有访问权限，只有公开反馈有访问权限
-        if feedback.public_status == Feedback.PublicStatus.PUBLIC:
+        if feedback.public_status == Feedback.PublicStatus.PUBLIC \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             login_identity = "student"
         else:
             return redirect(message_url(wrong("该反馈尚未公开，没有访问该反馈的权限！")))
@@ -278,14 +283,17 @@ def viewFeedback(request, fid):
     elif user_type == "Organization" and feedback.org == me:
         login_identity = "org"
         # 未读反馈可修改未为已读
-        if feedback.read_status == Feedback.ReadStatus.UNREAD:
+        if feedback.read_status == Feedback.ReadStatus.UNREAD \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             read_editable = True
         # 未结束反馈可修改为已结束，并且可以评论
-        if feedback.solve_status == Feedback.SolveStatus.SOLVING:
+        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED):
             solve_editable = True
             commentable = True
-        # 未公开反馈，且老师没有设置成不予公开时，组织可修改自身公开状态
-        if (not feedback.org_public) and feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE:
+        # 未公开反馈，且个人愿意公开，老师没有设置成不予公开时，组织可修改自身公开状态
+        if (not feedback.org_public) and feedback.publisher_public == True \
+            and feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             public_editable = True
     # 其他用户（非受反馈小组）暂时不开放任何权限
     else:
@@ -305,7 +313,6 @@ def viewFeedback(request, fid):
             comment.commentator_name = "匿名用户"
             comment.ava = MEDIA_URL + "avatar/person_default.jpg"
             comment.URL = None
-    print(html_display)
     return render(request, "feedback_info.html", locals())
 
 
@@ -378,13 +385,13 @@ def feedback_homepage(request):
     # -----------------------------反馈草稿---------------------------------
     # 准备需要呈现的内容
     # 这里应该呈现：所有person为自己的feedback
-    draft_feedback = my_feedback.filter(issue_status=Feedback.IssueStatus.DRAFTED)
+    draft_feedback = my_all_feedback.filter(issue_status=Feedback.IssueStatus.DRAFTED)
 
     # -----------------------------老师审核---------------------------------
     
     is_teacher = me.identity == NaturalPerson.Identity.TEACHER if is_person else False
     teacher_incharge = me.incharge.all() if is_teacher else False
-    wait_public = (
+    my_wait_public = (
         issued_feedback
         .filter()
         .filter(publisher_public=True, org_public=True)
