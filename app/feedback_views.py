@@ -437,7 +437,7 @@ def feedback_homepage(request):
                     del_feedback.issue_status = Feedback.IssueStatus.DELETED
                     del_feedback.save()
                     html_display["warn_code"] = 2
-                    html_display["warn_message"] = "成功撤回反馈"
+                    html_display["warn_message"] = "成功撤回反馈！"
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="反馈中心")
 
