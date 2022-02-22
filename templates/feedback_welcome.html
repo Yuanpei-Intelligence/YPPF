@@ -161,11 +161,8 @@
             /* ---------------- fit public tab according to screen height ---------------- */
             function fit() {
                 if(this.innerWidth < 767) {
-                    console.log(publicBox.style.height);
                     $("#border-right").hide();
                     document.querySelector("#border-bottom").classList.remove("fade");
-                    // publicBox.style.maxHeight = (ref.offsetHeight - publicBox.offsetTop) + "px";
-                    // publicTab.style.maxHeight = (ref.offsetHeight - publicTab.offsetTop) + "px";
                     if (hasPublicFeedback) {
                         const card = document.querySelector(".b-skills");
                         publicTab.style.height = publicBox.style.height = card.style.height;
