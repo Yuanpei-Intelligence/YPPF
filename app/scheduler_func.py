@@ -16,6 +16,7 @@ from app.models import (
     PageLog,
     Course,
     CourseTime,
+    CourseParticipant,
     Semester,
     Feedback,
 )
@@ -183,7 +184,7 @@ def get_weather():
         return weather_dict
 
 
-def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
+def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,course_stage2: bool):
     """
     添加每周的课程活动
     """
@@ -207,7 +208,6 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
             organization_id=course.organization,
             examine_teacher=examine_teacher,
             location=course.classroom,
-            capacity=course.capacity,
             start=start_time,
             end=end_time,
             category=Activity.ActivityCategory.COURSE,
@@ -216,23 +216,34 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int):
         activity.need_checkin = True  # 需要签到
         activity.recorded = True
         activity.course_time = week_time
-        activity.current_participants = course.capacity
-        activity.save()
+        activity.introduction = f'{course.organization.oname}每周课程活动'
         ActivityPhoto.objects.create(image=course.photo,
                                      type=ActivityPhoto.PhotoType.ANNOUNCE,
                                      activity=activity)
         # 选课人员自动报名活动
-        person_pos = Position.objects.activated().filter(
-            org=course.organization)
+        if course_stage2:
+            # 如果处于补退选阶段，活动参与人员从课程选课情况获取
+            person_pos = CourseParticipant.objects.filter(
+                course=course,
+                status=CourseParticipant.Status.SUCCESS,
+            ).values_list("person", flat=True)
+        else:
+            #选课结束以后，活动参与人员从小组成员获取
+            person_pos = Position.objects.activated().filter(
+                org=course.organization).values_list("person", flat=True)
         members = NaturalPerson.objects.filter(
-            id__in=person_pos.values("person"))
+            id__in=person_pos)
         for member in members:
             participant = Participant.objects.create(
                 activity_id=activity,
                 person_id=member,
                 status=Participant.AttendStatus.APLLYSUCCESS)
+        participate_num = int(person_pos.count())
+        activity.capacity = participate_num
+        activity.current_participants = participate_num
         week_time.cur_week += 1
         week_time.save()
+        activity.save()
 
     # 通知参与成员,创建定时任务并修改活动状态
     notifyActivity(activity.id, "newCourseActivity")
@@ -263,7 +274,7 @@ def longterm_launch_course():
     提前一周发出课程，一般是在本周课程活动结束时发出
     本函数的循环不幂等，幂等通过课程活动创建函数的幂等实现
     """
-    courses = Course.objects.activated().filter(status=Course.Status.SELECT_END)
+    courses = Course.objects.activated().filter(status__in=[Course.Status.SELECT_END,Course.Status.STAGE2])
     for course in courses:
         for week_time in course.time_set.all():
             cur_week = week_time.cur_week
@@ -272,7 +283,9 @@ def longterm_launch_course():
                 #提前6天发布
                 due_time = week_time.end + timedelta(days=7 * cur_week)
                 if due_time - timedelta(days=6) < datetime.now() < due_time:
-                    add_week_course_activity(course.id, week_time.id, cur_week)
+                    # 如果处于补退选阶段：
+                    course_stage2 = True if course.status == Course.Status.STAGE2 else False
+                    add_week_course_activity(course.id, week_time.id, cur_week, course_stage2)
 
 
 def update_active_score_per_day(days=14):
@@ -293,14 +306,38 @@ def public_feedback_per_day():
     '''查找距离组织公开反馈24h内没被审核的反馈，将其公开'''
     time = datetime.now() - timedelta(days=1)
     with transaction.atomic():
-        Feedback.objects.filter(
+        feedback = Feedback.objects.filter(
             issue_status=Feedback.IssueStatus.ISSUED,
             public_status=Feedback.PublicStatus.PRIVATE,
             publisher_public=True,
             org_public=True,
             public_time__lte=time,
-        ).select_for_update().update(
+        )
+        feedback.select_for_update().update(
             public_status=Feedback.PublicStatus.PUBLIC)
+        notification_create(
+            receiver=feedback.person.person_id,
+            sender=feedback.org.otype.incharge.person_id,
+            typename=Notification.Type.NEEDREAD,
+            title="反馈状态更新",
+            content=f"您的反馈[{feedback.title}]已被公开",
+            URL=f"/viewFeedback/{feedback.id}",
+            anonymous_flag=False,
+            publish_to_wechat=True,
+            publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+        )
+        notification_create(
+            receiver=feedback.org.organization_id,
+            sender=feedback.org.otype.incharge.person_id,
+            typename=Notification.Type.NEEDREAD,
+            title="反馈状态更新",
+            content=f"您处理的反馈[{feedback.title}]已被公开",
+            URL=f"/viewFeedback/{feedback.id}",
+            anonymous_flag=False,
+            publish_to_wechat=True,
+            publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+        )
+        
 
 
 def start_scheduler(with_scheduled_job=True, debug=False):

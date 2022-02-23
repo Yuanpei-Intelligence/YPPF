@@ -101,7 +101,7 @@
         "yx_election_end":"2022-02-16 12:00:00",
         "btx_election_start":"2022-02-16 12:00:00",
         "btx_election_end":"2022-02-16 14:00:00",
-        "pubulish_time":"2022-02-20 20:35:00"
+        "publish_time":"2022-02-20 20:35:00"
     },
     "audit_teacher": {
         "Funds": "YPadmin"
