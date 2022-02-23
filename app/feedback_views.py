@@ -117,8 +117,8 @@ def viewFeedback(request, fid):
                         succeed_message.append(f"成功修改解决状态为【{feedback.get_solve_status_display()}】")
                         inform_notification(me, feedback.person, f"您的反馈[{feedback.title}]已修改状态为【{feedback.get_solve_status_display()}】。", feedback, important=True)
             # 其他人没有修改解决状态权限
-            else:
-                return redirect(message_url(wrong("没有修改解决状态的权限！"), f"/viewFeedback/{feedback.id}"))
+            # else:
+            #     return redirect(message_url(wrong("没有修改解决状态的权限！"), f"/viewFeedback/{feedback.id}"))
 
         # 三、公开反馈信息
         feedback = Feedback.objects.get(id=fid)
@@ -246,6 +246,7 @@ def viewFeedback(request, fid):
     read = feedback.get_read_status_display()
     solve = feedback.get_solve_status_display()
     public = False
+    is_person = feedback.person == me
     commentable = False
     public_editable = False
     read_editable = False
