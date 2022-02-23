@@ -1514,7 +1514,7 @@ def search(request):
     # 活动要呈现的内容
     activity_field = ["活动名称", "承办小组", "状态"]
 
-    feedback_field = ["反馈标题", "相关小组", "解决状态"]
+    feedback_field = ["反馈标题", "解决状态", "相关小组", "反馈内容"]
     feedback_list = Feedback.objects.filter(
         Q(public_status=Feedback.PublicStatus.PUBLIC)
         & Q(issue_status=Feedback.IssueStatus.ISSUED)

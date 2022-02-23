@@ -383,7 +383,7 @@
                                                                 <span class="badge badge-success">草稿</span> 
                                                             </h5> 
                                                         </div>
-                                                        <div class="btn-group" role="group">
+                                                        <div role="group" class="d-flex justify-content-start">
                                                                 <form method="POST" id="delete_form">
                                                                     <a data-toggle="tooltip" title="删除" onclick="if(confirm('确认要删除反馈草稿吗？')){document.getElementById('delete_form').submit();}" type="submit">
                                                                     <input type="hidden" name="option" value="delete">
@@ -455,7 +455,7 @@
                                                             </h5>
                                                         </div>
                                                         <div>
-                                                            <div class="btn-group" role="group">
+                                                            <div role="group" class="d-flex">
                                                                 {% if is_person %}
                                                                 <form method="POST" id="cancel_form">
                                                                     <a data-toggle="tooltip" title="撤回" type="button" 
