@@ -425,14 +425,13 @@ def selectCourse(request):
     且点击后页面显示发生相应的变化
     3. 显示选课结果
     
-    用户权限: 只有学生账号可以进入，组织和老师均不应该进入该页面
+    用户权限: 只有学生账号能选课，老师可以通过侧边栏进入，而组织只能通过url进入
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)
 
-    if (user_type == "Organization"
-            or me.identity == NaturalPerson.Identity.TEACHER):
-        return redirect(message_url(wrong("非学生账号不能选课！")))
+    is_student = (False if user_type == "Organization"
+                  or me.identity == NaturalPerson.Identity.TEACHER else True)
 
     # 暂时不启用意愿点机制
     # if not is_staff:
@@ -442,8 +441,11 @@ def selectCourse(request):
     # 学生选课或者取消选课
     if request.method == 'POST':
 
-        # 参数: 课程id，操作action: select/cancel
+        if not is_student:
+            wrong("非学生账号不能进行选课！", html_display)
+            return redirect(message_url(html_display, request.path))
 
+        # 参数: 课程id，操作action: select/cancel
         try:
             course_id = request.POST.get('courseid')
             action = request.POST.get('action')
