@@ -521,7 +521,7 @@ def registration_status_change(course_id, user, action=None):
                 Course.objects.filter(id=course_id).select_for_update().update(
                     current_participants=F("current_participants") - 1)
                 CourseParticipant.objects.filter(
-                    course__id=course_id, person=user).update(status=to_status)
+                    course__id=course_id, person=user).delete()
                 succeed("成功取消选课！", context)
             else:
                 # 处理并发问题
@@ -653,7 +653,7 @@ def draw_lots():
         with transaction.atomic():
             participants = CourseParticipant.objects.filter(
                 course=course,
-                status=CourseParticipant.Status.SELECT).select_related()
+                status=CourseParticipant.Status.SELECT)
 
             participants_num = participants.count()
             if participants_num <= 0:
@@ -665,7 +665,7 @@ def draw_lots():
             if participants_num <= capacity:
                 # 选课人数少于课程容量，不用抽签
                 CourseParticipant.objects.filter(
-                    course=course).select_for_update().update(
+                    id__in=participants_id).select_for_update().update(
                         status=CourseParticipant.Status.SUCCESS)
                 Course.objects.filter(id=course.id).select_for_update().update(
                     current_participants=participants_num)
