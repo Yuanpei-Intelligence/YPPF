@@ -89,7 +89,7 @@ def viewFeedback(request, fid):
                     #     feedback.read_status = Feedback.ReadStatus.UNREAD
                     feedback.save()
                     succeed_message.append("成功修改状态为【已读】！")
-                    inform_notification(me, feedback.person, f"您的反馈[{feedback.title}]已知悉。", feedback)
+                    inform_notification(me, feedback.person, f"您的反馈[{feedback.title}]已知悉。", feedback, important=True)
             # 其他人没有标记已读权限
             else:
                 return redirect(message_url(wrong("没有修改已读状态的权限！"), f"/viewFeedback/{feedback.id}"))
