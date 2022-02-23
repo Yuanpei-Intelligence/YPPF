@@ -704,13 +704,13 @@ def load_course_record(request):
 
             elif record_search_course.exists():
                 record_search_course.update(
-                    invalid = True,
+                    invalid = False,
                     attend_times = times,
                     total_hours = hours
                 )
             else:
                 record_search_extra.update(
-                    invalid = True,
+                    invalid = False,
                     attend_times = times,
                     total_hours = hours
                 )
