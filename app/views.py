@@ -464,13 +464,13 @@ def stuinfo(request, name=None):
             # 无效学时，在前端呈现
             course_no_use = (
                 course_me_past
-                .filter(year__gte=2021, total_hours__lt=8)
+                .filter(invalid=True)
             )
 
             # 特判，需要一定时长才能计入总学时
             course_me_past = (
                 course_me_past
-                .exclude(year__gte=2021, total_hours__lt=8)
+                .exclude(invalid=True)
             )
 
             course_me_past = course_me_past.order_by('year', 'semester')
