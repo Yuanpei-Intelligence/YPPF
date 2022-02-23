@@ -168,6 +168,9 @@ def load_org():
     for _, org_dict in org_df.iterrows():
         try:
             username = org_dict.get("organization_id", "")
+            if not isinstance(username, str):
+                # 如果该列存在但行无数据，会得到numpy.nan: float
+                username = ""
             password = 'YPPFtest' if DEBUG else random_code_init(username)
             # 现在找不到直接出错
             org_found = True
