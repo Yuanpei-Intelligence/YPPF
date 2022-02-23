@@ -131,7 +131,10 @@ def viewFeedback(request, fid):
                 # 若老师不予公开，则不允许修改
                 if feedback.public_status == Feedback.PublicStatus.FORCE_PRIVATE:
                     return redirect(message_url(wrong("审核教师已设置不予公开！"), f"/viewFeedback/{feedback.id}"))
-
+                # 若个人不公开
+                if feedback.publisher_public == False:
+                    return redirect(message_url(wrong("根据反馈人的设置，你无法公开这一反馈结果。如果以后遇到希望公开的反馈，请在状态为【解决中】时提醒用户调整状态为【公开】！"),  \
+                        f"/viewFeedback/{feedback.id}"))
                 # 若老师没有不予公开，则修改组织公开状态
                 with transaction.atomic():
                     feedback = Feedback.objects.select_for_update().get(id=fid)
@@ -300,7 +303,7 @@ def viewFeedback(request, fid):
             solve_editable = True
             commentable = True
         # 未公开反馈，且个人愿意公开，老师没有设置成不予公开时，组织可修改自身公开状态
-        if (not feedback.org_public) and feedback.publisher_public == True \
+        if (not feedback.org_public) \
             and feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE \
             and feedback.issue_status != Feedback.IssueStatus.DELETED:
             public_editable = True
@@ -418,6 +421,7 @@ def feedback_homepage(request):
 
     if request.method == "POST":
         option = request.POST.get("option")
+        print(option)
         if not is_person:
             return redirect(message_url(wrong('组织不可以撤回/删除反馈!'), request.path))
         if option != "delete" and option != "withdraw":
@@ -436,7 +440,7 @@ def feedback_homepage(request):
                     del_feedback.issue_status = Feedback.IssueStatus.DELETED
                     del_feedback.save()
                     html_display["warn_code"] = 2
-                    html_display["warn_message"] = "成功删除反馈草稿"
+                    html_display["warn_message"] = "成功删除反馈草稿！"
         elif option == "withdraw":
             try:
                 del_feedback = Feedback.objects.get(id=request.POST["id"])

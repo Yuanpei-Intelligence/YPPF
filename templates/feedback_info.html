@@ -24,7 +24,9 @@
                     <br>
                     <br>
                     <div align="center">
-                      <h3>反馈详情
+                      <h3>反馈详情<h3></div>
+                        <div align="center">
+                        <h3>
                         {% if not is_new_feedback %}
                         {% with feedback.get_read_status_display as status %}
                           {%if status == "未读"%}
@@ -57,9 +59,13 @@
                             <span class="badge badge-danger">{{status}}</span>
                           {%endif%}
                         {%endwith%}
+                        {% if feedback.publisher_public %}
+                        <span class="badge badge-success">发布者同意公开</span>
+                        {% else %}
+                        <span class="badge badge-danger">发布者不同意公开</span>
                         {% endif %}
-                      </h3>
-                    </div>
+                        {% endif %}
+                      </h3></div>
                     <div class="d-flex justify-content-between">
                       <div>
                         <h4>
