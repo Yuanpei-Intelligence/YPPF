@@ -306,14 +306,38 @@ def public_feedback_per_day():
     '''查找距离组织公开反馈24h内没被审核的反馈，将其公开'''
     time = datetime.now() - timedelta(days=1)
     with transaction.atomic():
-        Feedback.objects.filter(
+        feedback = Feedback.objects.filter(
             issue_status=Feedback.IssueStatus.ISSUED,
             public_status=Feedback.PublicStatus.PRIVATE,
             publisher_public=True,
             org_public=True,
             public_time__lte=time,
-        ).select_for_update().update(
+        )
+        feedback.select_for_update().update(
             public_status=Feedback.PublicStatus.PUBLIC)
+        notification_create(
+            receiver=feedback.person.person_id,
+            sender=feedback.org.otype.incharge.person_id,
+            typename=Notification.Type.NEEDREAD,
+            title="反馈状态更新",
+            content=f"您的反馈[{feedback.title}]已被公开",
+            URL=f"/viewFeedback/{feedback.id}",
+            anonymous_flag=False,
+            publish_to_wechat=True,
+            publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+        )
+        notification_create(
+            receiver=feedback.org.organization_id,
+            sender=feedback.org.otype.incharge.person_id,
+            typename=Notification.Type.NEEDREAD,
+            title="反馈状态更新",
+            content=f"您处理的反馈[{feedback.title}]已被公开",
+            URL=f"/viewFeedback/{feedback.id}",
+            anonymous_flag=False,
+            publish_to_wechat=True,
+            publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+        )
+        
 
 
 def start_scheduler(with_scheduled_job=True, debug=False):
