@@ -193,7 +193,7 @@ def make_relevant_notification(feedback, info, me):
     typename = (Notification.Type.NEEDDO
                 if post_type == 'new_submit'
                 else Notification.Type.NEEDREAD)
-    title = Notification.Title.FEEDBACK_INFORM
+    title = f"反馈：{feedback.title}"
     content = "您收到一条新的反馈～点击标题立刻查看！"
     # TODO：小组看到的反馈详情呈现
     # URL = f'/modifyFeedback/?feedback_id={feedback.id}'
