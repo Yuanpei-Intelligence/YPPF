@@ -210,7 +210,7 @@ def make_relevant_notification(feedback, info, me):
         relate_instance=relate_instance,
         anonymous_flag=True,
         publish_to_wechat=True,
-        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.IMPORTANT},
     )
 
 
