@@ -730,13 +730,13 @@ class CourseRecordAdmin(admin.ModelAdmin):
             record.save()
         return self.message_user(request=request, message='已更新关联学时名称!')
 
-    @as_action("设置为 无效学时", update=True)
-    def set_delete(self, request, queryset):
+    @as_action("设置为 无效学时", actions, update=True)
+    def set_invalid(self, request, queryset):
         queryset.update(invalid=True)
         return self.message_user(request=request, message='修改成功!')
 
-    @as_action("设置为 有效学时", update=True)
-    def set_delete(self, request, queryset):
+    @as_action("设置为 有效学时", actions, update=True)
+    def set_valid(self, request, queryset):
         queryset.update(invalid=False)
         return self.message_user(request=request, message='修改成功!')
 
