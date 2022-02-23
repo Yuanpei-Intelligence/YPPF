@@ -1064,8 +1064,10 @@ def check_post_and_modify(records, post_data):
             hours = post_data.get(str(key), -1)
             assert float(hours) >= 0, "学时数据为负数，请检查输入数据！"
             record.total_hours = float(hours)
+            # 更新是否有效
+            record.invalid = (record.total_hours < 8)
 
-        CourseRecord.objects.bulk_update(records, ["total_hours"])
+        CourseRecord.objects.bulk_update(records, ["total_hours", "invalid"])
         return succeed("修改学时信息成功！")
     except AssertionError as e:
         # 此时相当于出现用户应该知晓的信息
@@ -1113,7 +1115,8 @@ def finish_course(course):
                     person=participant,
                     course=course,
                     attend_times=participate_num[participant.id],
-                    total_hours=2*participate_num[participant.id]
+                    total_hours=2 * participate_num[participant.id],
+                    invalid=(2 * participate_num[participant.id] < 8),
                 ))
         CourseRecord.objects.bulk_create(course_record_list)
     except:
