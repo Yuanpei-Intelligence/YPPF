@@ -47,9 +47,8 @@
                                                         </div>
                                                     <div align="right">
                                                             <h4>
-                                                            <img src={{ app_avatar_path }} width="24" height="24" alt="avatar">
-                                                            <a href='/stuinfo/?name={{feedback_person.name}}'>
-                                                                <u>{{feedback_person.name}}</u></a>
+                                                            <a>
+                                                                <u>匿名者</u></a>
                                                             </h4>
                                                     </div>
                                                     </div>
@@ -81,10 +80,10 @@
                                                 {% if not is_new_feedback %}
                                                 <textarea type="text" name="title" class="form-control"
                                                           aria-label="Default" placeholder="标题不能超过30字噢！"
-                                                          {% if allow_form_edit == 0 %} disabled="disabled" {% endif %}>{{feedback.title}}</textarea>
+                                                          rows="1"{% if allow_form_edit == 0 %} disabled="disabled" {% endif %}>{{feedback.title}}</textarea>
                                                 {% else %}
-                                                <input type="text" name="title" class="form-control"
-                                                       aria-label="Default" placeholder="标题不能超过30字噢！">
+                                                <textarea type="text" name="title" class="form-control"
+                                                aria-label="Default" placeholder="标题不能超过30字噢！" rows="1"></textarea>
                                                 {% endif %}
                                                 <b><font>请文明理性发言，共同营造良好的网络环境！</font></b>
                                             </div>

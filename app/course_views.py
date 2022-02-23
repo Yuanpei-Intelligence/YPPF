@@ -425,25 +425,27 @@ def selectCourse(request):
     且点击后页面显示发生相应的变化
     3. 显示选课结果
     
-    用户权限: 只有学生账号可以进入，组织和老师均不应该进入该页面
+    用户权限: 只有学生账号能选课，老师可以通过侧边栏进入，而组织只能通过url进入
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)
 
-    if (user_type == "Organization"
-            or me.identity == NaturalPerson.Identity.TEACHER):
-        return redirect(message_url(wrong("非学生账号不能选课！")))
+    is_student = (False if user_type == "Organization"
+                  or me.identity == NaturalPerson.Identity.TEACHER else True)
 
     # 暂时不启用意愿点机制
     # if not is_staff:
     #     html_display["willing_point"] = remaining_willingness_point(me)
 
+    my_messages.transfer_message_context(request.GET, html_display)
     # 学生选课或者取消选课
-
     if request.method == 'POST':
 
-        # 参数: 课程id，操作action: select/cancel
+        if not is_student:
+            wrong("非学生账号不能进行选课！", html_display)
+            return redirect(message_url(html_display, request.path))
 
+        # 参数: 课程id，操作action: select/cancel
         try:
             course_id = request.POST.get('courseid')
             action = request.POST.get('action')
@@ -457,7 +459,6 @@ def selectCourse(request):
         try:
             # 对学生的选课状态进行变更
             context = registration_status_change(course_id, me, action)
-            my_messages.transfer_message_context(context, html_display)
             return redirect(message_url(context, request.path))
         except:
             wrong("选课过程出现错误！请联系管理员。", html_display)
@@ -472,20 +473,25 @@ def selectCourse(request):
     html_display["btx_election_end"] = get_setting("course/btx_election_end")
     html_display["publish_time"] = get_setting("course/publish_time")
     html_display["status"] = None
+    is_drawing = False  # 是否正在进行抽签
+
     if str_to_time(html_display["yx_election_start"]) > datetime.now():
         html_display["status"] = "未开始"
-    elif (str_to_time(html_display["yx_election_start"])) <= datetime.now() < (str_to_time(html_display["yx_election_end"])):
+    elif (str_to_time(html_display["yx_election_start"])) <= datetime.now() < (
+            str_to_time(html_display["yx_election_end"])):
         html_display["status"] = "预选"
-    elif (str_to_time(html_display["yx_election_end"])) <= datetime.now() < (str_to_time(html_display["publish_time"])):
-        html_display["status"]="抽签中"
-    elif (str_to_time(html_display["btx_election_start"])) <= datetime.now() < (str_to_time(html_display["btx_election_end"])):
-        html_display["status"]="补退选"
-    # 是否正在进行抽签
-    is_drawing = (str_to_time(html_display["yx_election_end"]) <= datetime.now()
-                   <= str_to_time(html_display["publish_time"]))
+    elif (str_to_time(
+            html_display["yx_election_end"])) <= datetime.now() < (str_to_time(
+                html_display["publish_time"])):
+        html_display["status"] = "抽签中"
+        is_drawing = True
+    elif (str_to_time(
+            html_display["btx_election_start"])) <= datetime.now() < (
+                str_to_time(html_display["btx_election_end"])):
+        html_display["status"] = "补退选"
 
     # 选课是否已经全部结束
-    #is_end = (datetime.now() > str_to_time(html_display["btx_election_end"]))
+    # is_end = (datetime.now() > str_to_time(html_display["btx_election_end"]))
 
     unselected_courses = Course.objects.unselected(me)
     selected_courses = Course.objects.selected(me)
@@ -532,7 +538,7 @@ def viewCourse(request):
     me = utils.get_person_or_org(request.user, user_type)
     course_display = course_to_display(course, me, detail=True)
 
-    bar_display = utils.get_sidebar_and_navbar(request.user, "课程详情")
+    bar_display = utils.get_sidebar_and_navbar(request.user, course_display[0]["name"])
 
     return render(request, "course_info.html", locals())
 
