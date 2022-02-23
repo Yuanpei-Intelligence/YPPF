@@ -600,7 +600,7 @@ def addCourse(request, cid=None):
             context = create_course(request)
             html_display["warn_code"] = context["warn_code"]
             if html_display["warn_code"] == 2:
-                return redirect(message_url(succeed("创建课程成功！为您自动跳转到编辑界面。"),
+                return redirect(message_url(succeed("创建课程成功！为您自动跳转到编辑界面。您也可切换到个人账号在书院课程页面查看这门课程！"),
                                         f'/editCourse/{context["cid"]}'))
         else:
             # 仅未开始选课阶段可以修改
