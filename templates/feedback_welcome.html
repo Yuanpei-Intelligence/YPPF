@@ -64,9 +64,9 @@
                                         </h4>
                                         <p style="text-indent:2em;">欢迎你来到这里。这是学生权益诉求的集中地，也是信息交流的便捷平台，在这里我们用共同关心搭建共同生活的家园。</p>
                                         </br>
-                                        <p style="text-indent:2em;">如果你在学习与生活中产生自己无法解答的困惑；对改善公共空间环境、改进学生组织工作有好的建议；或是有其他想要和组织迫切交流的观点；都可以<em><strong><u>点击上方的“+”向组织反馈！</em></strong></u></p>
+                                        <p style="text-indent:2em;">如果你在学习与生活中产生自己无法解答的困惑；对改善公共空间环境、改进学生组织工作有好的建议；或是有其他想要和组织迫切交流的观点；都可以<em><strong>点击上方的“+”向组织反馈！</strong></em></p>
                                         </br>
-                                        <p style="text-indent:2em;">只要有需求，就能有回应，希望在互动交流里，我们都能拥有更好的生活状态、成长状态。</p>
+                                        <p style="text-indent:2em;">您的反馈至始至终对组织匿名；欢迎公开您的反馈，为后来者提供帮助！</p>
                                     </div>
                                     
                                 </div>
@@ -378,8 +378,8 @@
                                                             </h5> 
                                                         </div>
                                                         <div class="btn-group" role="group">
-                                                                <form method="POST">
-                                                                    <a data-toggle="tooltip" title="删除" onclick="return confirm('确认要删除反馈草稿吗？')" type="submit">
+                                                                <form method="POST" id="delete_form">
+                                                                    <a data-toggle="tooltip" title="删除" onclick="if(confirm('确认要删除反馈草稿吗？')){document.getElementById('delete_form').submit();}" type="submit">
                                                                     <input type="hidden" name="option" value="delete">
                                                                     <input type="hidden" name="id" value="{{feedback.id}}">
                                                                         <h5><i class="fa fa-trash-alt"></i></h5>
@@ -451,13 +451,13 @@
                                                         <div>
                                                             <div class="btn-group" role="group">
                                                                 {% if is_person %}
-                                                                <form method="POST">
-                                                                    <a data-toggle="tooltip" title="撤回" type="submit" 
-                                                                        onclick="return confirm('确认要撤回反馈吗？')">
+                                                                <form method="POST" id="cancel_form">
+                                                                    <a data-toggle="tooltip" title="撤回" type="button" 
+                                                                        onclick="if(confirm('确认要撤回反馈吗？')){document.getElementById('cancel_form').submit();}">
                                                                         <input type="hidden" value="withdraw" name="option">
                                                                         <input type="hidden" name="id" value="{{feedback.id}}">
                                                                         <h5><i class="fa fa-undo"></i></h5>
-                                                                </a>
+                                                                    </a>
                                                                 </form>
                                                                 &nbsp;&nbsp;&nbsp;&nbsp;
                                                                 {% endif %}
