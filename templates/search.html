@@ -332,11 +332,15 @@
                         <div class="collapse show" id="feedbackSearch">
                             <div class="widget-content widget-content-area">
                                 <div class="table-responsive">
-                                    <table class="table table-bordered mb-4">
+                                    <table class="table table-bordered mb-4" style="width: 100%; table-layout: fixed;">
                                         {% if feedback_list.count != 0 %}
                                         <thead>
                                             {% for attribute in feedback_field %}
-                                            <th> {{ attribute }} </th>
+                                            {% if forloop.counter == 4 %}
+                                            <th style="width: 35%;"> {{ attribute }} </th>
+                                            {% else %}
+                                            <th>{{attribute}}</th>
+                                            {% endif %}
                                             {% endfor %}
                                         </thead>
                                         <tbody>
@@ -348,7 +352,6 @@
                                                         <a href="/viewFeedback/{{ feedback.id }}">{{ feedback.title }}</a>
                                                     </u>
                                                 </td>
-
                                                 <!-- 组织 -->
                                                 <td style="min-width: 80px;">
                                                     {% if feedback.org %}
@@ -359,12 +362,11 @@
                                                         </a>
                                                     </u>
                                                     {% else %}
-                                                    这条反馈没有相关小组！    
+                                                    这条反馈没有相关小组！  
                                                     {% endif %}
                                                 </td>
                                                 <!-- 状态 -->
-                                                <td style="min-width: 60px;">
-                                                    
+                                                <td style="min-width: 60px; ">
                                                     {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
 
                                                         {% if feedback.read_status == 1 %}
@@ -388,6 +390,14 @@
                                                         {{feedback.get_solve_status_display}} </span>
 
                                                     {% endif %}
+                                                </td>
+
+                                                <td >
+                                                    <p class="mb-0" style="overflow: hidden; display: -webkit-box; 
+                                                    -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
+                                                        {{feedback.content}}
+                                                    </p>
+                                                    
                                                 </td>
                                             </tr>
                                             {% endfor %}
