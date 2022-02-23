@@ -178,7 +178,6 @@ def load_org():
                 oname = org_dict["oname"]
                 type_id = org_dict["otype_id"]
                 persons = org_dict.get("person", "待定")
-                pos = max(0, int(org_dict.get("pos", 0)))
                 user, created = User.objects.get_or_create(username=username)
                 if created:
                     user.set_password(password)
@@ -219,6 +218,7 @@ def load_org():
             if org_found:
                 # 必须是本学期的才更新，否则创建
                 all_positions = Position.objects.current()
+                pos = max(0, int(org_dict.get("pos", 0)))
                 pos_display = org.otype.get_name(pos)
                 for person in persons.split(','):
                     people = NaturalPerson.objects.get(name=person)
