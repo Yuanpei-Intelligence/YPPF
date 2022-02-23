@@ -425,13 +425,16 @@ def selectCourse(request):
     且点击后页面显示发生相应的变化
     3. 显示选课结果
     
-    用户权限: 只有学生账号能选课，老师可以通过侧边栏进入，而组织只能通过url进入
+    用户权限: 学生和老师可以进入，组织不能进入；只有学生可以进行选课
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)
 
-    is_student = (False if user_type == "Organization"
-                  or me.identity == NaturalPerson.Identity.TEACHER else True)
+    if user_type == "Organization":
+        return redirect(message_url(wrong("组织账号无法访问书院选课页面。如需选课，请切换至个人账号；如需查看您发起的书院课程，请点击【我的课程】。")))
+        
+    is_student = (False
+                  if me.identity == NaturalPerson.Identity.TEACHER else True)
 
     # 暂时不启用意愿点机制
     # if not is_staff:
