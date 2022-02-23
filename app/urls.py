@@ -118,7 +118,7 @@ urlpatterns = [
     #      data_import.load_notification_info,
     #      name="load_notification_info"),    #服务器弃用
     path("loadhelp/", data_import.load_help, name="load_help"),
-    path("loadcourecord/", data_import.load_CouRecord,  name="load_cou_record"),
+    path("loadcourserecord/", data_import.load_course_record, name="load_course_record"),
 ] + [
     # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),

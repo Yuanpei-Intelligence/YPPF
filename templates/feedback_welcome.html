@@ -54,7 +54,7 @@
                                         style="border-color: lightgray!important; position: absolute; top: 16%; bottom: 20%; right: 0px;" ></div>
                                     <div class="border-bottom" id="border-bottom"
                                         style="border-color: lightgray!important; position: absolute; left: 20%; bottom: 0; right: 20%;" ></div>
-                                    <div class="pricing-header px-3 py-3 pb-md-4 mx-auto text-center">
+                                    <div class="pricing-header px-3 py-3 pb-md-4 mx-auto">
                                         <!-- <h1 class="display-4 my-4 mb-4">元培生活</h1> -->
                                         <h4 class="text-center mb-4">
                                             问答反馈中心
@@ -62,17 +62,11 @@
                                             <a href="/modifyFeedback/"><i class="fa fa-plus-square" aria-hidden="true" style="color: #1b55e2;"></i></a>
                                             {% endif %} 
                                         </h4>
-                                        <h6>欢迎你来到这里。</h6>
-                                        <h6>这是元培同学权益反馈的集中地，也是学院、学生组织和学生之间沟通交流的便捷平台，在这里我们共同关心并搭建共同生活的家园。</h6>
+                                        <p style="text-indent:2em;">欢迎你来到这里。这是学生权益诉求的集中地，也是信息交流的便捷平台，在这里我们用共同关心搭建共同生活的家园。</p>
                                         </br>
-                                        <h6>如果你在学习与生活中产生自己无法解答的困惑；</h6>
-                                        <h6>对改善公共空间环境、改进学生组织工作有好的建议；</h6>
-                                        <h6>或是有其他想要和组织迫切交流的观点：</h6>
-                                        <h6>都可以点击上方的“+”向组织反馈。</h6>
+                                        <p style="text-indent:2em;">如果你在学习与生活中产生自己无法解答的困惑；对改善公共空间环境、改进学生组织工作有好的建议；或是有其他想要和组织迫切交流的观点；都可以<em><strong>点击上方的“+”向组织反馈！</strong></em></p>
                                         </br>
-                                        <h6 class="my-0 mb-2">
-                                            只要有需求，就能有回应。希望依靠互动交流，我们能为更好的元培助力，也让彼此和自己变得更好。
-                                        </h6>
+                                        <p style="text-indent:2em;">您的反馈至始至终对组织匿名；欢迎公开您的反馈，为后来者提供帮助！</p>
                                     </div>
                                     
                                 </div>
@@ -194,13 +188,13 @@
                             <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
                                 <li class="nav-item">
                                     <a class="nav-link active" href="#wait" data-toggle="tab">
-                                        <h5><i class="fa fa-envelope-o"></i> 待审核</h5>
+                                        <h5><i class="fa fa-envelope-o"></i> 待我审核</h5>
                                     </a>
                                 </li>
 
                                 <li class="nav-item">
                                     <a class="nav-link" href="#public" data-toggle="tab">
-                                        <h5><i class="fa fa-envelope-o"></i> 已公开</h5>
+                                        <h5><i class="fa fa-envelope-o"></i> 我已公开</h5>
                                     </a>
                                 </li>
 
@@ -380,33 +374,31 @@
                                 <div class="bio-skill-box">
                                     <div id="undone-feedback" class="row">
                                         {% for feedback in draft_feedback %}
-                                            <div class="col-12 col-xl-4 col-lg-6 mb-xl-4 col-md-6 mb-4">
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
                                                 <div class="b-skills">
                                                     <div class="d-flex justify-content-between">
                                                         <div class="d-flex justify-content-start">
                                                             <h5>
                                                                 {{feedback.title}}
-                                                            </h5>
-                                                            <!-- <span class="badge badge-success">草稿</span> -->  
+                                                                <span class="badge badge-success">草稿</span> 
+                                                            </h5> 
                                                         </div>
                                                         <div class="btn-group" role="group">
-                                                            <form method="POST">
-                                                                <input type="hidden" name="option" value="delete">
-                                                                <input type="hidden" name="id" value="{{feedback.id}}">
-                                                                <button class="btn btn-outline" onclick="return confirm('确认要删除反馈草稿吗？')" type="submit">
-                                                                    <i class="fa fa-trash-alt"></i>
-                                                                </button>
-                                                            </form>
-                                                            <a href="/modifyFeedback/?feedback_id={{feedback.id}}">
-                                                                <button class="btn btn-outline" onclick="">
+                                                                <form method="POST" id="delete_form">
+                                                                    <a data-toggle="tooltip" title="删除" onclick="if(confirm('确认要删除反馈草稿吗？')){document.getElementById('delete_form').submit();}" type="submit">
+                                                                    <input type="hidden" name="option" value="delete">
+                                                                    <input type="hidden" name="id" value="{{feedback.id}}">
+                                                                        <h5><i class="fa fa-trash-alt"></i></h5>
+                                                                    </a>
+                                                                </form>
+                                                            &nbsp;&nbsp;&nbsp;&nbsp;
+                                                            <a href="/modifyFeedback/?feedback_id={{feedback.id}}" data-toggle="tooltip" title="修改">
+                                                                <h5>
                                                                     <i class="fa fa-pencil-alt"></i>
-                                                                </button>
+                                                                </h5>
                                                             </a>
                                                         </div>
                                                     </div>
-
-                                                    
-
                                                     <p style="color: rgb(66, 67, 68);">
                                                         <i class="fa fa-bookmark" style="width: 14px;"></i>
                                                         <span class="ml-1">{{feedback.type.name}}</span>
@@ -432,10 +424,10 @@
                                     </div>
                                 </div>
                                 {% else %}
-                                <div style="margin-top: 40px; margin-bottom: -40px;">
-                                    <p style="text-align: center;">您没有反馈草稿。</p>
-                                    <br>
-                                </div>
+                                    <div style="margin-top: 40px; margin-bottom: -40px;">
+                                        <p style="text-align: center;">您没有反馈草稿。</p>
+                                        <br>
+                                    </div>
                                 {% endif %}
                             </div> 
                             {% endif %} 
@@ -445,7 +437,7 @@
                                 <div class="bio-skill-box">
                                     <div id="undone-feedback" class="row">
                                         {% for feedback in undone_feedback %}
-                                            <div class="col-12 col-xl-4 col-lg-6 mb-xl-4 col-md-6 mb-4">
+                                            <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
                                                 <div class=" b-skills">
                                                     <div class="d-flex justify-content-between">
                                                         <div class="d-flex justify-content-start">
@@ -464,19 +456,19 @@
                                                         </div>
                                                         <div>
                                                             <div class="btn-group" role="group">
-                                                                <form method="POST">
-                                                                    <button class="btn btn-outline" type="submit" 
-                                                                        onclick="return confirm('确认要撤回反馈吗？')"
-                                                                        {% if not is_person %} disabled {% endif %}>
+                                                                {% if is_person %}
+                                                                <form method="POST" id="cancel_form">
+                                                                    <a data-toggle="tooltip" title="撤回" type="button" 
+                                                                        onclick="if(confirm('确认要撤回反馈吗？')){document.getElementById('cancel_form').submit();}">
                                                                         <input type="hidden" value="withdraw" name="option">
                                                                         <input type="hidden" name="id" value="{{feedback.id}}">
-                                                                        <i class="fa fa-undo"></i>
-                                                                    </button>
+                                                                        <h5><i class="fa fa-undo"></i></h5>
+                                                                    </a>
                                                                 </form>
-                                                                <a href="/viewFeedback/{{feedback.id}}">
-                                                                    <button class="btn btn-outline">
-                                                                        <i class="fa fa-eye"></i>
-                                                                    </button>
+                                                                &nbsp;&nbsp;&nbsp;&nbsp;
+                                                                {% endif %}
+                                                                <a href="/viewFeedback/{{feedback.id}}" data-toggle="tooltip" title="查看">
+                                                                    <h5><i class="fa fa-eye"></i></h5>
                                                                 </a>
                                                             </div>
                                                         </div>
@@ -520,7 +512,7 @@
                                     <div class="bio-skill-box">
                                         <div class="row">
                                             {% for feedback in done_feedback %}
-                                                <div class="col-12 col-xl-4 col-lg-6 mb-xl-4 col-md-6 mb-4">
+                                                <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
                                                     <div class=" b-skills">
                                                         <div class="d-flex justify-content-between">
                                                             <div class="d-flex justify-content-start">
@@ -537,18 +529,11 @@
                                                                 </h5>
                                                             </div>
                                                             <div>
-                                                                <a href="/viewFeedback/{{feedback.id}}">
-                                                                    <div class="btn-group" role="group">
-                                                                        <button class="btn btn-outline">
-                                                                            <i class="fa fa-eye"></i>
-                                                                        </button>
-                                                                    </div>  
+                                                                <a href="/viewFeedback/{{feedback.id}}" data-toggle="tooltip" title="查看">
+                                                                    <h5><i class="fa fa-eye"></i></h5>
                                                                 </a>
-                                                                
                                                             </div>
                                                         </div>
-                                                        
-                                                        
 
                                                         <p style="color: rgb(66, 67, 68);">
                                                             <i class="fa fa-bookmark" style="width: 14px;"></i>
