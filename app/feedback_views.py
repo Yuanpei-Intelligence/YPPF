@@ -24,7 +24,7 @@ from app.comment_utils import addComment, showComment
 
 
 __all__ = [
-    'feedbackWelcome',
+    'viewFeedback',
     'modifyFeedback',
 ]
 
@@ -329,6 +329,7 @@ def viewFeedback(request, fid):
     return render(request, "feedback_info.html", locals())
 
 
+"""
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='feedback_views[feedbackWelcome]', record_user=True)
@@ -346,6 +347,7 @@ def feedbackWelcome(request):
         request.user, navbar_name="我要留言"
     )
     return render(request, "feedback_welcome.html", locals())
+"""
 
 
 @login_required(redirect_field_name='origin')
@@ -364,7 +366,12 @@ def feedback_homepage(request):
         .order_by("-feedback_time")
     )
 
+    # 是否显示我的反馈
+    show_feedback = True
     if user_type == "Person":
+        # 教师页面不显示我的反馈
+        if me.identity == NaturalPerson.Identity.TEACHER:
+            show_feedback = False
         my_feedback = issued_feedback.filter(person_id=me)
         my_all_feedback = Feedback.objects.filter(person_id=me)
     else:
@@ -394,7 +401,16 @@ def feedback_homepage(request):
         .filter(issue_status=Feedback.IssueStatus.ISSUED)
         .order_by("-feedback_time")
     )
-    
+
+    # 我已处理
+    # 已公开的或者强制不公开（不予公开）的是已经处理过的
+    process_feedback = (
+        Feedback.objects
+        .filter(Q(public_status=Feedback.PublicStatus.PUBLIC) | Q(public_status=Feedback.PublicStatus.FORCE_PRIVATE))
+        .filter(issue_status=Feedback.IssueStatus.ISSUED)
+        .order_by("-feedback_time")
+    )
+
     # -----------------------------反馈草稿---------------------------------
     # 准备需要呈现的内容
     # 这里应该呈现：所有person为自己的feedback
@@ -404,6 +420,7 @@ def feedback_homepage(request):
     is_teacher = me.identity == NaturalPerson.Identity.TEACHER if is_person else False
     my_wait_public = []
     my_public_feedback = []
+    my_process_feedback = []  # 我已处理列表
     wait_public = (
         issued_feedback
         .filter(publisher_public=True, org_public=True)
@@ -419,6 +436,12 @@ def feedback_homepage(request):
             can_show = me.incharge.filter(otype_id=feedback.org.otype_id)
             if can_show.exists():
                 my_public_feedback.append(feedback)
+
+        # 获取我已处理列表
+        for feedback in process_feedback:
+            can_show = me.incharge.filter(otype_id=feedback.org.otype_id)
+            if can_show.exists():
+                my_process_feedback.append(feedback)
 
     if request.method == "POST":
         option = request.POST.get("option")
