@@ -192,7 +192,7 @@
                     {% if cancel_editable %}
                     <button type="submit" class="btn btn-warning btn-lg mb-4 mr-2" value="cancel" name="post_type" onclick="return confirm('确认撤销反馈？')">撤销反馈</button>
                     {% endif %}
-                    <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2" value="submit_draft" name="post_type" onclick="return confirm('确认提交状态修改？')">提交修改</button>
+                    <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2" value="submit_draft" name="post_type" onclick="return confirm('确认提交状态修改？注意：当你设置解决状态为【已解决】或【无法解决】时，本反馈将被关闭，无法进行评论。请确保已经在评论区完成沟通！')">提交修改</button>
                   </div>
                   {% endif %}
                   {% endif %}
