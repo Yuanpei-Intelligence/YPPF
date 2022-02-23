@@ -1514,6 +1514,14 @@ class CourseRecordManager(models.Manager):
         # 只存在当前学期和过去的，非本学期即是过去
         return select_current(self, noncurrent=True)
 
+    def valid(self, noncurrent=None):
+        '''有效学时，可加入参数来过滤时间'''
+        return select_current(self.filter(invalid=False), noncurrent=noncurrent)
+
+    def invalid(self, noncurrent=None):
+        '''无效学时，可加入参数来过滤时间'''
+        return select_current(self.filter(invalid=True), noncurrent=noncurrent)
+
 
 class CourseRecord(models.Model):
     class Meta:
@@ -1539,6 +1547,7 @@ class CourseRecord(models.Model):
     )
     total_hours = models.FloatField("总计参加学时")
     attend_times = models.IntegerField("参加课程次数", default=0)
+    invalid = models.BooleanField("无效", default=False)
 
     objects: CourseRecordManager = CourseRecordManager()
 
