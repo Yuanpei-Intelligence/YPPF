@@ -521,7 +521,7 @@ def registration_status_change(course_id, user, action=None):
                 Course.objects.filter(id=course_id).select_for_update().update(
                     current_participants=F("current_participants") - 1)
                 CourseParticipant.objects.filter(
-                    course__id=course_id, person=user).update(status=to_status)
+                    course__id=course_id, person=user).delete()
                 succeed("成功取消选课！", context)
             else:
                 # 处理并发问题
