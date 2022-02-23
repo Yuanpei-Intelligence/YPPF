@@ -18,6 +18,7 @@ from app.feedback_utils import (
     examine_notification,
     update_feedback,
     make_relevant_notification,
+    inform_notification
 )
 from app.comment_utils import addComment, showComment
 
@@ -88,6 +89,7 @@ def viewFeedback(request, fid):
                     #     feedback.read_status = Feedback.ReadStatus.UNREAD
                     feedback.save()
                     succeed_message.append("成功修改状态为【已读】！")
+                    inform_notification(me, feedback.person, f"您的反馈[{feedback.title}]已知悉。", feedback)
             # 其他人没有标记已读权限
             else:
                 return redirect(message_url(wrong("没有修改已读状态的权限！"), f"/viewFeedback/{feedback.id}"))
@@ -113,6 +115,7 @@ def viewFeedback(request, fid):
                     feedback.save()
                     if solve != "solving":
                         succeed_message.append(f"成功修改解决状态为【{feedback.get_solve_status_display()}】")
+                        inform_notification(me, feedback.person, f"您的反馈[{feedback.title}]已解决。", feedback)
             # 其他人没有修改解决状态权限
             else:
                 return redirect(message_url(wrong("没有修改解决状态的权限！"), f"/viewFeedback/{feedback.id}"))
@@ -135,6 +138,7 @@ def viewFeedback(request, fid):
                     feedback.org_public = True
                     feedback.save()
                     succeed_message.append("成功修改组织公开状态为【公开】！通过学院审核后，该反馈将向所有人公开。")
+                    inform_notification(me, feedback.person, f"已申请公开您的反馈[{feedback.title}]，等待老师审核。", feedback)
                 # 此时若发布者也选择公开，则向老师发送通知消息，提醒审核
                 if feedback.publisher_public:
                     examine_notification(feedback)
@@ -167,6 +171,8 @@ def viewFeedback(request, fid):
                     feedback.public_status = Feedback.PublicStatus.PUBLIC
                     feedback.save()
                     succeed_message.append("成功修改反馈公开状态为【公开】！所有学生都有访问权限。")
+                    inform_notification(me, feedback.person, f"已公开您的反馈[{feedback.title}]。", feedback, anonymous=False)
+                    inform_notification(me, feedback.org, f"已公开您处理的反馈[{feedback.title}]。", feedback, anonymous=False)
             # 其他人没有公开反馈权限
             else:
                 return redirect(message_url(wrong("没有公开该反馈的权限！"), f"/viewFeedback/{feedback.id}"))
@@ -209,6 +215,8 @@ def viewFeedback(request, fid):
                     feedback.public_status = Feedback.PublicStatus.FORCE_PRIVATE
                     feedback.save()
                     succeed_message.append("成功修改反馈状态为【不予公开】，除发布者和小组外均无访问权限。")
+                    inform_notification(me, feedback.person, f"暂不公开您的反馈[{feedback.title}]。", feedback, anonymous=False)
+                    inform_notification(me, feedback.org, f"暂不公开您处理的反馈[{feedback.title}]。", feedback, anonymous=False)
             # 其他人没有隐藏反馈权限
             else:
                 return redirect(message_url(wrong("没有隐藏该反馈的权限！"), f"/viewFeedback/{feedback.id}"))
