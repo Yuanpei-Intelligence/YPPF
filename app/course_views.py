@@ -536,7 +536,7 @@ def viewCourse(request):
     me = utils.get_person_or_org(request.user, user_type)
     course_display = course_to_display(course, me, detail=True)
 
-    bar_display = utils.get_sidebar_and_navbar(request.user, course.name)
+    bar_display = utils.get_sidebar_and_navbar(request.user, course_display[0].name)
 
     return render(request, "course_info.html", locals())
 
