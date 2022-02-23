@@ -154,7 +154,7 @@
                                         <form action="/selectCourse/" method="post">
                                             <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                             <input type="hidden" id="action" name="action"value="select" />
-                                            {% if course.status != "预选" and course.status != "补退选" %}
+                                            {% if course.status != "预选" and course.status != "补退选" or is_student == False %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% else %}
                                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal-{{course.course_id}}">选课</button>
@@ -234,7 +234,7 @@
                                                 <form action="/selectCourse/" method="post">
                                                     <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
                                                     <input type="hidden" id="action" name="action"value="select" />
-                                                    {% if course.status != "预选" and course.status != "补退选" %}
+                                                    {% if course.status != "预选" and course.status != "补退选" or is_student == False %}
                                                     <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                                     {% else %}
                                                     <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal{{ forloop.counter }}-{{course.course_id}}">选课</button>
