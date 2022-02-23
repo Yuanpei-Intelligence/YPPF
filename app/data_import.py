@@ -177,7 +177,6 @@ def load_org():
             if username[:2] == "zz":
                 oname = org_dict["oname"]
                 type_id = org_dict["otype_id"]
-                persons = org_dict.get("person", "待定")
                 user, created = User.objects.get_or_create(username=username)
                 if created:
                     user.set_password(password)
@@ -220,6 +219,10 @@ def load_org():
                 all_positions = Position.objects.current()
                 pos = max(0, int(org_dict.get("pos", 0)))
                 pos_display = org.otype.get_name(pos)
+                persons = org_dict.get("person", "待定")
+                if not isinstance(persons, str):
+                    # 如果该列存在但行无数据，会得到numpy.nan: float
+                    persons = ""
                 for person in persons.split(','):
                     people = NaturalPerson.objects.get(name=person)
                     # 获得其当前的职位
