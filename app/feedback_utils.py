@@ -229,9 +229,13 @@ def examine_notification(feedback):
     )
 
 @log.except_captured(source='feedback_utils[inform_notification]')
-def inform_notification(sender, receiver, content, feedback, anonymous=None):
+def inform_notification(sender, receiver, content, feedback, anonymous=None, important=False):
     if anonymous is None:
         anonymous = False if isinstance(sender, Organization) else True
+    if important == False:
+        level = WechatMessageLevel.INFO
+    else:
+        level = WechatMessageLevel.IMPORTANT
     notification_create(
         receiver=receiver.person_id if isinstance(receiver, NaturalPerson) else receiver.organization_id,
         sender=sender.person_id if isinstance(sender, NaturalPerson) else sender.organization_id,
@@ -241,5 +245,5 @@ def inform_notification(sender, receiver, content, feedback, anonymous=None):
         URL=f"/viewFeedback/{feedback.id}",
         anonymous_flag=anonymous,
         publish_to_wechat=True,
-        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+        publish_kws={'app': WechatApp.AUDIT, 'level': level},
     )

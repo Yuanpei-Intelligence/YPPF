@@ -115,7 +115,7 @@ def viewFeedback(request, fid):
                     feedback.save()
                     if solve != "solving":
                         succeed_message.append(f"成功修改解决状态为【{feedback.get_solve_status_display()}】")
-                        inform_notification(me, feedback.person, f"您的反馈[{feedback.title}]已解决。", feedback)
+                        inform_notification(me, feedback.person, f"您的反馈[{feedback.title}]已修改状态为【{feedback.get_solve_status_display()}】。", feedback, important=True)
             # 其他人没有修改解决状态权限
             else:
                 return redirect(message_url(wrong("没有修改解决状态的权限！"), f"/viewFeedback/{feedback.id}"))
