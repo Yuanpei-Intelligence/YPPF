@@ -82,7 +82,6 @@
                                                 {% for act in future_activity_list %}
                                                 <!-- BEGIN ACTIVITY DISPLAY -->
                                                 <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
-                                                    <a href="/viewActivity/{{ act.id }}">
                                                     <div class=" b-skills">
                                                         <div class="d-flex justify-content-between">
                                                             <div>
@@ -103,7 +102,9 @@
                                                                     {{ act.status }}
                                                                     {% endif %}
                                                                     </span>
-                                                                    <u>{{ act.title }}</u>
+                                                                    <a href="/viewActivity/{{ act.id }}">
+                                                                        <u>{{ act.title }}</u>
+                                                                    </a>
                                                                 </h5>
                                                             </div>
                                                             <div>
@@ -175,7 +176,6 @@
                                                             <span class="ml-1">{{ act.location }}&nbsp;</span>
                                                         </p>
                                                     </div>
-                                                </a>
                                                 </div>
 
                                                 <!-- END ACTIVITY DISPLAY -->
