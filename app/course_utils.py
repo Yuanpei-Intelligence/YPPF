@@ -653,7 +653,7 @@ def draw_lots():
         with transaction.atomic():
             participants = CourseParticipant.objects.filter(
                 course=course,
-                status=CourseParticipant.Status.SELECT).select_related()
+                status=CourseParticipant.Status.SELECT)
 
             participants_num = participants.count()
             if participants_num <= 0:
@@ -665,7 +665,7 @@ def draw_lots():
             if participants_num <= capacity:
                 # 选课人数少于课程容量，不用抽签
                 CourseParticipant.objects.filter(
-                    course=course).select_for_update().update(
+                    id__in=participants_id).select_for_update().update(
                         status=CourseParticipant.Status.SUCCESS)
                 Course.objects.filter(id=course.id).select_for_update().update(
                     current_participants=participants_num)
