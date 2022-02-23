@@ -81,10 +81,10 @@
                                                 {% if not is_new_feedback %}
                                                 <textarea type="text" name="title" class="form-control"
                                                           aria-label="Default" placeholder="标题不能超过30字噢！"
-                                                          {% if allow_form_edit == 0 %} disabled="disabled" {% endif %}>{{feedback.title}}</textarea>
+                                                          rows="1"{% if allow_form_edit == 0 %} disabled="disabled" {% endif %}>{{feedback.title}}</textarea>
                                                 {% else %}
-                                                <input type="text" name="title" class="form-control"
-                                                       aria-label="Default" placeholder="标题不能超过30字噢！">
+                                                <textarea type="text" name="title" class="form-control"
+                                                aria-label="Default" placeholder="标题不能超过30字噢！" rows="1"></textarea>
                                                 {% endif %}
                                                 <b><font>请文明理性发言，共同营造良好的网络环境！</font></b>
                                             </div>

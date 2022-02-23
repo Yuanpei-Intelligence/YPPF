@@ -340,13 +340,9 @@ class ActivityAdmin(admin.ModelAdmin):
         return f'{obj.current_participants}/{"无限" if obj.capacity == 10000 else obj.capacity}'
     participant_diaplay.short_description = "报名情况"
 
-    actions = [
-                'refresh_count',
-                'to_waiting', 'to_processing', 'to_end',
-                'cancel_scheduler'
-        ]
+    actions = []
 
-    @as_action("更新 报名人数", update=True)
+    @as_action("更新 报名人数", actions, update=True)
     def refresh_count(self, request, queryset):
         for activity in queryset:
             activity.current_participants = Participant.objects.filter(
@@ -357,8 +353,18 @@ class ActivityAdmin(admin.ModelAdmin):
                     ]).count()
             activity.save()
         return self.message_user(request=request, message='修改成功!')
+    
+    @as_action('设为 普通活动', actions, update=True)
+    def set_normal_category(self, request, queryset):
+        queryset.update(category=Activity.ActivityCategory.NORMAL)
+        return self.message_user(request=request, message='修改成功!')
 
-    @as_action("进入 等待中 状态")
+    @as_action('设为 课程活动', actions, update=True)
+    def set_course_category(self, request, queryset):
+        queryset.update(category=Activity.ActivityCategory.COURSE)
+        return self.message_user(request=request, message='修改成功!')
+
+    @as_action("进入 等待中 状态", actions)
     def to_waiting(self, request, queryset):
         if len(queryset) != 1:
             return self.message_user(
@@ -375,7 +381,7 @@ class ActivityAdmin(admin.ModelAdmin):
             return self.message_user(request=request,
                                     message='修改成功!')
     
-    @as_action("进入 进行中 状态")
+    @as_action("进入 进行中 状态", actions)
     def to_processing(self, request, queryset):
         if len(queryset) != 1:
             return self.message_user(
@@ -389,10 +395,9 @@ class ActivityAdmin(admin.ModelAdmin):
             return self.message_user(request=request,
                                     message='修改成功, 并移除了定时任务!')
         except:
-            return self.message_user(request=request,
-                                    message='修改成功!')
+            return self.message_user(request=request, message='修改成功!')
     
-    @as_action("进入 已结束 状态")
+    @as_action("进入 已结束 状态", actions)
     def to_end(self, request, queryset):
         if len(queryset) != 1:
             return self.message_user(
@@ -406,10 +411,9 @@ class ActivityAdmin(admin.ModelAdmin):
             return self.message_user(request=request,
                                     message='修改成功, 并移除了定时任务!')
         except:
-            return self.message_user(request=request,
-                                    message='修改成功!')
+            return self.message_user(request=request, message='修改成功!')
 
-    @as_action("取消 定时任务")
+    @as_action("取消 定时任务", actions)
     def cancel_scheduler(self, request, queryset):
         success_list = []
         failed_list = []
@@ -714,6 +718,16 @@ class CourseRecordAdmin(admin.ModelAdmin):
                 return queryset.filter(course__type=self.value())
             return queryset
     list_filter = (TypeFilter, 'year', 'semester')
+
+    actions = []
+
+    @as_action('更新来源名称', actions, update=True)
+    def update_extra_name(self, request, queryset):
+        records = queryset.filter(course__isnull=False)
+        for record in records.select_related('course'):
+            record.extra_name = record.course.name
+            record.save()
+        return self.message_user(request=request, message='已更新关联学时名称!')
 
 
 @admin.register(Feedback)

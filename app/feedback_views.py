@@ -47,8 +47,8 @@ def viewFeedback(request, fid):
         # 添加评论
         if request.POST.get("comment_submit"):
             # 只有未完成反馈可以发送评论
-            if feedback.solve_status != Feedback.SolveStatus.SOLVING:
-                return redirect(message_url(wrong("只有“解决中”的反馈可以评论！"), f"/viewFeedback/{feedback.id}"))
+            if feedback.solve_status not in (Feedback.SolveStatus.SOLVING,Feedback.SolveStatus.UNMARKED):
+                return redirect(message_url(wrong("已结束的反馈不能评论！"), f"/viewFeedback/{feedback.id}"))
             # 确定通知消息的发送人，互相发送给对方
             if user_type == "Person" and feedback.person == me:
                 receiver = feedback.org.organization_id
@@ -287,7 +287,8 @@ def viewFeedback(request, fid):
             and feedback.issue_status != Feedback.IssueStatus.DELETED:
             read_editable = True
         # 未结束反馈可修改为已结束，并且可以评论
-        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED):
+        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             solve_editable = True
             commentable = True
         # 未公开反馈，且个人愿意公开，老师没有设置成不予公开时，组织可修改自身公开状态
@@ -386,17 +387,26 @@ def feedback_homepage(request):
     # 准备需要呈现的内容
     # 这里应该呈现：所有person为自己的feedback
     draft_feedback = my_all_feedback.filter(issue_status=Feedback.IssueStatus.DRAFTED)
-
     # -----------------------------老师审核---------------------------------
     
     is_teacher = me.identity == NaturalPerson.Identity.TEACHER if is_person else False
-    teacher_incharge = me.incharge.all() if is_teacher else False
-    my_wait_public = (
+    my_wait_public = []
+    my_public_feedback = []
+    wait_public = (
         issued_feedback
-        .filter()
         .filter(publisher_public=True, org_public=True)
         .filter(public_status=Feedback.PublicStatus.PRIVATE)
     )
+    if is_teacher:
+        for feedback in wait_public:
+            can_show = me.incharge.filter(otype_id=feedback.org.otype_id)
+            if can_show.exists():
+                my_wait_public.append(feedback)
+        
+        for feedback in public_feedback:
+            can_show = me.incharge.filter(otype_id=feedback.org.otype_id)
+            if can_show.exists():
+                my_public_feedback.append(feedback)
 
     if request.method == "POST":
         option = request.POST.get("option")
@@ -436,7 +446,7 @@ def feedback_homepage(request):
                     del_feedback.issue_status = Feedback.IssueStatus.DELETED
                     del_feedback.save()
                     html_display["warn_code"] = 2
-                    html_display["warn_message"] = "成功撤回反馈"
+                    html_display["warn_message"] = "成功撤回反馈！"
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="反馈中心")
 

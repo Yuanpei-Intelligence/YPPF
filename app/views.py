@@ -389,8 +389,8 @@ def stuinfo(request, name=None):
 
         # 历史的小组(同样是删去隐藏)
         person_history_poss = Position.objects.activated(noncurrent=True).filter(
-            person=person, 
-            show_post = True
+            person=person,
+            show_post=True
             )
         person_history_orgs = Organization.objects.filter(
             id__in=person_history_poss.values("org")
@@ -402,8 +402,18 @@ def stuinfo(request, name=None):
         person_history_orgs_pos = [
             person_history_poss.get(org=org).pos for org in person_history_orgs
         ]  # ta在小组中的职位
+
+        sems = {
+            Semester.FALL: "秋",
+            Semester.SPRING: "春",
+            Semester.ANNUAL: "全年"
+        }
+
         person_history_orgs_pos = [
-            org.otype.get_name(pos)
+            org.otype.get_name(pos) + ' ' +
+            str(person_history_poss.get(org=org).in_year)[2:] + "-" +
+            str(person_history_poss.get(org=org).in_year + 1)[2:] +
+            sems[person_history_poss.get(org=org).in_semester]
             for pos, org in zip(person_history_orgs_pos, person_history_orgs)
         ]  # ta在小组中的职位
         html_display["history_orgs_info"] = (
@@ -454,18 +464,13 @@ def stuinfo(request, name=None):
             # 无效学时，在前端呈现
             course_no_use = (
                 course_me_past
-                .filter(total_hours__lt=8)
-                .exclude(year=2020, semester=Semester.FALL, total_hours__gte=6)
-                .exclude(year=2021, semester=Semester.SPRING, total_hours__gte=6)
+                .filter(year__gte=2021, total_hours__lt=8)
             )
 
             # 特判，需要一定时长才能计入总学时
             course_me_past = (
                 course_me_past
-                .exclude(year=2020, semester=Semester.FALL, total_hours__lt=6)
-                .exclude(year=2021, semester=Semester.SPRING, total_hours__lt=6)
-                .exclude(year=2021, semester=Semester.FALL, total_hours__lt=8) # 21秋开始，需要至少8学时
-                .exclude(year__gt=2021, total_hours__lt=8)
+                .exclude(year__gte=2021, total_hours__lt=8)
             )
 
             course_me_past = course_me_past.order_by('year', 'semester')
