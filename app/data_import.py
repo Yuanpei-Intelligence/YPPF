@@ -67,6 +67,7 @@ def create_user(id, rand_pw=False, reset_pw=None, **defaults):
             stage = 'set password'
             user.set_password(password)
             user.save()
+        return user
     except RuntimeError: raise
     except: raise RuntimeError(f'{stage} failed')
 
