@@ -144,6 +144,8 @@ def notification_create(
     if publish_to_wechat == True:
         if not publish_kws:
             publish_kws = {}
+        if anonymous_flag: 
+            publish_kws['show_source'] = False
         publish_notification(notification, **publish_kws)
     return notification
 
