@@ -45,6 +45,7 @@ weather*.json
 migrations/
 test_data/
 comment/
+course/
 avatar/
 wallpaper/
 activity/
@@ -57,3 +58,7 @@ logstore/
 # Python #
 __pycache__/
 *.py[cod]
+
+# OPS Files *
+*.ini
+*.sh

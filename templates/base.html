@@ -37,7 +37,10 @@
 </script>
 {% endif %}
 
-<body>
+<script src={% static "assets/js/event_tracking.js" %}></script>
+<!-- <body> -->
+<body onload="PageTrackFunction(0)" onbeforeunload="PageTrackFunction(1)">
+    
 
     <!--  BEGIN NAVBAR  -->
     <div class="header-container fixed-top">
@@ -237,7 +240,7 @@
                                     我的元气值</a>
                             </div>
                             <div class="dropdown-item">
-                                <a class="" href="/user_account_setting/"><svg xmlns="http://www.w3.org/2000/svg"
+                                <a class="" href="/userAccountSetting/"><svg xmlns="http://www.w3.org/2000/svg"
                                         width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                                         stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
                                         class="feather feather-activity">

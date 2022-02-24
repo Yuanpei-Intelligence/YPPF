@@ -12,8 +12,8 @@ import requests
 import json
 
 # 设置
-from django.conf import settings
-from boottest import local_dict
+from app.constants import *
+from boottest import base_get_setting
 
 # 模型与加密模型
 from app.models import NaturalPerson, Organization, Activity, Notification, Position
@@ -23,15 +23,19 @@ from boottest.hasher import MyMD5PasswordHasher, MySHA256Hasher
 from datetime import datetime, timedelta
 
 # 获取对象等操作
-from app.utils import get_person_or_org, except_captured
+from app.utils import get_person_or_org
+from app import log
+
+
+__all__ = [
+    'WechatApp', 'WechatMessageLevel',
+    'publish_notification', 'publish_notifications',
+]
+
 
 # 全局设置
 # 是否启用定时任务，请最好仅在服务器启用，如果不启用，后面的多个设置也会随之变化
-USE_SCHEDULER = True
-try:
-    USE_SCHEDULER = bool(local_dict["config"]["wechat_send"]["use_scheduler"])
-except:
-    pass
+USE_SCHEDULER = get_config('config/wechat_send/use_scheduler', bool, True)
 # 是否多线程发送，必须启用scheduler，如果启用则发送时无需等待
 USE_MULTITHREAD = True if USE_SCHEDULER else False
 # 决定单次连接的超时时间，响应时间一般为1s或12s（偶尔），建议考虑前端等待时间放弃12s
@@ -52,54 +56,37 @@ if USE_SCHEDULER:
         scheduler.start()
 
 # 全局变量 用来发送和确认默认的导航网址
-DEFAULT_URL = settings.LOGIN_URL
-THIS_URL = settings.LOGIN_URL  # 增加默认url前缀
-if THIS_URL[-1:] == "/" and THIS_URL[-2:] != "//":
-    THIS_URL = THIS_URL[:-1]  # 去除尾部的/
-WECHAT_URL = local_dict["url"]["wechat_url"]
-if WECHAT_URL[-1:] == "/" and WECHAT_URL[-2:] != "//":
-    WECHAT_URL = WECHAT_URL[:-1]  # 去除尾部的/
-INVITE_URL = WECHAT_URL + '/invite_user'
-wechat_coder = MySHA256Hasher(local_dict["hash"]["wechat"])
+DEFAULT_URL = LOGIN_URL
+THIS_URL = LOGIN_URL.rstrip('/')        # 增加默认url前缀, 去除尾部的/
+WECHAT_SITE = WECHAT_URL.rstrip('/')    # 去除尾部的/
+INVITE_URL = WECHAT_SITE + '/invite_user'
+wechat_coder = MySHA256Hasher(base_get_setting("hash/wechat"))
 
 # 发送应用设置
-UNBLOCK_APPS = set()    # 不要求接收等级的应用
-try:
-    UNBLOCK_APPS = set(local_dict["config"]["wechat_send"]["unblock_apps"])
-except:
-    pass
-APP2URL = {}    # 应用名到域名的转换，可以是相对地址，也可以是绝对地址
-try:
-    APP2URL = dict(local_dict["config"]["wechat_send"]["app2url"])
-    APP2URL.setdefault('default', '')
-except:
-    APP2URL = {'default': ''}
+# 不要求接收等级的应用
+UNBLOCK_APPS = get_config('config/wechat_send/unblock_apps', set, set())
+# 应用名到域名的转换，可以是相对地址，也可以是绝对地址
+APP2URL = get_config('config/wechat_send/app2url', dict, dict())
+APP2URL.setdefault('default', '')
 
 
 # 一批发送的最大数量
-SEND_LIMIT = 500  # 上限1000
-SEND_BATCH = 500
-try:
-    SEND_LIMIT = min(1000, int(local_dict["thresholds"]["wechat_send_number"]))
-except:
-    pass
-try:
-    SEND_BATCH = min(1000, int(local_dict["thresholds"]["wechat_send_batch"]))
-except:
-    pass
+# 底层单次发送的上限，不超过1000
+SEND_LIMIT = min(1000, get_config('thresholds/wechat_send_number', int, 500))
+# 中间层一批发送的数量，不超过1000
+SEND_BATCH = min(1000, get_config('thresholds/wechat_send_batch', int, 500))
 
 # 限制接收范围
-RECEIVER_SET = None  # 可接收范围，默认全体
-BLACKLIST_SET = set()  # 黑名单，默认没有，可以用来排除元培学院等特殊用户
-try:
-    r_range = local_dict["config"]["wechat_send"]["receivers"]
-    RECEIVER_SET = set(map(str, r_range)) if r_range is not None else None
-except:
-    pass
-try:
-    BLACKLIST_SET = set(map(str, local_dict["config"]["wechat_send"]["blacklist"]))
-except:
-    pass
+# 可接收范围，默认全体(None表示不限制范围)
+RECEIVER_SET = get_config('config/wechat_send/receivers',
+                          default=None,
+                          trans_func=lambda x: set(map(str, x))
+                          if x is not None else None)
+# 黑名单，默认没有，可以用来排除元培学院等特殊用户
+BLACKLIST_SET = get_config('config/wechat_send/blacklist',
+                          default=set(),
+                          trans_func=lambda x: set(map(str, x)))
+
 
 class WechatMessageLevel:
     '''
@@ -114,6 +101,7 @@ class WechatMessageLevel:
     IMPORTANT = 500
     # FATAL = 1000
     # NOREJECT = 1001
+
 
 class WechatApp:
     '''
@@ -140,6 +128,7 @@ class WechatApp:
     # 固有应用名
     _PROMOTE = 'promote'
     _MESSAGE = 'message'
+
 
 class WechatDefault:
     '''定义微信发送的默认行为'''
@@ -172,9 +161,9 @@ def app2absolute_url(app):
         url = APP2URL.get('default', '')
     if not url.startswith('http'):
         if not url:
-            url = WECHAT_URL
+            url = WECHAT_SITE
         else:
-            url = WECHAT_URL + '/' + url.lstrip('/')
+            url = WECHAT_SITE + '/' + url.lstrip('/')
     return url
 
 
@@ -286,12 +275,56 @@ def send_wechat(
             base_send_wechat(*args, **kws)  # 不使用定时任务请改为这句
 
 
-@except_captured(False, record_args=True, source='wechat_send[publish_notification]')
+def can_send(person, level=None):
+    '''获取个人接收人是否接收'''
+    if level is not None and level < person.wechat_receive_level:
+        return False
+    return True
+
+
+def org2receivers(org, level=None, force=True):
+    '''获取组织接收人的学号列表'''
+    managers = Position.objects.activated().filter(org=org, is_admin=True)
+    # 提供等级时，不小于接收等级
+    if level is not None:
+        receivers = managers.filter(person__wechat_receive_level__lte=level)
+        if not receivers.exists() and force:
+            receivers = managers.filter(pos=0)
+        managers = receivers
+    return list(managers.values_list("person__person_id__username", flat=True))
+
+
+def user2receivers(user, level=None, get_obj=False):
+    '''供发布级YPPF接口调用的函数，获取接收人的学号列表，以及可选的原始对象'''
+    receiver = get_person_or_org(user)
+    if isinstance(receiver, NaturalPerson):
+        wechat_receivers = [user.username] if can_send(receiver, level) else []
+    else:
+        wechat_receivers = org2receivers(receiver, level)
+    if get_obj:
+        return wechat_receivers, receiver
+    return wechat_receivers
+
+
+def get_person_receivers(all_receiver_ids, level=None):
+    '''获取接收的个人的学号列表'''
+    receivers = NaturalPerson.objects.activated().filter(
+        person_id__in=all_receiver_ids)
+    # 提供等级时，不小于接收等级
+    if level is not None:
+        receivers = receivers.filter(wechat_receive_level__lte=level)
+    receivers = list(receivers.values_list("person_id__username", flat=True))
+    return receivers
+
+
+@log.except_captured(False, record_args=True, source='wechat_send[publish_notification]')
 def publish_notification(notification_or_id,
+                        show_source=True,
                         app=None, level=None):
     """
     根据单个通知或id（实际是主键）向通知的receiver发送
     别创建了好多通知然后循环调用这个，批量发送用publish_notifications
+    - show_source: bool, 显示消息来源 默认显示
     - app: str | WechatApp宏, 确定发送的应用 请推广类消息务必注意
     - level: int | WechatMessageLevel宏, 用于筛选用户 推广类消息可以不填
     """
@@ -305,70 +338,63 @@ def publish_notification(notification_or_id,
     if app is None or app == WechatApp.DEFAULT:
         app = WechatDefault.get_app('notification', notification)
     check_block = app not in UNBLOCK_APPS
-    sender = get_person_or_org(notification.sender)  # 也可能是小组
     url = notification.URL
     if url and url[0] == "/":  # 相对路径变为绝对路径
         url = THIS_URL + url
 
-    if len(notification.content) < 120:  # 卡片类型消息最多显示256字节
-        kws = {"card": True}  # 因留白等原因，内容120字左右就超出了
-        message = "\n".join(
-            (
-                notification.get_title_display(),
-                f"发送者：{str(sender)}",
-                "通知内容：",
-                notification.content,
-            )
-        )
+    messages = [notification.get_title_display()]
+    if len(notification.content) < 120:
+        # 卡片类型消息最多显示256字节
+        # 因留白等原因，内容120字左右就超出了
+        kws = {"card": True}
+        if show_source:
+            sender = get_person_or_org(notification.sender)
+            # 通知内容暂时也一起去除了
+            messages += [f'发送者：{str(sender)}', '通知内容：']
+        messages += [notification.content]
         if url:
             kws["url"] = url
             kws["btntxt"] = "查看详情"
-    else:  # 超出卡片字数范围的消息使用文本格式发送
+    else:
+        # 超出卡片字数范围的消息使用文本格式发送
         kws = {"card": False}
-        message = "\n".join(
-            (
-                notification.get_title_display(),
-                "",
-                "发送者：",
-                f"{str(sender)}",
-                "通知内容：",
-                notification.content,
-            )
-        )
+        messages.append('')
+        if show_source:
+            sender = get_person_or_org(notification.sender)
+            # 通知内容暂时也一起去除了
+            messages += ['发送者：' + f'{str(sender)}', '通知内容：']
+        messages += [notification.content]
         if url:
-            message += f'\n\n<a href="{url}">阅读原文</a>'
+            messages += ['', f'<a href="{url}">阅读原文</a>']
         else:
-            message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
-    receiver = get_person_or_org(notification.receiver)
+            messages += ['', f'<a href="{DEFAULT_URL}">查看详情</a>']
+
+    # 获取完整消息
+    message = '\n'.join(messages)
+
     if check_block and (level is None or level == WechatMessageLevel.DEFAULT):
         # 考虑屏蔽时，获得默认行为的消息等级
         level = WechatDefault.get_level('notification', notification)
-    if isinstance(receiver, NaturalPerson):
-        # 如果该应用检查是否拒收，小于接受者的最低接收等级时被拒收
-        if check_block and level < receiver.wechat_receive_level:
-            return True
-        wechat_receivers = [notification.receiver.username]  # user.username是id
-    else:  # 小组
+    elif not check_block:
+        # 不屏蔽时，消息等级设置为空
+        level = None
+    # 获取接受者列表
+    wechat_receivers, receiver = user2receivers(notification.receiver, level,
+                                                get_obj=True)
+    if isinstance(receiver, Organization):  # 小组
         # 转发小组消息给其负责人
         message += f'\n消息来源：{str(receiver)}，请切换到该小组账号进行操作。'
-        wechat_receivers = Position.objects.activated().filter(
-            org=receiver, is_admin=True)
-        if check_block:
-            wechat_receivers = wechat_receivers.filter(
-                person__wechat_receive_level__lte=level)    # 不小于接收等级
-        if not wechat_receivers:    # 没有人接收
-            return True
-        wechat_receivers = list(wechat_receivers.values_list(
-            "person__person_id__username", flat=True
-            ))
+    if not wechat_receivers:    # 没有人接收
+        return True
 
     send_wechat(wechat_receivers, message, app, **kws)
     return True
 
 
-@except_captured(False, record_args=True, source='wechat_send[publish_notifications]')
+@log.except_captured(False, record_args=True, source='wechat_send[publish_notifications]')
 def publish_notifications(
     notifications_or_ids=None, filter_kws=None, exclude_kws=None,
+    show_source=True,
     app=None, level=None,
     *, check=True
 ):
@@ -384,6 +410,7 @@ def publish_notifications(
     - exclude_kws: dict | None, 这些参数将被直接传递给exclude函数
     - 以上参数不能都为空
     
+    - show_source: bool, 显示消息来源 默认显示
     - app: str | WechatApp宏, 确定发送的应用 请推广类消息务必注意
     - level: int | WechatMessageLevel宏, 用于筛选用户 推广类消息可以不填
 
@@ -441,68 +468,62 @@ def publish_notifications(
     except:
         raise Exception("检查失败，发生了未知错误，这里不该发生异常")
 
-    sender = get_person_or_org(sender)  # 可能是小组或个人
     if url and url[0] == "/":  # 相对路径变为绝对路径
         url = THIS_URL + url
 
-    if len(content) < 120:  # 卡片类型消息最多显示256字节
-        kws = {"card": True}  # 因留白等原因，内容120字左右就超出了
-        message = "\n".join(
-            (
-                latest_notification.get_title_display(),
-                f"发送者：{str(sender)}",
-                "通知内容：",
-                content,
-            )
-        )
+    messages = [latest_notification.get_title_display()]
+    if len(latest_notification.content) < 120:
+        # 卡片类型消息最多显示256字节
+        # 因留白等原因，内容120字左右就超出了
+        kws = {"card": True}
+        if show_source:
+            sender = get_person_or_org(latest_notification.sender)
+            # 通知内容暂时也一起去除了
+            messages += [f'发送者：{str(sender)}', '通知内容：']
+        messages += [latest_notification.content]
         if url:
             kws["url"] = url
             kws["btntxt"] = "查看详情"
-    else:  # 超出卡片字数范围的消息使用文本格式发送
+    else:
+        # 超出卡片字数范围的消息使用文本格式发送
         kws = {"card": False}
-        message = "\n".join(
-            (
-                latest_notification.get_title_display(),
-                "",
-                "发送者：",
-                f"{str(sender)}",
-                "通知内容：",
-                content,
-            )
-        )
+        messages.append('')
+        if show_source:
+            sender = get_person_or_org(latest_notification.sender)
+            # 通知内容暂时也一起去除了
+            messages += ['发送者：' + f'{str(sender)}', '通知内容：']
+        messages += [latest_notification.content]
         if url:
-            message += f'\n\n<a href="{url}">阅读原文</a>'
+            messages += ['', f'<a href="{url}">阅读原文</a>']
         else:
-            message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
+            messages += ['', f'<a href="{DEFAULT_URL}">查看详情</a>']
+
+    # 获取完整消息
+    message = '\n'.join(messages)
 
     # 获得发送应用和消息发送等级
     if app is None or app == WechatApp.DEFAULT:
         app = WechatDefault.get_app('notification', latest_notification)
     check_block = app not in UNBLOCK_APPS
-    if check_block and (level is None or level == WechatMessageLevel.DEFAULT): 
+    if check_block and (level is None or level == WechatMessageLevel.DEFAULT):
         level = WechatDefault.get_level('notification', latest_notification)
+    if not check_block:
+        level = None
 
     # 获取接收者列表，小组的接收者为其负责人，去重
     receiver_ids = notifications.values_list("receiver_id", flat=True)
-    person_receivers = NaturalPerson.objects.filter(person_id__in=receiver_ids)
-    # 如果检查是否屏蔽，仅发送给最小接收等级不大于发送等级的人
-    if check_block:
-        person_receivers = person_receivers.filter(wechat_receive_level__lte=level)
-    wechat_receivers = list(
-        person_receivers.values_list("person_id__username", flat=True)
-    )
+    person_receivers = get_person_receivers(receiver_ids, level)
+    wechat_receivers = person_receivers
     receiver_set = set(wechat_receivers)
 
     # 接下来是发送给小组的部分
-    org_receivers = Organization.objects.filter(organization_id__in=receiver_ids)
-    activate_positions = Position.objects.activated()
+    org_receivers = Organization.objects.activated().filter(
+        organization_id__in=receiver_ids)
     for org in org_receivers:
-        managers = activate_positions.filter(
-            org=org, is_admin=True)
-        if check_block:    # 屏蔽时，不小于接收等级
-            managers = managers.filter(person__wechat_receive_level__lte=level)
-        managers = managers.values_list("person__person_id__username", flat=True)
-        managers = [manager for manager in managers if not manager in receiver_set]
+        managers = [
+            manager for manager in org2receivers(org, level, force=False)
+            if manager not in receiver_set
+        ]
         wechat_receivers.extend(managers)
         receiver_set.update(managers)
     if not wechat_receivers:    # 可能都不接收此等级的消息

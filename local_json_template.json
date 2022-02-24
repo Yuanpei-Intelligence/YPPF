@@ -10,7 +10,7 @@
         "PASSWORD": "$PASSWORD$"
     },
     "url": {
-        "base_url": "http://$BASEMENT_IP$/appointment/index",
+        "base_url": "http://$BASEMENT_IP$/",
         "login_url": "http://$THIS_IP$",
         "email_url": "http://$OUTER_IP$/email/",
         "wechat_url": "http://$OUTER_IP$"
@@ -19,11 +19,18 @@
         "404": "用户不存在，请在元培学院官方公众号后台留言注册！",
         "406": "密码错误！请重新输入!"
     },
+    "use_scheduler": false,
     "system_log": "$LOG_NAME$",
     "debug_stuids": [
         "$STUID1$",
         "$STUID2$"
     ],
+    "underground": {
+        "system_log":   "Appoint_Sys",
+        "token":{
+            "display":      "$DISPLAY_TOKEN$"
+        }
+    },
     "weather_api_key": "$API_KEY$",
     "default_weather": {
         "modify_time": "2021-09-01 10:59:07.389086",
@@ -71,7 +78,8 @@
     },
     "semester_data": {
         "year": "2021",
-        "semester": "Fall"
+        "semester": "Spring",
+        "semester_start": "2022-02-21 00:00:00"
     },
     "help_message": {
         "个人主页": "将其在微信中打开，就可以在聊天/朋友圈中分享你自己啦",
@@ -85,6 +93,15 @@
         "修改密码": "",
         "信息发送中心": "信息发送中心为团体提供了向订阅用户或者团体成员发送消息到通知信箱和企业微信的功能",
         "活动信息": "将其在微信中打开，就可以在聊天/朋友圈中分享你自己啦"
+    },
+    "course": {
+        "type_name": "书院课程",
+        "audit_teacher": "YPadmin",
+        "yx_election_start":"2022-02-16 10:00:00",
+        "yx_election_end":"2022-02-16 12:00:00",
+        "btx_election_start":"2022-02-16 12:00:00",
+        "btx_election_end":"2022-02-16 14:00:00",
+        "publish_time":"2022-02-20 20:35:00"
     },
     "audit_teacher": {
         "Funds": "YPadmin"

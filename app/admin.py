@@ -1,21 +1,61 @@
-from django.contrib import admin
-from django.utils.safestring import mark_safe
 from app.models import *
 
+from functools import wraps
+from datetime import datetime
+from django.contrib import admin
+from django.db import transaction
+from django.utils.safestring import mark_safe
+
 # Register your models here.
-admin.site.site_title = '元培成长档案管理后台'
-admin.site.site_header = '元培成长档案 - 管理后台'
+admin.site.site_title = '元培智慧校园管理后台'
+admin.site.site_header = '元培智慧校园 - 管理后台'
+# 合并后只需声明一次
+# admin.site.site_title = '元培成长档案管理后台'
+# admin.site.site_header = '元培成长档案 - 管理后台'
+
+
+def as_action(description=None, /, register_to=None, *,
+              superuser=True, atomic=False, update=False):
+    '''
+    将函数转化为操作的形式，并试图注册
+    检查用户是否有权限执行操作，有权限时捕获错误
+    '''
+    def actual_decorator(action_function):
+        @wraps(action_function)
+        def _wrapped_view(self, request, queryset):
+            if superuser and not request.user.is_superuser:
+                return self.message_user(request=request,
+                                         message='操作失败,没有权限,请联系老师!',
+                                         level='warning')
+            try:
+                if atomic or update:
+                    with transaction.atomic():
+                        if update:
+                            queryset = queryset.select_for_update()
+                        return action_function(self, request, queryset)
+                return action_function(self, request, queryset)
+            except Exception as e:
+                return self.message_user(request=request,
+                                         message=f'操作时发生{type(e)}异常: {e}',
+                                         level='error')
+        if description is not None:
+            _wrapped_view.short_description = description
+        if register_to is not None and _wrapped_view.__name__ not in register_to:
+            register_to.append(_wrapped_view.__name__)
+        return _wrapped_view
+    return actual_decorator
 
 
 @admin.register(NaturalPerson)
 class NaturalPersonAdmin(admin.ModelAdmin):
     fieldsets = (
         [
-            "Commom Attributes",
+            "Common Attributes",
             {
                 "fields": (
                     "person_id", "name", "nickname", "gender", "identity", "status",
                     "YQPoint", "YQPoint_Bonus", "bonusPoint", "wechat_receive_level",
+                    "accept_promote", "active_score",
                     "stu_id_dbonly",
                     ),
             }
@@ -27,7 +67,7 @@ class NaturalPersonAdmin(admin.ModelAdmin):
                 "fields": (
                     "stu_grade", "stu_class", "stu_dorm", "stu_major",
                     "show_gender", "show_email", "show_tel", "show_major", "show_dorm",
-                    "show_nickname", "show_birthday", 
+                    "show_nickname", "show_birthday",
                     ),
             },
         ],
@@ -53,79 +93,47 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         'all_subscribe', 'all_unsubscribe',
         ]
 
+    @as_action("发放元气值")
     def YQ_send(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
-        try:
-            from app.scheduler_func import distribute_YQPoint_per_month
-            distribute_YQPoint_per_month()
-            return self.message_user(request=request,
-                                    message='发放成功!')
-        except Exception as e:
-            return self.message_user(request=request,
-                                     message=f'操作失败, 原因为: {e}',
-                                     level='error')
-    YQ_send.short_description = "发放元气值"
+        from app.scheduler_func import distribute_YQPoint_per_month
+        distribute_YQPoint_per_month()
+        return self.message_user(request=request,
+                                message='发放成功!')
     
+    @as_action("设为 学生", update=True)
     def set_student(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         queryset.update(identity=NaturalPerson.Identity.STUDENT)
         return self.message_user(request=request,
                                  message='修改成功!')
-    set_student.short_description = "设为 学生"
 
+    @as_action("设为 老师", update=True)
     def set_teacher(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         queryset.update(identity=NaturalPerson.Identity.TEACHER)
         return self.message_user(request=request,
                                  message='修改成功!')
-    set_teacher.short_description = "设为 老师"
 
+    @as_action("设为 已毕业", update=True)
     def set_graduate(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         queryset.update(status=NaturalPerson.GraduateStatus.GRADUATED)
         return self.message_user(request=request,
                                  message='修改成功!')
-    set_graduate.short_description = "设为 已毕业"
 
+    @as_action("设为 未毕业", update=True)
     def set_ungraduate(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         queryset.update(status=NaturalPerson.GraduateStatus.UNDERGRADUATED)
         return self.message_user(request=request,
                                  message='修改成功!')
-    set_ungraduate.short_description = "设为 未毕业"
 
+    @as_action("设置 全部订阅")
     def all_subscribe(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         for org in queryset:
             org.unsubscribers.clear()
             org.save()
         return self.message_user(request=request,
                                  message='修改成功!')
-    all_subscribe.short_description = "设置 全部订阅"
 
+    @as_action("设置 取消订阅")
     def all_unsubscribe(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         orgs = list(Organization.objects.exclude(
             otype__otype_id=0).values_list('id', flat=True))
         for person in queryset:
@@ -133,7 +141,6 @@ class NaturalPersonAdmin(admin.ModelAdmin):
             person.save()
         return self.message_user(request=request,
                                  message='修改成功!已经取消所有非官方组织的订阅!')
-    all_unsubscribe.short_description = "设置 取消订阅"
 
 @admin.register(Freshman)
 class FreshmanAdmin(admin.ModelAdmin):
@@ -179,30 +186,22 @@ class OrganizationAdmin(admin.ModelAdmin):
 
     actions = ['all_subscribe', 'all_unsubscribe']
 
+    @as_action("设置 全部订阅")
     def all_subscribe(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         for org in queryset:
             org.unsubscribers.clear()
             org.save()
         return self.message_user(request=request,
                                  message='修改成功!')
-    all_subscribe.short_description = "设置 全部订阅"
 
+    @as_action("设置 全部不订阅")
     def all_unsubscribe(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         persons = list(NaturalPerson.objects.all().values_list('id', flat=True))
         for org in queryset:
             org.unsubscribers.set(persons)
             org.save()
         return self.message_user(request=request,
                                  message='修改成功!')
-    all_unsubscribe.short_description = "设置 全部不订阅"
 
 
 @admin.register(Position)
@@ -217,75 +216,51 @@ class PositionAdmin(admin.ModelAdmin):
 
     actions = ['demote', 'promote', 'to_member', 'to_manager', 'set_admin', 'set_not_admin']
 
+    @as_action("职务等级 增加(降职)", update=True)
     def demote(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         for pos in queryset:
             pos.pos += 1
             pos.save()
         return self.message_user(request=request,
                                  message='修改成功!')
-    demote.short_description = "职务等级 增加(降职)"
 
+    @as_action("职务等级 降低(升职)", update=True)
     def promote(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         for pos in queryset:
             pos.pos = min(0, pos.pos - 1)
             pos.save()
         return self.message_user(request=request,
                                  message='修改成功!')
-    promote.short_description = "职务等级 降低(升职)"
 
+    @as_action("设为成员", update=True)
     def to_member(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         for pos in queryset:
             pos.pos = pos.org.otype.get_length()
             pos.is_admin = False
             pos.save()
         return self.message_user(request=request,
                                  message='修改成功, 并收回了管理权限!')
-    to_member.short_description = "设为成员"
 
+    @as_action("设为负责人", update=True)
     def to_manager(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         for pos in queryset:
             pos.pos = 0
             pos.is_admin = True
             pos.save()
         return self.message_user(request=request,
                                  message='修改成功, 并赋予了管理权限!')
-    to_manager.short_description = "设为负责人"
 
+    @as_action("赋予 管理权限", update=True)
     def set_admin(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
-        queryset.update(is_admin = True)
+        queryset.update(is_admin=True)
         return self.message_user(request=request,
                                  message='修改成功!')
-    set_admin.short_description = "赋予 管理权限"
 
+    @as_action("收回 管理权限", update=True)
     def set_not_admin(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
-        queryset.update(is_admin = False)
+        queryset.update(is_admin=False)
         return self.message_user(request=request,
                                  message='修改成功!')
-    set_not_admin.short_description = "收回 管理权限"
 
 
 @admin.register(Activity)
@@ -353,6 +328,7 @@ class ActivityAdmin(admin.ModelAdmin):
     
     list_filter =   (
                         "status", "inner", "need_checkin", "valid",
+                        'category',
                         "organization_id__otype", "source",
                         ErrorFilter,
                         'endbefore', "capacity", "year",
@@ -364,17 +340,10 @@ class ActivityAdmin(admin.ModelAdmin):
         return f'{obj.current_participants}/{"无限" if obj.capacity == 10000 else obj.capacity}'
     participant_diaplay.short_description = "报名情况"
 
-    actions = [
-                'refresh_count',
-                'to_waiting', 'to_processing', 'to_end',
-                'cancel_scheduler'
-        ]
+    actions = []
 
+    @as_action("更新 报名人数", actions, update=True)
     def refresh_count(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         for activity in queryset:
             activity.current_participants = Participant.objects.filter(
                 activity_id=activity, status__in=[
@@ -384,128 +353,105 @@ class ActivityAdmin(admin.ModelAdmin):
                     ]).count()
             activity.save()
         return self.message_user(request=request, message='修改成功!')
-    refresh_count.short_description = "更新 报名人数"
+    
+    @as_action('设为 普通活动', actions, update=True)
+    def set_normal_category(self, request, queryset):
+        queryset.update(category=Activity.ActivityCategory.NORMAL)
+        return self.message_user(request=request, message='修改成功!')
 
+    @as_action('设为 课程活动', actions, update=True)
+    def set_course_category(self, request, queryset):
+        queryset.update(category=Activity.ActivityCategory.COURSE)
+        return self.message_user(request=request, message='修改成功!')
+
+    @as_action("进入 等待中 状态", actions)
     def to_waiting(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         if len(queryset) != 1:
             return self.message_user(
                 request=request, message='一次只能修改一个活动状态!', level='error')
         activity = queryset[0]
-        try:
-            from app.scheduler_func import changeActivityStatus
-            changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
-            try:
-                from app.scheduler_func import scheduler
-                scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.WAITING}')
-                return self.message_user(request=request,
-                                        message='修改成功, 并移除了定时任务!')
-            except:
-                return self.message_user(request=request,
-                                        message='修改成功!')
-        except Exception as e:
-            return self.message_user(
-                request=request, message=f'操作失败, 原因: {e}', level='error')
-    to_waiting.short_description = "进入 等待中 状态"
-    
-    def to_processing(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
-        if len(queryset) != 1:
-            return self.message_user(
-                request=request, message='一次只能修改一个活动状态!', level='error')
-        activity = queryset[0]
-        try:
-            from app.scheduler_func import changeActivityStatus
-            changeActivityStatus(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
-            try:
-                from app.scheduler_func import scheduler
-                scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.PROGRESSING}')
-                return self.message_user(request=request,
-                                        message='修改成功, 并移除了定时任务!')
-            except:
-                return self.message_user(request=request,
-                                        message='修改成功!')
-        except Exception as e:
-            return self.message_user(
-                request=request, message=f'操作失败, 原因: {e}', level='error')
-    to_processing.short_description = "进入 进行中 状态"
-    
-    def to_end(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
-        if len(queryset) != 1:
-            return self.message_user(
-                request=request, message='一次只能修改一个活动状态!', level='error')
-        activity = queryset[0]
-        try:
-            from app.scheduler_func import changeActivityStatus
-            changeActivityStatus(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
-            try:
-                from app.scheduler_func import scheduler
-                scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.END}')
-                return self.message_user(request=request,
-                                        message='修改成功, 并移除了定时任务!')
-            except:
-                return self.message_user(request=request,
-                                        message='修改成功!')
-        except Exception as e:
-            return self.message_user(
-                request=request, message=f'操作失败, 原因: {e}', level='error')
-    to_end.short_description = "进入 已结束 状态"
-
-    def cancel_scheduler(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
-        success_list = []
-        failed_list = []
+        from app.activity_utils import changeActivityStatus
+        changeActivityStatus(activity.id, Activity.Status.APPLYING, Activity.Status.WAITING)
         try:
             from app.scheduler_func import scheduler
-            CANCEL_STATUSES = [
-                'remind',
-                Activity.Status.END,
-                Activity.Status.PROGRESSING,
-                Activity.Status.WAITING,
-            ]
-            for activity in queryset:
-                failed_statuses = []
-                for status in CANCEL_STATUSES:
-                    try:
-                        scheduler.remove_job(f'activity_{activity.id}_{status}')
-                    except:
-                        failed_statuses.append(status)
-                if failed_statuses:
-                    if len(failed_statuses) != len(CANCEL_STATUSES):
-                        failed_list.append(f'{activity.id}: {",".join(failed_statuses)}')
-                    else:
-                        failed_list.append(f'{activity.id}')
-                else:
-                    success_list.append(f'{activity.id}')
-            
-            msg = f'成功取消{len(success_list)}项活动的定时任务!' if success_list else '未能完全取消任何任务'
-            if failed_list:
-                msg += f'\n{len(failed_list)}项活动取消失败：\n{";".join(failed_list)}'
-            return self.message_user(request=request, message=msg)
-        except Exception as e:
+            scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.WAITING}')
+            return self.message_user(request=request,
+                                    message='修改成功, 并移除了定时任务!')
+        except:
+            return self.message_user(request=request,
+                                    message='修改成功!')
+    
+    @as_action("进入 进行中 状态", actions)
+    def to_processing(self, request, queryset):
+        if len(queryset) != 1:
             return self.message_user(
-                request=request, message=f'操作失败, 原因: {e}', level='error')
-    cancel_scheduler.short_description = "取消 定时任务"
+                request=request, message='一次只能修改一个活动状态!', level='error')
+        activity = queryset[0]
+        from app.activity_utils import changeActivityStatus
+        changeActivityStatus(activity.id, Activity.Status.WAITING, Activity.Status.PROGRESSING)
+        try:
+            from app.scheduler_func import scheduler
+            scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.PROGRESSING}')
+            return self.message_user(request=request,
+                                    message='修改成功, 并移除了定时任务!')
+        except:
+            return self.message_user(request=request, message='修改成功!')
+    
+    @as_action("进入 已结束 状态", actions)
+    def to_end(self, request, queryset):
+        if len(queryset) != 1:
+            return self.message_user(
+                request=request, message='一次只能修改一个活动状态!', level='error')
+        activity = queryset[0]
+        from app.activity_utils import changeActivityStatus
+        changeActivityStatus(activity.id, Activity.Status.PROGRESSING, Activity.Status.END)
+        try:
+            from app.scheduler_func import scheduler
+            scheduler.remove_job(f'activity_{activity.id}_{Activity.Status.END}')
+            return self.message_user(request=request,
+                                    message='修改成功, 并移除了定时任务!')
+        except:
+            return self.message_user(request=request, message='修改成功!')
+
+    @as_action("取消 定时任务", actions)
+    def cancel_scheduler(self, request, queryset):
+        success_list = []
+        failed_list = []
+        from app.scheduler_func import scheduler
+        CANCEL_STATUSES = [
+            'remind',
+            Activity.Status.END,
+            Activity.Status.PROGRESSING,
+            Activity.Status.WAITING,
+        ]
+        for activity in queryset:
+            failed_statuses = []
+            for status in CANCEL_STATUSES:
+                try:
+                    scheduler.remove_job(f'activity_{activity.id}_{status}')
+                except:
+                    failed_statuses.append(status)
+            if failed_statuses:
+                if len(failed_statuses) != len(CANCEL_STATUSES):
+                    failed_list.append(f'{activity.id}: {",".join(failed_statuses)}')
+                else:
+                    failed_list.append(f'{activity.id}')
+            else:
+                success_list.append(f'{activity.id}')
+        
+        msg = f'成功取消{len(success_list)}项活动的定时任务!' if success_list else '未能完全取消任何任务'
+        if failed_list:
+            msg += f'\n{len(failed_list)}项活动取消失败：\n{";".join(failed_list)}'
+        return self.message_user(request=request, message=msg)
 
 
 @admin.register(Participant)
 class ParticipantAdmin(admin.ModelAdmin):
     list_display = ["id", 'activity_id', "person_id", "status",]
-    search_fields = ('id', "activity_id__title", "person_id__name",)
-    list_filter =   ("status", )
+    search_fields = ('id','activity_id__id',
+                     "activity_id__title", "person_id__name",)
+    list_filter =   ("status", 'activity_id__category',
+                     'activity_id__year', 'activity_id__semester',)
 
 
 @admin.register(Notification)
@@ -520,32 +466,20 @@ class NotificationAdmin(admin.ModelAdmin):
         'republish_bulk_at_promote', 'republish_bulk_at_message',
         ]
 
+    @as_action("设置状态为 删除", update=True)
     def set_delete(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
-        queryset.update(status = Notification.Status.DELETE)
+        queryset.update(status=Notification.Status.DELETE)
         return self.message_user(request=request,
                                  message='修改成功!')
-    set_delete.short_description = "设置状态为 删除"
 
+    @as_action("重发 单个通知")
     def republish(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level='warning')
         if len(queryset) != 1:
             return self.message_user(request=request,
                                      message='一次只能重发一个通知!',
                                      level='error')
         notification = queryset[0]
-        try:
-            from app.wechat_send import publish_notification, WechatApp
-        except Exception as e:
-            return self.message_user(request=request,
-                                     message=f'导入失败, 原因: {e}',
-                                     level='error')
+        from app.wechat_send import publish_notification, WechatApp
         if not publish_notification(
             notification,
             app=WechatApp.NORMAL,
@@ -555,7 +489,6 @@ class NotificationAdmin(admin.ModelAdmin):
                                      level='error')
         return self.message_user(request=request,
                                  message='已成功定时,将发送至默认窗口!')
-    republish.short_description = "重发 单个通知"
     
     def republish_bulk(self, request, queryset, app):
         if not request.user.is_superuser:
@@ -588,6 +521,7 @@ class NotificationAdmin(admin.ModelAdmin):
                                  message=f'已成功定时!标识为{bulk_identifier}')
     republish_bulk.short_description = "错误的重发操作"
 
+    @as_action("重发 所在批次 于 订阅窗口")
     def republish_bulk_at_promote(self, request, queryset):
         try:
             from app.wechat_send import WechatApp
@@ -597,8 +531,8 @@ class NotificationAdmin(admin.ModelAdmin):
                                      message=f'导入失败, 原因: {e}',
                                      level='error')
         return self.republish_bulk(request, queryset, app)
-    republish_bulk_at_promote.short_description = "重发 所在批次 于 订阅窗口"
 
+    @as_action("重发 所在批次 于 消息窗口")
     def republish_bulk_at_message(self, request, queryset):
         try:
             from app.wechat_send import WechatApp
@@ -608,7 +542,6 @@ class NotificationAdmin(admin.ModelAdmin):
                                      message=f'导入失败, 原因: {e}',
                                      level='error')
         return self.republish_bulk(request, queryset, app)
-    republish_bulk_at_message.short_description = "重发 所在批次 于 消息窗口"
 
 
 @admin.register(Help)
@@ -627,17 +560,13 @@ class WishesAdmin(admin.ModelAdmin):
 
     actions = ['change_color']
 
+    @as_action("随机设置背景颜色", superuser=False, update=True)
     def change_color(self, request, queryset):
-        # if not request.user.is_superuser:
-        #     return self.message_user(request=request,
-        #                              message='操作失败,没有权限,请联系老师!',
-        #                              level='warning')
         for wish in queryset:
             wish.background = Wishes.rand_color()
             wish.save()
         return self.message_user(request=request,
                                  message='修改成功!已经随机设置了背景颜色!')
-    change_color.short_description = "随机设置背景颜色"
         
 
 @admin.register(ModifyRecord)
@@ -648,11 +577,8 @@ class ModifyRecordAdmin(admin.ModelAdmin):
 
     actions = ['get_rank']
 
+    @as_action("查询排名", superuser=False)
     def get_rank(self, request, queryset):
-        # if not request.user.is_superuser:
-        #     return self.message_user(request=request,
-        #                              message='操作失败,没有权限,请联系老师!',
-        #                              level='warning')
         if len(queryset) != 1:
             return self.message_user(
                 request=request, message='一次只能查询一个用户的排名!', level='error')
@@ -671,7 +597,6 @@ class ModifyRecordAdmin(admin.ModelAdmin):
         except Exception as e:
             return self.message_user(request=request,
                                     message=f'查询失败: {e}!', level='error')
-    get_rank.short_description = "查询排名"
 
 
 @admin.register(ModifyPosition)
@@ -710,6 +635,127 @@ class TransferRecordAdmin(admin.ModelAdmin):
                     "corres_act__title",)
     list_filter = ("status", "rtype", "start_time", "finish_time",)
 
+
+@admin.register(Course)
+class CourseAdmin(admin.ModelAdmin):
+    list_display = [
+        "name",
+        "organization",
+        "type",
+        "participant_diaplay",
+        "status",
+    ]
+    search_fields = (
+        "name", "organization__oname",
+        'classroom', 'teacher',
+    )
+    list_filter = ("year", "semester", "type", "status",)
+
+    class CourseTimeInline(admin.StackedInline):
+        model = CourseTime
+        extra = 1
+
+    inlines = [CourseTimeInline,]
+    
+    def participant_diaplay(self, obj):
+        return f'{obj.current_participants}/{"无限" if obj.capacity == 10000 else obj.capacity}'
+    participant_diaplay.short_description = "报名情况"
+
+    actions = []
+
+    @as_action("更新课程状态", actions)
+    def refresh_status(self, request, queryset):
+        from app.course_utils import register_selection
+        register_selection()
+        return self.message_user(request=request,
+                                 message='已设置定时任务!')
+
+    @as_action("更新课程状态 延迟2分钟", actions)
+    def refresh_status_delay2(self, request, queryset):
+        from app.course_utils import register_selection
+        from datetime import timedelta
+        register_selection(wait_for=timedelta(minutes=2))
+        return self.message_user(request=request,
+                                 message='已设置定时任务!')
+
+
+@admin.register(CourseParticipant)
+class CourseParticipantAdmin(admin.ModelAdmin):
+    list_display = ["course", "person", "status",]
+    search_fields = ("course__name", "person__name",)
+
+
+@admin.register(CourseRecord)
+class CourseRecordAdmin(admin.ModelAdmin):
+    list_display = [
+        'get_course_name', 'person',
+        'year', 'semester',
+        'attend_times', 'total_hours',
+        'invalid',
+    ]
+    search_fields = (
+        'course__name', 'extra_name',
+        'person__name', 'person__person_id__username',
+    )
+    class TypeFilter(admin.SimpleListFilter):
+        title = '学时类别'
+        parameter_name = 'type' # 过滤器使用的过滤字段
+    
+        def lookups(self, request, model_admin):
+            '''针对字段值设置过滤器的显示效果'''
+            # 自带一个None, '全部'
+            return (
+                ('null', '无'),
+                ('any', '任意'),
+            ) + tuple(Course.CourseType.choices)
+        
+        def queryset(self, request, queryset):
+            '''定义过滤器的过滤动作'''
+            if self.value() == 'null':
+                return queryset.filter(course__isnull=True)
+            elif self.value() == 'any':
+                return queryset.exclude(course__isnull=True)
+            elif self.value() in map(str, Course.CourseType.values):
+                return queryset.filter(course__type=self.value())
+            return queryset
+    list_filter = (TypeFilter, 'year', 'semester', 'invalid')
+
+    actions = []
+
+    @as_action('更新来源名称', actions, update=True)
+    def update_extra_name(self, request, queryset):
+        records = queryset.filter(course__isnull=False)
+        for record in records.select_related('course'):
+            record.extra_name = record.course.name
+            record.save()
+        return self.message_user(request=request, message='已更新关联学时名称!')
+
+    @as_action("设置为 无效学时", actions, update=True)
+    def set_invalid(self, request, queryset):
+        queryset.update(invalid=True)
+        return self.message_user(request=request, message='修改成功!')
+
+    @as_action("设置为 有效学时", actions, update=True)
+    def set_valid(self, request, queryset):
+        queryset.update(invalid=False)
+        return self.message_user(request=request, message='修改成功!')
+
+
+@admin.register(Feedback)
+class FeedbackAdmin(admin.ModelAdmin):
+    list_display = ["type", "title", "person", "org", "feedback_time",]
+    search_fields = ("person__name", "org__oname",)
+
+@admin.register(FeedbackType)
+class FeedbackTypeAdmin(admin.ModelAdmin):
+    list_display = ["name","org_type","org",]
+    search_fields =  ("name","org_type","org",)
+
 admin.site.register(YQPointDistribute)
 admin.site.register(QandA)
+admin.site.register(OrganizationTag)
+admin.site.register(PageLog)
+admin.site.register(ModuleLog)
 
+admin.site.register(Comment)
+admin.site.register(CommentPhoto)

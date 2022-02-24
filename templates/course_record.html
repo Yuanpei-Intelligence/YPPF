@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block mainpage %}
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.8.1/font/bootstrap-icons.css">
+  <div id="content" class="main-content">   
+    {% if messages.warn_code == 1 %}
+    <div class="alert alert-warning  text-center">{{ messages.warn_message }}</div>
+    {% elif messages.warn_code == 2 %}
+    <div class="alert alert-success  text-center">{{ messages.warn_message }}</div>
+    {% endif %}
+    <div class="container">
+      <div class="layout-top-spacing" style="text-align:center">
+
+        {% if bar_display.help_paragraphs %}
+        <div style="text-align:left;">
+          {% include 'help.html' %}
+        </div> <br>
+        {% endif %}
+
+        <div style="vertical-align: middle;display: inline-block;">
+          <h3 class="text-primary" style="display:table-cell; vertical-align:middle; ">
+            {{course_info.year}}年{{course_info.semester}}{{course_info.course}}学时记录
+          </h3>
+
+          {% if editable %}
+            <div class="btn-group" role="group" style="display: table-cell; vertical-align:middle; left:20px;">
+              <form method="POST">
+                <button class="btn btn-sm btn-primary" name="post_type" value="download">
+                    <i class="bi bi-solid bi-download" style="font-size:15px; "></i>
+                </button>
+              </form>
+            </div>
+          {% endif %}
+        </div>
+
+        
+        <div class="col-12 row layout-spacing" style="text-align: left;">
+          <div class="col-xl-3 col-lg-3 col-md-3 col-sm-0"></div>
+          <div class="input-group mb-3 col-xl-6 col-lg-6 col-md-6 col-sm-12"></div> 
+        </div>
+
+        <form method="POST">
+          <div class="col-12 layout-spacing">
+            <div class="statbox widget box box-shadow">
+              <table class="table table-striped table-active" id="store_table">
+                <thead>
+                  <tr >
+                    <th scope="col">姓名</th>
+                    <th scope="col">年级</th>
+                    <th scope="col">次数</th>
+                    {% if editable %}
+                      <th scope="col" >学时</th>
+                    {% endif %}
+                  </tr>
+                </thead>
+                <tbody class="table">
+                  {% for record in records_list %}
+                  <tr>
+                    <td class="name" scope="row">
+                      <img src={{ record.avatar }} width="24" height="24" alt="avatar">
+                      <a href='/stuinfo/?name={{ record.name }}'><u>{{record.name}}</u></a>
+                    </td>
+                    <td class="grade">{{record.grade}}</td>
+                    <td class="times"><a1>{{record.times}}</a1></td>
+                    {% if editable %}
+                    <!-- 若处于可以修改的状态 -->
+                    <td class="hours">
+                      <input type="text" class="form-control" id="{{record.pk}}" name="{{record.pk}}"
+                      style="text-align: center;" size="1" value = "{{record.hours}}">
+                    </td>
+                    <!-- <td class="hours"><a2>{{record.hours}}</a1></td> -->
+                      {% endif %}
+                    </tr>
+                    {% endfor %}
+                    
+                  </tbody>
+                </table>
+                {% if not records_list %}
+                  <p style="text-align: center; vertical-align: middle;">没有任何记录!</p>
+                {% endif %}
+                </div>
+          </div>
+
+          {% if editable %}
+            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value=""
+                onclick="return confirm('确认提交学时信息？确认后请耐心等待，不要重复点击本按钮。')">
+                提交学时信息
+            </button>
+          {% else %}
+            <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" name="post_type" value="end"
+                onclick="return confirm('确认结束课程？结束课程后每周定时活动将不再发布且学时表将自动创建。确认后请耐心等待，不要重复点击本按钮。')">
+                结束课程
+            </button>
+          {% endif %}
+        </form>
+      </div>
+    </div>
+  </div> 
+
+{% endblock %}

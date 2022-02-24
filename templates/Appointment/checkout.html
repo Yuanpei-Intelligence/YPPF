@@ -1,0 +1,356 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="utf-8">
+    <title>Underground Appointment</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+
+    <!-- Favicons -->
+    <link href="{% static 'Appointment/assets/img/yp_favicon.png' %}" rel="icon">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="{% static 'Appointment/assets/css/bootstrap.min.css' %}"><!--http://cdn.bootstrapmb.com/bootstrap/4.4.0/css/bootstrap.min.css-->
+
+    <!-- Fontawesome CSS -->
+    <link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fontawesome/css/fontawesome.min.css' %}">
+    <link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fontawesome/css/all.min.css' %}">
+
+
+    <!-- Main CSS -->
+    <link rel="stylesheet" href="{% static 'Appointment/assets/css/style.css' %}">
+
+    <!-- jQuery -->
+    <script src="{% static 'Appointment/assets/js/jquery.min.js' %}"></script>
+
+    <!-- Bootstrap Core JS -->
+    <script src="{% static 'Appointment/assets/js/popper.min.js' %}"></script>
+    <script src="{% static 'Appointment/assets/js/bootstrap.min.js' %}"></script><!--http://cdn.bootstrapmb.com/bootstrap/4.4.0/js/bootstrap.min.js-->
+
+    <!-- Sticky Sidebar JS -->
+    <script src="{% static 'Appointment/assets/plugins/theia-sticky-sidebar/ResizeSensor.js' %}"></script>
+    <script src="{% static 'Appointment/assets/plugins/theia-sticky-sidebar/theia-sticky-sidebar.js' %}"></script>
+
+    <!-- Custom JS -->
+    <script src="{% static 'Appointment/assets/js/script.js' %}"></script>
+    <!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+    <!--[if lt IE 9]>
+			<script src="{% static 'Appointment/assets/js/html5shiv.min.js' %}"></script>
+			<script src="{% static 'Appointment/assets/js/respond.min.js' %}"></script>
+		<![endif]-->
+
+    <!-- Multiselect CSS-->
+    <link href="{% static 'Appointment/assets/select2/css/select2.min.css' %}" rel="stylesheet" />
+    <script src="{% static 'Appointment/assets/select2/js/select2.min.js' %}"></script>
+    <script text="text/javascript">
+        $.fn.select2.defaults.set("theme", "classic");
+        var stu_data = {{ js_stu_list| safe}};
+        function matchCustom(params, data) {
+            // If there are no search terms, return all of the data
+            if ($.trim(params.term) === '') {
+                return data;
+            }
+
+            // Do not display the item if there is no 'text' property
+            if (typeof data.text === 'undefined') {
+                return null;
+            }
+
+            // `params.term` should be the term that is used for searching
+            // `data.text` is the text that is displayed for the data object
+            //if (data.text.indexOf(params.term) > -1 || String($(data.element).data('pinyin')).indexOf(params.term) > -1) {
+            if (data.text.indexOf(params.term) > -1 || data.pinyin.indexOf(params.term) > -1) {
+                //var modifiedData = $.extend({}, data, true);
+                //modifiedData.text += ' (matched)';
+                return data;
+
+                // You can return modified objects from here
+                // This includes matching the `children` how you want in nested data sets
+                //return modifiedData;
+            }
+
+            // Return `null` if the term should not be displayed
+            return null;
+        }
+    </script>
+    <!--<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-beta.1/dist/js/select2.min.js"></script>
+	-->
+    <!--<script type="text/javascript" src="{% static 'Appointment/assets/js/jquery-2.1.3.min.js' %}"></script>
+    <script type="text/javascript" src="{% static 'Appointment/assets/js/bootstrap-3.3.2.min.js' %}"></script>
+	-->
+    <!--<link rel="stylesheet" href="{% static 'Appointment/assets/css/bootstrap-multiselect.css' %}" type="text/css" />
+    <script type="text/javascript" src="{% static 'Appointment/assets/js/bootstrap-multiselect.js' %}"></script>
+	-->
+
+</head>
+
+<body>
+
+    <!-- Main Wrapper -->
+    <div class="main-wrapper">
+
+        <!-- Breadcrumb -->
+        <div class="breadcrumb-bar">
+            <div class="container-fluid">
+                <div class="row align-items-center">
+                    <div class="col-md-12 col-12">
+                        <!--
+							<nav aria-label="breadcrumb" class="page-breadcrumb">
+								<ol class="breadcrumb">
+									<li class="breadcrumb-item"><a href="index.html">Home</a></li>
+									<li class="breadcrumb-item active" aria-current="page">选择时间</li>
+								</ol>
+							</nav>
+							-->
+                        <h4 class="breadcrumb-title"><a href='index'>主页</a> / 填写信息</h4>
+                        <!--<h4 class="breadcrumb-title">选择时间</h4>-->
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <!-- /Breadcrumb -->
+
+        <!-- Page Content -->
+        <div class="content">
+            <div class="container">
+                {% if warn_code == 1 %}
+                <div class="alert alert-warning  text-center">{{ warn_message }}</div>
+                {% elif warn_code == 2 %}
+                {% comment %} <div class="alert alert-success  text-center">{{ warn_message }}</div> {% endcomment %}
+                {% endif %}
+                <div class="row">
+                    <div class="col-md-5 col-lg-4 theiaStickySidebar">
+
+                        <!-- Booking Summary -->
+                        <div class="card booking-card">
+                            <div class="card-header">
+                                <h4 class="card-title">预约信息</h4>
+                            </div>
+                            <div class="card-body">
+
+                                <!-- Booking Doctor Info -->
+                                <div class="booking-doc-info">
+
+                                    <a href="" class="booking-doc-img">
+                                        <img src="{% static 'Appointment/assets/img/RoomIcon/' %}{{room_object.Rid}}.png"
+                                            alt="User Image">
+                                    </a>
+
+                                    <!--
+                                    <div class="doctor-img">
+											<img src="{% static 'Appointment/assets/img/RoomIcon/' %}{{room_object.Rid}}.png"
+												class="img-fluid" alt="User Image">
+                                        </div>
+                                        -->
+                                    <div class="booking-info">
+                                        <h4><a href="">{{room_object}}</a></h4>
+
+                                        <div class="clinic-details">
+                                            <p class="doc-location">
+                                                <i class="far fa fa-child"></i>
+                                                {{appoint_params.Rmin}}-{{room_object.Rmax}}人可用
+                                                <br />
+                                                <i class="far fa fa-history"></i>
+                                                {{room_object.Rstart}}-{{room_object.Rfinish}}
+                                                <i class="fas fa-info-circle" data-toggle="tooltip" title="可用时间"></i>
+                                            </p>
+
+
+                                        </div>
+                                    </div>
+                                </div>
+                                <!-- Booking Doctor Info -->
+
+                                <div class="booking-summary">
+                                    <div class="booking-item-wrap">
+                                        <ul class="booking-date">
+                                            <li>发起人<span>{{appoint_params.Sname}}</span></li>
+                                            <li>预约日期<span>{{appoint_params.date}} ({{appoint_params.weekday}})</span>
+                                            </li>
+                                            <li>开始时间<span>{{appoint_params.starttime}}</span></li>
+                                            <li>结束时间<span>{{appoint_params.endtime}}</span></li>
+                                        </ul>
+                                        <!--
+											<div class="booking-total">
+												<ul class="booking-total-list">
+													<li>
+														<span>Total</span>
+														<span class="total-cost">$160</span>
+													</li>
+												</ul>
+											</div>
+											-->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- /Booking Summary -->
+
+                    </div>
+                    <div class="col-md-7 col-lg-8">
+                        <div class="card">
+                            <div class="card-body">
+
+                                <!-- Checkout Form -->
+                                <form action="check_out" method="POST">
+                                    {% csrf_token %}
+                                    <!-- Personal Information -->
+                                    <div class="info-widget">
+                                        <h4 class="card-title">信息填写</h4>
+
+                                        <div class="row">
+                                            <div class="col-md-12 col-sm-12">
+                                                <div class="form-group card-label">
+                                                    <script type="text/javascript">
+                                                        $(document).ready(function () {
+                                                            $('.js-example-basic-multiple').select2({
+                                                                placeholder: "成员(姓名/拼音首字母搜索)",
+                                                                allowClear: true,
+                                                                data: stu_data,
+                                                                matcher: matchCustom,
+                                                            });
+                                                        });
+                                                    </script>
+                                                    <select class="js-example-basic-multiple" name="students" value=""
+                                                        id="multiselect" multiple="multiple"
+                                                        style="width: 100%;z-index: 200;">
+                                                        {% if warn_code %}
+                                                        {% for selected_stu in selected_stu_list %}
+                                                        <option id="{{selected_stu.id}}" value="{{selected_stu.id}}"
+                                                            selected="selected">{{selected_stu.text}}</option>
+                                                        {% endfor %}
+                                                        {% endif %}
+                                                    </select>
+                                                </div>
+                                                <!--<div class="form-group card-label">
+                                                    <label>Email</label>
+                                                    <input class="form-control" type="email">
+                                                </div>-->
+                                            </div>
+                                            <div class="col-md-12 col-sm-12">
+                                                <div class="form-group card-label">
+                                                    <label>非元培学生个数</label>
+                                                    <input class="form-control" name="non_yp_num" type="text"
+                                                        placeholder="0" value="{{contents.non_yp_num}}">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-12 col-sm-12">
+                                                <div class="form-group card-label">
+                                                    <label>用途</label>
+                                                    <!--<input class="form-control" type="text" placeholder="必填 公开">-->
+                                                    <textarea rows="5" class="form-control" name="Ausage"
+                                                        placeholder="必填 公开">{{contents.Ausage}}</textarea>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-12 col-sm-12">
+                                                <div class="form-group card-label">
+                                                    <label>活动通知</label>
+                                                    <textarea rows="5" class="form-control" name="announcement"
+                                                        placeholder="参与成员可见">{{contents.announcement}}</textarea>
+                                                </div>
+
+                                            </div>
+
+                                        </div>
+                                        <!--<div class="exist-customer">Existing Customer? <a href="#">Click here to login</a></div>-->
+                                        <div class="terms-accept">
+                                            <div class="custom-checkbox">
+                                                <!--<input type="checkbox" id="terms_accept" name="regulation" checked >-->
+                                                {% if no_clause %}
+                                                <label for="terms_accept">我已阅读并同意 <a href="#">地下室运行条例</a></label>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                        {% for k,v in appoint_params.items%}
+                                        <input type="hidden" name="{{k}}" value="{{v}}"></input>
+                                        {% endfor %}
+                                    </div>
+                                    <!-- /Personal Information -->
+
+
+
+
+
+                                    <!-- Submit Section -->
+                                    <div class="submit-section mt-4">
+                                        <button type="submit" class="btn btn-primary submit-btn">提交</button>
+                                    </div>
+                                    <!-- /Submit Section -->
+
+                            </div>
+                            </form>
+                            <!-- /Checkout Form -->
+
+                        </div>
+                    </div>
+
+                </div>
+
+
+            </div>
+
+        </div>
+
+
+    </div>
+    <!-- /Page Content -->
+
+    <!-- Footer -->
+    <footer class="footer">
+
+
+        <!-- Footer Bottom -->
+        <div class="footer-bottom ">
+            <div class="container-fluid">
+
+                <!-- Copyright -->
+                <div class="copyright">
+                    <div class="row">
+                        <div class=" col-lg-1">
+                            <div class="footer-logo">
+                                <img src="{% static 'Appointment/assets/img/yuan_logo_white.png' %} " alt="logo">
+                            </div>
+
+                        </div>
+                        <div class=" col-lg-11">
+
+                            <!-- Copyright Menu -->
+                            <div class="copyright-menu">
+
+                                <ul class="policy-menu">
+                                    <li><a href="https://yuanpei.pku.edu.cn">智慧校园开发组 元培学院</a></li>
+                                </ul>
+                                <ul class="policy-menu">
+                                    <li><a>&copy; All rights Reserved.</a></li>
+                                </ul>
+                            </div>
+                            <!-- /Copyright Menu -->
+
+                        </div>
+                    </div>
+                </div>
+                <!-- /Copyright -->
+
+            </div>
+        </div>
+        <!-- /Footer Bottom -->
+
+    </footer>
+    <!-- /Footer -->
+
+    <script>
+
+    </script>
+
+    </div>
+    <!-- /Main Wrapper -->
+
+
+</body>
+
+
+
+</html>

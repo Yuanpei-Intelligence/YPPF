@@ -1,0 +1,376 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+	<meta charset="utf-8">
+	<title>Underground Appointment</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+
+	<!-- Favicons -->
+	<link href="{% static 'Appointment/assets/img/yp_favicon.png' %} " rel="icon">
+
+	<!-- Bootstrap CSS -->
+	<link rel="stylesheet" href="{% static 'Appointment/assets/css/bootstrap.min.css' %}">
+
+	<!-- Fontawesome CSS -->
+	<link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fontawesome/css/fontawesome.min.css' %} ">
+	<link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fontawesome/css/all.min.css' %} ">
+
+	<!-- Main CSS -->
+	<link rel="stylesheet" href="{% static 'Appointment/assets/css/style.css' %} ">
+
+	<!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+	<!--[if lt IE 9]>
+			<script src="{% static 'Appointment/assets/js/html5shiv.min.js"></script>
+			<script src="{% static 'Appointment/assets/js/respond.min.js"></script>
+		<![endif]-->
+
+	
+
+</head>
+
+<body>
+
+	<!-- Main Wrapper -->
+	<div class="main-wrapper">
+		<script type="text/javascript">
+			//$(document).ready(function(){
+			alert("温馨提示：请先点击【开始时间块】，再直接点击【结束时间块】即可，无需一块一块点选。谢谢！");
+			//})
+		</script>
+		<!-- Breadcrumb -->
+		<div class="breadcrumb-bar">
+			<div class="container-fluid">
+				<div class="row align-items-center">
+					<div class="col-md-12 col-12">
+						<h4 class="breadcrumb-title"><a href='index'>主页</a> / 选择时间</h4>
+						<!--<h4 class="breadcrumb-title">选择时间</h4>-->
+					</div>
+
+				</div>
+			</div>
+		</div>
+		<!-- /Breadcrumb -->
+
+		<!-- Page Content -->
+		<div class="content">
+			<div class="container">
+
+				<div class="row">
+					<div class="col-12">
+						<div class="card">
+
+							<div class="card-body">
+								<div class="doctor-widget">
+									<div class="doc-info-left">
+										<div class="doctor-img">
+											<!--改成讨论室的图 by wxy-->
+											<img src="{% static 'Appointment/assets/img/RoomIcon/' %}{{check_type}}.png"
+												class="img-fluid" alt="User Image">
+										</div>
+										<div class="doc-info-cont">
+											<h4 class="doc-name">{{month}}月{{day}}日</h4>
+											<!--test1-->
+											<!--<p class="doc-location">
+												<i class="far fa fa-child"></i>
+												{{room_object.Rmin}}-{{room_object.Rmax}}人可用<br/>
+												<i class="far fa fa-history"></i>
+												{{room_object.Rstart}}-{{room_object.Rfinish}}
+												<i class="fas fa-info-circle" data-toggle="tooltip"
+													title="可用时间"></i>
+											</p>-->
+										</div>
+									</div>
+									<div class="doc-info-right">
+										<div form method="post">
+											{% csrf_token %}
+											<div class="clinic-booking">
+												<!--<a class="apt-btn" onclick="submitfunc()">下一步</a>-->
+												<a class="btn apt-btn" onclick="submitfunc()">下一步</a>
+
+											</div>
+										</div>
+									</div>
+
+								</div>
+							</div>
+						</div>
+
+						<!--<div class="alert alert-warning  text-center" >{{ width }}</div>-->
+						<!-- Schedule Widget -->
+						<div class="card booking-schedule schedule-widget">
+
+							<!-- Schedule Header -->
+							<div class="schedule-header">
+								<div class="row">
+									<div class="col-md-12">
+										<!-- Day Slot -->
+										<div class="day-slot-talk" >
+											<ul>
+												<!--<li class="left-arrow">
+													<a href="">
+														<i class="fa fa-chevron-left"></i>
+													</a>
+												</li>-->
+
+												{% for room in room_list %}
+												<li style="width: {{width}}%;">
+													<!--<span class="slot-date">{{room.Rid}}</span>
+													-->
+													{% if is_today %}
+													<!--<span class="slot-date">≥{{show_min}}人</span>-->
+													<span class="slot-date">{{show_min}}-{{room.Rmax}}人可用</span>
+													{% else %}
+													<span class="slot-date">{{room.Rmin}}-{{room.Rmax}}人可用</span>
+													{% endif %}
+													<span >{{room.Rid}}</span>
+													
+													<span class="slot-date">{{room.Rtitle}}</span>
+													
+													<!--test2-->
+												</li>
+												{% endfor %}
+
+												<!--<li class="right-arrow">
+													<a href="">
+														<i class="fa fa-chevron-right"></i>
+													</a>
+												</li>-->
+											</ul>
+										</div>
+										<!-- /Day Slot -->
+
+									</div>
+								</div>
+							</div>
+							<!-- /Schedule Header -->
+
+							<!-- Schedule Content -->
+							<div class="schedule-cont">
+								<div class="row">
+									<div class="col-md-12">
+
+										<!-- Time Slot -->
+										<div class="time-slot-talk" >
+											<ul class="clearfix">
+												{% for my_room in rooms_time_list %}
+												<li style="width: {{width}}%;">
+													{% for timesec in my_room %}
+													{% if timesec.status == 0 %}
+													<a class="timing" id="{{timesec.Rid}},{{timesec.time_id}}"
+														onclick="time_click(this)">
+														<span style="cursor:default">{{timesec.starttime}}</span>
+													</a>
+													{% else %}
+													<a class="timing" style="background:lightcoral"
+														{% if timesec.display_info %}
+														data-toggle="tooltip"
+														data-html="true"
+														data-title="{{ timesec.display_info }}"
+														{% endif %}
+														>
+														<span>{{timesec.starttime}}</span>
+													</a>
+													{% endif %}
+													{% endfor %}
+												</li>
+												{% endfor %}
+											</ul>
+										</div>
+										<!-- /Time Slot -->
+
+									</div>
+								</div>
+							</div>
+							<!-- /Schedule Content -->
+
+						</div>
+						<!-- /Schedule Widget -->
+
+
+
+					</div>
+				</div>
+			</div>
+
+		</div>
+		<!-- /Page Content -->
+
+		<!-- Footer -->
+		<footer class="footer">
+
+
+			<!-- Footer Bottom -->
+			<div class="footer-bottom">
+				<div class="container-fluid">
+
+					<!-- Copyright -->
+					<div class="copyright">
+						<div class="row">
+							<div class=" col-lg-1">
+								<div class="footer-logo">
+									<img src="{% static 'Appointment/assets/img/yuan_logo_white.png' %} " alt="logo">
+								</div>
+
+							</div>
+							<div class=" col-lg-11">
+
+								<!-- Copyright Menu -->
+								<div class="copyright-menu">
+
+									<ul class="policy-menu">
+										<li><a href="https://yuanpei.pku.edu.cn">智慧校园开发组 元培学院</a></li>
+									</ul>
+									<ul class="policy-menu">
+										<li><a>&copy; All rights Reserved.</a></li>
+									</ul>
+								</div>
+								<!-- /Copyright Menu -->
+
+							</div>
+						</div>
+					</div>
+					<!-- /Copyright -->
+
+				</div>
+			</div>
+			<!-- /Footer Bottom -->
+
+		</footer>
+		<!-- /Footer -->
+
+	</div>
+	<!-- /Main Wrapper -->
+
+	<script type="text/javascript">
+		var token = $('input[name=csrfmiddlewaretoken]').val();
+		var timestatus = 0;
+		var startid = 0;
+		var endid = 0;
+		var Rid = 0;
+		var origincolor = 0;
+		function check_valid() {
+			var rooms_time_list = {{ js_rooms_time_list| safe}};
+
+		if (window.startid >= window.endid) {
+			return 0;
+		}
+		for (var i = 0; i < rooms_time_list.length; i++) {
+			if (rooms_time_list[i][0]['Rid'] != window.Rid) {
+				continue;
+			}
+			for (var j = startid; j <= endid; j++) {
+				if (rooms_time_list[i][j]['status'] != 0) {
+					return 0;
+				}
+			}
+			return 1;
+		}
+		};
+		function false_set() {
+			var rooms_time_list = {{ js_rooms_time_list| safe}};
+		for (var i = 0; i < rooms_time_list.length; i++) {
+			for (var j = 0; j < rooms_time_list[i].length; j++) {
+				if (rooms_time_list[i][j]['status'] == 0) {	//可预约
+					var str = rooms_time_list[i][0]['Rid'] + "," + rooms_time_list[i][j]['time_id'].toString();
+					//alert(str);
+					document.getElementById(str).style.backgroundColor = window.origincolor;
+				}
+			}
+
+		}
+		window.timestatus = 0;
+		};
+		function time_click(btn) {
+			var roomid = btn.id.split(",")[0];//dayid->roomid!!!!!!!!!
+			var timeid = btn.id.split(",")[1];//!!!!!!!!!!!!
+			if (!(window.timestatus >= 1)) {//未点选或未初始化
+				window.timestatus = 1;
+				window.startid = Number(timeid);
+				window.endid = Number(timeid);//有可能只选择一个时间段
+				window.Rid = roomid;
+				window.origincolor = document.getElementById(btn.id).style.background;
+				document.getElementById(btn.id).style.backgroundColor = "#ADD8E6";
+			} else if (window.timestatus == 1) {	//这是第二个
+				//现在应该判断二者是不是合法
+				window.endid = Number(timeid);	//将3个量放进去
+				if (roomid != Rid) {
+					false_set();
+				}
+				else {
+
+					var valid = check_valid();//假设同一天 check是否满足
+
+					if (valid == 1) {
+						window.timestatus = 2;
+						//修改中间段的颜色
+						for (var tempid = startid; tempid <= endid; tempid++) {
+							var tempstr = Rid + "," + tempid.toString();
+							document.getElementById(tempstr).style.backgroundColor = "#ADD8E6";
+						}
+					}
+					else {
+						false_set();
+					}
+				}
+
+			} else if (window.timestatus == 2) {	//第二次选择 应该重新回复
+				false_set();
+				window.timestatus = 1;
+				window.startid = Number(timeid);
+				window.endid = Number(timeid);
+				window.Rid = roomid;
+				document.getElementById(btn.id).style.backgroundColor = "#ADD8E6";
+			}
+
+
+			//document.getElementById(btn.id).textContent="hehe";
+		}
+		function submitfunc() {
+			if (!(window.timestatus >= 1)) {
+				alert("请选择预约时段!");
+			}
+			else { //到这里 说明预约符合要求
+				/*
+				$.post('arrange_time',
+					{
+						"Rid": "{{room_obejct.Rid}}",
+						"weekday": window.weekday,
+						"startid": window.startid,
+						"endid": window.endid,
+						csrfmiddlewaretoken: '{{ csrf_token  }}',
+					});
+				*/
+				if (window.endid - window.startid > 5) {
+					alert("常规预约时间不能超过3小时!");
+				}
+				else {
+					var wkd = {{ js_weekday| safe}};
+					var urls = "check_out?Rid=" + window.Rid;
+					urls =  urls + "&weekday=" + wkd['weekday'];
+					urls = urls + "&startid=" + window.startid;
+					urls = urls + "&endid=" + window.endid;
+					window.location.href = urls;
+				}
+			}
+
+
+		}
+
+	</script>
+
+	<!-- jQuery -->
+	<script src="{% static 'Appointment/assets/js/jquery.min.js' %} "></script>
+
+	<!-- Bootstrap Core JS -->
+	<script src="{% static 'Appointment/assets/js/popper.min.js' %} "></script>
+	<script src="{% static 'Appointment/assets/js/bootstrap.min.js' %}
+	"></script>
+
+	<!-- Custom JS -->
+	<script src="{% static 'Appointment/assets/js/script.js' %} "></script>
+
+</body>
+
+</html>

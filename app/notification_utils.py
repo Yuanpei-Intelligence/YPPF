@@ -1,19 +1,30 @@
+from app.utils_dependency import *
 from app.models import Notification
-from app.wechat_send import publish_notification, publish_notifications
+from app.wechat_send import (
+    publish_notification,
+    publish_notifications,
+    WechatApp,
+    WechatMessageLevel,
+)
 from boottest import local_dict
-from app.utils import operation_writer
-from django.db import transaction
-from datetime import datetime, timedelta
-from boottest.hasher import MySHA256Hasher
+
 from random import random
+from datetime import datetime, timedelta
 
 hasher = MySHA256Hasher("")
+
+__all__ = [
+    'notification_status_change',
+    'notification_create',
+    'bulk_notification_create',
+    'notification2Display',
+]
 
 def notification_status_change(notification_or_id, to_status=None):
     """
     调用该函数以完成一项通知。对于知晓类通知，在接收到用户点击按钮后的post表单，该函数会被调用。
     对于需要完成的待处理通知，需要在对应的事务结束判断处，调用该函数。
-    notification_id是notification的主键:id
+    notification_id是notification的主键: id
     to_status是希望这条notification转变为的状态，包括
         DONE = (0, "已处理")
         UNDONE = (1, "待处理")
@@ -133,6 +144,8 @@ def notification_create(
     if publish_to_wechat == True:
         if not publish_kws:
             publish_kws = {}
+        if anonymous_flag: 
+            publish_kws['show_source'] = False
         publish_notification(notification, **publish_kws)
     return notification
 
@@ -215,7 +228,7 @@ def bulk_notification_create(
             cur_status = '检查已存在通知'
             exist_note = Notification.objects.filter(
                 bulk_identifier=bulk_identifier,
-                start_time__gt=start_time-timedelta(minutes=5),
+                start_time__gt=start_time - timedelta(minutes=5),
                 )
             if exist_note.exists():
                 if duplicate_behavior == 'fail':
@@ -231,20 +244,20 @@ def bulk_notification_create(
                 
                 cur_status = '重复处理'
                 if duplicate_behavior in ['report', 'log']:
-                    status_code = 'Error' if duplicate_behavior == 'report' else 'Problem'
-                    operation_writer(local_dict['system_log'],
+                    status_code = log.STATE_ERROR if duplicate_behavior == 'report' else log.STATE_WARNING
+                    log.operation_writer(SYSTEM_LOG,
                                     f'批量创建通知时通知已存在, 识别码为{bulk_identifier}'
                                     + f'：尝试创建{len(receiver_ids)}个，已有{received_ids[:3]}等{len(received_ids)}个，共存在{len(exist_userids)}个',
                                     'notification_utils[bulk_notification_create]', status_code)
                 if duplicate_behavior == 'remove':
                     cur_status = '移除已有接收者'
                     received_id_set = set(received_ids)
-                    receivers = [receiver for receiver in receivers 
+                    receivers = [receiver for receiver in receivers
                                     if receiver.id not in received_id_set]
-                    operation_writer(local_dict['system_log'],
+                    log.operation_writer(SYSTEM_LOG,
                                     f'批量创建通知时通知已存在, 识别码为{bulk_identifier}'
                                     + f'：已移除{received_ids[:3]}等{len(received_ids)}个已通知用户，剩余{len(receivers)}个',
-                                    'notification_utils[bulk_notification_create]', 'Problem')
+                                    'notification_utils[bulk_notification_create]', log.STATE_WARNING)
                     if not receivers:
                         return True, bulk_identifier
             
@@ -278,9 +291,9 @@ def bulk_notification_create(
         #         start_time__gt=start_time,
         #         ).update(start_time=start_time)
         # except:
-        #     operation_writer(local_dict['system_log'],
+        #     log.operation_writer(SYSTEM_LOG,
         #                     f'更新通知创建时间时失败, 识别码为{bulk_identifier}, 创建时间为{start_time}',
-        #                     'notification_utils[bulk_notification_create]', 'Error')
+        #                     'notification_utils[bulk_notification_create]', log.STATE_ERROR)
         success = True
         if publish_to_wechat:
             cur_status = '发送微信'
@@ -303,10 +316,103 @@ def bulk_notification_create(
             success = publish_notifications(filter_kws=filter_kws, **publish_kws)
     except Exception as e:
         success = False
-        operation_writer(local_dict['system_log'],
+        log.operation_writer(SYSTEM_LOG,
                         f'在{cur_status}时发生错误：{e}, 识别码为{bulk_identifier}',
-                        'notification_utils[bulk_notification_create]', 'Error')
+                        'notification_utils[bulk_notification_create]', log.STATE_ERROR)
     return success, bulk_identifier
 
 
+# 对一个已经完成的申请, 构建相关的通知和对应的微信消息, 将有关的事务设为已完成
+# 如果有错误，则不应该是用户的问题，需要发送到管理员处解决
+#用于报销的通知
+@log.except_captured(source='notification_utils[make_notification]')
+def make_notification(application, request, content, receiver):
+    # 考虑不同post_type的信息发送行为
+    post_type = request.POST.get("post_type")
+    feasible_post = ["new_submit", "modify_submit", "cancel_submit", "accept_submit", "refuse_submit"]
 
+
+    # 准备创建notification需要的构件：发送方、接收方、发送内容、通知类型、通知标题、URL、关联外键
+    URL = {
+        'modifyposition': f'/modifyPosition/?pos_id={application.id}',
+        'neworganization': f'/modifyOrganization/?org_id={application.id}',
+        'reimbursement': f'/modifyEndActivity/?reimb_id={application.id}',
+    }
+    sender = request.user
+    typename = Notification.Type.NEEDDO if post_type == 'new_submit' else Notification.Type.NEEDREAD
+    title = Notification.Title.VERIFY_INFORM if post_type != 'accept_submit' else Notification.Title.POSITION_INFORM
+
+    relate_instance = application if post_type == 'new_submit' else None
+    publish_to_wechat = True
+    publish_kws = {'app': WechatApp.AUDIT}
+    publish_kws['level'] = (WechatMessageLevel.IMPORTANT
+                            if post_type != 'cancel_submit'
+                            else WechatMessageLevel.INFO)
+    # TODO cancel是否要发送notification？是否发送微信？
+
+    # 正式创建notification
+    notification_create(
+        receiver=receiver,
+        sender=sender,
+        typename=typename,
+        title=title,
+        content=content[post_type],
+        URL=URL[application.typename],
+        relate_instance=relate_instance,
+        publish_to_wechat=publish_to_wechat,
+        publish_kws=publish_kws,
+    )
+    # 对于处理类通知的完成(done)，修改状态
+    # 这里的逻辑保证：所有的处理类通知的生命周期必须从“成员发起”开始，从“取消”“通过”“拒绝”结束。
+    if feasible_post.index(post_type) >= 2:
+        notification_status_change(
+            application.relate_notifications.get(status=Notification.Status.UNDONE).id,
+            Notification.Status.DONE
+        )
+
+
+@log.except_captured(source='notification_utils[notification2Display]')
+def notification2Display(notification_set):
+    from app.models import NaturalPerson, Organization
+    from app.utils import check_user_type
+    displays = []
+    sender_userids = notification_set.values_list('sender_id', flat=True)
+    sender_persons = NaturalPerson.objects.filter(
+        person_id__in=sender_userids).values_list('person_id', 'name')
+    sender_persons = {userid: name for userid, name in sender_persons}
+    sender_orgs = Organization.objects.filter(
+        organization_id__in=sender_userids).values_list('organization_id', 'oname')
+    sender_orgs = {userid: name for userid, name in sender_orgs}
+    # 储存这个列表中所有record的元气值的和
+    for notification in notification_set:
+        note_display = {}
+
+        # id
+        note_display["id"] = notification.id
+
+        # 时间
+        note_display["start_time"] = notification.start_time.strftime("%Y-%m-%d %H:%M")
+        if notification.finish_time is not None:
+            note_display["finish_time"] = notification.finish_time.strftime("%Y-%m-%d %H:%M")
+
+        # 留言
+        note_display["content"] = notification.content
+
+        # 状态
+        note_display["status"] = notification.get_status_display()
+        note_display["URL"] = notification.URL
+        note_display["type"] = notification.get_typename_display()
+        note_display["title"] = notification.get_title_display()
+
+
+        _, user_type, _ = check_user_type(notification.sender)
+        if user_type == "Organization":
+            note_display["sender"] = sender_orgs.get(
+                notification.sender_id
+            ) if not notification.anonymous_flag else "匿名者"
+        else:
+            note_display["sender"] = sender_persons.get(
+                notification.sender_id
+            ) if not notification.anonymous_flag else "匿名者"
+        displays.append(note_display)
+    return displays

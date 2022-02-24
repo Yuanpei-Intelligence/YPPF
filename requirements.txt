@@ -1,0 +1,15 @@
+django
+pymysql
+django-apscheduler
+django_mysql
+qrcode
+requests
+xlwt
+numpy
+pandas
+tqdm
+pillow
+pypinyin
+rpyc
+openpyxl
+zhon

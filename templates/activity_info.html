@@ -313,12 +313,14 @@
                                     </span>
                                 </p>
 
+                                {% if price %}
                                 <p>
                                     <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" class="css-i6dzq1"><circle cx="12" cy="12" r="10"></circle><rect x="9" y="9" width="6" height="6"></rect></svg>
                                     <span class="ml-3">
                                         {{ price }}&nbsp;元气值
                                     </span>
                                 </p>
+                                {% endif %}
 
                                 <p>
                                     <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
@@ -437,7 +439,14 @@
                                     </form>
                                     {% endif %}
                                     <!-- ----------------------------- end summary ----------------------------- -->
-
+                                    <!-- --------------------------begin checkinoffline------------------------- -->
+                                    {% if status == "已结束" %}
+                                    <form method="POST">
+                                        <input type="hidden" name="option" value="checkinoffline">
+                                        <button class="btn btn-primary btn-block mb-2">调整签到信息</button>>
+                                    </form>
+                                    {% endif %}
+                                   <!-- --------------------------end checkinoffline--------------------------- -->
                                     <!-- --------------------------- begin settings ---------------------------- -->
                                     {% if status == "审核中" or status == "报名中" or status == "等待中" %}
                                     <form method="POST">
@@ -491,16 +500,47 @@
 
                         <div class="mb-4"></div>
 
-                        <h5>参与者</h5>
-                        {% if participants is None %}
+                        <h5>
+                            参与者
+                            <a data-toggle="tooltip" data-placement="bottom" title="状态为已签到的人员在头像右上显示绿色徽记，未签到的人员为红色">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                    class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                    <path
+                                        d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                </svg>
+                            </a>
+                        </h5>
+                        {% if participants is None or participants|length == 0 %}
                         <div style="text-align: center;">还没有参与者哦～</div>
                         {% else %}
                         <div class="row" style="margin-left: -4px;">
-                            {% for person in people_list %}
-                            
-                            <span class="col-0 m-1" style="border-radius: 8px; overflow: hidden;">
-                                <a href="/stuinfo/?name={{ person.name }}+{{ person.person_id.id }}">
-                                <img src="{{ person.get_user_ava }}" class="flex" alt="participant's avatar" height="50px" width="50px">
+                            <style>
+                                .messages {
+                                    position: absolute;
+                                    width: 12px;
+                                    height: 12px;
+                                    left: 80%;
+                                    top: -3px;
+                                    border-radius: 12px;
+                                }
+                            </style>
+                            {% for person in participants %}
+                            <span class="col-0 m-1" style="border-radius: 8px; position: relative;">
+                                <a href="/stuinfo/?name={{ person.person_id.name }}+{{ person.person_id.person_id_id }}">
+                                    <img src="{{ person.person_id.get_user_ava }}" class="flex" alt="participant's avatar" style="border-radius: 8px; " height="50px" width="50px">
+                                    
+                                    {% if person.status == "未签到" %}
+
+                                    <div class="messages" style="background-color: rgb(255, 132, 132);">   
+                                        <a data-toggle="tooltip" data-placement="bottom" title="未签到">&nbsp;
+                                        </a>
+                                    </div>
+                                    {% elif person.status == "已参与" %}
+                                    <div class="messages" style="background-color: rgb(163, 219, 161);">
+                                        <a data-toggle="tooltip" data-placement="bottom" title="已签到">&nbsp;
+                                        </a>
+                                    </div>
+                                    {% endif %}
                                 </a>
                             </span>
                             {% endfor %}
@@ -516,9 +556,11 @@
 
             </div>
 
+            {% if introduction or ownership and show_QRcode %}
             <!--  BEGIN RELAVENT INFORMATION  -->
             <div class="col-md-3 col-sm-12 px-1">
 
+                {% if introduction %}
                 <!--  BEGIN INTRODUCTION  -->
                 <div class="container w-100 px-0 layout-top-spacing">
                     <div class="statbox widget box box-shadow">
@@ -540,6 +582,7 @@
                     </div>
                 </div>
                 <!--  END INTRODUCTION  -->
+                {% endif %}
 
                 {% if ownership and show_QRcode %}
                 <!--  BEGIN QR CODE  -->
@@ -565,6 +608,7 @@
 
             </div>
             <!--  END RELAVENT INFORMATION  -->
+            {% endif %}
 
         </div>
     </div>
