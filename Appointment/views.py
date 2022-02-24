@@ -33,7 +33,10 @@ import boottest.global_messages as my_messages
 # utils对接工具
 from Appointment.utils.utils import send_wechat_message, appoint_violate, doortoroom, iptoroom, operation_writer, write_before_delete, cardcheckinfo_writer, check_temp_appoint, set_appoint_reason
 import Appointment.utils.web_func as web_func
-from Appointment.utils.identity import get_name, get_avatar, get_participant, identity_check
+from Appointment.utils.identity import (
+    get_name, get_avatar, get_member_ids, get_members,
+    get_participant, identity_check,
+)
 
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
@@ -1020,6 +1023,10 @@ def check_out(request):  # 预约表单提交
                 wrong(add_dict['message'], render_context)
 
     js_stu_list = web_func.get_student_chosen_list(request)
+    member_id_set = set(get_member_ids(request.user))
+    for js_stu in js_stu_list:
+        if js_stu['id'] in member_id_set:
+            js_stu['text'] += '_成员'
     render_context.update(js_stu_list=js_stu_list)
 
     if request.method == 'POST':
