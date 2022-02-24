@@ -81,18 +81,18 @@
 
                                 <div class="tab-content" id="activityTabContent">
                                     <div id="futureActivity" class="tab-pane active">
-                                        <div class="bio-skill-box layout-top-spacing">
+                                        <div class="bio-skill-box">
                                             {% if future_activity_list|length == 0 %}
                                             <p style="text-align: center;">没有未开始的课程活动！</p>
                                             {% endif %}
-                                            <div class="row w-100 m-0">
+                                            <div class="row">
                                                 {% for act in future_activity_list %}
                                                 <!-- BEGIN ACTIVITY DISPLAY -->
                                                 <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
                                                     <div class=" b-skills">
                                                         <div class="d-flex justify-content-between">
                                                             <div>
-                                                                <h5 style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                                <h5>
                                                                     {% if act.status == "等待中" %}
                                                                     <span class="badge badge-pill badge-warning">
                                                                         等待开始
@@ -193,19 +193,18 @@
                                     </div>
 
                                     <div id="finishedActivity" class="tab-pane fade">
-                                        <div class="bio-skill-box layout-top-spacing">
+                                        <div class="bio-skill-box">
                                             {% if finished_activity_list|length == 0 %}
                                             <p style="text-align: center;">没有已结束的课程活动！</p>
                                             {% endif %}
-                                            <div class="row w-100 m-0">
+                                            <div class="row">
                                                 {% for act in finished_activity_list %}
                                                 <!-- BEGIN ACTIVITY DISPLAY -->
                                                 <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
                                                     <div class=" b-skills">
                                                         <div class="d-flex justify-content-between">
                                                             <div>
-                                                                <h5
-                                                                    style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                                <h5>
                                                                     {% if act.status == "等待中" %}
                                                                     <span class="badge badge-pill badge-warning">
                                                                         等待开始
