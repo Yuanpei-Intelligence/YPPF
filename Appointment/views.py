@@ -12,6 +12,7 @@ from django.shortcuts import render, redirect  # 网页render & redirect
 from django.urls import reverse
 from django.contrib import auth
 import json  # 读取Json请求
+import html  # 解码保证安全
 
 # csrf 检测和完善
 from django.views.decorators.csrf import csrf_exempt
@@ -790,11 +791,17 @@ def arrange_time(request):
         for appoint_record in appoints:
             change_id_list = web_func.timerange2idlist(Rid, appoint_record.Astart,
                                                        appoint_record.Afinish, time_range)
+            appoint_usage = html.escape(appoint_record.Ausage).replace('\n', '<br/>')
+            appointer_name = html.escape(appoint_record.major_student.name)
             for day in dayrange_list:
                 if appoint_record.Astart.date() == date(day['year'], day['month'],
                                                         day['day']):
                     for i in change_id_list:
                         day['timesection'][i]['status'] = 1
+                        day['timesection'][i]['display_info'] = '<br/>'.join([
+                            f'{appoint_usage}',
+                            f'预约者：{appointer_name}',
+                        ])
 
         # 删去今天已经过去的时间
         present_time_id = web_func.get_time_id(
@@ -893,9 +900,15 @@ def arrange_talk_room(request):
                     (appointment.Astart - t_start).total_seconds()) // 1800
                 finish_id = int(((appointment.Afinish - timedelta(minutes=1)) -
                                  t_start).total_seconds()) // 1800
+                appointer_name = html.escape(appointment.major_student.name)
+                appoint_usage = html.escape(appointment.Ausage).replace('\n', '<br/>')
 
                 for time_id in range(start_id, finish_id + 1):
                     rooms_time_list[sequence][time_id]['status'] = 1
+                    rooms_time_list[sequence][time_id]['display_info'] = '<br/>'.join([
+                        f'{appoint_usage}',
+                        f'预约者：{appointer_name}',
+                    ])
 
     js_rooms_time_list = json.dumps(rooms_time_list)
     js_weekday = json.dumps(
