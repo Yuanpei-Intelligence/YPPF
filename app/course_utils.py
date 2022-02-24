@@ -800,7 +800,15 @@ def change_course_status(cur_status, to_status):
 
 def str_to_time(stage: str):
     """字符串转换成时间"""
-    return datetime.strptime(stage,'%Y-%m-%d %H:%M:%S')
+    try: return datetime.strptime(stage,'%Y-%m-%d %H:%M:%S')
+    except: pass
+    try: return datetime.strptime(stage,'%Y-%m-%d %H:%M')
+    except: pass
+    try: return datetime.strptime(stage,'%Y-%m-%d %H')
+    except: pass
+    try: return datetime.strptime(stage,'%Y-%m-%d')
+    except: pass
+    raise ValueError(stage)
 
 
 @log.except_captured(return_value=True,
