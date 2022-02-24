@@ -499,7 +499,7 @@ def registration_status_change(course_id, user, action=None):
 
         if is_conflict:
             return wrong(message)
-            return wrong(f'与{is_conflict}门已选课程时间冲突: {message}')
+            # return wrong(f'与{is_conflict}门已选课程时间冲突: {message}')
 
     # 如果action为取消预选或退选，to_status直接使用初始值即可
 
