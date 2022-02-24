@@ -23,16 +23,23 @@
                         <!-- BEGIN HEADER -->
                         <div class="d-flex justify-content-between">
                             <h3 class="">{{title}}</h3>
-                            <div class="row justify-content-end">
-                                <button type="button" class="btn btn-info mb-4 mr-2 "
-                                    onclick="location.href = '{{link1}}';">{{btn_name1}}
+                            <div>
+                                <button type="button"
+                                    class="btn-lg btn-outline-primary dropdown-toggle dropdown-toggle-split"
+                                    data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                    课程操作
                                 </button>
-                                <button type="button" class="btn btn-info mb-4 mr-2 "
-                                    onclick="location.href = '{{link2}}';">{{btn_name2}}
-                                </button>
-                                <button type="button" class="btn btn-info mb-4 mr-2 "
-                                    onclick="location.href = '{{link3}}';">{{btn_name3}}
-                                </button>
+                                <div class="dropdown-menu">
+                                    <button class="dropdown-item"
+                                        onclick="location.href = '{{link1}}';">{{btn_name1}}
+                                    </button>
+                                    <button class="dropdown-item" 
+                                        onclick="location.href = '{{link2}}';">{{btn_name2}}
+                                    </button>
+                                    <button class="dropdown-item" 
+                                        onclick="location.href = '{{link3}}';">{{btn_name3}}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <!-- END HEADER -->
@@ -110,7 +117,7 @@
                                                             <div>
                                                                 <div class="dropdown">
                                                                     <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-                                                                        管理活动
+                                                                        管理
                                                                     </button>
                                                                     <div class="dropdown-menu">
                                                                         <a class="dropdown-item"
@@ -221,12 +228,12 @@
                                                             <div>
                                                                 {% if act.status == "已取消" %}
                                                                 <button type="button" class="btn btn-primary dropdown-toggle" disabled data-toggle="dropdown">
-                                                                    管理活动
+                                                                    管理
                                                                 </button>
                                                                 {% else %}
                                                                 <div class="dropdown">
                                                                     <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-                                                                        管理活动
+                                                                        管理
                                                                     </button>
                                                                     <div class="dropdown-menu">
                                                                         <a class="dropdown-item" href="#">手工签到</a>
