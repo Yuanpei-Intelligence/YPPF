@@ -426,6 +426,9 @@ def admin_credit(request):
             vio_list_in_7_days.append(x)
     vio_list_in_7_days.sort(key=lambda k: k['Astart'])
     my_info = web_func.get_user_info(Pid)
+    participant = get_participant(Pid)
+    if participant.agree_time is not None:
+        my_info['agree_time'] = str(participant.agree_time)
     return render(request, 'Appointment/admin-credit.html', locals())
 
 
