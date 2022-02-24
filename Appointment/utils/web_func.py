@@ -18,7 +18,15 @@ web_func.py中保留所有在views.py中使用到了和web发生交互但不直�
 
 def str_to_time(str_time: str):
     """字符串转换成时间"""
-    return datetime.strptime(str_time,'%Y-%m-%d %H:%M:%S')
+    try: return datetime.strptime(str_time,'%Y-%m-%d %H:%M:%S')
+    except: pass
+    try: return datetime.strptime(str_time,'%Y-%m-%d %H:%M')
+    except: pass
+    try: return datetime.strptime(str_time,'%Y-%m-%d %H')
+    except: pass
+    try: return datetime.strptime(str_time,'%Y-%m-%d')
+    except: pass
+    raise ValueError(str_time)
 
 
 

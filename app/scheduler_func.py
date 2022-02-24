@@ -66,7 +66,7 @@ def send_to_persons(title, message, url='/index/'):
         receivers, sender,
         Notification.Type.NEEDREAD, title, message, url,
         publish_to_wechat=True,
-        publish_kws={'level': WechatMessageLevel.IMPORTANT},
+        publish_kws={'level': WechatMessageLevel.IMPORTANT, 'show_source': False},
         ))
 
 
@@ -78,7 +78,7 @@ def send_to_orgs(title, message, url='/index/'):
         receivers, sender,
         Notification.Type.NEEDREAD, title, message, url,
         publish_to_wechat=True,
-        publish_kws={'level': WechatMessageLevel.IMPORTANT},
+        publish_kws={'level': WechatMessageLevel.IMPORTANT, 'show_source': False},
         )
 
 
