@@ -183,6 +183,7 @@ def identity_check(
         def _wrapped_view(request, *args, **kwargs):
 
             _allow_create = allow_create  # 作用域问题
+            context = {}
 
             if not is_valid(request.user):
                 _allow_create = False
@@ -194,16 +195,22 @@ def identity_check(
 
             if cur_part is None and _allow_create:
                 cur_part = _create_account(request)
+                if cur_part is not None:
+                    my_messages.succeed('账号不存在，已为您自动创建账号！', context)
 
             if not auth_func(cur_part):
                 # TODO: task 0 lzp, log it and notify admin
                 if not cur_part:
                     warn_message = ('创建地下室账户失败，请联系管理员为您解决。'
                                     '在此之前，您可以查看实时人数。')
+                    my_messages.wrong(warn_message, context)
                 else:
                     warn_message = ('您访问了未授权的页面，如需访问请先登录。')
+                    my_messages.wrong(warn_message, context)
+
+            if context:
                 return redirect(my_messages.message_url(
-                                    my_messages.wrong(warn_message),
+                                    context,
                                     reverse('Appointment:index')))
 
             return view_function(request, *args, **kwargs)
