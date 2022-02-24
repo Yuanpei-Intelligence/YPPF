@@ -173,7 +173,7 @@ def _update_name(user: Union[Participant, User, str]):
 def identity_check(
     auth_func=lambda x: x is not None,
     redirect_field_name='origin',
-    allow_create=True,
+    allow_create=False,
     update_name=True,
     ):
 
