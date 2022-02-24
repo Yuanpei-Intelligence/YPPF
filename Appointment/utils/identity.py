@@ -23,6 +23,7 @@ __all__ = [
     'is_person',
     'get_name',
     'get_avatar',
+    'get_member_ids', 'get_members',
     'identity_check',
 ]
 
@@ -87,6 +88,18 @@ def get_avatar(participant: Union[Participant, User]):
     '''返回participant的头像'''
     user = _arg2user(participant)
     return API.get_avatar_url(user)
+
+
+def get_member_ids(participant: Union[Participant, User], noncurrent=False)-> list:
+    '''返回participant的成员id列表，个人返回空列表'''
+    user = _arg2user(participant)
+    return API.get_members(user, noncurrent=noncurrent)
+
+
+def get_members(participant: Union[Participant, User], noncurrent=False):
+    '''返回participant的成员集合，Participant的QuerySet'''
+    member_ids = get_member_ids(participant, noncurrent=noncurrent)
+    return Participant.objects.filter(Sid__in=member_ids)
 
 
 # 用户验证、创建和更新
