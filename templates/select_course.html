@@ -166,7 +166,7 @@
                                             {% else %}
                                             <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal-{{course.course_id}}">选课</button>
                                             <div class="modal fade" id="myModal-{{course.course_id}}">
-                                                <div class="modal-dialog modal-dialog-centered">
+                                                <div class="modal-dialog modal-dialog-centered" style="z-index:1000">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
                                                     <div class="modal-body">
@@ -246,7 +246,7 @@
                                                     {% else %}
                                                     <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal{{ forloop.counter }}-{{course.course_id}}">选课</button>
                                                     <div class="modal fade" id="myModal{{ forloop.counter }}-{{course.course_id}}">
-                                                        <div class="modal-dialog modal-dialog-centered">
+                                                        <div class="modal-dialog modal-dialog-centered" style="z-index:1000">
                                                         <div class="modal-content">
                                                             <!-- 模态框主体 -->
                                                             <div class="modal-body">
@@ -350,7 +350,7 @@
                                 <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#myModalcancel-{{course.course_id}}">退课</button>
                                 {% endif %}
                                 <div class="modal fade" id="myModalcancel-{{course.course_id}}">
-                                    <div class="modal-dialog modal-dialog-centered">
+                                    <div class="modal-dialog modal-dialog-centered" style="z-index:1000">
                                       <div class="modal-content">
                                         <!-- 模态框主体 -->
                                         <div class="modal-body">
