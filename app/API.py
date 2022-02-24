@@ -8,6 +8,7 @@
 @Date 2022-02-17
 '''
 from django.contrib.auth.models import User
+from app.models import Position
 from app.utils import (
     check_user_type as __check_type,
     get_user_ava as __get_ava,
@@ -19,6 +20,7 @@ from app.constants import UTYPE_ORG, UTYPE_PER
 __all__ = [
     'is_valid', 'is_org', 'is_person',
     'get_display_name', 'get_avatar_url', 'get_wallpaper_url',
+    'get_members',
 ]
 
 
@@ -54,3 +56,14 @@ def get_wallpaper_url(valid_user: User):
     user_type = __check_type(valid_user)[1]
     obj = __get_obj(valid_user, user_type)
     return __get_wallpaper(obj, user_type)
+
+
+def get_members(valid_user: User, noncurrent=False):
+    '''返回合法用户的成员学号列表'''
+    user_type = __check_type(valid_user)[1]
+    if user_type != UTYPE_ORG:
+        return []
+    obj = __get_obj(valid_user, user_type)
+    positions = Position.objects.activated(noncurrent=noncurrent).filter(org=obj)
+    members = positions.values_list('person__person_id__username', flat=True)
+    return list(members)
