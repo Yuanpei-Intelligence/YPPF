@@ -157,9 +157,9 @@
                                             {% if course.status != "预选" and course.status != "补退选" or is_student == False %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% else %}
-                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal-{{course.course_id}}">选课</button>
-                                            <div class="modal fade" id="myModal-{{course.course_id}}">
-                                                <div class="modal-dialog modal-dialog-centered" style="z-index:1000">
+                                            <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('你确定要选课程《{{course.name}}》吗？')">选课</button>
+                                            {% comment %} <div class="modal fade" id="myModal-{{course.course_id}}">
+                                                <div class="modal-dialog modal-dialog-centered" style="z-index: 1200">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
                                                     <div class="modal-body">
@@ -172,7 +172,7 @@
                                                     </div>
                                                   </div>
                                                 </div>
-                                            </div>
+                                            </div> {% endcomment %}
                                             {% endif %}
                                         </form>
                                         
@@ -237,9 +237,9 @@
                                                     {% if course.status != "预选" and course.status != "补退选" or is_student == False %}
                                                     <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                                     {% else %}
-                                                    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal{{ forloop.counter }}-{{course.course_id}}">选课</button>
-                                                    <div class="modal fade" id="myModal{{ forloop.counter }}-{{course.course_id}}">
-                                                        <div class="modal-dialog modal-dialog-centered" style="z-index:1000">
+                                                    <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('你确定要选课程《{{course.name}}》吗？')">选课</button>
+                                                    {% comment %} <div class="modal fade" id="myModal{{ forloop.counter }}-{{course.course_id}}">
+                                                        <div class="modal-dialog modal-dialog-centered" style="z-index: 1200">
                                                         <div class="modal-content">
                                                             <!-- 模态框主体 -->
                                                             <div class="modal-body">
@@ -252,7 +252,7 @@
                                                             </div>
                                                         </div>
                                                         </div>
-                                                    </div>
+                                                    </div> {% endcomment %}
                                                     {% endif %}
                                                 </form>
                                             </td>
@@ -340,10 +340,10 @@
                                 {% if course.status != "预选" and course.status != "补退选" or course.student_status == "选课失败" %}
                                 <button type="submit" class="btn btn-danger btn-sm" disabled>退课</button>
                                 {% else %}
-                                <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#myModalcancel-{{course.course_id}}">退课</button>
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('你确定要退课程《{{course.name}}》吗？')">退课</button>
                                 {% endif %}
-                                <div class="modal fade" id="myModalcancel-{{course.course_id}}">
-                                    <div class="modal-dialog modal-dialog-centered" style="z-index:1000">
+                                {% comment %} <div class="modal fade" id="myModalcancel-{{course.course_id}}">
+                                    <div class="modal-dialog modal-dialog-centered" style="z-index: 120000">
                                       <div class="modal-content">
                                         <!-- 模态框主体 -->
                                         <div class="modal-body">
@@ -356,7 +356,7 @@
                                         </div>
                                       </div>
                                     </div>
-                                </div>
+                                </div> {% endcomment %}
                             </form>
                             
                         </td>
