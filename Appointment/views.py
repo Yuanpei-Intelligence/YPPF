@@ -404,32 +404,33 @@ def admin_index(request):   # 我的账户也主函数
 @identity_check(redirect_field_name='origin')
 def admin_credit(request):
 
+    render_context = {}
+    render_context.update(
+        login_url=GLOBAL_INFO.login_url,
+        show_admin=(request.user.is_superuser or request.user.is_staff),
+    )
+
+    my_messages.transfer_message_context(request.GET, render_context)
+
+    # 学生基本信息
     Pid = request.user.username
-    show_admin=(request.user.is_superuser or request.user.is_staff)
-
-    # 头像信息
-    img_path = get_avatar(request.user)
-
-    vio_list = web_func.get_appoints(Pid, 'violate', major=True).get('data')
-    vio_list_in_7_days = []
-    present_day = datetime.now()
-    seven_days_before = present_day - timedelta(7)
-    for x in vio_list:
-        temp_time = datetime.strptime(x['Astart'], "%Y-%m-%dT%H:%M:%S")
-        x['Astart_hour_minute'] = temp_time.strftime("%I:%M %p")
-        temp_time = datetime.strptime(x['Afinish'], "%Y-%m-%dT%H:%M:%S")
-        x['Afinish_hour_minute'] = temp_time.strftime("%I:%M %p")
-        if datetime.strptime(
-                x['Astart'],
-                "%Y-%m-%dT%H:%M:%S") <= present_day and datetime.strptime(
-                    x['Astart'], "%Y-%m-%dT%H:%M:%S") >= seven_days_before:
-            vio_list_in_7_days.append(x)
-    vio_list_in_7_days.sort(key=lambda k: k['Astart'])
     my_info = web_func.get_user_info(Pid)
     participant = get_participant(Pid)
     if participant.agree_time is not None:
         my_info['agree_time'] = str(participant.agree_time)
-    return render(request, 'Appointment/admin-credit.html', locals())
+
+    # 头像信息
+    img_path = get_avatar(request.user)
+    render_context.update(my_info=my_info, img_path=img_path)
+
+    vio_list = web_func.get_appoints(
+        Pid, 'violate', major=True, to_json=False).get('data')
+    vio_list_display = web_func.appoints2json(vio_list)
+    for x, appoint in zip(vio_list_display, vio_list):
+        x['Astart_hour_minute'] = appoint.Astart.strftime("%I:%M %p")
+        x['Afinish_hour_minute'] = appoint.Afinish.strftime("%I:%M %p")
+    render_context.update(vio_list=vio_list_display)
+    return render(request, 'Appointment/admin-credit.html', render_context)
 
 
 # added by wxy
