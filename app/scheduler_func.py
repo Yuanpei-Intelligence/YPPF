@@ -54,7 +54,7 @@ __all__ = [
     'get_weather',
     'update_active_score_per_day',
     'longterm_launch_course',
-    'public_feedback_per_day',
+    'public_feedback_per_hour',
 ]
 
 
@@ -302,7 +302,7 @@ def update_active_score_per_day(days=14):
                 active_score=F('active_score') + 1 / days)
 
 
-def public_feedback_per_day():
+def public_feedback_per_hour():
     '''查找距离组织公开反馈24h内没被审核的反馈，将其公开'''
     time = datetime.now() - timedelta(days=1)
     with transaction.atomic():
@@ -387,10 +387,10 @@ def start_scheduler(with_scheduled_job=True, debug=False):
                               replace_existing=True)
             current_job = "feedback_public_updater"
             if debug: print(f"adding scheduled job '{current_job}'")
-            scheduler.add_job(public_feedback_per_day,
+            scheduler.add_job(public_feedback_per_hour,
                               "cron",
                               id=current_job,
-                              hour=1,
+                              minute=5,
                               replace_existing=True)
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"
