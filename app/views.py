@@ -1,5 +1,6 @@
 from app.views_dependency import *
 from app.models import (
+    Feedback,
     NaturalPerson,
     Freshman,
     Position,
@@ -464,13 +465,13 @@ def stuinfo(request, name=None):
             # 无效学时，在前端呈现
             course_no_use = (
                 course_me_past
-                .filter(year__gte=2021, total_hours__lt=8)
+                .filter(invalid=True)
             )
 
             # 特判，需要一定时长才能计入总学时
             course_me_past = (
                 course_me_past
-                .exclude(year__gte=2021, total_hours__lt=8)
+                .exclude(invalid=True)
             )
 
             course_me_past = course_me_past.order_by('year', 'semester')
@@ -1512,6 +1513,14 @@ def search(request):
 
     # 活动要呈现的内容
     activity_field = ["活动名称", "承办小组", "状态"]
+
+    feedback_field = ["标题", "状态", "负责小组", "内容"]
+    feedback_list = Feedback.objects.filter(
+        Q(public_status=Feedback.PublicStatus.PUBLIC)
+    ).filter(
+        Q(title__icontains=query) 
+        | Q(org__oname__icontains=query)
+    )
 
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True

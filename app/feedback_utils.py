@@ -1,5 +1,6 @@
 from app.utils_dependency import *
 from app.models import (
+    NaturalPerson,
     Organization,
     OrganizationType,
     Notification,
@@ -192,7 +193,7 @@ def make_relevant_notification(feedback, info, me):
     typename = (Notification.Type.NEEDDO
                 if post_type == 'new_submit'
                 else Notification.Type.NEEDREAD)
-    title = Notification.Title.FEEDBACK_INFORM
+    title = f"反馈：{feedback.title}"
     content = "您收到一条新的反馈～点击标题立刻查看！"
     # TODO：小组看到的反馈详情呈现
     # URL = f'/modifyFeedback/?feedback_id={feedback.id}'
@@ -208,6 +209,8 @@ def make_relevant_notification(feedback, info, me):
         URL=f"/viewFeedback/{feedback.id}",
         relate_instance=relate_instance,
         anonymous_flag=True,
+        publish_to_wechat=True,
+        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.IMPORTANT},
     )
 
 
@@ -217,10 +220,30 @@ def examine_notification(feedback):
     notification_create(
         receiver=examin_teacher,
         sender=feedback.org.organization_id,
-        typename=Notification.Type.NEEDDO,
+        typename=Notification.Type.NEEDREAD,
         title=Notification.Title.VERIFY_INFORM,
         content=f"{feedback.org.oname}申请公开一条反馈信息",
         URL=f"/viewFeedback/{feedback.id}",
         publish_to_wechat=True,
         publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+    )
+
+@log.except_captured(source='feedback_utils[inform_notification]')
+def inform_notification(sender, receiver, content, feedback, anonymous=None, important=False):
+    if anonymous is None:
+        anonymous = False if isinstance(sender, Organization) else True
+    if important == False:
+        level = WechatMessageLevel.INFO
+    else:
+        level = WechatMessageLevel.IMPORTANT
+    notification_create(
+        receiver=receiver.person_id if isinstance(receiver, NaturalPerson) else receiver.organization_id,
+        sender=sender.person_id if isinstance(sender, NaturalPerson) else sender.organization_id,
+        typename=Notification.Type.NEEDREAD,
+        title="反馈状态更新",
+        content=content,
+        URL=f"/viewFeedback/{feedback.id}",
+        anonymous_flag=anonymous,
+        publish_to_wechat=True,
+        publish_kws={'app': WechatApp.AUDIT, 'level': level},
     )

@@ -24,7 +24,9 @@
                     <br>
                     <br>
                     <div align="center">
-                      <h3>反馈详情
+                      <h3>反馈详情<h3></div>
+                        <div align="center">
+                        <h3>
                         {% if not is_new_feedback %}
                         {% with feedback.get_read_status_display as status %}
                           {%if status == "未读"%}
@@ -57,9 +59,13 @@
                             <span class="badge badge-danger">{{status}}</span>
                           {%endif%}
                         {%endwith%}
+                        {% if feedback.publisher_public %}
+                        <span class="badge badge-success">发布者同意公开</span>
+                        {% else %}
+                        <span class="badge badge-danger">发布者不同意公开</span>
                         {% endif %}
-                      </h3>
-                    </div>
+                        {% endif %}
+                      </h3></div>
                     <div class="d-flex justify-content-between">
                       <div>
                         <h4>
@@ -192,7 +198,7 @@
                     {% if cancel_editable %}
                     <button type="submit" class="btn btn-warning btn-lg mb-4 mr-2" value="cancel" name="post_type" onclick="return confirm('确认撤销反馈？')">撤销反馈</button>
                     {% endif %}
-                    <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2" value="submit_draft" name="post_type" onclick="return confirm('确认提交状态修改？')">提交修改</button>
+                    <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2" value="submit_draft" name="post_type" onclick="return confirm('确认提交状态修改？{% if not is_person %}注意：当你设置解决状态为【已解决】或【无法解决】时，本反馈将被关闭，无法进行评论。请确保已经在评论区完成沟通！{% endif %}')">提交修改</button>
                   </div>
                   {% endif %}
                   {% endif %}

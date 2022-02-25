@@ -691,6 +691,7 @@ class CourseRecordAdmin(admin.ModelAdmin):
         'get_course_name', 'person',
         'year', 'semester',
         'attend_times', 'total_hours',
+        'invalid',
     ]
     search_fields = (
         'course__name', 'extra_name',
@@ -717,7 +718,7 @@ class CourseRecordAdmin(admin.ModelAdmin):
             elif self.value() in map(str, Course.CourseType.values):
                 return queryset.filter(course__type=self.value())
             return queryset
-    list_filter = (TypeFilter, 'year', 'semester')
+    list_filter = (TypeFilter, 'year', 'semester', 'invalid')
 
     actions = []
 
@@ -728,6 +729,16 @@ class CourseRecordAdmin(admin.ModelAdmin):
             record.extra_name = record.course.name
             record.save()
         return self.message_user(request=request, message='已更新关联学时名称!')
+
+    @as_action("设置为 无效学时", actions, update=True)
+    def set_invalid(self, request, queryset):
+        queryset.update(invalid=True)
+        return self.message_user(request=request, message='修改成功!')
+
+    @as_action("设置为 有效学时", actions, update=True)
+    def set_valid(self, request, queryset):
+        queryset.update(invalid=False)
+        return self.message_user(request=request, message='修改成功!')
 
 
 @admin.register(Feedback)

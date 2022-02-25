@@ -67,6 +67,7 @@ def create_user(id, rand_pw=False, reset_pw=None, **defaults):
             stage = 'set password'
             user.set_password(password)
             user.save()
+        return user
     except RuntimeError: raise
     except: raise RuntimeError(f'{stage} failed')
 
@@ -168,14 +169,15 @@ def load_org():
     for _, org_dict in org_df.iterrows():
         try:
             username = org_dict.get("organization_id", "")
+            if not isinstance(username, str):
+                # 如果该列存在但行无数据，会得到numpy.nan: float
+                username = ""
             password = 'YPPFtest' if DEBUG else random_code_init(username)
             # 现在找不到直接出错
             org_found = True
             if username[:2] == "zz":
                 oname = org_dict["oname"]
                 type_id = org_dict["otype_id"]
-                persons = org_dict.get("person", "待定")
-                pos = max(0, int(org_dict.get("pos", 0)))
                 user, created = User.objects.get_or_create(username=username)
                 if created:
                     user.set_password(password)
@@ -216,7 +218,12 @@ def load_org():
             if org_found:
                 # 必须是本学期的才更新，否则创建
                 all_positions = Position.objects.current()
+                pos = max(0, int(org_dict.get("pos", 0)))
                 pos_display = org.otype.get_name(pos)
+                persons = org_dict.get("person", "待定")
+                if not isinstance(persons, str):
+                    # 如果该列存在但行无数据，会得到numpy.nan: float
+                    persons = ""
                 for person in persons.split(','):
                     people = NaturalPerson.objects.get(name=person)
                     # 获得其当前的职位
@@ -704,11 +711,13 @@ def load_course_record(request):
 
             elif record_search_course.exists():
                 record_search_course.update(
+                    invalid = False,
                     attend_times = times,
                     total_hours = hours
                 )
             else:
                 record_search_extra.update(
+                    invalid = False,
                     attend_times = times,
                     total_hours = hours
                 )

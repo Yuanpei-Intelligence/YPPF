@@ -425,14 +425,16 @@ def selectCourse(request):
     且点击后页面显示发生相应的变化
     3. 显示选课结果
     
-    用户权限: 只有学生账号可以进入，组织和老师均不应该进入该页面
+    用户权限: 学生和老师可以进入，组织不能进入；只有学生可以进行选课
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)
 
-    if (user_type == "Organization"
-            or me.identity == NaturalPerson.Identity.TEACHER):
-        return redirect(message_url(wrong("非学生账号不能选课！")))
+    if user_type == "Organization":
+        return redirect(message_url(wrong("组织账号无法访问书院选课页面。如需选课，请切换至个人账号；如需查看您发起的书院课程，请点击【我的课程】。")))
+        
+    is_student = (False
+                  if me.identity == NaturalPerson.Identity.TEACHER else True)
 
     # 暂时不启用意愿点机制
     # if not is_staff:
@@ -442,8 +444,11 @@ def selectCourse(request):
     # 学生选课或者取消选课
     if request.method == 'POST':
 
-        # 参数: 课程id，操作action: select/cancel
+        if not is_student:
+            wrong("非学生账号不能进行选课！", html_display)
+            return redirect(message_url(html_display, request.path))
 
+        # 参数: 课程id，操作action: select/cancel
         try:
             course_id = request.POST.get('courseid')
             action = request.POST.get('action')
@@ -536,7 +541,7 @@ def viewCourse(request):
     me = utils.get_person_or_org(request.user, user_type)
     course_display = course_to_display(course, me, detail=True)
 
-    bar_display = utils.get_sidebar_and_navbar(request.user, "课程详情")
+    bar_display = utils.get_sidebar_and_navbar(request.user, course_display[0]["name"])
 
     return render(request, "course_info.html", locals())
 
@@ -598,7 +603,7 @@ def addCourse(request, cid=None):
             context = create_course(request)
             html_display["warn_code"] = context["warn_code"]
             if html_display["warn_code"] == 2:
-                return redirect(message_url(succeed("创建课程成功！为您自动跳转到编辑界面。"),
+                return redirect(message_url(succeed("创建课程成功！为您自动跳转到编辑界面。您也可切换到个人账号在书院课程页面查看这门课程！"),
                                         f'/editCourse/{context["cid"]}'))
         else:
             # 仅未开始选课阶段可以修改

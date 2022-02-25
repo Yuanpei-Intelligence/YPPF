@@ -262,7 +262,13 @@
 														<span style="cursor:default">{{timesec.starttime}}</span>
 													</a>
 													{% else %}
-													<a class="timing" style="background:lightcoral">
+													<a class="timing" style="background:lightcoral"
+														{% if timesec.display_info %}
+														data-toggle="tooltip"
+														data-html="true"
+														data-title="{{ timesec.display_info }}"
+														{% endif %}
+														>
 														<span>{{timesec.starttime}}</span>
 													</a>
 													{% endif %}

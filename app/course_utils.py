@@ -499,7 +499,7 @@ def registration_status_change(course_id, user, action=None):
 
         if is_conflict:
             return wrong(message)
-            return wrong(f'与{is_conflict}门已选课程时间冲突: {message}')
+            # return wrong(f'与{is_conflict}门已选课程时间冲突: {message}')
 
     # 如果action为取消预选或退选，to_status直接使用初始值即可
 
@@ -521,7 +521,7 @@ def registration_status_change(course_id, user, action=None):
                 Course.objects.filter(id=course_id).select_for_update().update(
                     current_participants=F("current_participants") - 1)
                 CourseParticipant.objects.filter(
-                    course__id=course_id, person=user).update(status=to_status)
+                    course__id=course_id, person=user).delete()
                 succeed("成功取消选课！", context)
             else:
                 # 处理并发问题
@@ -653,7 +653,7 @@ def draw_lots():
         with transaction.atomic():
             participants = CourseParticipant.objects.filter(
                 course=course,
-                status=CourseParticipant.Status.SELECT).select_related()
+                status=CourseParticipant.Status.SELECT)
 
             participants_num = participants.count()
             if participants_num <= 0:
@@ -665,7 +665,7 @@ def draw_lots():
             if participants_num <= capacity:
                 # 选课人数少于课程容量，不用抽签
                 CourseParticipant.objects.filter(
-                    course=course).select_for_update().update(
+                    id__in=participants_id).select_for_update().update(
                         status=CourseParticipant.Status.SUCCESS)
                 Course.objects.filter(id=course.id).select_for_update().update(
                     current_participants=participants_num)
@@ -800,7 +800,15 @@ def change_course_status(cur_status, to_status):
 
 def str_to_time(stage: str):
     """字符串转换成时间"""
-    return datetime.strptime(stage,'%Y-%m-%d %H:%M:%S')
+    try: return datetime.strptime(stage,'%Y-%m-%d %H:%M:%S')
+    except: pass
+    try: return datetime.strptime(stage,'%Y-%m-%d %H:%M')
+    except: pass
+    try: return datetime.strptime(stage,'%Y-%m-%d %H')
+    except: pass
+    try: return datetime.strptime(stage,'%Y-%m-%d')
+    except: pass
+    raise ValueError(stage)
 
 
 @log.except_captured(return_value=True,
@@ -1064,8 +1072,10 @@ def check_post_and_modify(records, post_data):
             hours = post_data.get(str(key), -1)
             assert float(hours) >= 0, "学时数据为负数，请检查输入数据！"
             record.total_hours = float(hours)
+            # 更新是否有效
+            record.invalid = (record.total_hours < 8)
 
-        CourseRecord.objects.bulk_update(records, ["total_hours"])
+        CourseRecord.objects.bulk_update(records, ["total_hours", "invalid"])
         return succeed("修改学时信息成功！")
     except AssertionError as e:
         # 此时相当于出现用户应该知晓的信息
@@ -1113,7 +1123,8 @@ def finish_course(course):
                     person=participant,
                     course=course,
                     attend_times=participate_num[participant.id],
-                    total_hours=2*participate_num[participant.id]
+                    total_hours=2 * participate_num[participant.id],
+                    invalid=(2 * participate_num[participant.id] < 8),
                 ))
         CourseRecord.objects.bulk_create(course_record_list)
     except:
