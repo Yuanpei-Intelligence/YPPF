@@ -51,6 +51,7 @@ from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import F, Sum, Prefetch
+from django_apscheduler.util import close_old_connections
 
 from app.scheduler import scheduler
 
@@ -354,7 +355,7 @@ def remaining_willingness_point(user):
     # else:
     #     return initial_point
 
-
+@close_old_connections
 def registration_status_check(course_status, cur_status, to_status):
     """
     判断选课状态的变化是否合法
@@ -641,6 +642,7 @@ def course_to_display(courses, user, detail=False) -> list:
 @log.except_captured(return_value=True,
                      record_args=True,
                      source='course_utils[draw_lots]')
+@close_old_connections
 def draw_lots():
     """
     等额抽签选出成功选课的学生，并修改学生的选课状态
@@ -740,6 +742,7 @@ def draw_lots():
                      record_args=True,
                      status_code=log.STATE_WARNING,
                      source='course_utils[change_course_status]')
+@close_old_connections
 def change_course_status(cur_status, to_status):
     """
     作为定时任务，在课程设定的时间改变课程的选课阶段
