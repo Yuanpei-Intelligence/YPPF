@@ -199,7 +199,7 @@
                                         <span class="ml-3" style="font-weight:bold" >上课时间：</span>
                                         <span>
                                             {% for time in course.time_set %}
-                                                    {{time}} 
+                                                    {{time}}
                                             {% endfor %}
                                             {% if course.time_set|length == 0 %}
                                                     待定
@@ -223,7 +223,7 @@
                                         <span class="ml-3" style="font-weight:bold" >课程简介：</span>
                                         <div style="padding-left:3em;">
                                             <p style="word-break:break-all; word-wrap:break-all;">
-                                                <span name="content">{{course.introduction}}</span>
+                                                <span name="content" style="white-space: pre-line">{{course.introduction}}</span>
                                             </p>
                                         </div>
 
@@ -240,7 +240,7 @@
                                         <span class="ml-3" style="font-weight:bold" >教学计划：</span>
                                         <div style="padding-left:3em;">
                                             <p style="word-break:break-all; word-wrap:break-all;">
-                                                <span name="content">{{course.teaching_plan}}</span>
+                                                <span name="content" style="white-space: pre-line">{{course.teaching_plan}}</span>
                                             </p>
                                         </div>
                                     </p>
@@ -260,7 +260,7 @@
                                         <span class="ml-3" style="font-weight:bold">学时计算方式：</span>
                                         <div style="padding-left:3em;">
                                             <p style="word-break:break-all; word-wrap:break-all;">
-                                                <span name="content">{{course.record_cal_method}}</span>
+                                                <span name="content" style="white-space: pre-line">{{course.record_cal_method}}</span>
                                             </p>
                                         </div>
                                     </p>
@@ -339,12 +339,12 @@
 {% endblock %}
 
 {% block add_js_file %}
-<script>
+<!-- <script>
     $("span[name='content']").each(function(){
         var text = $(this).html();
         var reg = new RegExp('\n', 'g');
         $(this).html(text.replace(reg, '<br/>'));
     });
-</script>
+</script> -->
 
 {% endblock %}
