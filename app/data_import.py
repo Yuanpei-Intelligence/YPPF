@@ -706,13 +706,12 @@ def load_course_record(request):
                     total_hours = hours,
                     year = year,
                     semester = semester,
+                    invalid = invalid,
                 )
                 if course_found:
                     newrecord.course = course_get[0]
                     newrecord.save()
-                if year >= 2021 and hours < 8:
-                    newrecord.invalid = invalid
-                    newrecord.save()
+
 
             elif record_search_course.exists():
                 record_search_course.update(
