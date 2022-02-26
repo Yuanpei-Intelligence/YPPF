@@ -1,4 +1,3 @@
-from pkg_resources import invalid_marker
 from app.constants import *
 from app.models import (
     NaturalPerson,
