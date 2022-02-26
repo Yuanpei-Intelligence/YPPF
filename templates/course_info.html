@@ -199,7 +199,7 @@
                                         <span class="ml-3" style="font-weight:bold" >上课时间：</span>
                                         <span>
                                             {% for time in course.time_set %}
-                                                    {{time}}<br>
+                                                    {{time}} 
                                             {% endfor %}
                                             {% if course.time_set|length == 0 %}
                                                     待定
