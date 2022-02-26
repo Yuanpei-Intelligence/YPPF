@@ -1,3 +1,4 @@
+from pkg_resources import invalid_marker
 from app.constants import *
 from app.models import (
     NaturalPerson,
@@ -663,8 +664,8 @@ def load_course_record(request):
             record_view = str(course)+' '+str(sid)+' '+str(name)+' '+str(times)+' '+str(hours)
             if (type(name)!=str and sid is numpy.nan): continue  #允许中间有空行
             if ((type(sid)not in [float,numpy.float64] and not str(sid).isdigit())
-                or (type(times) not in [int,float] and not str(times).isdigit())
-                or (type(hours) not in [int,float] and not str(hours).isdigit())):
+                or (type(times) not in [int,float,numpy.float64] and not str(times).isdigit())
+                or (type(hours) not in [int,float,numpy.float64] and not str(hours).isdigit())):
                 # 读取表格时可能sid,times,hours为str类型，所以增加判定规则
                 info_show["type error"].append(record_view)
                 continue
@@ -696,6 +697,8 @@ def load_course_record(request):
             )
             record_search_course = record.filter(course__name= course,)
             record_search_extra = record.filter(extra_name = course,)
+            invalid = False
+            if (year >= 2021 and hours < 8): invalid = True
             if (not record_search_course.exists()) and (not record_search_extra.exists()):
                 newrecord = CourseRecord.objects.create(
                     person = person[0],
@@ -708,16 +711,19 @@ def load_course_record(request):
                 if course_found:
                     newrecord.course = course_get[0]
                     newrecord.save()
+                if year >= 2021 and hours < 8:
+                    newrecord.invalid = invalid
+                    newrecord.save()
 
             elif record_search_course.exists():
                 record_search_course.update(
-                    invalid = False,
+                    invalid = invalid,
                     attend_times = times,
                     total_hours = hours
                 )
             else:
                 record_search_extra.update(
-                    invalid = False,
+                    invalid = invalid,
                     attend_times = times,
                     total_hours = hours
                 )
