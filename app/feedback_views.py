@@ -303,9 +303,8 @@ def viewFeedback(request, fid):
             and feedback.issue_status != Feedback.IssueStatus.DELETED:
             solve_editable = True
             commentable = True
-        # 未公开反馈，且个人愿意公开，老师没有设置成不予公开时，组织可修改自身公开状态
-        if (not feedback.org_public) \
-            and feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE \
+        # 个人愿意公开，老师没有设置成不予公开时，组织可修改自身公开状态
+        if feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE \
             and feedback.issue_status != Feedback.IssueStatus.DELETED:
             public_editable = True
     # 其他用户（非受反馈小组）暂时不开放任何权限
