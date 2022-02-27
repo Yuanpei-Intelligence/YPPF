@@ -164,17 +164,16 @@ def create_single_course_activity(request):
         # capacity, URL, budget, YQPoint, bidding,
         # apply_reason, inner, source, end_before均为default
     )
-
-    #选课结束以后，活动参与人员从小组成员获取
+    # 选课人员自动报名活动
+    # 选课结束以后，活动参与人员从小组成员获取
     person_pos = list(Position.objects.activated().filter(
             org=course.organization).values_list("person", flat=True))
-    # 选课人员自动报名活动
     if course.status == Course.Status.STAGE2:
         # 如果处于补退选阶段，活动参与人员从课程选课情况获取
-        selected_person = CourseParticipant.objects.filter(
+        selected_person = list(CourseParticipant.objects.filter(
             course=course,
             status=CourseParticipant.Status.SUCCESS,
-        ).values_list("person", flat=True)
+        ).values_list("person", flat=True))
         person_pos += selected_person
         person_pos = list(set(person_pos))
     members = NaturalPerson.objects.filter(
