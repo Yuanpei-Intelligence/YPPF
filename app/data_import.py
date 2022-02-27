@@ -697,7 +697,7 @@ def load_course_record(request):
             record_search_course = record.filter(course__name= course,)
             record_search_extra = record.filter(extra_name = course,)
             invalid = False
-            if (int(year) >= 2021 and int(hours) < 8): invalid = True
+            if (int(year) >= 2021 and int(hours) < get_setting("course_pass_hours")): invalid = True
             if (not record_search_course.exists()) and (not record_search_extra.exists()):
                 newrecord = CourseRecord.objects.create(
                     person = person[0],
