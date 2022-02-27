@@ -62,10 +62,10 @@ class Command(BaseCommand):
                             id="courseWeeklyActivitylauncher",
                             minutes=5,
                             replace_existing=True)
-        scheduler.add_job(public_feedback_per_day,
+        scheduler.add_job(public_feedback_per_hour,
                           "cron",
                           id='feedback_public_updater',
-                          hour=1,
+                          minute=5,
                           replace_existing=True)
 
         protocol_config = {

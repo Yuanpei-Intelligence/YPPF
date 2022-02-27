@@ -12,6 +12,7 @@ from django.shortcuts import render, redirect  # 网页render & redirect
 from django.urls import reverse
 from django.contrib import auth
 import json  # 读取Json请求
+import html  # 解码保证安全
 
 # csrf 检测和完善
 from django.views.decorators.csrf import csrf_exempt
@@ -32,7 +33,10 @@ import boottest.global_messages as my_messages
 # utils对接工具
 from Appointment.utils.utils import send_wechat_message, appoint_violate, doortoroom, iptoroom, operation_writer, write_before_delete, cardcheckinfo_writer, check_temp_appoint, set_appoint_reason
 import Appointment.utils.web_func as web_func
-from Appointment.utils.identity import get_name, get_avatar, get_participant, identity_check
+from Appointment.utils.identity import (
+    get_name, get_avatar, get_member_ids, get_members,
+    get_participant, identity_check,
+)
 
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
@@ -400,29 +404,33 @@ def admin_index(request):   # 我的账户也主函数
 @identity_check(redirect_field_name='origin')
 def admin_credit(request):
 
+    render_context = {}
+    render_context.update(
+        login_url=GLOBAL_INFO.login_url,
+        show_admin=(request.user.is_superuser or request.user.is_staff),
+    )
+
+    my_messages.transfer_message_context(request.GET, render_context)
+
+    # 学生基本信息
     Pid = request.user.username
-    show_admin=(request.user.is_superuser or request.user.is_staff)
+    my_info = web_func.get_user_info(Pid)
+    participant = get_participant(Pid)
+    if participant.agree_time is not None:
+        my_info['agree_time'] = str(participant.agree_time)
 
     # 头像信息
     img_path = get_avatar(request.user)
+    render_context.update(my_info=my_info, img_path=img_path)
 
-    vio_list = web_func.get_appoints(Pid, 'violate', major=True).get('data')
-    vio_list_in_7_days = []
-    present_day = datetime.now()
-    seven_days_before = present_day - timedelta(7)
-    for x in vio_list:
-        temp_time = datetime.strptime(x['Astart'], "%Y-%m-%dT%H:%M:%S")
-        x['Astart_hour_minute'] = temp_time.strftime("%I:%M %p")
-        temp_time = datetime.strptime(x['Afinish'], "%Y-%m-%dT%H:%M:%S")
-        x['Afinish_hour_minute'] = temp_time.strftime("%I:%M %p")
-        if datetime.strptime(
-                x['Astart'],
-                "%Y-%m-%dT%H:%M:%S") <= present_day and datetime.strptime(
-                    x['Astart'], "%Y-%m-%dT%H:%M:%S") >= seven_days_before:
-            vio_list_in_7_days.append(x)
-    vio_list_in_7_days.sort(key=lambda k: k['Astart'])
-    my_info = web_func.get_user_info(Pid)
-    return render(request, 'Appointment/admin-credit.html', locals())
+    vio_list = web_func.get_appoints(
+        Pid, 'violate', major=True, to_json=False).get('data')
+    vio_list_display = web_func.appoints2json(vio_list)
+    for x, appoint in zip(vio_list_display, vio_list):
+        x['Astart_hour_minute'] = appoint.Astart.strftime("%I:%M %p")
+        x['Afinish_hour_minute'] = appoint.Afinish.strftime("%I:%M %p")
+    render_context.update(vio_list=vio_list_display)
+    return render(request, 'Appointment/admin-credit.html', render_context)
 
 
 # added by wxy
@@ -790,11 +798,17 @@ def arrange_time(request):
         for appoint_record in appoints:
             change_id_list = web_func.timerange2idlist(Rid, appoint_record.Astart,
                                                        appoint_record.Afinish, time_range)
+            appoint_usage = html.escape(appoint_record.Ausage).replace('\n', '<br/>')
+            appointer_name = html.escape(appoint_record.major_student.name)
             for day in dayrange_list:
                 if appoint_record.Astart.date() == date(day['year'], day['month'],
                                                         day['day']):
                     for i in change_id_list:
                         day['timesection'][i]['status'] = 1
+                        day['timesection'][i]['display_info'] = '<br/>'.join([
+                            f'{appoint_usage}',
+                            f'预约者：{appointer_name}',
+                        ])
 
         # 删去今天已经过去的时间
         present_time_id = web_func.get_time_id(
@@ -893,9 +907,15 @@ def arrange_talk_room(request):
                     (appointment.Astart - t_start).total_seconds()) // 1800
                 finish_id = int(((appointment.Afinish - timedelta(minutes=1)) -
                                  t_start).total_seconds()) // 1800
+                appointer_name = html.escape(appointment.major_student.name)
+                appoint_usage = html.escape(appointment.Ausage).replace('\n', '<br/>')
 
                 for time_id in range(start_id, finish_id + 1):
                     rooms_time_list[sequence][time_id]['status'] = 1
+                    rooms_time_list[sequence][time_id]['display_info'] = '<br/>'.join([
+                        f'{appoint_usage}',
+                        f'预约者：{appointer_name}',
+                    ])
 
     js_rooms_time_list = json.dumps(rooms_time_list)
     js_weekday = json.dumps(
@@ -1007,6 +1027,10 @@ def check_out(request):  # 预约表单提交
                 wrong(add_dict['message'], render_context)
 
     js_stu_list = web_func.get_student_chosen_list(request)
+    member_id_set = set(get_member_ids(request.user))
+    for js_stu in js_stu_list:
+        if js_stu['id'] in member_id_set:
+            js_stu['text'] += '_成员'
     render_context.update(js_stu_list=js_stu_list)
 
     if request.method == 'POST':

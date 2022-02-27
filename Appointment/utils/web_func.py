@@ -16,6 +16,20 @@ web_func.py中保留所有在views.py中使用到了和web发生交互但不直�
 '''
 
 
+def str_to_time(str_time: str):
+    """字符串转换成时间"""
+    try: return datetime.strptime(str_time,'%Y-%m-%d %H:%M:%S')
+    except: pass
+    try: return datetime.strptime(str_time,'%Y-%m-%d %H:%M')
+    except: pass
+    try: return datetime.strptime(str_time,'%Y-%m-%d %H')
+    except: pass
+    try: return datetime.strptime(str_time,'%Y-%m-%d')
+    except: pass
+    raise ValueError(str_time)
+
+
+
 # added by pht
 # 用于调整不同情况下判定标准的不同
 def get_adjusted_qualified_rate(original_qualified_rate, appoint) -> float:
@@ -233,7 +247,9 @@ def get_appoints(Pid, kind, major=False, to_json=True):
         appoints = appoints.filter(Astart__gte=present_day - timedelta(1),
                                    Astart__lte=present_day + timedelta(1))
     elif kind == 'violate':
-        appoints = appoints.filter(Astatus=Appoint.Status.VIOLATED)
+        # 只考虑本学期的内容，因此用GLOBAL_INFO过滤掉以前的预约
+        start_time = str_to_time(GLOBAL_INFO.semester_start)
+        appoints = appoints.filter(Astatus=Appoint.Status.VIOLATED, Astart__gte = start_time)
     else:
         return {'statusInfo': {'message': '参数错误', 'detail': f'kind非法: {kind}'}}
 

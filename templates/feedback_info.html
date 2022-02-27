@@ -24,7 +24,9 @@
                     <br>
                     <br>
                     <div align="center">
-                      <h3>反馈详情
+                      <h3>反馈详情<h3></div>
+                        <div align="center">
+                        <h3>
                         {% if not is_new_feedback %}
                         {% with feedback.get_read_status_display as status %}
                           {%if status == "未读"%}
@@ -57,9 +59,13 @@
                             <span class="badge badge-danger">{{status}}</span>
                           {%endif%}
                         {%endwith%}
+                        {% if feedback.publisher_public %}
+                        <span class="badge badge-success">发布者同意公开</span>
+                        {% else %}
+                        <span class="badge badge-danger">发布者不同意公开</span>
                         {% endif %}
-                      </h3>
-                    </div>
+                        {% endif %}
+                      </h3></div>
                     <div class="d-flex justify-content-between">
                       <div>
                         <h4>
@@ -93,7 +99,7 @@
                   <div class="form-group">
                     <label>反馈标题</label>
                     {% if not is_new_feedback %}
-                      <textarea type="text" name="title" class="form-control" aria-label="Default" placeholder="标题不能超过30字噢！" {% if not is_new_feedback %}disabled="disabled"{% endif %}>{{feedback.title}}</textarea>
+                      <textarea type="text" name="title" rows="1" class="form-control" aria-label="Default" placeholder="标题不能超过30字噢！" {% if not is_new_feedback %}disabled="disabled"{% endif %}>{{feedback.title}}</textarea>
                     {% else %}
                       <input type="text" name="title" class="form-control"
                                                       aria-label="Default" placeholder="标题不能超过30字噢！">
@@ -110,7 +116,7 @@
                   {% if is_new_feedback %}
                   <div class="form-group">
                     <label for="aintro">是否同意公开
-                      <a data-toggle="tooltip" data-placement="bottom" title="“公开”表示当小组和反馈者均同意公开时，反馈留言将会公开给所有用户，但不会公开反馈者的身份。">
+                      <a data-toggle="tooltip" data-placement="bottom" title="当小组和反馈者均同意公开时，反馈留言将会公开给所有用户，但【不会公开反馈者的身份】。">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle-fill" viewBox="0 0 22 22">
                           <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
                         </svg>
@@ -192,7 +198,7 @@
                     {% if cancel_editable %}
                     <button type="submit" class="btn btn-warning btn-lg mb-4 mr-2" value="cancel" name="post_type" onclick="return confirm('确认撤销反馈？')">撤销反馈</button>
                     {% endif %}
-                    <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2" value="submit_draft" name="post_type" onclick="return confirm('确认提交状态修改？')">提交修改</button>
+                    <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2" value="submit_draft" name="post_type" onclick="return confirm('确认提交状态修改？{% if not is_person %}注意：当你设置解决状态为【已解决】或【无法解决】时，本反馈将被关闭，无法进行评论。请确保已经在评论区完成沟通！{% endif %}')">提交修改</button>
                   </div>
                   {% endif %}
                   {% endif %}
@@ -200,7 +206,6 @@
                 </form>
                 {% block comment %}
                 <br>
-                <hr>
                 {% include 'comment.html' %}
                 {% endblock %}
               </div>
@@ -224,6 +229,7 @@
     var read_status = document.getElementById("read_status");
     var solve_select = document.getElementById("solve_select");
     var public_select = document.getElementById("publisher_public");
+    var public_status = document.getElementById("public_status");
     if(read_status.value == "unread"){
       solve_status.hidden = true;
       public_status.hidden = true;

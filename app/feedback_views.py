@@ -6,21 +6,25 @@ from app.models import (
     OrganizationType,
     Feedback,
     FeedbackType,
+    NaturalPerson,
 )
 from app.utils import (
     get_person_or_org,
 )
+from django.db.models import Q
+from django.db import transaction
+from datetime import date, datetime, timedelta
 from app.feedback_utils import (
     examine_notification,
     update_feedback,
     make_relevant_notification,
+    inform_notification
 )
 from app.comment_utils import addComment, showComment
-from django.db import transaction
 
 
 __all__ = [
-    'feedbackWelcome',
+    'viewFeedback',
     'modifyFeedback',
 ]
 
@@ -41,12 +45,11 @@ def viewFeedback(request, fid):
 
     # 添加评论和修改活动状态
     if request.method == "POST" and request.POST:
-        print(request.POST)
         # 添加评论
         if request.POST.get("comment_submit"):
             # 只有未完成反馈可以发送评论
-            if feedback.solve_status != Feedback.SolveStatus.SOLVING:
-                return redirect(message_url(wrong("只有“解决中”的反馈可以评论！"), f"/viewFeedback/{feedback.id}"))
+            if feedback.solve_status not in (Feedback.SolveStatus.SOLVING,Feedback.SolveStatus.UNMARKED):
+                return redirect(message_url(wrong("已结束的反馈不能评论！"), f"/viewFeedback/{feedback.id}"))
             # 确定通知消息的发送人，互相发送给对方
             if user_type == "Person" and feedback.person == me:
                 receiver = feedback.org.organization_id
@@ -80,11 +83,13 @@ def viewFeedback(request, fid):
                     feedback = Feedback.objects.select_for_update().get(id=fid)
                     if read == "read":
                         feedback.read_status = Feedback.ReadStatus.READ
+                        feedback.solve_status = Feedback.SolveStatus.SOLVING
                     # 已读条目不允许恢复为未读
                     # elif read == "unread":
                     #     feedback.read_status = Feedback.ReadStatus.UNREAD
                     feedback.save()
                     succeed_message.append("成功修改状态为【已读】！")
+                    inform_notification(me, feedback.person, f"您的反馈[{feedback.title}]已知悉。", feedback, important=True)
             # 其他人没有标记已读权限
             else:
                 return redirect(message_url(wrong("没有修改已读状态的权限！"), f"/viewFeedback/{feedback.id}"))
@@ -93,7 +98,7 @@ def viewFeedback(request, fid):
         # 二、修改解决状态
         feedback = Feedback.objects.get(id=fid)
         # 只有已读条目才可以修改解决状态；只有已解决/无法解决的条目才可以修改后续状态
-        if solve != "solving" and feedback.solve_status == Feedback.SolveStatus.SOLVING:
+        if feedback.solve_status == Feedback.SolveStatus.SOLVING:
             # 只有组织可以修改解决状态
             if user_type == "Organization" and feedback.org == me:
                 # 只有已读条目才可以修改解决状态：
@@ -107,14 +112,13 @@ def viewFeedback(request, fid):
                     # 修改为无法解决
                     elif solve == "unsolvable":
                         feedback.solve_status = Feedback.SolveStatus.UNSOLVABLE
-                    # 不能修改为解决中
-                    # elif solve == "solving":
-                    #     feedback.solve_status = Feedback.SolveStatus.SOLVING
                     feedback.save()
-                    succeed_message.append(f"成功修改解决状态为【{feedback.get_solve_status_display()}】")
+                    if solve != "solving":
+                        succeed_message.append(f"成功修改解决状态为【{feedback.get_solve_status_display()}】")
+                        inform_notification(me, feedback.person, f"您的反馈[{feedback.title}]已修改状态为【{feedback.get_solve_status_display()}】。", feedback, important=True)
             # 其他人没有修改解决状态权限
-            else:
-                return redirect(message_url(wrong("没有修改解决状态的权限！"), f"/viewFeedback/{feedback.id}"))
+            # else:
+            #     return redirect(message_url(wrong("没有修改解决状态的权限！"), f"/viewFeedback/{feedback.id}"))
 
         # 三、公开反馈信息
         feedback = Feedback.objects.get(id=fid)
@@ -122,18 +126,22 @@ def viewFeedback(request, fid):
             # 组织选择公开反馈
             if user_type == "Organization" and feedback.org == me:
                 # 只有完成的反馈可以公开。另外组织已公开的反馈必然已完成
-                if feedback.solve_status == Feedback.SolveStatus.SOLVING:
+                if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED):
                     return redirect(message_url(wrong("只有已解决/无法解决的反馈才可以公开"), f"/viewFeedback/{feedback.id}"))
                 # 若老师不予公开，则不允许修改
                 if feedback.public_status == Feedback.PublicStatus.FORCE_PRIVATE:
                     return redirect(message_url(wrong("审核教师已设置不予公开！"), f"/viewFeedback/{feedback.id}"))
-
+                # 若个人不公开
+                if feedback.publisher_public == False:
+                    return redirect(message_url(wrong("根据反馈人的设置，你无法公开这一反馈结果。如果以后遇到希望公开的反馈，请在状态为【解决中】时提醒用户调整状态为【公开】！"),  \
+                        f"/viewFeedback/{feedback.id}"))
                 # 若老师没有不予公开，则修改组织公开状态
                 with transaction.atomic():
                     feedback = Feedback.objects.select_for_update().get(id=fid)
                     feedback.org_public = True
                     feedback.save()
-                    succeed_message.append("成功修改组织公开状态为【公开】！待发布者公开并通过学院审核后，该反馈将向所有人公开。")
+                    succeed_message.append("成功修改组织公开状态为【公开】！通过学院审核后，该反馈将向所有人公开。")
+                    inform_notification(me, feedback.person, f"已申请公开您的反馈[{feedback.title}]，等待老师审核。", feedback)
                 # 此时若发布者也选择公开，则向老师发送通知消息，提醒审核
                 if feedback.publisher_public:
                     examine_notification(feedback)
@@ -166,10 +174,22 @@ def viewFeedback(request, fid):
                     feedback.public_status = Feedback.PublicStatus.PUBLIC
                     feedback.save()
                     succeed_message.append("成功修改反馈公开状态为【公开】！所有学生都有访问权限。")
+                    inform_notification(me, feedback.person, f"已公开您的反馈[{feedback.title}]。", feedback, anonymous=False)
+                    inform_notification(me, feedback.org, f"已公开您处理的反馈[{feedback.title}]。", feedback, anonymous=False)
             # 其他人没有公开反馈权限
             else:
                 return redirect(message_url(wrong("没有公开该反馈的权限！"), f"/viewFeedback/{feedback.id}"))
-
+        else:
+            if user_type == "Organization" and feedback.org == me:
+                # 修改组织公开状态
+                with transaction.atomic():
+                    feedback = Feedback.objects.select_for_update().get(id=fid)
+                    feedback.org_public = False
+                    if feedback.public_status == Feedback.PublicStatus.PUBLIC:
+                        feedback.public_status = Feedback.PublicStatus.PRIVATE
+                    feedback.save()
+                    succeed_message.append("成功修改组织公开状态为【不公开】！")
+                    inform_notification(me, feedback.person, f"组织设置您的反馈[{feedback.title}]状态为【不公开】。", feedback)
         # 四、隐藏反馈信息
         feedback = Feedback.objects.get(id=fid)
         if public == "private":
@@ -208,6 +228,8 @@ def viewFeedback(request, fid):
                     feedback.public_status = Feedback.PublicStatus.FORCE_PRIVATE
                     feedback.save()
                     succeed_message.append("成功修改反馈状态为【不予公开】，除发布者和小组外均无访问权限。")
+                    inform_notification(me, feedback.person, f"暂不公开您的反馈[{feedback.title}]。", feedback, anonymous=False)
+                    inform_notification(me, feedback.org, f"暂不公开您处理的反馈[{feedback.title}]。", feedback, anonymous=False)
             # 其他人没有隐藏反馈权限
             else:
                 return redirect(message_url(wrong("没有隐藏该反馈的权限！"), f"/viewFeedback/{feedback.id}"))
@@ -234,6 +256,7 @@ def viewFeedback(request, fid):
     read = feedback.get_read_status_display()
     solve = feedback.get_solve_status_display()
     public = False
+    is_person = feedback.person == me
     commentable = False
     public_editable = False
     read_editable = False
@@ -244,30 +267,37 @@ def viewFeedback(request, fid):
     if user_type == "Person" and feedback.person == me:
         login_identity = "publisher"
         # 未结束反馈发布者可评论，可撤销
-        if feedback.solve_status == Feedback.SolveStatus.SOLVING:
+        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             commentable = True
             # 撤销反馈功能迁移到反馈聚合页面
             # cancel_editable = True
         # 未公开反馈，且老师没有设置成不予公开时，发布者可修改自身公开状态
-        if (not feedback.publisher_public) and feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE:
+        if (not feedback.publisher_public) and feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             public_editable = True
     # 二、当前登录用户为老师
     elif user_type == "Person" and me.identity == NaturalPerson.Identity.TEACHER:
         login_identity = "teacher"
         # 未结束反馈可评论
-        if feedback.solve_status == Feedback.SolveStatus.SOLVING:
+        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             commentable = True
         # 所有反馈老师可修改公开状态
-        public_editable = True
-        if feedback.public_status == Feedback.PublicStatus.PUBLIC:
+        if feedback.issue_status != Feedback.IssueStatus.DELETED:
+            public_editable = True
+        if feedback.public_status == Feedback.PublicStatus.PUBLIC \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             public = True
         # 未结束反馈可评论
-        if feedback.solve_status == Feedback.SolveStatus.SOLVING:
+        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             commentable = True
     # 三、当前登录用户为发布者和老师以外的个人
     elif user_type == "Person":
         # 检查当前个人是否具有访问权限，只有公开反馈有访问权限
-        if feedback.public_status == Feedback.PublicStatus.PUBLIC:
+        if feedback.public_status == Feedback.PublicStatus.PUBLIC \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             login_identity = "student"
         else:
             return redirect(message_url(wrong("该反馈尚未公开，没有访问该反馈的权限！")))
@@ -275,14 +305,17 @@ def viewFeedback(request, fid):
     elif user_type == "Organization" and feedback.org == me:
         login_identity = "org"
         # 未读反馈可修改未为已读
-        if feedback.read_status == Feedback.ReadStatus.UNREAD:
+        if feedback.read_status == Feedback.ReadStatus.UNREAD \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             read_editable = True
         # 未结束反馈可修改为已结束，并且可以评论
-        if feedback.solve_status == Feedback.SolveStatus.SOLVING:
+        if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             solve_editable = True
             commentable = True
-        # 未公开反馈，且老师没有设置成不予公开时，组织可修改自身公开状态
-        if (not feedback.org_public) and feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE:
+        # 个人愿意公开，老师没有设置成不予公开时，组织可修改自身公开状态
+        if feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE \
+            and feedback.issue_status != Feedback.IssueStatus.DELETED:
             public_editable = True
     # 其他用户（非受反馈小组）暂时不开放任何权限
     else:
@@ -302,10 +335,10 @@ def viewFeedback(request, fid):
             comment.commentator_name = "匿名用户"
             comment.ava = MEDIA_URL + "avatar/person_default.jpg"
             comment.URL = None
-    print(html_display)
     return render(request, "feedback_info.html", locals())
 
 
+"""
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='feedback_views[feedbackWelcome]', record_user=True)
@@ -322,6 +355,145 @@ def feedbackWelcome(request):
     bar_display = utils.get_sidebar_and_navbar(
         request.user, navbar_name="我要留言"
     )
+    return render(request, "feedback_welcome.html", locals())
+"""
+
+
+@login_required(redirect_field_name='origin')
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(source='feedback_views[feedback_homepage]', record_user=True)
+def feedback_homepage(request):
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    is_person = True if user_type == "Person" else False
+    me = get_person_or_org(request.user, user_type)
+    myname = me.name if is_person else me.oname
+
+    # -----------------------------反馈记录---------------------------------
+    issued_feedback = (
+        Feedback.objects
+        .filter(issue_status=Feedback.IssueStatus.ISSUED)
+        .order_by("-feedback_time")
+    )
+
+    # 是否显示我的反馈
+    show_feedback = True
+    if user_type == "Person":
+        # 教师页面不显示我的反馈
+        if me.identity == NaturalPerson.Identity.TEACHER:
+            show_feedback = False
+        my_feedback = issued_feedback.filter(person_id=me)
+        my_all_feedback = Feedback.objects.filter(person_id=me)
+    else:
+        my_feedback = issued_feedback.filter(org_id=me)
+        my_all_feedback = Feedback.objects.filter(org_id=me)
+
+    undone_feedback = (
+        my_feedback
+        .filter(
+            Q(solve_status=Feedback.SolveStatus.SOLVING)
+            | Q(solve_status=Feedback.SolveStatus.UNMARKED)
+        )
+    )
+    done_feedback = (
+        my_all_feedback
+        .filter(
+            Q(solve_status=Feedback.SolveStatus.SOLVED)
+            | Q(solve_status=Feedback.SolveStatus.UNSOLVABLE)
+            | Q(issue_status=Feedback.IssueStatus.DELETED)
+        )
+    )
+
+    # -----------------------------留言公开---------------------------------
+    public_feedback = (
+        Feedback.objects
+        .filter(public_status=Feedback.PublicStatus.PUBLIC)
+        .filter(issue_status=Feedback.IssueStatus.ISSUED)
+        .order_by("-feedback_time")
+    )
+
+    # 我已处理
+    # 已公开的或者强制不公开（不予公开）的是已经处理过的
+    process_feedback = (
+        Feedback.objects
+        .filter(Q(public_status=Feedback.PublicStatus.PUBLIC) | Q(public_status=Feedback.PublicStatus.FORCE_PRIVATE))
+        .filter(issue_status=Feedback.IssueStatus.ISSUED)
+        .order_by("-feedback_time")
+    )
+
+    # -----------------------------反馈草稿---------------------------------
+    # 准备需要呈现的内容
+    # 这里应该呈现：所有person为自己的feedback
+    draft_feedback = my_all_feedback.filter(issue_status=Feedback.IssueStatus.DRAFTED)
+    # -----------------------------老师审核---------------------------------
+    
+    is_teacher = me.identity == NaturalPerson.Identity.TEACHER if is_person else False
+    my_wait_public = []
+    my_public_feedback = []
+    my_process_feedback = []  # 我已处理列表
+    wait_public = (
+        issued_feedback
+        .filter(publisher_public=True, org_public=True)
+        .filter(public_status=Feedback.PublicStatus.PRIVATE)
+    )
+    if is_teacher:
+        for feedback in wait_public:
+            can_show = me.incharge.filter(otype_id=feedback.org.otype_id)
+            if can_show.exists():
+                my_wait_public.append(feedback)
+        
+        for feedback in public_feedback:
+            can_show = me.incharge.filter(otype_id=feedback.org.otype_id)
+            if can_show.exists():
+                my_public_feedback.append(feedback)
+
+        # 获取我已处理列表
+        for feedback in process_feedback:
+            can_show = me.incharge.filter(otype_id=feedback.org.otype_id)
+            if can_show.exists():
+                my_process_feedback.append(feedback)
+
+    if request.method == "POST":
+        option = request.POST.get("option")
+        if not is_person:
+            return redirect(message_url(wrong('组织不可以撤回/删除反馈!'), request.path))
+        if option != "delete" and option != "withdraw":
+            return redirect(message_url(wrong('无效的请求!'), request.path))
+        if option == "delete":
+            try:
+                del_feedback = Feedback.objects.get(id=request.POST["id"])
+            except Exception:
+                return redirect(message_url(wrong("不存在这样的反馈！"), request.path))
+            if del_feedback.issue_status == Feedback.IssueStatus.ISSUED:
+                return redirect(message_url(wrong('不能删除已经发布的反馈！'), request.path))
+            elif del_feedback.issue_status == Feedback.IssueStatus.DELETED:
+                return redirect(message_url(wrong('这条反馈已经被删除啦！'), request.path))
+            else:
+                with transaction.atomic():
+                    del_feedback.issue_status = Feedback.IssueStatus.DELETED
+                    del_feedback.save()
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "成功删除反馈草稿！"
+        elif option == "withdraw":
+            try:
+                del_feedback = Feedback.objects.get(id=request.POST["id"])
+            except Exception:
+                return redirect(message_url(wrong("不存在这样的反馈！"), request.path))
+            if del_feedback.issue_status != Feedback.IssueStatus.ISSUED:
+                return redirect(message_url(wrong('不能撤回没有发布的反馈！'), request.path))
+            elif del_feedback.issue_status == Feedback.IssueStatus.DELETED:
+                return redirect(message_url(wrong('这条反馈已经被撤回啦！'), request.path))
+            elif (del_feedback.solve_status == Feedback.SolveStatus.SOLVED 
+                or del_feedback.solve_status == Feedback.SolveStatus.UNSOLVABLE):
+                return redirect(message_url(wrong('不能撤回已经发布的反馈！'), request.path))
+            else:
+                with transaction.atomic():
+                    del_feedback.issue_status = Feedback.IssueStatus.DELETED
+                    del_feedback.save()
+                    html_display["warn_code"] = 2
+                    html_display["warn_message"] = "成功撤回反馈！"
+
+    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="反馈中心")
+
     return render(request, "feedback_welcome.html", locals())
 
 
@@ -397,7 +569,7 @@ def modifyFeedback(request):
         elif feedback.issue_status == Feedback.IssueStatus.DRAFTED:
             return redirect(message_url(context, f'/modifyFeedback/?feedback_id={feedback.id}'))
         else: # 发布，feedback.issue_status == Feedback.IssueStatus.ISSUED
-            return redirect(message_url(context, f'/viewFeedback/feedback_id={feedback.id}'))
+            return redirect(message_url(context, f'/viewFeedback/{feedback.id}'))
 
     # ———————— 完成Post操作, 接下来开始准备前端呈现 ————————
 

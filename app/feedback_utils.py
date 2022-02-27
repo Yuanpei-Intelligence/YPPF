@@ -1,5 +1,6 @@
 from app.utils_dependency import *
 from app.models import (
+    NaturalPerson,
     Organization,
     OrganizationType,
     Notification,
@@ -22,7 +23,7 @@ __all__ = [
 ]
 
 
-def check_feedback(request, post_type):
+def check_feedback(request, post_type, me):
     '''返回feedback的context字典，如果是提交反馈则检查feedback参数的合法性'''
     context = dict()
     context["warn_code"] = 0
@@ -81,6 +82,9 @@ def check_feedback(request, post_type):
         if publisher_public == "":
             return wrong("必须选择同意/不同意公开~")
 
+        if OrganizationType.objects.get(otype_name=otype).incharge == me:
+            return wrong("老师您好，本系统暂不支持给您管理的小组发送反馈！抱歉。")
+
     context["title"] = title                               # 反馈标题
     context["person"] = request.user                       # 反馈发出者
     context["otype"] = str(request.POST.get("otype"))      # 接收小组类型
@@ -105,7 +109,7 @@ def update_feedback(feedback, me, request):
         info = request.POST
         post_type = str(info.get("post_type"))
         
-        context = check_feedback(request, post_type)
+        context = check_feedback(request, post_type, me)
         if context['warn_code'] == 1:
             return context
         
@@ -189,7 +193,7 @@ def make_relevant_notification(feedback, info, me):
     typename = (Notification.Type.NEEDDO
                 if post_type == 'new_submit'
                 else Notification.Type.NEEDREAD)
-    title = Notification.Title.FEEDBACK_INFORM
+    title = f"反馈：{feedback.title}"
     content = "您收到一条新的反馈～点击标题立刻查看！"
     # TODO：小组看到的反馈详情呈现
     # URL = f'/modifyFeedback/?feedback_id={feedback.id}'
@@ -202,9 +206,11 @@ def make_relevant_notification(feedback, info, me):
         typename=typename,
         title=title,
         content=content,
-        URL=None,
+        URL=f"/viewFeedback/{feedback.id}",
         relate_instance=relate_instance,
         anonymous_flag=True,
+        publish_to_wechat=True,
+        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.IMPORTANT},
     )
 
 
@@ -214,10 +220,30 @@ def examine_notification(feedback):
     notification_create(
         receiver=examin_teacher,
         sender=feedback.org.organization_id,
-        typename=Notification.Type.NEEDDO,
+        typename=Notification.Type.NEEDREAD,
         title=Notification.Title.VERIFY_INFORM,
         content=f"{feedback.org.oname}申请公开一条反馈信息",
         URL=f"/viewFeedback/{feedback.id}",
         publish_to_wechat=True,
         publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+    )
+
+@log.except_captured(source='feedback_utils[inform_notification]')
+def inform_notification(sender, receiver, content, feedback, anonymous=None, important=False):
+    if anonymous is None:
+        anonymous = False if isinstance(sender, Organization) else True
+    if important == False:
+        level = WechatMessageLevel.INFO
+    else:
+        level = WechatMessageLevel.IMPORTANT
+    notification_create(
+        receiver=receiver.person_id if isinstance(receiver, NaturalPerson) else receiver.organization_id,
+        sender=sender.person_id if isinstance(sender, NaturalPerson) else sender.organization_id,
+        typename=Notification.Type.NEEDREAD,
+        title="反馈状态更新",
+        content=content,
+        URL=f"/viewFeedback/{feedback.id}",
+        anonymous_flag=anonymous,
+        publish_to_wechat=True,
+        publish_kws={'app': WechatApp.AUDIT, 'level': level},
     )

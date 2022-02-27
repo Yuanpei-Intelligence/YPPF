@@ -55,7 +55,7 @@ __all__ = [
     'get_weather',
     'update_active_score_per_day',
     'longterm_launch_course',
-    'public_feedback_per_day',
+    'public_feedback_per_hour',
 ]
 
 
@@ -67,7 +67,7 @@ def send_to_persons(title, message, url='/index/'):
         receivers, sender,
         Notification.Type.NEEDREAD, title, message, url,
         publish_to_wechat=True,
-        publish_kws={'level': WechatMessageLevel.IMPORTANT},
+        publish_kws={'level': WechatMessageLevel.IMPORTANT, 'show_source': False},
         ))
 
 
@@ -79,7 +79,7 @@ def send_to_orgs(title, message, url='/index/'):
         receivers, sender,
         Notification.Type.NEEDREAD, title, message, url,
         publish_to_wechat=True,
-        publish_kws={'level': WechatMessageLevel.IMPORTANT},
+        publish_kws={'level': WechatMessageLevel.IMPORTANT, 'show_source': False},
         )
 
 
@@ -303,18 +303,43 @@ def update_active_score_per_day(days=14):
                 active_score=F('active_score') + 1 / days)
 
 
-def public_feedback_per_day():
+def public_feedback_per_hour():
     '''查找距离组织公开反馈24h内没被审核的反馈，将其公开'''
     time = datetime.now() - timedelta(days=1)
     with transaction.atomic():
-        Feedback.objects.filter(
+        feedbacks = Feedback.objects.filter(
             issue_status=Feedback.IssueStatus.ISSUED,
             public_status=Feedback.PublicStatus.PRIVATE,
             publisher_public=True,
             org_public=True,
             public_time__lte=time,
-        ).select_for_update().update(
+        )
+        feedbacks.select_for_update().update(
             public_status=Feedback.PublicStatus.PUBLIC)
+        for feedback in feedbacks:
+            notification_create(
+                receiver=feedback.person.person_id,
+                sender=feedback.org.otype.incharge.person_id,
+                typename=Notification.Type.NEEDREAD,
+                title="反馈状态更新",
+                content=f"您的反馈[{feedback.title}]已被公开",
+                URL=f"/viewFeedback/{feedback.id}",
+                anonymous_flag=False,
+                publish_to_wechat=True,
+                publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+            )
+            notification_create(
+                receiver=feedback.org.organization_id,
+                sender=feedback.org.otype.incharge.person_id,
+                typename=Notification.Type.NEEDREAD,
+                title="反馈状态更新",
+                content=f"您处理的反馈[{feedback.title}]已被公开",
+                URL=f"/viewFeedback/{feedback.id}",
+                anonymous_flag=False,
+                publish_to_wechat=True,
+                publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
+            )
+            
 
 
 def start_scheduler(with_scheduled_job=True, debug=False):
@@ -363,10 +388,10 @@ def start_scheduler(with_scheduled_job=True, debug=False):
                               replace_existing=True)
             current_job = "feedback_public_updater"
             if debug: print(f"adding scheduled job '{current_job}'")
-            scheduler.add_job(public_feedback_per_day,
+            scheduler.add_job(public_feedback_per_hour,
                               "cron",
                               id=current_job,
-                              hour=1,
+                              minute=5,
                               replace_existing=True)
         except Exception as e:
             info = f"add scheduled job '{current_job}' failed, reason: {e}"

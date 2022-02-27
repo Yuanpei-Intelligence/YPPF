@@ -419,6 +419,19 @@
                                 </a> -->
                                 <b class="nav-link" data-toggle="tab" role="tab" href="#act1">已结束</b>
                             </li>
+                            
+                            <li class="nav-item">
+                                
+                                <b class="nav-link" data-toggle="tab" role="tab" href="#act2">历史活动
+                                    <a data-toggle="tooltip" data-placement="bottom" data-html="true" title="展示非本学期的过往活动">
+                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
+                                            class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                            <path
+                                                d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                        </svg>
+                                    </a>
+                                </b>
+                            </li>
 
                         </ul>
 
@@ -621,6 +634,92 @@
                                     </div>
                                 </div>
                             </div>
+                                
+                                
+                                <div id="act2" class="tab-pane fade">
+                                <div class="bio-skill-box ">
+                                    {% if history_activity_list_participantrec|length == 0 %}
+                                    <br />
+                                    <p style="text-align: center;">没有该类别的活动</p>
+                                    <br />
+                                    {% endif %}
+                                    <div class="row">
+                                        {% for rec in history_activity_list_participantrec %}
+                                        <div class="col-12 col-xl-4 col-lg-6 mb-xl-5 mb-5 ">
+                                            <a href="/viewActivity/{{rec.act.id}}">
+                                                <div class="d-flex b-skills">
+                                                    <div class="text-nowrap"
+                                                        style='overflow: hidden;text-overflow: ellipsis;'>
+                                                        <div class="d-flex justify-content-between">
+                                                            <h5
+                                                                style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                        
+                                                                {% if rec.act.status == "已取消" %}
+                                                                <span class="badge badge-pill badge-dark">
+                                                                {% else %}
+                                                                <span class="badge badge-pill badge-danger">
+                                                                {% endif %}
+                                                                    {{ rec.act.status }}
+                                                                </span>
+                                        
+                                                                {{ rec.act.title }}
+                                        
+                                                            </h5>
+                                                        </div>
+                                        
+                                                        <p>{{ rec.act.introduction }}</p>
+                                        
+                                                        <div class="d-flex justify-content-start">
+                                                            <p class="flex mr-3" style="width: 20px;">
+                                                                <i class="fa fa-clock"></i>
+                                                            </p>
+                                                            <p class="flex">
+                                                                {{ rec.act.start }}
+                                                            </p>
+                                                        </div>
+                                        
+                                                        <div class="d-flex justify-content-start">
+                                                            <p class="flex mr-3" style="width: 20px;">
+                                                                <i class="fa fa-users"></i>
+                                                            </p>
+                                                            <p class="flex">
+                                                                {{ rec.act.current_participants }}
+                                                                /
+                                                                {{ rec.act.capacity }}
+                                                            </p>
+                                                        </div>
+                                        
+                                                        <div class="row">
+                                                            <div class="col d-flex justify-content-start">
+                                                                <p class="flex mr-3" style="width: 20px;">
+                                                                    <i class="fa fa-money-bill"></i>
+                                                                </p>
+                                                                <p class="flex">
+                                                                    元气值{{ rec.act.YQPoint }}
+                                                                </p>
+                                                            </div>
+                                        
+                                                            <div class="col d-flex justify-content-start">
+                                                                <p class="flex mr-3" style="width: 20px;">
+                                                                    <i class="fa fa-location-arrow"></i>
+                                                                </p>
+                                                                <p class="flex">
+                                                                    {{ rec.act.location }}
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                        
+                                                    </div>
+                                                </div>
+                                            </a>
+                                        </div>
+                                        {% endfor %}
+
+                                    </div>
+                                </div>
+                            </div>
+                                
+                                
                         </div>
                     </div>
                 </div>

@@ -23,8 +23,9 @@ from Appointment.models import (
 
 
 # Register your models here.
-admin.site.site_title = '元培地下室管理后台'
-admin.site.site_header = '元培地下室 - 管理后台'
+# 合并后无需修改
+# admin.site.site_title = '元培地下室管理后台'
+# admin.site.site_header = '元培地下室 - 管理后台'
 
 admin.site.register(College_Announcement)
 
@@ -34,10 +35,30 @@ class ParticipantAdmin(admin.ModelAdmin):
     actions_on_top = True
     actions_on_bottom = True
     search_fields = ('Sid__username', 'name', 'pinyin')
-    list_display = ('Sid', 'name', 'credit')
+    list_display = ('Sid', 'name', 'credit', 'hidden', )
     list_display_links = ('Sid', 'name')
     list_editable = ('credit', )
-    list_filter = ('credit', 'hidden')
+
+    class AgreeFilter(admin.SimpleListFilter):
+        title = '签署状态'
+        parameter_name = 'Agree'
+    
+        def lookups(self, request, model_admin):
+            '''针对字段值设置过滤器的显示效果'''
+            return (
+                ('true', "已签署"),
+                ('false', "未签署"),
+            )
+        
+        def queryset(self, request, queryset):
+            '''定义过滤器的过滤动作'''
+            if self.value() == 'true':
+                return queryset.exclude(agree_time__isnull=True)
+            elif self.value() == 'false':
+                return queryset.filter(agree_time__isnull=True)
+            return queryset
+
+    list_filter = ('credit', 'hidden', AgreeFilter)
     fieldsets = (['基本信息', {
         'fields': (
             'Sid',
@@ -48,7 +69,7 @@ class ParticipantAdmin(admin.ModelAdmin):
         '显示全部', {
             'classes': ('collapse', ),
             'description': '默认信息，不建议修改！',
-            'fields': ('credit', 'pinyin'),
+            'fields': ('credit', 'pinyin', 'agree_time'),
         }
     ])
 
@@ -181,6 +202,7 @@ class AppointAdmin(admin.ModelAdmin):
                 return queryset.exclude(Astatus=Appoint.Status.CANCELED)
             elif self.value() == 'false':
                 return queryset.filter(Astatus=Appoint.Status.CANCELED)
+            return queryset
 
     list_filter = ('Astart', 'Atime', 'Astatus', ActivateFilter, 'Atemp_flag')
 
@@ -246,7 +268,8 @@ class AppointAdmin(admin.ModelAdmin):
     Astatus_display.short_description = '预约状态'
 
     actions = [ 'confirm', 'violate', 'refresh_scheduler',
-                'longterm1', 'longterm2', 'longterm4', 'longterm8']
+                'longterm1', 'longterm2', 'longterm4', 'longterm8',
+                'longterm1_2', 'longterm2_2', 'longterm4_2']
 
     def confirm(self, request, queryset):  # 确认通过
         if not request.user.is_superuser:
@@ -419,7 +442,7 @@ class AppointAdmin(admin.ModelAdmin):
     refresh_scheduler.short_description = '更新定时任务'
     
 
-    def longterm_wk(self, request, queryset, week_num):
+    def longterm_wk(self, request, queryset, times, interval_week=1):
         if not request.user.is_superuser:
             return self.message_user(request=request,
                                      message='操作失败,没有权限,请联系老师!',
@@ -433,7 +456,7 @@ class AppointAdmin(admin.ModelAdmin):
             try:
                 with transaction.atomic():
                     stuid_list = [stu.Sid_id for stu in appoint.students.all()]
-                    for i in range(week_num):
+                    for i in range(1, times + 1):
                         # 调用函数完成预约
                         feedback = addAppoint({
                             'Rid':
@@ -443,9 +466,9 @@ class AppointAdmin(admin.ModelAdmin):
                             'non_yp_num':
                             appoint.Anon_yp_num,
                             'Astart':
-                            appoint.Astart + (i + 1) * timedelta(days=7),
+                            appoint.Astart + i * timedelta(days=7 * interval_week),
                             'Afinish':
-                            appoint.Afinish + (i + 1) * timedelta(days=7),
+                            appoint.Afinish + i * timedelta(days=7 * interval_week),
                             'Sid':
                             # TODO: major_sid
                             appoint.major_student.Sid_id,
@@ -497,36 +520,44 @@ class AppointAdmin(admin.ModelAdmin):
                                   appoint.Ausage,  # usage
                                   appoint.Aannouncement,
                                   len(stuid_list) + appoint.Anon_yp_num,
-                                  week_num,  # reason, 这里用作表示持续周数
+                                  times,  # reason, 这里用作表示持续周数
                                   #appoint.major_student.credit,
                               ],
                               id=f'{appoint.Aid}_new_wechat',
                               next_run_time=datetime.now() + timedelta(seconds=5))  # 2s足够了
             # TODO: major_sid
-            operation_writer(appoint.major_student.Sid_id, "发起"+str(week_num) +
+            operation_writer(appoint.major_student.Sid_id, "发起"+str(times) +
                              "周的长线化预约, 原始预约号"+str(appoint.Aid), "admin.longterm", "OK")
         return self.message_user(request, '长线化成功!')
 
     def longterm1(self, request, queryset):
-        week_num = 1  # 往后增加多少次
-        return self.longterm_wk(request, queryset, week_num)
+        return self.longterm_wk(request, queryset, 1)
 
     def longterm2(self, request, queryset):
-        week_num = 2  # 往后增加多少次
-        return self.longterm_wk(request, queryset, week_num)
+        return self.longterm_wk(request, queryset, 2)
 
     def longterm4(self, request, queryset):
-        week_num = 4  # 往后增加多少次
-        return self.longterm_wk(request, queryset, week_num)
+        return self.longterm_wk(request, queryset, 4)
 
     def longterm8(self, request, queryset):
-        week_num = 8  # 往后增加多少次
-        return self.longterm_wk(request, queryset, week_num)
+        return self.longterm_wk(request, queryset, 8)
+
+    def longterm1_2(self, request, queryset):
+        return self.longterm_wk(request, queryset, 1, 2)
+
+    def longterm2_2(self, request, queryset):
+        return self.longterm_wk(request, queryset, 2, 2)
+
+    def longterm4_2(self, request, queryset):
+        return self.longterm_wk(request, queryset, 4, 2)
 
     longterm1.short_description = "增加一周本预约"
     longterm2.short_description = "增加两周本预约"
     longterm4.short_description = "增加四周本预约"
     longterm8.short_description = "增加八周本预约"
+    longterm1_2.short_description = "按单双周 增加一次本预约"
+    longterm2_2.short_description = "按单双周 增加两次本预约"
+    longterm4_2.short_description = "按单双周 增加四次本预约"
 
 
 @admin.register(CardCheckInfo)

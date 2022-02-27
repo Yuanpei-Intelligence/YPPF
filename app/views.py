@@ -1,5 +1,6 @@
 from app.views_dependency import *
 from app.models import (
+    Feedback,
     NaturalPerson,
     Freshman,
     Position,
@@ -387,11 +388,45 @@ def stuinfo(request, name=None):
                 or None
         )
 
-        # 隐藏的小组
-        person_hidden_poss = person_poss.filter(show_post=False)
-        person_hidden_orgs = person_orgs.filter(
+        # 历史的小组(同样是删去隐藏)
+        person_history_poss = Position.objects.activated(noncurrent=True).filter(
+            person=person,
+            show_post=True
+            )
+        person_history_orgs = Organization.objects.filter(
+            id__in=person_history_poss.values("org")
+        )  # ta属于的小组
+        person_history_orgs_ava = [
+            # utils.get_user_ava(org, "organization") for org in person_owned_orgs
+            org.get_user_ava() for org in person_history_orgs
+        ]
+        person_history_orgs_pos = [
+            person_history_poss.get(org=org).pos for org in person_history_orgs
+        ]  # ta在小组中的职位
+
+        sems = {
+            Semester.FALL: "秋",
+            Semester.SPRING: "春",
+            Semester.ANNUAL: "全年"
+        }
+
+        person_history_orgs_pos = [
+            org.otype.get_name(pos) + ' ' +
+            str(person_history_poss.get(org=org).in_year)[2:] + "-" +
+            str(person_history_poss.get(org=org).in_year + 1)[2:] +
+            sems[person_history_poss.get(org=org).in_semester]
+            for pos, org in zip(person_history_orgs_pos, person_history_orgs)
+        ]  # ta在小组中的职位
+        html_display["history_orgs_info"] = (
+                list(zip(person_history_orgs, person_history_orgs_ava, person_history_orgs_pos))
+                or None
+        )
+
+        # 隐藏的小组(所有学期都会呈现，不用activated)
+        person_hidden_poss = Position.objects.filter(person=person, show_post = False)
+        person_hidden_orgs = Organization.objects.filter(
             id__in=person_hidden_poss.values("org")
-        )  # ta隐藏的小组
+        )  # ta属于的小组
         person_hidden_orgs_ava = [
             # utils.get_user_ava(org, "organization") for org in person_hidden_orgs
             org.get_user_ava() for org in person_hidden_orgs
@@ -424,29 +459,19 @@ def stuinfo(request, name=None):
 
         # 只有是自己的主页时才显示学时
         if is_myself:
-            course_me = CourseRecord.objects.filter(person_id=oneself)
             # 把当前学期的活动去除
-            course_me_past = (
-                course_me.exclude(
-                    year=CURRENT_ACADEMIC_YEAR,
-                    semester=Semester.now())
-            )
+            course_me_past = CourseRecord.objects.past().filter(person_id=oneself)
 
             # 无效学时，在前端呈现
             course_no_use = (
                 course_me_past
-                .filter(total_hours__lt=8)
-                .exclude(year=2020, semester=Semester.FALL, total_hours__gte=6)
-                .exclude(year=2021, semester=Semester.SPRING, total_hours__gte=6)
+                .filter(invalid=True)
             )
 
             # 特判，需要一定时长才能计入总学时
             course_me_past = (
                 course_me_past
-                .exclude(year=2020, semester=Semester.FALL, total_hours__lt=6)
-                .exclude(year=2021, semester=Semester.SPRING, total_hours__lt=6)
-                .exclude(year=2021, semester=Semester.FALL, total_hours__lt=8) # 21秋开始，需要至少8学时
-                .exclude(year__gt=2021, total_hours__lt=8)
+                .exclude(invalid=True)
             )
 
             course_me_past = course_me_past.order_by('year', 'semester')
@@ -514,6 +539,15 @@ def stuinfo(request, name=None):
         activity_info = list(zip(activities, activity_is_same))
         activity_info.sort(key=lambda a: a[0].start, reverse=True)
         html_display["activity_info"] = list(activity_info) or None
+
+        # 呈现历史活动，不考虑共同活动的规则，直接全部呈现
+        history_activities = list(
+            Activity.objects.activated(noncurrent=True).filter(
+            Q(id__in=participants.values("activity_id")),
+            # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
+        ))
+        history_activities.sort(key=lambda a: a.start, reverse=True)
+        html_display["history_act_info"] = list(history_activities) or None
 
         # 警告呈现信息
 
@@ -710,6 +744,13 @@ def orginfo(request, name=None):
             .order_by("-start")
     )
 
+    # 筛选历史活动，具体为不是这个学期的活动
+    history_activity_list = (
+        Activity.objects.activated(noncurrent=True)
+        .filter(organization_id=org)
+        .order_by("-start")
+    )
+
     # 如果是用户登陆的话，就记录一下用户有没有加入该活动，用字典存每个活动的状态，再把字典存在列表里
 
     prepare_times = Activity.EndBeforeHours.prepare_times
@@ -746,6 +787,23 @@ def orginfo(request, name=None):
             else:
                 dictmp["status"] = "无记录"
         ended_activity_list_participantrec.append(dictmp)
+
+    # 处理历史活动
+    history_activity_list_participantrec = []
+    for act in history_activity_list:
+        dictmp = {}
+        dictmp["act"] = act
+        dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
+        if user_type == "Person":
+            existlist = Participant.objects.filter(activity_id_id=act.id).filter(
+                person_id_id=me.id
+            )
+            if existlist:  # 判断是否非空
+                dictmp["status"] = existlist[0].status
+            else:
+                dictmp["status"] = "无记录"
+        history_activity_list_participantrec.append(dictmp)
+
 
     # 判断我是不是老大, 首先设置为false, 然后如果有person_id和user一样, 就为True
     html_display["isboss"] = False
@@ -1455,6 +1513,14 @@ def search(request):
 
     # 活动要呈现的内容
     activity_field = ["活动名称", "承办小组", "状态"]
+
+    feedback_field = ["标题", "状态", "负责小组", "内容"]
+    feedback_list = Feedback.objects.filter(
+        Q(public_status=Feedback.PublicStatus.PUBLIC)
+    ).filter(
+        Q(title__icontains=query) 
+        | Q(org__oname__icontains=query)
+    )
 
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
