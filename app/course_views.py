@@ -138,8 +138,8 @@ def addSingleCourseActivity(request):
     except:
         return redirect(message_url(wrong('本学期尚未开设书院课程，请先发起选课！'), 
                                     '/showCourseActivity/'))
-    if course.status != Course.Status.SELECT_END:
-        return redirect(message_url(wrong('选课尚未结束，不能发起课程！'), 
+    if course.status == Course.Status.END or course.status < Course.Status.STAGE2:
+        return redirect(message_url(wrong('补退选尚未开始或课程已结束，不能新增课时！'), 
                                     '/showCourseActivity/'))
 
     my_messages.transfer_message_context(request.GET, html_display)
