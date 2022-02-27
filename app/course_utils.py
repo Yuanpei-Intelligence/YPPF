@@ -467,19 +467,22 @@ def registration_status_change(course_id, user, action=None):
     course = Course.objects.get(id=course_id)
     course_status = course.status
 
-    # 设置初始值，后面可以省略一些判断
-    to_status = CourseParticipant.Status.UNSELECT
-
     if (course_status != Course.Status.STAGE1
             and course_status != Course.Status.STAGE2):
         return wrong("在非选课阶段不能选课！")
 
-    # 选课信息
-    participant_info, _ = CourseParticipant.objects.get_or_create(
-        course_id=course_id, person=user)
-    cur_status = participant_info.status
+    need_to_create = False
 
     if action == "select":
+        if CourseParticipant.objects.filter(course_id=course_id,
+                                            person=user).exists():
+            participant_info = CourseParticipant.objects.get(
+                course_id=course_id, person=user)
+            cur_status = participant_info.status
+        else:
+            need_to_create = True
+            cur_status = CourseParticipant.Status.UNSELECT
+
         if course_status == Course.Status.STAGE1:
             to_status = CourseParticipant.Status.SELECT
         else:
@@ -501,7 +504,17 @@ def registration_status_change(course_id, user, action=None):
             return wrong(message)
             # return wrong(f'与{is_conflict}门已选课程时间冲突: {message}')
 
-    # 如果action为取消预选或退选，to_status直接使用初始值即可
+    else:
+        # action为取消预选或退选
+        to_status = CourseParticipant.Status.UNSELECT
+
+        # 不允许状态不存在，除非发生了严重的错误
+        try:
+            participant_info = CourseParticipant.objects.get(
+                course_id=course_id, person=user)
+            cur_status = participant_info.status
+        except:
+            return context
 
     # 检查当前选课状态、选课阶段和操作的一致性
     try:
@@ -520,8 +533,8 @@ def registration_status_change(course_id, user, action=None):
             if to_status == CourseParticipant.Status.UNSELECT:
                 Course.objects.filter(id=course_id).select_for_update().update(
                     current_participants=F("current_participants") - 1)
-                CourseParticipant.objects.filter(
-                    course__id=course_id, person=user).delete()
+                CourseParticipant.objects.filter(course_id=course_id,
+                                                 person=user).delete()
                 succeed("成功取消选课！", context)
             else:
                 # 处理并发问题
@@ -530,13 +543,18 @@ def registration_status_change(course_id, user, action=None):
                         and course.current_participants >= course.capacity):
                     wrong("选课人数已满！", context)
                 else:
-                    course.current_participants = course.current_participants + 1
+                    course.current_participants += 1
                     course.save()
 
                     # 由于不同用户之间的状态不共享，这个更新应该可以不加锁
-                    CourseParticipant.objects.filter(
-                        course__id=course_id,
-                        person=user).update(status=to_status)
+                    if need_to_create:
+                        CourseParticipant.objects.create(course_id=course_id,
+                                                         person=user,
+                                                         status=to_status)
+                    else:
+                        CourseParticipant.objects.filter(
+                            course_id=course_id,
+                            person=user).update(status=to_status)
                     succeed("选课成功！", context)
     except:
         return context
@@ -1192,3 +1210,4 @@ def download_course_record(course, year, semester):
     response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
     wb.save(response)
     return response
+    
