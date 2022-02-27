@@ -756,11 +756,13 @@ class FeedbackTypeAdmin(admin.ModelAdmin):
 class PageLogAdmin(admin.ModelAdmin):
     list_display = ["user", "type", "page", "time"]
     list_filter = ["type", "page", 'time', "platform", "explore_name", "explore_version"]
+    date_hierarchy = "time"
 
 @admin.register(ModuleLog)
 class ModuleLogAdmin(admin.ModelAdmin):
     list_display = ["user", "type", "page", "module_name", "time"]
     list_filter = ["type", "page", "module_name", 'time', "platform", "explore_name", "explore_version"]
+    date_hierarchy = "time"
 
 
 admin.site.register(YQPointDistribute)
