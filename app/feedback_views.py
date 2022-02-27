@@ -179,7 +179,17 @@ def viewFeedback(request, fid):
             # 其他人没有公开反馈权限
             else:
                 return redirect(message_url(wrong("没有公开该反馈的权限！"), f"/viewFeedback/{feedback.id}"))
-
+        else:
+            if user_type == "Organization" and feedback.org == me:
+                # 修改组织公开状态
+                with transaction.atomic():
+                    feedback = Feedback.objects.select_for_update().get(id=fid)
+                    feedback.org_public = False
+                    if feedback.public_status == Feedback.PublicStatus.PUBLIC:
+                        feedback.public_status = Feedback.PublicStatus.PRIVATE
+                    feedback.save()
+                    succeed_message.append("成功修改组织公开状态为【不公开】！")
+                    inform_notification(me, feedback.person, f"组织设置您的反馈[{feedback.title}]状态为【不公开】。", feedback)
         # 四、隐藏反馈信息
         feedback = Feedback.objects.get(id=fid)
         if public == "private":
@@ -303,9 +313,8 @@ def viewFeedback(request, fid):
             and feedback.issue_status != Feedback.IssueStatus.DELETED:
             solve_editable = True
             commentable = True
-        # 未公开反馈，且个人愿意公开，老师没有设置成不予公开时，组织可修改自身公开状态
-        if (not feedback.org_public) \
-            and feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE \
+        # 个人愿意公开，老师没有设置成不予公开时，组织可修改自身公开状态
+        if feedback.public_status != Feedback.PublicStatus.FORCE_PRIVATE \
             and feedback.issue_status != Feedback.IssueStatus.DELETED:
             public_editable = True
     # 其他用户（非受反馈小组）暂时不开放任何权限
@@ -445,7 +454,6 @@ def feedback_homepage(request):
 
     if request.method == "POST":
         option = request.POST.get("option")
-        print(option)
         if not is_person:
             return redirect(message_url(wrong('组织不可以撤回/删除反馈!'), request.path))
         if option != "delete" and option != "withdraw":
