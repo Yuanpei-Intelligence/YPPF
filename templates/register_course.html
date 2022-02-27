@@ -450,9 +450,24 @@
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
+        //TODO 开始和结束时间在同一天
         return true;
     }
         
 </script>
+{% if edit %}
+<script>
+    document.getElementById("datetimepicker1_start").disabled=true;
+    document.getElementById("datetimepicker1_end").disabled=true;
+    document.getElementById("datetimepicker2_start").disabled=true;
+    document.getElementById("datetimepicker2_end").disabled=true;
+    document.getElementById("datetimepicker3_start").disabled=true;
+    document.getElementById("datetimepicker3_end").disabled=true;
+    {% if not editable %}
+    Array.prototype.slice.call(document.getElementsByTagName('input')).map(i => i.disabled = true)
+    Array.prototype.slice.call(document.getElementsByTagName('select')).map(i => i.disabled = true)
+    {% endif %}
+</script>
+{% endif %}
 
 {% endblock %}
