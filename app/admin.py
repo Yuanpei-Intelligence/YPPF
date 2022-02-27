@@ -751,11 +751,20 @@ class FeedbackTypeAdmin(admin.ModelAdmin):
     list_display = ["name","org_type","org",]
     search_fields =  ("name","org_type","org",)
 
+
+@admin.register(PageLog)
+class PageLogAdmin(admin.ModelAdmin):
+    list_display = ["user", "type", "page", "time"]
+    list_filter = ["type", "page", 'time', "platform", "explore_name", "explore_version"]
+
+@admin.register(ModuleLog)
+class ModuleLogAdmin(admin.ModelAdmin):
+    list_display = ["user", "type", "page", "module_name", "time"]
+    list_filter = ["type", "page", "module_name", 'time', "platform", "explore_name", "explore_version"]
+
+
 admin.site.register(YQPointDistribute)
 admin.site.register(QandA)
 admin.site.register(OrganizationTag)
-admin.site.register(PageLog)
-admin.site.register(ModuleLog)
-
 admin.site.register(Comment)
 admin.site.register(CommentPhoto)
