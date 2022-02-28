@@ -425,6 +425,16 @@
     function fill_value(a) {
         console.log(a.value);
     };
+    function isVaildDate(date) {
+     return date instanceof Date && !isNaN(date.getTime());
+    }
+    function sameDay(d1, d2) {
+        if (!(isVaildDate(d1)) || !(isVaildDate(d2)))
+            return true;
+    return d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate();
+    }
     // 检查部分 input 参数 
     function check_inputs() {
         /* 三个第一周上课起止时间 */
@@ -450,7 +460,14 @@
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
-        //TODO 开始和结束时间在同一天
+        // 开始和结束时间在同一天
+        if ( (!sameDay(start1,end1))|| !(sameDay(start2,end2)) ||!(sameDay(start3,end3))) {
+            document.getElementById("success_msg").style.display = "none";
+            document.getElementById("warn_message").style.display = "";
+            document.getElementById("warn_message").innerHTML = "开始时间和结束时间应该在同一天！";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
         return true;
     }
         
