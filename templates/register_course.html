@@ -314,8 +314,8 @@
                                     </button>
                                     {% elif edit %}
                                     <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value="" disabled
-                                        onclick="return confirm('由于选课已经开始，请不要修改课程信息！')">
-                                        不能修改（选课已开始）
+                                        onclick="return confirm('由于选课已经结束，请不要修改课程信息！')">
+                                        不能修改（选课已结束）
                                     </button>
                                     {% else %}
                                     <button type="submit" class="btn btn-primary btn-block mb-4 mr-2" value=""
@@ -425,6 +425,16 @@
     function fill_value(a) {
         console.log(a.value);
     };
+    function isVaildDate(date) {
+     return date instanceof Date && !isNaN(date.getTime());
+    }
+    function sameDay(d1, d2) {
+        if (!(isVaildDate(d1)) || !(isVaildDate(d2)))
+            return true;
+    return d1.getFullYear() === d2.getFullYear() &&
+    d1.getMonth() === d2.getMonth() &&
+    d1.getDate() === d2.getDate();
+    }
     // 检查部分 input 参数 
     function check_inputs() {
         /* 三个第一周上课起止时间 */
@@ -450,9 +460,35 @@
             document.body.scrollTop = document.documentElement.scrollTop = 0;
             return false;
         }
+        // 开始和结束时间在同一天
+        if ( (!sameDay(start1,end1))|| !(sameDay(start2,end2)) ||!(sameDay(start3,end3))) {
+            document.getElementById("success_msg").style.display = "none";
+            document.getElementById("warn_message").style.display = "";
+            document.getElementById("warn_message").innerHTML = "开始时间和结束时间应该在同一天！";
+            document.body.scrollTop = document.documentElement.scrollTop = 0;
+            return false;
+        }
         return true;
     }
         
 </script>
+{% if edit %}
+<script>
+    {% if time_limit %}
+    document.getElementById("datetimepicker1_start").disabled=true;
+    document.getElementById("datetimepicker1_end").disabled=true;
+    document.getElementById("datetimepicker2_start").disabled=true;
+    document.getElementById("datetimepicker2_end").disabled=true;
+    document.getElementById("datetimepicker3_start").disabled=true;
+    document.getElementById("datetimepicker3_end").disabled=true;
+    {% endif %}
+    {% if not editable %}
+    Array.prototype.slice.call(document.getElementsByTagName('input')).map(i => i.disabled = true)
+    Array.prototype.slice.call(document.getElementsByTagName('select')).map(i => i.disabled = true)
+    Array.prototype.slice.call(document.getElementsByTagName('textarea')).map(i => i.disabled = true)
+    Array.prototype.slice.call(document.getElementsByTagName('button')).map(i => i.disabled = true)
+    {% endif %}
+</script>
+{% endif %}
 
 {% endblock %}
