@@ -45,14 +45,18 @@ def as_display(description=None, /, register_to=None, *,
 
 
 def as_action(description=None, /, register_to=None, permissions=None, *,
-              superuser=True, single=False, atomic=False, update=False):
+              superuser=None, single=False, atomic=False, update=False):
     '''
     将函数转化为操作的形式，并试图注册
     检查用户是否有权限执行操作，有权限时捕获错误
-    权限是列表，单个权限可只传入字符串
+    权限是列表，单个权限可只传入字符串，提供权限要求时默认不检查是否为超级用户
     关键字参数进行检查或启用必要的环境
     '''
     def actual_decorator(action_function):
+        nonlocal superuser
+        if superuser is None:
+            superuser = (permissions is None)
+
         @wraps(action_function)
         def _wrapped_action(self: ModelAdmin, request, queryset):
             if superuser and not request.user.is_superuser:
