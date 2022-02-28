@@ -91,7 +91,7 @@
                                                 {% for feedback in public_feedback %}
                                                     <div class="col-12 col-xl-6 col-lg-6 mb-xl-4 mb-4 ">
                                                         <div class="b-skills">
-                                                            <div class="d-flex justify-content">
+                                                            <div class="d-flex justify-content-between">
                                                                 <div>
                                                                     <h5>
                                                                     <a href='/viewFeedback/{{feedback.id}}'>{{feedback.title}}</a>
@@ -119,8 +119,10 @@
                                                                 {% endif %}
                                                                     </h5>
                                                                 </div>
-                                                                <div class="ml-1">
-                                                                    
+                                                                <div>
+                                                                    <a href="/viewFeedback/{{feedback.id}}" data-toggle="tooltip" title="查看">
+                                                                        <h5><i class="fa fa-eye"></i></h5>
+                                                                    </a>
                                                                 </div>
                                                             </div>
                                                             <p style="color: rgb(66, 67, 68);">
