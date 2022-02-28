@@ -104,23 +104,6 @@ class RoomAdmin(admin.ModelAdmin):
     list_editable = ('Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish', 'RneedAgree')
     search_fields = ('Rid', 'Rtitle')
     list_filter = ('Rstatus', 'RIsAllNight', 'RneedAgree')
-    fieldsets = (
-        [
-            '基本信息', {
-                'fields': (
-                    'Rid',
-                    'Rtitle',
-                    'Rmin',
-                    'Rmax',
-                    'Rstart',
-                    'Rfinish',
-                    'Rstatus',
-                    'RIsAllNight',
-                    'RneedAgree',
-                ),
-            }
-        ],
-    )
 
     @as_display('预约状态')
     def Rstatus_display(self, obj):
@@ -164,6 +147,7 @@ class AppointAdmin(admin.ModelAdmin):
         # 'Afinish',
     )  # 'Ausage'
     date_hierarchy = 'Astart'
+    filter_horizontal = ['students']
     readonly_fields = ('Atime', )
 
     class ActivateFilter(admin.SimpleListFilter):

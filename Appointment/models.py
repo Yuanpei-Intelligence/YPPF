@@ -42,6 +42,10 @@ class Participant(models.Model):
     # 用户许可的字段，需要许可的房间刷卡时检查是否通过了许可
     agree_time = models.DateField('上次许可时间', null=True, blank=True)
 
+    def __str__(self):
+        '''仅用于后台呈现和搜索方便，任何时候不应使用'''
+        return self.name + ('' if self.pinyin is None else '_' + self.pinyin)
+
     class Meta:
         verbose_name = '学生'
         verbose_name_plural = verbose_name
