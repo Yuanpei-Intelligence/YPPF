@@ -724,12 +724,14 @@ class FeedbackTypeAdmin(admin.ModelAdmin):
 class PageLogAdmin(admin.ModelAdmin):
     list_display = ["user", "type", "page", "time"]
     list_filter = ["type", "page", 'time', "platform", "explore_name", "explore_version"]
+    search_fields =  ["user__username", "page"]
     date_hierarchy = "time"
 
 @admin.register(ModuleLog)
 class ModuleLogAdmin(admin.ModelAdmin):
     list_display = ["user", "type", "page", "module_name", "time"]
     list_filter = ["type", "page", "module_name", 'time', "platform", "explore_name", "explore_version"]
+    search_fields = ["user__username", "page", "module_name"]
     date_hierarchy = "time"
 
 
