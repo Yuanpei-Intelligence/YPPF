@@ -1,6 +1,6 @@
 from app.models import *
+from boottest.admin_utils import *
 
-from functools import wraps
 from datetime import datetime
 from django.contrib import admin
 from django.db import transaction
@@ -12,38 +12,6 @@ admin.site.site_header = '元培智慧校园 - 管理后台'
 # 合并后只需声明一次
 # admin.site.site_title = '元培成长档案管理后台'
 # admin.site.site_header = '元培成长档案 - 管理后台'
-
-
-def as_action(description=None, /, register_to=None, *,
-              superuser=True, atomic=False, update=False):
-    '''
-    将函数转化为操作的形式，并试图注册
-    检查用户是否有权限执行操作，有权限时捕获错误
-    '''
-    def actual_decorator(action_function):
-        @wraps(action_function)
-        def _wrapped_view(self, request, queryset):
-            if superuser and not request.user.is_superuser:
-                return self.message_user(request=request,
-                                         message='操作失败,没有权限,请联系老师!',
-                                         level='warning')
-            try:
-                if atomic or update:
-                    with transaction.atomic():
-                        if update:
-                            queryset = queryset.select_for_update()
-                        return action_function(self, request, queryset)
-                return action_function(self, request, queryset)
-            except Exception as e:
-                return self.message_user(request=request,
-                                         message=f'操作时发生{type(e)}异常: {e}',
-                                         level='error')
-        if description is not None:
-            _wrapped_view.short_description = description
-        if register_to is not None and _wrapped_view.__name__ not in register_to:
-            register_to.append(_wrapped_view.__name__)
-        return _wrapped_view
-    return actual_decorator
 
 
 @admin.register(NaturalPerson)
@@ -756,12 +724,14 @@ class FeedbackTypeAdmin(admin.ModelAdmin):
 class PageLogAdmin(admin.ModelAdmin):
     list_display = ["user", "type", "page", "time"]
     list_filter = ["type", "page", 'time', "platform", "explore_name", "explore_version"]
+    search_fields =  ["user__username", "page"]
     date_hierarchy = "time"
 
 @admin.register(ModuleLog)
 class ModuleLogAdmin(admin.ModelAdmin):
     list_display = ["user", "type", "page", "module_name", "time"]
     list_filter = ["type", "page", "module_name", 'time', "platform", "explore_name", "explore_version"]
+    search_fields = ["user__username", "page", "module_name"]
     date_hierarchy = "time"
 
 
