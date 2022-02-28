@@ -457,12 +457,14 @@
 </script>
 {% if edit %}
 <script>
+    {% if time_limit %}
     document.getElementById("datetimepicker1_start").disabled=true;
     document.getElementById("datetimepicker1_end").disabled=true;
     document.getElementById("datetimepicker2_start").disabled=true;
     document.getElementById("datetimepicker2_end").disabled=true;
     document.getElementById("datetimepicker3_start").disabled=true;
     document.getElementById("datetimepicker3_end").disabled=true;
+    {% endif %}
     {% if not editable %}
     Array.prototype.slice.call(document.getElementsByTagName('input')).map(i => i.disabled = true)
     Array.prototype.slice.call(document.getElementsByTagName('select')).map(i => i.disabled = true)

@@ -3,7 +3,6 @@ scheduler_func.py
 
 应尽量只包含周期性定时任务
 '''
-from email.policy import default
 from app.models import (
     User,
     NaturalPerson,
