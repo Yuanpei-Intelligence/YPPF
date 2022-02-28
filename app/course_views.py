@@ -589,28 +589,30 @@ def addCourse(request, cid=None):
 
     my_messages.transfer_message_context(request.GET, html_display)
 
-
+    editable=False
+    if edit and course.status < Course.Status.SELECT_END: #选课结束前才能修改
+        editable = True
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewCourse，可以不设计bar_display
     if request.method == "POST" and request.POST:
-        #增加时间截止约束
-        course_DDL = str_to_time(get_setting("course/btx_election_end"))
-        if datetime.now() > course_DDL:
-            if edit:
-                return redirect(message_url(wrong('当前课程状态不允许修改!'),
-                                            f'/editCourse/{course.id}'))
-            else:
-                return redirect(message_url(succeed("已超过选课时间节点，无法发起或修改课程信息！"),
-                                        f'/showCourseActivity/'))
         if not edit:
             #发起选课
+            course_DDL = str_to_time(get_setting("course/btx_election_end"))
+            if datetime.now() > course_DDL:
+                return redirect(message_url(succeed("已超过选课时间节点，无法发起课程！"),
+                                        f'/showCourseActivity/'))
+                                        
             context = create_course(request)
             html_display["warn_code"] = context["warn_code"]
             if html_display["warn_code"] == 2:
                 return redirect(message_url(succeed("创建课程成功！为您自动跳转到编辑界面。您也可切换到个人账号在书院课程页面查看这门课程！"),
                                         f'/editCourse/{context["cid"]}'))
         else:
+            if not editable:
+                return redirect(message_url(wrong('当前课程状态不允许修改!'),
+                                            f'/editCourse/{course.id}'))
             context = create_course(request, course.id)
+
         html_display["warn_code"] = context["warn_code"]
         html_display["warn_message"] = context["warn_message"]
 
@@ -626,9 +628,6 @@ def addCourse(request, cid=None):
        ["劳" , Course.CourseType.LABOUR],
     ]
     defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG", "id": f"picture{i+1}"} for i in range(5)]
-    editable=False
-    if edit and course.status < Course.Status.SELECT_END: #选课结束前才能修改
-        editable = True
 
     if edit:
         name = utils.escape_for_templates(course.name)
