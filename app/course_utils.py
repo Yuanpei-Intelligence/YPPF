@@ -954,7 +954,6 @@ def course_base_check(request,if_new=None):
         for course_end in course_ends
         if course_end != ''
     ]
-    print(course_starts)
     try:
         for i in range(len(course_starts)):
             assert check_ac_time_course(
