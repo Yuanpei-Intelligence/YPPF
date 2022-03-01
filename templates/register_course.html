@@ -475,17 +475,17 @@
 {% if edit %}
 <script>
     {% if time_limit %}
-    document.getElementById("datetimepicker1_start").disabled=true;
-    document.getElementById("datetimepicker1_end").disabled=true;
-    document.getElementById("datetimepicker2_start").disabled=true;
-    document.getElementById("datetimepicker2_end").disabled=true;
-    document.getElementById("datetimepicker3_start").disabled=true;
-    document.getElementById("datetimepicker3_end").disabled=true;
+    document.getElementById("datetimepicker1_start").readOnly=true;
+    document.getElementById("datetimepicker1_end").readOnly=true;
+    document.getElementById("datetimepicker2_start").readOnly=true;
+    document.getElementById("datetimepicker2_end").readOnly=true;
+    document.getElementById("datetimepicker3_start").readOnly=true;
+    document.getElementById("datetimepicker3_end").readOnly=true;
     {% endif %}
     {% if not editable %}
-    Array.prototype.slice.call(document.getElementsByTagName('input')).map(i => i.disabled = true)
-    Array.prototype.slice.call(document.getElementsByTagName('select')).map(i => i.disabled = true)
-    Array.prototype.slice.call(document.getElementsByTagName('textarea')).map(i => i.disabled = true)
+    Array.prototype.slice.call(document.getElementsByTagName('input')).map(i => i.readOnly = true)
+    Array.prototype.slice.call(document.getElementsByTagName('select')).map(i => i.readOnly = true)
+    Array.prototype.slice.call(document.getElementsByTagName('textarea')).map(i => i.readOnly = true)
     Array.prototype.slice.call(document.getElementsByTagName('button')).map(i => i.disabled = true)
     {% endif %}
 </script>
