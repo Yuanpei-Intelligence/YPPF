@@ -944,6 +944,7 @@ def course_base_check(request,if_new=None):
         return wrong(str(e))
 
     # 每周课程时间合法性检查
+    # TODO: 需要增加是否可以修改时间的安全性检查
     course_starts = request.POST.getlist("start")
     course_ends = request.POST.getlist("end")
     course_starts = [
