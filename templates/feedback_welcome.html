@@ -82,7 +82,7 @@
                                             <div id="public-feedback" class="row">
                                                 {% for feedback in public_feedback %}
                                                     <div class="col-12 col-xl-6 col-lg-6 mb-xl-4 mb-4 ">
-                                                        <div class="b-skills">
+                                                        <div class="b-skills" onclick="window.location.href = '/viewFeedback/{{feedback.id}}' ;">
                                                             <div class="d-flex justify-content">
                                                                 <div>
                                                                     <h5>
