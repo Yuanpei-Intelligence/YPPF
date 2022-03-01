@@ -76,7 +76,7 @@ class ParticipantAdmin(admin.ModelAdmin):
 
     actions = []
 
-    @as_action('全院学生信用分恢复一分', actions, atomic=True)
+    @as_action('全院学生信用分恢复一分', actions, 'change', atomic=True)
     def recover(self, request, queryset):
         stu_all = Participant.objects.all()
         stu_all = stu_all.filter(hidden=False)
@@ -104,23 +104,6 @@ class RoomAdmin(admin.ModelAdmin):
     list_editable = ('Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish', 'RneedAgree')
     search_fields = ('Rid', 'Rtitle')
     list_filter = ('Rstatus', 'RIsAllNight', 'RneedAgree')
-    fieldsets = (
-        [
-            '基本信息', {
-                'fields': (
-                    'Rid',
-                    'Rtitle',
-                    'Rmin',
-                    'Rmax',
-                    'Rstart',
-                    'Rfinish',
-                    'Rstatus',
-                    'RIsAllNight',
-                    'RneedAgree',
-                ),
-            }
-        ],
-    )
 
     @as_display('预约状态')
     def Rstatus_display(self, obj):
@@ -164,6 +147,7 @@ class AppointAdmin(admin.ModelAdmin):
         # 'Afinish',
     )  # 'Ausage'
     date_hierarchy = 'Astart'
+    filter_horizontal = ['students']
     readonly_fields = ('Atime', )
 
     class ActivateFilter(admin.SimpleListFilter):
@@ -244,7 +228,7 @@ class AppointAdmin(admin.ModelAdmin):
 
     actions = []
 
-    @as_action('所选条目 通过', actions)
+    @as_action('所选条目 通过', actions, 'change')
     def confirm(self, request, queryset):  # 确认通过
         some_invalid = 0
         have_success = 0
@@ -320,7 +304,7 @@ class AppointAdmin(admin.ModelAdmin):
                                          level=messages.WARNING)
 
 
-    @as_action('所选条目 违约', actions)
+    @as_action('所选条目 违约', actions, 'change')
     def violate(self, request, queryset):  # 确认违约
         try:
             for appoint in queryset:
@@ -364,7 +348,7 @@ class AppointAdmin(admin.ModelAdmin):
         return self.message_user(request, "设为违约成功!")
 
     
-    @as_action('更新定时任务', actions)
+    @as_action('更新定时任务', actions, ['add', 'change'])
     def refresh_scheduler(self, request, queryset):
         '''
         假设的情况是后台修改了开始和结束时间后，需要重置定时任务
@@ -472,31 +456,31 @@ class AppointAdmin(admin.ModelAdmin):
                              "周的长线化预约, 原始预约号"+str(appoint.Aid), "admin.longterm", "OK")
         return self.message_user(request, '长线化成功!')
 
-    @as_action('增加一周本预约', actions, single=True)
+    @as_action('增加一周本预约', actions, 'add', single=True)
     def longterm1(self, request, queryset):
         return self.longterm_wk(request, queryset, 1)
 
-    @as_action('增加两周本预约', actions, single=True)
+    @as_action('增加两周本预约', actions, 'add', single=True)
     def longterm2(self, request, queryset):
         return self.longterm_wk(request, queryset, 2)
 
-    @as_action('增加四周本预约', actions, single=True)
+    @as_action('增加四周本预约', actions, 'add', single=True)
     def longterm4(self, request, queryset):
         return self.longterm_wk(request, queryset, 4)
 
-    @as_action('增加八周本预约', actions, single=True)
+    @as_action('增加八周本预约', actions, 'add', single=True)
     def longterm8(self, request, queryset):
         return self.longterm_wk(request, queryset, 8)
 
-    @as_action('按单双周 增加一次本预约', actions, single=True)
+    @as_action('按单双周 增加一次本预约', actions, 'add', single=True)
     def longterm1_2(self, request, queryset):
         return self.longterm_wk(request, queryset, 1, 2)
 
-    @as_action('按单双周 增加两次本预约', actions, single=True)
+    @as_action('按单双周 增加两次本预约', actions, 'add', single=True)
     def longterm2_2(self, request, queryset):
         return self.longterm_wk(request, queryset, 2, 2)
 
-    @as_action('按单双周 增加四次本预约', actions, single=True)
+    @as_action('按单双周 增加四次本预约', actions, 'add', single=True)
     def longterm4_2(self, request, queryset):
         return self.longterm_wk(request, queryset, 4, 2)
 
