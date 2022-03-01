@@ -75,10 +75,7 @@ __all__ = [
 
 # 时间合法性的检查：开始早于结束，开始晚于当前时间
 def check_ac_time_course(start_time, end_time):
-    now_time = datetime.now()
     if not start_time < end_time:
-        return False
-    if not now_time < start_time:
         return False
     return True
 
@@ -957,6 +954,7 @@ def course_base_check(request,if_new=None):
         for course_end in course_ends
         if course_end != ''
     ]
+    print(course_starts)
     try:
         for i in range(len(course_starts)):
             assert check_ac_time_course(
