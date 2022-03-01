@@ -637,6 +637,7 @@ def addCourse(request, cid=None):
     defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG", "id": f"picture{i+1}"} for i in range(5)]
 
     if edit:
+        course = Course.objects.get(id=cid)
         name = utils.escape_for_templates(course.name)
         organization = course.organization
         year = course.year

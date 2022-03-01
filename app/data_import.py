@@ -656,47 +656,66 @@ def load_course_record(request):
 
         for i in range(4,height):
             #每个sheet开头有几行不是学时信息，所以跳过
-            sid = course_df.iloc[i, 1]  #学号
-            name = course_df.iloc[i, 2]
-            times = course_df.iloc[i, 3]
-            hours = course_df.iloc[i, 4]
-            record_view = str(course)+' '+str(sid)+' '+str(name)+' '+str(times)+' '+str(hours)
-            if (type(name)!=str and sid is numpy.nan): continue  #允许中间有空行
-            if ((type(sid)not in [float,numpy.float64] and not str(sid).isdigit())
-                or (type(times) not in [int,float] and not str(times).isdigit())
-                or (type(hours) not in [int,float] and not str(hours).isdigit())):
-                # 读取表格时可能sid,times,hours为str类型，所以增加判定规则
+            sid: str = course_df.iloc[i, 1]  #学号
+            name: str = course_df.iloc[i, 2]
+            times: int = course_df.iloc[i, 3]
+            hours: float = course_df.iloc[i, 4]
+            record_view = f'{course} {sid} {name} {times} {hours}'
+            if not isinstance(name, str) and sid is numpy.nan: #允许中间有空行
+                continue
+            if times is numpy.nan or hours is numpy.nan:  #次数和学时缺少
+                info_show["data miss"].append(record_view)
+                continue
+            try:
+                sid = '' if sid is numpy.nan else str(int(float(sid)))
+                times, hours = int(times), float(hours)
+                name = str(name)
+            except:
                 info_show["type error"].append(record_view)
                 continue
 
-            person = NaturalPerson.objects.filter( name=name )
-            if (times is numpy.nan) or (hours is numpy.nan): #次数和学时缺少
-                info_show["data miss"].append(record_view)
-                continue
-            elif sid is numpy.nan:   #没有学号
+            person = NaturalPerson.objects.filter(name=name)
+            if not sid:  #没有学号
                 info_show["stuID miss"].append(record_view)
             else:  #若有学号，则根据学号继续查找（排除重名）
-                person = person.filter(person_id__username = str(int(sid)))
+                person = person.filter(person_id__username=sid)
 
             if not person.exists():
-                info_show["person not found"].append(
-                    [str(course)+' '+str(sid)+' '+name+' '+str(times)+' '+str(hours), ])
+                error_info = [record_view]
                 #若同时按照学号和姓名查找不到的话，则只用姓名或者只用学号查找可能的人员
-                person_guess_byname = NaturalPerson.objects.filter(name = name )
-                if sid is not numpy.nan: #若填了学号的话，则试着查找
-                    person_guess_byId = NaturalPerson.objects.filter(person_id__username = str(int(sid)))
-                else: person_guess_byId=None
-                info_show["person not found"][-1]+=[person_guess_byname, person_guess_byId]
+                person_guess_byname = NaturalPerson.objects.filter(name=name)
+                if sid:  #若填了学号的话，则试着查找
+                    person_guess_byId = NaturalPerson.objects.filter(
+                        person_id__username=sid)
+                else:
+                    person_guess_byId = None
+                error_info += [person_guess_byname, person_guess_byId]
+                info_show["person not found"].append(error_info)
                 continue
 
-            record = CourseRecord.objects.filter( #查询是否已经有记录
-                person = person[0],
-                year = year,
-                semester = semester,
+            record = CourseRecord.objects.filter(  #查询是否已经有记录
+                person=person[0],
+                year=year,
+                semester=semester,
             )
-            record_search_course = record.filter(course__name= course,)
-            record_search_extra = record.filter(extra_name = course,)
-            if (not record_search_course.exists()) and (not record_search_extra.exists()):
+            record_search_course = record.filter(course__name=course)
+            record_search_extra = record.filter(extra_name=course)
+            # 需要时临时修改即可
+            invalid = float(hours) < get_config('course/valid_hours', float, 8)
+
+            if record_search_course.exists():
+                record_search_course.update(
+                    invalid = invalid,
+                    attend_times = times,
+                    total_hours = hours
+                )
+            elif record_search_extra.exists():
+                record_search_extra.update(
+                    invalid = invalid,
+                    attend_times = times,
+                    total_hours = hours
+                )
+            else:
                 newrecord = CourseRecord.objects.create(
                     person = person[0],
                     extra_name = course,
@@ -704,27 +723,14 @@ def load_course_record(request):
                     total_hours = hours,
                     year = year,
                     semester = semester,
+                    invalid = invalid,
                 )
                 if course_found:
                     newrecord.course = course_get[0]
                     newrecord.save()
 
-            elif record_search_course.exists():
-                record_search_course.update(
-                    invalid = False,
-                    attend_times = times,
-                    total_hours = hours
-                )
-            else:
-                record_search_extra.update(
-                    invalid = False,
-                    attend_times = times,
-                    total_hours = hours
-                )
     # ----- 以下为前端展示导入的结果 ------
-    context = {
-        'message':u'导入完成\n',
-    }
+    display_message = '导入完成\n'
     print_show = [
         '<br><div style="color:blue;">未查询到该人员：</div>',
         '<div style="color:blue;">是不是想导入以下学生？：</div>',
@@ -738,39 +744,40 @@ def load_course_record(request):
 
 
     if info_show['person not found']:
-        context['message'] += print_show[0]
+        display_message += print_show[0]
         for person in info_show['person not found']:
-            context['message']+= '未查询到 ' +person[0]+'<br>'+print_show[1]
+            display_message += '未查询到 ' + person[0] + '<br>' + print_show[1]
             if person[1].exists():
                 for message in person[1]:
-                    context['message'] += '<div style="color:cadetblue;">'+message.name +' '+ message.person_id.username+'</div>'
-            if person[2]!=None and person[2].exists():
+                    display_message += '<div style="color:cadetblue;">' + message.name + ' ' + message.person_id.username + '</div>'
+            if person[2] != None and person[2].exists():
                 for message in person[2]:
-                    context['message'] += '<div style="color:cadetblue;">'+message.name +' '+ message.person_id.username+'</div>'
+                    display_message += '<div style="color:cadetblue;">' + message.name + ' ' + message.person_id.username + '</div>'
             elif not person[1].exists():
-                context['message'] += '<div style="color:cadetblue;">未查询到类似数据</div>'
-            context['message'] += '<br>'
+                display_message += '<div style="color:cadetblue;">未查询到类似数据</div>'
+            display_message += '<br>'
 
     if info_show['course not found']:
-        context['message'] += print_show[2]
+        display_message += print_show[2]
         for course in info_show['course not found']:
-            context['message']+= '<div style="color:rgb(86, 170, 142);">'+course+'</div>'
+            display_message += '<div style="color:rgb(86, 170, 142);">' + course + '</div>'
 
     if info_show['type error']:
-        context['message'] += print_show[3]
+        display_message += print_show[3]
         for error in info_show['type error']:
-            context['message']+= '<div style="color:rgb(86, 170, 142);">'+'表格内容: '+error+'</div>'
+            display_message += '<div style="color:rgb(86, 170, 142);">' + '表格内容: ' + error + '</div>'
 
     if info_show['data miss']:
-        context['message'] += print_show[4]
+        display_message += print_show[4]
         for error in info_show['data miss']:
-            context['message']+= '<div style="color:rgb(86, 170, 142);">'+'表格内容: '+error+'</div>'
+            display_message += '<div style="color:rgb(86, 170, 142);">' + '表格内容: ' + error + '</div>'
 
     if info_show['stuID miss']:
-        context['message'] += print_show[5]
+        display_message += print_show[5]
         for stu in info_show['stuID miss']:
-            context['message']+= '<div style="color:rgb(86, 170, 142);">'+'表格内容: '+stu+'</div>'
+            display_message += '<div style="color:rgb(86, 170, 142);">' + '表格内容: ' + stu + '</div>'
 
+    context = dict(message=display_message)
     return render(request, "debugging.html", context)
 
 

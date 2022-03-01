@@ -97,6 +97,7 @@
     "course": {
         "type_name": "书院课程",
         "audit_teacher": "YPadmin",
+        "valid_hours": 8,
         "yx_election_start":"2022-02-16 10:00:00",
         "yx_election_end":"2022-02-16 12:00:00",
         "btx_election_start":"2022-02-16 12:00:00",
