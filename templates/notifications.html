@@ -7,7 +7,6 @@
 
 {% block mainpage %}
 
-
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
     {% if html_display.warn_code == 1 %}
@@ -26,7 +25,7 @@
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
                             <h3>通知信箱</h3>
-                            
+    
                             <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
                                 <li class="nav-item">
                                     <a class="nav-link active" href="#home" data-toggle="tab">
@@ -41,15 +40,24 @@
                                 </li>
 
                             </ul>
+                        
+                           
 
                             <div id="myTabContent" class="tab-content">
                                 <div class="tab-pane fade in active show" id="home">
+
                                     <div id="undone-empty" style="display: none; margin-top: 40px; margin-bottom: -40px;">
                                         <p style="text-align: center;">您的信箱很干净！没有要处理的信息.</p>
                                     </div>
+                                </br>
+                                </br>
+                                    <div>
+                                        <center><button type="button" class="btn btn-outline-primary m-auto" id="{{type_id}}" 
+                                            onclick="read_all.call(this);this.blur();" >一键阅读</button></center>
+                                    </div>
                                     <div class="bio-skill-box">
                                         <div id="undone-list" class="row">
-                                            {% for note in undone_list %}
+                                            {% for note in undone_list %} 
                                             <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 " id="undone={{note.id}}" {% if not note.status == "待处理" %} hidden {%endif%}>
 
                                                 <div class=" b-skills">
@@ -69,7 +77,7 @@
                                                             {% if note.type == "知晓类" %}
                                                             <h5>
                                                                 <button class="btn btn-primary" type="submit"
-                                                                    name='post_button' value="{{note.id}}"
+                                                                    name="{{type_id}}" value="{{note.id}}"
                                                                     onclick="read.call(this);this.blur();" id="{{note.id}}">知道啦</button>
                                                             </h5>
                                                             {% else %}
@@ -273,5 +281,14 @@
             .catch(() => { success: false });
         return success;
     }
+    async function read_all() {
+        lst = document.getElementsByName(this.id);
+        for (var i = 0; i < lst.length; i += 1) {
+                    read.call(lst[i]);
+        }
+    }
+    
+
+  
 </script>
 {% endblock %}
