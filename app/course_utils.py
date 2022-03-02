@@ -75,10 +75,7 @@ __all__ = [
 
 # 时间合法性的检查：开始早于结束，开始晚于当前时间
 def check_ac_time_course(start_time, end_time):
-    now_time = datetime.now()
     if not start_time < end_time:
-        return False
-    if not now_time < start_time:
         return False
     return True
 
