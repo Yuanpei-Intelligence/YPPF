@@ -1111,7 +1111,7 @@ def check_post_and_modify(records, post_data):
             assert float(hours) >= 0, "学时数据为负数，请检查输入数据！"
             record.total_hours = float(hours)
             # 更新是否有效
-            record.invalid = (record.total_hours < 8)
+            record.invalid = (record.total_hours < LEAST_RECORD_HOURS)
 
         CourseRecord.objects.bulk_update(records, ["total_hours", "invalid"])
         return succeed("修改学时信息成功！")
