@@ -1001,8 +1001,9 @@ def create_course(request, course_id=None):
         try:
             course = Course.objects.get(id=int(course_id))
             with transaction.atomic():
-                course_time = course.time_set.all()
-                course_time.delete()
+                if course.status in [Course.Status.WAITING]:
+                    course_time = course.time_set.all()
+                    course_time.delete()
                 course.name = context["name"]
                 course.classroom = context["classroom"]
                 course.teacher = context['teacher']
@@ -1016,12 +1017,13 @@ def create_course(request, course_id=None):
                     course.QRcode = context["QRcode"]
                 course.save()
 
-                for i in range(len(context['course_starts'])):
-                    CourseTime.objects.create(
-                        course=course,
-                        start=context['course_starts'][i],
-                        end=context['course_ends'][i],
-                    )
+                if course.status in [Course.Status.WAITING]:
+                    for i in range(len(context['course_starts'])):
+                        CourseTime.objects.create(
+                            course=course,
+                            start=context['course_starts'][i],
+                            end=context['course_ends'][i],
+                        )
         except:
             return wrong("修改课程时遇到不可预料的错误。如有需要，请联系管理员解决!")
         context["cid"] = course_id
