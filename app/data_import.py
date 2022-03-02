@@ -701,7 +701,7 @@ def load_course_record(request):
             record_search_course = record.filter(course__name=course)
             record_search_extra = record.filter(extra_name=course)
             # 需要时临时修改即可
-            invalid = float(hours) < get_config('course/valid_hours', float, 8)
+            invalid = float(hours) < LEAST_RECORD_HOURS
 
             if record_search_course.exists():
                 record_search_course.update(
