@@ -56,7 +56,7 @@ def editCourseActivity(request, aid):
         activity = Activity.objects.get(id=aid)
     except:
         return redirect(message_url(wrong("活动不存在!")))
-    
+
     if user_type == "Person":
         my_messages.transfer_message_context(
             utils.user_login_org(request, activity.organization_id),
@@ -136,10 +136,10 @@ def addSingleCourseActivity(request):
     try:
         course = Course.objects.activated().get(organization=me)
     except:
-        return redirect(message_url(wrong('本学期尚未开设书院课程，请先发起选课！'), 
+        return redirect(message_url(wrong('本学期尚未开设书院课程，请先发起选课！'),
                                     '/showCourseActivity/'))
     if course.status != Course.Status.STAGE2 and course.status != Course.Status.SELECT_END:
-        return redirect(message_url(wrong('只有补退选开始或选课结束以后才能增加课时！'), 
+        return redirect(message_url(wrong('只有补退选开始或选课结束以后才能增加课时！'),
                                     '/showCourseActivity/'))
 
     my_messages.transfer_message_context(request.GET, html_display)
@@ -153,13 +153,13 @@ def addSingleCourseActivity(request):
                     return redirect(message_url(
                         succeed('存在信息相同的课程活动，已为您自动跳转!'),
                         f'/viewActivity/{aid}'))
-                return redirect(message_url(succeed('活动创建成功！'), 
+                return redirect(message_url(succeed('活动创建成功！'),
                                             f'/showCourseActivity/'))
         except AssertionError as err_info:
             return redirect(message_url(wrong(str(err_info)), request.path))
         except Exception as e:
             return redirect(message_url(wrong("课程活动创建失败!"), request.path))
-    
+
 
 
     # 前端使用量
@@ -291,7 +291,7 @@ def showCourseRecord(request):
     year = CURRENT_ACADEMIC_YEAR
     semester = Semester.now()
 
-    course = Course.objects.activated().filter(
+    course = Course.objects.activated(noncurrent=None).filter(
         organization=me,
         year=year,
         semester=semester,
@@ -432,7 +432,7 @@ def selectCourse(request):
 
     if user_type == "Organization":
         return redirect(message_url(wrong("组织账号无法访问书院选课页面。如需选课，请切换至个人账号；如需查看您发起的书院课程，请点击【我的课程】。")))
-        
+
     is_student = (False
                   if me.identity == NaturalPerson.Identity.TEACHER else True)
 

@@ -811,6 +811,15 @@ def change_course_status(cur_status, to_status):
                 organization = course.organization
                 positions = []
                 for participant in participants:
+                    # 如果已有当前的离职状态，改成在职成员
+                    Position.objects.current().filter(
+                        person=participant.person,
+                        org=organization,
+                        status=Position.Status.DEPART,
+                    ).update(pos=10,
+                             is_admin=False,
+                             in_semester=Semester.now(),
+                             status=Position.Status.INSERVICE)
                     # 检查是否已经加入小组
                     if not Position.objects.activated().filter(person=participant.person,
                                                    org=organization).exists():
@@ -1221,4 +1230,3 @@ def download_course_record(course, year, semester):
     response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
     wb.save(response)
     return response
-    
