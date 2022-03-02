@@ -306,6 +306,14 @@ class OrganizationType(models.Model):
     def get_length(self):
         return len(self.job_name_list) + 1
 
+    def default_semester(self):
+        '''供生成时方便调用的函数，职位的默认持续时间'''
+        return Semester.now() if self.otype_name == COURSE_TYPENAME else Semester.ANNUAL
+
+    def default_is_admin(self, position):
+        '''供生成时方便调用的函数，是否成为负责人的默认值'''
+        return position <= self.control_pos_threshold
+
 
 class Semester(models.TextChoices):
     FALL = "Fall", "秋"
@@ -1208,20 +1216,30 @@ class ModifyPosition(CommentBase):
             ).update(status=Position.Status.DEPART)
         elif self.apply_type == ModifyPosition.ApplyType.JOIN:
             # 尝试获取已有的position
-            if Position.objects.current().filter(
-                org=self.org, person=self.person).exists(): # 如果已经存在这个量了
-                Position.objects.current().filter(org=self.org, person=self.person
-                ).update(
-                    status=Position.Status.INSERVICE,
+            current_positions = Position.objects.current().filter(
+                org=self.org, person=self.person)
+            if current_positions.exists(): # 如果已经存在这个量了
+                current_positions.update(
                     pos=self.pos,
-                    is_admin=(self.pos <= self.org.otype.control_pos_threshold))
+                    is_admin=self.org.otype.default_is_admin(self.pos),
+                    in_semester=self.org.otype.default_semester(),
+                    status=Position.Status.INSERVICE,
+                )
             else: # 不存在 直接新建
-                Position.objects.create(pos=self.pos, person=self.person, org=self.org, is_admin=(self.pos<=self.org.otype.control_pos_threshold))
+                Position.objects.create(
+                    pos=self.pos,
+                    person=self.person,
+                    org=self.org,
+                    is_admin=self.org.otype.default_is_admin(self.pos),
+                    in_semester=self.org.otype.default_semester(),
+                )
         else:   # 修改 则必定存在这个量
-            Position.objects.activated().filter(org=self.org, person=self.person
-                ).update(pos=self.pos, is_admin=(self.pos <= self.org.otype.control_pos_threshold))
+            Position.objects.activated().filter(
+                org=self.org, person=self.person).update(
+                    pos=self.pos, is_admin=self.org.otype.default_is_admin(self.pos))
         # 修改申请状态
-        ModifyPosition.objects.filter(id=self.id).update(status=ModifyPosition.Status.CONFIRMED)
+        ModifyPosition.objects.filter(id=self.id).update(
+            status=ModifyPosition.Status.CONFIRMED)
 
     def save(self, *args, **kwargs):
         self.typename = "modifyposition"
