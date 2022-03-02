@@ -232,10 +232,10 @@ def load_org():
                     # 更新为可用职位
                     position.status = Position.Status.INSERVICE
                     position.pos = pos
-                    position.is_admin = True
-                    if created and org.otype.otype_name == COURSE_TYPENAME:
+                    position.is_admin = org.otype.default_is_admin(pos)
+                    if created:
                         # 书院课程以学期为单位更新
-                        position.in_semester = Semester.now()
+                        position.in_semester = org.otype.default_semester()
                     position.save()
                     msg += f'<br/>&emsp;&emsp;成功增加{pos_display}：{person}'
         except Exception as e:
