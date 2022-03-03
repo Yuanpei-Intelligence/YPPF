@@ -177,6 +177,7 @@ class PositionAdmin(admin.ModelAdmin):
     list_display = ["person", "org", "pos", "pos_name", "is_admin"]
     search_fields = ("person__name", "org__oname", 'org__otype__otype_name')
     list_filter = ('pos', 'is_admin', 'org__otype')
+    autocomplete_fields = ['person', 'org']
 
     def pos_name(self, obj):
         return obj.org.otype.get_name(obj.pos)
@@ -618,6 +619,7 @@ class CourseAdmin(admin.ModelAdmin):
         'classroom', 'teacher',
     )
     list_filter = ("year", "semester", "type", "status",)
+    autocomplete_fields = ['organization']
 
     class CourseTimeInline(admin.StackedInline):
         model = CourseTime
@@ -651,6 +653,7 @@ class CourseAdmin(admin.ModelAdmin):
 class CourseParticipantAdmin(admin.ModelAdmin):
     list_display = ["course", "person", "status",]
     search_fields = ("course__name", "person__name",)
+    autocomplete_fields = ['course', 'person']
 
 
 @admin.register(CourseRecord)

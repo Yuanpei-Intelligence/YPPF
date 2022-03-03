@@ -146,6 +146,7 @@ class AppointAdmin(admin.ModelAdmin):
         # 'Afinish',
     )  # 'Ausage'
     date_hierarchy = 'Astart'
+    autocomplete_fields = ['major_student']
     filter_horizontal = ['students']
     readonly_fields = ('Atime', )
 
