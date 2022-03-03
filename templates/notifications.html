@@ -18,14 +18,28 @@
         <div class="container">
             
             <div class="row layout-top-spacing">
-                {% if bar_display.help_paragraphs %}
+                {% if bar_display.help_paragraphs %}z
                     {% include 'help.html' %}
                 {% endif %}
                 <div class="col-lg-12 col-12 layout-top-spacing">
                     <div class="bio layout-spacing ">
                         <div class="widget-content widget-content-area">
-                            <h3>通知信箱</h3>
-    
+                            <div class="d-flex justify-content-between">
+                                <h3 class= "">通知信箱</h3>
+                                <div class="btn-group">
+                                    <button type="button"
+                                        class="btn btn-info mb-4 mr-2 dropdown-toggle dropdown-toggle-split"
+                                        data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                        工具
+                                    </button>
+                                    <div class="dropdown-menu" style="max-width: 300%; max-height: 500%; overflow: scroll;">
+                                        <button class="dropdown-item"
+                                        onclick="read_all.call(this);this.blur();" id="{{type_id}}"
+                                        >全部已读</button>
+                                    </div>
+                                </div>
+                            </div>
+                        
                             <ul id="myTab" class="nav nav-tabs nav-tabs-solid nav-justified">
                                 <li class="nav-item">
                                     <a class="nav-link active" href="#home" data-toggle="tab">
@@ -48,12 +62,6 @@
 
                                     <div id="undone-empty" style="display: none; margin-top: 40px; margin-bottom: -40px;">
                                         <p style="text-align: center;">您的信箱很干净！没有要处理的信息.</p>
-                                    </div>
-                                </br>
-                                </br>
-                                    <div>
-                                        <center><button type="button" class="btn btn-outline-primary m-auto" id="{{type_id}}" 
-                                            onclick="read_all.call(this);this.blur();" >一键阅读</button></center>
                                     </div>
                                     <div class="bio-skill-box">
                                         <div id="undone-list" class="row">
