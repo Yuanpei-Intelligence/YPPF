@@ -27,7 +27,10 @@ from Appointment.models import (
 # admin.site.site_title = '元培地下室管理后台'
 # admin.site.site_header = '元培地下室 - 管理后台'
 
-admin.site.register(College_Announcement)
+@admin.register(College_Announcement)
+class College_AnnouncementAdmin(admin.ModelAdmin):
+    list_display = ['announcement', 'show']
+    list_editable = ['announcement', 'show']
 
 
 @admin.register(Participant)
