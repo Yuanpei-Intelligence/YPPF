@@ -378,7 +378,6 @@ class AppointAdmin(admin.ModelAdmin):
 
     def longterm_wk(self, request, queryset, times, interval_week=1):
         for appoint in queryset:
-            # print(appoint)
             try:
                 with transaction.atomic():
                     stuid_list = [stu.Sid_id for stu in appoint.students.all()]
@@ -418,25 +417,38 @@ class AppointAdmin(admin.ModelAdmin):
                                          level=messages.WARNING)
 
             # 到这里, 长线化预约发起成功
-            scheduler.add_job(send_wechat_message,
-                              args=[
-                                  stuid_list,  # stuid_list
-                                  appoint.Astart,  # start_time
-                                  appoint.Room,     # room
-                                  "longterm",  # message_type
-                                  appoint.major_student.name,  # major_student
-                                  appoint.Ausage,  # usage
-                                  appoint.Aannouncement,
-                                  len(stuid_list) + appoint.Anon_yp_num,
-                                  times,  # reason, 这里用作表示持续周数
-                                  #appoint.major_student.credit,
-                              ],
-                              id=f'{appoint.Aid}_new_wechat',
-                              next_run_time=datetime.now() + timedelta(seconds=5))  # 2s足够了
+            scheduler_func.set_longterm_wechat(
+                appoint, infos=f'新增了{times}周同时段预约', admin=True)
             # TODO: major_sid
             operation_writer(appoint.major_student.Sid_id, "发起"+str(times) +
                              "周的长线化预约, 原始预约号"+str(appoint.Aid), "admin.longterm", "OK")
         return self.message_user(request, '长线化成功!')
+
+
+    def new_longterm_wk(self, request, queryset, times, interval_week=1):
+        new_appoints = {}
+        for appoint in queryset:
+            try:
+                conflict_week, appoints = (
+                    scheduler_func.add_longterm_appoint(
+                        appoint, times, interval_week, admin=True))
+                if conflict_week is not None:
+                    return self.message_user(
+                        request,
+                        f'第{conflict_week}周存在冲突的预约: {appoints[0].Aid}!',
+                        level=messages.WARNING)
+                new_appoints[appoint.pk] = list(appoints.values_list('pk', flat=True))
+            except Exception as e:
+                return self.message_user(request, f'长线化失败!', messages.WARNING)
+        new_infos = []
+        if len(new_appoints) == 1:
+            for appoint, new_appoint_ids in new_appoints.items():
+                new_infos.append(f'{new_appoint_ids}'[1:-1])
+        else:
+            for appoint, new_appoint_ids in new_appoints.items():
+                new_infos.append(f'{appoint}->{new_appoint_ids}')
+        return self.message_user(request, f'长线化成功!生成预约{";".join(new_appoints)}')
+
 
     @as_action('增加一周本预约', actions, 'add', single=True)
     def longterm1(self, request, queryset):
