@@ -73,6 +73,28 @@ class ParticipantAdmin(admin.ModelAdmin):
         }
     ])
 
+    class AppointInline(admin.TabularInline):
+        # 对外呈现部分
+        model = Appoint
+        classes = ['collapse']
+        # 对内呈现部分（max_num和get_queryset均无法限制呈现个数）
+        ordering = ['-Aid']
+        fields = [
+            'Room', 'Astart', 'Afinish',
+            'Astatus', 'Acamera_check_num', 'Acamera_ok_num',
+        ]
+        readonly_fields = fields
+
+        # 权限部分（只读）
+        extra = 0
+        can_delete = False
+        show_change_link = True
+        def has_add_permission(self, request, obj): return False
+        def has_change_permission(self, request, obj=None): return False
+        def has_delete_permission(self, request, obj=None): return False
+
+    inlines = [AppointInline]
+
     actions = []
 
     @as_action('全院学生信用分恢复一分', actions, 'change', atomic=True)

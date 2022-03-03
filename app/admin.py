@@ -621,11 +621,12 @@ class CourseAdmin(admin.ModelAdmin):
     list_filter = ("year", "semester", "type", "status",)
     autocomplete_fields = ['organization']
 
-    class CourseTimeInline(admin.StackedInline):
+    class CourseTimeInline(admin.TabularInline):
         model = CourseTime
+        classes = ['collapse']
         extra = 1
 
-    inlines = [CourseTimeInline,]
+    inlines = [CourseTimeInline]
     
     def participant_diaplay(self, obj):
         return f'{obj.current_participants}/{"无限" if obj.capacity == 10000 else obj.capacity}'
