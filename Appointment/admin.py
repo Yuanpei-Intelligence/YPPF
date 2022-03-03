@@ -410,24 +410,6 @@ class AppointAdmin(admin.ModelAdmin):
                             warning = json.loads(feedback.content)['statusInfo']['message']
                             print(warning)
                             raise Exception(warning)
-                        '''
-                        newappoint = Appoint(
-                            Room=appoint.Room,
-                            Astart=appoint.Astart + (i+1) * timedelta(days=7),
-                            Afinish=appoint.Afinish + \
-                                (i+1) * timedelta(days=7),
-                            Ausage=appoint.Ausage,
-                            Aannouncement=appoint.Aannouncement,
-                            major_student=appoint.major_student,
-                            Anon_yp_num=appoint.Anon_yp_num,
-                            Ayp_num=appoint.Ayp_num
-                        )
-                        newappoint.save()
-                        for tempstudent in appoint.students.all():
-                            print(tempstudent)
-                            newappoint.students.add(tempstudent)
-                        newappoint.save()
-                        '''
             except Exception as e:
                 operation_writer(SYSTEM_LOG, "学生" + str(appoint.major_student) +
                                  "出现添加长线化预约失败的问题:"+str(e), "admin.longterm", "Problem")
