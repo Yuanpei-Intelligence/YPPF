@@ -792,6 +792,17 @@ class Activity(CommentBase):
         self.typename = "activity"
         super().save(*args, **kwargs)
 
+    def related_job_ids(self):
+        jobids = []
+        try:
+            jobids.append(f'activity_{self.id}_remind')
+            jobids.append(f'activity_{self.id}_{Activity.Status.WAITING}')
+            jobids.append(f'activity_{self.id}_{Activity.Status.PROGRESSING}')
+            jobids.append(f'activity_{self.id}_{Activity.Status.END}')
+        except:
+            pass
+        return jobids
+
     def popular_level(self, any_status=False):
         if not any_status and not self.status in [
             Activity.Status.WAITING,

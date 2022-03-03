@@ -411,3 +411,26 @@ def start_scheduler(with_scheduled_job=True, debug=False):
         scheduler.shutdown(wait=False)
         if debug: print("successfully shutdown scheduler")
     if debug: print("———————————————— End     :   Debug ————————————————")
+
+
+def register_pre_delete():
+    '''注册删除前清除定时任务的函数'''
+    import app.models
+    from django.db import models
+    for name in app.models.__all__:
+        try:
+            model = getattr(app.models, name)
+            assert issubclass(model, models.Model)
+            assert hasattr(model, 'related_job_ids')
+        except:
+            # 不具有关联任务的模型无需设置
+            continue
+
+        def _cancel_jobs(sender, instance, **kwargs):
+            job_ids = instance.related_job_ids
+            if callable(job_ids):
+                job_ids = job_ids()
+            for job_id in job_ids:
+                try: scheduler.remove_job(job_id)
+                except: continue
+        models.signals.pre_delete.connect(_cancel_jobs, sender=model)
