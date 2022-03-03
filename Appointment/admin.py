@@ -12,8 +12,7 @@ from django.db.models import F
 from boottest.admin_utils import *
 from Appointment import *
 from Appointment.utils import scheduler_func, utils
-from Appointment.utils.scheduler_func import addAppoint, scheduler
-from Appointment.utils.utils import operation_writer, send_wechat_message
+from Appointment.utils.utils import operation_writer
 from Appointment.models import (
     Participant,
     Room,
@@ -28,7 +27,10 @@ from Appointment.models import (
 # admin.site.site_title = '元培地下室管理后台'
 # admin.site.site_header = '元培地下室 - 管理后台'
 
-admin.site.register(College_Announcement)
+@admin.register(College_Announcement)
+class College_AnnouncementAdmin(admin.ModelAdmin):
+    list_display = ['announcement', 'show']
+    list_editable = ['announcement', 'show']
 
 
 @admin.register(Participant)
@@ -73,6 +75,28 @@ class ParticipantAdmin(admin.ModelAdmin):
             'fields': ('credit', 'pinyin', 'agree_time'),
         }
     ])
+
+    class AppointInline(admin.TabularInline):
+        # 对外呈现部分
+        model = Appoint
+        classes = ['collapse']
+        # 对内呈现部分（max_num和get_queryset均无法限制呈现个数）
+        ordering = ['-Aid']
+        fields = [
+            'Room', 'Astart', 'Afinish',
+            'Astatus', 'Acamera_check_num', 'Acamera_ok_num',
+        ]
+        readonly_fields = fields
+
+        # 权限部分（只读）
+        extra = 0
+        can_delete = False
+        show_change_link = True
+        def has_add_permission(self, request, obj): return False
+        def has_change_permission(self, request, obj=None): return False
+        def has_delete_permission(self, request, obj=None): return False
+
+    inlines = [AppointInline]
 
     actions = []
 
@@ -147,6 +171,7 @@ class AppointAdmin(admin.ModelAdmin):
         # 'Afinish',
     )  # 'Ausage'
     date_hierarchy = 'Astart'
+    autocomplete_fields = ['major_student']
     filter_horizontal = ['students']
     readonly_fields = ('Atime', )
 
@@ -241,20 +266,10 @@ class AppointAdmin(admin.ModelAdmin):
                         have_success = 1
                         # send wechat message
                         # TODO: major_sid
-                        scheduler.add_job(send_wechat_message,
-                                          args=[[appoint.major_student.Sid_id],  # stuid_list
-                                                appoint.Astart,  # start_time
-                                                appoint.Room,     # room
-                                                "confirm_admin_w2c",  # message_type
-                                                appoint.major_student.name,  # major_student
-                                                appoint.Ausage,  # usage
-                                                appoint.Aannouncement,
-                                                appoint.Ayp_num + appoint.Anon_yp_num,
-                                                appoint.get_status(),  # reason
-                                                # appoint.major_student.credit,
-                                                ],
-                                          id=f'{appoint.Aid}_confirm_admin_wechat',
-                                          next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
+                        scheduler_func.set_appoint_wechat(
+                            appoint, 'confirm_admin_w2c', appoint.get_status(),
+                            students_id=[appoint.major_student.Sid_id], admin=True,
+                            id=f'{appoint.Aid}_confirm_admin_wechat')
                         operation_writer(SYSTEM_LOG, str(appoint.Aid)+"号预约被管理员从WAITING改为CONFIRMED" +
                                  "发起人："+str(appoint.major_student), "admin.confirm", "OK")
                     elif appoint.Astatus == Appoint.Status.VIOLATED:
@@ -267,20 +282,10 @@ class AppointAdmin(admin.ModelAdmin):
                         have_success = 1
                         # send wechat message
                         # TODO: major_sid
-                        scheduler.add_job(send_wechat_message,
-                                          args=[[appoint.major_student.Sid_id],  # stuid_list
-                                                appoint.Astart,  # start_time
-                                                appoint.Room,     # room
-                                                "confirm_admin_v2j",  # message_type
-                                                appoint.major_student.name,  # major_student
-                                                appoint.Ausage,  # usage
-                                                appoint.Aannouncement,
-                                                appoint.Ayp_num + appoint.Anon_yp_num,
-                                                appoint.get_status(),  # reason
-                                                #appoint.major_student.credit,
-                                                ],
-                                          id=f'{appoint.Aid}_confirm_admin_wechat',
-                                          next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
+                        scheduler_func.set_appoint_wechat(
+                            appoint, 'confirm_admin_v2j', appoint.get_status(),
+                            students_id=[appoint.major_student.Sid_id], admin=True,
+                            id=f'{appoint.Aid}_confirm_admin_wechat')
                         operation_writer(SYSTEM_LOG, str(appoint.Aid)+"号预约被管理员从VIOLATED改为JUDGED" +
                                  "发起人："+str(appoint.major_student), "admin.confirm", "OK")
 
@@ -324,20 +329,10 @@ class AppointAdmin(admin.ModelAdmin):
 
                 # send wechat message
                 # TODO: major_sid
-                scheduler.add_job(send_wechat_message,
-                                  args=[[appoint.major_student.Sid_id],  # stuid_list
-                                        appoint.Astart,  # start_time
-                                        appoint.Room,     # room
-                                        "violate_admin",  # message_type
-                                        appoint.major_student.name,  # major_student
-                                        appoint.Ausage,  # usage
-                                        appoint.Aannouncement,
-                                        appoint.Ayp_num + appoint.Anon_yp_num,
-                                        f'原状态：{ori_status}',  # reason
-                                        #appoint.major_student.credit,
-                                        ],
-                                  id=f'{appoint.Aid}_violate_admin_wechat',
-                                  next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
+                scheduler_func.set_appoint_wechat(
+                    appoint, 'violate_admin', f'原状态：{ori_status}',
+                    students_id=[appoint.major_student.Sid_id], admin=True,
+                    id=f'{appoint.Aid}_violate_admin_wechat')
                 operation_writer(SYSTEM_LOG, str(
                     appoint.Aid)+"号预约被管理员设为违约"+"发起人："+str(appoint.major_student), "admin.violate", "OK")
         except:
@@ -378,13 +373,12 @@ class AppointAdmin(admin.ModelAdmin):
 
     def longterm_wk(self, request, queryset, times, interval_week=1):
         for appoint in queryset:
-            # print(appoint)
             try:
                 with transaction.atomic():
                     stuid_list = [stu.Sid_id for stu in appoint.students.all()]
                     for i in range(1, times + 1):
                         # 调用函数完成预约
-                        feedback = addAppoint({
+                        feedback = scheduler_func.addAppoint({
                             'Rid':
                             appoint.Room.Rid,
                             'students':
@@ -410,24 +404,6 @@ class AppointAdmin(admin.ModelAdmin):
                             warning = json.loads(feedback.content)['statusInfo']['message']
                             print(warning)
                             raise Exception(warning)
-                        '''
-                        newappoint = Appoint(
-                            Room=appoint.Room,
-                            Astart=appoint.Astart + (i+1) * timedelta(days=7),
-                            Afinish=appoint.Afinish + \
-                                (i+1) * timedelta(days=7),
-                            Ausage=appoint.Ausage,
-                            Aannouncement=appoint.Aannouncement,
-                            major_student=appoint.major_student,
-                            Anon_yp_num=appoint.Anon_yp_num,
-                            Ayp_num=appoint.Ayp_num
-                        )
-                        newappoint.save()
-                        for tempstudent in appoint.students.all():
-                            print(tempstudent)
-                            newappoint.students.add(tempstudent)
-                        newappoint.save()
-                        '''
             except Exception as e:
                 operation_writer(SYSTEM_LOG, "学生" + str(appoint.major_student) +
                                  "出现添加长线化预约失败的问题:"+str(e), "admin.longterm", "Problem")
@@ -436,25 +412,38 @@ class AppointAdmin(admin.ModelAdmin):
                                          level=messages.WARNING)
 
             # 到这里, 长线化预约发起成功
-            scheduler.add_job(send_wechat_message,
-                              args=[
-                                  stuid_list,  # stuid_list
-                                  appoint.Astart,  # start_time
-                                  appoint.Room,     # room
-                                  "longterm",  # message_type
-                                  appoint.major_student.name,  # major_student
-                                  appoint.Ausage,  # usage
-                                  appoint.Aannouncement,
-                                  len(stuid_list) + appoint.Anon_yp_num,
-                                  times,  # reason, 这里用作表示持续周数
-                                  #appoint.major_student.credit,
-                              ],
-                              id=f'{appoint.Aid}_new_wechat',
-                              next_run_time=datetime.now() + timedelta(seconds=5))  # 2s足够了
+            scheduler_func.set_longterm_wechat(
+                appoint, infos=f'新增了{times}周同时段预约', admin=True)
             # TODO: major_sid
             operation_writer(appoint.major_student.Sid_id, "发起"+str(times) +
                              "周的长线化预约, 原始预约号"+str(appoint.Aid), "admin.longterm", "OK")
         return self.message_user(request, '长线化成功!')
+
+
+    def new_longterm_wk(self, request, queryset, times, interval_week=1):
+        new_appoints = {}
+        for appoint in queryset:
+            try:
+                conflict_week, appoints = (
+                    scheduler_func.add_longterm_appoint(
+                        appoint, times, interval_week, admin=True))
+                if conflict_week is not None:
+                    return self.message_user(
+                        request,
+                        f'第{conflict_week}周存在冲突的预约: {appoints[0].Aid}!',
+                        level=messages.WARNING)
+                new_appoints[appoint.pk] = list(appoints.values_list('pk', flat=True))
+            except Exception as e:
+                return self.message_user(request, f'长线化失败!', messages.WARNING)
+        new_infos = []
+        if len(new_appoints) == 1:
+            for appoint, new_appoint_ids in new_appoints.items():
+                new_infos.append(f'{new_appoint_ids}'[1:-1])
+        else:
+            for appoint, new_appoint_ids in new_appoints.items():
+                new_infos.append(f'{appoint}->{new_appoint_ids}')
+        return self.message_user(request, f'长线化成功!生成预约{";".join(new_appoints)}')
+
 
     @as_action('增加一周本预约', actions, 'add', single=True)
     def longterm1(self, request, queryset):
