@@ -121,26 +121,42 @@ def cancel_scheduler(appoint_or_aid, status_code=None):  # models.py中使用
         return False
 
 
-def set_cancel_wechat(appoint: Appoint, students_id=None):
-    '''取消预约的微信提醒，默认发给所有参与者'''
+def set_appoint_wechat(appoint: Appoint, message_type: str, *extra_infos,
+                       students_id=None, admin=None,
+                       id=None, job_time=None):
+    '''设置预约的微信提醒，默认发给所有参与者'''
     if students_id is None:
         # 先准备发送人
-        stuid_list = list(appoint.students.values_list('Sid', flat=True))
+        students_id = list(appoint.students.values_list('Sid', flat=True))
+
+    # 默认立刻发送
+    if job_time is None:
+        job_time = datetime.now() + timedelta(seconds=5)
+
+    # 添加定时任务的关键字参数
+    add_job_kws = dict(replace_existing=True, next_run_time=job_time)
+    if id is not None:
+        add_job_kws.update(id=id)
     scheduler.add_job(utils.send_wechat_message,
-                        args=[stuid_list,
-                            appoint.Astart,
-                            appoint.Room,
-                            "cancel",
-                            appoint.major_student.name,
-                            appoint.Ausage,
-                            appoint.Aannouncement,
-                            appoint.Anon_yp_num+appoint.Ayp_num,
-                            '',
-                            #appoint.major_student.credit,
-                            ],
-                        id=f'{appoint.Aid}_cancel_wechat',
-                        replace_existing=True,
-                        next_run_time=datetime.now() + timedelta(seconds=5))
+                      args=[
+                          students_id,
+                          appoint.Astart,
+                          appoint.Room,
+                          message_type,
+                          appoint.major_student.name,
+                          appoint.Ausage,
+                          appoint.Aannouncement,
+                          appoint.Anon_yp_num + appoint.Ayp_num,
+                          *extra_infos[:1],
+                      ],
+                      **add_job_kws)
+
+
+def set_cancel_wechat(appoint: Appoint, students_id=None):
+    '''取消预约的微信提醒，默认发给所有参与者'''
+    set_appoint_wechat(
+        appoint, 'cancel',
+        students_id=students_id, id=f'{appoint.Aid}_cancel_wechat')
 
 
 # added by pht: 8.31
@@ -153,100 +169,38 @@ def set_start_wechat(appoint, students_id=None, notify_new=True):
     if datetime.now() >= appoint.Astart:
         # add by lhw : 临时预约 #
         if appoint.Atemp_flag == True:
-            scheduler.add_job(utils.send_wechat_message,
-                                args=[students_id,
-                                    appoint.Astart,
-                                    appoint.Room,
-                                    "temp_appointment",
-                                    appoint.major_student.name,
-                                    appoint.Ausage,
-                                    appoint.Aannouncement,
-                                    appoint.Anon_yp_num+appoint.Ayp_num,
-                                    '',
-                                    # appoint.major_student.credit,
-                                    ],
-                                id=f'{appoint.Aid}_start_wechat',
-                                replace_existing=True,
-                                next_run_time=datetime.now() + timedelta(seconds=5))
+            set_appoint_wechat(
+                appoint, 'temp_appointment',
+                students_id=students_id, id=f'{appoint.Aid}_new_wechat')
         else:
-            utils.operation_writer(SYSTEM_LOG, "预约"+str(appoint.Aid) +
-                        "尝试发送给微信时已经开始，且并非临时预约", 'scheduler_func.set_start_wechat', "Problem")
+            utils.operation_writer(SYSTEM_LOG,
+                                   f'预约{appoint.Aid}尝试发送给微信时已经开始，且并非临时预约',
+                                   'scheduler_func.set_start_wechat', 'Problem')
             return False
-    elif datetime.now() <= appoint.Astart - timedelta(minutes=15):  # 距离预约开始还有15分钟以上，提醒有新预约&定时任务
+    elif datetime.now() <= appoint.Astart - timedelta(minutes=15):
+        # 距离预约开始还有15分钟以上，提醒有新预约&定时任务
         # print('距离预约开始还有15分钟以上，提醒有新预约&定时任务', notify_new)
         if notify_new:  # 只有在非长线预约中才添加这个job
-            scheduler.add_job(utils.send_wechat_message,
-                                args=[students_id,
-                                    appoint.Astart,
-                                    appoint.Room,
-                                    "new",
-                                    appoint.major_student.name,
-                                    appoint.Ausage,
-                                    appoint.Aannouncement,
-                                    appoint.Anon_yp_num+appoint.Ayp_num,
-                                    '',
-                                    # appoint.major_student.credit,
-                                    ],
-                                id=f'{appoint.Aid}_new_wechat',
-                                replace_existing=True,
-                                next_run_time=datetime.now() + timedelta(seconds=5))
-        scheduler.add_job(utils.send_wechat_message,
-                            args=[students_id,
-                                appoint.Astart,
-                                appoint.Room,
-                                "start",
-                                appoint.major_student.name,
-                                appoint.Ausage,
-                                appoint.Aannouncement,
-                                appoint.Ayp_num+appoint.Anon_yp_num,
-                                '',
-                                # appoint.major_student.credit,
-                                ],
-                            id=f'{appoint.Aid}_start_wechat',
-                            replace_existing=True,
-                            next_run_time=appoint.Astart - timedelta(minutes=15))
-    else:  # 距离预约开始还有不到15分钟，提醒有新预约并且马上开始
-        # send_status, err_message = utils.send_wechat_message(students_id, appoint.Astart, appoint.Room,"new&start")
-        scheduler.add_job(utils.send_wechat_message,
-                            args=[students_id,
-                                appoint.Astart,
-                                appoint.Room,
-                                "new&start",
-                                appoint.major_student.name,
-                                appoint.Ausage,
-                                appoint.Aannouncement,
-                                appoint.Anon_yp_num+appoint.Ayp_num,
-                                '',
-                                # appoint.major_student.credit,
-                                ],
-                            id=f'{appoint.Aid}_start_wechat',
-                            replace_existing=True,
-                            next_run_time=datetime.now() + timedelta(seconds=5))
+            set_appoint_wechat(
+                appoint, 'new',
+                students_id=students_id, id=f'{appoint.Aid}_new_wechat')
+        set_appoint_wechat(
+            appoint, 'start',
+            students_id=students_id, id=f'{appoint.Aid}_start_wechat',
+            job_time=appoint.Astart - timedelta(minutes=15))
+    else:
+        # 距离预约开始还有不到15分钟，提醒有新预约并且马上开始
+        set_appoint_wechat(
+            appoint, 'new&start',
+            students_id=students_id, id=f'{appoint.Aid}_new_wechat')
     return True
 
 
 def set_longterm_wechat(appoint: Appoint, students_id=None, infos='', admin=False):
     '''取消预约的微信提醒，默认发给所有参与者'''
-    if students_id is None:
-        # 先准备发送人
-        stuid_list = list(appoint.students.values_list('Sid', flat=True))
-    scheduler.add_job(
-        utils.send_wechat_message,
-        args=[
-            stuid_list,
-            appoint.Astart,
-            appoint.Room,
-            'longterm_admin' if admin else 'longterm',
-            appoint.major_student.name,
-            appoint.Ausage,
-            appoint.Aannouncement,
-            appoint.Anon_yp_num + appoint.Ayp_num,
-            infos,
-        ],
-        id=f'{appoint.Aid}_longterm',
-        replace_existing=True,
-        next_run_time=datetime.now() + timedelta(seconds=5),
-    )
+    set_appoint_wechat(
+        appoint, 'longterm_admin' if admin else 'longterm', infos,
+        students_id=students_id, id=f'{appoint.Aid}_longterm_wechat')
 
 
 def addAppoint(contents):  # 添加预约, main function
