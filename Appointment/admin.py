@@ -12,8 +12,7 @@ from django.db.models import F
 from boottest.admin_utils import *
 from Appointment import *
 from Appointment.utils import scheduler_func, utils
-from Appointment.utils.scheduler_func import addAppoint, scheduler
-from Appointment.utils.utils import operation_writer, send_wechat_message
+from Appointment.utils.utils import operation_writer
 from Appointment.models import (
     Participant,
     Room,
@@ -241,20 +240,10 @@ class AppointAdmin(admin.ModelAdmin):
                         have_success = 1
                         # send wechat message
                         # TODO: major_sid
-                        scheduler.add_job(send_wechat_message,
-                                          args=[[appoint.major_student.Sid_id],  # stuid_list
-                                                appoint.Astart,  # start_time
-                                                appoint.Room,     # room
-                                                "confirm_admin_w2c",  # message_type
-                                                appoint.major_student.name,  # major_student
-                                                appoint.Ausage,  # usage
-                                                appoint.Aannouncement,
-                                                appoint.Ayp_num + appoint.Anon_yp_num,
-                                                appoint.get_status(),  # reason
-                                                # appoint.major_student.credit,
-                                                ],
-                                          id=f'{appoint.Aid}_confirm_admin_wechat',
-                                          next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
+                        scheduler_func.set_appoint_wechat(
+                            appoint, 'confirm_admin_w2c', appoint.get_status(),
+                            students_id=[appoint.major_student.Sid_id], admin=True,
+                            id=f'{appoint.Aid}_confirm_admin_wechat')
                         operation_writer(SYSTEM_LOG, str(appoint.Aid)+"号预约被管理员从WAITING改为CONFIRMED" +
                                  "发起人："+str(appoint.major_student), "admin.confirm", "OK")
                     elif appoint.Astatus == Appoint.Status.VIOLATED:
@@ -267,20 +256,10 @@ class AppointAdmin(admin.ModelAdmin):
                         have_success = 1
                         # send wechat message
                         # TODO: major_sid
-                        scheduler.add_job(send_wechat_message,
-                                          args=[[appoint.major_student.Sid_id],  # stuid_list
-                                                appoint.Astart,  # start_time
-                                                appoint.Room,     # room
-                                                "confirm_admin_v2j",  # message_type
-                                                appoint.major_student.name,  # major_student
-                                                appoint.Ausage,  # usage
-                                                appoint.Aannouncement,
-                                                appoint.Ayp_num + appoint.Anon_yp_num,
-                                                appoint.get_status(),  # reason
-                                                #appoint.major_student.credit,
-                                                ],
-                                          id=f'{appoint.Aid}_confirm_admin_wechat',
-                                          next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
+                        scheduler_func.set_appoint_wechat(
+                            appoint, 'confirm_admin_v2j', appoint.get_status(),
+                            students_id=[appoint.major_student.Sid_id], admin=True,
+                            id=f'{appoint.Aid}_confirm_admin_wechat')
                         operation_writer(SYSTEM_LOG, str(appoint.Aid)+"号预约被管理员从VIOLATED改为JUDGED" +
                                  "发起人："+str(appoint.major_student), "admin.confirm", "OK")
 
@@ -324,20 +303,10 @@ class AppointAdmin(admin.ModelAdmin):
 
                 # send wechat message
                 # TODO: major_sid
-                scheduler.add_job(send_wechat_message,
-                                  args=[[appoint.major_student.Sid_id],  # stuid_list
-                                        appoint.Astart,  # start_time
-                                        appoint.Room,     # room
-                                        "violate_admin",  # message_type
-                                        appoint.major_student.name,  # major_student
-                                        appoint.Ausage,  # usage
-                                        appoint.Aannouncement,
-                                        appoint.Ayp_num + appoint.Anon_yp_num,
-                                        f'原状态：{ori_status}',  # reason
-                                        #appoint.major_student.credit,
-                                        ],
-                                  id=f'{appoint.Aid}_violate_admin_wechat',
-                                  next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
+                scheduler_func.set_appoint_wechat(
+                    appoint, 'violate_admin', f'原状态：{ori_status}',
+                    students_id=[appoint.major_student.Sid_id], admin=True,
+                    id=f'{appoint.Aid}_violate_admin_wechat')
                 operation_writer(SYSTEM_LOG, str(
                     appoint.Aid)+"号预约被管理员设为违约"+"发起人："+str(appoint.major_student), "admin.violate", "OK")
         except:
@@ -383,7 +352,7 @@ class AppointAdmin(admin.ModelAdmin):
                     stuid_list = [stu.Sid_id for stu in appoint.students.all()]
                     for i in range(1, times + 1):
                         # 调用函数完成预约
-                        feedback = addAppoint({
+                        feedback = scheduler_func.addAppoint({
                             'Rid':
                             appoint.Room.Rid,
                             'students':
