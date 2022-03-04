@@ -76,6 +76,7 @@ class ParticipantAdmin(admin.ModelAdmin):
         }
     ])
 
+    @readonly_inline
     class AppointInline(admin.TabularInline):
         # 对外呈现部分
         model = Appoint
@@ -88,19 +89,12 @@ class ParticipantAdmin(admin.ModelAdmin):
             'Room', 'Astart', 'Afinish',
             'Astatus', 'Acamera_check_num', 'Acamera_ok_num',
         ]
-        readonly_fields = fields
+        show_change_link = True
         # 可申诉的范围只有一周，筛选两周内范围的即可
         def get_queryset(self, request):
             return super().get_queryset(request).filter(
                 Astart__gte=datetime.now().date() - timedelta(days=14))
 
-        # 权限部分（只读）
-        extra = 0
-        can_delete = False
-        show_change_link = True
-        def has_add_permission(self, request, obj): return False
-        def has_change_permission(self, request, obj=None): return False
-        def has_delete_permission(self, request, obj=None): return False
 
     inlines = [AppointInline]
 
