@@ -981,10 +981,10 @@ def offlineCheckinActivity(request, aid):
                     member_unattend.append(person_id)
             try:
                 with transaction.atomic():
-                    Participant.objects.select_for_update().filter(
+                    member_list.select_for_update().filter(
                         person_id_id__in=member_attend).update(
                             status = Participant.AttendStatus.ATTENDED)
-                    Participant.objects.select_for_update().filter(
+                    member_list.select_for_update().filter(
                         person_id_id__in=member_unattend).update(
                             status = Participant.AttendStatus.UNATTENDED)
             except:
