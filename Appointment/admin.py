@@ -27,7 +27,10 @@ from Appointment.models import (
 # admin.site.site_title = '元培地下室管理后台'
 # admin.site.site_header = '元培地下室 - 管理后台'
 
-admin.site.register(College_Announcement)
+@admin.register(College_Announcement)
+class College_AnnouncementAdmin(admin.ModelAdmin):
+    list_display = ['id', 'announcement', 'show']
+    list_editable = ['announcement', 'show']
 
 
 @admin.register(Participant)
@@ -76,6 +79,8 @@ class ParticipantAdmin(admin.ModelAdmin):
     class AppointInline(admin.TabularInline):
         # 对外呈现部分
         model = Appoint
+        verbose_name = '近两周预约信息'
+        verbose_name_plural = verbose_name
         classes = ['collapse']
         # 对内呈现部分（max_num和get_queryset均无法限制呈现个数）
         ordering = ['-Aid']
@@ -84,6 +89,10 @@ class ParticipantAdmin(admin.ModelAdmin):
             'Astatus', 'Acamera_check_num', 'Acamera_ok_num',
         ]
         readonly_fields = fields
+        # 可申诉的范围只有一周，筛选两周内范围的即可
+        def get_queryset(self, request):
+            return super().get_queryset(request).filter(
+                Astart__gte=datetime.now().date() - timedelta(days=14))
 
         # 权限部分（只读）
         extra = 0
