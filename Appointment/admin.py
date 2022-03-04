@@ -79,6 +79,8 @@ class ParticipantAdmin(admin.ModelAdmin):
     class AppointInline(admin.TabularInline):
         # 对外呈现部分
         model = Appoint
+        verbose_name = '近两周预约信息'
+        verbose_name_plural = verbose_name
         classes = ['collapse']
         # 对内呈现部分（max_num和get_queryset均无法限制呈现个数）
         ordering = ['-Aid']
