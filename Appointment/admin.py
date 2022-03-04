@@ -87,6 +87,10 @@ class ParticipantAdmin(admin.ModelAdmin):
             'Astatus', 'Acamera_check_num', 'Acamera_ok_num',
         ]
         readonly_fields = fields
+        # 可申诉的范围只有一周，筛选两周内范围的即可
+        def get_queryset(self, request):
+            return super().get_queryset(request).filter(
+                Astart__gte=datetime.now().date() - timedelta(days=14))
 
         # 权限部分（只读）
         extra = 0
