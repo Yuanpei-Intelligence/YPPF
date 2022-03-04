@@ -221,7 +221,10 @@
                                                                     {{ act.status }}
                                                                     {% endif %}
                                                                     </span>
-                                                                    {{ act.title }}
+    
+                                                                    <a href="/viewActivity/{{ act.id }}">
+                                                                        <u>{{ act.title }}</u>
+                                                                    </a>
                                                                 </h5>
                                                             </div>
                                                             <div>
@@ -235,7 +238,7 @@
                                                                         管理
                                                                     </button>
                                                                     <div class="dropdown-menu">
-                                                                        <a class="dropdown-item" href="#">手工签到</a>
+                                                                        <a class="dropdown-item" href="/offlineCheckinActivity/{{ act.id }}">手工签到</a>
                                                                     </div>
                                                                 </div>
                                                                 {% endif %}
