@@ -29,7 +29,7 @@ from Appointment.models import (
 
 @admin.register(College_Announcement)
 class College_AnnouncementAdmin(admin.ModelAdmin):
-    list_display = ['announcement', 'show']
+    list_display = ['id', 'announcement', 'show']
     list_editable = ['announcement', 'show']
 
 
