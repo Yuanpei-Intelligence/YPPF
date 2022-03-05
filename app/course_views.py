@@ -38,6 +38,7 @@ __all__ = [
     'showCourseRecord',
     'selectCourse',
     'viewCourse',
+    'outputRecord',
 ]
 
 
@@ -661,3 +662,27 @@ def addCourse(request, cid=None):
         bar_display = utils.get_sidebar_and_navbar(request.user, "修改课程")
 
     return render(request, "register_course.html", locals())
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(EXCEPT_REDIRECT, source='course_views[outputRecord]', record_user=True)
+def outputRecord(request):
+    """
+    导出所有学时信息
+    导出文件格式为excel，包括汇总和详情两个sheet。
+    汇总包括每位同学的学号、姓名和总有效学时
+    详情包括每位同学所有学时（有效或无效）的详细获得情况：课程、学年等
+    """
+
+    # 检查：要求必须为书院课程审核老师（local_json定义）
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = utils.get_person_or_org(request.user, user_type)
+    # 获取默认审核老师，不应该出错
+    default_examiner_name = get_setting("course/audit_teacher")
+    examine_teacher = NaturalPerson.objects.get(
+        name=default_examiner_name, identity=NaturalPerson.Identity.TEACHER)
+
+    if examine_teacher != me:
+        return redirect(message_url(wrong("只有书院课审核老师账号可以访问该链接！")))
+    return download_course_record()

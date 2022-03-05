@@ -5,6 +5,11 @@ img {
     max-width: 300px;
     max-height:600px;
 }
+input:disabled, textarea:disabled{
+  opacity: 1;
+  background-color:#FFF !important;
+}
+
 </style>
 <hr>
 <div id="comments_display" class="widget-header">
@@ -23,7 +28,7 @@ img {
             </div>
         </div>
         {%if comment.text != ""%}
-        <textarea name="comment" class="form-control" disabled="disabled">{{comment.text}}</textarea>
+        <textarea name="comment" class="form-control" disabled="disabled" rows="5">{{comment.text}}</textarea>
         {%if comment.len > 0 %}
         <br>
         {%endif %}
