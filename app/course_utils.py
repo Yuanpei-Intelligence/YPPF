@@ -1241,7 +1241,7 @@ def download_course_record(course=None, year=None, semester=None):
                                   courserecord__invalid=True,
                                   **relate_filter_kws,
                               )),
-        )
+        ).order_by('person_id__username')
         for person in person_record.select_related('person_id'):
             total_sheet.append([
                 person.person_id.username,
@@ -1268,7 +1268,7 @@ def download_course_record(course=None, year=None, semester=None):
             record.total_hours,
             f'{record.year}-{record.year + 1}',
             '春' if record.semester == Semester.SPRING else '秋',
-            '无效' if record.invalid else '有效',
+            '否' if record.invalid else '是',
         ]
         # 将每一个对象的所有字段的信息写入一行内
         detail_sheet.append(record_info)
