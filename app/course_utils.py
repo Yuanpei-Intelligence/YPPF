@@ -1242,7 +1242,7 @@ def download_course_record(course=None, year=None, semester=None):
                                   **relate_filter_kws,
                               )),
         )
-        for person in person_record.select_related('person'):
+        for person in person_record.select_related('person_id'):
             total_sheet.append([
                 person.person_id.username,
                 person.name,
