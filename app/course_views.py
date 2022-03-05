@@ -38,6 +38,7 @@ __all__ = [
     'showCourseRecord',
     'selectCourse',
     'viewCourse',
+    'outputRecord',
 ]
 
 
@@ -677,17 +678,11 @@ def outputRecord(request):
     # 检查：要求必须为书院课程审核老师（local_json定义）
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
-    try:
-        # 获取默认审核老师
-        default_examiner_name = get_setting("course/audit_teacher")
-        examine_teacher = NaturalPerson.objects.get(
-            name=default_examiner_name, identity=NaturalPerson.Identity.TEACHER)
-        assert examine_teacher == me, "只有书院课审核老师账号可以访问该链接！"
-    except Exception as e:
-        return redirect(message_url(wrong(str(e))))
+    # 获取默认审核老师，不应该出错
+    default_examiner_name = get_setting("course/audit_teacher")
+    examine_teacher = NaturalPerson.objects.get(
+        name=default_examiner_name, identity=NaturalPerson.Identity.TEACHER)
 
+    if examine_teacher != me:
+        return redirect(message_url(wrong("只有书院课审核老师账号可以访问该链接！")))
     return download_course_record()
-    
-
-        
-
