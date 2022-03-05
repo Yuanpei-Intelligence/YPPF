@@ -12,6 +12,7 @@ remaining_willingness_point（暂不启用）: 计算学生剩余的意愿点数
 process_time: 把datetime对象转换成人类可读的时间表示
 check_course_time_conflict: 检查当前选择的课是否与已选的课上课时间冲突
 """
+from itertools import count
 from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
@@ -50,7 +51,7 @@ from datetime import datetime, timedelta
 from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import F, Sum, Prefetch
+from django.db.models import F, Sum, Prefetch,Q
 
 from app.scheduler import scheduler
 
@@ -1196,7 +1197,10 @@ def finish_course(course):
 
 def download_course_record(course=None, year=None, semester=None):
     '''
-    返回需要导出的文件
+    返回需要导出的学时信息文件
+    course != None:为单个课程服务，只导出该课程的相关人员的学时信息
+
+    course == NOne:下载所有学时信息，注意，只有相关负责老师可以访问！
     '''
     wb = openpyxl.Workbook()  # 生成一个工作簿（即一个Excel文件）
     wb.encoding = 'utf-8'
@@ -1238,37 +1242,27 @@ def download_course_record(course=None, year=None, semester=None):
         wb.save(response)
 
     else:
+        # 设置明细和汇总两个sheet的相关信息
+        sheet1.title = "明细"
+        total_sheet = wb.create_sheet('汇总', 0)
+        sheet2_header = ['姓名', '学号', '总有效学时']
+        total_sheet.append(sheet2_header)
 
         # 下载所有学时信息，包括无效学时
-        # TODO:筛选大一~大四四个年级（问题：延毕怎么办？）
-        all_records = CourseRecord.objects.all().select_related(
+        all_person = NaturalPerson.objects.activated().filter(
+            identity=NaturalPerson.Identity.STUDENT)
+        all_records = CourseRecord.objects.filter(person__id__in=all_person.values_list("id", flat=True)).select_related(
             'person', 'course').order_by('person')
-        ids_name = dict()  # 学号和姓名键值对
-        ids_record = dict()  # 学号与学时键值对
 
         for record in all_records:
+            # 学生学号，课程名，年份（年份为实际年份，不是学年）
             person_id = record.person.person_id.username
-            # 记录学时，并累加
-            if person_id not in ids_record.keys():
-                if not record.invalid:
-                    # 学时有效，直接赋值
-                    ids_record[person_id] = record.total_hours
-                else:
-                    # 学时无效，创建键值，赋值为0
-                    ids_record[person_id] = 0
-                # 记录姓名，很蠢的操作
-                ids_name[person_id] = record.person.name
-            else:
-                # 学时有效，记录到有效学时中
-                if not record.invalid:
-                    ids_record[person_id] += record.total_hours
-            # 记录课程名，年份（年份以实际为主，不是学年）
             course_name = record.course.name if record.course else record.extra_name
             semester = "春" if record.semester == Semester.SPRING else "秋"
             year = (record.year - 1) if semester == "春" else record.year
             record_info = [
                 str(course_name),
-                ids_name[person_id],
+                record.person.name,
                 person_id,
                 record.attend_times,
                 record.total_hours,
@@ -1279,20 +1273,18 @@ def download_course_record(course=None, year=None, semester=None):
             # 将每一个对象的所有字段的信息写入一行内
             sheet1.append(record_info)
 
-        # 设置明细和汇总两个sheet的相关信息
-        sheet1.title = "明细"
-
-        total_sheet = wb.create_sheet('汇总', 0)
-        sheet2_header = ['姓名', '学号', '总有效学时']
-        total_sheet.append(sheet2_header)
-        for person_id in ids_record:
+        # 汇总表信息，姓名，学号，总学时
+        person_record = all_person.annotate(record_hours=Sum(
+            'courserecord__total_hours', filter=Q(courserecord__invalid=False)))
+        for person in person_record:
             record_info = [
-                ids_name[person_id],
-                person_id,
-                ids_record[person_id],
+                person.name,
+                person.person_id.username,
+                person.record_hours if person.record_hours else 0
             ]
             total_sheet.append(record_info)
-        # 设置文件名
+
+        # 设置文件名并保存
         ctime = datetime.now().strftime('%Y-%m-%d %H:%M')
         file_name = f'学时汇总-{ctime}'  # 给文件名中添加日期时间
         response = HttpResponse(content_type='application/vnd.ms-excel')
