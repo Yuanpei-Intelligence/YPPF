@@ -1259,6 +1259,22 @@ def download_course_record(course=None, year=None, semester=None):
     # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
     detail_header = ['课程', '姓名', '学号', '次数', '学时', '学年', '学期', '有效']
     detail_sheet.append(detail_header)
+    for record in records.values_list(
+        'course__name', 'extra_name',
+        'person__name', 'person__person_id__username',
+        'attend_times', 'total_hours',
+        'year', 'semester', 'invalid',
+    ):
+        record_info = [
+            record[0] or record[1],
+            *record[2:6],
+            f'{record[6]}-{record[6] + 1}',
+            '春' if record[7] == Semester.SPRING else '秋',
+            '否' if record[8] else '是',
+        ]
+        # 将每一个对象的所有字段的信息写入一行内
+        detail_sheet.append(record_info)
+    '''
     for record in records.select_related('person', 'course'):
         record_info = [
             record.get_course_name(),
@@ -1272,6 +1288,7 @@ def download_course_record(course=None, year=None, semester=None):
         ]
         # 将每一个对象的所有字段的信息写入一行内
         detail_sheet.append(record_info)
+    '''
 
     # 设置文件名并保存
     response = HttpResponse(content_type='application/vnd.ms-excel')
