@@ -16,8 +16,10 @@ local_dict = load_local_json()
 
 # settings是懒惰的，所以可以提前导入并读取正确的值，导入boottest.settings则会错误
 from django.conf import settings
+
+
 # 寻找本地设置
-def base_get_setting(path: str='', default=None, trans_func=None,
+def base_get_setting(path: str='', trans_func=None, default=None,
                 fuzzy_lookup=False, raise_exception=True):
     '''
     提供/或\\分割的setting路径，尝试寻找对应路径的设置，失败时返回default
@@ -27,8 +29,10 @@ def base_get_setting(path: str='', default=None, trans_func=None,
     - 除非未设置raise_exception，否则不抛出异常
     '''
     try:
-        paths = path.replace('\\', '/').split('/')
+        paths = path.replace('\\', '/').strip('/').split('/')
         current_dir = local_dict
+        if len(paths) and paths[0] == '':
+            paths = paths[1:]
         for query in paths:
             if fuzzy_lookup and not query:
                 continue
@@ -44,9 +48,19 @@ def base_get_setting(path: str='', default=None, trans_func=None,
     except Exception as e:
         if raise_exception:
             raise
-        if settings.DEBUG:
+        if DEBUG:
             if default is None:
                 print(f'{e}, but given no default')
             else:
                 print(f'{e}, returning {default} instead')
         return default
+
+
+# 全局设置
+DEBUG: bool = settings.DEBUG
+MEDIA_URL: str = settings.MEDIA_URL
+LOGIN_URL: str = settings.LOGIN_URL
+
+# 全局设置变量
+UNDERGROUND_URL: str = base_get_setting('url/base_url')
+WECHAT_URL: str = base_get_setting('url/wechat_url')

@@ -3,7 +3,8 @@
 {% block mainpage %}
 
 <!-- TODO: Link to related pages -->
-{% with title='我的课程' link1='/addSingleCourseActivity' btn_name1='增加课时' link2='' btn_name2='发起选课' %}
+
+{% with title='我的课程' link1='/addSingleCourseActivity' btn_name1='增加课时' link2='/addCourse' btn_name2='发起选课' link3='/showCourseRecord' btn_name3='课程结项' %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -22,13 +23,23 @@
                         <!-- BEGIN HEADER -->
                         <div class="d-flex justify-content-between">
                             <h3 class="">{{title}}</h3>
-                            <div class="row justify-content-end">
-                                <button type="button" class="btn btn-info mb-4 mr-2 "
-                                    onclick="location.href = '{{link1}}';">{{btn_name1}}
+                            <div>
+                                <button type="button"
+                                    class="btn-lg btn-outline-primary dropdown-toggle dropdown-toggle-split"
+                                    data-toggle="dropdown" style="display:block;white-space:nowrap;overflow:hidden; ">
+                                    课程操作
                                 </button>
-                                <button type="button" class="btn btn-info mb-4 mr-2 "
-                                    onclick="location.href = '{{link2}}';">{{btn_name2}}
-                                </button>
+                                <div class="dropdown-menu">
+                                    <button class="dropdown-item"
+                                        onclick="location.href = '{{link1}}';">{{btn_name1}}
+                                    </button>
+                                    <button class="dropdown-item" 
+                                        onclick="location.href = '{{link2}}';">{{btn_name2}}
+                                    </button>
+                                    <button class="dropdown-item" 
+                                        onclick="location.href = '{{link3}}';">{{btn_name3}}
+                                    </button>
+                                </div>
                             </div>
                         </div>
                         <!-- END HEADER -->
@@ -70,18 +81,18 @@
 
                                 <div class="tab-content" id="activityTabContent">
                                     <div id="futureActivity" class="tab-pane active">
-                                        <div class="bio-skill-box layout-top-spacing" style="max-height: 75vh; overflow: scroll;">
+                                        <div class="bio-skill-box">
                                             {% if future_activity_list|length == 0 %}
                                             <p style="text-align: center;">没有未开始的课程活动！</p>
                                             {% endif %}
-                                            <div class="row w-100 m-0">
+                                            <div class="row">
                                                 {% for act in future_activity_list %}
                                                 <!-- BEGIN ACTIVITY DISPLAY -->
                                                 <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
                                                     <div class=" b-skills">
                                                         <div class="d-flex justify-content-between">
                                                             <div>
-                                                                <h5 style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                                <h5>
                                                                     {% if act.status == "等待中" %}
                                                                     <span class="badge badge-pill badge-warning">
                                                                         等待开始
@@ -98,13 +109,15 @@
                                                                     {{ act.status }}
                                                                     {% endif %}
                                                                     </span>
-                                                                    {{ act.title }}
+                                                                    <a href="/viewActivity/{{ act.id }}">
+                                                                        <u>{{ act.title }}</u>
+                                                                    </a>
                                                                 </h5>
                                                             </div>
                                                             <div>
                                                                 <div class="dropdown">
                                                                     <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-                                                                        管理活动
+                                                                        管理
                                                                     </button>
                                                                     <div class="dropdown-menu">
                                                                         <a class="dropdown-item"
@@ -119,11 +132,27 @@
                                                                 <div class="modal-dialog modal-dialog-centered" role="document">
                                                                     <div class="modal-content">
                                                                         <div class="modal-header">
-                                                                            <h5 class="modal-title" id="cancelActivityModalLabel">取消单次课程活动</h5>
-                                                                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                                                                                <span aria-hidden="true">&times;</span>
-                                                                            </button>
+                                                                            <h5 class="modal-title" id="cancelActivityModalLabel">取消课程活动</h5>
+                                                                            
                                                                         </div>
+                                                                        {% if act.course_time %}
+                                                                        <form method="POST" id="cancel-details">
+                                                                        <div class="modal-body">
+
+                                                                            <input type="radio" id="cancel_only" name="post_type" value="cancel_only" checked="checked"/>
+                                                                            <label for="cancel_only">仅取消当前活动</label>
+                                                                            <br/>
+                                                                            <input type="radio" id="cancel_all" name="post_type" value="cancel_all"/>
+                                                                            <label for="cancel_all">取消未来同时段所有活动</label>
+                                                                        </div>
+                                                                        <div class="modal-footer">
+                                                                                <input type="hidden" name="cancel-action" value="{{act.id}}">
+                                                                                <button type="button" class="btn btn-info"   data-dismiss="modal">再想想</button>
+                                                                                <button type="button" class="btn btn-danger" onclick="this.form.submit()" data-dismiss="modal">确认取消</button>
+                                                                            
+                                                                        </div>
+                                                                    </form>
+                                                                        {% else %}
                                                                         <div class="modal-body">
                                                                             活动取消后不可撤回操作，确认要取消吗？
                                                                         </div>
@@ -134,16 +163,15 @@
                                                                                 <button type="button" class="btn btn-primary" onclick="this.form.submit()" data-dismiss="modal">确认</button>
                                                                             </form>
                                                                         </div>
+                                                                        
+                                                                        {%endif%}
+
                                                                     </div>
                                                                 </div>
                                                             </div>
                                                             <!-- END cancelActivityModal -->
                                                         </div>
 
-                                                        <p style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                            <i class="fa fa-info-circle" style="width: 20px;"></i>
-                                                            <span class="ml-1">{{ act.introduction }}</span>
-                                                        </p>
 
                                                         <p style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                             <i class="fa fa-clock" style="width: 20px;"></i>
@@ -165,19 +193,18 @@
                                     </div>
 
                                     <div id="finishedActivity" class="tab-pane fade">
-                                        <div class="bio-skill-box layout-top-spacing" style="max-height: 75vh; overflow: scroll;">
+                                        <div class="bio-skill-box">
                                             {% if finished_activity_list|length == 0 %}
                                             <p style="text-align: center;">没有已结束的课程活动！</p>
                                             {% endif %}
-                                            <div class="row w-100 m-0">
+                                            <div class="row">
                                                 {% for act in finished_activity_list %}
                                                 <!-- BEGIN ACTIVITY DISPLAY -->
                                                 <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
                                                     <div class=" b-skills">
                                                         <div class="d-flex justify-content-between">
                                                             <div>
-                                                                <h5
-                                                                    style="max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                                <h5>
                                                                     {% if act.status == "等待中" %}
                                                                     <span class="badge badge-pill badge-warning">
                                                                         等待开始
@@ -194,26 +221,31 @@
                                                                     {{ act.status }}
                                                                     {% endif %}
                                                                     </span>
-                                                                    {{ act.title }}
+    
+                                                                    <a href="/viewActivity/{{ act.id }}">
+                                                                        <u>{{ act.title }}</u>
+                                                                    </a>
                                                                 </h5>
                                                             </div>
                                                             <div>
+                                                                {% if act.status == "已取消" %}
+                                                                <button type="button" class="btn btn-primary dropdown-toggle" disabled data-toggle="dropdown">
+                                                                    管理
+                                                                </button>
+                                                                {% else %}
                                                                 <div class="dropdown">
                                                                     <button type="button" class="btn btn-primary dropdown-toggle" data-toggle="dropdown">
-                                                                        管理活动
+                                                                        管理
                                                                     </button>
                                                                     <div class="dropdown-menu">
-                                                                        <a class="dropdown-item" href="#">手工签到</a>
+                                                                        <a class="dropdown-item" href="/offlineCheckinActivity/{{ act.id }}">手工签到</a>
                                                                     </div>
                                                                 </div>
+                                                                {% endif %}
                                                             </div>
 
                                                         </div>
 
-                                                        <p style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                            <i class="fa fa-info-circle" style="width: 20px;"></i>
-                                                            <span class="ml-1">{{ act.introduction }}</span>
-                                                        </p>
 
                                                         <p style="text-align: left; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                             <i class="fa fa-clock" style="width: 20px;"></i>

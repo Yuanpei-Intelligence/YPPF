@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+
+{% block mainpage %}
+
+
+<div id="content" class="main-content pb-3" style="overflow: hidden;">
+
+    {% if html_display.warn_code == 2 %}
+    <div class="alert alert-success text-center mb-0">{{html_display.warn_message}}</div>
+    {% elif html_display.warn_code == 1 %}
+    <div class="alert alert-warning text-center mb-0">{{html_display.warn_message}}</div>
+    {% endif %}
+
+    <div style="text-align: center;">
+        <br>
+        <h4 class="text-primary">
+            {{html_display.current_year}}学年{{html_display.semester}}季学期书院课程选课
+            {% if html_display.status %}
+            - {{html_display.status}}
+            {% endif %}
+        </h4>
+        {% comment %} 从后端获取学期数据 {% endcomment %}
+        <br>
+    </div>
+
+    <div style="text-align: left; margin-left: 2%;">
+        <p style="margin-bottom: 0%;">预选时间：{{html_display.yx_election_start}}至{{html_display.yx_election_end}}</p>
+        <p style="margin-bottom: 0%;">公布抽签结果：{{html_display.publish_time}}</p>
+        <p style="margin-top: 0%;">补退选时间：{{html_display.btx_election_start}}至{{html_display.btx_election_end}}</p>
+    </div>
+
+    <div style="text-align: left; margin-left: 2%;">
+        <p style="margin-bottom: 0%; color: red;"><b>注：</b></p>
+        <p style="margin-bottom: 0%; color: red;">1. 选课各阶段均最多选择6门书院课程，不可同时选择两门时间冲突的课程。</p>
+        <p style="margin-top: 0%; color: red;">2. 原则上同一门书院课程不能重复计算时长，如有特殊情况，需向学院申请。</p>
+        <br>
+    </div>
+
+    <div class="container-fluid">
+    <!--  BEGIN SWITCH TAB  -->
+    <ul class="nav nav-tabs nav-tabs-solid nav-justified" role="tablist">
+        <li class="nav-item">
+            <b class="nav-link active" data-toggle="tab" role="tab" href="#information">
+                全部课程
+                <a data-toggle="tooltip" data-placement="bottom" title="展示全部的书院课程">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                        class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                        <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                    </svg>
+                </a>
+            </b>
+        </li>
+        <li class="nav-item">
+            <b class="nav-link" data-toggle="tab" role="tab" href="#mycourses">
+                我的课程
+            </b>
+        </li>
+    </ul>
+    <!--  END SWITCH TAB  -->
+    </div>
+
+    <div class="container-fluid tab-content" id="myTabContent">
+        {% if is_drawing == True %}
+        <div class="tab-pane fade show active" id="information" role="tabpanel">
+            <div class="col-12 layout-top-spacing">
+                <br>
+                <p style="text-align: center;">抽签进行中，暂不支持选课！</p>
+            </div>
+        </div>
+        {% elif is_end == True %}
+        <div class="tab-pane fade show active" id="information" role="tabpanel">
+            <div class="col-12 layout-top-spacing">
+                <br>
+                <p style="text-align: center;">选课已经全部结束，请前往”我的课程“查看选课结果！</p>
+            </div>
+        </div>
+
+        {% elif unselected_display|length == 0 %}<!--没有课程-->
+        <div class="tab-pane fade show active" id="information" role="tabpanel">
+            <div class="col-12 layout-top-spacing">
+                <br>
+                <p style="text-align: center;">暂时没有课程哦！</p>
+            </div>
+        </div>
+
+        {% else %}
+        <!--  BEGIN INFORMATION TAB  -->
+        <div class="tab-pane fade show active" id="information" role="tabpanel">
+            <div class="col-12 layout-top-spacing">
+                <div class="statbox widget box box-shadow">
+                    <!-- Nav pills -->
+                    <ul class="nav nav-pills" role="tablist" style="flex-wrap: nowrap; overflow-x: auto">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-toggle="pill" href="#all">
+                                <span class="badge badge-pill badge-secondary">全部课程</span>
+                            </a>
+                        </li>
+                        {% for course_type_name in courses.keys %}
+                        <li class="nav-item">
+                            <a class="nav-link" data-toggle="pill" href="#menu{{ forloop.counter }}">
+                                <span class="badge badge-pill" style="color:white;
+                                    {% if forloop.counter == 1 %}
+                                        background-color: #0092c7;
+                                    {% elif forloop.counter == 2 %}
+                                        background-color: #22c3aa;
+                                    {% elif forloop.counter == 3 %}
+                                        background-color: #AD8976;
+                                    {% elif forloop.counter == 4 %}
+                                        background-color: #f3b59b;
+                                    {% elif forloop.counter == 5 %}
+                                        background-color: #f29c9c;
+                                    {% else %}
+                                        background-color: #9E9EA3;
+                                    {% endif %}
+                                    ">{{ course_type_name }}</span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+
+                    <!-- Tab panes -->
+                    <div class="tab-content">
+                        <div id="all" class=" tab-pane active">
+                            <table class="table table-striped table-responsive-sm table-active">
+    
+                                <thead>
+                                  <tr>
+
+                                    <th scope="col" width="25%" style="min-width: 160px;">课程名称</th>
+                                    <th scope="col" width="30%" style="min-width: 160px;">上课时间</th>
+                                    <th scope="col" width="15%" style="min-width: 80px;">类型</th>
+                                    <th scope="col" width="20%" style="min-width: 100px;">已选/限数</th>
+                                    <th scope="col" style="min-width: 60px;" >操作</th>
+
+                                  </tr>
+                                </thead>
+            
+                                <tbody class="table">
+                                  {% for course in unselected_display %}
+                                  <tr>
+                                    <th scope="row" style="vertical-align: middle;">
+                                        {% comment %} 课程小组头像路径（后端调用get_user_ava获得）{% endcomment %}
+                                        <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
+                                        <a href='/viewCourse/?courseid={{ course.course_id }}'>
+                                            <u>{{course.name}}</u>
+                                        </a>
+                                    </th>
+                                    <td>
+                                        {% for time in course.time_set %}
+                                            {{time}}<br>
+                                        {% endfor %}
+                                        {% if course.time_set|length == 0 %}
+                                            时间待定
+                                        {% endif %}
+                                    </td>
+                                    <td>{{course.type}}</td>
+                                    {% comment %} 注意这里的status是课程的，除了已撤销的四个都在这儿 {% endcomment %}
+                                    
+                                    <td>{{course.current_participants}}/{{course.capacity}}</td>
+                                    <td>
+                                        <form action="/selectCourse/" method="post">
+                                            <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
+                                            <input type="hidden" id="action" name="action"value="select" />
+                                            {% if course.status != "预选" and course.status != "补退选" or is_student == False %}
+                                            <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
+                                            {% else %}
+                                            <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('你确定要选课程《{{course.name}}》吗？')">选课</button>
+                                            {% comment %} <div class="modal fade" id="myModal-{{course.course_id}}">
+                                                <div class="modal-dialog modal-dialog-centered" style="z-index: 1200">
+                                                  <div class="modal-content">
+                                                    <!-- 模态框主体 -->
+                                                    <div class="modal-body">
+                                                      你确定要选课程《{{course.name}}》吗？
+                                                    </div>
+                                                    <!-- 模态框底部 -->
+                                                    <div class="modal-footer">
+                                                        <button type="submit" class="btn btn-primary btn-sm">确定</button>
+                                                        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">关闭</button>
+                                                    </div>
+                                                  </div>
+                                                </div>
+                                            </div> {% endcomment %}
+                                            {% endif %}
+                                        </form>
+                                        
+                                    </td>
+                                  </tr>
+                                  {% endfor %}
+                                
+                                </tbody>
+                            </table>
+                        </div>
+                        
+
+                        {% for course_type_name, typed_courses in courses.items %}
+                            {% if typed_courses|length == 0 %}
+                                <div id="menu{{ forloop.counter }}" class="tab-pane fade">
+                                    <div class="col-12 layout-top-spacing">
+                                        <br>
+                                        <p style="text-align: center;">暂时没有此类课程哦！</p>
+                                        <br>
+                                    </div>
+                                </div>
+
+                            {% else %}
+
+                                <div id="menu{{ forloop.counter }}" class="tab-pane fade">
+                                    <table class="table table-striped table-responsive-sm table-active">
+            
+                                        <thead>
+                                        <tr>
+                                            <th scope="col" width="25%" style="min-width: 160px;">课程名称</th>
+                                            <th scope="col" width="30%" style="min-width: 160px;">上课时间</th>
+                                            <th scope="col" width="15%" style="min-width: 80px;">类型</th>
+                                            <th scope="col" width="20%" style="min-width: 100px;">已选/限数</th>
+                                            <th scope="col" style="min-width: 60px;" >操作</th>
+                                        </tr>
+                                        </thead>
+                    
+                                        <tbody class="table">
+                                        {% for course in typed_courses %}
+                                        <tr>
+                                            <th scope="row" style="vertical-align: middle;">
+                                                {% comment %} 课程小组头像路径 {% endcomment %}
+                                                <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
+                                                <a href='/viewCourse/?courseid={{ course.course_id }}'>{% comment %} 做一个新的课程详情页 {% endcomment %}
+                                                    <u>{{course.name}}</u>
+                                                </a>
+                                            </th>
+                                            <td>
+                                                {% for time in course.time_set %}
+                                                    {{time}}<br>
+                                                {% endfor %}
+                                                {% if course.time_set|length == 0 %}
+                                                    时间待定
+                                                {% endif %}
+                                            </td>
+                                            <td>{{course.type}}</td>
+                                            <td>{{course.current_participants}}/{{course.capacity}}</td>
+                                            <td>
+                                                <form action="/selectCourse/" method="post">
+                                                    <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
+                                                    <input type="hidden" id="action" name="action"value="select" />
+                                                    {% if course.status != "预选" and course.status != "补退选" or is_student == False %}
+                                                    <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
+                                                    {% else %}
+                                                    <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('你确定要选课程《{{course.name}}》吗？')">选课</button>
+                                                    {% comment %} <div class="modal fade" id="myModal{{ forloop.counter }}-{{course.course_id}}">
+                                                        <div class="modal-dialog modal-dialog-centered" style="z-index: 1200">
+                                                        <div class="modal-content">
+                                                            <!-- 模态框主体 -->
+                                                            <div class="modal-body">
+                                                            你确定要选课程《{{course.name}}》吗？
+                                                            </div>
+                                                            <!-- 模态框底部 -->
+                                                            <div class="modal-footer">
+                                                                <button type="submit" class="btn btn-primary btn-sm">确定</button>
+                                                                <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">关闭</button>
+                                                            </div>
+                                                        </div>
+                                                        </div>
+                                                    </div> {% endcomment %}
+                                                    {% endif %}
+                                                </form>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                        
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                            {% endif %}
+
+                        {% endfor %}
+                        
+                    </div>
+
+                </div>
+            </div>
+        </div>
+        <!--  END INFORMATION TAB  -->
+        {% endif %}
+
+
+        {% if selected_display|length == 0 %}<!--没有课程-->
+        <div class="tab-pane fade" id="mycourses" role="tabpanel">
+            <div class="col-12 layout-top-spacing">
+                <br>
+                <p style="text-align: center;">你还没有选课哦！</p>
+            </div>
+        </div>
+
+        {% else %}
+        <!--  BEGIN MYCOURSE TAB  -->
+        <div class="tab-pane fade" id="mycourses" role="tabpanel">
+            <div class="col-12 layout-top-spacing">
+                <div class="statbox widget box box-shadow">
+                    <table class="table table-striped table-responsive-sm table-active">
+    
+                    <thead>
+                        <tr>
+                            <th scope="col" width="25%" style="min-width: 160px;">课程名称</th>
+                            <th scope="col" width="25%" style="min-width: 160px;">上课时间</th>
+                            <th scope="col" width="10%" style="min-width: 80px;">类型</th>
+                            <th scope="col" width="15%" style="min-width: 100px;">状态</th>
+                            <th scope="col" width="15%" style="min-width: 100px;">已选/限数</th>
+                            <th scope="col" style="min-width: 60px;" >操作</th>
+                        </tr>
+                    </thead>
+
+                    <tbody class="table">
+                                            
+                      {% for course in selected_display %}
+                      <tr>
+                        <th scope="row" style="vertical-align: middle;">
+                            <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
+                            <a href='/viewCourse/?courseid={{ course.course_id }}'>
+                                <u>{{course.name}}</u>
+                            </a>
+                        </th>
+                        <td>
+                            {% for time in course.time_set %}
+                                {{time}}<br>
+                            {% endfor %}
+                            {% if course.time_set|length == 0 %}
+                                时间待定
+                            {% endif %}
+                        </td>
+                        <td>{{course.type}}</td>
+                        <td>
+                            {% if is_drawing == True %}
+                            <span class="badge badge-pill badge-info">抽签中</span>
+                            {% elif course.student_status == "已选课" %}
+                            <span class="badge badge-pill badge-secondary">{{course.student_status}}</span>
+                            {% elif course.student_status == "选课成功" %}
+                            <span class="badge badge-pill badge-success">{{course.student_status}}</span>
+                            {% elif course.student_status == "选课失败" %}
+                            <span class="badge badge-pill badge-danger">{{course.student_status}}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{course.current_participants}}/{{course.capacity}}</td>
+                        <td>
+                            <form action="/selectCourse/" method="post">
+                                <input type="hidden" id="courseid" name="courseid"value="{{course.course_id}}" />
+                                <input type="hidden" id="action" name="action"value="cancel" />
+                                {% if course.status != "预选" and course.status != "补退选" or course.student_status == "选课失败" %}
+                                <button type="submit" class="btn btn-danger btn-sm" disabled>退课</button>
+                                {% else %}
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('你确定要退课程《{{course.name}}》吗？')">退课</button>
+                                {% endif %}
+                                {% comment %} <div class="modal fade" id="myModalcancel-{{course.course_id}}">
+                                    <div class="modal-dialog modal-dialog-centered" style="z-index: 120000">
+                                      <div class="modal-content">
+                                        <!-- 模态框主体 -->
+                                        <div class="modal-body">
+                                          你确定要退课程《{{course.name}}》吗？
+                                        </div>
+                                        <!-- 模态框底部 -->
+                                        <div class="modal-footer">
+                                            <button type="submit" class="btn btn-primary btn-sm">确定</button>
+                                            <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">关闭</button>
+                                        </div>
+                                      </div>
+                                    </div>
+                                </div> {% endcomment %}
+                            </form>
+                            
+                        </td>
+                        
+                      </tr>
+
+                      {% endfor %}
+
+                    
+                    </tbody>
+                </table>
+                </div>
+            </div>
+
+        </div>
+        <!--  END MYCOURSE TAB  -->
+        {% endif %}
+
+    </div>
+
+</div>
+
+{% endblock %}

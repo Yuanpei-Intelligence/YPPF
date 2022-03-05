@@ -1,0 +1,597 @@
+﻿{% load static %}
+
+<!DOCTYPE html> 
+<html lang="zh-CN">
+	<head>
+
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+		<title>Underground Appointment</title>
+		
+		<!-- Favicons -->
+		<link type="image/x-icon" href="{% static 'Appointment/assets/img/yp_favicon.png' %} " rel="icon">
+		
+		<!-- Bootstrap CSS -->
+		<link rel="stylesheet" href="{% static 'Appointment/assets/css/bootstrap.min.css' %}"><!--http://cdn.bootstrapmb.com/bootstrap/4.4.0/css/bootstrap.min.css-->
+		
+		<!-- Fontawesome CSS -->
+		<link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fontawesome/css/fontawesome.min.css' %} ">
+		<link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fontawesome/css/all.min.css' %} ">
+		
+		<!-- Datetimepicker CSS -->
+		<link rel="stylesheet" href="{% static 'Appointment/assets/css/bootstrap-datetimepicker.min.css' %}">
+
+		<!-- Main CSS -->
+		<link rel="stylesheet" href="{% static 'Appointment/assets/css/style.css' %} ">
+		
+		<!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+		<!--[if lt IE 9]>
+			<script src="{% static 'Appointment/assets/js/html5shiv.min.js"></script>
+			<script src="{% static 'Appointment/assets/js/respond.min.js"></script>
+		<![endif]-->
+		
+		<script>
+			//alert("de apple bug")
+			$("input[type='datetimepicker']").bind("touchbegin",function(){
+				//alert('in input');
+			$("input").blur();
+			$(this).focus();
+			});
+			
+		</script>
+	
+	</head>
+	<body>
+
+		<!-- Main Wrapper -->
+		<div class="main-wrapper">
+		
+			<!-- Header -->
+			<header class="header">
+				<nav class="navbar navbar-expand-lg header-nav">
+					<div class="navbar-header">
+						<a id="mobile_btn" href="javascript:void(0);">
+							<span class="bar-icon">
+								<span></span>
+								<span></span>
+								<span></span>
+							</span>
+						</a>
+						<a href="index" class="navbar-brand logo">
+							<img src="{% static 'Appointment/assets/img/yp_name_red.png' %} " class="img-fluid" alt="Logo">
+						</a>
+					</div>
+					<div class="main-menu-wrapper">
+						<div class="menu-header">
+							<a href="index" class="menu-logo">
+								<img src="{% static 'Appointment/assets/img/yuan_logo_red.png' %} " class="img-fluid" alt="Logo">
+							</a>
+							
+							<a id="menu_close" class="menu-close" href="javascript:void(0);">
+								<i class="fas fa-times"></i>
+							</a>
+						
+						</div>
+						<ul class="main-nav">
+							<li class="active">
+								<a href="index">主页</a>
+							</li>
+							
+							<li>
+								<a href="admin-index.html">我的账户</a><!--modified by wxy-->
+								<!--<a href="admin/index.html" target="_blank">Admin</a>-->
+							</li>
+							<li>
+								<a href="agreement">无占座协议</a>
+							</li>
+							<li>
+								<a href="{{login_url}}">成长档案</a>
+							</li>
+							{% if show_admin %}
+							<li>
+								<a href="admin">管理后台</a>
+							</li>
+							{% endif %}
+							<li class="login-link">
+								<a href="logout">注销</a>
+							</li>	
+						</ul>		 
+					</div>		 
+					<ul class="nav header-navbar-rht">
+						<!--
+						<li class="nav-item contact-item">
+							<div class="header-contact-img">
+								<i class="far fa-hospital"></i>							
+							</div>
+							<div class="header-contact-detail">
+								<p class="contact-header">Contact</p>
+								<p class="contact-info-header"> +1 315 369 5943</p>
+							</div>
+						</li>
+						-->
+						<li class="nav-item">
+							<a class="nav-link header-login" href="logout">注销</a>
+						</li>
+					</ul>
+				</nav>
+			</header>
+			<!-- /Header -->
+			{% if warn_code == 1 %}
+			<div class="alert alert-warning  text-center" >{{ warn_message }}</div>
+			{% elif warn_code == 2 %}
+			<div class="alert alert-success  text-center" >{{ warn_message }}</div>
+			{% endif %}
+			{% if message_code %}
+			<div class="alert alert-warning  text-center" >{{ show_message }}</div>
+			{% endif %}
+			{% if search_code == 1 %}
+				<div class="alert alert-warning  text-center" >{{ search_message }}</div>
+			{% elif search_code == 2 %}
+                <div class="alert alert-success  text-center" >{{ search_message }}</div>
+            {% endif %}
+			
+			  
+			<!-- Clinic and Specialities -->
+			<section class="section section-specialities" >
+				<div class="container-fluid">
+					<div class="section-header text-center" style="margin-bottom: 10px;">
+						<h2>地下室状态</h2>
+					</div>
+
+					<!--  BEGIN SWITCH TAB  -->
+					<div class="row justify-content-center">
+						<ul class="nav nav-tabs nav-tabs-solid nav-justified col-10" role="tablist">
+							<li class="nav-item">
+								<a class="nav-link active" data-toggle="tab" role="tab" href="#available">
+									临时预约&nbsp;<i class="fas fa-info-circle" data-toggle="tooltip" title="房间空闲且距下场预约开始超过15分钟可直接刷卡进入"></i>
+								</a>
+							</li>
+							<li class="nav-item">
+								<a class="nav-link" data-toggle="tab" role="tab" href="#statistics">实时人数</a>
+							</li>
+						</ul>
+					</div>
+					<!--  END SWITCH TAB  -->
+
+					<div class="container-fluid tab-content" id="myTabContent">
+						<!--  BEGIN AVAILABLE ROOM TAB  -->
+						<div class="tab-pane fade show active" id="available" role="tabpanel">
+							<div class="row justify-content-center overflow-auto" style="height: 25vh;">
+								{% for room, occupied, delta in room_info %}
+								<div class="col-md-2 col-sm-5 col-10 profile-widget m-2">
+									<div class="pro-content">
+										<div class="row m-0">
+											<h2 class="title col-0 my-auto mr-1">{{ room.Rid }}</h2>
+											{% if not occupied %}
+											<i class="col-0 my-auto fas fa-check-circle text-success"></i>
+											{% endif %}
+											{% if occupied %}
+											<i class="col-0 my-auto fas fa-times-circle text-danger"></i>
+											{% endif %}
+										</div>
+										<ul class="available-info">
+											<li class="row mx-0 mt-2">
+												<i class="col-0 mt-1 far fa fa-compass"></i>
+												<p class="col p-0 m-0">{{ room.Rtitle }}</p>
+											</li>
+											<li class="row mx-0 mt-2">
+												{% if delta is not None %}
+												<i class="col-0 mt-1 far fa fa-history"></i> 
+												<p class="col p-0 m-0"> {{ delta }}
+													<i class="fas fa-info-circle" data-toggle="tooltip" title="距下场预约开始"></i>
+												</p>
+												{% else %}
+												<i class="col-0 mt-1 far fa fa-history"></i> 
+												{% if not occupied %}
+												<p class="col p-0 m-0">今日无预约</p>
+												{% else %}
+												<p class="col p-0 m-0">正在使用中</p>
+												{% endif %}
+												{% endif %}
+											</li>
+										</ul>
+									</div>
+								</div>
+								{% endfor %}
+							</div>
+						</div>
+						<!--  END AVAILABLE ROOM TAB  -->
+
+						<!--  BEGIN STATISTICS TAB  -->
+						<div class="tab-pane fade show" id="statistics" role="tabpanel">
+							<div class="row justify-content-center overflow-auto" style="height: 25vh;">
+								{% for room, crowd in statistics_info %}
+								<div class="col-md-2 col-sm-5 col-10 profile-widget m-2">
+									<div class="pro-content">
+										<div class="row m-0">
+											<h2 class="title col-0 my-auto mr-1">{{ room.Rid }}</h2>
+											{% if crowd < 4 %}
+											<i class="col-0 my-auto fas fa-user-check text-success" data-toggle="tooltip" title="人数较少"></i>
+											{% elif crowd < 7 %}
+											<i class="col-0 my-auto fas fa-user-friends text-warning" data-toggle="tooltip" title="部分占用"></i>
+											{% else %}
+											<i class="col-0 my-auto fas fa-users text-danger" data-toggle="tooltip" title="人数较多"></i>
+											{% endif %}
+										</div>
+										<ul class="available-info">
+											<li class="row mx-0 mt-2">
+												<i class="col-0 mt-1 far fa fa-compass"></i>
+												<p class="col p-0 m-0">{{ room.Rtitle }}</p>
+											</li>
+											<li class="row mx-0 mt-2">
+												<i class="col-0 mt-1 far fa fa-child"></i> 
+												<p class="col p-0 mr-0 mb-0" style="margin-left: 1px;">{{ room.Rpresent }}&nbsp;/&nbsp;{{ room.Rmax }}</p>
+											</li>
+										</ul>
+									</div>
+								</div>
+								{% endfor %}
+							</div>
+						</div>
+						<!--  END STATISTICS TAB  -->
+
+					</div>
+
+				</div>   
+			</section>	 
+			<!-- Clinic and Specialities -->
+		  
+
+			<!-- 功能房预约 -->
+			<section class="section section-doctor" >
+				<div class="container-fluid" >
+				   <!--<div class="row">
+					<div class="col-lg-4">-->
+							<div class="section-header text-center">
+								<h2>功能房预约</h2>
+								
+							</div>
+							<!--<div class="banner-wrapper">
+								
+									<h3></h3>
+								</div>
+								
+							
+						</div>-->
+						<!--
+						<div class="about-content">
+							<p>It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum.</p>
+							<p>web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. Various versions have evolved over the years, sometimes</p>					
+							<a href="javascript:;">Read More..</a>
+						</div>
+						-->
+					<!--</div>
+					<div class="col-lg-8">-->
+						<div class="doctor-slider slider" >
+						{% for func_room in function_room_list %}
+							<!-- Doctor Widget -->
+							<div class="profile-widget">
+								<div class="doc-img">
+										<img class="img-fluid" alt="User Image" src="{% static 'Appointment/assets/img/RoomIcon/' %}{{func_room.Rid}}.png">
+									<!--
+									<a href="javascript:void(0)" class="fav-btn">
+										<i class="far fa-bookmark"></i>
+									</a>
+									-->
+								</div>
+								<div class="pro-content">
+									<h3 class="title">
+										<p>{{func_room}}</p>
+										<!--<a href="doctor-profile.html">{{talk_room}}</a> -->
+										<!--<i class="fas fa-check-circle verified"></i>-->
+									</h3>
+									<ul class="available-info">
+										<li>
+											<i class="far fa fa-child"></i> {{func_room.Rmin}}-{{func_room.Rmax}}人可用
+										</li>
+										
+										<li>
+											<i class="far fa fa-history"></i> {{func_room.Rstart}}-{{func_room.Rfinish}}
+											<i class="fas fa-info-circle" data-toggle="tooltip" title="可用时间"></i>
+										</li>
+									</ul>
+									<div class="row row-sm" style="text-align:center">
+										<!--
+										<div class="col-6">
+											<a href="doctor-profile.html" class="btn view-btn">View Profile</a>
+										</div>
+										-->
+										<div class="col-12">
+											<a href="arrange_time?Rid={{func_room.Rid}}" class="btn book-btn">预约</a>
+											<!--<btn class="btn book-btn" type="submit" value='{{appoit_room.Rid}}'>预约</btn>-->
+										</div>
+										
+									</div>
+								</div>
+							</div>
+							<!-- /Doctor Widget -->
+					
+						{% endfor %}	
+						</div>
+						
+					<!--</div>
+				   </div>-->
+				</div>
+			</section>
+			<!-- /功能房预约 -->
+
+			<!-- 研讨室预约 -->
+			<section class="section section-doctor" style="background-color: white;">
+				<div class="container-fluid" >
+				   <!--<div class="row">
+					<div class="col-lg-4">-->
+						<div class="section-header text-center">
+							<h2>研讨室预约</h2>
+							
+						</div>
+						<div class="banner-wrapper">
+							<!--
+								<h3></h3>
+							</div>
+							-->
+							<!-- Search -->
+							<div class="search-box">
+								<form method="POST">
+									{% csrf_token %}
+									<!--
+									<div class="form-group search-location">
+										<input type="text" class="form-control" placeholder="Search Location">
+										<span class="form-text">Based on your Location</span>
+									</div>
+									-->
+									<div class="row" style="margin: 0 auto">
+									<div class="form search-info" >
+										<div class="cal-icon">
+											<input type="text" class="form-control datetimepicker" placeholder="选择预约日期" name="request_time">
+										</div>	
+										<!--<input type="text" class="form-control " name="request_time" value="{{nowtime}}">
+										-->
+										<!--<span class="form-text">查看对应时间的空闲房间</span>-->
+										
+									</div>
+									<button type="submit" class="btn btn-primary search-btn"><i class="fas fa-search"></i> <span>Search</span></button>
+								</div>
+								</form>
+							</div>
+							<!-- /Search -->
+							
+						
+						</div>
+						<div class="doctor-slider slider" >
+						{% for talk_room in talk_room_list %}
+							<!-- Doctor Widget -->
+							<div class="profile-widget">
+								<div class="doc-img">
+										<img class="img-fluid" alt="User Image" src="{% static 'Appointment/assets/img/RoomIcon/' %}{{talk_room.Rid}}.png">
+									<!--
+									<a href="javascript:void(0)" class="fav-btn">
+										<i class="far fa-bookmark"></i>
+									</a>
+									-->
+								</div>
+								<div class="pro-content">
+									<h3 class="title">
+										<p>{{talk_room}}</p>
+										<!--<a href="doctor-profile.html">{{talk_room}}</a> -->
+										<!--<i class="fas fa-check-circle verified"></i>-->
+									</h3>
+									<!--<p class="speciality">MDS - Periodontology and Oral Implantology, BDS</p>-->
+									<!--
+									<div class="rating">
+										<i class="fas fa-star filled"></i>
+										<i class="fas fa-star filled"></i>
+										<i class="fas fa-star filled"></i>
+										<i class="fas fa-star filled"></i>
+										<i class="fas fa-star filled"></i>
+										<span class="d-inline-block average-rating">(17)</span>
+									</div>
+									-->
+									<ul class="available-info">
+										<li>
+											<i class="far fa fa-child"></i> {{talk_room.Rmin}}-{{talk_room.Rmax}}人可用
+										</li>
+										
+										<li>
+											<i class="far fa fa-history"></i> {{talk_room.Rstart}}-{{talk_room.Rfinish}}
+											<i class="fas fa-info-circle" data-toggle="tooltip" title="可用时间"></i>
+										</li>
+									</ul>
+									<div class="row row-sm" style="text-align:center">
+										<!--
+										<div class="col-6">
+											<a href="doctor-profile.html" class="btn view-btn">View Profile</a>
+										</div>
+										-->
+										<div class="col-12">
+											<a href="arrange_time?Rid={{talk_room.Rid}}" class="btn book-btn">预约</a>
+											<!--<btn class="btn book-btn" type="submit" value='{{appoit_room.Rid}}'>预约</btn>-->
+										</div>
+										
+									</div>
+								</div>
+							</div>
+							<!-- /Doctor Widget -->
+					
+						{% endfor %}	
+						</div>
+							
+					<!--</div>
+				   </div>-->
+				</div>
+			</section>
+			<!-- /研讨室预约 -->
+		   
+			{% if russ_len >= 1 %}
+				<!-- 俄文楼预约 -->
+				<section class="section section-doctor" >
+					<div class="container-fluid" >
+						<!--<div class="row">
+						<div class="col-lg-4">-->
+								<div class="section-header text-center">
+									<h2>俄文楼三层预约</h2>
+									<p>个人面试 / 线上授课</p>
+								</div>
+								<!--<div class="banner-wrapper">
+									
+										<h3></h3>
+									</div>
+									
+								
+							</div>-->
+							<!--
+							<div class="about-content">
+								<p>It is a long established fact that a reader will be distracted by the readable content of a page when looking at its layout. The point of using Lorem Ipsum.</p>
+								<p>web page editors now use Lorem Ipsum as their default model text, and a search for 'lorem ipsum' will uncover many web sites still in their infancy. Various versions have evolved over the years, sometimes</p>					
+								<a href="javascript:;">Read More..</a>
+							</div>
+							-->
+						<!-- Search -->
+						<div class="search-box">
+							<form method="POST">
+								{% csrf_token %}
+								<!--
+								<div class="form-group search-location">
+									<input type="text" class="form-control" placeholder="Search Location">
+									<span class="form-text">Based on your Location</span>
+								</div>
+								-->
+								<div class="row" style="margin: 0 auto">
+								<div class="form search-info" >
+									<div class="cal-icon">
+										<input type="text" class="form-control datetimepicker" placeholder="选择预约日期" name="russ_request_time">
+									</div>	
+									<!--<input type="text" class="form-control " name="request_time" value="{{nowtime}}">
+									-->
+									<!--<span class="form-text">查看对应时间的空闲房间</span>-->
+									
+								</div>
+								<button type="submit" class="btn btn-primary search-btn"><i class="fas fa-search"></i> <span>Search</span></button>
+							</div>
+							</form>
+						</div>
+						<!-- /Search -->
+						<!--</div>
+						<div class="col-lg-8">-->
+							<div class="doctor-slider slider" >
+							{% for russ_room in russian_room_list %}
+								<!-- Doctor Widget -->
+								<div class="profile-widget">
+									<div class="doc-img">
+											<img class="img-fluid" alt="User Image" src="{% static 'Appointment/assets/img/RoomIcon/' %}{{russ_room.Rid}}.png">
+										<!--
+										<a href="javascript:void(0)" class="fav-btn">
+											<i class="far fa-bookmark"></i>
+										</a>
+										-->
+									</div>
+									<div class="pro-content">
+										<h3 class="title">
+											<p>{{russ_room}}</p>
+											<!--<a href="doctor-profile.html">{{talk_room}}</a> -->
+											<!--<i class="fas fa-check-circle verified"></i>-->
+										</h3>
+										<ul class="available-info">
+											<li>
+												<i class="far fa fa-child"></i> {{russ_room.Rmin}}-{{russ_room.Rmax}}人可用
+											</li>
+											
+											<li>
+												<i class="far fa fa-history"></i> {{russ_room.Rstart}}-{{russ_room.Rfinish}}
+												<i class="fas fa-info-circle" data-toggle="tooltip" title="可用时间"></i>
+											</li>
+										</ul>
+										<div class="row row-sm" style="text-align:center">
+											<!--
+											<div class="col-6">
+												<a href="doctor-profile.html" class="btn view-btn">View Profile</a>
+											</div>
+											-->
+											<div class="col-12">
+												<a href="arrange_time?Rid={{russ_room.Rid}}" class="btn book-btn">预约</a>
+												<!--<btn class="btn book-btn" type="submit" value='{{appoit_room.Rid}}'>预约</btn>-->
+											</div>
+											
+										</div>
+									</div>
+								</div>
+								<!-- /Doctor Widget -->
+						
+							{% endfor %}	
+							</div>
+							
+						<!--</div>
+						</div>-->
+					</div>
+				</section>
+				<!-- 俄文楼预约 -->
+			{% endif %}
+
+
+
+			<!-- Footer -->
+			<footer class="footer">
+				
+				
+				<!-- Footer Bottom -->
+                <div class="footer-bottom">
+					<div class="container-fluid">
+					
+						<!-- Copyright -->
+						<div class="copyright">
+							<div class="row">
+								<div class=" col-lg-1">
+									<div class="footer-logo">
+										<img src="{% static 'Appointment/assets/img/yuan_logo_white.png' %} " alt="logo" >
+									</div>
+								
+								</div>
+								<div class=" col-lg-11">
+									
+									<!-- Copyright Menu -->
+									<div class="copyright-menu">
+										
+										<ul class="policy-menu">
+											<!--<li><a href="http://yuanpei.pku.edu.cn">智慧校园开发组 元培学院</a></li>-->
+											<li style="color: white;">智慧校园开发组 元培学院</li>
+										</ul>
+										<ul class="policy-menu">
+											<li style="color: white;">&copy; All rights Reserved.</li>
+										</ul>
+									</div>
+									<!-- /Copyright Menu -->
+									
+								</div>
+							</div>
+						</div>
+						<!-- /Copyright -->
+						
+					</div>
+				</div>
+				<!-- /Footer Bottom -->
+				
+			</footer>
+			<!-- /Footer -->
+		   
+	   </div>
+	   <!-- /Main Wrapper -->
+	  
+		<!-- jQuery -->
+		<script src="{% static 'Appointment/assets/js/jquery.min.js' %} "></script>
+		
+		</script>
+		<!-- Bootstrap Core JS -->
+		<script src="{% static 'Appointment/assets/js/popper.min.js' %} "></script>
+		<script src="{% static 'Appointment/assets/js/bootstrap.min.js' %}"></script><!--http://cdn.bootstrapmb.com/bootstrap/4.4.0/js/bootstrap.min.js-->
+		
+		<!-- Datetimepicker JS -->
+		<script src="{% static 'Appointment/assets/js/moment.min.js' %}"></script>
+		<script src="{% static 'Appointment/assets/js/bootstrap-datetimepicker.min.js' %}"></script>
+
+		<!-- Slick JS -->
+		<script src="{% static 'Appointment/assets/js/slick.js' %} "></script>
+		
+		<!-- Custom JS -->
+		<script src="{% static 'Appointment/assets/js/script.js' %} "></script>
+		
+	</body>
+</html>

@@ -406,6 +406,33 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
             # receivers = set([participant.person_id for participant in participants]) | set(subscribers)
             # receivers = [receiver.person_id for receiver in receivers]
             publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
+        elif msg_type == 'newCourseActivity':
+            title = activity.title
+            msg = f"课程{activity.organization_id.oname}发布了新的课程活动。"
+            msg += f"\n开始时间: {activity.start.strftime('%Y-%m-%d %H:%M')}"
+            msg += f"\n活动地点: {activity.location}"
+            # ———————————————— 拿参与者的user_id ————————————————
+            participant_person_id = Participant.objects.filter(
+                activity_id=aid,
+                status__in=[Participant.AttendStatus.APLLYSUCCESS, Participant.AttendStatus.APPLYING]
+            ).values_list("person_id_id", flat=True) # 拿的是person_id
+            participant_user_id = NaturalPerson.objects.activated().filter(
+                id__in=participant_person_id).values_list(
+                    "person_id_id", flat=True)   # 这回拿到的是user_id
+
+            #  ———————————————— 拿订阅者的user_id ————————————————
+            subscribers_user_id = NaturalPerson.objects.activated().exclude(
+                id__in=activity.organization_id.unsubscribers.all()
+            ).values_list("person_id_id", flat=True )  # 拿的是user_id
+
+            # ———————————————— 获取对应的User QuerySet ————————————————
+            receiver_id_list = list(set(subscribers_user_id) | set(participant_user_id))
+            receivers = User.objects.filter(id__in = receiver_id_list)
+
+            # ↓这么写特别慢！
+            # receivers = set([participant.person_id for participant in participants]) | set(subscribers)
+            # receivers = [receiver.person_id for receiver in receivers]
+            publish_kws = {"app": WechatApp.TO_SUBSCRIBER} 
         else:
             raise ValueError(f"msg_type参数错误: {msg_type}")
         
@@ -437,7 +464,7 @@ def notifyActivity(aid: int, msg_type: str, msg=""):
 def get_activity_QRcode(activity):
     auth_code = hash_coder.encode(str(activity.id))
     url_components = [
-        local_dict["url"]["login_url"].strip("/"),
+        LOGIN_URL.strip("/"),
         "checkinActivity",
         f"{activity.id}?auth={auth_code}",
     ]

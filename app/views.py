@@ -1,5 +1,6 @@
 from app.views_dependency import *
 from app.models import (
+    Feedback,
     NaturalPerson,
     Freshman,
     Position,
@@ -168,33 +169,10 @@ def index(request):
             html_display["warn_message"] = local_dict["msg"]["406"]
 
     # 所有跳转，现在不管是不是post了
-    if arg_origin is not None:
-        if request.user.is_authenticated:
-
-            if not check_cross_site(request, arg_origin):
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "当前账户不能进行地下室预约，请使用个人账户登录后预约"
-                return redirect(message_url(html_display))
-
-            is_inner, arg_origin = utils.get_std_inner_url(arg_origin)
-            if is_inner:  # 非外部链接，合法性已经检查过
-                return redirect(arg_origin)  # 不需要加密验证
-
-            is_underground, arg_origin = utils.get_std_underground_url(arg_origin)
-            if not is_underground:
-                return redirect(arg_origin)
-
-            timeStamp = str(int(datetime.utcnow().timestamp())) # UTC 统一服务器
-            username = request.user.username    # session["username"] 已废弃
-            en_pw = hash_coder.encode(username + timeStamp)
-            try:
-                userinfo = NaturalPerson.objects.get(person_id__username=username)
-                arg_origin = append_query(arg_origin,
-                    Sid=username, timeStamp=timeStamp, Secret=en_pw, name=userinfo.name)
-            except:
-                arg_origin = append_query(arg_origin,
-                    Sid=username, timeStamp=timeStamp, Secret=en_pw)
-            return redirect(arg_origin)
+    if arg_origin is not None and request.user.is_authenticated:
+        if not check_cross_site(request, arg_origin):
+            return redirect(message_url(wrong('目标域名非法，请警惕陌生链接。')))
+        return redirect(arg_origin)
 
     return render(request, "index.html", locals())
 
@@ -410,11 +388,45 @@ def stuinfo(request, name=None):
                 or None
         )
 
-        # 隐藏的小组
-        person_hidden_poss = person_poss.filter(show_post=False)
-        person_hidden_orgs = person_orgs.filter(
+        # 历史的小组(同样是删去隐藏)
+        person_history_poss = Position.objects.activated(noncurrent=True).filter(
+            person=person,
+            show_post=True
+            )
+        person_history_orgs = Organization.objects.filter(
+            id__in=person_history_poss.values("org")
+        )  # ta属于的小组
+        person_history_orgs_ava = [
+            # utils.get_user_ava(org, "organization") for org in person_owned_orgs
+            org.get_user_ava() for org in person_history_orgs
+        ]
+        person_history_orgs_pos = [
+            person_history_poss.get(org=org).pos for org in person_history_orgs
+        ]  # ta在小组中的职位
+
+        sems = {
+            Semester.FALL: "秋",
+            Semester.SPRING: "春",
+            Semester.ANNUAL: "全年"
+        }
+
+        person_history_orgs_pos = [
+            org.otype.get_name(pos) + ' ' +
+            str(person_history_poss.get(org=org).in_year)[2:] + "-" +
+            str(person_history_poss.get(org=org).in_year + 1)[2:] +
+            sems[person_history_poss.get(org=org).in_semester]
+            for pos, org in zip(person_history_orgs_pos, person_history_orgs)
+        ]  # ta在小组中的职位
+        html_display["history_orgs_info"] = (
+                list(zip(person_history_orgs, person_history_orgs_ava, person_history_orgs_pos))
+                or None
+        )
+
+        # 隐藏的小组(所有学期都会呈现，不用activated)
+        person_hidden_poss = Position.objects.filter(person=person, show_post = False)
+        person_hidden_orgs = Organization.objects.filter(
             id__in=person_hidden_poss.values("org")
-        )  # ta隐藏的小组
+        )  # ta属于的小组
         person_hidden_orgs_ava = [
             # utils.get_user_ava(org, "organization") for org in person_hidden_orgs
             org.get_user_ava() for org in person_hidden_orgs
@@ -447,33 +459,23 @@ def stuinfo(request, name=None):
 
         # 只有是自己的主页时才显示学时
         if is_myself:
-            course_me = CourseRecord.objects.filter(person_id=oneself)
             # 把当前学期的活动去除
-            course_me_past = (
-                course_me.exclude(
-                    year=int(local_dict["semester_data"]["year"]), 
-                    semester=local_dict["semester_data"]["semester"])
-            )
+            course_me_past = CourseRecord.objects.past().filter(person_id=oneself)
 
             # 无效学时，在前端呈现
             course_no_use = (
                 course_me_past
-                .filter(total_hours__lt=8)
-                .exclude(year=20, semester=Semester.FALL, total_hours__gte=6)
-                .exclude(year=21, semester=Semester.SPRING, total_hours__gte=6)
+                .filter(invalid=True)
             )
-            
+
             # 特判，需要一定时长才能计入总学时
             course_me_past = (
                 course_me_past
-                .exclude(year=20, semester=Semester.FALL, total_hours__lt=6)
-                .exclude(year=21, semester=Semester.SPRING, total_hours__lt=6)
-                .exclude(year=21, semester=Semester.FALL, total_hours__lt=8) # 21秋开始，需要至少8学时
-                .exclude(year__gt=21, total_hours__lt=8)
+                .exclude(invalid=True)
             )
 
-            course_me_past = course_me_past.order_by('year', '-semester')
-            course_no_use = course_no_use.order_by('year', '-semester')
+            course_me_past = course_me_past.order_by('year', 'semester')
+            course_no_use = course_no_use.order_by('year', 'semester')
 
             progress_list = []
 
@@ -493,12 +495,17 @@ def stuinfo(request, name=None):
             )['total_hours__sum'] or 0)
 
             # 每个人的规定学时，按年级讨论
-            if int(oneself.stu_grade) <= 2018:
+            try:
+                # 本科生
+                if int(oneself.stu_grade) <= 2018:
+                    ruled_hours = 0
+                elif int(oneself.stu_grade) == 2019:
+                    ruled_hours = 32
+                else:
+                    ruled_hours = 64
+            except:
+                # 其它，如老师和住宿辅导员等
                 ruled_hours = 0
-            elif int(oneself.stu_grade) == 2019:
-                ruled_hours = 32
-            else:
-                ruled_hours = 64
 
             # 计算总学时
             total_hours_sum = sum(progress_list)
@@ -511,7 +518,7 @@ def stuinfo(request, name=None):
 
 
         # ------------------ 活动参与 ------------------ #
-        
+
         participants = Participant.objects.activated().filter(person_id=person)
         activities = Activity.objects.activated().filter(
             Q(id__in=participants.values("activity_id")),
@@ -532,6 +539,15 @@ def stuinfo(request, name=None):
         activity_info = list(zip(activities, activity_is_same))
         activity_info.sort(key=lambda a: a[0].start, reverse=True)
         html_display["activity_info"] = list(activity_info) or None
+
+        # 呈现历史活动，不考虑共同活动的规则，直接全部呈现
+        history_activities = list(
+            Activity.objects.activated(noncurrent=True).filter(
+            Q(id__in=participants.values("activity_id")),
+            # ~Q(status=Activity.Status.CANCELED), # 暂时可以呈现已取消的活动
+        ))
+        history_activities.sort(key=lambda a: a.start, reverse=True)
+        html_display["history_act_info"] = list(history_activities) or None
 
         # 警告呈现信息
 
@@ -661,6 +677,7 @@ def orginfo(request, name=None):
         # 下面是小组信息
 
         org = Organization.objects.activated().get(oname=name)
+        org_tags = org.tags.all()
 
     except:
         return redirect(message_url(wrong('该小组不存在!')))
@@ -727,6 +744,13 @@ def orginfo(request, name=None):
             .order_by("-start")
     )
 
+    # 筛选历史活动，具体为不是这个学期的活动
+    history_activity_list = (
+        Activity.objects.activated(noncurrent=True)
+        .filter(organization_id=org)
+        .order_by("-start")
+    )
+
     # 如果是用户登陆的话，就记录一下用户有没有加入该活动，用字典存每个活动的状态，再把字典存在列表里
 
     prepare_times = Activity.EndBeforeHours.prepare_times
@@ -763,6 +787,23 @@ def orginfo(request, name=None):
             else:
                 dictmp["status"] = "无记录"
         ended_activity_list_participantrec.append(dictmp)
+
+    # 处理历史活动
+    history_activity_list_participantrec = []
+    for act in history_activity_list:
+        dictmp = {}
+        dictmp["act"] = act
+        dictmp["endbefore"] = act.start - timedelta(hours=prepare_times[act.endbefore])
+        if user_type == "Person":
+            existlist = Participant.objects.filter(activity_id_id=act.id).filter(
+                person_id_id=me.id
+            )
+            if existlist:  # 判断是否非空
+                dictmp["status"] = existlist[0].status
+            else:
+                dictmp["status"] = "无记录"
+        history_activity_list_participantrec.append(dictmp)
+
 
     # 判断我是不是老大, 首先设置为false, 然后如果有person_id和user一样, 就为True
     html_display["isboss"] = False
@@ -1035,7 +1076,7 @@ def accountSetting(request):
 
             # 合法性检查
             attr_dict, show_dict, html_display = utils.check_account_setting(request, user_type)
-            attr_check_list = [attr for attr in attr_dict.keys() if attr not in ['gender', 'ava', 'wallpaper', 'accept_promote']]
+            attr_check_list = [attr for attr in attr_dict.keys() if attr not in ['gender', 'ava', 'wallpaper', 'accept_promote', 'wechat_receive_level']]
             if html_display['warn_code'] == 1:
                 return render(request, "person_account_setting.html", locals())
 
@@ -1044,6 +1085,8 @@ def accountSetting(request):
                 modify_info.append(f'gender: {useroj.get_gender_display()}->{attr_dict["gender"]}')
             if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
                 modify_info.append(f'accept_promote: {useroj.get_accept_promote_display()}->{attr_dict["accept_promote"]}')
+            if attr_dict['wechat_receive_level'] != useroj.get_wechat_receive_level_display():
+                modify_info.append(f'wechat_receive_level: {useroj.get_wechat_receive_level_display()}->{attr_dict["wechat_receive_level"]}')
             if attr_dict['ava']:
                 modify_info.append(f'avatar: {attr_dict["ava"]}')
             if attr_dict['wallpaper']:
@@ -1057,6 +1100,8 @@ def accountSetting(request):
 
             if attr_dict['gender'] != useroj.gender:
                 useroj.gender = NaturalPerson.Gender.MALE if attr_dict['gender'] == '男' else NaturalPerson.Gender.FEMALE
+            if attr_dict['wechat_receive_level'] != useroj.wechat_receive_level:
+                useroj.wechat_receive_level = NaturalPerson.ReceiveLevel.MORE if attr_dict['wechat_receive_level'] == '接受全部消息' else NaturalPerson.ReceiveLevel.LESS
             if attr_dict['accept_promote'] != useroj.get_accept_promote_display():
                 useroj.accept_promote = True if attr_dict['accept_promote'] == '是' else False
             for attr in attr_check_list:
@@ -1469,6 +1514,14 @@ def search(request):
     # 活动要呈现的内容
     activity_field = ["活动名称", "承办小组", "状态"]
 
+    feedback_field = ["标题", "状态", "负责小组", "内容"]
+    feedback_list = Feedback.objects.filter(
+        Q(public_status=Feedback.PublicStatus.PUBLIC)
+    ).filter(
+        Q(title__icontains=query) 
+        | Q(org__oname__icontains=query)
+    )
+
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True
 
@@ -1796,17 +1849,17 @@ def saveSubscribeStatus(request):
                     return JsonResponse({"success":False})
                 for org in org_list:
                     me.unsubscribe_list.add(org)
-        elif "level" in params.keys():
-            try:
-                level = params['level']
-                assert level in ['less', 'more']
-            except:
-                return JsonResponse({"success":False})
-            me.wechat_receive_level = (
-                NaturalPerson.ReceiveLevel.MORE
-                if level == 'more' else
-                NaturalPerson.ReceiveLevel.LESS
-            )
+        # elif "level" in params.keys():
+        #     try:
+        #         level = params['level']
+        #         assert level in ['less', 'more']
+        #     except:
+        #         return JsonResponse({"success":False})
+        #     me.wechat_receive_level = (
+        #         NaturalPerson.ReceiveLevel.MORE
+        #         if level == 'more' else
+        #         NaturalPerson.ReceiveLevel.LESS
+        #     )
         me.save()
 
     return JsonResponse({"success": True})

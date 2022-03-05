@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% load static %}
+
+
+{% block mainpage %}
+<style>
+    select[readonly] {
+  background: #eee; /*Simular campo inativo - Sugestão @GabrielRodrigues*/
+  pointer-events: none;
+  touch-action: none;
+}
+</style>
+    <!--  BEGIN CONTENT AREA  -->
+    <div id="content" class="main-content">
+
+        <!--  BEGIN CUSTOM STYLE FILE  -->
+        <link rel="stylesheet" type="text/css" href="{% static "plugins/dropify/dropify.min.css" %}">
+        <link href="{% static "assets/css/users/account-setting.css" %}" rel="stylesheet" type="text/css" />
+        <!--  END CUSTOM STYLE FILE  -->
+        
+            <div class="container">
+                {% if html_display.warn_code == 2 %}
+                <div class="alert alert-success  text-center">{{html_display.warn_message}}</div>
+                {% elif html_display.warn_code == 1%}
+                <div class="alert alert-warning  text-center">{{html_display.warn_message}}</div>
+                {% endif %}
+                <div class="row layout-top-spacing">
+
+                    <div class="col-lg-12 col-sm-12 col-12 layout-spacing">
+                        <div class="row">
+                            <div class="col-md-12 mb-4">
+                                <div class="statbox widget box box-shadow">
+
+                                    <!--  BEGIN HEADER AREA  -->
+                                    <div class="widget-header">
+                                        <div class="row">
+                                            <div class="col-xl-12 col-md-12 col-sm-12 col-12">
+                                                    <br>
+                                                    <br>
+                                                    <div align="center">
+                                                    <h3>反馈详情</h3>
+                                                    </div>
+                                                    <div class="d-flex justify-content-between">
+                                                        <div>
+                                                            <h4></h4>
+                                                        </div>
+                                                    <div align="right">
+                                                            <h4>
+                                                            <a>
+                                                                <u>匿名者</u></a>
+                                                            </h4>
+                                                    </div>
+                                                    </div>
+
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <!--  BEGIN CONTENT AREA  -->
+                                    <div class="widget-content widget-content-area">
+                                        <form role="form" method="POST" enctype="multipart/form-data">
+                                            
+                                            <div class="form-group">
+                                                <label for="aintro">反馈类型</label>
+                                                <select class="form-control selectpicker" data-live-search="true" id="type" name="type" onchange="change_org_type_and_org.call(this)" 
+                                                {% if not allow_form_edit %} readonly="readonly"{% endif %}>
+                                                    {% for key, value in feedback_type_list.items %}
+                                                    {% if not value.disabled %}
+                                                    <option value="{{value.value}}" {% if value.selected %} selected {% endif %} >
+                                                        {{value.display}}
+                                                    </option>
+                                                    {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label>反馈标题</label>
+                                                {% if not is_new_feedback %}
+                                                <textarea type="text" name="title" class="form-control"
+                                                          aria-label="Default" placeholder="标题不能超过30字噢！"
+                                                          rows="1"{% if allow_form_edit == 0 %} disabled="disabled" {% endif %}>{{feedback.title}}</textarea>
+                                                {% else %}
+                                                <textarea type="text" name="title" class="form-control"
+                                                aria-label="Default" placeholder="标题不能超过30字噢！" rows="1"></textarea>
+                                                {% endif %}
+                                                <b><font>请文明理性发言，共同营造良好的网络环境！</font></b>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="aintro">接收小组类型</label>
+                                                <select class="form-control selectpicker" data-live-search="true" id="otype" name="otype" onchange="change_org_list.call(this, this.value)" 
+                                                {% if not allow_form_edit %} readonly="readonly"{% endif %}>
+                                                    {% for key, value in org_type_list.items %}
+                                                    {% if not value.disabled %}
+                                                    <option id="otype_{{value.value}}" value="{{value.value}}" {% if value.selected %} selected {% endif %} >
+                                                        {{value.display}}
+                                                    </option>
+                                                    {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="aintro">接收小组</label>
+                                                <select class="form-control selectpicker" data-live-search="true" id="org" name="org" {% if not allow_form_edit %} readonly="readonly"{% endif %}>
+                                                    {% for key, value in org_list.items %}
+                                                    {% if not value.disabled %}
+                                                    <option id="org_{{value.value}}" value="{{value.value}}" {% if value.selected %} selected {% endif %} >
+                                                        {{value.display}}
+                                                    </option>
+                                                    {% endif %}
+                                                    {% endfor %}
+                                                </select>
+                                            </div>
+
+                                            <div class="form-group">
+                                                <label for="aintro">反馈内容</label>
+                                                <textarea name="content" class="form-control" rows="6" placeholder=
+                                                        "反馈内容不能为空~"{%if allow_form_edit == 0 and is_new_feedback == 0 %} disabled="disabled" {%endif%}
+                                                >{% if not is_new_feedback %}{{feedback.content}}{% endif %}</textarea>
+                                            </div>
+
+                                            {% if is_new_feedback %}
+                                                <div class="form-group">
+                                                    <label for="aintro">是否同意公开
+                                                        <a data-toggle="tooltip" data-placement="bottom" title="“公开”表示反馈的留言将会公开给所有用户，但不会公开反馈者的身份。">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                                class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                            </svg>
+                                                        </a>
+                                                    </label>
+                                                    <select class="form-control" id="publisher_public" name="publisher_public" onchange="public_confirm.call(this)">
+                                                        <option>公开</option>
+                                                        <option selected>不公开</option>
+                                                    </select>
+                                                </div>
+                                            {% else %}
+                                                <div class="form-group">
+                                                    <label for="aintro">是否同意公开
+                                                        <a data-toggle="tooltip" data-placement="bottom" title="“公开”表示反馈的留言将会公开给所有用户，但不会公开反馈者的身份。">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                                                                class="bi bi-question-circle-fill" viewBox="0 0 22 22">
+                                                                <path d="M16 8A8 8 0 1 1 0 8a8 8 0 0 1 16 0zM5.496 6.033h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286a.237.237 0 0 0 .241.247zm2.325 6.443c.61 0 1.029-.394 1.029-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94 0 .533.425.927 1.01.927z" />
+                                                            </svg>
+                                                        </a>
+                                                    </label>
+                                                    <select class="form-control" id="publisher_public" name="publisher_public" onchange="public_confirm.call(this)" {% if not allow_form_edit %} readonly="readonly" {% endif %}>
+                                                        <option {% if feedback.publisher_public == True %} selected {% endif %}>公开</option>
+                                                        <option {% if feedback.publisher_public == False %} selected {% endif %}>不公开</option>
+                                                    </select>
+                                                </div>
+                                            {% endif %}
+
+                                            <br/>
+                                            {% if allow_form_edit %}
+                                                {% if not is_new_feedback %}
+                                                    <div align="center">
+                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                        value="modify" name="post_type" onclick="return confirm('确认修改反馈？')">修改反馈</button>
+                                                        
+                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                        value="submit_draft" name="post_type" onclick="return confirm('确认提交反馈？')">提交反馈</button>
+                                                    </div>
+                                                {% else %}
+                                                    <div align="center">
+                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                        value="save" name="post_type" onclick="return confirm('确认将反馈保存入草稿箱？')">保存反馈</button>
+                                                        
+                                                        <button type="submit" class="btn btn-primary btn-lg mb-4 mr-2"
+                                                        value="directly_submit" name="post_type" onclick="return confirm('确认直接提交反馈？')">提交反馈</button>
+                                                    </div>
+                                                {% endif %}
+                                            {% endif %}
+
+                                            
+                                        </form>
+                                        {% comment %} 
+                                        <br>
+                                        <hr>
+                                        {% include 'comment.html' %}  
+                                        {% endcomment %}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        
+    </div>
+    <!--  END CONTENT AREA  -->
+
+
+{% endblock %}
+
+{% block add_js_file %}
+    <script src={% static "plugins/dropify/dropify.min.js" %}></script>
+    <script src={% static "assets/js/users/account-settings.js" %}></script>
+    <script>
+        function public_confirm() {
+            if (this.value == "公开")
+                if (!confirm("是否同意公开？个人同意公开后需要组织同意公开后方可公开~"))
+                    this.value = "不公开";
+        }
+        function change_org_type_and_org() {
+            var all_org_types = document.getElementById('otype');
+            var all_orgs = document.getElementById('org');
+            var fbtype_to_org = {{fbtype_to_org|safe}};
+            for (i = 0; i < fbtype_to_org.length; i += 1) {
+                if (fbtype_to_org[i][0] == this.value) {
+                    org_type = fbtype_to_org[i][1];
+                    org = fbtype_to_org[i][2];
+                    document.getElementById("otype_"+org_type).selected = true;
+                    change_org_list(org_type);
+                    document.getElementById("org_"+org).selected = true;
+                    break;
+                }
+            }
+        }
+        function change_org_list(otype) {
+            var all_orgs = document.getElementById('org');
+            var all_org_list = {{all_org_list|safe}};
+            all_orgs.innerHTML = '';
+            for (i = 0; i < all_org_list.length; i += 1) {
+                if (all_org_list[i][0] == otype) {
+                    for (j = 1; j < all_org_list[i].length; j += 1){
+                        all_orgs.add(create_option(all_org_list[i][j]),null);
+                    }
+                    all_orgs.add(create_option(''),null);
+                    break;
+                }
+            }
+        }
+        function create_option(name) {
+            var opt = document.createElement("OPTION");
+            opt.id = "org_" + name;
+            opt.value = name;
+            opt.text = name;
+            return opt;
+        }
+    </script>
+{% endblock %}

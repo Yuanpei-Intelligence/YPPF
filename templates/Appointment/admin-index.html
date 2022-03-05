@@ -1,0 +1,419 @@
+﻿{% load static %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+	<meta charset="utf-8">
+	<title>Underground Appointment</title>
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=0">
+
+	<!-- Favicons -->
+	<link type="image/x-icon" href="{% static 'Appointment/assets/img/yp_favicon.png' %} " rel="icon">
+
+	<!-- Bootstrap CSS -->
+	<link rel="stylesheet" href="{% static 'Appointment/assets/css/bootstrap.min.css' %}">
+
+	<!-- Fontawesome CSS -->
+	<link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fontawesome/css/fontawesome.min.css' %}">
+	<link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fontawesome/css/all.min.css' %}">
+
+	<!-- Fancybox CSS -->
+	<link rel="stylesheet" href="{% static 'Appointment/assets/plugins/fancybox/jquery.fancybox.min.css' %}">
+
+	<!-- Main CSS -->
+	<link rel="stylesheet" href="{% static 'Appointment/assets/css/style.css' %}">
+
+	<!--试试看-->
+	<script src="https://cdn.staticfile.org/jquery/2.1.1/jquery.min.js"></script>
+	<script src="https://cdn.staticfile.org/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+	<!-- HTML5 shim and Respond.js IE8 support of HTML5 elements and media queries -->
+	<!--[if lt IE 9]>
+			<script src="assets/js/html5shiv.min.js"></script>
+			<script src="assets/js/respond.min.js"></script>
+		<![endif]-->
+
+</head>
+
+<body>
+
+	<!-- Main Wrapper -->
+	<div class="main-wrapper">
+
+		<!-- Header -->
+		<header class="header">
+			<nav class="navbar navbar-expand-lg header-nav">
+				<div class="navbar-header">
+					<a id="mobile_btn" href="javascript:void(0);">
+						<span class="bar-icon">
+							<span></span>
+							<span></span>
+							<span></span>
+						</span>
+					</a>
+					<a href="index" class="navbar-brand logo">
+						<img src="{% static 'Appointment/assets/img/yp_name_red.png' %} " class="img-fluid" alt="Logo">
+					</a>
+				</div>
+				<div class="main-menu-wrapper">
+					<div class="menu-header">
+						<a href="index" class="menu-logo">
+							<img src="{% static 'Appointment/assets/img/yuan_logo_red.png' %}" class="img-fluid" alt="Logo">
+						</a>
+
+						<a id="menu_close" class="menu-close" href="javascript:void(0);">
+							<i class="fas fa-times"></i>
+						</a>
+
+					</div>
+					<ul class="main-nav">
+						<li>
+							<a href="index">主页</a>
+						</li>
+						<li class="active">
+							<a href="admin-index.html">我的账户</a>
+							<!--<a href="admin/index.html" target="_blank">Admin</a>-->
+						</li>
+						<li>
+							<a href="agreement">无占座协议</a>
+						</li>
+						<li>
+							<a href="{{login_url}}">成长档案</a>
+						</li>
+						{% if show_admin %}
+						<li>
+							<a href="admin">管理后台</a>
+						</li>
+						{% endif %}
+						<li class="login-link">
+							<a href="logout">注销</a>
+						</li>
+					</ul>
+				</div>
+				<ul class="nav header-navbar-rht">
+					<li class="nav-item">
+						<a class="nav-link header-login" href="logout">注销</a>
+					</li>
+				</ul>
+			</nav>
+		</header>
+		<!-- /Header -->
+
+		<!-- Page Content -->
+		<div class="content">
+			<div class="container-fluid">
+				{% if warn_code == 1 %}
+				<div class="alert alert-warning  text-center">{{ warn_message }}</div>
+				{% elif warn_code == 2 %}
+				<div class="alert alert-success  text-center">{{ warn_message }}</div>
+				{% endif %}
+				<div class="row">
+					<div class="col-md-5 col-lg-4 col-xl-3 theiaStickySidebar">
+
+						<!-- Profile Sidebar -->
+						<div class="profile-sidebar">
+							<div class="widget-profile pro-widget-content">
+								<div class="profile-info-widget">
+									<a href="#" class="booking-doc-img">
+										<img src="{{img_path}}" alt="User Image">
+									</a>
+									<div class="profile-det-info">
+										<h3>
+											{{my_info.name}}
+											{% if my_info.agree_time %}
+												<span id="ret" class="badge badge-pill badge-success">已签署协议</span>
+											{% else %}
+												<span id="ret" class="badge badge-pill badge-danger">未签署协议</span>
+											{% endif %}
+										</h3>
+
+										<div class="patient-details">
+											<h5 class="mb-0">{{my_info.id}}</h5>
+										</div>
+									</div>
+								</div>
+							</div>
+							<div class="dashboard-widget">
+								<nav class="dashboard-menu">
+									<ul>
+										<li class="active">
+											<a href="admin-index.html">
+												<i class="fas fa-calendar-check"></i>
+												<span>我的预约</span>
+											</a>
+										</li>
+										<li>
+											<a href="admin-credit.html">
+												<i class="fas fa fa-star"></i>
+												<span>信用分</span>
+											</a>
+										</li>
+									</ul>
+								</nav>
+							</div>
+						</div>
+						<!-- /Profile Sidebar -->
+
+					</div>
+
+
+					<div class="col-md-7 col-lg-8 col-xl-9">
+						<div class="card">
+							<div class="card-body">
+
+
+
+								<div class="tab-content">
+									<div class="tab-pane show active" id="solid-justified-tab1">
+										<ul class="nav nav-tabs nav-tabs-solid nav-justified">
+											<li class="nav-item">
+												<a class="nav-link active" onclick="window.location='admin-index.html'"
+													data-toggle="tab">未开始预约</a>
+											</li>
+											<li class="nav-item">
+												<a class="nav-link" href="#solid-justified-tab2"
+													data-toggle="tab">过去一周</a>
+											</li>
+										</ul>
+										<div class="alert alert-primary alert-dismissible fade show" role="alert">
+											你最近有<strong> {{appoint_list_future|length}}
+											</strong>条待进行的预约
+											<!--最近一条是<strong> {{appoint_list_future.0.Astart.month}}月{{appoint_list_future.0.Astart.day}}日 {{appoint_list_future.0.Astart_hour_minute}}-{{appoint_list_future.0.Afinish_hour_minute}} {{appoint_list_future.0.Rid}} {{appoint_list_future.0.Rtitle}}
+											</strong>-->
+										</div>
+
+										<div class="appointments">
+											{% for appoint in appoint_list_future %}
+											<!-- Appointment List -->
+											<div class="appointment-list">
+												<div class="profile-info-widget">
+													<div class="profile-det-info">
+														<h3 style="white-space: normal;">{{appoint.Rid}}
+															{{appoint.Rtitle}}</h3>
+														<div class="patient-details">
+															<h5 style="white-space: normal;"><i class="far fa-clock"
+																	style="word-break:break-all"></i>
+																预约时间：{{appoint.Astart|slice:"5:7"}}月{{appoint.Astart|slice:"8:10"}}日
+																<!--modified by wxy-->
+																{{appoint.Astart_hour_minute}}-{{appoint.Afinish_hour_minute}}
+															</h5>
+															<h5 style="white-space: normal;"><i
+																	class="fas fa fa-comments"></i>
+																用途：{{appoint.Ausage}}</h5>
+															<h5 style="white-space: normal;"><i
+																	class="fas fa fa-street-view"></i>
+																发起者：{{appoint.major_student.Sname}}</h5>
+															<h5 style="white-space: normal;"><i
+																	class="far fa fa-child"></i>
+																人数：本院 {{appoint.yp_num}} 人，非本院 {{appoint.non_yp_num}} 人
+															</h5>
+															{% if appoint.Aannouncement != "" %}
+															{% if appoint.Aannouncement != null %}
+															<h5 style="white-space: normal;"><i
+																	class="fas fa fa-envelope"></i>
+																预约通知：{{appoint.Aannouncement}}</h5>
+															{% endif %}
+															{% endif %}
+														</div>
+													</div>
+												</div>
+
+												{% if appoint.check_major %}
+												<form action="cancelAppoint" method="POST"
+													onsubmit="return confirm('确定取消对{{appoint.Rtitle}}的预约?')">
+													<div class="appointment-action">
+														<button type="submit" class="btn btn-sm bg-danger-light"
+															name="cancel_btn" value="{{appoint.Aid}}">
+															<i class="fas fa-times"></i> 取消预约
+															</input>
+													</div>
+												</form>
+												{% else %}
+												<div class="appointment-action">
+													<a href="javascript:void(0);"
+														class="btn btn-sm bg-danger-light disabled">
+														<i class="fas fa-times"></i> 非发起人，不可取消
+													</a>
+												</div>
+												{% endif %}
+											</div>
+											<!-- /Appointment List -->
+											{% endfor %}
+										</div>
+									</div>
+
+									<div class="tab-pane" id="solid-justified-tab2">
+										<ul class="nav nav-tabs nav-tabs-solid nav-justified">
+											<li class="nav-item">
+												<a class="nav-link " onclick="window.location='admin-index.html'"
+													data-toggle="tab">未开始预约</a>
+											</li>
+											<li class="nav-item">
+												<a class="nav-link active" href="#solid-justified-tab2"
+													data-toggle="tab">过去一周</a>
+											</li>
+										</ul>
+										<div class="appointments">
+											{% for appoint in appoint_list_past %}
+											<!-- Appointment List -->
+											<div class="appointment-list">
+												<div class="profile-info-widget">
+													<div class="profile-det-info">
+														<h3 style="white-space: normal;">{{appoint.Rid}}
+															{{appoint.Rtitle}}&nbsp;&nbsp;&nbsp;&nbsp;
+															<!--本来想直接通过模版引用变量上色的，但一直写不对，就暂且用分支语句吧-->
+															<!--modified by wxy-->
+															{% if appoint.Astatus == 'Canceled' %}
+															<span style="color:#79380e">已取消</span>
+															{% elif appoint.Astatus == 'Appointed' %}
+															<span style="color:#08daff">已预约</span>
+															{% elif appoint.Astatus == 'Processing' %}
+															<span style="color:#1e90ff">正在进行</span>
+															{% elif appoint.Astatus == 'Waiting' %}
+															<span style="color:#e97313">等待确认</span>
+															{% elif appoint.Astatus == 'Confirmed' %}
+															<span style="color:#32ac0d">已确认</span>
+															{% elif appoint.Astatus == 'Violated' %}
+															<span style="color:#ff2d2d">违规（可申诉）</span>
+															{% elif appoint.Astatus == 'Judged' %}
+															<span style="color:#32ac0d">违规申诉成功</span>
+															{% endif %}
+														</h3>
+														<div class="patient-details">
+
+															<h5 style="white-space: normal;"><i
+																	class="far fa-clock"></i>
+																预约时间：{{appoint.Astart|slice:"5:7"}}月{{appoint.Astart|slice:"8:10"}}日
+																<!--modified by wxy-->
+																{{appoint.Astart_hour_minute}}-{{appoint.Afinish_hour_minute}}
+															</h5>
+															<h5 style="white-space: normal;"><i
+																	class="fas fa fa-comments "></i>
+																用途：{{appoint.Ausage}}</h5>
+															<h5 style="white-space: normal;"><i
+																	class="fas fa fa-street-view"></i>
+																发起者：{{appoint.major_student.Sname}}</h5>
+															<h5 style="white-space: normal;"><i
+																	class="far fa fa-child"></i>
+																人数：院内{{appoint.yp_num}}人，院外{{appoint.non_yp_num}}人</h5>
+															{% if appoint.Aannouncement != "" %}
+															{% if appoint.Aannouncement != null %}
+															<h5 style="white-space: normal;"><i
+																	class="far fa fa-envelope"></i>
+																预约通知：{{appoint.Aannouncement}}</h5>
+															{% endif %}
+															{% endif %}
+															{% if appoint.Astatus == 'Violated' %}
+															<h5 style="white-space: normal;color:#ff2d2d"><i
+																	class="far fa fa-envelope"></i>
+																违约原因：
+																{% if appoint.Areason == 0 %}
+																异常状况，请联系管理员
+																{% elif appoint.Areason == 1 %}
+																预约开始后15分钟内未到场且使用人数不足
+																{% elif appoint.Areason == 2 %}
+																使用人数不足登记人数
+																{% elif appoint.Areason == 3 %}
+																未知原因，请联系管理员
+																{% endif %}
+															</h5>
+															{% endif %}
+														</div>
+													</div>
+												</div>
+												<div>
+													{% if appoint.Astatus == 'Violated' %}
+													<!--<div>-->
+													<div class="appointment-action">
+														<a href="https://shimo.im/forms/pcptwdvCPPXqTRTd/fill">
+															<button class="btn btn-sm bg-danger-light" name="argue_btn">
+																<i class="fas fa-times"></i> 我要申诉
+															</button>
+														</a>
+													</div>
+													<!--</div>-->
+													{% endif %}
+												</div>
+											</div>
+											<!-- /Appointment List -->
+											{% endfor %}
+										</div>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+		<!-- /Page Content -->
+
+		<!-- Footer -->
+		<footer class="footer">
+
+
+			<!-- Footer Bottom -->
+			<div class="footer-bottom">
+				<div class="container-fluid">
+
+					<!-- Copyright -->
+					<div class="copyright">
+						<div class="row">
+							<div class=" col-lg-1">
+								<div class="footer-logo">
+									<img src="{% static 'Appointment/assets/img/yuan_logo_white.png' %} " alt="logo">
+								</div>
+
+							</div>
+							<div class=" col-lg-11">
+
+								<!-- Copyright Menu -->
+								<div class="copyright-menu">
+
+									<ul class="policy-menu">
+										<li><a href="https://yuanpei.pku.edu.cn">智慧校园开发组 元培学院</a></li>
+									</ul>
+									<ul class="policy-menu">
+										<li><a>&copy; All rights Reserved.</a></li>
+									</ul>
+								</div>
+								<!-- /Copyright Menu -->
+
+							</div>
+						</div>
+					</div>
+					<!-- /Copyright -->
+
+				</div>
+			</div>
+			<!-- /Footer Bottom -->
+
+		</footer>
+		<!-- /Footer -->
+
+
+	</div>
+	<!-- /Main Wrapper -->
+
+	<!-- jQuery -->
+	<script src="{% static 'Appointment/assets/js/jquery.min.js' %}"></script>
+
+	<!-- Bootstrap Core JS -->
+	<script src="{% static 'Appointment/assets/js/popper.min.js' %}"></script>
+	<script type=“text/javascript” src="{% static 'Appointment/assets/js/bootstrap.min.js' %}"></script>
+
+	<!-- Sticky Sidebar JS -->
+	<script src="{% static 'Appointment/assets/plugins/theia-sticky-sidebar/ResizeSensor.js' %}"></script>
+	<script src="{% static 'Appointment/assets/plugins/theia-sticky-sidebar/theia-sticky-sidebar.js' %}"></script>
+
+	<!-- Circle Progress JS -->
+	<script src="{% static 'Appointment/assets/js/circle-progress.min.js' %}"></script>
+
+	<script src="{% static 'Appointment/assets/plugins/fancybox/jquery.fancybox.min.js' %}"></script>
+
+	<!-- Custom JS -->
+	<script src="{% static 'Appointment/assets/js/script.js' %}"></script>
+
+</body>
+
+</html>

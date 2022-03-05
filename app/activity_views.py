@@ -195,6 +195,15 @@ def viewActivity(request, aid=None):
                 return redirect(f"/modifyEndActivity/?reimb_id={re.id}")
             except:
                 return redirect(f"/modifyEndActivity/")
+
+        elif option == "checkinoffline":
+            # 进入调整签到界面
+            if activity.status != Activity.Status.END:
+                return redirect(message_url(wrong('活动尚未结束!'), request.path))
+            if not ownership:
+                return redirect(message_url(wrong('您没有调整签到信息的权限!'), request.path))
+            return redirect(f"/offlineCheckinActivity/{aid}")
+
         elif option == "sign" or option == "enroll": #下载活动签到信息或者报名信息
             if not ownership:
                 return redirect(message_url(wrong('没有下载权限!'), request.path))
@@ -205,7 +214,7 @@ def viewActivity(request, aid=None):
             return redirect("/welcome/")
         else:
             return redirect(message_url(wrong('无效的请求!'), request.path))
-        
+
     elif request.method == "GET":
         warn_code = request.GET.get("warn_code")
         warn_msg = request.GET.get("warn_message")
@@ -224,6 +233,7 @@ def viewActivity(request, aid=None):
     start_month = activity.start.month
     start_date = activity.start.day
     duration = activity.end - activity.start
+    duration = duration - timedelta(microseconds=duration.microseconds)
     prepare_times = Activity.EndBeforeHours.prepare_times
     apply_deadline = activity.apply_end.strftime("%Y-%m-%d %H:%M")
     introduction = activity.introduction
@@ -280,10 +290,9 @@ def viewActivity(request, aid=None):
         aQRcode = get_activity_QRcode(activity)
 
     # 活动宣传图片 ( 一定存在 )
-    photo = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
-    firstpic = str(photo.image)
-    if firstpic[0] == 'a': # 不是static静态文件夹里的文件，而是上传到media/activity的图片
-        firstpic = MEDIA_URL + firstpic
+    photo: ActivityPhoto = activity.photos.get(type=ActivityPhoto.PhotoType.ANNOUNCE)
+    # 不是static静态文件夹里的文件，而是上传到media/activity的图片
+    firstpic = photo.get_image_path()
 
     # 总结图片，不一定存在
     summary_photo_exists = False
@@ -293,7 +302,7 @@ def viewActivity(request, aid=None):
             summary_photo_exists = True
         except Exception as e:
             pass
-    
+
     # 参与者, 无论报名是否通过
     participants = Participant.objects.filter(Q(activity_id=activity),
         Q(status=Participant.AttendStatus.APPLYING) | Q(status=Participant.AttendStatus.APLLYSUCCESS) | Q(status=Participant.AttendStatus.ATTENDED) | Q(status=Participant.AttendStatus.UNATTENDED))
@@ -484,10 +493,10 @@ def checkinActivity(request, aid=None):
                     context = succeed("签到成功!")
         except:
             context = wrong("您尚未报名该活动!")
-        
+
     else:
         context = wrong("活动开始前一小时开放签到，请耐心等待!")
-        
+
     # TODO 在 activity_info 里加更多信息
     return redirect(message_url(context, f"/viewActivity/{aid}"))
 
@@ -643,7 +652,7 @@ def addActivity(request, aid=None):
             # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
             assert context["warn_code"] == 2, context["warn_message"]
             # 成功后重新加载界面
-            html_display["warn_msg"] = "评论成功。"
+            html_display["warn_message"] = "评论成功。"
             html_display["warn_code"] = 2
             # return redirect(f"/editActivity/{aid}")
         else:
@@ -654,10 +663,10 @@ def addActivity(request, aid=None):
                     org = get_person_or_org(request.user, "Organization")
                     assert activity.organization_id == org
                     modify_activity(request, activity)
-                html_display["warn_msg"] = "修改成功。"
+                html_display["warn_message"] = "修改成功。"
                 html_display["warn_code"] = 2
             except ActivityException as e:
-                html_display["warn_msg"] = str(e)
+                html_display["warn_message"] = str(e)
                 html_display["warn_code"] = 1
                 # return redirect(f"/viewActivity/{activity.id}")
             except Exception as e:
@@ -667,7 +676,7 @@ def addActivity(request, aid=None):
     # 下面的操作基本如无特殊说明，都是准备前端使用量
     defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG", "id": f"picture{i+1}"} for i in range(5)]
     html_display["applicant_name"] = me.oname
-    html_display["app_avatar_path"] = me.get_user_ava() 
+    html_display["app_avatar_path"] = me.get_user_ava()
 
     use_template = False
     if request.method == "GET" and request.GET.get("template"):
@@ -846,7 +855,7 @@ def examineActivity(request, aid):
                 context = addComment(request, activity, activity.organization_id.organization_id)
                 # 评论内容不为空，上传文件类型为图片会在前端检查，这里有错直接跳转
                 assert context["warn_code"] == 2
-                html_display["warn_msg"] = "评论成功。"
+                html_display["warn_message"] = "评论成功。"
                 html_display["warn_code"] = 2
             except Exception as e:
                 return EXCEPT_REDIRECT
@@ -858,7 +867,7 @@ def examineActivity(request, aid):
                         id=int(aid)
                     )
                     accept_activity(request, activity)
-                html_display["warn_msg"] = "活动已通过审核。"
+                html_display["warn_message"] = "活动已通过审核。"
                 html_display["warn_code"] = 2
             except Exception as e:
                 return EXCEPT_REDIRECT
@@ -869,7 +878,7 @@ def examineActivity(request, aid):
                         id=int(aid)
                     )
                     reject_activity(request, activity)
-                html_display["warn_msg"] = "活动已被拒绝。"
+                html_display["warn_message"] = "活动已被拒绝。"
                 html_display["warn_code"] = 2
             except Exception as e:
                 return EXCEPT_REDIRECT
@@ -929,4 +938,62 @@ def examineActivity(request, aid):
     # bar_display["title_name"] = "审查活动"
     # bar_display["narbar_name"] = "审查活动"
     return render(request, "activity_add.html", locals())
-    
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(source='activity_views[offlineCheckinActivity]', record_user=True)
+def offlineCheckinActivity(request, aid):
+    '''
+    修改签到功能
+    只有举办活动的组织账号可查看和修改
+    注：
+        该函数实现的重要前提是活动已经设置所有组织成员签到初始状态为未签到
+    '''
+    _, user_type, _ = utils.check_user_type(request.user)
+    me = get_person_or_org(request.user, user_type)
+    try:
+        aid = int(aid)
+        activity = Activity.objects.get(id=aid)
+        assert me == activity.organization_id and user_type == "Organization"
+    except:
+        return redirect(message_url(wrong('请不要恶意访问其他网页！')))
+
+    member_list = Participant.objects.filter(
+        activity_id=aid,
+        status__in=[
+            Participant.AttendStatus.UNATTENDED,
+            Participant.AttendStatus.ATTENDED,
+        ])
+
+    if request.method == "POST" and request.POST:
+        option = request.POST.get("option")
+        if option == "saveSituation":
+            # 修改签到状态
+
+            member_userids = member_list.values_list("person_id", flat=True)
+            member_attend, member_unattend = [], []
+            for person_id in member_userids:
+                checkin = request.POST.get(f"checkin_{person_id}")
+                if checkin == "yes":
+                    member_attend.append(person_id)
+                elif checkin == "no":
+                    member_unattend.append(person_id)
+            try:
+                with transaction.atomic():
+                    member_list.select_for_update().filter(
+                        person_id_id__in=member_attend).update(
+                            status = Participant.AttendStatus.ATTENDED)
+                    member_list.select_for_update().filter(
+                        person_id_id__in=member_unattend).update(
+                            status = Participant.AttendStatus.UNATTENDED)
+            except:
+                return redirect(message_url(wrong("修改失败。"), request.path))
+            return redirect(message_url(
+                succeed("修改签到信息成功。"), f"/viewActivity/{aid}"))
+
+    bar_display = utils.get_sidebar_and_navbar(request.user,
+                                               navbar_name="调整签到信息")
+    member_list = member_list.select_related('person_id')
+    render_context = dict(bar_display=bar_display, member_list=member_list)
+    return render(request, "activity_checkinoffline.html", render_context)
