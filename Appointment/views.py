@@ -660,9 +660,14 @@ def index(request):  # 主页
 
     #--------- 1,2 地下室状态部分 ---------#
 
-    double_list = ['航模', '绘画', '书法']
-    function_room_list = room_list.exclude(Rid__icontains="R").filter(Rstatus=Room.Status.PERMITTED).filter(
-        ~Q(Rtitle__icontains="研讨") | Q(Rtitle__icontains="绘画") | Q(Rtitle__icontains="航模") | Q(Rtitle__icontains="书法")).order_by('Rid')
+    double_list = ['航模', '绘画', '书法', '活动']
+    function_room_title_query = ~Q(Rtitle__icontains="研讨")
+    function_room_title_query |= Q(Rtitle__icontains="/")
+    for room_title in double_list:
+        function_room_title_query |= Q(Rtitle__icontains=room_title)
+    function_room_list = room_list.exclude(Rid__icontains="R").filter(
+        function_room_title_query,
+        Rstatus=Room.Status.PERMITTED).order_by('Rid')
 
     #--------- 地下室状态：left tab ---------#
     suspended_room_list = room_list.filter(
