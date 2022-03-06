@@ -185,6 +185,8 @@ class OrganizationAdmin(admin.ModelAdmin):
         return mark_safe(display)
     Managers.short_description = "管理者"
 
+    inlines = [PositionInline]
+
     actions = ['all_subscribe', 'all_unsubscribe']
 
     @as_action("设置 全部订阅")
