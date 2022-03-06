@@ -24,6 +24,7 @@ from app.course_utils import (
     finish_course,
     str_to_time,
     download_course_record,
+    download_select_info,
 )
 from app.utils import get_person_or_org
 
@@ -684,3 +685,27 @@ def outputRecord(request):
     if examine_teacher != me:
         return redirect(message_url(wrong("只有书院课审核老师账号可以访问该链接！")))
     return download_course_record()
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(EXCEPT_REDIRECT, source='course_views[outputSelectInfo]', record_user=True)
+def outputSelectInfo(request):
+    """
+    导出该课程的选课名单
+    """
+    # 检查：不是超级用户，必须是小组，修改是必须是自己
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = utils.get_person_or_org(request.user, user_type)
+    try:
+        assert user_type == "Organization" and me.otype.otype_name == COURSE_TYPENAME, '只有书院课程账号才能下载选课名单!'
+        # 暂时仅支持一个课程账号一学期只能开一门课
+        courses = Course.objects.activated().filter(organization=me)
+        assert courses.exists(), '只有在开课以后才能下载选课名单！'
+        course = courses[0]
+        assert course.status in [Course.Status.STAGE2,
+                                 Course.Status.SELECT_END], '补退选以后才能下载选课名单！'
+    except Exception as e:
+        return redirect(message_url(wrong(str(e)), '/showCourseActivity/'))
+
+    return download_select_info(course)

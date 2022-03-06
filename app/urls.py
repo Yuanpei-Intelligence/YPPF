@@ -95,8 +95,9 @@ urlpatterns = [
     path("editCourseActivity/<str:aid>", course_views.editCourseActivity, name="editCourseActivity"),
     path("showCourseActivity/", course_views.showCourseActivity, name="showCourseActivity"),
     path("showCourseRecord/", course_views.showCourseRecord, name="showCourseRecord"),
-    # 学时数据导出
+    # 数据导出
     path("outputRecord/", course_views.outputRecord, name="outputRecord"),
+    path("outputSelectInfo/", course_views.outputSelectInfo, name="outputSelectInfo"),
 ] + [
     # 反馈中心
     path("feedback/", feedback_views.feedback_homepage, name="feadbackWelcome"),
