@@ -677,7 +677,8 @@ def index(request):  # 主页
 
     #--------- 地下室状态：right tab ---------#
     talk_room_list = room_list.filter(                                              # 研讨室（展示临时预约）
-        Rtitle__icontains="研讨").filter(Rstatus=Room.Status.PERMITTED).order_by('Rmin', 'Rid')
+        Rtitle__icontains="研讨",
+        Rstatus=Room.Status.PERMITTED).order_by('Rid')
     room_info = [(room, {'Room': room.Rid} in occupied_rooms, format_time(          # 研讨室占用情况
         room_appointments[room.Rid])) for room in talk_room_list]
 
