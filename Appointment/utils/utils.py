@@ -7,6 +7,7 @@ import threading
 from Appointment.models import Participant, Room, Appoint, CardCheckInfo  # 数据库模型
 from django.contrib.auth.models import User
 from django.db import transaction  # 原子化更改数据库
+from django.db.models import Q
 from datetime import datetime, timedelta
 from django.http import JsonResponse
 import os
@@ -117,7 +118,6 @@ def doortoroom(door):
 send_message = requests.session()
 
 
-# , credit=''):
 def send_wechat_message(
     stuid_list,
     start_time,
@@ -129,6 +129,7 @@ def send_wechat_message(
     num,
     reason='',
     url=None,
+    is_admin=None,
 ):
     '''
     stuid_list: Iter[sid] 学号列表，不是学生!
@@ -144,7 +145,8 @@ def send_wechat_message(
 
     # 之后会呈现的信息只由以下的标题和两个列表拼接而成
     title = '地下室预约提醒'
-    is_admin = 'admin' in message_type or message_type in {'longterm'}  # 决定标题呈现方式
+    if is_admin is None:
+        is_admin = 'admin' in message_type  # 决定标题呈现方式
     appoint_info = []
     show_time_and_place = True  # 显示预约时间地点
     show_main_student = True    # 显示发起人
@@ -173,9 +175,10 @@ def send_wechat_message(
         extra_info = ['原因：' + reason]  # '当前信用分：'+str(credit)
     elif message_type == 'cancel':
         title = '您有一条预约被取消'
-    elif message_type == 'longterm':    # 发起一条长线预约
-        title = f'您的预约新增了{reason}周同时段预约'
+    elif message_type.startswith('longterm'):    # 发起一条长线预约
+        title = f'您有一条预约被长线化'
         show_announcement = True
+        extra_info = ['详情：' + reason]
     elif message_type == 'confirm_admin_w2c':    # WAITING to CONFIRMED
         title = '您有一条预约已确认完成'
         show_main_student = False
@@ -491,3 +494,38 @@ def cardcheckinfo_writer(Participant, Room, real_status, should_status, message=
 
 def check_temp_appoint(room):
     return '研讨' in room.Rtitle
+
+
+def get_conflict_appoints(appoint, times=1, interval=1, no_cross_day=False, lock=False):
+    '''获取以时间排序的冲突预约，可以加锁，但不负责开启事务'''
+    # 获取该房间的所有有效预约
+    activate_appoints = Appoint.objects.not_canceled().filter(Room=appoint.Room)
+    if lock:
+        activate_appoints = activate_appoints.select_for_update()
+
+    # 空的Q对象进行与和或运算的结果都是另一个操作数
+    conditions = Q()
+    if no_cross_day:
+        conditions &= Q(
+            # 开始比当前的结束时间早，结束比当前的开始时间晚
+            Astart__time__lt=appoint.Afinish.time(),
+            Afinish__time__gt=appoint.Astart.time(),
+        )
+        date_range = [
+            appoint.Astart.date() + timedelta(days=7 * week)
+            for week in range(0, times * interval, interval)
+            ]
+        conditions &= Q(
+            Astart__date__in=date_range,
+            Afinish__date__in=date_range,
+        )
+    else:
+        for week in range(0, times * interval, interval):
+            conditions |= Q(
+                # 开始比当前的结束时间早
+                Astart__lt=appoint.Afinish + timedelta(days=7 * week),
+                # 结束比当前的开始时间晚
+                Afinish__gt=appoint.Astart + timedelta(days=7 * week),
+            )
+    conflict_appoints = activate_appoints.filter(conditions)
+    return conflict_appoints.order_by('Astart', 'Afinish')

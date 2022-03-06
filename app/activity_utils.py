@@ -661,8 +661,7 @@ def create_activity(request):
         return old_ones[0].id, False
 
     # 审批老师存在
-    examine_teacher = NaturalPerson.objects.get(
-        name=context["examine_teacher"], identity=NaturalPerson.Identity.TEACHER)
+    examine_teacher = NaturalPerson.objects.get_teacher(context["examine_teacher"])
 
     # 检查完毕，创建活动
     org = get_person_or_org(request.user, "Organization")
@@ -751,33 +750,6 @@ def modify_activity(request, activity):
 def modify_reviewing_activity(request, activity):
 
     context = activity_base_check(request, edit=True)
-
-    """
-    不允许修改审批老师
-    if context["examine_teacher"] == activity.examine_teacher.name:
-        pass
-    else:
-        examine_teacher = NaturalPerson.objects.get(
-            name=context["examine_teacher"], identity=NaturalPerson.Identity.TEACHER)
-        assert examine_teacher.identity == NaturalPerson.Identity.TEACHER
-        activity.examine_teacher = examine_teacher
-        # TODO
-        # 修改审核记录，通知老师 
-
-        notification = Notification.objects.get(relate_instance=activity, status=Notification.Status.UNDONE)
-        notification_status_change(notification, Notification.Status.DELETE)
-
-        notification_create(
-            receiver=examine_teacher.person_id,
-            sender=request.user,
-            typename=Notification.Type.NEEDDO,
-            title=Notification.Title.VERIFY_INFORM,
-            content="您有一个活动待审批",
-            URL=f"/examineActivity/{activity.id}",
-            relate_instance=activity,
-        )
-    """
-
 
     if context.get("adjust_apply") is not None:
         # 注意这里是不调整

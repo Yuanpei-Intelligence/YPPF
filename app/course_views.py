@@ -38,6 +38,7 @@ __all__ = [
     'showCourseRecord',
     'selectCourse',
     'viewCourse',
+    'outputRecord',
 ]
 
 
@@ -56,7 +57,7 @@ def editCourseActivity(request, aid):
         activity = Activity.objects.get(id=aid)
     except:
         return redirect(message_url(wrong("活动不存在!")))
-    
+
     if user_type == "Person":
         my_messages.transfer_message_context(
             utils.user_login_org(request, activity.organization_id),
@@ -136,10 +137,10 @@ def addSingleCourseActivity(request):
     try:
         course = Course.objects.activated().get(organization=me)
     except:
-        return redirect(message_url(wrong('本学期尚未开设书院课程，请先发起选课！'), 
+        return redirect(message_url(wrong('本学期尚未开设书院课程，请先发起选课！'),
                                     '/showCourseActivity/'))
-    if course.status != Course.Status.SELECT_END:
-        return redirect(message_url(wrong('选课尚未结束，不能发起课程！'), 
+    if course.status != Course.Status.STAGE2 and course.status != Course.Status.SELECT_END:
+        return redirect(message_url(wrong('只有补退选开始或选课结束以后才能增加课时！'),
                                     '/showCourseActivity/'))
 
     my_messages.transfer_message_context(request.GET, html_display)
@@ -153,13 +154,13 @@ def addSingleCourseActivity(request):
                     return redirect(message_url(
                         succeed('存在信息相同的课程活动，已为您自动跳转!'),
                         f'/viewActivity/{aid}'))
-                return redirect(message_url(succeed('活动创建成功！'), 
+                return redirect(message_url(succeed('活动创建成功！'),
                                             f'/showCourseActivity/'))
         except AssertionError as err_info:
             return redirect(message_url(wrong(str(err_info)), request.path))
         except Exception as e:
             return redirect(message_url(wrong("课程活动创建失败!"), request.path))
-    
+
 
 
     # 前端使用量
@@ -291,7 +292,7 @@ def showCourseRecord(request):
     year = CURRENT_ACADEMIC_YEAR
     semester = Semester.now()
 
-    course = Course.objects.activated().filter(
+    course = Course.objects.activated(noncurrent=None).filter(
         organization=me,
         year=year,
         semester=semester,
@@ -432,9 +433,8 @@ def selectCourse(request):
 
     if user_type == "Organization":
         return redirect(message_url(wrong("组织账号无法访问书院选课页面。如需选课，请切换至个人账号；如需查看您发起的书院课程，请点击【我的课程】。")))
-        
-    is_student = (False
-                  if me.identity == NaturalPerson.Identity.TEACHER else True)
+
+    is_student = (me.identity == NaturalPerson.Identity.STUDENT)
 
     # 暂时不启用意愿点机制
     # if not is_staff:
@@ -589,28 +589,37 @@ def addCourse(request, cid=None):
 
     my_messages.transfer_message_context(request.GET, html_display)
 
+    editable = False
+    time_limit = False
+    if edit:
+        # 选课结束前才能修改课程信息
+        if course.status not in [Course.Status.SELECT_END, Course.Status.END]:
+            editable = True
+        # 上课时间只有在选课未开始才能修改
+        if course.status != Course.Status.WAITING:
+            time_limit = True
+
     # 处理 POST 请求
     # 在这个界面，不会返回render，而是直接跳转到viewCourse，可以不设计bar_display
     if request.method == "POST" and request.POST:
         if not edit:
-
-            #增加截止开课的时间点
-            add_course_DDL = str_to_time(get_setting("course/btx_election_end"))
-            if datetime.now() > add_course_DDL:
+            # 发起选课
+            course_DDL = str_to_time(get_setting("course/btx_election_end"))
+            if datetime.now() > course_DDL:
                 return redirect(message_url(succeed("已超过选课时间节点，无法发起课程！"),
-                                        f'/showCourseActivity/'))
-            #发起选课
+                                            f'/showCourseActivity/'))
+
             context = create_course(request)
             html_display["warn_code"] = context["warn_code"]
             if html_display["warn_code"] == 2:
                 return redirect(message_url(succeed("创建课程成功！为您自动跳转到编辑界面。您也可切换到个人账号在书院课程页面查看这门课程！"),
-                                        f'/editCourse/{context["cid"]}'))
+                                            f'/editCourse/{context["cid"]}'))
         else:
-            # 仅未开始选课阶段可以修改
-            if course.status != Course.Status.WAITING:
+            if not editable:
                 return redirect(message_url(wrong('当前课程状态不允许修改!'),
                                             f'/editCourse/{course.id}'))
             context = create_course(request, course.id)
+
         html_display["warn_code"] = context["warn_code"]
         html_display["warn_message"] = context["warn_message"]
 
@@ -626,11 +635,9 @@ def addCourse(request, cid=None):
        ["劳" , Course.CourseType.LABOUR],
     ]
     defaultpics = [{"src": f"/static/assets/img/announcepics/{i+1}.JPG", "id": f"picture{i+1}"} for i in range(5)]
-    editable=False
-    if edit and course.status == Course.Status.WAITING: #选课未开始才能修改
-        editable = True
 
     if edit:
+        course = Course.objects.get(id=cid)
         name = utils.escape_for_templates(course.name)
         organization = course.organization
         year = course.year
@@ -654,3 +661,26 @@ def addCourse(request, cid=None):
         bar_display = utils.get_sidebar_and_navbar(request.user, "修改课程")
 
     return render(request, "register_course.html", locals())
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(EXCEPT_REDIRECT, source='course_views[outputRecord]', record_user=True)
+def outputRecord(request):
+    """
+    导出所有学时信息
+    导出文件格式为excel，包括汇总和详情两个sheet。
+    汇总包括每位同学的学号、姓名和总有效学时
+    详情包括每位同学所有学时（有效或无效）的详细获得情况：课程、学年等
+    """
+
+    # 检查：要求必须为书院课程审核老师（local_json定义）
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = utils.get_person_or_org(request.user, user_type)
+    # 获取默认审核老师，不应该出错
+    examine_teacher = NaturalPerson.objects.get_teacher(
+        get_setting("course/audit_teacher"))
+
+    if examine_teacher != me:
+        return redirect(message_url(wrong("只有书院课审核老师账号可以访问该链接！")))
+    return download_course_record()

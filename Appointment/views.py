@@ -295,7 +295,6 @@ def cancelAppoint(request):
         scheduler_func.set_cancel_wechat(appoint)
 
     return redirect(message_url(context, reverse("Appointment:admin_index")))
-    return scheduler_func.cancelFunction(request)
 
 
 @csrf_exempt
@@ -425,6 +424,13 @@ def admin_credit(request):
 
     vio_list = web_func.get_appoints(
         Pid, 'violate', major=True, to_json=False).get('data')
+
+    if request.method == 'POST' and request.POST:
+        if request.POST.get('feedback') is not None:
+            # 申诉反馈
+            # TODO: 检查合法性 添加信息 查询已有反馈并跳转
+            return redirect(GLOBAL_INFO.login_url.rstrip('/') + '/feedback/')
+
     vio_list_display = web_func.appoints2json(vio_list)
     for x, appoint in zip(vio_list_display, vio_list):
         x['Astart_hour_minute'] = appoint.Astart.strftime("%I:%M %p")
@@ -1035,7 +1041,6 @@ def check_out(request):  # 预约表单提交
 
     if request.method == 'POST':
         # 到这里说明预约失败 补充一些已有信息,避免重复填写
-        js_stu_list = web_func.get_student_chosen_list(request)
         selected_stu_list = [
             w for w in js_stu_list if w['id'] in contents['students']]
         no_clause = True

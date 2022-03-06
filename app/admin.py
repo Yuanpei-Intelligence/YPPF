@@ -1,6 +1,6 @@
 from app.models import *
+from boottest.admin_utils import *
 
-from functools import wraps
 from datetime import datetime
 from django.contrib import admin
 from django.db import transaction
@@ -14,38 +14,37 @@ admin.site.site_header = '元培智慧校园 - 管理后台'
 # admin.site.site_header = '元培成长档案 - 管理后台'
 
 
-def as_action(description=None, /, register_to=None, *,
-              superuser=True, atomic=False, update=False):
-    '''
-    将函数转化为操作的形式，并试图注册
-    检查用户是否有权限执行操作，有权限时捕获错误
-    '''
-    def actual_decorator(action_function):
-        @wraps(action_function)
-        def _wrapped_view(self, request, queryset):
-            if superuser and not request.user.is_superuser:
-                return self.message_user(request=request,
-                                         message='操作失败,没有权限,请联系老师!',
-                                         level='warning')
-            try:
-                if atomic or update:
-                    with transaction.atomic():
-                        if update:
-                            queryset = queryset.select_for_update()
-                        return action_function(self, request, queryset)
-                return action_function(self, request, queryset)
-            except Exception as e:
-                return self.message_user(request=request,
-                                         message=f'操作时发生{type(e)}异常: {e}',
-                                         level='error')
-        if description is not None:
-            _wrapped_view.short_description = description
-        if register_to is not None and _wrapped_view.__name__ not in register_to:
-            register_to.append(_wrapped_view.__name__)
-        return _wrapped_view
-    return actual_decorator
+# 通用内联模型
+@readonly_inline
+class PositionInline(admin.TabularInline):
+    model = Position
+    classes = ['collapse']
+    ordering = ['-id']
+    fields = [
+        'person', 'org',
+        'in_year', 'in_semester',
+        'is_admin', 'pos', 'status',
+    ]
+    show_change_link = True
+
+@readonly_inline
+class ParticipantInline(admin.TabularInline):
+    model = Participant
+    classes = ['collapse']
+    ordering = ['-activity_id']
+    fields = ['activity_id', 'person_id', 'status']
+    show_change_link = True
+
+@readonly_inline
+class CourseParticipantInline(admin.TabularInline):
+    model = CourseParticipant
+    classes = ['collapse']
+    ordering = ['-id']
+    fields = ['course', 'person', 'status']
+    show_change_link = True
 
 
+# 后台模型
 @admin.register(NaturalPerson)
 class NaturalPersonAdmin(admin.ModelAdmin):
     fieldsets = (
@@ -85,6 +84,8 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         "first_time_login", "wechat_receive_level",
         "stu_grade", "stu_class",
         )
+
+    inlines = [PositionInline, ParticipantInline, CourseParticipantInline]
 
     actions = [
         'YQ_send',
@@ -184,6 +185,8 @@ class OrganizationAdmin(admin.ModelAdmin):
         return mark_safe(display)
     Managers.short_description = "管理者"
 
+    inlines = [PositionInline]
+
     actions = ['all_subscribe', 'all_unsubscribe']
 
     @as_action("设置 全部订阅")
@@ -209,6 +212,7 @@ class PositionAdmin(admin.ModelAdmin):
     list_display = ["person", "org", "pos", "pos_name", "is_admin"]
     search_fields = ("person__name", "org__oname", 'org__otype__otype_name')
     list_filter = ('pos', 'is_admin', 'org__otype')
+    autocomplete_fields = ['person', 'org']
 
     def pos_name(self, obj):
         return obj.org.otype.get_name(obj.pos)
@@ -326,19 +330,22 @@ class ActivityAdmin(admin.ModelAdmin):
                 return queryset.filter(id__in=error_id_set)
             return queryset
     
-    list_filter =   (
-                        "status", "inner", "need_checkin", "valid",
-                        'category',
-                        "organization_id__otype", "source",
-                        ErrorFilter,
-                        'endbefore', "capacity", "year",
-                        "publish_time", 'start', 'end',
-                    )
+    list_filter = (
+        "status",
+        'year', 'semester', 'category',
+        "organization_id__otype",
+        "inner", "need_checkin", "valid", "source",
+        ErrorFilter,
+        'endbefore',
+        "publish_time", 'start', 'end',
+    )
     date_hierarchy = 'start'
 
     def participant_diaplay(self, obj):
         return f'{obj.current_participants}/{"无限" if obj.capacity == 10000 else obj.capacity}'
     participant_diaplay.short_description = "报名情况"
+
+    inlines = [ParticipantInline]
 
     actions = []
 
@@ -650,12 +657,14 @@ class CourseAdmin(admin.ModelAdmin):
         'classroom', 'teacher',
     )
     list_filter = ("year", "semester", "type", "status",)
+    autocomplete_fields = ['organization']
 
-    class CourseTimeInline(admin.StackedInline):
+    class CourseTimeInline(admin.TabularInline):
         model = CourseTime
+        classes = ['collapse']
         extra = 1
 
-    inlines = [CourseTimeInline,]
+    inlines = [CourseTimeInline, CourseParticipantInline]
     
     def participant_diaplay(self, obj):
         return f'{obj.current_participants}/{"无限" if obj.capacity == 10000 else obj.capacity}'
@@ -683,6 +692,7 @@ class CourseAdmin(admin.ModelAdmin):
 class CourseParticipantAdmin(admin.ModelAdmin):
     list_display = ["course", "person", "status",]
     search_fields = ("course__name", "person__name",)
+    autocomplete_fields = ['course', 'person']
 
 
 @admin.register(CourseRecord)
@@ -751,11 +761,24 @@ class FeedbackTypeAdmin(admin.ModelAdmin):
     list_display = ["name","org_type","org",]
     search_fields =  ("name","org_type","org",)
 
+
+@admin.register(PageLog)
+class PageLogAdmin(admin.ModelAdmin):
+    list_display = ["user", "type", "page", "time"]
+    list_filter = ["type", "page", 'time', "platform", "explore_name", "explore_version"]
+    search_fields =  ["user__username", "page"]
+    date_hierarchy = "time"
+
+@admin.register(ModuleLog)
+class ModuleLogAdmin(admin.ModelAdmin):
+    list_display = ["user", "type", "page", "module_name", "time"]
+    list_filter = ["type", "page", "module_name", 'time', "platform", "explore_name", "explore_version"]
+    search_fields = ["user__username", "page", "module_name"]
+    date_hierarchy = "time"
+
+
 admin.site.register(YQPointDistribute)
 admin.site.register(QandA)
 admin.site.register(OrganizationTag)
-admin.site.register(PageLog)
-admin.site.register(ModuleLog)
-
 admin.site.register(Comment)
 admin.site.register(CommentPhoto)
