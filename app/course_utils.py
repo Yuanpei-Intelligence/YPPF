@@ -1319,7 +1319,7 @@ def download_select_info(course=None):
     year = (course.year + 1) if semester == "春" else course.year
     ctime = datetime.now().strftime('%Y-%m-%d %H:%M')
     # 给文件名中添加日期时间
-    file_name = f'{str(year)}{semester}{course.name}选课名单-{ctime}'
+    file_name = f'{year}{semester}{course.name}选课名单-{ctime}'
     response = HttpResponse(content_type='application/vnd.ms-excel')
     response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
     wb.save(response)

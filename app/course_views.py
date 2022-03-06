@@ -40,6 +40,7 @@ __all__ = [
     'selectCourse',
     'viewCourse',
     'outputRecord',
+    'outputSelectInfo',
 ]
 
 
@@ -698,7 +699,8 @@ def outputSelectInfo(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
     try:
-        assert user_type == "Organization" and me.otype.otype_name == COURSE_TYPENAME, '只有书院课程账号才能下载选课名单!'
+        assert (user_type == "Organization"
+                and me.otype.otype_name == COURSE_TYPENAME), '只有书院课程账号才能下载选课名单!'
         # 暂时仅支持一个课程账号一学期只能开一门课
         courses = Course.objects.activated().filter(organization=me)
         assert courses.exists(), '只有在开课以后才能下载选课名单！'
