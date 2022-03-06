@@ -4,7 +4,7 @@
 
 <!-- TODO: Link to related pages -->
 
-{% with title='我的课程' link1='/addSingleCourseActivity' btn_name1='增加课时' link2='/addCourse' btn_name2='发起选课' link3='/showCourseRecord' btn_name3='课程结项' %}
+{% with title='我的课程' link1='/addSingleCourseActivity' btn_name1='增加课时' link2='/addCourse' btn_name2='发起选课' link3='/showCourseRecord' btn_name3='课程结项' link4='/outputSelectInfo' btn_name4='选课名单' %}
 
 <!--  BEGIN CONTENT AREA  -->
 <div id="content" class="main-content">
@@ -38,6 +38,9 @@
                                     </button>
                                     <button class="dropdown-item" 
                                         onclick="location.href = '{{link3}}';">{{btn_name3}}
+                                    </button>
+                                    <button class="dropdown-item" 
+                                    onclick="location.href = '{{link4}}';">{{btn_name4}}
                                     </button>
                                 </div>
                             </div>
