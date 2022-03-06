@@ -163,7 +163,7 @@ def viewFeedback(request, fid):
 
             # 教师选择公开反馈
             elif (
-                user_type == "Person" and me.identity == NaturalPerson.Identity.TEACHER
+                user_type == "Person" and me.is_teacher()
             ):
                 # 若组织或发布者有不公开的意愿，则教师不能公开
                 if (feedback.publisher_public != True or feedback.org_public != True):
@@ -220,7 +220,7 @@ def viewFeedback(request, fid):
                 """
             # 教师选择隐藏反馈
             elif (
-                user_type == "Person" and me.identity == NaturalPerson.Identity.TEACHER
+                user_type == "Person" and me.is_teacher()
             ):
                 with transaction.atomic():
                     feedback = Feedback.objects.select_for_update().get(id=fid)
@@ -277,7 +277,7 @@ def viewFeedback(request, fid):
             and feedback.issue_status != Feedback.IssueStatus.DELETED:
             public_editable = True
     # 二、当前登录用户为老师
-    elif user_type == "Person" and me.identity == NaturalPerson.Identity.TEACHER:
+    elif user_type == "Person" and me.is_teacher():
         login_identity = "teacher"
         # 未结束反馈可评论
         if feedback.solve_status in (Feedback.SolveStatus.SOLVING, Feedback.SolveStatus.UNMARKED) \
@@ -379,7 +379,7 @@ def feedback_homepage(request):
     show_feedback = True
     if user_type == "Person":
         # 教师页面不显示我的反馈
-        if me.identity == NaturalPerson.Identity.TEACHER:
+        if me.is_teacher():
             show_feedback = False
         my_feedback = issued_feedback.filter(person_id=me)
         my_all_feedback = Feedback.objects.filter(person_id=me)
@@ -426,7 +426,7 @@ def feedback_homepage(request):
     draft_feedback = my_all_feedback.filter(issue_status=Feedback.IssueStatus.DRAFTED)
     # -----------------------------老师审核---------------------------------
     
-    is_teacher = me.identity == NaturalPerson.Identity.TEACHER if is_person else False
+    is_teacher = me.is_teacher() if is_person else False
     my_wait_public = []
     my_public_feedback = []
     my_process_feedback = []  # 我已处理列表

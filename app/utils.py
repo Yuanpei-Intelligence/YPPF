@@ -225,7 +225,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         # bar_display["my_org_len"] = len(bar_display["my_org_list"])
         
         
-        bar_display['is_auditor'] = me.identity == NaturalPerson.Identity.TEACHER
+        bar_display['is_auditor'] = me.is_teacher()
     
     else:
         bar_display["profile_name"] = "小组主页"

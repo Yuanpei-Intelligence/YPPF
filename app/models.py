@@ -95,8 +95,15 @@ class NaturalPersonManager(models.Manager):
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
 
-    def teachers(self):
+    def teachers(self, activate=True):
+        if activate:
+            self = self.activated()
         return self.filter(identity=NaturalPerson.Identity.TEACHER)
+
+    def get_teacher(self, name_or_id, activate=True):
+        '''姓名或工号，不存在或不止一个时抛出异常'''
+        teachers = self.teachers(activate=activate)
+        return teachers.get(Q(name=name_or_id) | Q(person_id__username=name_or_id))
 
 
 class NaturalPerson(models.Model):
@@ -198,6 +205,12 @@ class NaturalPerson(models.Model):
         if not avatar:
             avatar = "avatar/person_default.jpg"
         return image_url(avatar)
+
+    def is_teacher(self, activate=True):
+        result = self.identity == NaturalPerson.Identity.TEACHER
+        if activate:
+            result &= self.status != NaturalPerson.GraduateStatus.GRADUATED
+        return result
 
     def get_accept_promote_display(self):
         return "是" if self.accept_promote else "否"

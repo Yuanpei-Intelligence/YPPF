@@ -434,8 +434,7 @@ def selectCourse(request):
     if user_type == "Organization":
         return redirect(message_url(wrong("组织账号无法访问书院选课页面。如需选课，请切换至个人账号；如需查看您发起的书院课程，请点击【我的课程】。")))
 
-    is_student = (False
-                  if me.identity == NaturalPerson.Identity.TEACHER else True)
+    is_student = (me.identity == NaturalPerson.Identity.STUDENT)
 
     # 暂时不启用意愿点机制
     # if not is_staff:
@@ -679,9 +678,8 @@ def outputRecord(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
     # 获取默认审核老师，不应该出错
-    default_examiner_name = get_setting("course/audit_teacher")
-    examine_teacher = NaturalPerson.objects.get(
-        name=default_examiner_name, identity=NaturalPerson.Identity.TEACHER)
+    examine_teacher = NaturalPerson.objects.get_teacher(
+        get_setting("course/audit_teacher"))
 
     if examine_teacher != me:
         return redirect(message_url(wrong("只有书院课审核老师账号可以访问该链接！")))
