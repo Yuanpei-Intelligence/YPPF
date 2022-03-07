@@ -1677,6 +1677,7 @@ class Feedback(CommentBase):
     person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
     org_type = models.ForeignKey(OrganizationType, on_delete=models.CASCADE, null=True, blank=True)
     org = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
+    visit_times = models.IntegerField("浏览次数",default=0) # 浏览反馈的次数
 
     class IssueStatus(models.IntegerChoices):
         DRAFTED = (0, "草稿")

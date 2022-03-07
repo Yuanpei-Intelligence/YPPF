@@ -11,7 +11,7 @@ from app.models import (
 from app.utils import (
     get_person_or_org,
 )
-from django.db.models import Q
+from django.db.models import Q, F
 from django.db import transaction
 from datetime import date, datetime, timedelta
 from app.feedback_utils import (
@@ -335,6 +335,9 @@ def viewFeedback(request, fid):
             comment.commentator_name = "匿名用户"
             comment.ava = MEDIA_URL + "avatar/person_default.jpg"
             comment.URL = None
+    
+    Feedback.objects.filter(id=feedback.id).update(visit_times=F('visit_times')+1)
+
     return render(request, "feedback_info.html", locals())
 
 
