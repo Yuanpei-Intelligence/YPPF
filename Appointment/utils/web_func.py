@@ -6,6 +6,7 @@ from django.db.models import Q  # modified by wxy
 from datetime import datetime, timedelta, timezone, time, date
 import Appointment.utils.utils as utils
 from django.http import JsonResponse, HttpResponse  # Json响应
+from django_apscheduler.util import close_old_connections
 
 
 '''
@@ -56,7 +57,7 @@ def get_adjusted_qualified_rate(original_qualified_rate, appoint) -> float:
         original_qualified_rate = 0
     return original_qualified_rate
 
-
+@close_old_connections
 def startAppoint(Aid):  # 开始预约时的定时程序
     try:
         appoint = Appoint.objects.get(Aid=Aid)
@@ -79,7 +80,7 @@ def startAppoint(Aid):  # 开始预约时的定时程序
         utils.operation_writer(
             SYSTEM_LOG, f"预约{str(Aid)}的状态异常: {appoint.get_status()}", "web_func.startAppoint", "Error")
 
-
+@close_old_connections
 def finishAppoint(Aid):  # 结束预约时的定时程序
     '''
     结束预约时的定时程序
