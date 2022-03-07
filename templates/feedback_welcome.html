@@ -59,7 +59,9 @@
                                         <h4 class="text-center mb-4">
                                             问答反馈中心
                                             {% if is_person %}
+                                            {% if not is_teacher %}
                                             <a href="/modifyFeedback/"><i class="fa fa-plus-square" aria-hidden="true" style="color: #1b55e2;"></i></a>
+                                            {% endif %} 
                                             {% endif %} 
                                         </h4>
                                         {% if is_person %}
