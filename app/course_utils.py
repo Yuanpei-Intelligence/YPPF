@@ -50,7 +50,7 @@ from datetime import datetime, timedelta
 from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import F, Sum, Prefetch
+from django.db.models import F, Q, Sum, Prefetch
 from django_apscheduler.util import close_old_connections
 
 from app.scheduler import scheduler
