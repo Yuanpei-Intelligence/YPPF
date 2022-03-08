@@ -337,11 +337,15 @@ def viewFeedback(request, fid):
             comment.ava = MEDIA_URL + "avatar/person_default.jpg"
             comment.URL = None
     
-    if feedback.visit_times == 0:
-        Feedback.objects.filter(id=feedback.id).update(visit_times= \
-            PageLog.objects.filter(type=PageLog.CountType.PV) \
-                .filter(page=f'/viewFeedback/{feedback.id}').count())
-    Feedback.objects.filter(id=feedback.id).update(visit_times=F('visit_times')+1)
+    # 公开feedback才统计浏览次数
+    if feedback.public_status == Feedback.PublicStatus.PUBLIC:
+        # 如果visit_time为0，从PV里迁移统计
+        if feedback.visit_times == 0:
+            Feedback.objects.filter(id=feedback.id).update(visit_times= \
+                PageLog.objects.filter(type=PageLog.CountType.PV) \
+                    .filter(page=f'/viewFeedback/{feedback.id}').count())
+        # 更新统计次数
+        Feedback.objects.filter(id=feedback.id).update(visit_times=F('visit_times')+1)
 
     return render(request, "feedback_info.html", locals())
 
