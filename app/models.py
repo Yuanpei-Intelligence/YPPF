@@ -95,8 +95,15 @@ class NaturalPersonManager(models.Manager):
     def set_status(self, **kwargs):  # 延毕情况后续实现
         pass
 
-    def teachers(self):
+    def teachers(self, activate=True):
+        if activate:
+            self = self.activated()
         return self.filter(identity=NaturalPerson.Identity.TEACHER)
+
+    def get_teacher(self, name_or_id, activate=True):
+        '''姓名或工号，不存在或不止一个时抛出异常'''
+        teachers = self.teachers(activate=activate)
+        return teachers.get(Q(name=name_or_id) | Q(person_id__username=name_or_id))
 
 
 class NaturalPerson(models.Model):
@@ -198,6 +205,12 @@ class NaturalPerson(models.Model):
         if not avatar:
             avatar = "avatar/person_default.jpg"
         return image_url(avatar)
+
+    def is_teacher(self, activate=True):
+        result = self.identity == NaturalPerson.Identity.TEACHER
+        if activate:
+            result &= self.status != NaturalPerson.GraduateStatus.GRADUATED
+        return result
 
     def get_accept_promote_display(self):
         return "是" if self.accept_promote else "否"
@@ -305,6 +318,14 @@ class OrganizationType(models.Model):
 
     def get_length(self):
         return len(self.job_name_list) + 1
+
+    def default_semester(self):
+        '''供生成时方便调用的函数，职位的默认持续时间'''
+        return Semester.now() if self.otype_name == COURSE_TYPENAME else Semester.ANNUAL
+
+    def default_is_admin(self, position):
+        '''供生成时方便调用的函数，是否成为负责人的默认值'''
+        return position <= self.control_pos_threshold
 
 
 class Semester(models.TextChoices):
@@ -784,6 +805,17 @@ class Activity(CommentBase):
         self.typename = "activity"
         super().save(*args, **kwargs)
 
+    def related_job_ids(self):
+        jobids = []
+        try:
+            jobids.append(f'activity_{self.id}_remind')
+            jobids.append(f'activity_{self.id}_{Activity.Status.WAITING}')
+            jobids.append(f'activity_{self.id}_{Activity.Status.PROGRESSING}')
+            jobids.append(f'activity_{self.id}_{Activity.Status.END}')
+        except:
+            pass
+        return jobids
+
     def popular_level(self, any_status=False):
         if not any_status and not self.status in [
             Activity.Status.WAITING,
@@ -1209,20 +1241,30 @@ class ModifyPosition(CommentBase):
             ).update(status=Position.Status.DEPART)
         elif self.apply_type == ModifyPosition.ApplyType.JOIN:
             # 尝试获取已有的position
-            if Position.objects.current().filter(
-                org=self.org, person=self.person).exists(): # 如果已经存在这个量了
-                Position.objects.current().filter(org=self.org, person=self.person
-                ).update(
-                    status=Position.Status.INSERVICE,
+            current_positions = Position.objects.current().filter(
+                org=self.org, person=self.person)
+            if current_positions.exists(): # 如果已经存在这个量了
+                current_positions.update(
                     pos=self.pos,
-                    is_admin=(self.pos <= self.org.otype.control_pos_threshold))
+                    is_admin=self.org.otype.default_is_admin(self.pos),
+                    in_semester=self.org.otype.default_semester(),
+                    status=Position.Status.INSERVICE,
+                )
             else: # 不存在 直接新建
-                Position.objects.create(pos=self.pos, person=self.person, org=self.org, is_admin=(self.pos<=self.org.otype.control_pos_threshold))
+                Position.objects.create(
+                    pos=self.pos,
+                    person=self.person,
+                    org=self.org,
+                    is_admin=self.org.otype.default_is_admin(self.pos),
+                    in_semester=self.org.otype.default_semester(),
+                )
         else:   # 修改 则必定存在这个量
-            Position.objects.activated().filter(org=self.org, person=self.person
-                ).update(pos=self.pos, is_admin=(self.pos <= self.org.otype.control_pos_threshold))
+            Position.objects.activated().filter(
+                org=self.org, person=self.person).update(
+                    pos=self.pos, is_admin=self.org.otype.default_is_admin(self.pos))
         # 修改申请状态
-        ModifyPosition.objects.filter(id=self.id).update(status=ModifyPosition.Status.CONFIRMED)
+        ModifyPosition.objects.filter(id=self.id).update(
+            status=ModifyPosition.Status.CONFIRMED)
 
     def save(self, *args, **kwargs):
         self.typename = "modifyposition"

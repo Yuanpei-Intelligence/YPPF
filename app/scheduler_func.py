@@ -193,9 +193,8 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
     添加每周的课程活动
     """
     course = Course.objects.get(id=course_id)
-    examine_teacher = NaturalPerson.objects.get(
-        name=get_setting("course/audit_teacher"),
-        identity=NaturalPerson.Identity.TEACHER)
+    examine_teacher = NaturalPerson.objects.get_teacher(
+        get_setting("course/audit_teacher"))
     # 当前课程在学期已举办的活动
     conducted_num = Activity.objects.activated().filter(
         organization_id=course.organization,
@@ -225,16 +224,17 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
                                      type=ActivityPhoto.PhotoType.ANNOUNCE,
                                      activity=activity)
         # 选课人员自动报名活动
+        # 选课结束以后，活动参与人员从小组成员获取
+        person_pos = list(Position.objects.activated().filter(
+                org=course.organization).values_list("person", flat=True))
         if course_stage2:
             # 如果处于补退选阶段，活动参与人员从课程选课情况获取
-            person_pos = CourseParticipant.objects.filter(
+            selected_person = list(CourseParticipant.objects.filter(
                 course=course,
                 status=CourseParticipant.Status.SUCCESS,
-            ).values_list("person", flat=True)
-        else:
-            #选课结束以后，活动参与人员从小组成员获取
-            person_pos = Position.objects.activated().filter(
-                org=course.organization).values_list("person", flat=True)
+            ).values_list("person", flat=True))
+            person_pos += selected_person
+            person_pos = list(set(person_pos))
         members = NaturalPerson.objects.filter(
             id__in=person_pos)
         for member in members:
@@ -242,7 +242,8 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
                 activity_id=activity,
                 person_id=member,
                 status=Participant.AttendStatus.APLLYSUCCESS)
-        participate_num = int(person_pos.count())
+
+        participate_num = len(person_pos)
         activity.capacity = participate_num
         activity.current_participants = participate_num
         week_time.cur_week += 1
@@ -343,3 +344,27 @@ def public_feedback_per_hour():
                 publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
             )
 
+
+
+
+def register_pre_delete():
+    '''注册删除前清除定时任务的函数'''
+    import app.models
+    from django.db import models
+    for name in app.models.__all__:
+        try:
+            model = getattr(app.models, name)
+            assert issubclass(model, models.Model)
+            assert hasattr(model, 'related_job_ids')
+        except:
+            # 不具有关联任务的模型无需设置
+            continue
+
+        def _cancel_jobs(sender, instance, **kwargs):
+            job_ids = instance.related_job_ids
+            if callable(job_ids):
+                job_ids = job_ids()
+            for job_id in job_ids:
+                try: scheduler.remove_job(job_id)
+                except: continue
+        models.signals.pre_delete.connect(_cancel_jobs, sender=model)

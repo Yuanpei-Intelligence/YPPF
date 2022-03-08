@@ -26,8 +26,7 @@ def endActivity(request):
     if user_type == "Person":
         try:
             person = utils.get_person_or_org(request.user, user_type)
-            if person.identity == NaturalPerson.Identity.TEACHER:
-                is_auditor = True
+            is_auditor = person.is_teacher()
         except:
             pass
         if not is_auditor:
