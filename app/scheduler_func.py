@@ -42,7 +42,7 @@ from django.db import transaction  # 原子化更改数据库
 from django.db.models import F
 # (see: https://docs.djangoproject.com/en/dev/ref/databases/#general-notes 
 # for background)
-from django_apscheduler.util import close_old_connections
+# from django_apscheduler.util import close_old_connections
 
 # 引入定时任务还是放上面吧
 from app.scheduler import scheduler
@@ -60,7 +60,7 @@ __all__ = [
     'public_feedback_per_hour',
 ]
 
-@close_old_connections
+
 def send_to_persons(title, message, url='/index/'):
     sender = User.objects.get(username='zz00000')
     np = NaturalPerson.objects.activated().all()
@@ -72,7 +72,7 @@ def send_to_persons(title, message, url='/index/'):
         publish_kws={'level': WechatMessageLevel.IMPORTANT, 'show_source': False},
         ))
 
-@close_old_connections
+
 def send_to_orgs(title, message, url='/index/'):
     sender = User.objects.get(username='zz00000')
     org = Organization.objects.activated().all().exclude(otype__otype_id=0)
@@ -86,7 +86,7 @@ def send_to_orgs(title, message, url='/index/'):
 
 
 # 学院每月下发元气值
-@close_old_connections
+
 def distribute_YQPoint_per_month():
     with transaction.atomic():
         recipients = NaturalPerson.objects.activated().select_for_update()
@@ -125,7 +125,7 @@ def distribute_YQPoint_per_month():
 频繁执行，添加更新其他活动的定时任务，主要是为了异步调度
 对于被多次落下的活动，每次更新一步状态
 """
-@close_old_connections
+
 def changeAllActivities():
 
     now = datetime.now()
@@ -187,7 +187,7 @@ def get_weather():
         log.operation_writer(SYSTEM_LOG, "天气更新成功", "scheduler_func[get_weather]")
         return weather_dict
 
-@close_old_connections
+
 def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,course_stage2: bool):
     """
     添加每周的课程活动
@@ -272,7 +272,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
         publish_kws={"app": WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
     )
 
-@close_old_connections
+
 def longterm_launch_course():
     """
     定时发起长期课程活动
@@ -292,7 +292,7 @@ def longterm_launch_course():
                     course_stage2 = True if course.status == Course.Status.STAGE2 else False
                     add_week_course_activity(course.id, week_time.id, cur_week, course_stage2)
 
-@close_old_connections
+
 def update_active_score_per_day(days=14):
     '''每天计算用户活跃度， 计算前days天（不含今天）内的平均活跃度'''
     with transaction.atomic():
@@ -306,7 +306,7 @@ def update_active_score_per_day(days=14):
             persons.filter(person_id__in=userids).update(
                 active_score=F('active_score') + 1 / days)
 
-@close_old_connections
+
 def public_feedback_per_hour():
     '''查找距离组织公开反馈24h内没被审核的反馈，将其公开'''
     time = datetime.now() - timedelta(days=1)
