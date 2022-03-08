@@ -730,6 +730,8 @@ class CourseRecordAdmin(admin.ModelAdmin):
             return queryset
     list_filter = (TypeFilter, 'year', 'semester', 'invalid')
 
+    autocomplete_fields = ['person', 'course']
+
     actions = []
 
     @as_action('更新来源名称', actions, update=True)
