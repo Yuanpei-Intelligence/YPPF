@@ -46,7 +46,7 @@ __all__ = [
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='views[viewActivity]', record_user=True)
+@log.except_captured(EXCEPT_REDIRECT, source='activity_views[viewActivity]', record_user=True)
 def viewActivity(request, aid=None):
     """
     页面逻辑：
@@ -328,7 +328,7 @@ def viewActivity(request, aid=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[getActivityInfo]', record_user=True)
+@log.except_captured(source='activity_views[getActivityInfo]', record_user=True)
 def getActivityInfo(request):
     '''
     通过GET获得活动信息表下载链接
@@ -453,7 +453,7 @@ def getActivityInfo(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[checkinActivity]', record_user=True)
+@log.except_captured(source='activity_views[checkinActivity]', record_user=True)
 def checkinActivity(request, aid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != "Person":
@@ -510,7 +510,7 @@ def checkinActivity(request, aid=None):
 """
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[checkinActivity]', record_user=True)
+@log.except_captured(source='activity_views[checkinActivity]', record_user=True)
 def checkinActivity(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -573,7 +573,7 @@ def checkinActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='views[addActivity]', record_user=True)
+@log.except_captured(EXCEPT_REDIRECT, source='activity_views[addActivity]', record_user=True)
 def addActivity(request, aid=None):
     """
     发起活动与修改活动页
@@ -749,7 +749,7 @@ def addActivity(request, aid=None):
             no_limit = True
         examine_teacher = activity.examine_teacher.name
         status = activity.status
-        available_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
+        available_teachers = NaturalPerson.objects.teachers()
         need_checkin = activity.need_checkin
         inner = activity.inner
         apply_reason = utils.escape_for_templates(activity.apply_reason)
@@ -776,7 +776,7 @@ def addActivity(request, aid=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[showActivity]', record_user=True)
+@log.except_captured(source='activity_views[showActivity]', record_user=True)
 def showActivity(request):
     """
     活动信息的聚合界面
@@ -788,8 +788,7 @@ def showActivity(request):
     if user_type == "Person":
         try:
             person = utils.get_person_or_org(request.user, user_type)
-            if person.identity == NaturalPerson.Identity.TEACHER :
-                is_teacher = True
+            is_teacher = person.is_teacher()
         except:
             pass
         if not is_teacher:
@@ -825,7 +824,7 @@ def showActivity(request):
 
 
 @login_required(redirect_field_name="origin")
-@log.except_captured(source='views[examineActivity]', record_user=True)
+@log.except_captured(source='activity_views[examineActivity]', record_user=True)
 def examineActivity(request, aid):
     valid, user_type, html_display = utils.check_user_type(request.user)
     try:
@@ -982,10 +981,10 @@ def offlineCheckinActivity(request, aid):
                     member_unattend.append(person_id)
             try:
                 with transaction.atomic():
-                    Participant.objects.select_for_update().filter(
+                    member_list.select_for_update().filter(
                         person_id_id__in=member_attend).update(
                             status = Participant.AttendStatus.ATTENDED)
-                    Participant.objects.select_for_update().filter(
+                    member_list.select_for_update().filter(
                         person_id_id__in=member_unattend).update(
                             status = Participant.AttendStatus.UNATTENDED)
             except:

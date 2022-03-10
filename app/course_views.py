@@ -24,6 +24,7 @@ from app.course_utils import (
     finish_course,
     str_to_time,
     download_course_record,
+    download_select_info,
 )
 from app.utils import get_person_or_org
 
@@ -38,6 +39,8 @@ __all__ = [
     'showCourseRecord',
     'selectCourse',
     'viewCourse',
+    'outputRecord',
+    'outputSelectInfo',
 ]
 
 
@@ -433,8 +436,7 @@ def selectCourse(request):
     if user_type == "Organization":
         return redirect(message_url(wrong("组织账号无法访问书院选课页面。如需选课，请切换至个人账号；如需查看您发起的书院课程，请点击【我的课程】。")))
 
-    is_student = (False
-                  if me.identity == NaturalPerson.Identity.TEACHER else True)
+    is_student = (me.identity == NaturalPerson.Identity.STUDENT)
 
     # 暂时不启用意愿点机制
     # if not is_staff:
@@ -661,3 +663,51 @@ def addCourse(request, cid=None):
         bar_display = utils.get_sidebar_and_navbar(request.user, "修改课程")
 
     return render(request, "register_course.html", locals())
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(EXCEPT_REDIRECT, source='course_views[outputRecord]', record_user=True)
+def outputRecord(request):
+    """
+    导出所有学时信息
+    导出文件格式为excel，包括汇总和详情两个sheet。
+    汇总包括每位同学的学号、姓名和总有效学时
+    详情包括每位同学所有学时（有效或无效）的详细获得情况：课程、学年等
+    """
+
+    # 检查：要求必须为书院课程审核老师（local_json定义）
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = utils.get_person_or_org(request.user, user_type)
+    # 获取默认审核老师，不应该出错
+    examine_teacher = NaturalPerson.objects.get_teacher(
+        get_setting("course/audit_teacher"))
+
+    if examine_teacher != me:
+        return redirect(message_url(wrong("只有书院课审核老师账号可以访问该链接！")))
+    return download_course_record()
+
+
+@login_required(redirect_field_name="origin")
+@utils.check_user_access(redirect_url="/logout/")
+@log.except_captured(EXCEPT_REDIRECT, source='course_views[outputSelectInfo]', record_user=True)
+def outputSelectInfo(request):
+    """
+    导出该课程的选课名单
+    """
+    # 检查：不是超级用户，必须是小组，修改是必须是自己
+    valid, user_type, html_display = utils.check_user_type(request.user)
+    me = utils.get_person_or_org(request.user, user_type)
+    try:
+        assert (user_type == "Organization"
+                and me.otype.otype_name == COURSE_TYPENAME), '只有书院课程账号才能下载选课名单!'
+        # 暂时仅支持一个课程账号一学期只能开一门课
+        courses = Course.objects.activated().filter(organization=me)
+        assert courses.exists(), '只有在开课以后才能下载选课名单！'
+        course = courses[0]
+        assert course.status in [Course.Status.STAGE2,
+                                 Course.Status.SELECT_END], '补退选以后才能下载选课名单！'
+    except Exception as e:
+        return redirect(message_url(wrong(str(e)), '/showCourseActivity/'))
+
+    return download_select_info(course)

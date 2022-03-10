@@ -14,6 +14,37 @@ admin.site.site_header = '元培智慧校园 - 管理后台'
 # admin.site.site_header = '元培成长档案 - 管理后台'
 
 
+# 通用内联模型
+@readonly_inline
+class PositionInline(admin.TabularInline):
+    model = Position
+    classes = ['collapse']
+    ordering = ['-id']
+    fields = [
+        'person', 'org',
+        'in_year', 'in_semester',
+        'is_admin', 'pos', 'status',
+    ]
+    show_change_link = True
+
+@readonly_inline
+class ParticipantInline(admin.TabularInline):
+    model = Participant
+    classes = ['collapse']
+    ordering = ['-activity_id']
+    fields = ['activity_id', 'person_id', 'status']
+    show_change_link = True
+
+@readonly_inline
+class CourseParticipantInline(admin.TabularInline):
+    model = CourseParticipant
+    classes = ['collapse']
+    ordering = ['-id']
+    fields = ['course', 'person', 'status']
+    show_change_link = True
+
+
+# 后台模型
 @admin.register(NaturalPerson)
 class NaturalPersonAdmin(admin.ModelAdmin):
     fieldsets = (
@@ -53,6 +84,8 @@ class NaturalPersonAdmin(admin.ModelAdmin):
         "first_time_login", "wechat_receive_level",
         "stu_grade", "stu_class",
         )
+
+    inlines = [PositionInline, ParticipantInline, CourseParticipantInline]
 
     actions = [
         'YQ_send',
@@ -151,6 +184,8 @@ class OrganizationAdmin(admin.ModelAdmin):
             display = '暂无'
         return mark_safe(display)
     Managers.short_description = "管理者"
+
+    inlines = [PositionInline]
 
     actions = ['all_subscribe', 'all_unsubscribe']
 
@@ -295,19 +330,22 @@ class ActivityAdmin(admin.ModelAdmin):
                 return queryset.filter(id__in=error_id_set)
             return queryset
     
-    list_filter =   (
-                        "status", "inner", "need_checkin", "valid",
-                        'category',
-                        "organization_id__otype", "source",
-                        ErrorFilter,
-                        'endbefore', "capacity", "year",
-                        "publish_time", 'start', 'end',
-                    )
+    list_filter = (
+        "status",
+        'year', 'semester', 'category',
+        "organization_id__otype",
+        "inner", "need_checkin", "valid", "source",
+        ErrorFilter,
+        'endbefore',
+        "publish_time", 'start', 'end',
+    )
     date_hierarchy = 'start'
 
     def participant_diaplay(self, obj):
         return f'{obj.current_participants}/{"无限" if obj.capacity == 10000 else obj.capacity}'
     participant_diaplay.short_description = "报名情况"
+
+    inlines = [ParticipantInline]
 
     actions = []
 
@@ -626,7 +664,7 @@ class CourseAdmin(admin.ModelAdmin):
         classes = ['collapse']
         extra = 1
 
-    inlines = [CourseTimeInline]
+    inlines = [CourseTimeInline, CourseParticipantInline]
     
     def participant_diaplay(self, obj):
         return f'{obj.current_participants}/{"无限" if obj.capacity == 10000 else obj.capacity}'
@@ -691,6 +729,8 @@ class CourseRecordAdmin(admin.ModelAdmin):
                 return queryset.filter(course__type=self.value())
             return queryset
     list_filter = (TypeFilter, 'year', 'semester', 'invalid')
+
+    autocomplete_fields = ['person', 'course']
 
     actions = []
 

@@ -4,10 +4,12 @@ from functools import wraps, update_wrapper
 from django.db import transaction
 from django.contrib import messages
 from django.contrib.admin import ModelAdmin
+from django.contrib.admin.options import InlineModelAdmin
 
 __all__ = [
     'as_display', 'as_action',
     'perms_check', 'need_all_perms',
+    'readonly_inline',
 ]
 
 
@@ -125,3 +127,19 @@ def need_all_perms(necessary_perms: Union[str, list]=None,
         update_wrapper(_check_func, check_function)
         return _check_func
     return actual_decorator
+
+
+def readonly_inline(inline_admin: InlineModelAdmin):
+    '''将内联模型设为只读'''
+    inline_admin.extra = 0
+    inline_admin.can_delete = False
+    if hasattr(inline_admin, 'fields'):
+        inline_admin.readonly_fields = inline_admin.fields
+
+    def _check_failed(self, request, obj=None):
+        return False
+
+    inline_admin.has_add_permission = _check_failed
+    inline_admin.has_change_permission = _check_failed
+    inline_admin.has_delete_permission = _check_failed
+    return inline_admin

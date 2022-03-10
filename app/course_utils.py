@@ -50,7 +50,8 @@ from datetime import datetime, timedelta
 from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import F, Sum, Prefetch
+from django.db.models import F, Q, Sum, Prefetch
+from django_apscheduler.util import close_old_connections
 
 from app.scheduler import scheduler
 
@@ -70,6 +71,7 @@ __all__ = [
     'check_post_and_modify',
     'finish_course',
     'download_course_record',
+    'download_select_info',
 ]
 
 
@@ -134,9 +136,8 @@ def create_single_course_activity(request):
         return old_ones[0].id, False
 
     # 获取默认审核老师
-    default_examiner_name = get_setting("course/audit_teacher")
-    examine_teacher = NaturalPerson.objects.get(
-        name=default_examiner_name, identity=NaturalPerson.Identity.TEACHER)
+    examine_teacher = NaturalPerson.objects.get_teacher(
+        get_setting("course/audit_teacher"))
 
     # 获取活动所属课程的图片，用于viewActivity, examineActivity等页面展示
     image = str(course.photo)
@@ -364,7 +365,7 @@ def remaining_willingness_point(user):
     # else:
     #     return initial_point
 
-
+@close_old_connections
 def registration_status_check(course_status, cur_status, to_status):
     """
     判断选课状态的变化是否合法
@@ -669,6 +670,7 @@ def course_to_display(courses, user, detail=False) -> list:
 @log.except_captured(return_value=True,
                      record_args=True,
                      source='course_utils[draw_lots]')
+@close_old_connections
 def draw_lots():
     """
     等额抽签选出成功选课的学生，并修改学生的选课状态
@@ -768,6 +770,7 @@ def draw_lots():
                      record_args=True,
                      status_code=log.STATE_WARNING,
                      source='course_utils[change_course_status]')
+@close_old_connections
 def change_course_status(cur_status, to_status):
     """
     作为定时任务，在课程设定的时间改变课程的选课阶段
@@ -1194,40 +1197,132 @@ def finish_course(course):
     return succeed("结束课程成功！")
 
 
-def download_course_record(course, year, semester):
+def download_course_record(course=None, year=None, semester=None):
     '''
-    返回需要导出的文件
+    返回需要导出的学时信息文件
+    course:
+        提供course时为单个课程服务，只导出该课程的相关人员的学时信息
+        不提供时下载所有学时信息，注意，只有相关负责老师可以访问！
     '''
-    records = CourseRecord.objects.filter(
-        course=course,
-        year=year,
-        semester=semester,
-    ).select_related('person')
-
     wb = openpyxl.Workbook()  # 生成一个工作簿（即一个Excel文件）
     wb.encoding = 'utf-8'
-    # 获取第一个工作表（sheet1）
-    sheet1 = wb.active
+    # 获取第一个工作表（detail_sheet）
+    detail_sheet = wb.active
     # 给工作表设置标题
-    # sheet1.title = str(course)  # 中文符号如：无法被解读
+    # detail_sheet.title = str(course)  # 中文符号如：无法被解读
+    detail_sheet.title = '详情'
+    ctime = datetime.now().strftime('%Y-%m-%d %H:%M')
+    # 学时筛选内容
+    filter_kws = {}
+    if course is not None: filter_kws.update(course=course)
+    if year is not None: filter_kws.update(year=year)
+    if semester is not None: filter_kws.update(semester=semester)
+
+    if course is not None:
+        # 助教下载自己课程的学时
+        records = CourseRecord.objects.filter(**filter_kws)
+        file_name = f'{course}-{ctime}'
+    else:
+        # 设置明细和汇总两个sheet的相关信息
+        total_sheet = wb.create_sheet('汇总', 0)
+        total_sheet.append(['学号', '姓名', '总有效学时', '总无效学时'])
+
+        # 下载所有学时信息，包括无效学时
+        all_person = NaturalPerson.objects.activated().filter(
+            identity=NaturalPerson.Identity.STUDENT)
+
+        # 汇总表信息，姓名，学号，总学时
+        relate_filter_kws = {f'courserecord__{k}': v for k, v in filter_kws.items()}
+        person_record = all_person.annotate(
+            record_hours=Sum('courserecord__total_hours',
+                             filter=Q(
+                                 courserecord__invalid=False,
+                                 **relate_filter_kws,
+                             )),
+            invalid_hours=Sum('courserecord__total_hours',
+                              filter=Q(
+                                  courserecord__invalid=True,
+                                  **relate_filter_kws,
+                              )),
+        ).order_by('person_id__username')
+        for person in person_record.select_related('person_id'):
+            total_sheet.append([
+                person.person_id.username,
+                person.name,
+                person.record_hours or 0,
+                person.invalid_hours or 0,
+            ])
+        # 详细信息
+        records = CourseRecord.objects.filter(
+            person__in=all_person,
+            **filter_kws,
+        ).order_by('person__person_id__username')
+        file_name = f'学时汇总-{ctime}'
+
     # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
-    sheet_header = ['课程', '姓名', '学号', '次数', '学时', "学年", "学期"]
-    sheet1.append(sheet_header)
-    for record in records:
+    detail_header = ['课程', '姓名', '学号', '次数', '学时', '学年', '学期', '有效']
+    detail_sheet.append(detail_header)
+    for record in records.values_list(
+        'course__name', 'extra_name',
+        'person__name', 'person__person_id__username',
+        'attend_times', 'total_hours',
+        'year', 'semester', 'invalid',
+    ):
         record_info = [
-            str(course),
+            record[0] or record[1],
+            *record[2:6],
+            f'{record[6]}-{record[6] + 1}',
+            '春' if record[7] == Semester.SPRING else '秋',
+            '否' if record[8] else '是',
+        ]
+        # 将每一个对象的所有字段的信息写入一行内
+        detail_sheet.append(record_info)
+    '''
+    for record in records.select_related('person', 'course'):
+        record_info = [
+            record.get_course_name(),
             record.person.name,
             record.person.person_id.username,
             record.attend_times,
             record.total_hours,
-            year,
-            semester,
+            f'{record.year}-{record.year + 1}',
+            '春' if record.semester == Semester.SPRING else '秋',
+            '否' if record.invalid else '是',
         ]
         # 将每一个对象的所有字段的信息写入一行内
-        sheet1.append(record_info)
+        detail_sheet.append(record_info)
+    '''
 
+    # 设置文件名并保存
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
+    wb.save(response)
+    return response
+
+
+def download_select_info(course=None):
+    """
+    下载选课信息
+    """
+    wb = openpyxl.Workbook()  # 生成一个工作簿（即一个Excel文件）
+    wb.encoding = 'utf-8'
+    sheet1 = wb.active
+    sheet1_header = ['姓名', '年级']
+    sheet1.append(sheet1_header)
+    lucky_ones = CourseParticipant.objects.filter(
+        course=course, status=CourseParticipant.Status.SUCCESS)
+    for person in lucky_ones:
+        person_info = [
+            person.person.name,
+            person.person.stu_grade,  # 用这个字段表示年级好呢，还是用学号判断？
+        ]
+        sheet1.append(person_info)
+    # 设置文件名并保存
+    semester = "春" if course.semester == Semester.SPRING else "秋"
+    year = (course.year + 1) if semester == "春" else course.year
     ctime = datetime.now().strftime('%Y-%m-%d %H:%M')
-    file_name = f'{course}-{ctime}'  # 给文件名中添加日期时间
+    # 给文件名中添加日期时间
+    file_name = f'{year}{semester}{course.name}选课名单-{ctime}'
     response = HttpResponse(content_type='application/vnd.ms-excel')
     response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
     wb.save(response)

@@ -40,6 +40,9 @@ import urllib.request
 from datetime import datetime, timedelta
 from django.db import transaction  # 原子化更改数据库
 from django.db.models import F
+# (see: https://docs.djangoproject.com/en/dev/ref/databases/#general-notes 
+# for background)
+from django_apscheduler.util import close_old_connections
 
 # 引入定时任务还是放上面吧
 from app.scheduler import scheduler
@@ -121,7 +124,7 @@ def distribute_YQPoint_per_month():
 频繁执行，添加更新其他活动的定时任务，主要是为了异步调度
 对于被多次落下的活动，每次更新一步状态
 """
-
+@close_old_connections
 def changeAllActivities():
 
     now = datetime.now()
@@ -183,15 +186,14 @@ def get_weather():
         log.operation_writer(SYSTEM_LOG, "天气更新成功", "scheduler_func[get_weather]")
         return weather_dict
 
-
+@close_old_connections
 def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,course_stage2: bool):
     """
     添加每周的课程活动
     """
     course = Course.objects.get(id=course_id)
-    examine_teacher = NaturalPerson.objects.get(
-        name=get_setting("course/audit_teacher"),
-        identity=NaturalPerson.Identity.TEACHER)
+    examine_teacher = NaturalPerson.objects.get_teacher(
+        get_setting("course/audit_teacher"))
     # 当前课程在学期已举办的活动
     conducted_num = Activity.objects.activated().filter(
         organization_id=course.organization,
@@ -269,7 +271,7 @@ def add_week_course_activity(course_id: int, weektime_id: int, cur_week: int ,co
         publish_kws={"app": WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
     )
 
-
+@close_old_connections
 def longterm_launch_course():
     """
     定时发起长期课程活动
@@ -289,7 +291,7 @@ def longterm_launch_course():
                     course_stage2 = True if course.status == Course.Status.STAGE2 else False
                     add_week_course_activity(course.id, week_time.id, cur_week, course_stage2)
 
-
+@close_old_connections
 def update_active_score_per_day(days=14):
     '''每天计算用户活跃度， 计算前days天（不含今天）内的平均活跃度'''
     with transaction.atomic():
@@ -303,7 +305,7 @@ def update_active_score_per_day(days=14):
             persons.filter(person_id__in=userids).update(
                 active_score=F('active_score') + 1 / days)
 
-
+@close_old_connections
 def public_feedback_per_hour():
     '''查找距离组织公开反馈24h内没被审核的反馈，将其公开'''
     time = datetime.now() - timedelta(days=1)
@@ -340,78 +342,24 @@ def public_feedback_per_hour():
                 publish_to_wechat=True,
                 publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
             )
-            
 
 
-def start_scheduler(with_scheduled_job=True, debug=False):
-    '''
-    noexcept
+def cancel_related_jobs(instance, extra_ids=None):
+    '''删除关联的定时任务（可以在模型中预定义related_job_ids）'''
+    if hasattr(instance, 'related_job_ids'):
+        job_ids = instance.related_job_ids
+        if callable(job_ids):
+            job_ids = job_ids()
+        for job_id in job_ids:
+            try: scheduler.remove_job(job_id)
+            except: continue
+    if extra_ids is not None:
+        for job_id in extra_ids:
+            try: scheduler.remove_job(job_id)
+            except: continue
 
-    启动定时任务，先尝试添加计划任务，再启动，两部分之间互不影响
-    失败时写入log
-    - with_scheduled_job: 添加计划任务
-    - debug: 提供具体的错误信息
-    '''
-    return NotImplementedError
-    # register_job(scheduler, ...)的正确写法为scheduler.scheduled_job(...)
-    # 但好像非服务器版本有问题??
-    if debug: print("———————————————— Scheduler:   Debug ————————————————")
-    if with_scheduled_job:
-        current_job = None
-        try:
-            current_job = "get_weather"
-            if debug: print(f"adding scheduled job '{current_job}'")
-            scheduler.add_job(get_weather,
-                              'interval',
-                              id=current_job,
-                              minutes=5,
-                              replace_existing=True)
-            current_job = "activityStatusUpdater"
-            if debug: print(f"adding scheduled job '{current_job}'")
-            scheduler.add_job(changeAllActivities,
-                              "interval",
-                              id=current_job,
-                              minutes=5,
-                              replace_existing=True)
-            current_job = "active_score_updater"
-            if debug: print(f"adding scheduled job '{current_job}'")
-            scheduler.add_job(update_active_score_per_day,
-                              "cron",
-                              id=current_job,
-                              hour=1,
-                              replace_existing=True)
-            current_job = "courseWeeklyActivitylauncher"
-            if debug: print(f"adding scheduled job '{current_job}'")
-            scheduler.add_job(longterm_launch_course,
-                              "interval",
-                              id=current_job,
-                              minutes=5,
-                              replace_existing=True)
-            current_job = "feedback_public_updater"
-            if debug: print(f"adding scheduled job '{current_job}'")
-            scheduler.add_job(public_feedback_per_hour,
-                              "cron",
-                              id=current_job,
-                              minute=5,
-                              replace_existing=True)
-        except Exception as e:
-            info = f"add scheduled job '{current_job}' failed, reason: {e}"
-            log.operation_writer(SYSTEM_LOG, info,
-                            "scheduler_func[start_scheduler]", log.STATE_ERROR)
-            if debug: print(info)
-
-    try:
-        if debug: print("starting schduler in scheduler_func.py")
-        scheduler.start()
-    except Exception as e:
-        info = f"start scheduler failed, reason: {e}"
-        log.operation_writer(SYSTEM_LOG, info,
-                        "scheduler_func[start_scheduler]", log.STATE_ERROR)
-        if debug: print(info)
-        scheduler.shutdown(wait=False)
-        if debug: print("successfully shutdown scheduler")
-    if debug: print("———————————————— End     :   Debug ————————————————")
-
+def _cancel_jobs(sender, instance, **kwargs):
+    cancel_related_jobs(instance)
 
 def register_pre_delete():
     '''注册删除前清除定时任务的函数'''
@@ -425,12 +373,4 @@ def register_pre_delete():
         except:
             # 不具有关联任务的模型无需设置
             continue
-
-        def _cancel_jobs(sender, instance, **kwargs):
-            job_ids = instance.related_job_ids
-            if callable(job_ids):
-                job_ids = job_ids()
-            for job_id in job_ids:
-                try: scheduler.remove_job(job_id)
-                except: continue
         models.signals.pre_delete.connect(_cancel_jobs, sender=model)

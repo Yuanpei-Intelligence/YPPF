@@ -352,19 +352,6 @@
                                                         <a href="/viewFeedback/{{ feedback.id }}">{{ feedback.title }}</a>
                                                     </u>
                                                 </td>
-                                                <!-- 组织 -->
-                                                <td style="min-width: 80px;">
-                                                    {% if feedback.org %}
-                                                    <u>
-                                                        <a href="/orginfo/?name={{ feedback.org }}">
-                                                            <img src="{{ feedback.org.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">
-                                                            {{ feedback.org }}
-                                                        </a>
-                                                    </u>
-                                                    {% else %}
-                                                    这条反馈没有相关小组！  
-                                                    {% endif %}
-                                                </td>
                                                 <!-- 状态 -->
                                                 <td style="min-width: 60px; ">
                                                     {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
@@ -391,13 +378,24 @@
 
                                                     {% endif %}
                                                 </td>
-
-                                                <td >
+                                                <!-- 组织 -->
+                                                <td style="min-width: 80px;">
+                                                    {% if feedback.org %}
+                                                    <u>
+                                                        <a href="/orginfo/?name={{ feedback.org }}">
+                                                            <img src="{{ feedback.org.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">
+                                                            {{ feedback.org }}
+                                                        </a>
+                                                    </u>
+                                                    {% else %}
+                                                    这条反馈没有相关小组！  
+                                                    {% endif %}
+                                                </td>
+                                                <td>
                                                     <p class="mb-0" style="overflow: hidden; display: -webkit-box; 
                                                     -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
                                                         {{feedback.content}}
                                                     </p>
-                                                    
                                                 </td>
                                             </tr>
                                             {% endfor %}
