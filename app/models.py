@@ -12,6 +12,7 @@ models.py
 修改要求
 - 模型
     - 如需导出, 在__all__定义
+    - 外键和管理器必须进行类型注释`: Class`
     - 与User有一对一关系的实体类型, 需要定义get_user方法
     - 处于平等地位但内部实现不同的模型, 应定义同名接口方法用于导出同类信息
     - 能被评论的模型, 应继承自CommentBase, 并参考其文档字符串要求
@@ -321,7 +322,7 @@ class OrganizationType(models.Model):
     otype_id = models.SmallIntegerField("小组类型编号", unique=True, primary_key=True)
     otype_name = models.CharField("小组类型名称", max_length=25)
     otype_superior_id = models.SmallIntegerField("上级小组类型编号", default=0)
-    incharge = models.ForeignKey(
+    incharge: NaturalPerson = models.ForeignKey(
         NaturalPerson,
         related_name="incharge",
         on_delete=models.SET_NULL,
@@ -427,7 +428,7 @@ class Organization(models.Model):
 
     organization_id = models.OneToOneField(to=User, on_delete=models.CASCADE)
     oname = models.CharField(max_length=32, unique=True)
-    otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
+    otype: OrganizationType = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
     status = models.BooleanField("激活状态", default=True)  # 表示一个小组是否上线(或者是已经被下线)
 
     objects: OrganizationManager = OrganizationManager()
@@ -552,10 +553,10 @@ class Position(models.Model):
         verbose_name = "职务"
         verbose_name_plural = verbose_name
 
-    person = models.ForeignKey(
+    person: NaturalPerson = models.ForeignKey(
         NaturalPerson, related_name="position_set", on_delete=models.CASCADE,
     )
-    org = models.ForeignKey(
+    org: Organization = models.ForeignKey(
         Organization, related_name="position_set", on_delete=models.CASCADE,
     )
 
@@ -763,7 +764,7 @@ class Activity(CommentBase):
     """
 
     title = models.CharField("活动名称", max_length=50)
-    organization_id = models.ForeignKey(
+    organization_id: Organization = models.ForeignKey(
         Organization,
         # to_field="organization_id", 删除掉to_field, 保持纯净对象操作
         on_delete=models.CASCADE,
@@ -816,7 +817,8 @@ class Activity(CommentBase):
 
     visit_times = models.IntegerField("浏览次数",default=0)
 
-    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
+    examine_teacher: NaturalPerson = models.ForeignKey(
+        NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
     # recorded 其实是冗余，但用着方便，存了吧,activity_show.html用到了
     recorded = models.BooleanField("是否预报备", default=False)
     valid = models.BooleanField("是否已审核", default=False)
@@ -921,7 +923,8 @@ class ActivityPhoto(models.Model):
 
     type = models.SmallIntegerField(choices=PhotoType.choices)
     image = models.ImageField(upload_to=f"activity/photo/%Y/%m/", verbose_name=u'活动图片', null=True, blank=True)
-    activity = models.ForeignKey(Activity, related_name="photos", on_delete=models.CASCADE)
+    activity: Activity = models.ForeignKey(
+        Activity, related_name="photos", on_delete=models.CASCADE)
     time = models.DateTimeField("上传时间", auto_now_add=True)
 
     def get_image_path(self):
@@ -934,10 +937,10 @@ class TransferRecord(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["-finish_time", "-start_time"]
 
-    proposer = models.ForeignKey(
+    proposer: User = models.ForeignKey(
         User, related_name="send_trans", on_delete=models.CASCADE
     )
-    recipient = models.ForeignKey(
+    recipient: User = models.ForeignKey(
         User, related_name="recv_trans", on_delete=models.CASCADE
     )
     amount = models.FloatField("转账元气值数量", default=0)
@@ -945,7 +948,7 @@ class TransferRecord(models.Model):
     finish_time = models.DateTimeField("处理时间", blank=True, null=True)
     message = models.CharField("备注信息", max_length=255, default="")
 
-    corres_act = models.ForeignKey(
+    corres_act: Activity = models.ForeignKey(
         Activity, on_delete=models.SET_NULL, null=True, blank=True
     )
 
@@ -993,8 +996,8 @@ class Participant(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["activity_id"]
 
-    activity_id = models.ForeignKey(Activity, on_delete=models.CASCADE)
-    person_id = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    activity_id: Activity = models.ForeignKey(Activity, on_delete=models.CASCADE)
+    person_id: NaturalPerson = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
 
     class AttendStatus(models.TextChoices):
         APPLYING = "申请中"
@@ -1054,9 +1057,9 @@ class QandA(models.Model):
     class Meta:
         verbose_name = "问答记录"
         verbose_name_plural = verbose_name
-    sender = models.ForeignKey(User, on_delete=models.SET_NULL,
+    sender: User = models.ForeignKey(User, on_delete=models.SET_NULL,
                              related_name="send_QA_set", blank=True, null=True)
-    receiver = models.ForeignKey(User, on_delete=models.SET_NULL,
+    receiver: User = models.ForeignKey(User, on_delete=models.SET_NULL,
                              related_name="receive_QA_set", blank=True, null=True)
     Q_time = models.DateTimeField('提问时间', auto_now_add=True)
     A_time = models.DateTimeField('回答时间', blank=True, null=True)
@@ -1087,10 +1090,10 @@ class Notification(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["id"]
 
-    receiver = models.ForeignKey(
+    receiver: User = models.ForeignKey(
         User, related_name="recv_notice", on_delete=models.CASCADE
     )
-    sender = models.ForeignKey(
+    sender: User = models.ForeignKey(
         User, related_name="send_notice", on_delete=models.CASCADE
     )
 
@@ -1126,14 +1129,14 @@ class Notification(models.Model):
     bulk_identifier = models.CharField("批量信息标识", max_length=64, default="",
                                         db_index=True)
     anonymous_flag = models.BooleanField("是否匿名", default=False)
-    relate_TransferRecord = models.ForeignKey(
+    relate_TransferRecord: TransferRecord = models.ForeignKey(
         TransferRecord,
         related_name="transfer_notification",
         on_delete=models.CASCADE,
         blank=True,
         null=True,
     )
-    relate_instance = models.ForeignKey(
+    relate_instance: CommentBase = models.ForeignKey(
         CommentBase,
         related_name="relate_notifications",
         on_delete=models.CASCADE,
@@ -1153,8 +1156,9 @@ class Comment(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["-time"]
 
-    commentator = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name="评论者")
-    commentbase = models.ForeignKey(
+    commentator: User = models.ForeignKey(
+        User, on_delete=models.CASCADE, verbose_name="评论者")
+    commentbase: CommentBase = models.ForeignKey(
         CommentBase, related_name="comments", on_delete=models.CASCADE
     )
     text = models.TextField("文字内容", default="", blank=True)
@@ -1169,7 +1173,7 @@ class CommentPhoto(models.Model):
     image = models.ImageField(
         upload_to=f"comment/%Y/%m/", verbose_name="评论图片", null=True, blank=True
     )
-    comment = models.ForeignKey(
+    comment: Comment = models.ForeignKey(
         Comment, related_name="comment_photos", on_delete=models.CASCADE
     )
 
@@ -1185,7 +1189,8 @@ class ModifyOrganization(CommentBase):
         ordering = ["-modify_time", "-time"]
 
     oname = models.CharField(max_length=32) #这里不设置unique的原因是可能是已取消
-    otype = models.ForeignKey(OrganizationType, on_delete=models.CASCADE)
+    otype: OrganizationType = models.ForeignKey(
+        OrganizationType, on_delete=models.CASCADE)
     introduction = models.TextField("介绍", null=True, blank=True, default="这里暂时没有介绍哦~")
     application = models.TextField(
         "申请理由", null=True, blank=True, default="这里暂时还没写申请理由哦~"
@@ -1193,7 +1198,7 @@ class ModifyOrganization(CommentBase):
     avatar = models.ImageField(
         upload_to=f"avatar/", verbose_name="小组头像",default="avatar/org_default.png",null=True, blank=True
     )
-    pos = models.ForeignKey(User, on_delete=models.CASCADE)
+    pos: User = models.ForeignKey(User, on_delete=models.CASCADE)
 
     class Status(models.IntegerChoices):  # 表示申请小组的请求的状态
         PENDING = (0, "审核中")
@@ -1250,12 +1255,12 @@ class ModifyPosition(CommentBase):
     #)
 
     # 申请人
-    person = models.ForeignKey(
+    person: NaturalPerson = models.ForeignKey(
         to = NaturalPerson, related_name = "position_application", on_delete = models.CASCADE
     )
 
     # 申请小组
-    org = models.ForeignKey(
+    org: Organization = models.ForeignKey(
         to = Organization, related_name = "position_application", on_delete = models.CASCADE
     )
 
@@ -1357,15 +1362,19 @@ class Reimbursement(CommentBase):
         CANCELED = (4, "已取消")
         REFUSED = (5, "已拒绝")
 
-    related_activity = models.ForeignKey(
+    related_activity: Activity = models.ForeignKey(
         Activity, on_delete=models.CASCADE
     )
     amount = models.FloatField("报销金额", default=0)
     message = models.TextField("备注信息", default="", blank=True)
-    pos = models.ForeignKey(User, on_delete=models.CASCADE)#报销的小组
+    # 报销的小组
+    pos: User = models.ForeignKey(User, on_delete=models.CASCADE)
     status = models.SmallIntegerField(choices=ReimburseStatus.choices, default=0)
-    record = models.ForeignKey(TransferRecord, on_delete=models.CASCADE) #转账信息的记录
-    examine_teacher = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
+    # 转账信息的记录
+    record: TransferRecord = models.ForeignKey(
+        TransferRecord, on_delete=models.CASCADE)
+    examine_teacher: NaturalPerson = models.ForeignKey(
+        NaturalPerson, on_delete=models.CASCADE, verbose_name="审核老师")
 
     def __str__(self):
         return f'{self.related_activity.title}活动报销'
@@ -1402,7 +1411,8 @@ class ReimbursementPhoto(models.Model):
         SUMMARY = (1, "总结图片")   #待审核的活动总结图片
     type = models.SmallIntegerField(choices=PhotoType.choices)
     image = models.ImageField(upload_to=f"reimbursement/photo/%Y/%m/", verbose_name=u'报销相关图片', null=True, blank=True)
-    related_reimb = models.ForeignKey(Reimbursement, related_name="reimbphotos", on_delete=models.CASCADE)
+    related_reimb: Reimbursement = models.ForeignKey(
+        Reimbursement, related_name="reimbphotos", on_delete=models.CASCADE)
     time = models.DateTimeField("上传时间", auto_now_add=True)
 
 
@@ -1446,7 +1456,7 @@ class ModifyRecord(models.Model):
         verbose_name = "修改记录"
         verbose_name_plural = verbose_name
         ordering = ["-time"]
-    user = models.ForeignKey(User, on_delete=models.SET_NULL,
+    user: User = models.ForeignKey(User, on_delete=models.SET_NULL,
                              related_name="modify_records",
                              to_field='username', blank=True, null=True)
     usertype = models.CharField('用户类型', max_length=16, default='', blank=True)
@@ -1493,9 +1503,9 @@ class Course(models.Model):
         ordering = ["id"]
 
     name = models.CharField("课程名称", max_length=60)
-    organization = models.ForeignKey(Organization,
-                                     on_delete=models.CASCADE,
-                                     verbose_name="开课组织")
+    organization: Organization = models.ForeignKey(Organization,
+                                                   on_delete=models.CASCADE,
+                                                   verbose_name="开课组织")
 
     year = models.IntegerField("开课年份", default=current_year)
 
@@ -1578,9 +1588,9 @@ class CourseTime(models.Model):
         verbose_name_plural = verbose_name
         ordering = ["start"]
 
-    course = models.ForeignKey(Course,
-                               on_delete=models.CASCADE,
-                               related_name="time_set")
+    course: Course = models.ForeignKey(Course,
+                                       on_delete=models.CASCADE,
+                                       related_name="time_set")
 
     # 开始时间和结束时间指的是一次课程的上课时间和下课时间
     # 需要提醒助教，填写的时间是第一周上课的时间，这影响到课程活动的统一开设。
@@ -1598,10 +1608,10 @@ class CourseParticipant(models.Model):
         verbose_name = "课程报名情况"
         verbose_name_plural = verbose_name
 
-    course = models.ForeignKey(Course,
-                               on_delete=models.CASCADE,
-                               related_name="participant_set")
-    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    course: Course = models.ForeignKey(Course,
+                                       on_delete=models.CASCADE,
+                                       related_name="participant_set")
+    person: NaturalPerson = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
 
     class Status(models.IntegerChoices):
         SELECT = (0, "已选课")
@@ -1638,12 +1648,11 @@ class CourseRecord(models.Model):
     class Meta:
         verbose_name = "学时表"
         verbose_name_plural = verbose_name
-    # TODO: task 5 hjb(Toseic) 2022/2/6 related_name后续可能还需要添加
 
-    person = models.ForeignKey(
+    person: NaturalPerson = models.ForeignKey(
         NaturalPerson, on_delete=models.CASCADE,
     )
-    course = models.ForeignKey(
+    course:Course = models.ForeignKey(
         Course, on_delete=models.SET_NULL, null=True, blank=True,
     )
     # 长度兼容组织和课程名
@@ -1679,7 +1688,7 @@ class PageLog(models.Model):
         PV = 0, "Page View"
         PD = 1, "Page Disappear"
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user: User = models.ForeignKey(User, on_delete=models.CASCADE)
     type = models.IntegerField('事件类型', choices=CountType.choices)
 
     page = models.URLField('页面url', max_length=256, blank=True)
@@ -1699,7 +1708,7 @@ class ModuleLog(models.Model):
         MV = 2, "Module View"
         MC = 3, "Module Click"
 
-    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    user: User = models.ForeignKey(User, on_delete=models.CASCADE)
     type = models.IntegerField('事件类型', choices=CountType.choices)
 
     page = models.URLField('页面url', max_length=256, blank=True)
@@ -1717,9 +1726,9 @@ class FeedbackType(models.Model):
 
     id = models.SmallIntegerField("反馈类型编号", primary_key=True)
     name = models.CharField("反馈类型名称", max_length=20)
-    org_type = models.ForeignKey(
+    org_type: OrganizationType = models.ForeignKey(
         OrganizationType, on_delete=models.CASCADE, null=True, blank=True)
-    org = models.ForeignKey(
+    org: Organization = models.ForeignKey(
         Organization, on_delete=models.CASCADE, null=True, blank=True)
 
     class Flexible(models.IntegerChoices):
@@ -1740,12 +1749,15 @@ class Feedback(CommentBase):
         verbose_name = "反馈"
         verbose_name_plural = verbose_name
 
-    type = models.ForeignKey(FeedbackType, on_delete=models.CASCADE)
+    type: FeedbackType = models.ForeignKey(FeedbackType, on_delete=models.CASCADE)
     title = models.CharField("标题", max_length=30, blank=False)
     content = models.TextField("内容", blank=False)
-    person = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
-    org_type = models.ForeignKey(OrganizationType, on_delete=models.CASCADE, null=True, blank=True)
-    org = models.ForeignKey(Organization, on_delete=models.CASCADE, null=True, blank=True)
+    person: NaturalPerson = models.ForeignKey(
+        NaturalPerson, on_delete=models.CASCADE)
+    org_type: OrganizationType = models.ForeignKey(
+        OrganizationType, on_delete=models.CASCADE, null=True, blank=True)
+    org: Organization = models.ForeignKey(
+        Organization, on_delete=models.CASCADE, null=True, blank=True)
 
     class IssueStatus(models.IntegerChoices):
         DRAFTED = (0, "草稿")
