@@ -1,3 +1,32 @@
+'''
+models.py
+
+- 用户模型
+- 应用内模型
+   - 字段
+   - 方法
+   - 模型常量
+   - 模型性质
+- 模型管理器
+
+修改要求
+- 模型
+    - 如需导出, 在__all__定义
+    - 与User有一对一关系的实体类型, 需要定义get_user方法
+    - 处于平等地位但内部实现不同的模型, 应定义同名接口方法用于导出同类信息
+    - 能被评论的模型, 应继承自CommentBase, 并参考其文档字符串要求
+    - 性质
+        - 模型更改应通过显式数据库操作，性质应是数据库之外的内容（或只读性质）
+        - 通过方法或类方法定义，或使用只读的property，建议使用前者，更加直观
+        - 若单一对象有确定的定时任务相对应，应添加related_job_ids
+    ...
+- 模型管理器
+    - 不应导出
+    - 若与学期有关，必须至少支持select_current的三类筛选
+    ...
+
+@Date 2022-03-11
+'''
 from django.db import models, transaction
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
@@ -9,13 +38,13 @@ from random import choice
 
 
 __all__ = [
+    # 模型
     'User',
     'NaturalPerson',
     'Freshman',
     'OrganizationType',
     'OrganizationTag',
     'Semester',
-    'select_current',
     'Organization',
     'Position',
     'Course',
@@ -199,6 +228,10 @@ class NaturalPerson(models.Model):
 
     def __str__(self):
         return str(self.name)
+
+    def get_user(self)-> User:
+        '''User一对一模型的必要方法'''
+        return self.person_id
 
     def get_user_ava(self):
         avatar = self.avatar
@@ -414,6 +447,10 @@ class Organization(models.Model):
 
     def __str__(self):
         return str(self.oname)
+
+    def get_user(self)-> User:
+        '''User一对一模型的必要方法'''
+        return self.organization_id
 
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
@@ -644,20 +681,52 @@ class ActivityManager(models.Manager):
 class CommentBase(models.Model):
     '''
     带有评论的模型基类
-    子类必须重载save()保存typename，值必须为类名的小写版本或类名
-    子类如果希望直接使用聚合页面呈现模板，应该定义__str__方法
-    默认的呈现内容为：实例名称、创建时间、上次修改时间
-    如果希望呈现审核页面，如审核中、创建者信息，则应该分别定义get_status_display和get_poster_name
-    其中，如果你的status是一个枚举字段，则无需定义get_status_display
-        status的display建议为：
-            包含“未/不/拒绝”的表示失败
-            此外包含“通过/接受”的表示审核通过
-            包含“修改”的为需要修改（可能用不到）
-            包含“取消”的为自己取消
-            其他都默认呈现“审核中”，可以自行修改html模板增加状态
-    如果你希望呈现更多信息，应该定义extra_display，返回一个二或三元组构成的列表
-        (键, 值, 图标名="envelope-o")将被渲染为一行[图标]键：值
-        图标名请参考fontawesome的图标类名
+
+    模型性质
+    -------
+    - 可被评论
+        - comment类依赖的外键
+    - 聚合页面呈现模板
+        - 默认呈现内容
+         1. 实例名称(模型名<id>, 可通过定义__str__方法重载)
+         2. 创建时间
+         3. 上次修改时间
+        - 显示创建者
+            - 需定义`get_poster_name`方法
+        - 呈现模板参考各类show.html
+    - 审核评论页面模板
+        - 显示状态
+            - 需定义枚举字段status或`get_status_display`方法
+            - 默认以返回的中文字符串决定呈现效果
+             1. 包含“未/不/拒绝”的表示失败
+             2. 此外包含“通过/接受”的表示审核通过
+             3. 包含“修改”的为需要修改（可能用不到）
+             4. 包含“取消”的为自己取消
+             5. 其他都默认呈现“审核中”
+        - 呈现模板参考各类modify.html
+
+    继承要求
+    -----------
+    - 重载`save`方法
+        - typename保存为类名的小写版本或类名，如`commentbase`
+        - 在更新模型或对象时，应该调用save方法，从而更新修改时间等信息
+    - 定义状态(可选)
+        - `status`枚举字段，或`get_status_display`方法
+        - 如不重载呈现模板，枚举字段的标签应为中文，或`get_status_display`返回中文
+    - 定义创建者信息(可选)
+        - `get_poster_name`方法，在审核页面呈现
+        - 返回字符串
+    - 显示更多信息(可选)
+        - 定义`extra_display`方法
+            - 返回一个二或三元组构成的列表
+            - 每个元素是(键, 值, 图标名="envelope-o")
+        - 呈现
+            - 在审核页面呈现，发布者信息、修改时间之上，其他预定义信息之下
+            - (键, 值, 图标名)将被渲染为一行 [图标]键：值
+            - 图标名请参考fontawesome的图标类名
+
+    @Author pht
+    @Date 2022-03-11
     '''
     class Meta:
         verbose_name = "带有评论"
