@@ -67,7 +67,7 @@ def viewFeedback(request, fid):
                 return redirect(message_url(wrong("没有评论权限！"), f"/viewFeedback/{feedback.id}"))
             # 满足以上条件后可以添加评论
             addComment(request, feedback, receiver,
-                       anonymous_flag=True,
+                       anonymous=True,
                        notification_title=Notification.Title.FEEDBACK_INFORM)
             return redirect(message_url(succeed("成功添加1条评论！"), f"/viewFeedback/{feedback.id}"))
 

@@ -4,6 +4,7 @@ from app.models import (
     Comment,
     CommentPhoto,
 )
+from django.contrib.auth.models import User
 from app.utils import (
     get_person_or_org,
     check_user_type,
@@ -17,17 +18,25 @@ from app.wechat_send import (
 
 
 @log.except_captured(source='comment_utils[addComment]', record_user=True)
-def addComment(request, comment_base, receiver=None, anonymous_flag=None, notification_title=None):
+def addComment(request, comment_base, receiver=None, *,
+               anonymous=False, notification_title=None):
     """添加评论
+
     Args:
-        request<WSGIRequest>: 传入的 request，其中 POST 参数至少应当包括：
-            comment_submit，comment
-        comment_base<Commentbase object>: 以 Commentbase 为基类的对象。
-            - 目前的 Commentbase 对象只有五种：modifyposition，neworganization，reimbursement，activity，feedback。
-            - 添加 Commentbase 类型需要在 `content` 和 `URL` 中添加键值对。
-        receiver<User object/list/tuple>:
-            - 为User object时，只向一个user发布通知消息；
-            - 为list/tuple时，向该可迭代对象中的所有user发布通知消息。
+    ----
+    - request<WSGIRequest>: 传入的 request，其中 POST 参数至少应当包括：
+        - comment_submit
+        - comment
+    - comment_base<Commentbase object>: 以 Commentbase 为基类的对象。
+        - 目前的 Commentbase 对象只有五种：
+            modifyposition，neworganization，reimbursement，activity，feedback。
+        - 添加 Commentbase 类型需要在 `content` 和 `URL` 中添加键值对。
+        - 注意：该对象会被调用**`save`保存**
+    - receiver<User object/iterable>:
+        - 为User object时，只向一个user发布通知消息；
+        - 为iterable时，向该可迭代对象中的所有user发布通知消息。
+        - 注意：**不批量创建**通知，receiver个数应为常量级
+
     Returns:
         context<dict>: warn_code==1 代表添加失败，warn_code==2代表添加成功
     """
@@ -35,9 +44,11 @@ def addComment(request, comment_base, receiver=None, anonymous_flag=None, notifi
     sender = get_person_or_org(request.user)
     if user_type == "Organization":
         sender_name = sender.oname
-        anonymous_flag = False
+        anonymous = False
     else:
-        sender_name = sender.name if anonymous_flag is None else "匿名者"
+        sender_name = sender.name
+    if anonymous:
+        sender_name = "匿名者"
     context = dict()
     typename = comment_base.typename
     content = {
@@ -99,34 +110,25 @@ def addComment(request, comment_base, receiver=None, anonymous_flag=None, notifi
         else:
             URL["activity"] = f"/editActivity/{comment_base.id}"
 
+        if notification_title is None:
+            notification_title = Notification.Title.VERIFY_INFORM
         # 向一个用户或多个用户发布消息
         if receiver is not None:
+            receivers = receiver
+            if isinstance(receivers, User):
+                receivers = [receivers]
             # 向多个用户发布消息
-            if isinstance(receiver, (list, tuple)):
-                for rec in receiver:
-                    notification_create(
-                        rec,
-                        request.user,
-                        Notification.Type.NEEDREAD,
-                        Notification.Title.VERIFY_INFORM if notification_title is None else notification_title,
-                        content[typename],
-                        URL[typename],
-                        publish_to_wechat=True,
-                        publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
-                        anonymous_flag=anonymous_flag,
-                    )
-            # 向一个用户发布消息
-            else:
+            for _receiver in receivers:
                 notification_create(
-                    receiver,
+                    _receiver,
                     request.user,
                     Notification.Type.NEEDREAD,
-                    Notification.Title.VERIFY_INFORM if notification_title is None else notification_title,
+                    notification_title,
                     content[typename],
                     URL[typename],
                     publish_to_wechat=True,
                     publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
-                    anonymous_flag=anonymous_flag,
+                    anonymous_flag=anonymous,
                 )
         context["new_comment"] = new_comment
         context["warn_code"] = 2
