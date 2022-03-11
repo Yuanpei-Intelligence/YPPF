@@ -1,29 +1,27 @@
 from app.views_dependency import *
 from app.models import (
-    Feedback,
-    NaturalPerson,
     Organization,
     OrganizationType,
+    Notification,
     Feedback,
     FeedbackType,
-    NaturalPerson,
 )
 from app.utils import (
     get_person_or_org,
 )
 from django.db.models import Q
 from django.db import transaction
-from datetime import date, datetime, timedelta
 from app.feedback_utils import (
     examine_notification,
     update_feedback,
     make_relevant_notification,
-    inform_notification
+    inform_notification,
 )
 from app.comment_utils import addComment, showComment
 
 
 __all__ = [
+    'feedbackWelcome',
     'viewFeedback',
     'modifyFeedback',
 ]
@@ -48,7 +46,10 @@ def viewFeedback(request, fid):
         # 添加评论
         if request.POST.get("comment_submit"):
             # 只有未完成反馈可以发送评论
-            if feedback.solve_status not in (Feedback.SolveStatus.SOLVING,Feedback.SolveStatus.UNMARKED):
+            if feedback.solve_status not in [
+                Feedback.SolveStatus.SOLVING,
+                Feedback.SolveStatus.UNMARKED,
+                ]:
                 return redirect(message_url(wrong("已结束的反馈不能评论！"), f"/viewFeedback/{feedback.id}"))
             # 确定通知消息的发送人，互相发送给对方
             if user_type == "Person" and feedback.person == me:
@@ -65,7 +66,9 @@ def viewFeedback(request, fid):
             else:
                 return redirect(message_url(wrong("没有评论权限！"), f"/viewFeedback/{feedback.id}"))
             # 满足以上条件后可以添加评论
-            addComment(request, feedback, receiver, anonymous_flag=True, notification_title="反馈评论通知")
+            addComment(request, feedback, receiver,
+                       anonymous_flag=True,
+                       notification_title=Notification.Title.FEEDBACK_INFORM)
             return redirect(message_url(succeed("成功添加1条评论！"), f"/viewFeedback/{feedback.id}"))
 
         # 以下为调整反馈的状态
@@ -338,35 +341,17 @@ def viewFeedback(request, fid):
     return render(request, "feedback_info.html", locals())
 
 
-"""
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='feedback_views[feedbackWelcome]', record_user=True)
 def feedbackWelcome(request):
-    '''
-    【我要留言】的初始化页面，呈现反馈提醒、选择反馈类型
-    '''
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    me = get_person_or_org(request.user)
-    my_messages.transfer_message_context(request.GET, html_display)
-
-    feedback_type_list = list(FeedbackType.objects.all())
-    
-    bar_display = utils.get_sidebar_and_navbar(
-        request.user, navbar_name="我要留言"
-    )
-    return render(request, "feedback_welcome.html", locals())
-"""
-
-
-@login_required(redirect_field_name='origin')
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='feedback_views[feedback_homepage]', record_user=True)
-def feedback_homepage(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = True if user_type == "Person" else False
     me = get_person_or_org(request.user, user_type)
     myname = me.name if is_person else me.oname
+
+    # 准备用户提示量
+    my_messages.transfer_message_context(request.GET, html_display)
 
     # -----------------------------反馈记录---------------------------------
     issued_feedback = (
@@ -456,8 +441,9 @@ def feedback_homepage(request):
         option = request.POST.get("option")
         if not is_person:
             return redirect(message_url(wrong('组织不可以撤回/删除反馈!'), request.path))
-        if option != "delete" and option != "withdraw":
+        if option not in ["delete", "withdraw"]:
             return redirect(message_url(wrong('无效的请求!'), request.path))
+
         if option == "delete":
             try:
                 del_feedback = Feedback.objects.get(id=request.POST["id"])
