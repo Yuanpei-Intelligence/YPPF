@@ -38,77 +38,66 @@ def addComment(request, comment_base, receiver=None, *,
         - 注意：**不批量创建**通知，receiver个数应为常量级
 
     Returns:
-        context<dict>: warn_code==1 代表添加失败，warn_code==2代表添加成功
+        context<dict>: 继承自wrong/succeed, 成功时包含new_comment
     """
     valid, user_type, html_display = check_user_type(request.user)
     sender = get_person_or_org(request.user)
-    if user_type == "Organization":
+    if user_type == UTYPE_ORG:
         sender_name = sender.oname
         anonymous = False
     else:
         sender_name = sender.name
     if anonymous:
         sender_name = "匿名者"
-    context = dict()
+
     typename = comment_base.typename
     content = {
         'modifyposition': f'{sender_name}在成员变动申请留有新的评论',
         'neworganization': f'{sender_name}在新建小组中留有新的评论',
         'reimbursement': f'{sender_name}在经费申请中留有新的评论',
         'activity': f"{sender_name}在活动申请中留有新的评论",
-        'feedback': f"{sender_name}在反馈中心留有新的评论"
+        'feedback': f"{sender_name}在反馈中心留有新的评论",
     }
-    URL={
+    URL = {
         'modifyposition': f'/modifyPosition/?pos_id={comment_base.id}',
         'neworganization': f'/modifyOrganization/?org_id={comment_base.id}',
         'reimbursement': f'/modifyEndActivity/?reimb_id={comment_base.id}',
-        'activity': f"/examineActivity/{comment_base.id}",
-        'feedback': f"/viewFeedback/{comment_base.id}"
+        'activity': f"/examineActivity/{comment_base.id}"
+                    # 发送者如果是组织，接收者就是老师
+                    if user_type == UTYPE_ORG else
+                    f"/editActivity/{comment_base.id}",
+        'feedback': f"/viewFeedback/{comment_base.id}",
     }
-    if user_type == "Organization":
-        URL["activity"] = f"/editActivity/{comment_base.id}"
-    if request.POST.get("comment_submit") is not None:  # 新建评论信息，并保存
+
+    # 新建评论信息，并保存
+    if request.POST.get("comment_submit") is not None:
         text = str(request.POST.get("comment"))
         # 检查图片合法性
         comment_images = request.FILES.getlist('comment_images')
-        if text == "" and comment_images == []:
-            context['warn_code'] = 1
-            context['warn_message'] = "评论内容均为空，无法评论！"
-            return context
-        if len(comment_images) > 0:
-            for comment_image in comment_images:
-                if if_image(comment_image) != 2:
-                    context["warn_code"] = 1
-                    context["warn_message"] = "评论中上传的附件只支持图片格式。"
-                    return context
+        if not text and not comment_images:
+            return wrong("评论内容均为空，无法评论！")
+        for comment_image in comment_images:
+            if if_image(comment_image) != 2:
+                return wrong("评论中上传的附件只支持图片格式。")
         try:
             with transaction.atomic():
                 new_comment = Comment.objects.create(
                     commentbase=comment_base, commentator=request.user, text=text
                 )
-                if len(comment_images) > 0:
-                    for comment_image in comment_images:
-                        CommentPhoto.objects.create(
-                            image=comment_image, comment=new_comment
-                        )
+                for comment_image in comment_images:
+                    CommentPhoto.objects.create(
+                        image=comment_image, comment=new_comment
+                    )
                 comment_base.save()  # 每次save都会更新修改时间
         except:
-            context["warn_code"] = 1
-            context["warn_message"] = "评论失败，请联系管理员。"
-            return context
-            
+            return wrong("评论失败，请联系管理员。")
+
         if len(text) >= 32:
             text = text[:31] + "……"
         if len(text) > 0:
-            content[typename] += f'：{text}'
+            text = f'{content[typename]}：{text}'
         else:
-            content[typename] += "。"
-        
-       
-        if user_type == "Organization":
-            URL["activity"] = f"/examineActivity/{comment_base.id}"
-        else:
-            URL["activity"] = f"/editActivity/{comment_base.id}"
+            text = f'{content[typename]}。'
 
         if notification_title is None:
             notification_title = Notification.Title.VERIFY_INFORM
@@ -124,18 +113,17 @@ def addComment(request, comment_base, receiver=None, *,
                     request.user,
                     Notification.Type.NEEDREAD,
                     notification_title,
-                    content[typename],
+                    text,
                     URL[typename],
                     publish_to_wechat=True,
                     publish_kws={'app': WechatApp.AUDIT, 'level': WechatMessageLevel.INFO},
                     anonymous_flag=anonymous,
                 )
+        context = succeed("评论成功。")
         context["new_comment"] = new_comment
-        context["warn_code"] = 2
-        context["warn_message"] = "评论成功。"
+        return context
     else:
         return wrong("找不到评论信息, 请重试!")
-    return context
 
 
 @log.except_captured(source='comment_utils[showComment]')
