@@ -13,8 +13,14 @@ models.py
 - 模型
     - 如需导出, 在__all__定义
     - 外键和管理器必须进行类型注释`: Class`
-    - 与User有一对一关系的实体类型, 需要定义get_user和get_display_name方法
+    - 与User有一对一关系的实体类型, 需要定义get_type, get_user和get_display_name方法
+        - get_type返回UTYPE常量
+        - 其它建议的方法
+            - get_absolute_url: 返回呈现该对象的url，用于后台跳转等，默认是绝对地址
+            - get_user_ava: 返回头像的url路径，名称仅暂定
+        - 此外，还应在ClassifiedUser和constants.py中注册
     - 处于平等地位但内部实现不同的模型, 应定义同名接口方法用于导出同类信息
+    - 仅供前端使用的方法，在注释中说明
     - 能被评论的模型, 应继承自CommentBase, 并参考其文档字符串要求
     - 性质
         - 模型更改应通过显式数据库操作，性质应是数据库之外的内容（或只读性质）
@@ -230,6 +236,10 @@ class NaturalPerson(models.Model):
     def __str__(self):
         return str(self.name)
 
+    def get_type(self) -> str:
+        '''User一对一模型的必要方法'''
+        return UTYPE_PER
+
     def get_user(self) -> User:
         '''User一对一模型的必要方法'''
         return self.person_id
@@ -238,7 +248,15 @@ class NaturalPerson(models.Model):
         '''User一对一模型的必要方法'''
         return self.name
 
+    def get_absolute_url(self, absolute=True):
+        '''User一对一模型的建议方法'''
+        url = f'/stuinfo/?name={self.name}'
+        if absolute:
+            url = LOGIN_URL.rstrip('/') + url
+        return url
+
     def get_user_ava(self):
+        '''User一对一模型的建议方法'''
         avatar = self.avatar
         if not avatar:
             avatar = "avatar/person_default.jpg"
@@ -453,6 +471,10 @@ class Organization(models.Model):
     def __str__(self):
         return str(self.oname)
 
+    def get_type(self):
+        '''User一对一模型的必要方法'''
+        return UTYPE_ORG
+
     def get_user(self) -> User:
         '''User一对一模型的必要方法'''
         return self.organization_id
@@ -461,27 +483,30 @@ class Organization(models.Model):
         '''User一对一模型的必要方法'''
         return self.oname
 
-    def save(self, *args, **kwargs):
-        self.YQPoint = round(self.YQPoint, 1)
-        super().save(*args, **kwargs)
+    def get_absolute_url(self, absolute=True):
+        '''User一对一模型的建议方法'''
+        url = f'/orginfo/?name={self.oname}'
+        if absolute:
+            url = LOGIN_URL.rstrip('/') + url
+        return url
 
     def get_user_ava(self):
+        '''User一对一模型的建议方法'''
         avatar = self.avatar
         if not avatar:
             avatar = "avatar/org_default.png"
         return image_url(avatar)
 
+    def save(self, *args, **kwargs):
+        self.YQPoint = round(self.YQPoint, 1)
+        super().save(*args, **kwargs)
+
     def get_subscriber_num(self, activated=True):
+        '''仅供前端使用'''
         if activated:
             return NaturalPerson.objects.activated().exclude(
                 id__in=self.unsubscribers.all()).count()
         return NaturalPerson.objects.all().count() - self.unsubscribers.count()
-
-    def get_neg_unsubscriber_num(self, activated=True):
-        if activated:
-            return -NaturalPerson.objects.activated().filter(
-                id__in=self.unsubscribers.all()).count()
-        return -self.unsubscribers.count()
 
 
 class PositionManager(models.Manager):

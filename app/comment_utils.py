@@ -134,12 +134,8 @@ def showComment(commentbase):
         commentator = get_person_or_org(comment.commentator)
         name = commentator.get_display_name()
         comment.commentator_name = name
-        if comment.commentator.username[:2] == "zz":
-            comment.URL = f"/orginfo/?name={name}"
-            comment.ava = commentator.get_user_ava()
-        else:
-            comment.URL = f"/stuinfo/?name={name}"
-            comment.ava = commentator.get_user_ava()
+        comment.ava = commentator.get_user_ava()
+        comment.URL = commentator.get_absolute_url(absolute=False)
         comment.len = len(comment.comment_photos.all())
     comments.len = len(comments.all())
     return comments
