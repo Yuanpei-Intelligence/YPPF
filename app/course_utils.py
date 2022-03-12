@@ -46,6 +46,7 @@ from random import sample
 from urllib.parse import quote
 from collections import Counter
 from datetime import datetime, timedelta
+from typing import Tuple, List
 
 from django.http import HttpResponse
 from django.contrib.auth.models import User
@@ -345,7 +346,8 @@ def cancel_course_activity(request, activity, cancel_all=False):
         activity.course_time.end_week = activity.course_time.cur_week
         activity.course_time.save()
 
-def remaining_willingness_point(user):
+
+def remaining_willingness_point(user: NaturalPerson):
     """
     计算剩余的意愿点
     """
@@ -365,8 +367,11 @@ def remaining_willingness_point(user):
     # else:
     #     return initial_point
 
+
 @close_old_connections
-def registration_status_check(course_status, cur_status, to_status):
+def registration_status_check(course_status: CourseParticipant.Status,
+                              cur_status: CourseParticipant.Status,
+                              to_status: CourseParticipant.Status):
     """
     判断选课状态的变化是否合法
 
@@ -390,7 +395,8 @@ def registration_status_check(course_status, cur_status, to_status):
                     and to_status == CourseParticipant.Status.SUCCESS))
 
 
-def check_course_time_conflict(current_course, user):
+def check_course_time_conflict(current_course: Course,
+                               user: NaturalPerson) -> Tuple[bool, str]:
     """
     检查当前选择课程的时间和已选课程是否冲突
     """
@@ -461,7 +467,8 @@ def check_course_time_conflict(current_course, user):
                      record_args=True,
                      status_code=log.STATE_WARNING,
                      source='course_utils[registration_status_change]')
-def registration_status_change(course_id, user, action=None):
+def registration_status_change(course_id: int, user: NaturalPerson,
+                               action: str) -> MESSAGECONTEXT:
     """
     学生点击选课或者取消选课后，用该函数更改学生的选课状态
 
@@ -572,7 +579,7 @@ def registration_status_change(course_id, user, action=None):
     return context
 
 
-def process_time(start, end) -> str:
+def process_time(start: datetime, end: datetime) -> str:
     """
     把datetime对象转换成人类可读的时间表示
     """
@@ -582,7 +589,9 @@ def process_time(start, end) -> str:
     return f"周{chinese_display[start.weekday()]} {start_time}-{end_time}"
 
 
-def course_to_display(courses, user, detail=False) -> list:
+def course_to_display(courses: QuerySet,
+                      user: NaturalPerson,
+                      detail=False) -> List[dict]:
     """
     方便前端呈现课程信息
 
@@ -594,9 +603,6 @@ def course_to_display(courses, user, detail=False) -> list:
         返回一个列表，列表中的每个元素是一个课程信息的字典
     """
     display = []
-
-    # TODO：task10 ljy 2022-02-14
-    # 在课程详情页的前端完成后，适当调整向前端传递的字段
 
     if detail:
         courses = courses.select_related('organization').prefetch_related(
@@ -610,7 +616,7 @@ def course_to_display(courses, user, detail=False) -> list:
             "photo",
             "teaching_plan",
             "record_cal_method",
-            "QRcode"
+            "QRcode",
         ).select_related('organization').prefetch_related(
             Prefetch('participant_set',
                      queryset=CourseParticipant.objects.filter(person=user),
@@ -682,8 +688,7 @@ def draw_lots():
     for course in courses:
         with transaction.atomic():
             participants = CourseParticipant.objects.filter(
-                course=course,
-                status=CourseParticipant.Status.SELECT)
+                course=course, status=CourseParticipant.Status.SELECT)
 
             participants_num = participants.count()
             if participants_num <= 0:
@@ -702,7 +707,8 @@ def draw_lots():
             else:
                 # 抽签；可能实现得有一些麻烦
                 lucky_ones = sample(participants_id, capacity)
-                unlucky_ones = list(set(participants_id).difference(set(lucky_ones)))
+                unlucky_ones = list(
+                    set(participants_id).difference(set(lucky_ones)))
                 # 不确定是否要加悲观锁
                 CourseParticipant.objects.filter(
                     id__in=lucky_ones).select_for_update().update(
@@ -771,7 +777,7 @@ def draw_lots():
                      status_code=log.STATE_WARNING,
                      source='course_utils[change_course_status]')
 @close_old_connections
-def change_course_status(cur_status, to_status):
+def change_course_status(cur_status: Course.Status, to_status: Course.Status):
     """
     作为定时任务，在课程设定的时间改变课程的选课阶段
 
@@ -824,8 +830,9 @@ def change_course_status(cur_status, to_status):
                              in_semester=Semester.now(),
                              status=Position.Status.INSERVICE)
                     # 检查是否已经加入小组
-                    if not Position.objects.activated().filter(person=participant.person,
-                                                   org=organization).exists():
+                    if not Position.objects.activated().filter(
+                            person=participant.person,
+                            org=organization).exists():
                         position = Position(person=participant.person,
                                             org=organization,
                                             in_semester=Semester.now())

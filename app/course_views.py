@@ -32,6 +32,7 @@ from datetime import datetime
 
 from django.db import transaction
 
+
 __all__ = [
     'editCourseActivity',
     'addSingleCourseActivity',
@@ -420,7 +421,7 @@ def showCourseRecord(request):
 @log.except_captured(record_user=True,
                      record_request_args=True,
                      source='course_views[selectCourse]')
-def selectCourse(request):
+def selectCourse(request: HttpRequest):
     """
     学生选课的聚合页面，包括: 
     1. 所有开放课程的选课信息
@@ -521,7 +522,7 @@ def selectCourse(request):
 @log.except_captured(record_user=True,
                      record_request_args=True,
                      source='course_views[viewCourse]')
-def viewCourse(request):
+def viewCourse(request: HttpRequest):
     """
     展示一门课程的详细信息
     
