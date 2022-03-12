@@ -48,7 +48,7 @@ __all__ = [
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[editCourseActivity]', record_user=True)
-def editCourseActivity(request, aid):
+def editCourseActivity(request: HttpRequest, aid):
     """
     编辑单次书院课程活动，addActivity的简化版
     """
@@ -124,7 +124,7 @@ def editCourseActivity(request, aid):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[addSingleCourseActivity]', record_user=True)
-def addSingleCourseActivity(request):
+def addSingleCourseActivity(request: HttpRequest):
     """
     创建单次书院课程活动，addActivity的简化版
     """
@@ -179,7 +179,7 @@ def addSingleCourseActivity(request):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='course_views[showCourseActivity]', record_user=True)
-def showCourseActivity(request):
+def showCourseActivity(request: HttpRequest):
     """
     筛选本学期已结束的课程活动、未开始的课程活动，在课程活动聚合页面进行显示。
     """
@@ -275,7 +275,7 @@ def showCourseActivity(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[showCourseRecord]', record_user=True)
-def showCourseRecord(request):
+def showCourseRecord(request: HttpRequest):
     '''
     展示及修改学时数据
     在开启修改功能前，显示本学期已完成的所有课程活动的学生的参与次数
@@ -552,7 +552,7 @@ def viewCourse(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[addCourse]', record_user=True)
-def addCourse(request, cid=None):
+def addCourse(request: HttpRequest, cid=None):
     """
     发起课程页
     ---------------
@@ -669,7 +669,7 @@ def addCourse(request, cid=None):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[outputRecord]', record_user=True)
-def outputRecord(request):
+def outputRecord(request: HttpRequest):
     """
     导出所有学时信息
     导出文件格式为excel，包括汇总和详情两个sheet。
@@ -692,7 +692,7 @@ def outputRecord(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[outputSelectInfo]', record_user=True)
-def outputSelectInfo(request):
+def outputSelectInfo(request: HttpRequest):
     """
     导出该课程的选课名单
     """

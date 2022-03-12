@@ -75,7 +75,7 @@ email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
 
 @log.except_captured(source='views[index]', record_user=True)
-def index(request):
+def index(request: HttpRequest):
     arg_origin = request.GET.get("origin")
     modpw_status = request.GET.get("modinfo")
     # request.GET['success'] = "no"
@@ -173,7 +173,7 @@ def index(request):
 
 @login_required(redirect_field_name="origin")
 @log.except_captured(source='views[shiftAccount]', record_user=True)
-def shiftAccount(request):
+def shiftAccount(request: HttpRequest):
 
     username = request.session.get("NP")
     if not username:
@@ -202,7 +202,7 @@ wechat_login_coder = MyMD5PasswordHasher("wechat_login")
 
 
 @log.except_captured(source='views[miniLogin]', record_user=True)
-def miniLogin(request):
+def miniLogin(request: HttpRequest):
     try:
         assert request.method == "POST"
         username = request.POST["username"]
@@ -230,7 +230,7 @@ def miniLogin(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[stuinfo]', record_user=True)
-def stuinfo(request, name=None):
+def stuinfo(request: HttpRequest, name=None):
     """
         进入到这里的逻辑:
         首先必须登录，并且不是超级账户
@@ -589,7 +589,7 @@ def stuinfo(request, name=None):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[requestLoginOrg]', record_user=True)
-def requestLoginOrg(request, name=None):  # 特指个人希望通过个人账户登入小组账户的逻辑
+def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通过个人账户登入小组账户的逻辑
     """
         这个函数的逻辑是，个人账户点击左侧的管理小组直接跳转登录到小组账户
         首先检查登录的user是个人账户，否则直接跳转orginfo
@@ -637,7 +637,7 @@ def requestLoginOrg(request, name=None):  # 特指个人希望通过个人账户
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[orginfo]', record_user=True)
-def orginfo(request, name=None):
+def orginfo(request: HttpRequest, name=None):
     """
         orginfo负责呈现小组主页，逻辑和stuinfo是一样的，可以参考
         只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个小组界面都是【不可管理/编辑小组信息】
@@ -882,7 +882,7 @@ def orginfo(request, name=None):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[homepage]', record_user=True)
-def homepage(request):
+def homepage(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = True if user_type == "Person" else False
     me = get_person_or_org(request.user, user_type)
@@ -1041,7 +1041,7 @@ def homepage(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[accountSetting]', record_user=True)
-def accountSetting(request):
+def accountSetting(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
     # 在这个页面 默认回归为自己的左边栏
@@ -1182,7 +1182,7 @@ def accountSetting(request):
 
 
 @log.except_captured(source='views[freshman]', record_user=True)
-def freshman(request):
+def freshman(request: HttpRequest):
     if request.user.is_authenticated:
         return redirect(message_url(wrong('你已经登录，无需进行注册!')))
 
@@ -1288,7 +1288,7 @@ def freshman(request):
 
 @login_required(redirect_field_name="origin")
 @log.except_captured(source='views[userAgreement]', record_user=True)
-def userAgreement(request):
+def userAgreement(request: HttpRequest):
     # 不要加check_user_access，因为本页面就是该包装器首次登录时的跳转页面之一
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
@@ -1308,7 +1308,7 @@ def userAgreement(request):
 
 
 @log.except_captured(source='views[authRegister]', record_user=True)
-def authRegister(request):
+def authRegister(request: HttpRequest):
     if request.user.is_superuser:
         if request.method == "POST" and request.POST:
             name = request.POST["name"]
@@ -1359,7 +1359,7 @@ def authRegister(request):
 
 # @login_required(redirect_field_name=None)
 @log.except_captured(source='views[logout]', record_user=True)
-def logout(request):
+def logout(request: HttpRequest):
     auth.logout(request)
     return HttpResponseRedirect("/index/")
 
@@ -1383,7 +1383,7 @@ def org_spec(request, *args, **kwargs):
 """
 
 @log.except_captured(source='views[get_stu_img]', record_user=True)
-def get_stu_img(request):
+def get_stu_img(request: HttpRequest):
     if DEBUG: print("in get stu img")
     stuId = request.GET.get("stuId")
     if stuId is not None:
@@ -1399,7 +1399,7 @@ def get_stu_img(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[search]', record_user=True)
-def search(request):
+def search(request: HttpRequest):
     """
         搜索界面的呈现逻辑
         分成搜索个人和搜索小组两个模块，每个模块的呈现独立开，有内容才呈现，否则不显示
@@ -1528,7 +1528,7 @@ def search(request):
 
 
 @log.except_captured(source='views[forgetPassword]', record_user=True)
-def forgetPassword(request):
+def forgetPassword(request: HttpRequest):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
 
@@ -1671,7 +1671,7 @@ def forgetPassword(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/", is_modpw=True)
 @log.except_captured(source='views[modpw]', record_user=True)
-def modpw(request):
+def modpw(request: HttpRequest):
     """
         可能在三种情况进入这个页面：首次登陆；忘记密码；或者常规的修改密码。
         在忘记密码时，可以允许不输入旧的密码
@@ -1767,7 +1767,7 @@ def modpw(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[subscribeOrganization]', record_user=True)
-def subscribeOrganization(request):
+def subscribeOrganization(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != 'Person':
         return redirect('/welcome/?warn_code=1&warn_message=小组账号不支持订阅！')
@@ -1803,7 +1803,7 @@ def subscribeOrganization(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[saveSubscribeStatus]', record_user=True)
-def saveSubscribeStatus(request):
+def saveSubscribeStatus(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != 'Person':
         return JsonResponse({"success":False})
@@ -1921,7 +1921,7 @@ def apply_position(request, oid=None):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[notifications]', record_user=True)
-def notifications(request):
+def notifications(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
     # 接下来处理POST相关的内容
@@ -1992,7 +1992,7 @@ def notifications(request):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[QAcenter]', record_user=True)
-def QAcenter(request):
+def QAcenter(request: HttpRequest):
     """
     Haowei:
     QA的聚合界面
@@ -2046,7 +2046,7 @@ def QAcenter(request):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, log=False)
-def eventTrackingFunc(request):
+def eventTrackingFunc(request: HttpRequest):
     # unpack request:
     logType = int(request.POST['Type'])
     logUrl = request.POST['Url']

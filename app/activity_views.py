@@ -46,7 +46,7 @@ __all__ = [
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='activity_views[viewActivity]', record_user=True)
-def viewActivity(request, aid=None):
+def viewActivity(request: HttpRequest, aid=None):
     """
     页面逻辑：
     1. 方法为 GET 时，展示一个活动的详情。
@@ -328,7 +328,7 @@ def viewActivity(request, aid=None):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='activity_views[getActivityInfo]', record_user=True)
-def getActivityInfo(request):
+def getActivityInfo(request: HttpRequest):
     '''
     通过GET获得活动信息表下载链接
     GET参数?activityid=id&infotype=sign[&output=id,name,gender,telephone][&format=csv|excel]
@@ -453,7 +453,7 @@ def getActivityInfo(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='activity_views[checkinActivity]', record_user=True)
-def checkinActivity(request, aid=None):
+def checkinActivity(request: HttpRequest, aid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != "Person":
         return redirect(message_url(wrong('签到失败：请使用个人账号签到')))
@@ -573,7 +573,7 @@ def checkinActivity(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='activity_views[addActivity]', record_user=True)
-def addActivity(request, aid=None):
+def addActivity(request: HttpRequest, aid=None):
     """
     发起活动与修改活动页
     ---------------
@@ -776,7 +776,7 @@ def addActivity(request, aid=None):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='activity_views[showActivity]', record_user=True)
-def showActivity(request):
+def showActivity(request: HttpRequest):
     """
     活动信息的聚合界面
     只有老师和小组才能看到，老师看到检查者是自己的，小组看到发起方是自己的
@@ -824,7 +824,7 @@ def showActivity(request):
 
 @login_required(redirect_field_name="origin")
 @log.except_captured(source='activity_views[examineActivity]', record_user=True)
-def examineActivity(request, aid):
+def examineActivity(request: HttpRequest, aid):
     valid, user_type, html_display = utils.check_user_type(request.user)
     try:
         assert valid
@@ -942,7 +942,7 @@ def examineActivity(request, aid):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='activity_views[offlineCheckinActivity]', record_user=True)
-def offlineCheckinActivity(request, aid):
+def offlineCheckinActivity(request: HttpRequest, aid):
     '''
     修改签到功能
     只有举办活动的组织账号可查看和修改
