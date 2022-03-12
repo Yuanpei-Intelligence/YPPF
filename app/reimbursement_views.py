@@ -16,7 +16,7 @@ __all__ = [
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='reimbursement_views[endActivity]', record_user=True)
-def endActivity(request):
+def endActivity(request: HttpRequest):
     """
     报销信息的聚合界面
     对审核老师进行了特判
@@ -61,7 +61,7 @@ def endActivity(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='reimbursement_views[modifyEndActivity]', record_user=True)
-def modifyEndActivity(request):
+def modifyEndActivity(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
 

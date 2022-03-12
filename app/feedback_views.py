@@ -30,7 +30,7 @@ __all__ = [
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 # @log.except_captured(EXCEPT_REDIRECT, source='views[viewActivity]', record_user=True)
-def viewFeedback(request, fid):
+def viewFeedback(request: HttpRequest, fid):
     # 查找fid对应的反馈条目
     fid = int(fid)
     feedback = Feedback.objects.get(id=fid)
@@ -344,7 +344,7 @@ def viewFeedback(request, fid):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='feedback_views[feedbackWelcome]', record_user=True)
-def feedbackWelcome(request):
+def feedbackWelcome(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = True if user_type == "Person" else False
     me = get_person_or_org(request.user, user_type)
@@ -489,7 +489,7 @@ def feedbackWelcome(request):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='feedback_views[modifyFeedback]', record_user=True)
-def modifyFeedback(request):
+def modifyFeedback(request: HttpRequest):
     '''
     反馈表单填写、修改与提交的视图函数
     '''

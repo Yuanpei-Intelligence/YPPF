@@ -1611,7 +1611,8 @@ class CourseParticipant(models.Model):
     course: Course = models.ForeignKey(Course,
                                        on_delete=models.CASCADE,
                                        related_name="participant_set")
-    person: NaturalPerson = models.ForeignKey(NaturalPerson, on_delete=models.CASCADE)
+    person: NaturalPerson = models.ForeignKey(NaturalPerson,
+                                              on_delete=models.CASCADE)
 
     class Status(models.IntegerChoices):
         SELECT = (0, "已选课")
