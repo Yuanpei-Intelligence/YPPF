@@ -13,7 +13,7 @@ models.py
 - 模型
     - 如需导出, 在__all__定义
     - 外键和管理器必须进行类型注释`: Class`
-    - 与User有一对一关系的实体类型, 需要定义get_user方法
+    - 与User有一对一关系的实体类型, 需要定义get_user和get_display_name方法
     - 处于平等地位但内部实现不同的模型, 应定义同名接口方法用于导出同类信息
     - 能被评论的模型, 应继承自CommentBase, 并参考其文档字符串要求
     - 性质
@@ -77,7 +77,7 @@ __all__ = [
 ]
 
 
-def current_year()-> int:
+def current_year() -> int:
     '''不导出的函数，用于实时获取学年设置'''
     return CURRENT_ACADEMIC_YEAR
 
@@ -99,7 +99,7 @@ def select_current(queryset,
     return queryset.exclude(**kwargs) if noncurrent else queryset.filter(**kwargs)
 
 
-def image_url(image, enable_abs=False)-> str:
+def image_url(image, enable_abs=False) -> str:
     '''不导出的函数，返回类似/media/path的url相对路径'''
     # ImageField将None和空字符串都视为<ImageFieldFile: None>
     # 即django.db.models.fields.files.ImageFieldFile对象
@@ -230,9 +230,13 @@ class NaturalPerson(models.Model):
     def __str__(self):
         return str(self.name)
 
-    def get_user(self)-> User:
+    def get_user(self) -> User:
         '''User一对一模型的必要方法'''
         return self.person_id
+
+    def get_display_name(self) -> str:
+        '''User一对一模型的必要方法'''
+        return self.name
 
     def get_user_ava(self):
         avatar = self.avatar
@@ -449,9 +453,13 @@ class Organization(models.Model):
     def __str__(self):
         return str(self.oname)
 
-    def get_user(self)-> User:
+    def get_user(self) -> User:
         '''User一对一模型的必要方法'''
         return self.organization_id
+
+    def get_display_name(self) -> str:
+        '''User一对一模型的必要方法'''
+        return self.oname
 
     def save(self, *args, **kwargs):
         self.YQPoint = round(self.YQPoint, 1)
