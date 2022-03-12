@@ -346,9 +346,9 @@ def viewFeedback(request: HttpRequest, fid):
 @log.except_captured(source='feedback_views[feedbackWelcome]', record_user=True)
 def feedbackWelcome(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    is_person = True if user_type == "Person" else False
+    is_person = user_type == UTYPE_PER
     me = get_person_or_org(request.user, user_type)
-    myname = me.name if is_person else me.oname
+    myname = me.get_display_name()
 
     # 准备用户提示量
     my_messages.transfer_message_context(request.GET, html_display)

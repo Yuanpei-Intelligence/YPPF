@@ -673,7 +673,7 @@ def record_modification(user, info=""):
     try:
         _, usertype, _ = check_user_type(user)
         obj = get_person_or_org(user, usertype)
-        name = obj.name if usertype == UTYPE_PER else obj.oname
+        name = obj.get_display_name()
         firsttime = not user.modify_records.exists()
         ModifyRecord.objects.create(user=user, usertype=usertype, name=name, info=info)
         return firsttime

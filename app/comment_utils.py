@@ -19,7 +19,7 @@ from app.wechat_send import (
 
 @log.except_captured(source='comment_utils[addComment]', record_user=True)
 def addComment(request, comment_base, receiver=None, *,
-               anonymous=False, notification_title=None):
+               anonymous=False, notification_title=None) -> MESSAGECONTEXT:
     """添加评论
 
     Args:
@@ -43,12 +43,8 @@ def addComment(request, comment_base, receiver=None, *,
     valid, user_type, html_display = check_user_type(request.user)
     sender = get_person_or_org(request.user)
     if user_type == UTYPE_ORG:
-        sender_name = sender.oname
         anonymous = False
-    else:
-        sender_name = sender.name
-    if anonymous:
-        sender_name = "匿名者"
+    sender_name = "匿名者" if anonymous else sender.get_display_name()
 
     typename = comment_base.typename
     content = {
@@ -131,19 +127,19 @@ def showComment(commentbase):
     if commentbase is None:
         return None
     try:
-        comments = commentbase.comments.order_by("time")
+        comments: QuerySet[Comment] = commentbase.comments.order_by("time")
     except:
         return None
     for comment in comments:
         commentator = get_person_or_org(comment.commentator)
+        name = commentator.get_display_name()
+        comment.commentator_name = name
         if comment.commentator.username[:2] == "zz":
+            comment.URL = f"/orginfo/?name={name}"
             comment.ava = commentator.get_user_ava()
-            comment.URL = "/orginfo/?name={name}".format(name=commentator.oname)
-            comment.commentator_name = commentator.oname
         else:
+            comment.URL = f"/stuinfo/?name={name}"
             comment.ava = commentator.get_user_ava()
-            comment.URL = "/stuinfo/?name={name}".format(name=commentator.name)
-            comment.commentator_name = commentator.name
         comment.len = len(comment.comment_photos.all())
     comments.len = len(comments.all())
     return comments

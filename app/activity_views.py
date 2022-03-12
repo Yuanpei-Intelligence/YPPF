@@ -78,7 +78,7 @@ def viewActivity(request: HttpRequest, aid=None):
 
     try:
         aid = int(aid)
-        activity = Activity.objects.get(id=aid)
+        activity: Activity = Activity.objects.get(id=aid)
         valid, user_type, html_display = utils.check_user_type(request.user)
         # assert valid  已经在check_user_access检查过了
         org = activity.organization_id
@@ -216,13 +216,7 @@ def viewActivity(request: HttpRequest, aid=None):
             return redirect(message_url(wrong('无效的请求!'), request.path))
 
     elif request.method == "GET":
-        warn_code = request.GET.get("warn_code")
-        warn_msg = request.GET.get("warn_message")
-        if warn_code and warn_msg:
-            if warn_code != "1" and warn_code != "2":
-                return redirect(message_url(wrong('非法的状态码，请勿篡改URL!'), request.path))
-            html_display["warn_code"] = int(warn_code)
-            html_display["warn_message"] = warn_msg
+        my_messages.transfer_message_context(request.GET, html_display)
 
 
     # 下面这些都是展示前端页面要用的

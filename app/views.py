@@ -886,7 +886,7 @@ def homepage(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = True if user_type == "Person" else False
     me = get_person_or_org(request.user, user_type)
-    myname = me.name if is_person else me.oname
+    myname = me.get_display_name()
 
     # 直接储存在html_display中
     # profile_name = "个人主页" if is_person else "小组主页"

@@ -6,7 +6,8 @@ from app.models import (
     QandA,
 )
 from app.notification_utils import notification_create
-from app import utils
+from app.utils import check_user_type, get_person_or_org
+
 
 def QA_create(sender, receiver, Q_text, anonymous_flag=False):
     # sender: user
@@ -48,9 +49,13 @@ def QA_ignore(QA_id, sender_flag=True):
         qa = QandA.objects.select_for_update().get(id=QA_id)
         # 如果两边都ignore了，就delete
         if sender_flag:
-            qa.status = QandA.Status.DELETE if qa.status == QandA.Status.IGNORE_RECEIVER else QandA.Status.IGNORE_SENDER
+            qa.status = (QandA.Status.DELETE
+                         if qa.status == QandA.Status.IGNORE_RECEIVER
+                         else QandA.Status.IGNORE_SENDER)
         else:
-            qa.status = QandA.Status.DELETE if qa.status == QandA.Status.IGNORE_SENDER else QandA.Status.IGNORE_RECEIVER
+            qa.status = (QandA.Status.DELETE
+                         if qa.status == QandA.Status.IGNORE_SENDER
+                         else QandA.Status.IGNORE_RECEIVER)
         qa.save()
 
 def QA_delete(QA_id):
@@ -63,25 +68,30 @@ def QA2Display(user):
     all_instances = dict()
     all_instances['send'], all_instances['receive'] = [], []
     instances = {
-        "send": QandA.objects.activated(sender_flag=True).select_related('receiver').filter(sender=user).order_by("-Q_time"),
-        "receive": QandA.objects.activated(receiver_flag=True).select_related('sender').filter(receiver=user).order_by("-Q_time"),
+        "send": QandA.objects.activated(sender_flag=True).filter(sender=user)
+                .select_related('receiver').order_by("-Q_time"),
+        "receive": QandA.objects.activated(receiver_flag=True).filter(receiver=user)
+                   .select_related('sender').order_by("-Q_time"),
     }
 
-    me = NaturalPerson.objects.get(person_id=user) if hasattr(user, 'naturalperson') \
-        else Organization.objects.get(organization_id=user)
-    my_name = me.name if hasattr(user, "naturalperson") else me.oname
+    me = get_person_or_org(user)
+    my_name = me.get_display_name()
     
     receiver_userids = instances['send'].values_list('receiver_id', flat=True)
     sender_userids = instances['receive'].values_list('sender_id', flat=True)
 
-    sender_persons = NaturalPerson.objects.filter(person_id__in=sender_userids).values_list('person_id', 'name')
+    sender_persons = NaturalPerson.objects.filter(
+        person_id__in=sender_userids).values_list('person_id', 'name')
     sender_persons = {userid: name for userid, name in sender_persons}
-    sender_orgs = Organization.objects.filter(organization_id__in=sender_userids).values_list('organization_id', 'oname')
+    sender_orgs = Organization.objects.filter(
+        organization_id__in=sender_userids).values_list('organization_id', 'oname')
     sender_orgs = {userid: name for userid, name in sender_orgs}
 
-    receiver_persons = NaturalPerson.objects.filter(person_id__in=receiver_userids).values_list('person_id', 'name')
+    receiver_persons = NaturalPerson.objects.filter(
+        person_id__in=receiver_userids).values_list('person_id', 'name')
     receiver_persons = {userid: name for userid, name in receiver_persons}
-    receiver_orgs = Organization.objects.filter(organization_id__in=receiver_userids).values_list('organization_id', 'oname')
+    receiver_orgs = Organization.objects.filter(
+        organization_id__in=receiver_userids).values_list('organization_id', 'oname')
     receiver_orgs = {userid: name for userid, name in receiver_orgs}
 
     for qa in instances['send']:
@@ -90,8 +100,8 @@ def QA2Display(user):
         if qa.anonymous_flag:
             send_QAs['sender'] += "(匿名)"
         
-        _, user_type, _ = utils.check_user_type(qa.receiver)
-        if user_type == "Organization":
+        _, user_type, _ = check_user_type(qa.receiver)
+        if user_type == UTYPE_ORG:
             send_QAs["receiver"] = receiver_orgs.get(qa.receiver_id)
         else:
             send_QAs["receiver"] = receiver_persons.get(qa.receiver_id)
@@ -109,8 +119,8 @@ def QA2Display(user):
         if qa.anonymous_flag:
             receive_QAs['sender'] = "匿名者"
         else:
-            _, user_type, _ = utils.check_user_type(qa.sender)
-            if user_type == "Organization":
+            _, user_type, _ = check_user_type(qa.sender)
+            if user_type == UTYPE_ORG:
                 receive_QAs["sender"] = sender_orgs.get(qa.sender_id)
             else:
                 receive_QAs["sender"] = sender_persons.get(qa.sender_id)
