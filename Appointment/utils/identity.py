@@ -9,7 +9,9 @@
 from Appointment import *
 from Appointment.models import Participant
 from app import API
-from typing import Union
+from typing import Union, Callable
+from django.http import HttpRequest
+from django.db.models import QuerySet
 from django.contrib.auth.models import User
 
 from functools import wraps
@@ -38,10 +40,9 @@ def get_participant(user: Union[User, str], update=False, raise_except=False):
     - participant: 满足participant.Sid=user, 不存在时返回`None`
     '''
     try:
+        par_all: QuerySet[Participant] = Participant.objects.all()
         if update:
-            par_all = Participant.objects.select_for_update().all()
-        else:
-            par_all = Participant.objects.all()
+            par_all = par_all.select_for_update()
 
         if isinstance(user, str):
             return par_all.get(Sid_id=user)
@@ -90,20 +91,21 @@ def get_avatar(participant: Union[Participant, User]):
     return API.get_avatar_url(user)
 
 
-def get_member_ids(participant: Union[Participant, User], noncurrent=False)-> list:
+def get_member_ids(participant: Union[Participant, User], noncurrent=False):
     '''返回participant的成员id列表，个人返回空列表'''
     user = _arg2user(participant)
     return API.get_members(user, noncurrent=noncurrent)
 
 
-def get_members(participant: Union[Participant, User], noncurrent=False):
+def get_members(participant: Union[Participant, User],
+                noncurrent=False) -> QuerySet[Participant]:
     '''返回participant的成员集合，Participant的QuerySet'''
     member_ids = get_member_ids(participant, noncurrent=noncurrent)
     return Participant.objects.filter(Sid__in=member_ids)
 
 
 # 用户验证、创建和更新
-def _create_account(request, **values):
+def _create_account(request: HttpRequest, **values) -> Union[Participant, None]:
     '''
     根据请求信息创建账户, 根据创建结果返回生成的对象或者`None`, noexcept
     '''
@@ -171,16 +173,16 @@ def _update_name(user: Union[Participant, User, str]):
 
 
 def identity_check(
-    auth_func=lambda x: x is not None,
+    auth_func: Callable[[Union[Participant, None]], bool]=lambda x: x is not None,
     redirect_field_name='origin',
     allow_create=False,
     update_name=True,
     ):
 
-    def decorator(view_function):
+    def decorator(view_function: Callable):
         @login_required(redirect_field_name=redirect_field_name)
         @wraps(view_function)
-        def _wrapped_view(request, *args, **kwargs):
+        def _wrapped_view(request: HttpRequest, *args, **kwargs):
 
             _allow_create = allow_create  # 作用域问题
             context = {}

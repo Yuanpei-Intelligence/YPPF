@@ -305,6 +305,7 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
             display_token = request.GET.get('token', None)
             check = Room.objects.filter(Rid=Rid)
             assert len(check) > 0
+            roomname = check[0].Rtitle
 
             assert display_token is not None
         except:
@@ -336,7 +337,9 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
                                      Astart__lte=nowtime + timedelta(minutes=15))
         comingsoon = 1 if len(comingsoon) else 0    # 有15分钟之内的未开始预约，不允许即时预约
 
-        return JsonResponse({'comingsoon': comingsoon, 'data': data}, status=200, json_dumps_params={'ensure_ascii': False})
+        return JsonResponse(
+            {'comingsoon': comingsoon, 'data': data, 'roomname': roomname},
+            status=200, json_dumps_params={'ensure_ascii': False})
     else:
         return JsonResponse(
             {'statusInfo': {
@@ -466,7 +469,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
     if room.Rstatus == Room.Status.FORBIDDEN:   # 禁止使用的房间
         cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：禁止使用")
         return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
-    
+
     if room.RneedAgree:
         if student.agree_time is None:
             cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：未签署协议")

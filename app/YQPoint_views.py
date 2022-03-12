@@ -1,6 +1,7 @@
 '''待废弃'''
 from app.views_dependency import *
 from app.models import (
+    NaturalPerson,
     Organization,
     YQPointDistribute,
     TransferRecord,
@@ -16,6 +17,7 @@ from app.YQPoint_utils import (
 from app.notification_utils import notification_create
 from app.wechat_send import publish_notification, WechatMessageLevel, WechatApp
 
+
 from django.http import QueryDict
 from django.db import transaction  # 原子化更改数据库
 
@@ -24,7 +26,7 @@ from django.db import transaction  # 原子化更改数据库
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='YQPoint_views[myYQPoint]', record_user=True)
-def myYQPoint(request):
+def myYQPoint(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
     # 接下来处理POST相关的内容
@@ -115,39 +117,29 @@ def myYQPoint(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='YQPoint_views[transaction_page]', record_user=True)
-def transaction_page(request, rid=None):
+def transaction_page(request: HttpRequest, rid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
-    html_display["is_myself"] = True
-    html_display['warn_code'] = 0
 
     try:
         user = User.objects.get(id=rid)
         recipient = utils.get_person_or_org(user)
-
     except:
         return redirect(
             "/welcome/?warn_code=1&warn_message=该用户不存在，无法实现转账!")
-    if not hasattr(recipient, "organization_id") or user_type != "Organization":
-        html_display = wrong("目前只支持小组向小组转账！")
+    if not hasattr(recipient, "organization_id"):
+        return redirect(
+            "/welcome/?name={name}&warn_code=1&warn_message={message}".format(
+                name=recipient.oname,
+                message="目前仅支持向小组转账"))
     if request.user == user:
-        html_display = wrong("不能向自己转账！")
-    if html_display['warn_code']==1:
-        if hasattr(recipient, "organization_id"):
-            return redirect(
-                "/orginfo/?name={name}&warn_code=1&warn_message={message}".format(
-                    name=recipient.oname,
-                    message=html_display['warn_message']))
-        else:
-            return  redirect(
-                "/stuinfo/?name={name}&warn_code=1&warn_message={message}".format(
-                    name=recipient.name,
-                    message=html_display['warn_message']))
-    # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    # 如果希望前移，请联系YHT
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "Transaction"
-    bar_display["navbar_name"] = "发起转账"
+        return redirect(
+            "/welcome/?name={name}&warn_code=1&warn_message={message}".format(
+                name=recipient.oname,
+                message="请不要向自己转账"))
+ 
+    html_display["is_myself"] = True
+    html_display['warn_code'] = 0
 
     # 获取名字
     _, _, context = utils.check_user_type(user)
@@ -164,35 +156,33 @@ def transaction_page(request, rid=None):
         transaction_msg = request.POST.get("msg", "")
 
         # 检查发起转账的数据
-        try:
-            amount = float(request.POST["amount"])
-            assert amount > 0
-            assert int(amount * 10) == amount * 10
-        except:
-            return redirect(message_url(wrong('非法的转账数量!')))
-
-        # 到这里, 参数的合法性检查完成了, 接下来应该是检查发起人的账户, 够钱就转
-        try:
-            notification = None
-            with transaction.atomic():
-                # 首先锁定用户
-                payer = (
-                    Organization.objects.activated()
-                        .select_for_update()
-                        .get(organization_id=request.user)
-                )
-
-                # 接下来确定金额
-                if payer.oname != YQP_ONAME and payer.YQPoint < amount:
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = (
-                            "现存元气值余额为"
-                            + str(payer.YQPoint)
-                            + ", 不足以发起额度为"
-                            + str(amount)
-                            + "的转账!"
+        amount = float(request.POST.get("amount", '0'))
+        if not (amount > 0 and int(amount * 10) == amount * 10):
+            html_display["warn_code"] = 1
+            html_display["warn_message"] = "非法的转账数量!"
+        elif me.YQPoint < amount:
+            html_display["warn_code"] = 1
+            html_display["warn_message"] = (
+                    "现存元气值余额为"
+                    + str(me.YQPoint)
+                    + ", 不足以发起额度为"
+                    + str(amount)
+                    + "的转账!"
+            )
+        else:
+            try:
+                with transaction.atomic():
+                    payer = (
+                        NaturalPerson.objects.activated()
+                            .select_for_update()
+                            .get(person_id=request.user)
+                    ) if user_type == UTYPE_PER else (
+                        Organization.objects.activated()
+                            .select_for_update()
+                            .get(organization_id=request.user)
                     )
-                else:
+                    # 一般情况下都不会 race，除非用户自己想卡，这种情况就报未知的错误就好
+                    assert payer.YQPoint >= amount
                     payer.YQPoint -= amount
                     record = TransferRecord.objects.create(
                         proposer=request.user,
@@ -215,18 +205,17 @@ def transaction_page(request, rid=None):
                         URL="/myYQPoint/",
                         relate_TransferRecord=record,
                     )
-            if notification is not None:
-                publish_notification(
-                    notification,
-                    app=WechatApp.TRANSFER,
-                    level=WechatMessageLevel.IMPORTANT,
-                )
-            return redirect("/myYQPoint/")
+                    publish_notification(
+                        notification,
+                        app=WechatApp.TRANSFER,
+                        level=WechatMessageLevel.IMPORTANT,
+                    )
+                return redirect("/myYQPoint/")
 
-        except Exception as e:
-            # print(e)
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "出现无法预料的问题, 请联系管理员!"
+            except Exception as e:
+                raise
+                html_display["warn_code"] = 1
+                html_display["warn_message"] = "出现无法预料的问题, 请联系管理员!"
 
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
@@ -238,7 +227,7 @@ def transaction_page(request, rid=None):
 
 
 
-def all_YQPoint_distributions(request):
+def all_YQPoint_distributions(request: HttpRequest):
     '''
         一个页面，展现当前所有的YQPointDistribute类
     '''
@@ -247,7 +236,7 @@ def all_YQPoint_distributions(request):
     return render(request, "YQP_distributions.html", context)
 
 
-def YQPoint_distribution(request, dis_id):
+def YQPoint_distribution(request: HttpRequest, dis_id):
     '''
         显示，也可以更改已经存在的YQPointDistribute类
         更改后，如果应用状态status为True，会完成该任务的注册
@@ -274,7 +263,7 @@ def YQPoint_distribution(request, dis_id):
     return render(request, "YQP_distribution.html", context)
 
 
-def new_YQPoint_distribute(request):
+def new_YQPoint_distribute(request: HttpRequest):
     '''
         创建新的发放instance，如果status为True,会尝试注册
     '''
@@ -302,7 +291,7 @@ def new_YQPoint_distribute(request):
     return render(request, "new_YQP_distribution.html", {"dis_form": dis_form})
 
 
-def YQPoint_distributions(request):
+def YQPoint_distributions(request: HttpRequest):
     if not request.user.is_superuser:
         message = "请先以超级账户登录后台后再操作！"
         return render(request, "debugging.html", {"message": message})

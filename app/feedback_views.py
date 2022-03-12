@@ -1,29 +1,27 @@
 from app.views_dependency import *
 from app.models import (
-    Feedback,
-    NaturalPerson,
     Organization,
     OrganizationType,
+    Notification,
     Feedback,
     FeedbackType,
-    NaturalPerson,
 )
 from app.utils import (
     get_person_or_org,
 )
 from django.db.models import Q
 from django.db import transaction
-from datetime import date, datetime, timedelta
 from app.feedback_utils import (
     examine_notification,
     update_feedback,
     make_relevant_notification,
-    inform_notification
+    inform_notification,
 )
 from app.comment_utils import addComment, showComment
 
 
 __all__ = [
+    'feedbackWelcome',
     'viewFeedback',
     'modifyFeedback',
 ]
@@ -32,7 +30,7 @@ __all__ = [
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 # @log.except_captured(EXCEPT_REDIRECT, source='views[viewActivity]', record_user=True)
-def viewFeedback(request, fid):
+def viewFeedback(request: HttpRequest, fid):
     # 查找fid对应的反馈条目
     fid = int(fid)
     feedback = Feedback.objects.get(id=fid)
@@ -48,7 +46,10 @@ def viewFeedback(request, fid):
         # 添加评论
         if request.POST.get("comment_submit"):
             # 只有未完成反馈可以发送评论
-            if feedback.solve_status not in (Feedback.SolveStatus.SOLVING,Feedback.SolveStatus.UNMARKED):
+            if feedback.solve_status not in [
+                Feedback.SolveStatus.SOLVING,
+                Feedback.SolveStatus.UNMARKED,
+                ]:
                 return redirect(message_url(wrong("已结束的反馈不能评论！"), f"/viewFeedback/{feedback.id}"))
             # 确定通知消息的发送人，互相发送给对方
             if user_type == "Person" and feedback.person == me:
@@ -65,7 +66,9 @@ def viewFeedback(request, fid):
             else:
                 return redirect(message_url(wrong("没有评论权限！"), f"/viewFeedback/{feedback.id}"))
             # 满足以上条件后可以添加评论
-            addComment(request, feedback, receiver, anonymous_flag=True, notification_title="反馈评论通知")
+            addComment(request, feedback, receiver,
+                       anonymous=True,
+                       notification_title=Notification.Title.FEEDBACK_INFORM)
             return redirect(message_url(succeed("成功添加1条评论！"), f"/viewFeedback/{feedback.id}"))
 
         # 以下为调整反馈的状态
@@ -338,35 +341,17 @@ def viewFeedback(request, fid):
     return render(request, "feedback_info.html", locals())
 
 
-"""
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='feedback_views[feedbackWelcome]', record_user=True)
-def feedbackWelcome(request):
-    '''
-    【我要留言】的初始化页面，呈现反馈提醒、选择反馈类型
-    '''
+def feedbackWelcome(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    me = get_person_or_org(request.user)
-    my_messages.transfer_message_context(request.GET, html_display)
-
-    feedback_type_list = list(FeedbackType.objects.all())
-    
-    bar_display = utils.get_sidebar_and_navbar(
-        request.user, navbar_name="我要留言"
-    )
-    return render(request, "feedback_welcome.html", locals())
-"""
-
-
-@login_required(redirect_field_name='origin')
-@utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='feedback_views[feedback_homepage]', record_user=True)
-def feedback_homepage(request):
-    valid, user_type, html_display = utils.check_user_type(request.user)
-    is_person = True if user_type == "Person" else False
+    is_person = user_type == UTYPE_PER
     me = get_person_or_org(request.user, user_type)
-    myname = me.name if is_person else me.oname
+    myname = me.get_display_name()
+
+    # 准备用户提示量
+    my_messages.transfer_message_context(request.GET, html_display)
 
     # -----------------------------反馈记录---------------------------------
     issued_feedback = (
@@ -456,41 +441,45 @@ def feedback_homepage(request):
         option = request.POST.get("option")
         if not is_person:
             return redirect(message_url(wrong('组织不可以撤回/删除反馈!'), request.path))
-        if option != "delete" and option != "withdraw":
+        if option not in ["delete", "withdraw"]:
             return redirect(message_url(wrong('无效的请求!'), request.path))
+
         if option == "delete":
             try:
                 del_feedback = Feedback.objects.get(id=request.POST["id"])
             except Exception:
                 return redirect(message_url(wrong("不存在这样的反馈！"), request.path))
+            # 合法性检查
             if del_feedback.issue_status == Feedback.IssueStatus.ISSUED:
                 return redirect(message_url(wrong('不能删除已经发布的反馈！'), request.path))
-            elif del_feedback.issue_status == Feedback.IssueStatus.DELETED:
+            if del_feedback.issue_status == Feedback.IssueStatus.DELETED:
                 return redirect(message_url(wrong('这条反馈已经被删除啦！'), request.path))
-            else:
-                with transaction.atomic():
-                    del_feedback.issue_status = Feedback.IssueStatus.DELETED
-                    del_feedback.save()
-                    html_display["warn_code"] = 2
-                    html_display["warn_message"] = "成功删除反馈草稿！"
+
+            with transaction.atomic():
+                del_feedback.issue_status = Feedback.IssueStatus.DELETED
+                del_feedback.save()
+            succeed('成功删除反馈草稿！', html_display)
+
         elif option == "withdraw":
             try:
                 del_feedback = Feedback.objects.get(id=request.POST["id"])
             except Exception:
                 return redirect(message_url(wrong("不存在这样的反馈！"), request.path))
+            # 合法性检查
             if del_feedback.issue_status != Feedback.IssueStatus.ISSUED:
                 return redirect(message_url(wrong('不能撤回没有发布的反馈！'), request.path))
-            elif del_feedback.issue_status == Feedback.IssueStatus.DELETED:
+            if del_feedback.issue_status == Feedback.IssueStatus.DELETED:
                 return redirect(message_url(wrong('这条反馈已经被撤回啦！'), request.path))
-            elif (del_feedback.solve_status == Feedback.SolveStatus.SOLVED 
-                or del_feedback.solve_status == Feedback.SolveStatus.UNSOLVABLE):
+            if del_feedback.solve_status in [
+                Feedback.SolveStatus.SOLVED,
+                Feedback.SolveStatus.UNSOLVABLE,
+            ]:
                 return redirect(message_url(wrong('不能撤回已经发布的反馈！'), request.path))
-            else:
-                with transaction.atomic():
-                    del_feedback.issue_status = Feedback.IssueStatus.DELETED
-                    del_feedback.save()
-                    html_display["warn_code"] = 2
-                    html_display["warn_message"] = "成功撤回反馈！"
+
+            with transaction.atomic():
+                del_feedback.issue_status = Feedback.IssueStatus.DELETED
+                del_feedback.save()
+            succeed('成功撤回反馈！', html_display)
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="反馈中心")
 
@@ -500,7 +489,7 @@ def feedback_homepage(request):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='feedback_views[modifyFeedback]', record_user=True)
-def modifyFeedback(request):
+def modifyFeedback(request: HttpRequest):
     '''
     反馈表单填写、修改与提交的视图函数
     '''
