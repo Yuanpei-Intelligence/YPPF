@@ -589,7 +589,7 @@ def process_time(start: datetime, end: datetime) -> str:
     return f"周{chinese_display[start.weekday()]} {start_time}-{end_time}"
 
 
-def course_to_display(courses: QuerySet,
+def course_to_display(courses: QuerySet[Course],
                       user: NaturalPerson,
                       detail=False) -> List[dict]:
     """
@@ -644,12 +644,10 @@ def course_to_display(courses: QuerySet,
             course_info["introduction"] = course.introduction
             course_info["teaching_plan"] = course.teaching_plan
             course_info["record_cal_method"] = course.record_cal_method
+            course_info["organization_name"] = course.organization.oname
+            course_info["have_QRcode"] = bool(course.QRcode)
             course_info["photo_path"] = course.get_photo_path()
             course_info["QRcode"] = course.get_QRcode_path()
-            course_info["have_QRcode"] = bool(course.QRcode)
-            course_info["organization_name"] = course.organization.oname
-            if course.QRcode:
-                course_info["QRcode"] = MEDIA_URL + str(course.QRcode)
             display.append(course_info)
             continue
 
