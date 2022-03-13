@@ -54,7 +54,7 @@ input:disabled, textarea:disabled{
     <div>
         
         <div class="form-group">
-            <textarea type="text" id="comment" name="comment"
+            <textarea type="text" id="new_comment" name="new_comment"
                       class="form-control"
                       aria-label="Default" rows="3"
                       placeholder="添加评论"></textarea>
@@ -106,6 +106,23 @@ function showFilename(files){
     $("#uploadfile").html(text);
 }
 </script>
+<script>
+function autoJustHeight(item) {
+    let last_height = null;
+    let ct = 0;
+    while (item.style.height !== last_height && ct++ < 1000) {
+        last_height = item.style.height;
+        item.style.height = item.scrollHeight + 'px';
+    }
+}
+document.getElementsByName('comment').forEach(autoJustHeight);
+{% if commentable %}
+// 特殊处理，防止修改高度(应该不会)
+document.getElementById('new_comment').style.height = '';
+document.getElementById('new_comment').setAttribute(
+    'oninput', 'if (this.scrollHeight > 90) { autoJustHeight(this); }');
+{% endif %}
+</script>
 {% endblock %}
 {% block add_css_file %}
 <style>
@@ -115,7 +132,7 @@ function showFilename(files){
 <script type="text/javascript">
     function check_comment_inputs() {
         var images = document.getElementById("customFile").files;
-        var comments = document.getElementById("comment").value;
+        var comments = document.getElementById("new_comment").value;
         var formats = ["jpg", "bmp", "png", "jpeg", "rgb", "tif"]
         if (images.length == 0 && comments == "") {
             document.getElementById("warn_msg").style.display = "";
