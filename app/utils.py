@@ -120,9 +120,9 @@ def get_user_ava(obj: ClassifiedUser, user_type):
         ava = ""
     if not ava:
         if user_type == UTYPE_PER:
-            return MEDIA_URL + "avatar/person_default.jpg"
+            return NaturalPerson.get_user_ava()
         else:
-            return MEDIA_URL + "avatar/org_default.png"
+            return Organization.get_user_ava()
     else:
         return MEDIA_URL + str(ava)
 
