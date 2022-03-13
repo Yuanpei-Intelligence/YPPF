@@ -113,6 +113,7 @@ function showFilename(files){
 function autoJustHeight(item) {
     let last_height = null;
     let ct = 0;
+    item.style.overflow = 'hidden';
     while (item.style.height !== last_height && ct++ < 1000) {
         last_height = item.style.height;
         item.style.height = item.scrollHeight + 'px';
