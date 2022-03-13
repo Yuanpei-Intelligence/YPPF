@@ -1,5 +1,6 @@
 from app.utils_dependency import *
 from app.models import (
+    NaturalPerson,
     Notification,
     Comment,
     CommentPhoto,
@@ -155,4 +156,4 @@ def showComment(commentbase, anonymous_users=None) -> List[dict]:
         photos = list(comment.comment_photos.all())
         display.update(photos=photos)
         comments_display.append(display)
-    return comments
+    return comments_display
