@@ -13,40 +13,44 @@ input:disabled, textarea:disabled{
 </style>
 <hr>
 <div id="comments_display" class="widget-header">
-    {%if  commentable == 1 or comments.len > 0 %}
+    {% if commentable or comments %}
     <label><h4>评论区</h4></label>
-    {%endif%}
-    {%for comment in comments%}
+    {% endif %}
+    {% for comment in comments %}
     <div class="form-group">
         <div class="d-flex justify-content-between">
             <div>
-                <p style="color: rgb(66, 67, 68);"><i class="fa fa-calendar-o"></i>{{comment.time}}</p>
+                <p style="color: rgb(66, 67, 68);">
+                    <i class="fa fa-calendar-o"></i>{{ comment.time }}</p>
             </div>
             <div align="right">
                 <img src={{ comment.ava }} width="24" height="24" alt="avatar">
-                    <a href='{{comment.URL}}'><u>{{comment.commentator_name}}</u></a>
+                    <a {% if comment.URL %} href='{{ comment.URL }}' {% endif %}>
+                        <u>{{ comment.commentator_name }}</u>
+                    </a>
             </div>
         </div>
-        {%if comment.text != ""%}
-        <textarea name="comment" class="form-control" disabled="disabled" rows="5">{{comment.text}}</textarea>
-        {%if comment.len > 0 %}
-        <br>
-        {%endif %}
-        {%endif%}
-        {%if comment.len > 0 %}
+        {% if comment.text %}
+        <textarea name="comment" class="form-control"
+                  disabled="disabled" rows="5">{{ comment.text }}</textarea>
+        {% endif %}
+        {% if comment.len %}
+            {% if comment.text %}<br>{% endif %}
             <div style="max-height:1000px;overflow:auto;">
-            {%for image in comment.comment_photos.all%}
-            <img  src={{image.get_image_path}} >
+            {% for image in comment.comment_photos.all %}
+            <img src={{ image.get_image_path }} >
             <!--移动端图片大小需要修正!-->
-            {%endfor%}
+            {% endfor %}
             </div>
-        {%endif%}
+        {% endif %}
         <hr>
     </div>
     {% endfor %}
 </div>
-{%if commentable %}
-<form role="form" method="POST" enctype="multipart/form-data" onsubmit="return check_comment_inputs()">
+{% if commentable %}
+<form role="form" method="POST"
+    enctype="multipart/form-data"
+    onsubmit="return check_comment_inputs()">
     <div>
         
         <div class="form-group">
@@ -87,7 +91,7 @@ input:disabled, textarea:disabled{
     </div>
 </form>
 <!--end comment-->
-{%endif%}
+{% endif %}
 {% block add_js_file %}
 <script>
 function showFilename(files){
@@ -101,8 +105,25 @@ function showFilename(files){
     }
     $("#uploadfile").html(text);
 }
- </script>
-{%endblock%}
+</script>
+<script>
+function autoJustHeight(item) {
+    let last_height = null;
+    let ct = 0;
+    while (item.style.height !== last_height && ct++ < 1000) {
+        last_height = item.style.height;
+        item.style.height = item.scrollHeight + 'px';
+    }
+}
+document.getElementsByName('comment').forEach(autoJustHeight);
+{% if commentable %}
+// 特殊处理，防止修改高度
+document.getElementById('comment').style.height = '';
+document.getElementById('comment').setAttribute(
+    'oninput', 'if (this.scrollHeight > 91) { autoJustHeight(this); }');
+{% endif %}
+</script>
+{% endblock %}
 {% block add_css_file %}
 <style>
     .custom-file-input:lang(zh)~.custom-file-label::after {
@@ -148,4 +169,4 @@ function showFilename(files){
         return true;
     }
 </script>
-{%endblock%}
+{% endblock %}
