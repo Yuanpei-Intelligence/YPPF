@@ -42,8 +42,6 @@ def addComment(request, comment_base, receiver=None, *,
     """
     valid, user_type, html_display = check_user_type(request.user)
     sender = get_person_or_org(request.user)
-    if user_type == UTYPE_ORG:
-        anonymous = False
     sender_name = "匿名者" if anonymous else sender.get_display_name()
 
     typename = comment_base.typename
