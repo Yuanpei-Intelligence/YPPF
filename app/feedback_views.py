@@ -84,9 +84,11 @@ def viewFeedback(request: HttpRequest, fid):
         succeed_message = []
         # 一、修改已读状态
         # 只有已读条目才可以进行后续的修改
-        if read != "unread" and feedback.read_status == Feedback.ReadStatus.UNREAD:
+        if feedback.read_status == Feedback.ReadStatus.UNREAD:
             # 只有组织可以修改已读状态
             if user_type == UTYPE_ORG and feedback.org == me:
+                if read != "read":
+                    return redirect(message_url(wrong("必须先设置为已读！"), request.path))
                 with transaction.atomic():
                     feedback = Feedback.objects.select_for_update().get(id=fid)
                     if read == "read":
