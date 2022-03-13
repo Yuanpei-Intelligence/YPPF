@@ -120,7 +120,7 @@ document.getElementsByName('comment').forEach(autoJustHeight);
 // 特殊处理，防止修改高度(应该不会)
 document.getElementById('new_comment').style.height = '';
 document.getElementById('new_comment').setAttribute(
-    'oninput', 'if (this.scrollHeight > 90) { autoJustHeight(this); }');
+    'oninput', 'if (this.scrollHeight > 91) { autoJustHeight(this); }');
 {% endif %}
 </script>
 {% endblock %}
