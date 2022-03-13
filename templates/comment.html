@@ -24,22 +24,25 @@ input:disabled, textarea:disabled{
                     <i class="fa fa-calendar-o"></i>{{ comment.time }}</p>
             </div>
             <div align="right">
-                <img src={{ comment.ava }} width="24" height="24" alt="avatar">
-                    <a {% if comment.URL %} href='{{ comment.URL }}' {% endif %}>
-                        <u>{{ comment.commentator_name }}</u>
+                <img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
+                    {% if comment.commentator.URL %}
+                    <a href='{{ comment.commentator.URL }}'>
+                        <u>{{ comment.commentator.name }}</u>
                     </a>
+                    {% else %}
+                    {{ comment.commentator.name }}
+                    {% endif %}
             </div>
         </div>
         {% if comment.text %}
         <textarea name="comment" class="form-control"
                   disabled="disabled" rows="5">{{ comment.text }}</textarea>
         {% endif %}
-        {% if comment.len %}
+        {% if comment.photos %}
             {% if comment.text %}<br>{% endif %}
             <div style="max-height:1000px;overflow:auto;">
-            {% for image in comment.comment_photos.all %}
+            {% for image in comment.photos %}
             <img src={{ image.get_image_path }} >
-            <!--移动端图片大小需要修正!-->
             {% endfor %}
             </div>
         {% endif %}

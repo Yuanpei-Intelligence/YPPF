@@ -357,13 +357,7 @@ def viewFeedback(request: HttpRequest, fid):
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="反馈信息")
     title = feedback.title
-    comments = showComment(feedback)
-    # 发布者需要匿名
-    for comment in comments:
-        if comment.commentator == feedback.person.person_id:
-            comment.commentator_name = "匿名用户"
-            comment.ava = MEDIA_URL + "avatar/person_default.jpg"
-            comment.URL = ''
+    comments = showComment(feedback, anonymous_users=[feedback.person.person_id])
     return render(request, "feedback_info.html", locals())
 
 

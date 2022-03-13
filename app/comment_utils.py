@@ -15,6 +15,7 @@ from app.wechat_send import (
     WechatApp,
     WechatMessageLevel,
 )
+from typing import List
 
 
 @log.except_captured(source='comment_utils[addComment]', record_user=True)
@@ -121,19 +122,37 @@ def addComment(request, comment_base, receiver=None, *,
 
 
 @log.except_captured(source='comment_utils[showComment]')
-def showComment(commentbase):
+def showComment(commentbase, anonymous_users=None) -> List[dict]:
+    '''
+    获取可展示的对象相关评论，返回以时间顺序展示的评论列表，应赋值为`comments`
+    '''
     if commentbase is None:
         return None
     try:
         comments: QuerySet[Comment] = commentbase.comments.order_by("time")
     except:
         return None
+    comments_display = []
+    anonymous_users = set() if anonymous_users is None else set(anonymous_users)
     for comment in comments:
-        commentator = get_person_or_org(comment.commentator)
-        name = commentator.get_display_name()
-        comment.commentator_name = name
-        comment.ava = commentator.get_user_ava()
-        comment.URL = commentator.get_absolute_url(absolute=False)
-        comment.len = len(comment.comment_photos.all())
-    comments.len = len(comments.all())
+        display = dict(
+            text=comment.text,
+            time=comment.time,
+        )
+        if anonymous_users and comment.commentator in anonymous_users:
+            commentator_display = dict(
+                name='匿名用户',
+                avatar=NaturalPerson.get_user_ava(),
+            )
+        else:
+            commentator = get_person_or_org(comment.commentator)
+            commentator_display = dict(
+                name=commentator.get_display_name(),
+                avatar=commentator.get_user_ava(),
+                URL=commentator.get_absolute_url(absolute=False),
+            )
+        display.update(commentator=commentator_display)
+        photos = list(comment.comment_photos.all())
+        display.update(photos=photos)
+        comments_display.append(display)
     return comments
