@@ -54,7 +54,7 @@ input:disabled, textarea:disabled{
     <div>
         
         <div class="form-group">
-            <textarea type="text" id="new_comment" name="new_comment"
+            <textarea type="text" id="comment" name="comment"
                       class="form-control"
                       aria-label="Default" rows="3"
                       placeholder="添加评论"></textarea>
@@ -117,9 +117,9 @@ function autoJustHeight(item) {
 }
 document.getElementsByName('comment').forEach(autoJustHeight);
 {% if commentable %}
-// 特殊处理，防止修改高度(应该不会)
-document.getElementById('new_comment').style.height = '';
-document.getElementById('new_comment').setAttribute(
+// 特殊处理，防止修改高度
+document.getElementById('comment').style.height = '';
+document.getElementById('comment').setAttribute(
     'oninput', 'if (this.scrollHeight > 91) { autoJustHeight(this); }');
 {% endif %}
 </script>
@@ -132,7 +132,7 @@ document.getElementById('new_comment').setAttribute(
 <script type="text/javascript">
     function check_comment_inputs() {
         var images = document.getElementById("customFile").files;
-        var comments = document.getElementById("new_comment").value;
+        var comments = document.getElementById("comment").value;
         var formats = ["jpg", "bmp", "png", "jpeg", "rgb", "tif"]
         if (images.length == 0 && comments == "") {
             document.getElementById("warn_msg").style.display = "";
