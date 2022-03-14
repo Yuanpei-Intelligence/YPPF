@@ -50,7 +50,7 @@ from typing import Union, Iterable
 from django.db.models import QuerySet
 # 兼容Django3.0及以下版本
 if not hasattr(QuerySet, '__class_getitem__'):
-    QuerySet.__class_getitem__ = lambda cls, *args, **kwargs: cls
+    QuerySet.__class_getitem__ = classmethod(lambda cls, *args, **kwargs: cls)
 ClassifiedUser = None
 try:
     0 / 0
