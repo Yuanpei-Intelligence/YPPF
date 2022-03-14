@@ -113,18 +113,20 @@ function showFilename(files){
 function autoJustHeight(item) {
     let last_height = null;
     let ct = 0;
-    item.style.overflow = 'hidden';
-    while (item.style.height !== last_height && ct++ < 1000) {
-        last_height = item.style.height;
-        item.style.height = item.scrollHeight + 'px';
-    }
+    do {
+        last_height = item.scrollHeight;
+        item.style.height = last_height + 'px';
+    } while (item.scrollHeight !== last_height && ct++ < 1000);
+    // 滚动条长度2, height=滚动条长度+scrollHeight, 额外+1就不用显示滚动条
+    item.style.height = (last_height + 3) + 'px';
 }
 document.getElementsByName('comment').forEach(autoJustHeight);
 {% if commentable %}
 // 特殊处理，防止修改高度
-document.getElementById('comment').style.height = '';
-document.getElementById('comment').setAttribute(
-    'oninput', 'if (this.scrollHeight > 91) { autoJustHeight(this); }');
+var new_comment = document.getElementById('comment');
+new_comment.style.height = '';
+new_comment.style.minHeight = new_comment.scrollHeight + 'px';
+new_comment.setAttribute('oninput', 'autoJustHeight(this)');
 {% endif %}
 </script>
 {% endblock %}
