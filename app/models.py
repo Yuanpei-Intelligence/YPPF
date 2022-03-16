@@ -14,10 +14,10 @@ models.py
     - 如需导出, 在__all__定义
     - 外键和管理器必须进行类型注释`: Class`
     - 与User有一对一关系的实体类型, 需要定义get_type, get_user和get_display_name方法
-        - get_type返回UTYPE常量
+        - get_type返回UTYPE常量，且可以作为类方法使用
         - 其它建议的方法
             - get_absolute_url: 返回呈现该对象的url，用于后台跳转等，默认是绝对地址
-            - get_user_ava: 返回头像的url路径，名称仅暂定
+            - get_user_ava: 返回头像的url路径，名称仅暂定，可选支持作为类方法
         - 此外，还应在ClassifiedUser和constants.py中注册
     - 处于平等地位但内部实现不同的模型, 应定义同名接口方法用于导出同类信息
     - 仅供前端使用的方法，在注释中说明
@@ -236,7 +236,7 @@ class NaturalPerson(models.Model):
     def __str__(self):
         return str(self.name)
 
-    def get_type(self) -> str:
+    def get_type(self=None) -> str:
         '''User一对一模型的必要方法'''
         return UTYPE_PER
 
@@ -255,9 +255,9 @@ class NaturalPerson(models.Model):
             url = LOGIN_URL.rstrip('/') + url
         return url
 
-    def get_user_ava(self):
-        '''User一对一模型的建议方法'''
-        avatar = self.avatar
+    def get_user_ava(self=None):
+        '''User一对一模型的建议方法，不存在时返回默认头像'''
+        avatar = self.avatar if self is not None else ""
         if not avatar:
             avatar = "avatar/person_default.jpg"
         return image_url(avatar)
@@ -471,7 +471,7 @@ class Organization(models.Model):
     def __str__(self):
         return str(self.oname)
 
-    def get_type(self):
+    def get_type(self=None):
         '''User一对一模型的必要方法'''
         return UTYPE_ORG
 
@@ -490,9 +490,9 @@ class Organization(models.Model):
             url = LOGIN_URL.rstrip('/') + url
         return url
 
-    def get_user_ava(self):
-        '''User一对一模型的建议方法'''
-        avatar = self.avatar
+    def get_user_ava(self=None):
+        '''User一对一模型的建议方法，不存在时返回默认头像'''
+        avatar = self.avatar if self is not None else ""
         if not avatar:
             avatar = "avatar/org_default.png"
         return image_url(avatar)
@@ -1267,7 +1267,7 @@ class ModifyOrganization(CommentBase):
     def get_user_ava(self):
         avatar = self.avatar
         if not avatar:
-            avatar = "avatar/org_default.png"
+            avatar = Organization.get_user_ava()
         return image_url(avatar)
 
     def is_pending(self):   #表示是不是pending状态
