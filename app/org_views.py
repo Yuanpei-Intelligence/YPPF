@@ -36,7 +36,7 @@ __all__ = [
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='org_views[showNewOrganization]', record_user=True)
-def showNewOrganization(request):
+def showNewOrganization(request: HttpRequest):
     """
     YWolfeee: modefied on Aug 24 1:33 a.m. UTC-8
     新建小组的聚合界面
@@ -70,7 +70,7 @@ def showNewOrganization(request):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='org_views[modifyOrganization]', record_user=True)
-def modifyOrganization(request):
+def modifyOrganization(request: HttpRequest):
     # YWolfeee: 重构小组申请页面 Aug 24 12:30 UTC-8
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user)  # 获取自身
@@ -233,7 +233,7 @@ def modifyOrganization(request):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='org_views[showPosition]', record_user=True)
-def showPosition(request):
+def showPosition(request: HttpRequest):
     '''
     成员的聚合界面
     '''
@@ -262,7 +262,7 @@ def showPosition(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='org_views[saveShowPositionStatus]', record_user=True)
-def saveShowPositionStatus(request):
+def saveShowPositionStatus(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
     me = get_person_or_org(request.user, user_type)
@@ -289,7 +289,7 @@ def saveShowPositionStatus(request):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='org_views[modifyPosition]', record_user=True)
-def modifyPosition(request):
+def modifyPosition(request: HttpRequest):
     # YWolfeee: 重构成员申请页面 Aug 24 12:30 UTC-8
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user)  # 获取自身
@@ -487,7 +487,7 @@ def modifyPosition(request):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='org_views[sendMessage]', record_user=True)
-def sendMessage(request):
+def sendMessage(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user)  # 获取自身
     if user_type == "Person":

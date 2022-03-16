@@ -32,6 +32,7 @@ from datetime import datetime
 
 from django.db import transaction
 
+
 __all__ = [
     'editCourseActivity',
     'addSingleCourseActivity',
@@ -40,13 +41,14 @@ __all__ = [
     'selectCourse',
     'viewCourse',
     'outputRecord',
+    'outputSelectInfo',
 ]
 
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[editCourseActivity]', record_user=True)
-def editCourseActivity(request, aid):
+def editCourseActivity(request: HttpRequest, aid):
     """
     编辑单次书院课程活动，addActivity的简化版
     """
@@ -122,7 +124,7 @@ def editCourseActivity(request, aid):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[addSingleCourseActivity]', record_user=True)
-def addSingleCourseActivity(request):
+def addSingleCourseActivity(request: HttpRequest):
     """
     创建单次书院课程活动，addActivity的简化版
     """
@@ -177,7 +179,7 @@ def addSingleCourseActivity(request):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='course_views[showCourseActivity]', record_user=True)
-def showCourseActivity(request):
+def showCourseActivity(request: HttpRequest):
     """
     筛选本学期已结束的课程活动、未开始的课程活动，在课程活动聚合页面进行显示。
     """
@@ -273,7 +275,7 @@ def showCourseActivity(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[showCourseRecord]', record_user=True)
-def showCourseRecord(request):
+def showCourseRecord(request: HttpRequest):
     '''
     展示及修改学时数据
     在开启修改功能前，显示本学期已完成的所有课程活动的学生的参与次数
@@ -419,7 +421,7 @@ def showCourseRecord(request):
 @log.except_captured(record_user=True,
                      record_request_args=True,
                      source='course_views[selectCourse]')
-def selectCourse(request):
+def selectCourse(request: HttpRequest):
     """
     学生选课的聚合页面，包括: 
     1. 所有开放课程的选课信息
@@ -520,7 +522,7 @@ def selectCourse(request):
 @log.except_captured(record_user=True,
                      record_request_args=True,
                      source='course_views[viewCourse]')
-def viewCourse(request):
+def viewCourse(request: HttpRequest):
     """
     展示一门课程的详细信息
     
@@ -550,7 +552,7 @@ def viewCourse(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[addCourse]', record_user=True)
-def addCourse(request, cid=None):
+def addCourse(request: HttpRequest, cid=None):
     """
     发起课程页
     ---------------
@@ -667,7 +669,7 @@ def addCourse(request, cid=None):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[outputRecord]', record_user=True)
-def outputRecord(request):
+def outputRecord(request: HttpRequest):
     """
     导出所有学时信息
     导出文件格式为excel，包括汇总和详情两个sheet。
@@ -690,7 +692,7 @@ def outputRecord(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[outputSelectInfo]', record_user=True)
-def outputSelectInfo(request):
+def outputSelectInfo(request: HttpRequest):
     """
     导出该课程的选课名单
     """
@@ -698,7 +700,8 @@ def outputSelectInfo(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
     try:
-        assert user_type == "Organization" and me.otype.otype_name == COURSE_TYPENAME, '只有书院课程账号才能下载选课名单!'
+        assert (user_type == "Organization"
+                and me.otype.otype_name == COURSE_TYPENAME), '只有书院课程账号才能下载选课名单!'
         # 暂时仅支持一个课程账号一学期只能开一门课
         courses = Course.objects.activated().filter(organization=me)
         assert courses.exists(), '只有在开课以后才能下载选课名单！'
