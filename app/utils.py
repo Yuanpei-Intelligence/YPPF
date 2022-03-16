@@ -678,7 +678,7 @@ def export_orgpos_info(org):
     if org is None:
         return response
     response['Content-Disposition'] = f'attachment;filename=小组{org.oname}成员信息.xls'
-    participants = Position.objects.filter(org=org).filter(status=Position.Status.INSERVICE)
+    participants = Position.objects.activated().filter(org=org).filter(status=Position.Status.INSERVICE)
     """导出excel表"""
     if len(participants) > 0:
         # 创建工作簿
