@@ -1995,6 +1995,7 @@ def notifications(request):
 
 
 
+
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[QAcenter]', record_user=True)

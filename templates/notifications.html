@@ -46,7 +46,7 @@
         <div class="container">
             
             <div class="row layout-top-spacing">
-                {% if bar_display.help_paragraphs %}z
+                {% if bar_display.help_paragraphs %}
                     {% include 'help.html' %}
                 {% endif %}
                 <div class="col-lg-12 col-12 layout-top-spacing">
@@ -59,14 +59,18 @@
                                     <a  data-toggle="dropdown" >
                                         <h5><i class="fa fa-ellipsis-h"></i></h5>
                                     </a>
-                                    <div class="dropdown-menu" style="max-width: 200%; max-height: 300%">
-                                        <button class="dropdown-item"
-                                        onclick="if(confirm('你确定要将全部消息标为已读吗?'))read_all.call(this);this.blur();" id="{{type_id}}"
+                                    <form class="form-inline "  method="GET" 
+                                     action="/notifications/" >
+                                         <div class="dropdown-menu" style="max-width: 200%; max-height: 300%">
+                                             <button class="dropdown-item"  
+                                        onclick="if(confirm('你确定要将全部消息标为已读吗?'))read_all.call(this);this.blur();" id="readall"
                                         >全部已读</button>
-                                        <button class="dropdown-item"
-                                        onclick="if(confirm('你确定删除所有消息吗?'))delete_all.call(this);this.blur();" id="{{type_id}}"
+                                             <button class="dropdown-item" 
+                                        onclick="if(confirm('你确定删除所有消息吗?'))delete_all.call(this);this.blur();" id="deleteall"
                                         >全部删除</button>
-                                    </div>
+                                       
+                                         </div>
+                                    </form>
                                 </div>
                             </div>      
                             </div>
@@ -116,7 +120,7 @@
                                                             {% if note.type == "知晓类" %}
                                                             <h5>
                                                                 <button class="btn btn-primary" type="submit"
-                                                                    name="{{type_id}}" value="{{note.id}}"
+                                                                    name="read" value="{{note.id}}"
                                                                     onclick="read.call(this);this.blur();" id="{{note.id}}">知道啦</button>
                                                             </h5>
                                                             {% else %}
@@ -280,7 +284,8 @@
 </script>
 
 <script>
-    var mail_num = Number("{{bar_display.mail_num}}");
+    var mail_num= Number("{{bar_display.mail_num}}");
+    var mail_num_done= Number("{{bar_display.mail_num_done}}");
     function refresh() {
         document.querySelector(`#undone-empty`).style.display = (document.querySelector(`#undone-list`).querySelectorAll(`:scope > :not([hidden])`).length === 0) ? `block` : `none`;
         document.querySelector(`#done-empty`).style.display = (document.querySelector(`#done-list`).querySelectorAll(`:scope > :not([hidden])`).length === 0) ? `block` : `none`;
@@ -289,8 +294,8 @@
     async function read() {
         const success = await save_read.call(this,"read");
         if (success) {
-            document.getElementById("undone="+String(this.id)).hidden = true;
-            document.getElementById("done="+String(this.id)).hidden = false;
+            document.getElementById("undone="+String("read")).hidden = true;
+            document.getElementById("done="+String("read")).hidden = false;
             document.getElementById("mail_num").innerHTML = String(Number(document.getElementById("mail_num").innerHTML) - 1);
             refresh();
         }
@@ -321,19 +326,31 @@
         return success;
     }
     async function read_all() {
-        lst = document.getElementsByName(this.id);
-        for (var i = 0; i < lst.length; i += 1) {
-                    read.call(lst[i]);
+    lst = document.getElementsByName(String("read"));
+    var m_num = mail_num;
+    if( m_num == 0){
+        confirm("暂时没有未读的消息呦~")
+}
+    for (var i = 0; i < lst.length; i += 1) {
+        if(document.getElementById("undone="+String(lst[i].id)).hidden == false){
+            read.call(lst[i]);
+            m_num -= 1
         }
     }
+}
     async function delete_all() {
-        lst = document.getElementsByName(this.id);
-        for (var i = 0; i < lst.length; i += 1) {
-             cancel.call(lst[i]);
-        }
+    lst = document.getElementsByName(String("read"));
+    var m_num = mail_num_done;
+    if( m_num == 0){
+    confirm("暂时没有可以删除的消息呦~")
     }
-    
-
+    for (var i = 0; i < lst.length; i += 1) {
+        if(document.getElementById("undone="+String(lst[i].id)).hidden == true){
+            cancel.call(lst[i]);
+            m_num -= 1
+            }
+        }
+}
   
 </script>
 {% endblock %}

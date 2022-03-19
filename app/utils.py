@@ -209,6 +209,9 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     bar_display["mail_num"] = Notification.objects.filter(
         receiver=user, status=Notification.Status.UNDONE
     ).count()
+    bar_display["mail_num_done"] = Notification.objects.filter(
+        receiver=user, status=Notification.Status.DONE
+    ).count()
 
     if user_type == "Person":
         bar_display["profile_name"] = "个人主页"
