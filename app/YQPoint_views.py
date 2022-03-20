@@ -190,7 +190,9 @@ def transaction_page(request: HttpRequest, rid=None):
                         amount=amount,
                         message=transaction_msg,
                         rtype=TransferRecord.TransferType.TRANSACTION,
-                        status=0 if user_type == UTYPE_PER else 1
+                        status=(TransferRecord.TransferStatus.ACCEPTED
+                                if user_type == UTYPE_PER else
+                                TransferRecord.TransferStatus.WAITING),
                     )
                     record.save()
                     payer.save()
@@ -202,7 +204,7 @@ def transaction_page(request: HttpRequest, rid=None):
                     #     f"付款人：{payer.oname if user_type == UTYPE_ORG else payer.name}",
                     #     f"金额：{amount}"
                     # ])
-
+                    
                     content_msg = transaction_msg if transaction_msg else f'转账金额：{amount}'
                     notification = notification_create(
                         receiver=user,
