@@ -305,6 +305,7 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
             display_token = request.GET.get('token', None)
             check = Room.objects.filter(Rid=Rid)
             assert len(check) > 0
+            roomname = check[0].Rtitle
 
             assert display_token is not None
         except:
@@ -336,7 +337,9 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
                                      Astart__lte=nowtime + timedelta(minutes=15))
         comingsoon = 1 if len(comingsoon) else 0    # 有15分钟之内的未开始预约，不允许即时预约
 
-        return JsonResponse({'comingsoon': comingsoon, 'data': data}, status=200, json_dumps_params={'ensure_ascii': False})
+        return JsonResponse(
+            {'comingsoon': comingsoon, 'data': data, 'roomname': roomname},
+            status=200, json_dumps_params={'ensure_ascii': False})
     else:
         return JsonResponse(
             {'statusInfo': {
@@ -466,7 +469,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
     if room.Rstatus == Room.Status.FORBIDDEN:   # 禁止使用的房间
         cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：禁止使用")
         return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
-    
+
     if room.RneedAgree:
         if student.agree_time is None:
             cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：未签署协议")
@@ -539,18 +542,18 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
                              now_time.hour, now_time.minute, 0)  # 需要剥离秒级以下的数据，否则admin-index无法正确渲染
             timeid = web_func.get_time_id(room, time(start.hour, start.minute))
 
+            finish, valid = web_func.get_hour_time(room, timeid + 1)
+            finish = datetime(now_time.year, now_time.month, now_time.day, int(
+                finish.split(':')[0]), int(finish.split(':')[1]), 0)
+
             # 房间未开放
-            if timeid < 0:
+            if timeid < 0 or not valid:
                 message = f"该时段房间未开放！别熬夜了，回去睡觉！"
                 cardcheckinfo_writer(student, room, False,
                                      False, f"刷卡拒绝：临时预约失败（{message}）")
                 send_wechat_message(
                     [Sid], start, room, "temp_appointment_fail", student, "临时预约", "", 1, message)
                 return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
-
-            finish, valid = web_func.get_hour_time(room, timeid + 1)
-            finish = datetime(now_time.year, now_time.month, now_time.day, int(
-                finish.split(':')[0]), int(finish.split(':')[1]), 0)
 
             # 检查时间是否合法
             # 合法条件：为避免冲突，临时预约时长必须超过15分钟；预约时在房间可用时段
@@ -660,9 +663,14 @@ def index(request):  # 主页
 
     #--------- 1,2 地下室状态部分 ---------#
 
-    double_list = ['航模', '绘画', '书法']
-    function_room_list = room_list.exclude(Rid__icontains="R").filter(Rstatus=Room.Status.PERMITTED).filter(
-        ~Q(Rtitle__icontains="研讨") | Q(Rtitle__icontains="绘画") | Q(Rtitle__icontains="航模") | Q(Rtitle__icontains="书法")).order_by('Rid')
+    double_list = ['航模', '绘画', '书法', '活动']
+    function_room_title_query = ~Q(Rtitle__icontains="研讨")
+    function_room_title_query |= Q(Rtitle__icontains="/")
+    for room_title in double_list:
+        function_room_title_query |= Q(Rtitle__icontains=room_title)
+    function_room_list = room_list.exclude(Rid__icontains="R").filter(
+        function_room_title_query,
+        Rstatus=Room.Status.PERMITTED).order_by('Rid')
 
     #--------- 地下室状态：left tab ---------#
     suspended_room_list = room_list.filter(
@@ -672,7 +680,8 @@ def index(request):  # 主页
 
     #--------- 地下室状态：right tab ---------#
     talk_room_list = room_list.filter(                                              # 研讨室（展示临时预约）
-        Rtitle__icontains="研讨").filter(Rstatus=Room.Status.PERMITTED).order_by('Rmin', 'Rid')
+        Rtitle__icontains="研讨",
+        Rstatus=Room.Status.PERMITTED).order_by('Rid')
     room_info = [(room, {'Room': room.Rid} in occupied_rooms, format_time(          # 研讨室占用情况
         room_appointments[room.Rid])) for room in talk_room_list]
 

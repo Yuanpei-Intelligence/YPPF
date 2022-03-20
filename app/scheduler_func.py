@@ -86,7 +86,6 @@ def send_to_orgs(title, message, url='/index/'):
 
 
 # 学院每月下发元气值
-
 def distribute_YQPoint_per_month():
     with transaction.atomic():
         recipients = NaturalPerson.objects.activated().select_for_update()
@@ -345,7 +344,22 @@ def public_feedback_per_hour():
             )
 
 
+def cancel_related_jobs(instance, extra_ids=None):
+    '''删除关联的定时任务（可以在模型中预定义related_job_ids）'''
+    if hasattr(instance, 'related_job_ids'):
+        job_ids = instance.related_job_ids
+        if callable(job_ids):
+            job_ids = job_ids()
+        for job_id in job_ids:
+            try: scheduler.remove_job(job_id)
+            except: continue
+    if extra_ids is not None:
+        for job_id in extra_ids:
+            try: scheduler.remove_job(job_id)
+            except: continue
 
+def _cancel_jobs(sender, instance, **kwargs):
+    cancel_related_jobs(instance)
 
 def register_pre_delete():
     '''注册删除前清除定时任务的函数'''
@@ -359,12 +373,4 @@ def register_pre_delete():
         except:
             # 不具有关联任务的模型无需设置
             continue
-
-        def _cancel_jobs(sender, instance, **kwargs):
-            job_ids = instance.related_job_ids
-            if callable(job_ids):
-                job_ids = job_ids()
-            for job_id in job_ids:
-                try: scheduler.remove_job(job_id)
-                except: continue
         models.signals.pre_delete.connect(_cancel_jobs, sender=model)
