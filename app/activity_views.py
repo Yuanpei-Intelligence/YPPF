@@ -678,7 +678,7 @@ def addActivity(request: HttpRequest, aid=None):
         template_id = int(request.GET["template"])
         activity = Activity.objects.get(id=template_id)
     if not edit and not use_template:
-        available_teachers = NaturalPerson.objects.activated().teachers()
+        available_teachers = NaturalPerson.objects.teachers()
     else:
         try:
             org = get_person_or_org(request.user, "Organization")
