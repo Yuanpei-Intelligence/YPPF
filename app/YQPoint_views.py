@@ -189,18 +189,28 @@ def transaction_page(request: HttpRequest, rid=None):
                         recipient=user,
                         amount=amount,
                         message=transaction_msg,
-                        rtype=TransferRecord.TransferType.TRANSACTION
+                        rtype=TransferRecord.TransferType.TRANSACTION,
+                        status=(TransferRecord.TransferStatus.ACCEPTED
+                                if user_type == UTYPE_PER else
+                                TransferRecord.TransferStatus.WAITING),
                     )
                     record.save()
                     payer.save()
-                    warn_message = "成功发起向" + name + "的转账! 元气值将在对方确认后到账。"
 
+                    # 成功之后，跳转还是留在原界面，这是个问题
+                    # warn_message = "成功发起转账，元气值将在对方确认后到账。\n" if user_type == UTYPE_ORG else "转账成功!\n"
+                    # warn_message += "\n".join([
+                    #     f"收款人：{recipient.oname}",
+                    #     f"付款人：{payer.oname if user_type == UTYPE_ORG else payer.name}",
+                    #     f"金额：{amount}"
+                    # ])
+                    
                     content_msg = transaction_msg if transaction_msg else f'转账金额：{amount}'
                     notification = notification_create(
                         receiver=user,
                         sender=request.user,
-                        typename=Notification.Type.NEEDDO,
-                        title=Notification.Title.TRANSFER_CONFIRM,
+                        typename=Notification.Type.NEEDDO if user_type == UTYPE_ORG else Notification.Type.NEEDREAD,
+                        title=Notification.Title.TRANSFER_CONFIRM if user_type == UTYPE_ORG else Notification.Title.TRANSFER_INFORM,
                         content=content_msg,
                         URL="/myYQPoint/",
                         relate_TransferRecord=record,
@@ -213,7 +223,6 @@ def transaction_page(request: HttpRequest, rid=None):
                 return redirect("/myYQPoint/")
 
             except Exception as e:
-                raise
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = "出现无法预料的问题, 请联系管理员!"
 
