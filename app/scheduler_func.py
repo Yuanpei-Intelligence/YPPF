@@ -124,7 +124,6 @@ def distribute_YQPoint_per_month():
 频繁执行，添加更新其他活动的定时任务，主要是为了异步调度
 对于被多次落下的活动，每次更新一步状态
 """
-
 def changeAllActivities():
 
     now = datetime.now()

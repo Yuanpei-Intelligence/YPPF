@@ -53,7 +53,6 @@ from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import F, Q, Sum, Prefetch
 
-
 from app.scheduler import scheduler
 
 
@@ -673,7 +672,6 @@ def course_to_display(courses: QuerySet[Course],
 @log.except_captured(return_value=True,
                      record_args=True,
                      source='course_utils[draw_lots]')
-
 def draw_lots():
     """
     等额抽签选出成功选课的学生，并修改学生的选课状态

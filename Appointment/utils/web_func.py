@@ -56,6 +56,7 @@ def get_adjusted_qualified_rate(original_qualified_rate, appoint) -> float:
         original_qualified_rate = 0
     return original_qualified_rate
 
+
 def startAppoint(Aid):  # 开始预约时的定时程序
     try:
         appoint = Appoint.objects.get(Aid=Aid)
@@ -77,6 +78,7 @@ def startAppoint(Aid):  # 开始预约时的定时程序
     elif appoint.Astatus != Appoint.Status.CANCELED:    # 状态异常，本该不存在这个任务
         utils.operation_writer(
             SYSTEM_LOG, f"预约{str(Aid)}的状态异常: {appoint.get_status()}", "web_func.startAppoint", "Error")
+
 
 def finishAppoint(Aid):  # 结束预约时的定时程序
     '''
