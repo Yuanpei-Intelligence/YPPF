@@ -11,7 +11,6 @@ from django.db import transaction  # 原子化更改数据库
 import Appointment.utils.utils as utils
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import get_participant
-from django_apscheduler.util import close_old_connections
 
 '''
 YWolfeee:

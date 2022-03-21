@@ -1141,6 +1141,7 @@ class Notification(models.Model):
 
     class Title(models.TextChoices):
         # 等待逻辑补充，可以自定义
+        TRANSFER_INFORM = "元气值入账通知"
         TRANSFER_CONFIRM = "转账确认通知"
         ACTIVITY_INFORM = "活动状态通知"
         VERIFY_INFORM = "审核信息通知"
