@@ -24,7 +24,6 @@ from boottest.scheduler import scheduler
 
 
 # 每周清除预约的程序，会写入logstore中
-@close_old_connections
 def clear_appointments():
     if GLOBAL_INFO.delete_appoint_weekly:   # 是否清除一周之前的预约
         appoints_to_delete = Appoint.objects.filter(
