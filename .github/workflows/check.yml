@@ -57,6 +57,7 @@ jobs:
           sed 's/\$USER\$/root/g' |
           sed 's/\$PASSWORD\$/testpw/g' >
           local_json.json
+            cat local_json.json
 
       # step4: shutdown default database if exist
       - name: shutdown MySQL
@@ -78,6 +79,13 @@ jobs:
           # mysql root password: '' # Required if "mysql user" is empty, default is empty. The root superuser password
           mysql user: 'root' # Required if "mysql root password" is empty, default is empty. The superuser for the specified database. Can use secrets, too
           mysql password: 'testpw' # Required if "mysql user" exists. The password for the "mysql user"
+
+      # step5-b: wait MySQL to start
+      - name: Wait for MySQL
+        run: |
+          while ! mysqladmin ping --host=127.0.0.1 --password=testpw --silent; do
+            sleep 1
+          done
 
       # step6: build database
       - name: Build database
