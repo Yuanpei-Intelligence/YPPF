@@ -51,7 +51,7 @@ jobs:
       # step4: copy json config
       - name: Configure local json
         if: matrix.os != 'windows-latest'
-        run: |
+        run: >
           cat local_json_template.json |
           sed 's/\$DATABASE\$/test/g' |
           sed 's/\$USER\$/root/g' |
