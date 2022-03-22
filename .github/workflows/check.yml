@@ -17,7 +17,7 @@ jobs:
   # job's id
   build:
     # job's name
-    name: build and check dependencies
+    name: build and check
 
     # the type of machine to run the job on
     runs-on: ${{ matrix.os }}
@@ -26,7 +26,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.8", "3.9", "3.10"]
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
 
     timeout-minutes: 5
 
@@ -52,14 +52,16 @@ jobs:
       - name: Configure local json
         if: matrix.os != 'windows-latest'
         run: |
-          cp local_json_template.json local_json.json
-          sed -ni 's/\$DATABASE\$/test/gp' local_json.json
-          sed -ni 's/\$USER\$/root/gp' local_json.json
-          sed -ni 's/\$PASSWORD\$/testpw/gp' local_json.json
+          cat local_json_template.json |
+          sed 's/\$DATABASE\$/test/g' |
+          sed 's/\$USER\$/root/g' |
+          sed 's/\$PASSWORD\$/testpw/g' >
+          local_json.json
 
       # step4: shutdown default database if exist
       - name: shutdown MySQL
         run:  sudo service mysql stop
+        continue-on-error: true
 
       # step5: build MySQL
       - name: Setup MySQL
