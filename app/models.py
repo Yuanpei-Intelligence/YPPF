@@ -30,6 +30,8 @@ models.py
 - 模型管理器
     - 不应导出
     - 若与学期有关，必须至少支持select_current的三类筛选
+    - 与User有一对一关系的实体管理器, 需要定义get_by_user方法
+        - get_by_user通过关联的User获取实例，至少支持update和activate
     ...
 
 @Date 2022-03-11
@@ -121,6 +123,16 @@ def image_url(image, enable_abs=False) -> str:
 
 
 class NaturalPersonManager(models.Manager):
+    def get_by_user(self, user: User, *,
+                    update=False, activate=False):
+        '''User一对一模型管理器的必要方法, 通过关联的User获取实例'''
+        if activate:
+            self = self.activated()
+        if update:
+            self = self.select_for_update()
+        result: NaturalPerson = self.get(person_id=user)
+        return result
+
     def activated(self):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
 
@@ -439,6 +451,16 @@ class OrganizationTag(models.Model):
 
 
 class OrganizationManager(models.Manager):
+    def get_by_user(self, user: User, *,
+                    update=False, activate=False):
+        '''User一对一模型管理器的必要方法, 通过关联的User获取实例'''
+        if activate:
+            self = self.activated()
+        if update:
+            self = self.select_for_update()
+        result: Organization = self.get(organization_id=user)
+        return result
+
     def activated(self):
         return self.exclude(status=False)
 
