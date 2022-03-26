@@ -26,7 +26,7 @@ from django.db import transaction  # 原子化更改数据库
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='YQPoint_views[myYQPoint]', record_user=True)
-def myYQPoint(request):
+def myYQPoint(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
     # 接下来处理POST相关的内容
@@ -117,7 +117,7 @@ def myYQPoint(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='YQPoint_views[transaction_page]', record_user=True)
-def transaction_page(request, rid=None):
+def transaction_page(request: HttpRequest, rid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user, user_type)
 
@@ -189,18 +189,28 @@ def transaction_page(request, rid=None):
                         recipient=user,
                         amount=amount,
                         message=transaction_msg,
-                        rtype=TransferRecord.TransferType.TRANSACTION
+                        rtype=TransferRecord.TransferType.TRANSACTION,
+                        status=(TransferRecord.TransferStatus.ACCEPTED
+                                if user_type == UTYPE_PER else
+                                TransferRecord.TransferStatus.WAITING),
                     )
                     record.save()
                     payer.save()
-                    warn_message = "成功发起向" + name + "的转账! 元气值将在对方确认后到账。"
 
+                    # 成功之后，跳转还是留在原界面，这是个问题
+                    # warn_message = "成功发起转账，元气值将在对方确认后到账。\n" if user_type == UTYPE_ORG else "转账成功!\n"
+                    # warn_message += "\n".join([
+                    #     f"收款人：{recipient.oname}",
+                    #     f"付款人：{payer.oname if user_type == UTYPE_ORG else payer.name}",
+                    #     f"金额：{amount}"
+                    # ])
+                    
                     content_msg = transaction_msg if transaction_msg else f'转账金额：{amount}'
                     notification = notification_create(
                         receiver=user,
                         sender=request.user,
-                        typename=Notification.Type.NEEDDO,
-                        title=Notification.Title.TRANSFER_CONFIRM,
+                        typename=Notification.Type.NEEDDO if user_type == UTYPE_ORG else Notification.Type.NEEDREAD,
+                        title=Notification.Title.TRANSFER_CONFIRM if user_type == UTYPE_ORG else Notification.Title.TRANSFER_INFORM,
                         content=content_msg,
                         URL="/myYQPoint/",
                         relate_TransferRecord=record,
@@ -213,7 +223,6 @@ def transaction_page(request, rid=None):
                 return redirect("/myYQPoint/")
 
             except Exception as e:
-                raise
                 html_display["warn_code"] = 1
                 html_display["warn_message"] = "出现无法预料的问题, 请联系管理员!"
 
@@ -227,7 +236,7 @@ def transaction_page(request, rid=None):
 
 
 
-def all_YQPoint_distributions(request):
+def all_YQPoint_distributions(request: HttpRequest):
     '''
         一个页面，展现当前所有的YQPointDistribute类
     '''
@@ -236,7 +245,7 @@ def all_YQPoint_distributions(request):
     return render(request, "YQP_distributions.html", context)
 
 
-def YQPoint_distribution(request, dis_id):
+def YQPoint_distribution(request: HttpRequest, dis_id):
     '''
         显示，也可以更改已经存在的YQPointDistribute类
         更改后，如果应用状态status为True，会完成该任务的注册
@@ -263,7 +272,7 @@ def YQPoint_distribution(request, dis_id):
     return render(request, "YQP_distribution.html", context)
 
 
-def new_YQPoint_distribute(request):
+def new_YQPoint_distribute(request: HttpRequest):
     '''
         创建新的发放instance，如果status为True,会尝试注册
     '''
@@ -291,7 +300,7 @@ def new_YQPoint_distribute(request):
     return render(request, "new_YQP_distribution.html", {"dis_form": dis_form})
 
 
-def YQPoint_distributions(request):
+def YQPoint_distributions(request: HttpRequest):
     if not request.user.is_superuser:
         message = "请先以超级账户登录后台后再操作！"
         return render(request, "debugging.html", {"message": message})

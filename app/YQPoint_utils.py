@@ -54,7 +54,7 @@ def _distribute_YQPoint_to_users(proposer, recipients, YQPoints, trans_time):
     trans_msg = f"{proposer}向您发放了{YQPoints}元气值，请查收！"
     transfer_list = [TransferRecord(
         proposer=proposer.organization_id,
-        recipient=(recipient.person_id if is_nperson else recipient.organization_id),
+        recipient=recipient.get_user(),
         amount=YQPoints,
         start_time=trans_time,
         finish_time=trans_time,

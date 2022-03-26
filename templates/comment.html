@@ -13,40 +13,47 @@ input:disabled, textarea:disabled{
 </style>
 <hr>
 <div id="comments_display" class="widget-header">
-    {%if  commentable == 1 or comments.len > 0 %}
+    {% if commentable or comments %}
     <label><h4>评论区</h4></label>
-    {%endif%}
-    {%for comment in comments%}
+    {% endif %}
+    {% for comment in comments %}
     <div class="form-group">
         <div class="d-flex justify-content-between">
             <div>
-                <p style="color: rgb(66, 67, 68);"><i class="fa fa-calendar-o"></i>{{comment.time}}</p>
+                <p style="color: rgb(66, 67, 68);">
+                    <i class="fa fa-calendar-o"></i>{{ comment.time }}</p>
             </div>
             <div align="right">
-                <img src={{ comment.ava }} width="24" height="24" alt="avatar">
-                    <a href='{{comment.URL}}'><u>{{comment.commentator_name}}</u></a>
+                <img src={{ comment.commentator.avatar }} width="24" height="24" alt="avatar">
+                    {% if comment.commentator.URL %}
+                    <a href='{{ comment.commentator.URL }}'>
+                        <u>{{ comment.commentator.name }}</u>
+                    </a>
+                    {% else %}
+                    {{ comment.commentator.name }}
+                    {% endif %}
             </div>
         </div>
-        {%if comment.text != ""%}
-        <textarea name="comment" class="form-control" disabled="disabled" rows="5">{{comment.text}}</textarea>
-        {%if comment.len > 0 %}
-        <br>
-        {%endif %}
-        {%endif%}
-        {%if comment.len > 0 %}
+        {% if comment.text %}
+        <textarea name="comment" class="form-control"
+                  disabled="disabled" rows="5">{{ comment.text }}</textarea>
+        {% endif %}
+        {% if comment.photos %}
+            {% if comment.text %}<br>{% endif %}
             <div style="max-height:1000px;overflow:auto;">
-            {%for image in comment.comment_photos.all%}
-            <img  src={{image.get_image_path}} >
-            <!--移动端图片大小需要修正!-->
-            {%endfor%}
+            {% for image in comment.photos %}
+            <img src={{ image.get_image_path }} >
+            {% endfor %}
             </div>
-        {%endif%}
+        {% endif %}
         <hr>
     </div>
     {% endfor %}
 </div>
-{%if commentable %}
-<form role="form" method="POST" enctype="multipart/form-data" onsubmit="return check_comment_inputs()">
+{% if commentable %}
+<form role="form" method="POST"
+    enctype="multipart/form-data"
+    onsubmit="return check_comment_inputs()">
     <div>
         
         <div class="form-group">
@@ -87,7 +94,7 @@ input:disabled, textarea:disabled{
     </div>
 </form>
 <!--end comment-->
-{%endif%}
+{% endif %}
 {% block add_js_file %}
 <script>
 function showFilename(files){
@@ -101,8 +108,28 @@ function showFilename(files){
     }
     $("#uploadfile").html(text);
 }
- </script>
-{%endblock%}
+</script>
+<script>
+function autoJustHeight(item) {
+    let last_height = null;
+    let ct = 0;
+    do {
+        last_height = item.scrollHeight;
+        item.style.height = last_height + 'px';
+    } while (item.scrollHeight !== last_height && ct++ < 1000);
+    // 滚动条长度2, height=滚动条长度+scrollHeight, 额外+1就不用显示滚动条
+    item.style.height = (last_height + 3) + 'px';
+}
+document.getElementsByName('comment').forEach(autoJustHeight);
+{% if commentable %}
+// 特殊处理，防止修改高度
+var new_comment = document.getElementById('comment');
+new_comment.style.height = '';
+new_comment.style.minHeight = new_comment.scrollHeight + 'px';
+new_comment.setAttribute('oninput', 'autoJustHeight(this)');
+{% endif %}
+</script>
+{% endblock %}
 {% block add_css_file %}
 <style>
     .custom-file-input:lang(zh)~.custom-file-label::after {
@@ -148,4 +175,4 @@ function showFilename(files){
         return true;
     }
 </script>
-{%endblock%}
+{% endblock %}

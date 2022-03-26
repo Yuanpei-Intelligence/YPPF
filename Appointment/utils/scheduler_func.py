@@ -11,7 +11,6 @@ from django.db import transaction  # 原子化更改数据库
 import Appointment.utils.utils as utils
 import Appointment.utils.web_func as web_func
 from Appointment.utils.identity import get_participant
-from django_apscheduler.util import close_old_connections
 
 '''
 YWolfeee:
@@ -25,7 +24,6 @@ from boottest.scheduler import scheduler
 
 
 # 每周清除预约的程序，会写入logstore中
-@close_old_connections
 def clear_appointments():
     if GLOBAL_INFO.delete_appoint_weekly:   # 是否清除一周之前的预约
         appoints_to_delete = Appoint.objects.filter(
