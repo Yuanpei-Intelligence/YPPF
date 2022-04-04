@@ -95,6 +95,7 @@ def notification_status_change(notification_or_id, to_status=None):
             context["warn_code"] = 2
             context["warn_message"] = "成功删除一条通知！"
         return context
+    
 
 
 def notification_create(

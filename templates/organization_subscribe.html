@@ -247,7 +247,7 @@
         } else {
             const success = await save_subscribe_status.call(this, true);
             if (success) {
-                change_single_status(this, "F3FDFF", "5F747B", "已订阅");//5F747B
+                change_single_status(this, "F3FDFF", "5F747B", "已订阅");
                 num.textContent = Number(num.textContent) + 1;
             }
             else this.checked = false;

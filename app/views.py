@@ -1,3 +1,4 @@
+from turtle import done
 from app.views_dependency import *
 from app.models import (
     Feedback,
@@ -1945,19 +1946,37 @@ def notifications(request):
 
     if request.method == "POST":  # 发生了通知处理的事件
         post_args = json.loads(request.body.decode("utf-8"))
-        try:
-            notification_id = int(post_args['id'])
-        except:
-            html_display["warn_code"] = 1  # 失败
-            html_display["warn_message"] = "请不要恶意发送post请求！"
-            return JsonResponse({"success":False})
-        try:
-            Notification.objects.activated().get(id=notification_id, receiver=request.user)
-        except:
-            html_display["warn_code"] = 1  # 失败
-            html_display["warn_message"] = "请不要恶意发送post请求！！"
-            return JsonResponse({"success":False})
-        if "cancel" in post_args['function']:
+
+        if "cancelall" in post_args['function']:
+            try:
+                notificaiton_set=Notification.objects.activated().filter(typename=Notification.Type.NEEDREAD)
+                for note in notificaiton_set:
+                    if note.status == Notification.Status.DONE:
+                        context = notification_status_change(note.id,to_status=Notification.Status.DELETE)
+                
+                html_display["warn_code"] = context["warn_code"]
+                html_display["warn_message"] = context["warn_message"]
+                return JsonResponse({"success":True})
+            except:
+                html_display["warn_code"] = 1  # 失败
+                html_display["warn_message"] = "修改通知状态的过程出现错误！请联系管理员。"
+                return JsonResponse({"success":False})
+
+        elif "cancel" in post_args['function']:
+            try:
+                notification_id = int(post_args['id'])
+
+            except:
+                html_display["warn_code"] = 1  # 失败
+                html_display["warn_message"] = "请不要恶意发送post请求！"
+                return JsonResponse({"success":False})
+            try:
+                Notification.objects.activated().get(id=notification_id, receiver=request.user)
+            except:
+                html_display["warn_code"] = 1  # 失败
+                html_display["warn_message"] = "请不要恶意发送post请求！！"
+                return JsonResponse({"success":False})
+
             try:
                 notification_status_change(notification_id, Notification.Status.DELETE)
                 html_display["warn_code"] = 2  # success
@@ -1967,7 +1986,36 @@ def notifications(request):
                 html_display["warn_code"] = 1  # 失败
                 html_display["warn_message"] = "删除通知的过程出现错误！请联系管理员。"
                 return JsonResponse({"success":False})
-        else:
+
+        elif "readall" in post_args['function']:
+            try:
+                notificaiton_set=Notification.objects.activated().filter(typename=Notification.Type.NEEDREAD)
+                for note in notificaiton_set:
+                    if note.status == Notification.Status.UNDONE:
+                        context = notification_status_change(note.id,to_status=Notification.Status.DONE)
+                
+                html_display["warn_code"] = context["warn_code"]
+                html_display["warn_message"] = context["warn_message"]
+                return JsonResponse({"success":True})
+            except:
+                html_display["warn_code"] = 1  # 失败
+                html_display["warn_message"] = "修改通知状态的过程出现错误！请联系管理员。"
+                return JsonResponse({"success":False})
+
+        elif "read" in post_args['function']:
+            try:
+                notification_id = int(post_args['id'])
+            except:
+                html_display["warn_code"] = 1  # 失败
+                html_display["warn_message"] = "请不要恶意发送post请求！"
+                return JsonResponse({"success":False})
+            try:
+                Notification.objects.activated().get(id=notification_id, receiver=request.user)
+            except:
+                html_display["warn_code"] = 1  # 失败
+                html_display["warn_message"] = "请不要恶意发送post请求！！"
+                return JsonResponse({"success":False})
+
             try:
                 context = notification_status_change(notification_id)
                 html_display["warn_code"] = context["warn_code"]
@@ -1977,6 +2025,8 @@ def notifications(request):
                 html_display["warn_code"] = 1  # 失败
                 html_display["warn_message"] = "修改通知状态的过程出现错误！请联系管理员。"
                 return JsonResponse({"success":False})
+       
+
 
     me = get_person_or_org(request.user, user_type)
     html_display["is_myself"] = True

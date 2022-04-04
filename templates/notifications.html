@@ -284,8 +284,6 @@
 </script>
 
 <script>
-    var mail_num= Number("{{bar_display.mail_num}}");
-    var mail_num_done= Number("{{bar_display.mail_num_done}}");
     function refresh() {
         document.querySelector(`#undone-empty`).style.display = (document.querySelector(`#undone-list`).querySelectorAll(`:scope > :not([hidden])`).length === 0) ? `block` : `none`;
         document.querySelector(`#done-empty`).style.display = (document.querySelector(`#done-list`).querySelectorAll(`:scope > :not([hidden])`).length === 0) ? `block` : `none`;
@@ -294,8 +292,8 @@
     async function read() {
         const success = await save_read.call(this,"read");
         if (success) {
-            document.getElementById("undone="+String("read")).hidden = true;
-            document.getElementById("done="+String("read")).hidden = false;
+            document.getElementById("undone="+String(this.id)).hidden = true;
+            document.getElementById("done="+String(this.id)).hidden = false;
             document.getElementById("mail_num").innerHTML = String(Number(document.getElementById("mail_num").innerHTML) - 1);
             refresh();
         }
@@ -325,32 +323,36 @@
             .catch(() => { success: false });
         return success;
     }
+
+    async function save_read_all(func) {
+        const { success } = await fetch(`/notifications/`, {
+            headers: { "Content-Type": `text/plain` },
+            method: `POST`,
+            body: JSON.stringify({function: func}),
+        })
+            .then((res) => res.json())
+            .catch(() => { success: false });
+        return success;
+    }
+
     async function read_all() {
-    lst = document.getElementsByName(String("read"));
-    var m_num = mail_num;
-    if( m_num == 0){
-        confirm("暂时没有未读的消息呦~")
-}
-    for (var i = 0; i < lst.length; i += 1) {
-        if(document.getElementById("undone="+String(lst[i].id)).hidden == false){
-            read.call(lst[i]);
-            m_num -= 1
-        }
+    var mail_num= Number("{{bar_display.mail_num}}");
+    if( mail_num == 0){
+        confirm("暂时没有未读的消息呦~")       
+    }
+    else{
+        save_read_all.call(this,"readall")
     }
 }
-    async function delete_all() {
-    lst = document.getElementsByName(String("read"));
-    var m_num = mail_num_done;
-    if( m_num == 0){
-    confirm("暂时没有可以删除的消息呦~")
+
+async function delete_all() {
+    var mail_num_done= Number("{{bar_display.mail_num_done}}");
+    if( mail_num_done == 0){
+        confirm("暂时没有可以删除的消息呦~")
     }
-    for (var i = 0; i < lst.length; i += 1) {
-        if(document.getElementById("undone="+String(lst[i].id)).hidden == true){
-            cancel.call(lst[i]);
-            m_num -= 1
-            }
-        }
+    else{
+        save_read_all.call(this,"cancelall")
+    }
 }
-  
 </script>
 {% endblock %}
