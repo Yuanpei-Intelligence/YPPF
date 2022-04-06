@@ -125,29 +125,19 @@ def transaction_page(request: HttpRequest, rid=None):
         user = User.objects.get(id=rid)
         recipient = utils.get_person_or_org(user)
     except:
-        return redirect(
-            "/welcome/?warn_code=1&warn_message=该用户不存在，无法实现转账!")
-    if not hasattr(recipient, "organization_id"):
-        return redirect(
-            "/welcome/?name={name}&warn_code=1&warn_message={message}".format(
-                name=recipient.oname,
-                message="目前仅支持向小组转账"))
+        return redirect(message_url("该用户不存在，无法实现转账!"))
+    if recipient.get_type() != UTYPE_ORG:
+        return redirect(message_url("目前仅支持向小组转账"))
     if request.user == user:
-        return redirect(
-            "/welcome/?name={name}&warn_code=1&warn_message={message}".format(
-                name=recipient.oname,
-                message="请不要向自己转账"))
- 
-    html_display["is_myself"] = True
-    html_display['warn_code'] = 0
+        return redirect(message_url("请不要向自己转账"))
 
-    # 获取名字
-    _, _, context = utils.check_user_type(user)
-    context = utils.get_sidebar_and_navbar(user, bar_display=context)
-    name = recipient.oname
-    context["name"] = name
-    context["rid"] = rid
-    context["YQPoint"] = me.YQPoint
+    # 获取转账相关信息，前端使用
+    transaction_context = dict(
+        avatar=recipient.get_user_ava(),
+        return_url=recipient.get_absolute_url(absolute=False),
+        name=recipient.get_display_name(),
+        YQPoint_limit=me.YQPoint,
+    )
 
     # 如果是post, 说明发起了一起转账
     # 到这里, rid没有问题, 接收方和发起方都已经确定
@@ -158,17 +148,9 @@ def transaction_page(request: HttpRequest, rid=None):
         # 检查发起转账的数据
         amount = float(request.POST.get("amount", '0'))
         if not (amount > 0 and int(amount * 10) == amount * 10):
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "非法的转账数量!"
+            wrong("非法的转账数量!", html_display)
         elif me.YQPoint < amount:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = (
-                    "现存元气值余额为"
-                    + str(me.YQPoint)
-                    + ", 不足以发起额度为"
-                    + str(amount)
-                    + "的转账!"
-            )
+            wrong(f"现存元气值余额为{me.YQPoint}, 不足以发起额度为{amount}的转账!", html_display)
         else:
             try:
                 with transaction.atomic():
@@ -209,8 +191,8 @@ def transaction_page(request: HttpRequest, rid=None):
                     #     f"付款人：{payer.oname if user_type == UTYPE_ORG else payer.name}",
                     #     f"金额：{amount}"
                     # ])
-                    
-                    content_msg = transaction_msg if transaction_msg else f'转账金额：{amount}'
+
+                    content_msg = transaction_msg or f'转账金额：{amount}'
                     notification = notification_create(
                         receiver=user,
                         sender=request.user,
@@ -228,8 +210,7 @@ def transaction_page(request: HttpRequest, rid=None):
                 return redirect("/myYQPoint/")
 
             except Exception as e:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "出现无法预料的问题, 请联系管理员!"
+                wrong("出现无法预料的问题, 请联系管理员!", html_display)
 
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
@@ -317,4 +298,3 @@ def YQPoint_distributions(request: HttpRequest):
     else:
         dis_id = int(dis_id)
         return YQPoint_distribution(request, dis_id)
-

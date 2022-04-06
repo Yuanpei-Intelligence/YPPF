@@ -493,7 +493,7 @@ class Organization(models.Model):
     def __str__(self):
         return str(self.oname)
 
-    def get_type(self=None):
+    def get_type(self=None) -> str:
         '''User一对一模型的必要方法'''
         return UTYPE_ORG
 

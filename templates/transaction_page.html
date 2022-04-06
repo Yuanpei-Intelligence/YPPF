@@ -18,9 +18,9 @@
                         <div class="form-container">
                             <div class="form-content">
                                 <div class="d-flex user-meta">
-                                    <img src={{context.avatar_path}} class="usr-profile" alt="avatar">
+                                    <img src={{transaction_context.avatar}} class="usr-profile" alt="avatar">
                                     <div class="">
-                                        <p class="">向{{context.name}}转账</p>
+                                        <p class="">向{{transaction_context.name}}转账</p>
                                     </div>
                                 </div>
 
@@ -29,8 +29,8 @@
 
                                         <div id="pw-field" class="field-wrapper input mb-2">
                                             <div class="d-flex justify-content-between">
-                                                <label>转账金额(可用{{context.YQPoint}}元气值)</label>
-                                                <a href="{{context.return_url}}" class="forgot-pass-link">返回</a>
+                                                <label>转账金额(可用{{transaction_context.YQPoint_limit}}元气值)</label>
+                                                <a href="{{transaction_context.return_url}}" class="forgot-pass-link">返回</a>
                                             </div>
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -63,7 +63,7 @@
                                             <div class="d-sm-flex justify-content-between">
                                                 <div class="field-wrapper">
                                                     <button type="submit" class="btn btn-primary" value=""
-                                                    onclick="return confirm('确定向{{context.name}}发起转账?')"
+                                                    onclick="return confirm('确定向{{transaction_context.name}}发起转账?')"
                                                         id="">确认发起</button>
                                                     <!--modified by wxy-->
                                                 </div>
