@@ -179,9 +179,8 @@ def transaction_page(request: HttpRequest, rid=None):
                     if user_type == UTYPE_PER:
                         # 暂使用F，待改进
                         from django.db.models import F
-                        recipient.YQPoint = F('YQPoint') + amount
-                        recipient.save()
-                        recipient.refresh_from_db()
+                        type(recipient).objects.filter(pk=recipient.pk).update(
+                                YQPoint=F('YQPoint') + amount)
                     payer.save()
 
                     # 成功之后，跳转还是留在原界面，这是个问题
