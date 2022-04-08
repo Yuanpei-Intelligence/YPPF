@@ -1,10 +1,3 @@
-'''
-待废弃
-
-confirm_transaction依赖了以下内容，暂时移动到了函数内
-    from app.notification_utils import notification_create, notification_status_change
-    from app.wechat_send import publish_notification, WechatApp
-'''
 from app.utils_dependency import *
 from app.models import (
     NaturalPerson,
@@ -13,6 +6,10 @@ from app.models import (
     TransferRecord,
     Notification,
 )
+from app.notification_utils import notification_create, notification_status_change
+from app.wechat_send import publish_notification, WechatApp
+from app.utils import get_classified_user
+
 from datetime import datetime, timedelta
 from django.db.models import F
 
@@ -21,7 +18,8 @@ from app.scheduler import scheduler
 __all__ = [
     # 'distribute_YQPoint',
     'add_YQPoints_distribute',
-    'confirm_transaction',
+    'accept_transfer',
+    'reject_transfer',
     'record2Display',
 ]
 
@@ -127,94 +125,93 @@ def add_YQPoints_distribute(dtype):
                           args=[distributer])
 
 
-@log.except_captured(source='YQPoint_utils[confirm_transaction]', record_user=True)
-def confirm_transaction(request, tid=None, reject=None):
-    # 导入关系不正常，可再优化
-    from app.notification_utils import notification_create, notification_status_change
-    from app.wechat_send import publish_notification, WechatApp
-    context = dict()
-    context["warn_code"] = 1  # 先假设有问题
-    new_notification = None
+def get_transfer_record(record_id, user=None) -> TransferRecord:
+    '''获取、加锁并检查，失败时抛出对用户可见的`AssertionError`信息'''
+    try:
+        record = TransferRecord.objects.select_for_update().get(id=record_id)
+    except:
+        # 避免恶意的测试，不存在与无权限返回相同的报错信息
+        raise AssertionError("没有权限调整该交易!")
+    if user is not None and record.recipient != user:
+        raise AssertionError("没有权限调整该交易!")
+    if record.status != TransferRecord.TransferStatus.WAITING:
+        raise AssertionError("交易已经完成, 请不要重复操作!")
+    return record
+
+
+def confirm_notifications(transaction_record):
+    # 理应只有一个
+    notification_status_change(
+        transaction_record.transfer_notification.get(),
+        Notification.Status.DONE
+    )
+
+
+@log.except_captured(wrong('交易意外失败, 请联系管理员!'), source='YQPoint_utils[accept_transfer]')
+def accept_transfer(record_id, user=None, notify=True) -> MESSAGECONTEXT:
     with transaction.atomic():
         try:
-            record = TransferRecord.objects.select_for_update().get(
-                id=tid, recipient=request.user
-            )
+            record = get_transfer_record(record_id, user)
+        except AssertionError as e:
+            return wrong(str(e))
 
-        except Exception as e:
-
-            context["warn_message"] = "交易遇到问题, 请联系管理员!" + str(e)
-            return context
-
-        if record.status != TransferRecord.TransferStatus.WAITING:
-            context["warn_message"] = "交易已经完成, 请不要重复操作!"
-            return context
-
-        payer = record.proposer
-        try:
-            if hasattr(payer, "naturalperson"):
-                payer = (
-                    NaturalPerson.objects.activated()
-                        .select_for_update()
-                        .get(person_id=payer)
-                )
-            else:
-                payer = Organization.objects.select_for_update().get(
-                    organization_id=payer
-                )
-        except:
-            context["warn_message"] = "交易对象不存在或已毕业, 请联系管理员!"
-            return context
-
-        recipient = record.recipient
-        if hasattr(recipient, "naturalperson"):
-            recipient = (
-                NaturalPerson.objects.activated()
-                    .select_for_update()
-                    .get(person_id=recipient)
-            )
-        else:
-            recipient = Organization.objects.select_for_update().get(
-                organization_id=recipient
-            )
-
-        if reject is True:
-            record.status = TransferRecord.TransferStatus.REFUSED
-            payer.YQPoint += record.amount
-            payer.save()
-            context["warn_message"] = "拒绝转账成功!"
-            new_notification = notification_create(
-                receiver=record.proposer,
-                sender=record.recipient,
-                typename=Notification.Type.NEEDREAD,
-                title=Notification.Title.TRANSFER_FEEDBACK,
-                content=f"{str(recipient)}拒绝了您的转账。",
-                URL="/myYQPoint/",
-            )
-            notification_status_change(record.transfer_notification.get().id)
-        else:
-            record.status = TransferRecord.TransferStatus.ACCEPTED
-            recipient.YQPoint += record.amount
-            recipient.save()
-            context["warn_message"] = "交易成功!"
-            new_notification = notification_create(
-                receiver=record.proposer,
-                sender=record.recipient,
-                typename=Notification.Type.NEEDREAD,
-                title=Notification.Title.TRANSFER_FEEDBACK,
-                content=f"{str(recipient)}接受了您的转账。",
-                URL="/myYQPoint/",
-            )
-            notification_status_change(record.transfer_notification.get().id)
-        publish_notification(new_notification, app=WechatApp.TRANSFER)
-        record.finish_time = datetime.now()  # 交易完成时间
+        # 增加元气值
+        recipient = get_classified_user(record.recipient, update=True)
+        recipient.YQPoint += record.amount
+        recipient.save()
+        confirm_notifications(record)
+        # 修改状态
+        record.status = TransferRecord.TransferStatus.ACCEPTED
+        # 交易完成时间
+        record.finish_time = datetime.now()
         record.save()
-        context["warn_code"] = 2
 
-        return context
+        if notify:
+            new_notification = notification_create(
+                receiver=record.proposer,
+                sender=record.recipient,
+                typename=Notification.Type.NEEDREAD,
+                title=Notification.Title.TRANSFER_FEEDBACK,
+                content=f'{recipient}接受了您的转账。',
+                URL='/myYQPoint/',
+            )
+    if notify:
+        publish_notification(new_notification, app=WechatApp.TRANSFER)
+    return succeed('交易成功!')
 
-    context["warn_message"] = "交易遇到问题, 请联系管理员!"
-    return context
+
+@log.except_captured(wrong('交易意外失败, 请联系管理员!'), source='YQPoint_utils[reject_transfer]')
+def reject_transfer(record_id, user=None, notify=True) -> MESSAGECONTEXT:
+    with transaction.atomic():
+        try:
+            record = get_transfer_record(record_id, user)
+        except AssertionError as e:
+            return wrong(str(e))
+
+        # 返还元气值
+        payer = get_classified_user(record.proposer, update=True)
+        payer.YQPoint += record.amount
+        payer.save()
+        confirm_notifications(record)
+        # 修改状态
+        record.status = TransferRecord.TransferStatus.REFUSED
+        # 交易完成时间
+        record.finish_time = datetime.now()
+        record.save()
+
+        if notify:
+            recipient = get_classified_user(record.recipient)
+            new_notification = notification_create(
+                receiver=record.proposer,
+                sender=record.recipient,
+                typename=Notification.Type.NEEDREAD,
+                title=Notification.Title.TRANSFER_FEEDBACK,
+                content=f'{recipient}拒绝了您的转账。',
+                URL='/myYQPoint/',
+            )
+    if notify:
+        publish_notification(new_notification, app=WechatApp.TRANSFER)
+    return succeed('拒绝转账成功!')
 
 
 @log.except_captured(source='YQPoint_utils[record2Display]')

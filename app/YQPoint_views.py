@@ -11,7 +11,8 @@ from app.forms import YQPointDistributionForm
 
 from app.YQPoint_utils import (
     add_YQPoints_distribute,
-    confirm_transaction,
+    accept_transfer,
+    reject_transfer,
     record2Display,
 )
 from app.notification_utils import notification_create
@@ -30,7 +31,6 @@ def myYQPoint(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
     # 接下来处理POST相关的内容
-    html_display["warn_code"] = 0
     if request.method == "POST":  # 发生了交易处理的事件
         try:  # 检查参数合法性
             post_args = request.POST.get("post_button")
@@ -38,25 +38,27 @@ def myYQPoint(request: HttpRequest):
             assert action in ["accept", "reject"]
             reject = action == "reject"
         except:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = "交易遇到问题,请不要非法修改参数!"
+            wrong("交易遇到问题, 请不要修改参数!", html_display)
 
-        if html_display["warn_code"] == 0:  # 如果传入参数没有问题
-            # 调用确认预约API
-            context = confirm_transaction(request, record_id, reject)
-            # 此时warn_code一定是1或者2，必定需要提示
-            html_display["warn_code"] = context["warn_code"]
-            html_display["warn_message"] = context["warn_message"]
+        if html_display.get("warn_code") is None:  # 如果传入参数没有问题
+            if reject:
+                context = reject_transfer(record_id, request.user, notify=True)
+            else:
+                context = accept_transfer(record_id, request.user, notify=True)
+            my_messages.transfer_message_context(context, html_display, normalize=False)
 
-    me = utils.get_person_or_org(request.user, user_type)
-    html_display["is_myself"] = True
+    html_display.update(
+        YQPoint=utils.get_person_or_org(request.user, user_type).YQPoint,
+    )
 
     to_send_set = TransferRecord.objects.filter(
-        proposer=request.user, status=TransferRecord.TransferStatus.WAITING
+        proposer=request.user,
+        status=TransferRecord.TransferStatus.WAITING,
     )
 
     to_recv_set = TransferRecord.objects.filter(
-        recipient=request.user, status=TransferRecord.TransferStatus.WAITING
+        recipient=request.user,
+        status=TransferRecord.TransferStatus.WAITING,
     )
 
     issued_send_set = TransferRecord.objects.filter(
@@ -119,16 +121,18 @@ def myYQPoint(request: HttpRequest):
 @log.except_captured(source='YQPoint_views[transaction_page]', record_user=True)
 def transaction_page(request: HttpRequest, rid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    me = utils.get_person_or_org(request.user, user_type)
-
     try:
-        user = User.objects.get(id=rid)
-        recipient = utils.get_person_or_org(user)
+        receive_user = User.objects.get(id=rid)
     except:
         return redirect(message_url("该用户不存在，无法实现转账!"))
+    try:
+        payer = utils.get_classified_user(request.user, user_type, activate=True)
+        recipient = utils.get_classified_user(receive_user, activate=True)
+    except:
+        return redirect(message_url("只能在有效用户间转账!"))
     if recipient.get_type() != UTYPE_ORG:
         return redirect(message_url("目前仅支持向小组转账"))
-    if request.user == user:
+    if request.user == receive_user:
         return redirect(message_url("请不要向自己转账"))
 
     # 获取转账相关信息，前端使用
@@ -136,7 +140,7 @@ def transaction_page(request: HttpRequest, rid=None):
         avatar=recipient.get_user_ava(),
         return_url=recipient.get_absolute_url(absolute=False),
         name=recipient.get_display_name(),
-        YQPoint_limit=me.YQPoint,
+        YQPoint_limit=payer.YQPoint,
     )
 
     # 如果是post, 说明发起了一起转账
@@ -154,21 +158,13 @@ def transaction_page(request: HttpRequest, rid=None):
         else:
             try:
                 with transaction.atomic():
-                    payer = (
-                        NaturalPerson.objects.activated()
-                            .select_for_update()
-                            .get(person_id=request.user)
-                    ) if user_type == UTYPE_PER else (
-                        Organization.objects.activated()
-                            .select_for_update()
-                            .get(organization_id=request.user)
-                    )
+                    payer = utils.get_classified_user(request.user, user_type, update=True)
                     # 一般情况下都不会 race，除非用户自己想卡，这种情况就报未知的错误就好
                     assert payer.YQPoint >= amount
                     payer.YQPoint -= amount
                     record = TransferRecord.objects.create(
                         proposer=request.user,
-                        recipient=user,
+                        recipient=receive_user,
                         amount=amount,
                         message=transaction_msg,
                         rtype=TransferRecord.TransferType.TRANSACTION,
@@ -193,7 +189,7 @@ def transaction_page(request: HttpRequest, rid=None):
 
                     content_msg = transaction_msg or f'转账金额：{amount}'
                     notification = notification_create(
-                        receiver=user,
+                        receiver=receive_user,
                         sender=request.user,
                         typename=Notification.Type.NEEDDO if user_type == UTYPE_ORG else Notification.Type.NEEDREAD,
                         title=Notification.Title.TRANSFER_CONFIRM if user_type == UTYPE_ORG else Notification.Title.TRANSFER_INFORM,
@@ -201,11 +197,11 @@ def transaction_page(request: HttpRequest, rid=None):
                         URL="/myYQPoint/",
                         relate_TransferRecord=record,
                     )
-                    publish_notification(
-                        notification,
-                        app=WechatApp.TRANSFER,
-                        level=WechatMessageLevel.IMPORTANT,
-                    )
+                publish_notification(
+                    notification,
+                    app=WechatApp.TRANSFER,
+                    level=WechatMessageLevel.IMPORTANT,
+                )
                 return redirect("/myYQPoint/")
 
             except Exception as e:
