@@ -372,7 +372,6 @@ def feedbackWelcome(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = user_type == UTYPE_PER
     me = get_person_or_org(request.user, user_type)
-    myname = me.get_display_name()
 
     # 准备用户提示量
     my_messages.transfer_message_context(request.GET, html_display)

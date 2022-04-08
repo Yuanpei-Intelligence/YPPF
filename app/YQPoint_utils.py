@@ -238,12 +238,9 @@ def record2Display(record_list, user):  # 对应myYQPoint函数中的table_show_
 
         obj_user = record.recipient if record_type == "send" else record.proposer
         lis[-1]["obj_direct"] = "To  " if record_type == "send" else "From"
-        if hasattr(obj_user, "naturalperson"):  # 如果OneToOne Field在个人上
-            lis[-1]["obj"] = obj_user.naturalperson.name
-            lis[-1]["obj_url"] = "/stuinfo/?name=" + lis[-1]["obj"] + "+" + str(obj_user.id)
-        else:
-            lis[-1]["obj"] = obj_user.organization.oname
-            lis[-1]["obj_url"] = "/orginfo/?name=" + lis[-1]["obj"]
+        obj = get_classified_user(obj_user)
+        lis[-1]["obj"] = obj.get_display_name()
+        lis[-1]["obj_url"] = obj.get_absolute_url()
 
         # 金额
         lis[-1]["amount"] = record.amount

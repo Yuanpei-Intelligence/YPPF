@@ -260,10 +260,10 @@ class NaturalPerson(models.Model):
         '''User一对一模型的必要方法'''
         return self.name
 
-    def get_absolute_url(self, absolute=True):
+    def get_absolute_url(self, absolute=False):
         '''User一对一模型的建议方法'''
         url = f'/stuinfo/?name={self.name}'
-        url += f'+{self.id}'
+        url += f'+{self.person_id_id}'
         if absolute:
             url = LOGIN_URL.rstrip('/') + url
         return url

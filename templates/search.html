@@ -68,7 +68,7 @@
                                             <tr>
                                                 <!--
                                                 <td><a
-                                                        href=../../stuinfo/?name={{person.name}}+{{person.id}}>{{person.name}}</a>
+                                                        href="{{person.get_absolute_url}}">{{person.name}}</a>
                                                 </td>
                                                 <td>{{person.pgender}}</td>
                                                 <td>{{person.pyear}}</td>
@@ -86,7 +86,7 @@
                                                 <!-- 说明此时要展示姓名，关联链接 -->
                                                 <td style="min-width: 80px;">
                                                     <u>
-                                                        <a href="/stuinfo/?name={{ person.name }}+{{ person.person_id.id }}">
+                                                        <a href="{{ person.get_absolute_url }}">
                                                             <img src="{{ person.get_user_ava }}" alt="大头照" style="height: 20px; width: 20px;">{{ attribute }}
                                                         </a>
                                                     </u>
@@ -172,7 +172,7 @@
                                             <tr class="w-100">
                                                 <td style="min-width: 100px;">
                                                     <u>
-                                                        <a href="/orginfo/?name={{ orgn.oname }}">
+                                                        <a href="{{ orgn.get_absolute_url }}">
                                                             <img src="{{ orgn.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">{{ orgn.oname }}
                                                         </a>
                                                     </u>
@@ -182,7 +182,7 @@
                                                 </td>
                                                 <td style="min-width: 80px;">
                                                     {% for pos_person in orgn.pos0 %}
-                                                    <a href="/stuinfo/?name={{ pos_person }}+{{pos_person.person_id_id}}">
+                                                    <a href="{{ pos_person.get_absolute_url }}">
                                                         <u>
                                                             <img src="{{ pos_person.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">{{ pos_person }}
                                                         </u> <!-- 重名？ -->

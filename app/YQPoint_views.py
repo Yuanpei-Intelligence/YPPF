@@ -138,7 +138,7 @@ def transaction_page(request: HttpRequest, rid=None):
     # 获取转账相关信息，前端使用
     transaction_context = dict(
         avatar=recipient.get_user_ava(),
-        return_url=recipient.get_absolute_url(absolute=False),
+        return_url=recipient.get_absolute_url(),
         name=recipient.get_display_name(),
         YQPoint_limit=payer.YQPoint,
     )

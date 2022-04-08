@@ -78,7 +78,6 @@ email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 def index(request: HttpRequest):
     arg_origin = request.GET.get("origin")
     modpw_status = request.GET.get("modinfo")
-    # request.GET['success'] = "no"
     arg_islogout = request.GET.get("is_logout")
     alert = request.GET.get("alert")
     if request.session.get('alert_message'):
@@ -89,14 +88,12 @@ def index(request: HttpRequest):
             and modpw_status is not None
             and modpw_status == "success"
     ):
-        html_display["warn_code"] = 2
-        html_display["warn_message"] = "修改密码成功!"
+        succeed("修改密码成功!", html_display)
         auth.logout(request)
         return render(request, "index.html", locals())
 
     if alert is not None:
-        html_display["warn_code"] = 1
-        html_display["warn_message"] = "检测到异常行为，请联系系统管理员。"
+        wrong("检测到异常行为，请联系系统管理员。", html_display)
         auth.logout(request)
         return render(request, "index.html", locals())
 
@@ -107,12 +104,7 @@ def index(request: HttpRequest):
     if arg_origin is None:  # 非外部接入
         if request.user.is_authenticated:
             return redirect("/welcome/")
-            """
-            valid, user_type, html_display = utils.check_user_type(request.user)
-            if not valid:
-                return render(request, 'index.html', locals())
-            return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
-            """
+
     # 非法的 origin
     if not url_check(arg_origin):
         request.session['alert_message'] = f"尝试跳转到非法 URL: {arg_origin}，跳转已取消。"
@@ -131,19 +123,15 @@ def index(request: HttpRequest):
             else:
                 user = user[0]
         except:
-            # if arg_origin is not None:
-            #    redirect(f'/login/?origin={arg_origin}')
-            html_display["warn_message"] = local_dict["msg"]["404"]
-            html_display["warn_code"] = 1
+            wrong(local_dict["msg"]["404"], html_display)
             return render(request, "index.html", locals())
         userinfo = auth.authenticate(username=username, password=password)
         if userinfo:
             auth.login(request, userinfo)
-            # request.session["username"] = username 已废弃
             valid, user_type, html_display = utils.check_user_type(request.user)
             if not valid:
                 return redirect("/logout/")
-            if user_type == "Person":
+            if user_type == UTYPE_PER:
                 me = get_person_or_org(userinfo, user_type)
                 if me.first_time_login:
                     # 不管有没有跳转，这个逻辑都应该是优先的
@@ -152,15 +140,8 @@ def index(request: HttpRequest):
                 update_related_account_in_session(request, username)
             if arg_origin is None:
                 return redirect("/welcome/")
-                """
-                valid, user_type, html_display = utils.check_user_type(request.user)
-                if not valid:
-                    return render(request, 'index.html', locals())
-                return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
-                """
         else:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = local_dict["msg"]["406"]
+            wrong(local_dict["msg"]["406"], html_display)
 
     # 所有跳转，现在不管是不是post了
     if arg_origin is not None and request.user.is_authenticated:
@@ -259,10 +240,7 @@ def stuinfo(request: HttpRequest, name=None):
             return redirect("/orginfo/")  # 小组只能指定学生姓名访问
         else:  # 跳轉到自己的頁面
             assert user_type == "Person"
-            full_path = request.get_full_path()
-
-            append_url = "" if ("?" not in full_path) else "&" + full_path.split("?")[1]
-            return redirect("/stuinfo/?name=" + oneself.name + append_url)
+            return redirect(append_query(oneself.get_absolute_url(), request.GET))
     else:
         # 先对可能的加号做处理
         name_list = name.replace(' ', '+').split("+")
@@ -296,17 +274,14 @@ def stuinfo(request: HttpRequest, name=None):
             anonymous_flag = (request.POST.get('show_name') is not None)
             question = request.POST.get("question")
             if len(question) == 0:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "请填写问题内容!"
+                wrong("请填写问题内容!", html_display)
             else:
                 try:
                     QA_create(sender=request.user,receiver=person.person_id,Q_text=str(question),anonymous_flag=anonymous_flag)
-                    html_display["warn_code"] = 2
-                    html_display["warn_message"] = "提问发送成功!"
+                    succeed("提问发送成功!", html_display)
                 except:
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = "提问发送失败!请联系管理员!"
-            return redirect(f"/stuinfo/?name={person.name}&warn_code="+str(html_display["warn_code"])+"&warn_message="+str(html_display["warn_message"]))
+                    wrong("提问发送失败!请联系管理员!", html_display)
+            return redirect(message_url(html_display, person.get_absolute_url()))
         elif request.method == "POST" and request.POST:
             option = request.POST.get("option", "")
             assert option == "cancelInformShare" and html_display["is_myself"]
@@ -886,11 +861,6 @@ def homepage(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = True if user_type == "Person" else False
     me = get_person_or_org(request.user, user_type)
-    myname = me.get_display_name()
-
-    # 直接储存在html_display中
-    # profile_name = "个人主页" if is_person else "小组主页"
-    # profile_url = "/stuinfo/?name=" + myname if is_person else "/orginfo/?name=" + myname
 
     html_display["is_myself"] = True
 
