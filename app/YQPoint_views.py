@@ -153,8 +153,8 @@ def transaction_page(request: HttpRequest, rid=None):
         amount = float(request.POST.get("amount", '0'))
         if not (amount > 0 and int(amount * 10) == amount * 10):
             wrong("非法的转账数量!", html_display)
-        elif me.YQPoint < amount:
-            wrong(f"现存元气值余额为{me.YQPoint}, 不足以发起额度为{amount}的转账!", html_display)
+        elif payer.YQPoint < amount:
+            wrong(f"现存元气值余额为{payer.YQPoint}, 不足以发起额度为{amount}的转账!", html_display)
         else:
             try:
                 with transaction.atomic():
