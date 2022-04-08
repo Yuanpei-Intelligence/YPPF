@@ -506,7 +506,7 @@ class Organization(models.Model):
         '''User一对一模型的必要方法'''
         return self.oname
 
-    def get_absolute_url(self, absolute=True):
+    def get_absolute_url(self, absolute=False):
         '''User一对一模型的建议方法'''
         url = f'/orginfo/?name={self.oname}'
         if absolute:
