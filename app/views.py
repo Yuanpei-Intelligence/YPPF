@@ -74,7 +74,8 @@ hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
 
-@log.except_captured(source='views[index]', record_user=True)
+@log.except_captured(source='views[index]', record_user=True,
+                     record_request_args=True, show_traceback=True)
 def index(request: HttpRequest):
     arg_origin = request.GET.get("origin")
     modpw_status = request.GET.get("modinfo")
@@ -240,7 +241,7 @@ def stuinfo(request: HttpRequest, name=None):
             return redirect("/orginfo/")  # 小组只能指定学生姓名访问
         else:  # 跳轉到自己的頁面
             assert user_type == "Person"
-            return redirect(append_query(oneself.get_absolute_url(), request.GET))
+            return redirect(append_query(oneself.get_absolute_url(), **request.GET.dict()))
     else:
         # 先对可能的加号做处理
         name_list = name.replace(' ', '+').split("+")
@@ -1151,7 +1152,8 @@ def accountSetting(request: HttpRequest):
         return render(request, "org_account_setting.html", locals())
 
 
-@log.except_captured(source='views[freshman]', record_user=True)
+@log.except_captured(source='views[freshman]', record_user=True,
+                     record_request_args=True, show_traceback=True)
 def freshman(request: HttpRequest):
     if request.user.is_authenticated:
         return redirect(message_url(wrong('你已经登录，无需进行注册!')))
@@ -1497,7 +1499,8 @@ def search(request: HttpRequest):
     return render(request, "search.html", locals())
 
 
-@log.except_captured(source='views[forgetPassword]', record_user=True)
+@log.except_captured(source='views[forgetPassword]', record_user=True,
+                     record_request_args=True, show_traceback=True)
 def forgetPassword(request: HttpRequest):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
