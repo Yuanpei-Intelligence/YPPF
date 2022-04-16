@@ -63,7 +63,7 @@
                                             <div class="d-sm-flex justify-content-between">
                                                 <div class="field-wrapper">
                                                     <button type="submit" class="btn btn-primary" value=""
-                                                    onclick="return confirm('确定向{{transaction_context.name}}发起转账?')"
+                                                    onclick="return confirm('{% if user_type == 'Organization' %}你正在使用小组账号，{% endif %}确定向{{transaction_context.name}}发起转账？确定后将无法撤回！')"
                                                         id="">确认发起</button>
                                                     <!--modified by wxy-->
                                                 </div>
