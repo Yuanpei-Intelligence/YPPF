@@ -11,6 +11,7 @@ from app.forms import YQPointDistributionForm
 
 from app.YQPoint_utils import (
     add_YQPoints_distribute,
+    create_transfer_record,
     accept_transfer,
     reject_transfer,
     record2Display,
@@ -29,6 +30,8 @@ from django.db import transaction  # 原子化更改数据库
 @log.except_captured(source='YQPoint_views[myYQPoint]', record_user=True)
 def myYQPoint(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
+    # 获取可能的提示信息
+    my_messages.transfer_message_context(request.GET, html_display)
 
     # 接下来处理POST相关的内容
     if request.method == "POST":  # 发生了交易处理的事件
@@ -146,73 +149,26 @@ def transaction_page(request: HttpRequest, rid=None):
     # 如果是post, 说明发起了一起转账
     # 到这里, rid没有问题, 接收方和发起方都已经确定
     if request.method == "POST":
-        # 获取转账消息, 如果没有消息, 则为空
-        transaction_msg = request.POST.get("msg", "")
-
         # 检查发起转账的数据
-        amount = float(request.POST.get("amount", '0'))
-        if not (amount > 0 and int(amount * 10) == amount * 10):
-            wrong("非法的转账数量!", html_display)
-        elif payer.YQPoint < amount:
-            wrong(f"现存元气值余额为{payer.YQPoint}, 不足以发起额度为{amount}的转账!", html_display)
-        else:
-            try:
-                with transaction.atomic():
-                    payer = utils.get_classified_user(request.user, user_type, update=True)
-                    # 一般情况下都不会 race，除非用户自己想卡，这种情况就报未知的错误就好
-                    assert payer.YQPoint >= amount
-                    payer.YQPoint -= amount
-                    record = TransferRecord.objects.create(
-                        proposer=request.user,
-                        recipient=receive_user,
-                        amount=amount,
-                        message=transaction_msg,
-                        rtype=TransferRecord.TransferType.TRANSACTION,
-                        status=(TransferRecord.TransferStatus.ACCEPTED
-                                if user_type == UTYPE_PER else
-                                TransferRecord.TransferStatus.WAITING),
-                    )
-                    if user_type == UTYPE_PER:
-                        # 暂使用F，待改进
-                        from django.db.models import F
-                        type(recipient).objects.filter(pk=recipient.pk).update(
-                                YQPoint=F('YQPoint') + amount)
-                    payer.save()
-
-                    # 成功之后，跳转还是留在原界面，这是个问题
-                    # warn_message = "成功发起转账，元气值将在对方确认后到账。\n" if user_type == UTYPE_ORG else "转账成功!\n"
-                    # warn_message += "\n".join([
-                    #     f"收款人：{recipient.oname}",
-                    #     f"付款人：{payer.oname if user_type == UTYPE_ORG else payer.name}",
-                    #     f"金额：{amount}"
-                    # ])
-
-                    content_msg = transaction_msg or f'转账金额：{amount}'
-                    notification = notification_create(
-                        receiver=receive_user,
-                        sender=request.user,
-                        typename=Notification.Type.NEEDDO if user_type == UTYPE_ORG else Notification.Type.NEEDREAD,
-                        title=Notification.Title.TRANSFER_CONFIRM if user_type == UTYPE_ORG else Notification.Title.TRANSFER_INFORM,
-                        content=content_msg,
-                        URL="/myYQPoint/",
-                        relate_TransferRecord=record,
-                    )
-                publish_notification(
-                    notification,
-                    app=WechatApp.TRANSFER,
-                    level=WechatMessageLevel.IMPORTANT,
-                )
-                return redirect("/myYQPoint/")
-
-            except Exception as e:
-                wrong("出现无法预料的问题, 请联系管理员!", html_display)
+        try:
+            amount = float(request.POST['amount'])
+            assert amount > 0 and int(amount * 10) == amount * 10
+        except:
+            wrong('非法的转账数量!', html_display)
+        if html_display.get(my_messages.CODE_FIELD, SUCCEED) != WRONG:
+            # 函数检查元气值
+            # 获取转账消息, 如果没有消息, 则为空
+            context = create_transfer_record(
+                request.user, receive_user,
+                transaction_msg=request.POST.get('msg', ''),
+                accept='append' if user_type == UTYPE_PER else 'no',
+            )
+            return redirect(message_url(context, '/myYQPoint/'))
 
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
     # 如果希望前移，请联系YHT
-    bar_display = utils.get_sidebar_and_navbar(request.user)
-    bar_display["title_name"] = "Transaction"
-    bar_display["navbar_name"] = "发起转账"
+    bar_display = utils.get_sidebar_and_navbar(request.user, "发起转账")
     return render(request, "transaction_page.html", locals())
 
 

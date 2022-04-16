@@ -1,5 +1,6 @@
 from app.utils_dependency import *
 from app.models import (
+    User,
     NaturalPerson,
     Organization,
     YQPointDistribute,
@@ -7,7 +8,7 @@ from app.models import (
     Notification,
 )
 from app.notification_utils import notification_create, notification_status_change
-from app.wechat_send import publish_notification, WechatApp
+from app.wechat_send import publish_notification, WechatApp, WechatMessageLevel
 from app.utils import get_classified_user
 
 from datetime import datetime, timedelta
@@ -18,6 +19,7 @@ from app.scheduler import scheduler
 __all__ = [
     # 'distribute_YQPoint',
     'add_YQPoints_distribute',
+    'create_transfer_record',
     'accept_transfer',
     'reject_transfer',
     'record2Display',
@@ -123,6 +125,71 @@ def add_YQPoints_distribute(dtype):
                           weeks=distributer.type,
                           next_run_time=distributer.start_time,
                           args=[distributer])
+
+
+def create_transfer_record(payer: User, recipient: User, amount: float,
+                           transaction_msg="", accept='no') -> MESSAGECONTEXT:
+    '''
+    创建一个转账记录，返回创建信息和记录id
+
+    Parameters
+    ----------
+    accept : str, 立刻接收转账的行为，合法值包括`append`, `no`
+
+    Returns
+    -------
+    MESSAGECONTEXT
+    - 成功时具有record_id的额外字段
+    - 创建成功且允许append追加接收时，具有accept_context的额外字段
+    '''
+    context, accepted = {}, False
+    with transaction.atomic():
+        # 上锁并查询余额
+        payer_obj = get_classified_user(payer, update=True)
+        if payer_obj.YQPoint < amount:
+            return wrong(f'现存元气值余额为{payer_obj.YQPoint}, 不足以发起额度为{amount}的转账!')
+
+        # 执行创建部分
+        record: TransferRecord = TransferRecord.objects.create(
+            proposer=payer,
+            recipient=recipient,
+            amount=amount,
+            message=transaction_msg,
+            rtype=TransferRecord.TransferType.TRANSACTION,
+            status=TransferRecord.TransferStatus.WAITING,
+        )
+        payer_obj.YQPoint -= amount
+        payer_obj.save()
+
+        notification = notification_create(
+            receiver=recipient,
+            sender=payer,
+            typename=Notification.Type.NEEDDO,
+            title=Notification.Title.TRANSFER_CONFIRM,
+            content=transaction_msg or f'转账金额：{amount}',
+            URL='/myYQPoint/',
+            relate_TransferRecord=record,
+        )
+        # 更新返回的id
+        context.update(record_id=record.id)
+
+    # 如果立即追加接收转账逻辑
+    if accept == 'append':
+        accept_context = accept_transfer(record.id, notify=False)
+        context.update(accept_context=accept_context)
+        if accept_context[my_messages.CODE_FIELD] == SUCCEED:
+            Notification.objects.filter(id=notification.id).update(
+                title=Notification.Title.TRANSFER_INFORM)
+            accepted = True
+
+    # 发送微信提醒
+    publish_notification(
+        notification,
+        app=WechatApp.TRANSFER,
+        level=WechatMessageLevel.INFO if accepted else WechatMessageLevel.IMPORTANT,
+    )
+    return succeed('转账成功!' if accepted else
+                   '成功发起转账，元气值将在对方确认后到账。', context)
 
 
 def get_transfer_record(record_id, user=None) -> TransferRecord:
