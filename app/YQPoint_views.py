@@ -159,7 +159,7 @@ def transaction_page(request: HttpRequest, rid=None):
             # 函数检查元气值
             # 获取转账消息, 如果没有消息, 则为空
             context = create_transfer_record(
-                request.user, receive_user,
+                request.user, receive_user, amount,
                 transaction_msg=request.POST.get('msg', ''),
                 accept='append' if user_type == UTYPE_PER else 'no',
             )
