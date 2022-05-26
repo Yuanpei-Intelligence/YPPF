@@ -143,7 +143,9 @@ def transaction_page(request: HttpRequest, rid=None):
         avatar=recipient.get_user_ava(),
         return_url=recipient.get_absolute_url(),
         name=recipient.get_display_name(),
+        service=request.GET.get('service', -1),
         YQPoint_limit=payer.YQPoint,
+        message=request.GET.get('message', ''),
     )
 
     # 如果是post, 说明发起了一起转账
@@ -160,6 +162,7 @@ def transaction_page(request: HttpRequest, rid=None):
             # 获取转账消息, 如果没有消息, 则为空
             context = create_transfer_record(
                 request.user, receive_user, amount,
+                service=int(request.POST.get('service', -1)),
                 transaction_msg=request.POST.get('msg', ''),
                 accept='append' if user_type == UTYPE_PER else 'no',
             )

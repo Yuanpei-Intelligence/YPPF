@@ -1026,6 +1026,12 @@ class TransferRecord(models.Model):
         REIMBURSEMENT = (1, "报销兑换") # 元气值湮灭
         BONUS = (2, "学院发放") # 学院发放的奖励
         TRANSACTION = (3, "小组间转账")
+        SERVICE_COFFEE = (4, "咖啡服务")
+        SERVICE_PRINT = (5, "打印服务")
+
+        def is_service(t: int) -> bool:
+            return t in [TransferRecord.TransferType.SERVICE_COFFEE,
+                         TransferRecord.TransferType.SERVICE_PRINT]
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
     rtype = models.SmallIntegerField(choices=TransferType.choices, default=0)

@@ -42,11 +42,9 @@
                                             <input  type="number" class="form-control" name="amount"
                                                 placeholder="最小精度为0.1" οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')"
                                                 min="0.1", step="0.1" required="required">
+                                            <input type="hidden" value={{transaction_context.service}}>
                                             <!--modified by wxy-->
-                                            
                                         </div>
-
-
 
                                         <div class="form">
                                             <div id="new-field" class="field-wrapper input mb-2">
@@ -55,7 +53,7 @@
                                                     <!--modified by pht-->
                                                 </div>
                                                 <textarea name="msg"  class="form-control"
-                                                    rows="3"></textarea>
+                                                    rows="3">{{transaction_context.message}}</textarea>
                                                 
                                                 <!--modified by wxy-->
                                             </div>
