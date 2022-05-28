@@ -1029,9 +1029,16 @@ class TransferRecord(models.Model):
         SERVICE_COFFEE = (4, "咖啡服务")
         SERVICE_PRINT = (5, "打印服务")
 
-        def is_service(t: int) -> bool:
-            return t in [TransferRecord.TransferType.SERVICE_COFFEE,
-                         TransferRecord.TransferType.SERVICE_PRINT]
+        @classmethod
+        def is_service(cls, type: int) -> bool:
+            return type in {
+                TransferRecord.TransferType.SERVICE_COFFEE,
+                TransferRecord.TransferType.SERVICE_PRINT,
+            }
+
+        @classmethod
+        def is_valid_service(cls, type: int) -> bool:
+            return type == -1 or cls.is_service(type)
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
     rtype = models.SmallIntegerField(choices=TransferType.choices, default=0)

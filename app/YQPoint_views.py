@@ -143,10 +143,11 @@ def transaction_page(request: HttpRequest, rid=None):
         avatar=recipient.get_user_ava(),
         return_url=recipient.get_absolute_url(),
         name=recipient.get_display_name(),
-        service=request.GET.get('service', -1),
         YQPoint_limit=payer.YQPoint,
         message=request.GET.get('message', ''),
     )
+    if request.GET.get('service') is not None:
+        transaction_context.update(service=request.GET['service'])
 
     # 如果是post, 说明发起了一起转账
     # 到这里, rid没有问题, 接收方和发起方都已经确定
@@ -157,13 +158,18 @@ def transaction_page(request: HttpRequest, rid=None):
             assert amount > 0 and int(amount * 10) == amount * 10
         except:
             wrong('非法的转账数量!', html_display)
+        try:
+            service = int(request.POST.get('service', -1))
+            assert TransferRecord.TransferType.is_valid_service(service)
+        except:
+            wrong('非法的服务编号!', html_display)
         if html_display.get(my_messages.CODE_FIELD, SUCCEED) != WRONG:
             # 函数检查元气值
             # 获取转账消息, 如果没有消息, 则为空
             context = create_transfer_record(
                 request.user, receive_user, amount,
-                service=int(request.POST.get('service', -1)),
                 transaction_msg=request.POST.get('msg', ''),
+                service=service,
                 accept='append' if user_type == UTYPE_PER else 'no',
             )
             return redirect(message_url(context, '/myYQPoint/'))

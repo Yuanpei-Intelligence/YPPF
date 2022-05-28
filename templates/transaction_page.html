@@ -42,7 +42,9 @@
                                             <input  type="number" class="form-control" name="amount"
                                                 placeholder="最小精度为0.1" οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')"
                                                 min="0.1", step="0.1" required="required">
-                                            <input type="hidden" value={{transaction_context.service}}>
+                                            {% if transaction_context.service is not None and transaction_context.service != -1 %}
+                                            <input type="hidden" name="service" value={{transaction_context.service}}>
+                                            {% endif %}
                                             <!--modified by wxy-->
                                         </div>
 
@@ -53,7 +55,7 @@
                                                     <!--modified by pht-->
                                                 </div>
                                                 <textarea name="msg"  class="form-control"
-                                                    rows="3">{{transaction_context.message}}</textarea>
+                                                    rows="3">{{transaction_context.message | default_if_none : ""}}</textarea>
                                                 
                                                 <!--modified by wxy-->
                                             </div>

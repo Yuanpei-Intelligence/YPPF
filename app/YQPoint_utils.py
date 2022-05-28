@@ -127,13 +127,15 @@ def add_YQPoints_distribute(dtype):
                           args=[distributer])
 
 
-def create_transfer_record(payer: User, recipient: User, amount: float, service=-1,
-                           transaction_msg="", accept='no') -> MESSAGECONTEXT:
+def create_transfer_record(payer: User, recipient: User, amount: float,
+                           transaction_msg="", service=-1,
+                           accept='no') -> MESSAGECONTEXT:
     '''
     创建一个转账记录，返回创建信息和记录id
 
     Parameters
     ----------
+    service : TransferRecord.TransferType, 经过is_valid_service检查的服务类型
     accept : str, 立刻接收转账的行为，合法值包括`append`, `no`
 
     Returns
@@ -149,18 +151,15 @@ def create_transfer_record(payer: User, recipient: User, amount: float, service=
         if payer_obj.YQPoint < amount:
             return wrong(f'现存元气值余额为{payer_obj.YQPoint}, 不足以发起额度为{amount}的转账!')
 
-        # 检查服务类型是否合法
-        if service != -1 and not TransferRecord.TransferType.is_service(service):
-            return wrong('非预期错误——错误的服务类型，请联系管理员解决问题')
-
         # 执行创建部分
         record: TransferRecord = TransferRecord.objects.create(
             proposer=payer,
             recipient=recipient,
             amount=amount,
             message=transaction_msg,
-            rtype=TransferRecord.TransferType.TRANSACTION if service == -1 else service,
-            status=TransferRecord.TransferStatus.WAITING if service == -1 else TransferRecord.TransferStatus.ACCEPTED,
+            rtype=(service if TransferRecord.TransferType.is_service(service)
+                           else TransferRecord.TransferType.TRANSACTION),
+            status=TransferRecord.TransferStatus.WAITING,
         )
         payer_obj.YQPoint -= amount
         payer_obj.save()
