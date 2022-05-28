@@ -5,11 +5,13 @@ from app.models import (
     Notification,
     Feedback,
     FeedbackType,
+    NaturalPerson,
+    PageLog,
 )
 from app.utils import (
     get_person_or_org,
 )
-from django.db.models import Q
+from django.db.models import Q, F
 from django.db import transaction
 from app.feedback_utils import (
     examine_notification,
@@ -361,7 +363,22 @@ def viewFeedback(request: HttpRequest, fid):
 
     bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="反馈信息")
     title = feedback.title
-    comments = showComment(feedback, anonymous_users=[feedback.person.person_id])
+    comments = showComment(feedback)
+    # 发布者需要匿名
+    for comment in comments:
+        if comment.commentator == feedback.person.person_id:
+            comment.comentator = None
+            comment.commentator_name = "匿名用户"
+            comment.ava = MEDIA_URL + "avatar/person_default.jpg"
+            comment.URL = None
+    
+    # 如果visit_time为0，从PV里迁移统计
+    if feedback.visit_times == 0:
+        Feedback.objects.filter(id=feedback.id).update(visit_times= \
+            PageLog.objects.filter(type=PageLog.CountType.PV) \
+                .filter(page=f'/viewFeedback/{feedback.id}').count())
+    # 更新统计次数
+    Feedback.objects.filter(id=feedback.id).update(visit_times=F('visit_times')+1)
     return render(request, "feedback_info.html", locals())
 
 
