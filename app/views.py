@@ -1742,30 +1742,30 @@ def modpw(request: HttpRequest):
 @log.except_captured(source='views[subscribeOrganization]', record_user=True)
 def subscribeOrganization(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if user_type != 'Person':
-        return redirect('/welcome/?warn_code=1&warn_message=小组账号不支持订阅！')
+    if user_type != UTYPE_PER:
+        succeed('小组账号不支持订阅，您可以在此查看小组列表！', html_display)
+        html_display.update(readonly=True)
 
     me = get_person_or_org(request.user, user_type)
-    html_display["is_myself"] = True
     # orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
     otype_infos = [(
         otype,
         list(Organization.objects.filter(otype=otype)
             .select_related("organization_id")),
     ) for otype in OrganizationType.objects.all().order_by('-otype_id')]
-    unsubscribe_list = list(me.unsubscribe_list.values_list("organization_id__username", flat=True))
+
     # 获取不订阅列表（数据库里的是不订阅列表）
-
-
+    if user_type == UTYPE_PER:
+        unsubscribe_set = set(me.unsubscribe_list.values_list(
+            'organization_id__username', flat=True))
+    else:
+        unsubscribe_set = set(Organization.objects.values_list(
+            'organization_id__username', flat=True))
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的订阅")
-    # 补充一些呈现信息
-    # bar_display["title_name"] = "Subscribe"
-    # bar_display["navbar_name"] = "我的订阅"  #
-    # bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
-
-    subscribe_url = reverse("saveSubscribeStatus")
+    # 小组暂且不使用订阅提示
+    bar_display = utils.get_sidebar_and_navbar(
+        request.user, navbar_name='我的订阅' if user_type == UTYPE_PER else '小组一览')
 
     # all_number = NaturalPerson.objects.activated().all().count()    # 人数全体 优化查询
     return render(request, "organization_subscribe.html", locals())
@@ -1778,7 +1778,7 @@ def subscribeOrganization(request: HttpRequest):
 @log.except_captured(source='views[saveSubscribeStatus]', record_user=True)
 def saveSubscribeStatus(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if user_type != 'Person':
+    if user_type != UTYPE_PER:
         return JsonResponse({"success":False})
 
     me = get_person_or_org(request.user, user_type)
