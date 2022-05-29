@@ -30,6 +30,8 @@ models.py
 - 模型管理器
     - 不应导出
     - 若与学期有关，必须至少支持select_current的三类筛选
+    - 与User有一对一关系的实体管理器, 需要定义get_by_user方法
+        - get_by_user通过关联的User获取实例，至少支持update和activate
     ...
 
 @Date 2022-03-11
@@ -121,6 +123,16 @@ def image_url(image, enable_abs=False) -> str:
 
 
 class NaturalPersonManager(models.Manager):
+    def get_by_user(self, user: User, *,
+                    update=False, activate=False):
+        '''User一对一模型管理器的必要方法, 通过关联的User获取实例'''
+        if activate:
+            self = self.activated()
+        if update:
+            self = self.select_for_update()
+        result: NaturalPerson = self.get(person_id=user)
+        return result
+
     def activated(self):
         return self.exclude(status=NaturalPerson.GraduateStatus.GRADUATED)
 
@@ -248,9 +260,10 @@ class NaturalPerson(models.Model):
         '''User一对一模型的必要方法'''
         return self.name
 
-    def get_absolute_url(self, absolute=True):
+    def get_absolute_url(self, absolute=False):
         '''User一对一模型的建议方法'''
         url = f'/stuinfo/?name={self.name}'
+        url += f'+{self.person_id_id}'
         if absolute:
             url = LOGIN_URL.rstrip('/') + url
         return url
@@ -439,6 +452,16 @@ class OrganizationTag(models.Model):
 
 
 class OrganizationManager(models.Manager):
+    def get_by_user(self, user: User, *,
+                    update=False, activate=False):
+        '''User一对一模型管理器的必要方法, 通过关联的User获取实例'''
+        if activate:
+            self = self.activated()
+        if update:
+            self = self.select_for_update()
+        result: Organization = self.get(organization_id=user)
+        return result
+
     def activated(self):
         return self.exclude(status=False)
 
@@ -471,7 +494,7 @@ class Organization(models.Model):
     def __str__(self):
         return str(self.oname)
 
-    def get_type(self=None):
+    def get_type(self=None) -> str:
         '''User一对一模型的必要方法'''
         return UTYPE_ORG
 
@@ -483,7 +506,7 @@ class Organization(models.Model):
         '''User一对一模型的必要方法'''
         return self.oname
 
-    def get_absolute_url(self, absolute=True):
+    def get_absolute_url(self, absolute=False):
         '''User一对一模型的建议方法'''
         url = f'/orginfo/?name={self.oname}'
         if absolute:
@@ -1003,6 +1026,19 @@ class TransferRecord(models.Model):
         REIMBURSEMENT = (1, "报销兑换") # 元气值湮灭
         BONUS = (2, "学院发放") # 学院发放的奖励
         TRANSACTION = (3, "小组间转账")
+        SERVICE_COFFEE = (4, "咖啡服务")
+        SERVICE_PRINT = (5, "打印服务")
+
+        @classmethod
+        def is_service(cls, type: int) -> bool:
+            return type in {
+                TransferRecord.TransferType.SERVICE_COFFEE,
+                TransferRecord.TransferType.SERVICE_PRINT,
+            }
+
+        @classmethod
+        def is_valid_service(cls, type: int) -> bool:
+            return type == -1 or cls.is_service(type)
 
     status = models.SmallIntegerField(choices=TransferStatus.choices, default=1)
     rtype = models.SmallIntegerField(choices=TransferType.choices, default=0)
@@ -1141,6 +1177,7 @@ class Notification(models.Model):
 
     class Title(models.TextChoices):
         # 等待逻辑补充，可以自定义
+        TRANSFER_INFORM = "元气值入账通知"
         TRANSFER_CONFIRM = "转账确认通知"
         ACTIVITY_INFORM = "活动状态通知"
         VERIFY_INFORM = "审核信息通知"

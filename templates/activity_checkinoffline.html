@@ -33,7 +33,7 @@
                                     <tr>
                                         <td>
                                             <img src={{ member.person_id.get_user_ava }} width="24" height="24" alt="avatar">
-                                            <a href='/stuinfo/?name={{ member.person_id }}'>
+                                            <a href='{{ member.person_id.get_absolute_url }}'>
                                                 <u>{{ member.person_id }}</u>
                                             </a>
                                         </td>

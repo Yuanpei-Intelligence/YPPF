@@ -150,7 +150,7 @@ def showComment(commentbase, anonymous_users=None) -> List[dict]:
             commentator_display = dict(
                 name=commentator.get_display_name(),
                 avatar=commentator.get_user_ava(),
-                URL=commentator.get_absolute_url(absolute=False),
+                URL=commentator.get_absolute_url(),
             )
         display.update(commentator=commentator_display)
         photos = list(comment.comment_photos.all())

@@ -59,17 +59,36 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
     return actual_decorator
 
 
-def get_person_or_org(user, user_type=None) -> ClassifiedUser:
+def get_classified_user(user: User, user_type=None, *,
+                        update=False, activate=False) -> ClassifiedUser:
+    '''
+    通过User对象获取对应的实例
+
+    check_user_type返回valid=True时，应能得到一个与user_type相符的实例
+
+    Parameters
+    ----------
+    user_type : UTYPE, optional
+        用来加速访问，不提供时按顺序尝试，非法值抛出`AssertionError`
+    update : bool, optional
+        获取用来更新的对象，需要在事务中调用，否则会报错
+    activate : bool, optional
+        只获取活跃的用户，由对应的模型管理器检查，用户不活跃可能报错
+    '''
     if user_type is None:
         if hasattr(user, "naturalperson"):
-            return user.naturalperson
+            return NaturalPerson.objects.get_by_user(user, update=update, activate=activate)
         else:
-            return user.organization
-    return (
-        NaturalPerson.objects.get(person_id=user)
-        if user_type == UTYPE_PER
-        else Organization.objects.get(organization_id=user)
-    )
+            return Organization.objects.get_by_user(user, update=update, activate=activate)
+    elif user_type == UTYPE_PER:
+        return NaturalPerson.objects.get_by_user(user, update=update, activate=activate)
+    elif user_type == UTYPE_ORG:
+        return Organization.objects.get_by_user(user, update=update, activate=activate)
+    else:
+        raise AssertionError(f"非法的用户类型：“{user_type}”")
+
+# 保持之前的函数名接口
+get_person_or_org = get_classified_user
 
 
 def get_user_by_name(name):

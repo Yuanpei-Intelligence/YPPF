@@ -542,18 +542,18 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
                              now_time.hour, now_time.minute, 0)  # 需要剥离秒级以下的数据，否则admin-index无法正确渲染
             timeid = web_func.get_time_id(room, time(start.hour, start.minute))
 
+            finish, valid = web_func.get_hour_time(room, timeid + 1)
+            finish = datetime(now_time.year, now_time.month, now_time.day, int(
+                finish.split(':')[0]), int(finish.split(':')[1]), 0)
+
             # 房间未开放
-            if timeid < 0:
+            if timeid < 0 or not valid:
                 message = f"该时段房间未开放！别熬夜了，回去睡觉！"
                 cardcheckinfo_writer(student, room, False,
                                      False, f"刷卡拒绝：临时预约失败（{message}）")
                 send_wechat_message(
                     [Sid], start, room, "temp_appointment_fail", student, "临时预约", "", 1, message)
                 return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
-
-            finish, valid = web_func.get_hour_time(room, timeid + 1)
-            finish = datetime(now_time.year, now_time.month, now_time.day, int(
-                finish.split(':')[0]), int(finish.split(':')[1]), 0)
 
             # 检查时间是否合法
             # 合法条件：为避免冲突，临时预约时长必须超过15分钟；预约时在房间可用时段
