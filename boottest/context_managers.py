@@ -14,7 +14,8 @@ __all__ = [
     'Checker',
 ]
 
-ExceptionType = Type[Exception]
+DEFAULT_EXC_TYPE = AssertionError
+ExceptionType = Type[BaseException]
 TrappableException = Union[ExceptionType, Tuple[ExceptionType]]
 
 
@@ -45,9 +46,10 @@ class Checker:
         '''
         :param untrapped: 不捕获的异常，直接抛出，需要精准匹配, defaults to ()
         :type untrapped: Union[Type[Exception], Tuple[Type[Exception]]], optional
-        :param output: _description_, defaults to '发生了意料之外的错误，请检查输入'
+        :param output: 错误提示, defaults to '发生了意料之外的错误，请检查输入'
         :type output: str, optional
         '''
+        self.exc_type = DEFAULT_EXC_TYPE
         self.set_output(output)
         self.set_untrapped(untrapped)
 
@@ -103,4 +105,4 @@ class Checker:
             return True
         if exc_type in self.untrapped:
             return False
-        raise AssertionError(self.output)
+        raise self.exc_type(self.output)
