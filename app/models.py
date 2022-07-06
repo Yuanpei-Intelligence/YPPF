@@ -39,7 +39,7 @@ models.py
 from django.db import models, transaction
 from django_mysql.models import ListCharField
 from django.contrib.auth.models import User
-from django.db.models import Q
+from django.db.models import Q, QuerySet
 from django.db.models.signals import post_save
 from datetime import datetime, timedelta
 from app.constants import *
@@ -120,6 +120,129 @@ def image_url(image, enable_abs=False) -> str:
     if enable_abs and path.startswith('/'):
         return path
     return MEDIA_URL + path
+
+
+class ClassifiedUser(models.Model):
+    '''
+    已分类的抽象用户模型，定义了与User具有一对一关系的模型的通用接口
+
+    子类默认应当设置一对一字段名和展示字段名，或者覆盖模型和管理器的相应方法
+    '''
+    class Meta:
+        abstract = True
+
+    _USER_FIELD: str = NotImplemented
+    _DISPLAY_FIELD: str = NotImplemented
+    
+    def __str__(self):
+        return str(self.get_display_name())
+
+    @staticmethod
+    def get_type() -> str:
+        '''
+        获取模型的用户类型表示
+
+        :return: 用户类型
+        :rtype: str
+        '''
+        return ''
+    
+    def is_type(self, utype: str) -> bool:
+        '''
+        判断用户类型
+
+        :param utype: 用户类型
+        :type utype: str
+        :return: 类型是否匹配
+        :rtype: bool
+        '''
+        return self.get_type() == utype
+
+    def get_user(self) -> User:
+        '''
+        获取对应的用户
+
+        :return: 当前对象关联的User对象
+        :rtype: User
+        '''
+        return getattr(self, self._USER_FIELD)
+
+    def get_display_name(self) -> str:
+        '''
+        获取展示名称
+
+        :return: 当前对象的名称
+        :rtype: str
+        '''
+        return getattr(self, self._DISPLAY_FIELD)
+
+    def get_absolute_url(self, absolute=False) -> str:
+        '''
+        获取主页网址
+
+        :param absolute: 是否返回绝对地址, defaults to False
+        :type absolute: bool, optional
+        :return: 主页的网址
+        :rtype: str
+        '''
+        url = '/'
+        if absolute:
+            url = LOGIN_URL.rstrip('/') + url
+        return url
+    
+    def get_user_ava(self=None) -> str:
+        '''
+        获取头像路径
+
+        :return: 头像路径或默认头像
+        :rtype: str
+        '''
+        return image_url('avatar/person_default.jpg')
+
+
+class ClassifiedUserManager(models.Manager):
+    '''
+    已分类的用户模型管理器，定义了与User具有一对一关系的模型管理器的通用接口
+
+    支持通过关联用户获取对象，以及筛选满足条件的对象集合
+    '''
+    def to_queryset(self, *,
+                    update=False, activate=False) -> QuerySet[ClassifiedUser]:
+        '''
+        将管理器转化为筛选过的QuerySet
+
+        :param update: 加锁, defaults to False
+        :type update: bool, optional
+        :param activate: 只筛选有效对象, defaults to False
+        :type activate: bool, optional
+        :return: 筛选后的集合
+        :rtype: QuerySet[ClassifiedUser]
+        '''
+        if activate:
+            self = self.activated()
+        if update:
+            self = self.select_for_update()
+        return self.all()
+
+    def get_by_user(self, user: User, *,
+                    update=False, activate=False) -> ClassifiedUser:
+        '''
+        通过关联的User获取实例，仅管理ClassifiedUser子类时正确
+        
+        :param update: 加锁, defaults to False
+        :type update: bool, optional
+        :param activate: 只选择有效对象, defaults to False
+        :type activate: bool, optional
+        :raises: ClassifiedUser.DoesNotExist
+        :return: 关联的实例
+        :rtype: ClassifiedUser
+        '''
+        select_range = self.to_queryset(update=update, activate=activate)
+        return select_range.get(**{self.model._USER_FIELD: user})
+
+    def activated(self) -> QuerySet[ClassifiedUser]:
+        '''筛选有效的对象'''
+        return self.all()
 
 
 class NaturalPersonManager(models.Manager):
