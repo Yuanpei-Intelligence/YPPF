@@ -346,39 +346,52 @@ def cancel_course_activity(request, activity, cancel_all=False):
         activity.course_time.save()
 
 
-def remaining_willingness_point(user: NaturalPerson):
+def remaining_willingness_point(user: NaturalPerson) -> int:
     """
-    计算剩余的意愿点
+    计算用户剩余的意愿点
+
+    :param user: 当前用户
+    :type user: NaturalPerson
+    :raises NotImplementedError: 暂不启用
+    :return: 剩余的意愿点值
+    :rtype: int
     """
     raise NotImplementedError("暂时不使用意愿点")
-    # # 当前用户已经预选的课
-    # # 由于participant可能为空，重新启用的时候注意修改代码
-    # courses = Course.objects.filter(
-    #     participant_set__person=user,
-    #     participant_set__status=CourseParticipant.Status.SELECT)
+    # 当前用户已经预选的课
+    # 由于participant可能为空，重新启用的时候注意修改代码
+    courses = Course.objects.filter(
+        participant_set__person=user,
+        participant_set__status=CourseParticipant.Status.SELECT)
 
-    # initial_point = 99  # 初始意愿点
-    # cost_point = courses.aggregate(Sum('bidding'))  # 已经使用的意愿点
+    initial_point = 99  # 初始意愿点
+    cost_point = courses.aggregate(Sum('bidding'))  # 已经使用的意愿点
 
-    # if cost_point:
-    #     # cost_point可能为None
-    #     return initial_point - cost_point['bidding__sum']
-    # else:
-    #     return initial_point
+    if cost_point:
+        # cost_point可能为None
+        return initial_point - cost_point['bidding__sum']
+    else:
+        return initial_point
 
 
-def registration_status_check(course_status: CourseParticipant.Status,
+def registration_status_check(course_status: Course.Status,
                               cur_status: CourseParticipant.Status,
-                              to_status: CourseParticipant.Status):
+                              to_status: CourseParticipant.Status) -> None:
     """
-    判断选课状态的变化是否合法
+    检查选课状态的变化是否合法
+    
+    1. 预选阶段允许的状态变化: SELECT <-> UNSELECT
+    2. 补退选阶段允许的状态变化: SUCCESS -> UNSELECT; FAILED -> SUCCESS; UNSELECT -> SUCCESS  
+    
+    异常: 抛出AssertionError，在调用处解决
 
-    说明:
-        预选阶段可能的状态变化: SELECT <-> UNSELECT
-        补退选阶段可能的状态变化: SUCCESS -> UNSELECT; FAILED -> SUCCESS; UNSELECT -> SUCCESS
-    注意:
-        抛出AssertionError，在调用处解决。
+    :param course_status: 课程所处的选课阶段
+    :type course_status: Course.Status
+    :param cur_status: 当前选课状态
+    :type cur_status: CourseParticipant.Status
+    :param to_status: 希望转变为的选课状态
+    :type to_status: CourseParticipant.Status
     """
+
     if course_status == Course.Status.STAGE1:
         assert ((cur_status == CourseParticipant.Status.SELECT
                  and to_status == CourseParticipant.Status.UNSELECT)
@@ -397,6 +410,13 @@ def check_course_time_conflict(current_course: Course,
                                user: NaturalPerson) -> Tuple[bool, str]:
     """
     检查当前选择课程的时间和已选课程是否冲突
+
+    :param current_course: 用户当前想选的课程
+    :type current_course: Course
+    :param user: 当前用户
+    :type user: NaturalPerson
+    :return: 是否冲突、发生冲突的具体原因
+    :rtype: Tuple[bool, str]
     """
     selected_courses = Course.objects.activated().filter(
         participant_set__person=user,
@@ -468,14 +488,16 @@ def check_course_time_conflict(current_course: Course,
 def registration_status_change(course_id: int, user: NaturalPerson,
                                action: str) -> MESSAGECONTEXT:
     """
-    学生点击选课或者取消选课后，用该函数更改学生的选课状态
+    学生点击选课或者取消选课后，更改学生的选课状态
 
-    参数:
-        course_id: Course的主键，
-        action: 是希望对课程进行的操作，可能为"select"或"cancel"
-
-    注意: 
-        非选课阶段，不应该进入这个函数！
+    :param course_id: 当前课程的编号
+    :type course_id: int
+    :param user: 当前用户
+    :type user: NaturalPerson
+    :param action: 希望进行的操作，可能为"select"或"cancel"
+    :type action: str
+    :return: 操作是否成功执行
+    :rtype: MESSAGECONTEXT
     """
     context = wrong("在修改选课状态的过程中发生错误，请联系管理员！")
 
@@ -579,7 +601,14 @@ def registration_status_change(course_id: int, user: NaturalPerson,
 
 def process_time(start: datetime, end: datetime) -> str:
     """
-    把datetime对象转换成人类可读的时间表示
+    把datetime对象转换成可读的时间表示
+
+    :param start: 课程的开始时间
+    :type start: datetime
+    :param end: 课程的结束时间
+    :type end: datetime
+    :return: 可读的时间表示
+    :rtype: str
     """
     chinese_display = ["一", "二", "三", "四", "五", "六", "日"]
     start_time = start.strftime("%H:%M")
@@ -589,16 +618,18 @@ def process_time(start: datetime, end: datetime) -> str:
 
 def course_to_display(courses: QuerySet[Course],
                       user: NaturalPerson,
-                      detail=False) -> List[dict]:
+                      detail: bool = False) -> List[dict]:
     """
-    方便前端呈现课程信息
+    将课程信息转换为列表，方便前端呈现
 
-    参数:
-        courses: 一个Course对象QuerySet
-        user: 当前用户对应的NaturalPerson对象
-        detail: 是否显示课程的详细信息，默认为False
-    返回值:
-        返回一个列表，列表中的每个元素是一个课程信息的字典
+    :param courses: 课程集合
+    :type courses: QuerySet[Course]
+    :param user: 当前用户
+    :type user: NaturalPerson
+    :param detail: 是否显示课程的详细信息, defaults to False
+    :type detail: bool
+    :return: 课程信息列表，用一个字典来传递课程的全部信息
+    :rtype: List[dict]
     """
     display = []
 
@@ -675,9 +706,6 @@ def course_to_display(courses: QuerySet[Course],
 def draw_lots():
     """
     等额抽签选出成功选课的学生，并修改学生的选课状态
-
-    参数:
-        course: 待抽签的课程
     """
     courses = Course.objects.activated().filter(status=Course.Status.DRAWING)
     for course in courses:
@@ -771,16 +799,20 @@ def draw_lots():
                      record_args=True,
                      status_code=log.STATE_WARNING,
                      source='course_utils[change_course_status]')
-def change_course_status(cur_status: Course.Status, to_status: Course.Status):
+def change_course_status(cur_status: Course.Status, to_status: Course.Status) -> None:
     """
     作为定时任务，在课程设定的时间改变课程的选课阶段
-
-    使用方法:
-        scheduler.add_job(change_course_status, "date", 
-        id=f"course_{course_id}_{to_status}, run_date, args)
-
-    参数:
-        to_status: 希望course变为的选课状态
+    
+    example: 
+    scheduler.add_job(change_course_status, "date", 
+                      id=f"course_{course_id}_{to_status}, run_date, args)
+    
+    :param cur_status: 课程的当前选课阶段
+    :type cur_status: Course.Status
+    :param to_status: 希望课程转变到的选课阶段
+    :type to_status: Course.Status
+    :raises AssertionError: 选课已经结束 / 两个状态间不匹配
+    :raises AssertionError: 未提供当前阶段的信息
     """
     # 以下进行状态的合法性检查
     if cur_status is not None:
