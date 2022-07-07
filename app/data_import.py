@@ -125,7 +125,7 @@ def load_file(file):
     return pd.read_csv(f"test_data/{file}", dtype=object, encoding="utf-8")
 
 
-def load_orgtype(filepath: str, output_func=None, html=False, debug=True) -> None | str:
+def load_orgtype(filepath: str, output_func=None, html=False, debug=True):
     if debug:
         username = "someone"
         user, mid = User.objects.get_or_create(username=username)
@@ -161,7 +161,7 @@ def load_orgtype(filepath: str, output_func=None, html=False, debug=True) -> Non
         return "导入小组类型信息成功！"
 
 
-def load_org(filepath: str, output_func=None, html=False) -> None | str:
+def load_org(filepath: str, output_func=None, html=False):
     org_df = load_file(filepath)
     msg = ''
     for _, org_dict in org_df.iterrows():
@@ -275,7 +275,7 @@ def load_org_view(request):
     return render(request, "debugging.html", locals())
 
 
-def load_activity_info(filepath: str, output_func=None, html=False) -> None | str:
+def load_activity_info(filepath: str, output_func=None, html=False):
     act_df = load_file(filepath)
     act_list = []
     for _, act_dict in act_df.iterrows():
@@ -334,7 +334,7 @@ def load_activity_info_view(request):
     return render(request, "debugging.html", locals())
 
 
-def load_transfer_info(filepath: str, output_func=None, html=False) -> None | str:
+def load_transfer_info(filepath: str, output_func=None, html=False):
     act_df = load_file(filepath)
     act_list = []
     for _, act_dict in act_df.iterrows():
@@ -391,7 +391,7 @@ def load_transfer_info_view(request):
     return render(request, "debugging.html", locals())
 
 
-def load_notification_info(filepath: str, output_func=None, html=False) -> None | str:
+def load_notification_info(filepath: str, output_func=None, html=False):
     not_df = load_file(filepath)
     not_list = []
     for _, not_dict in not_df.iterrows():
@@ -464,7 +464,7 @@ def load_notification_info_view(request):
     return render(request, "debugging.html", locals())
 
 
-def load_stu(filepath: str, output_func=None, html=False) -> None | str:
+def load_stu(filepath: str, output_func=None, html=False):
     stu_df = load_file(filepath)
     total = 0
     stu_list = []
@@ -549,7 +549,7 @@ def load_stu_view(request):
     return render(request, "debugging.html", locals())
 
 
-def load_freshman_info(filepath: str, output_func=None, html=False) -> None | str:
+def load_freshman_info(filepath: str, output_func=None, html=False):
     freshman_df = load_file(filepath)
     freshman_list = []
     for _, freshman_dict in tqdm(freshman_df.iterrows()):
@@ -587,7 +587,7 @@ def load_freshman_info_view(request):
     return render(request, "debugging.html", locals())
 
 
-def load_help(filepath: str, output_func=None, html=False) -> None | str:
+def load_help(filepath: str, output_func=None, html=False):
     try:
         help_df = load_file(filepath)
     except:
@@ -617,7 +617,7 @@ def load_help_view(request):
     return render(request, "debugging.html", locals())
 
 
-def load_course_record(filepath: str, output_func=None, html=False) -> None | str:
+def load_course_record(filepath: str, output_func=None, html=False):
     try:
         courserecord_file = pd.read_excel(f"test_data/{filepath}", sheet_name=None)
     except:
@@ -842,7 +842,7 @@ def load_course_record_view(request):
     return render(request, "debugging.html", locals())
 
 
-def load_org_tag(filepath: str, output_func=None, html=False) -> None | str:
+def load_org_tag(filepath: str, output_func=None, html=False):
     try:
         org_tag_def = load_file(filepath)
     except:
@@ -877,7 +877,7 @@ def load_org_tag_view(request):
     return render(request, "debugging.html", locals())
 
 
-def load_tags_for_old_org(filepath: str, output_func=None, html=False) -> None | str:
+def load_tags_for_old_org(filepath: str, output_func=None, html=False):
     try:
         org_tag_def = load_file(filepath)
     except:
@@ -923,7 +923,7 @@ def load_tags_for_old_org_view(request):
     return render(request, "debugging.html", locals())
 
 
-def load_feedback(filepath: str, output_func=None, html=False) -> None | str:
+def load_feedback(filepath: str, output_func=None, html=False):
     '''该函数用于导入反馈详情的数据(csv)'''
     try:
         feedback_df = load_file(filepath)
@@ -1006,7 +1006,7 @@ def load_feedback(filepath: str, output_func=None, html=False) -> None | str:
         return msg
 
 
-def load_feedback_type(filepath: str, output_func=None, html=False) -> None | str:
+def load_feedback_type(filepath: str, output_func=None, html=False):
     '''该函数用于导入反馈类型的数据(csv)'''
     try:
         feedback_type_df = load_file(filepath)
@@ -1048,7 +1048,7 @@ def load_feedback_type(filepath: str, output_func=None, html=False) -> None | st
         return "导入反馈类型信息成功！"
 
 
-def load_feedback_comments(filepath: str, output_func=None, html=False) -> None | str:
+def load_feedback_comments(filepath: str, output_func=None, html=False):
     '''该函数用于导入反馈的评论(feedbackcomments.csv)
     需要先导入feedbackinf.csv'''
     try:
