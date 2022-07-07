@@ -1,4 +1,3 @@
-from types import NoneType
 from app.constants import *
 from app.models import (
     NaturalPerson,
