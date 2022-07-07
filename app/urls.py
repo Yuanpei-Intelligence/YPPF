@@ -105,23 +105,23 @@ urlpatterns = [
     path("viewFeedback/<str:fid>", feedback_views.viewFeedback, name="viewFeedback"),
 ] + [
     # 数据导入
-    path("loadstudata/", data_import.load_stu_data, name="load_stu_data"),
-    path("loadfreshman/", data_import.load_freshman_info, name="load_freshman"),
-    path("loadorgdata/", data_import.load_org_data, name="load_org_data"),
-    path("loadorgtag/", data_import.load_org_tag, name="loag_org_tag"),
-    path("loadoldorgtags/", data_import.load_tags_for_old_org, name="load_tags_for_old_org"),
-    path("loadfeedbackdata/", data_import.load_feedback_data, name="load_feedback_data"),
+    path("loadstudata/", data_import.load_stu_view, name="load_stu_data"),
+    path("loadfreshman/", data_import.load_freshman_info_view, name="load_freshman"),
+    path("loadorgdata/", data_import.load_org_view, name="load_org_data"),
+    path("loadorgtag/", data_import.load_org_tag_view, name="loag_org_tag"),
+    path("loadoldorgtags/", data_import.load_tags_for_old_org_view, name="load_tags_for_old_org"),
+    path("loadfeedbackdata/", data_import.load_feedback_view, name="load_feedback_data"),
     # path("loadtransferinfo/",
-    #      data_import.load_transfer_info,
+    #      data_import.load_transfer_info_view,
     #      name="load_transfer_info"),        #服务器弃用
     # path("loadactivity/",
-    #      data_import.load_activity_info,
+    #      data_import.load_activity_info_view,
     #      name="load_activity_info"),        #服务器弃用
     # path("loadnotification/",
-    #      data_import.load_notification_info,
+    #      data_import.load_notification_info_view,
     #      name="load_notification_info"),    #服务器弃用
-    path("loadhelp/", data_import.load_help, name="load_help"),
-    path("loadcourserecord/", data_import.load_course_record, name="load_course_record"),
+    path("loadhelp/", data_import.load_help_view, name="load_help"),
+    path("loadcourserecord/", data_import.load_course_record_view, name="load_course_record"),
 ] + [
     # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
