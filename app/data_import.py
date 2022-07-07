@@ -1,3 +1,4 @@
+from types import NoneType
 from app.constants import *
 from app.models import (
     NaturalPerson,
@@ -38,15 +39,16 @@ __all__ = [
     'create_person_account', 'create_org_account',
     # basic loads
     'load_stu', 'load_orgtype', 'load_org',
-    # basic views
-    'load_stu_data', 'load_org_data',
-    # views
-    'load_freshman_info', 'load_help', 'load_org_tag',
-    'load_tags_for_old_org', 'load_course_record',
-    # debugs
+    # executive functions
     'load_activity_info', 'load_transfer_info', 'load_notification_info',
-    'load_feedback_type', 'load_feedback', 'load_feedback_comments',
-    'load_feedback_data',
+    'load_freshman_info', 'load_help', 'load_course_record', 
+    'load_org_tag', 'load_tags_for_old_org', 'load_feedback_type', 
+    'load_feedback', 'load_feedback_comments', 'load_feedback_data',
+    # views
+    'load_org_view', 'load_activity_info_view', 'load_transfer_info_view',
+    'load_notification_info_view', 'load_stu_view', 'load_freshman_info_view',
+    'load_help_view', 'load_course_record_view', 'load_org_tag_view',
+    'load_tags_for_old_org_view', 'load_feedback_view',
 ]
 
 
@@ -124,14 +126,7 @@ def load_file(file):
     return pd.read_csv(f"test_data/{file}", dtype=object, encoding="utf-8")
 
 
-def load_stu_data(request):
-    if not request.user.is_superuser:
-        context = {"message": "请先以超级账户登录后台后再操作！"}
-        return render(request, "debugging.html", context)
-    return render(request, "debugging.html", load_stu())
-
-
-def load_orgtype(debug=True):
+def load_orgtype(filepath: str, output_func=None, html=False, debug=True) -> None | str:
     if debug:
         username = "someone"
         user, mid = User.objects.get_or_create(username=username)
@@ -142,7 +137,7 @@ def load_orgtype(debug=True):
         Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
         Nperson.name = "待定"
         Nperson.save()
-    org_type_df = load_file("orgtypeinf.csv")
+    org_type_df = load_file(filepath)
     for _, otype_dict in org_type_df.iterrows():
         type_id = int(otype_dict["otype_id"])
         type_name = otype_dict["otype_name"]
@@ -161,10 +156,14 @@ def load_orgtype(debug=True):
         orgtype.job_name_list = otype_dict["job_name_list"]
         orgtype.control_pos_threshold = control_pos_threshold
         orgtype.save()
+    if output_func is not None:
+        output_func("导入小组类型信息成功！")
+    else:
+        return "导入小组类型信息成功！"
 
 
-def load_org():
-    org_df = load_file("orginf.csv")
+def load_org(filepath: str, output_func=None, html=False) -> None | str:
+    org_df = load_file(filepath)
     msg = ''
     for _, org_dict in org_df.iterrows():
         try:
@@ -254,20 +253,22 @@ def load_org():
             org.oname = YQP_ONAME
             org.save()
             msg += '<br/>成功创建元气值发放组织：'+YQP_ONAME
-    return msg
+    if output_func is not None:
+        output_func(msg)
+    else:
+        return msg
 
 
-def load_org_data(request):
+def load_org_view(request):
     if request.user.is_superuser:
         load_type = request.GET.get("loadtype", None)
         message = "加载失败！"
         if load_type is None:
             message = "没有传入loadtype参数:[org或otype]"
         elif load_type == "otype":
-            load_orgtype()
-            message = "导入小组类型信息成功！"
+            message = load_orgtype("orgtypeinf.csv")
         elif load_type == "org":
-            message = "导入小组信息成功！"+load_org()
+            message = "导入小组信息成功！" + load_org("orginf.csv")
         else:
             message = "没有得到loadtype参数:[org或otype]"
     else:
@@ -275,11 +276,8 @@ def load_org_data(request):
     return render(request, "debugging.html", locals())
 
 
-def load_activity_info(request):
-    if not request.user.is_superuser:
-        context = {"message": "请先以超级账户登录后台后再操作！"}
-        return render(request, "debugging.html", context)
-    act_df = load_file("activityinfo.csv")
+def load_activity_info(filepath: str, output_func=None, html=False) -> None | str:
+    act_df = load_file(filepath)
     act_list = []
     for _, act_dict in act_df.iterrows():
         organization_id = str(act_dict["organization_id"])
@@ -288,10 +286,12 @@ def load_activity_info(request):
             user = User.objects.get(username=organization_id)
             org = Organization.objects.get(organization_id=user)
         except:
-            context = {
-                "message": "请先导入小组信息！{username}".format(username=organization_id)
-            }
-            return render(request, "debugging.html", context)
+            msg = "请先导入小组信息！{username}".format(username=organization_id)
+            if output_func is not None:
+                output_func(msg)
+                return
+            else:
+                return msg
         title = act_dict["title"]
         start = act_dict["start"]
         end = act_dict["end"]
@@ -320,15 +320,23 @@ def load_activity_info(request):
     # Activity.objects.bulk_create(act_list)
     for act in act_list:
         act.save()
-    context = {"message": "导入活动信息成功！"}
-    return render(request, "debugging.html", context)
+    if output_func is not None:
+        output_func("导入活动信息成功！")
+        return
+    else:
+        return "导入活动信息成功！"
+    
+    
+def load_activity_info_view(request):
+    if request.user.is_superuser:
+        message = load_activity_info("activityinfo.csv")
+    else:
+        message = "请先以超级账户登录后台后再操作！"
+    return render(request, "debugging.html", locals())
 
 
-def load_transfer_info(request):
-    if not request.user.is_superuser:
-        context = {"message": "请先以超级账户登录后台后再操作！"}
-        return render(request, "debugging.html", context)
-    act_df = load_file("transferinfo.csv")
+def load_transfer_info(filepath: str, output_func=None, html=False) -> None | str:
+    act_df = load_file(filepath)
     act_list = []
     for _, act_dict in act_df.iterrows():
         id = act_dict["id"]
@@ -370,15 +378,22 @@ def load_transfer_info(request):
             )
         )
     TransferRecord.objects.bulk_create(act_list)
-    context = {"message": "导入转账信息成功！"}
-    return render(request, "debugging.html", context)
+    if output_func is not None:
+        output_func("导入转账信息成功！")
+    else:
+        return "导入转账信息成功！"
+    
+
+def load_transfer_info_view(request):
+    if request.user.is_superuser:
+        message = load_transfer_info("transferinfo.csv")
+    else:
+        message = "请先以超级账户登录后台后再操作！"
+    return render(request, "debugging.html", locals())
 
 
-def load_notification_info(request):
-    if not request.user.is_superuser:
-        context = {"message": "请先以超级账户登录后台后再操作！"}
-        return render(request, "debugging.html", context)
-    not_df = load_file("notificationinfo.csv")
+def load_notification_info(filepath: str, output_func=None, html=False) -> None | str:
+    not_df = load_file(filepath)
     not_list = []
     for _, not_dict in not_df.iterrows():
         id = not_dict["id"]
@@ -394,12 +409,14 @@ def load_notification_info(request):
             receiver = User.objects.get(id=not_dict["receiver_id"])
             sender = User.objects.get(id=not_dict["sender_id"])
         except:
-            context = {
-                "message": "请先导入用户信息！{username1} & {username2}".format(
+            msg =  "请先导入用户信息！{username1} & {username2}".format(
                     username1=receiver, username2=sender
                 )
-            }
-            return render(request, "debugging.html", context)
+            if output_func is not None:
+                output_func(msg)
+                return
+            else:
+                return msg
         status = not_dict["status"]
         title = not_dict["title"]
         start_time = str(not_dict["start_time"])
@@ -434,12 +451,22 @@ def load_notification_info(request):
             )
         )
     Notification.objects.bulk_create(not_list)
-    context = {"message": "导入通知信息成功！"}
-    return render(request, "debugging.html", context)
+    if output_func is not None:
+        output_func("导入通知信息成功！")
+    else:
+        return "导入通知信息成功！"
 
 
-def load_stu():
-    stu_df = load_file("stuinf.csv")
+def load_notification_info_view(request):
+    if request.user.is_superuser:
+        message = load_notification_info("notificationinfo.csv")
+    else:
+        message = "请先以超级账户登录后台后再操作！"
+    return render(request, "debugging.html", locals())
+
+
+def load_stu(filepath: str, output_func=None, html=False) -> None | str:
+    stu_df = load_file(filepath)
     total = 0
     stu_list = []
     exist_list = []
@@ -500,26 +527,31 @@ def load_stu():
             continue
     NaturalPerson.objects.bulk_create(stu_list)
 
-    context = {
-        "message": '<br/>'.join((
-                    "导入学生信息成功！",
-                    f"共{total}人，尝试导入{len(stu_list)}人",
-                    f"已存在{len(exist_list)}人，名单为",
-                    ','.join(exist_list),
-                    f"失败{len(failed_list)}人，名单为",
-                    ','.join(failed_list),
-                    f'最后一次失败原因为: {fail_info}' if fail_info is not None else '',
-                    ))
-        }
-    return context
+    msg = '<br/>'.join((
+                "导入学生信息成功！",
+                f"共{total}人，尝试导入{len(stu_list)}人",
+                f"已存在{len(exist_list)}人，名单为",
+                ','.join(exist_list),
+                f"失败{len(failed_list)}人，名单为",
+                ','.join(failed_list),
+                f'最后一次失败原因为: {fail_info}' if fail_info is not None else '',
+                ))
+    if output_func is not None:
+        output_func(msg)
+    else:
+        return msg
 
 
-def load_freshman_info(request):
-    if not request.user.is_superuser:
-        context = {"message": "请先以超级账户登录后台后再操作！"}
-        return render(request, "debugging.html", context)
+def load_stu_view(request):
+    if request.user.is_superuser:
+        message = load_stu("stuinf.csv")
+    else:
+        message = "请先以超级账户登录后台后再操作！"
+    return render(request, "debugging.html", locals())
 
-    freshman_df = load_file("freshman.csv")
+
+def load_freshman_info(filepath: str, output_func=None, html=False) -> None | str:
+    freshman_df = load_file(filepath)
     freshman_list = []
     for _, freshman_dict in tqdm(freshman_df.iterrows()):
         sid = freshman_dict["学号"]
@@ -542,39 +574,59 @@ def load_freshman_info(request):
         )
     Freshman.objects.bulk_create(freshman_list)
 
-    context = {"message": "导入新生信息成功！"}
-    return render(request, "debugging.html", context)
+    if output_func is not None:
+        output_func("导入新生信息成功！")
+    else:
+        return "导入新生信息成功！"
 
 
-def load_help(request):
-    if not request.user.is_superuser:
-        context = {"message": "请先以超级账户登录后台后再操作！"}
-        return render(request, "debugging.html", context)
+def load_freshman_info_view(request):
+    if request.user.is_superuser:
+        message = load_freshman_info("freshman.csv")
+    else:
+        message = "请先以超级账户登录后台后再操作！"
+    return render(request, "debugging.html", locals())
+
+
+def load_help(filepath: str, output_func=None, html=False) -> None | str:
     try:
-        help_df = load_file("help.csv")
+        help_df = load_file(filepath)
     except:
-        context = {"message": "没有找到help.csv,请确认该文件已经在test_data中。"}
-        return render(request, "debugging.html", context)
-    # helps = [Help(title=title, content=content) for title, content in help_dict.items()]
+        if output_func is not None:
+            output_func(f"没有找到{filepath},请确认该文件已经在test_data中。")
+            return
+        else:
+            return f"没有找到{filepath},请确认该文件已经在test_data中。"
     for _, help_dict in help_df.iterrows():
         content = help_dict["content"]
         title = help_dict["title"]
         new_help, mid = Help.objects.get_or_create(title=title)
         new_help.content = content
         new_help.save()
-    context = {"message": "成功导入帮助信息！"}
-    return render(request, "debugging.html", context)
+    if output_func is not None:
+        output_func("成功导入帮助信息！")
+        return
+    else:
+        return "成功导入帮助信息！"
 
 
-def load_course_record(request):
-    if not request.user.is_superuser:
-        context = {"message": "请先以超级账户登录后台后再操作！"}
-        return render(request, "debugging.html", context)
+def load_help_view(request):
+    if request.user.is_superuser:
+        message = load_help("help.csv")
+    else:
+        message = "请先以超级账户登录后台后再操作！"
+    return render(request, "debugging.html", locals())
+
+
+def load_course_record(filepath: str, output_func=None, html=False) -> None | str:
     try:
-        courserecord_file = pd.read_excel(f"test_data/courtime.xlsx", sheet_name=None)
+        courserecord_file = pd.read_excel(f"test_data/{filepath}", sheet_name=None)
     except:
-        context = {"message": "没有找到courtime.xlsx,请确认该文件已经在test_data中。"}
-        return render(request, "debugging.html", context)
+        if output_func is not None:
+            output_func(f"没有找到{filepath},请确认该文件已经在test_data中。")
+            return
+        else:
+            return f"没有找到{filepath},请确认该文件已经在test_data中。"
 
     # 学年，学期和课程的德智体美劳信息都是在文件的info这个sheet中读取的
     year = courserecord_file['info'].iloc[1,1]
@@ -777,19 +829,29 @@ def load_course_record(request):
         for stu in info_show['stuID miss']:
             display_message += '<div style="color:rgb(86, 170, 142);">' + '表格内容: ' + stu + '</div>'
 
-    context = dict(message=display_message)
-    return render(request, "debugging.html", context)
+    if output_func is not None:
+        output_func(display_message)
+    else:
+        return display_message
 
 
-def load_org_tag(request):
-    if not request.user.is_superuser:
-        context = {"message": "请先以超级账户登录后台后再操作！"}
-        return render(request, "debugging.html", context)
+def load_course_record_view(request):
+    if request.user.is_superuser:
+        message = load_course_record("courtime.xlsx")
+    else:
+        message = "请先以超级账户登录后台后再操作！"
+    return render(request, "debugging.html", locals())
+
+
+def load_org_tag(filepath: str, output_func=None, html=False) -> None | str:
     try:
-        org_tag_def = load_file("orgtag.csv")
+        org_tag_def = load_file(filepath)
     except:
-        context = {"message": "没有找到orgtag.csv,请确认该文件已经在test_data中。"}
-        return render(request, "debugging.html", context)
+        if output_func is not None:
+            output_func(f"没有找到{filepath},请确认该文件已经在test_data中。")
+            return
+        else:
+            return f"没有找到{filepath},请确认该文件已经在test_data中。"
     tag_list = []
     for _, tag_dict in org_tag_def.iterrows():
         tag_name = tag_dict["name"]
@@ -801,19 +863,30 @@ def load_org_tag(request):
             )
         )
     OrganizationTag.objects.bulk_create(tag_list)
-    context = {"message": "导入组织标签类型信息成功！"}
-    return render(request, "debugging.html", context)
+    if output_func is not None:
+        output_func("导入组织标签类型信息成功！")
+        return
+    else:
+        return "导入组织标签类型信息成功！"
 
 
-def load_tags_for_old_org(request):
-    if not request.user.is_superuser:
-        context = {"message": "请先以超级账户登录后台后再操作！"}
-        return render(request, "debugging.html", context)
+def load_org_tag_view(request):
+    if request.user.is_superuser:
+        message = load_org_tag("orgtag.csv")
+    else:
+        message = "请先以超级账户登录后台后再操作！"
+    return render(request, "debugging.html", locals())
+
+
+def load_tags_for_old_org(filepath: str, output_func=None, html=False) -> None | str:
     try:
-        org_tag_def = load_file("oldorgtags.csv")
+        org_tag_def = load_file(filepath)
     except:
-        context = {"message": "没有找到oldorgtags.csv,请确认该文件已经在test_data中。"}
-        return render(request, "debugging.html", context)
+        if output_func is not None:
+            output_func(f"没有找到{filepath},请确认该文件已经在test_data中。")
+            return
+        else:
+            return f"没有找到{filepath},请确认该文件已经在test_data中。"
     error_dict = {}
     org_num = 0
     for _, tag_dict in org_tag_def.iterrows():
@@ -830,24 +903,37 @@ def load_tags_for_old_org(request):
                     err = True
             if not err:  # 只有未出现异常，组织的标签信息才被保存
                 useroj.save()
-    context = {
-        "message": '<br/>'.join((
-                    f"共尝试导入{org_num}个组织的标签信息",
-                    f"导入成功的组织：{org_num - len(error_dict)}个",
-                    f"导入失败的组织：{len(error_dict)}个",
-                    f'错误原因：' if error_dict else ''
-                    ) + tuple(f'{org}：{err}' for org, err in error_dict.items())
-                    )
-        }
-    return render(request, "debugging.html", context)
+    msg = '<br/>'.join((
+            f"共尝试导入{org_num}个组织的标签信息",
+            f"导入成功的组织：{org_num - len(error_dict)}个",
+            f"导入失败的组织：{len(error_dict)}个",
+            f'错误原因：' if error_dict else ''
+            ) + tuple(f'{org}：{err}' for org, err in error_dict.items())
+            )
+    if output_func is not None:
+        output_func(msg)
+    else:
+        return msg
 
 
-def load_feedback():
+def load_tags_for_old_org_view(request):
+    if request.user.is_superuser:
+        message = load_tags_for_old_org("oldorgtags.csv")
+    else:
+        message = "请先以超级账户登录后台后再操作！"
+    return render(request, "debugging.html", locals())
+
+
+def load_feedback(filepath: str, output_func=None, html=False) -> None | str:
     '''该函数用于导入反馈详情的数据(csv)'''
     try:
-        feedback_df = load_file("feedbackinf.csv")
+        feedback_df = load_file(filepath)
     except:
-        return "没有找到feedbackinf.csv,请确认该文件已经在test_data中。"
+        if output_func is not None:
+            output_func(f"没有找到{filepath},请确认该文件已经在test_data中。")
+            return
+        else:
+            return f"没有找到{filepath},请确认该文件已经在test_data中。"
     error_dict = {}
     feedback_num = 0
     for _, feedback_dict in feedback_df.iterrows():
@@ -902,27 +988,35 @@ def load_feedback():
         if not err:
             feedback.save()
 
-    return '<br/>'.join((
-                    f"共尝试导入{feedback_num}条反馈的详细信息",
-                    f"导入成功的反馈：{feedback_num - len(error_dict)}条",
-                    f"导入失败的反馈：{len(error_dict)}条",
-                    f'错误原因：' if error_dict else ''
-                    ) + tuple(f'{fb}：{err}' for fb, err in error_dict.items()
-                    ) + ('',
-                    f"请注意：下面的字段必须填写对应的选项，否则反馈信息将无法保存！",
-                    f"（1）issue_status：草稿 / 已发布 / 已删除",
-                    f"（2）read_status：已读 / 未读",
-                    f"（3）solve_status：已解决 / 解决中 / 无法解决",
-                    f"（4）public_status：公开 / 未公开 / 撤销公开 / 强制不公开"
-                    ))
+    msg = '<br/>'.join((
+                f"共尝试导入{feedback_num}条反馈的详细信息",
+                f"导入成功的反馈：{feedback_num - len(error_dict)}条",
+                f"导入失败的反馈：{len(error_dict)}条",
+                f'错误原因：' if error_dict else ''
+                ) + tuple(f'{fb}：{err}' for fb, err in error_dict.items()
+                ) + ('',
+                f"请注意：下面的字段必须填写对应的选项，否则反馈信息将无法保存！",
+                f"（1）issue_status：草稿 / 已发布 / 已删除",
+                f"（2）read_status：已读 / 未读",
+                f"（3）solve_status：已解决 / 解决中 / 无法解决",
+                f"（4）public_status：公开 / 未公开 / 撤销公开 / 强制不公开"
+                ))
+    if output_func is not None:
+        output_func(msg)
+    else:
+        return msg
 
 
-def load_feedback_type():
+def load_feedback_type(filepath: str, output_func=None, html=False) -> None | str:
     '''该函数用于导入反馈类型的数据(csv)'''
     try:
-        feedback_type_df = load_file("feedbacktype.csv")
+        feedback_type_df = load_file(filepath)
     except:
-        return "没有找到feedbacktype.csv,请确认该文件已经在test_data中。"
+        if output_func is not None:
+            output_func(f"没有找到{filepath},请确认该文件已经在test_data中。")
+            return
+        else:
+            return f"没有找到{filepath},请确认该文件已经在test_data中。" 
     type_list = []
     for _, type_dict in feedback_type_df.iterrows():
         type_id = int(type_dict["id"])
@@ -949,16 +1043,23 @@ def load_feedback_type():
         feedbacktype.save()
 
     FeedbackType.objects.bulk_create(type_list)
-    return "导入反馈类型信息成功！"
+    if output_func is not None:
+        output_func("导入反馈类型信息成功！")
+    else:
+        return "导入反馈类型信息成功！"
 
 
-def load_feedback_comments():
+def load_feedback_comments(filepath: str, output_func=None, html=False) -> None | str:
     '''该函数用于导入反馈的评论(feedbackcomments.csv)
     需要先导入feedbackinf.csv'''
     try:
-        feedback_df = load_file("feedbackcomments.csv")
+        feedback_df = load_file(filepath)
     except:
-        return "没有找到feedbackcomments.csv,请确认该文件已经在test_data中。"
+        if output_func is not None:
+            output_func(f"没有找到{filepath},请确认该文件已经在test_data中。")
+            return
+        else:
+            return f"没有找到{filepath},请确认该文件已经在test_data中。" 
     error_dict = {}
     comment_num = 0
     for _, comment_dict in feedback_df.iterrows():
@@ -983,29 +1084,33 @@ def load_feedback_comments():
         if not err:
             comment.save()
 
-    return '<br/>'.join((
-                    f"共尝试导入{comment}条反馈评论",
-                    f"导入成功的反馈：{comment_num - len(error_dict)}条",
-                    f"导入失败的反馈：{len(error_dict)}条",
-                    f'错误原因：' if error_dict else ''
-                    ) + tuple(f'{fb}：{err}' for fb, err in error_dict.items()
-                    ))
+    msg = '<br/>'.join((
+                f"共尝试导入{comment}条反馈评论",
+                f"导入成功的反馈：{comment_num - len(error_dict)}条",
+                f"导入失败的反馈：{len(error_dict)}条",
+                f'错误原因：' if error_dict else ''
+                ) + tuple(f'{fb}：{err}' for fb, err in error_dict.items()
+                ))
+    if output_func is not None:
+        output_func(msg)
+    else:
+        return msg
 
 
-def load_feedback_data(request):
+def load_feedback_view(request):
     if request.user.is_superuser:
         load_type = request.GET.get("loadtype", None)
         message = "加载失败！"
         if load_type is None:
             message = "没有传入loadtype参数:[detail,type或comment]"
         elif load_type == "type":
-            message = load_feedback_type()
+            message = load_feedback_type("feedbacktype.csv")
         elif load_type == "detail":
-            message = load_feedback()
+            message = load_feedback("feedbackinf.csv")
         elif load_type == "comment":
-            message = load_feedback_comments()
+            message = load_feedback_comments("feedbackcomments.csv")
         else:
-            message = "没有得到loadtype参数:[detail或otype]"
+            message = "没有得到loadtype参数:[detail,type或comment]"
     else:
         message = "请先以超级账户登录后台后再操作！"
     return render(request, "debugging.html", locals())
