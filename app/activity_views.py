@@ -45,8 +45,8 @@ __all__ = [
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='views[viewActivity]', record_user=True)
-def viewActivity(request, aid=None):
+@log.except_captured(EXCEPT_REDIRECT, source='activity_views[viewActivity]', record_user=True)
+def viewActivity(request: HttpRequest, aid=None):
     """
     页面逻辑：
     1. 方法为 GET 时，展示一个活动的详情。
@@ -78,7 +78,7 @@ def viewActivity(request, aid=None):
 
     try:
         aid = int(aid)
-        activity = Activity.objects.get(id=aid)
+        activity: Activity = Activity.objects.get(id=aid)
         valid, user_type, html_display = utils.check_user_type(request.user)
         # assert valid  已经在check_user_access检查过了
         org = activity.organization_id
@@ -216,13 +216,7 @@ def viewActivity(request, aid=None):
             return redirect(message_url(wrong('无效的请求!'), request.path))
 
     elif request.method == "GET":
-        warn_code = request.GET.get("warn_code")
-        warn_msg = request.GET.get("warn_message")
-        if warn_code and warn_msg:
-            if warn_code != "1" and warn_code != "2":
-                return redirect(message_url(wrong('非法的状态码，请勿篡改URL!'), request.path))
-            html_display["warn_code"] = int(warn_code)
-            html_display["warn_message"] = warn_msg
+        my_messages.transfer_message_context(request.GET, html_display)
 
 
     # 下面这些都是展示前端页面要用的
@@ -327,8 +321,8 @@ def viewActivity(request, aid=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[getActivityInfo]', record_user=True)
-def getActivityInfo(request):
+@log.except_captured(source='activity_views[getActivityInfo]', record_user=True)
+def getActivityInfo(request: HttpRequest):
     '''
     通过GET获得活动信息表下载链接
     GET参数?activityid=id&infotype=sign[&output=id,name,gender,telephone][&format=csv|excel]
@@ -452,8 +446,8 @@ def getActivityInfo(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[checkinActivity]', record_user=True)
-def checkinActivity(request, aid=None):
+@log.except_captured(source='activity_views[checkinActivity]', record_user=True)
+def checkinActivity(request: HttpRequest, aid=None):
     valid, user_type, html_display = utils.check_user_type(request.user)
     if user_type != "Person":
         return redirect(message_url(wrong('签到失败：请使用个人账号签到')))
@@ -509,7 +503,7 @@ def checkinActivity(request, aid=None):
 """
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[checkinActivity]', record_user=True)
+@log.except_captured(source='activity_views[checkinActivity]', record_user=True)
 def checkinActivity(request):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
@@ -572,8 +566,8 @@ def checkinActivity(request):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(EXCEPT_REDIRECT, source='views[addActivity]', record_user=True)
-def addActivity(request, aid=None):
+@log.except_captured(EXCEPT_REDIRECT, source='activity_views[addActivity]', record_user=True)
+def addActivity(request: HttpRequest, aid=None):
     """
     发起活动与修改活动页
     ---------------
@@ -748,7 +742,7 @@ def addActivity(request, aid=None):
             no_limit = True
         examine_teacher = activity.examine_teacher.name
         status = activity.status
-        available_teachers = NaturalPerson.objects.filter(identity=NaturalPerson.Identity.TEACHER)
+        available_teachers = NaturalPerson.objects.teachers()
         need_checkin = activity.need_checkin
         inner = activity.inner
         apply_reason = utils.escape_for_templates(activity.apply_reason)
@@ -775,8 +769,8 @@ def addActivity(request, aid=None):
 
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
-@log.except_captured(source='views[showActivity]', record_user=True)
-def showActivity(request):
+@log.except_captured(source='activity_views[showActivity]', record_user=True)
+def showActivity(request: HttpRequest):
     """
     活动信息的聚合界面
     只有老师和小组才能看到，老师看到检查者是自己的，小组看到发起方是自己的
@@ -787,8 +781,7 @@ def showActivity(request):
     if user_type == "Person":
         try:
             person = utils.get_person_or_org(request.user, user_type)
-            if person.identity == NaturalPerson.Identity.TEACHER :
-                is_teacher = True
+            is_teacher = person.is_teacher()
         except:
             pass
         if not is_teacher:
@@ -824,8 +817,8 @@ def showActivity(request):
 
 
 @login_required(redirect_field_name="origin")
-@log.except_captured(source='views[examineActivity]', record_user=True)
-def examineActivity(request, aid):
+@log.except_captured(source='activity_views[examineActivity]', record_user=True)
+def examineActivity(request: HttpRequest, aid):
     valid, user_type, html_display = utils.check_user_type(request.user)
     try:
         assert valid
@@ -943,7 +936,7 @@ def examineActivity(request, aid):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='activity_views[offlineCheckinActivity]', record_user=True)
-def offlineCheckinActivity(request, aid):
+def offlineCheckinActivity(request: HttpRequest, aid):
     '''
     修改签到功能
     只有举办活动的组织账号可查看和修改
@@ -981,10 +974,10 @@ def offlineCheckinActivity(request, aid):
                     member_unattend.append(person_id)
             try:
                 with transaction.atomic():
-                    Participant.objects.select_for_update().filter(
+                    member_list.select_for_update().filter(
                         person_id_id__in=member_attend).update(
                             status = Participant.AttendStatus.ATTENDED)
-                    Participant.objects.select_for_update().filter(
+                    member_list.select_for_update().filter(
                         person_id_id__in=member_unattend).update(
                             status = Participant.AttendStatus.UNATTENDED)
             except:

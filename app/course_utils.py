@@ -46,11 +46,12 @@ from random import sample
 from urllib.parse import quote
 from collections import Counter
 from datetime import datetime, timedelta
+from typing import Tuple, List
 
 from django.http import HttpResponse
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import F, Sum, Prefetch
+from django.db.models import F, Q, Sum, Prefetch
 
 from app.scheduler import scheduler
 
@@ -70,15 +71,13 @@ __all__ = [
     'check_post_and_modify',
     'finish_course',
     'download_course_record',
+    'download_select_info',
 ]
 
 
 # 时间合法性的检查：开始早于结束，开始晚于当前时间
 def check_ac_time_course(start_time, end_time):
-    now_time = datetime.now()
     if not start_time < end_time:
-        return False
-    if not now_time < start_time:
         return False
     return True
 
@@ -137,9 +136,8 @@ def create_single_course_activity(request):
         return old_ones[0].id, False
 
     # 获取默认审核老师
-    default_examiner_name = get_setting("course/audit_teacher")
-    examine_teacher = NaturalPerson.objects.get(
-        name=default_examiner_name, identity=NaturalPerson.Identity.TEACHER)
+    examine_teacher = NaturalPerson.objects.get_teacher(
+        get_setting("course/audit_teacher"))
 
     # 获取活动所属课程的图片，用于viewActivity, examineActivity等页面展示
     image = str(course.photo)
@@ -164,15 +162,28 @@ def create_single_course_activity(request):
         # capacity, URL, budget, YQPoint, bidding,
         # apply_reason, inner, source, end_before均为default
     )
+    # 选课人员自动报名活动
+    # 选课结束以后，活动参与人员从小组成员获取
+    person_pos = list(Position.objects.activated().filter(
+            org=course.organization).values_list("person", flat=True))
+    if course.status == Course.Status.STAGE2:
+        # 如果处于补退选阶段，活动参与人员从课程选课情况获取
+        selected_person = list(CourseParticipant.objects.filter(
+            course=course,
+            status=CourseParticipant.Status.SUCCESS,
+        ).values_list("person", flat=True))
+        person_pos += selected_person
+        person_pos = list(set(person_pos))
+    members = NaturalPerson.objects.filter(
+        id__in=person_pos)
+    for member in members:
+        participant = Participant.objects.create(
+            activity_id=activity,
+            person_id=member,
+            status=Participant.AttendStatus.APLLYSUCCESS)
 
-    # 让课程小组成员参与本活动
-    positions = Position.objects.activated().filter(org=activity.organization_id)
-    for position in positions:
-        Participant.objects.create(
-            activity_id=activity, person_id=position.person,
-            status=Participant.AttendStatus.APLLYSUCCESS,
-        )
-    activity.current_participants = len(positions)
+    activity.current_participants = len(person_pos)
+    activity.capacity = len(person_pos)
     activity.save()
 
     # 通知课程小组成员
@@ -334,37 +345,53 @@ def cancel_course_activity(request, activity, cancel_all=False):
         activity.course_time.end_week = activity.course_time.cur_week
         activity.course_time.save()
 
-def remaining_willingness_point(user):
+
+def remaining_willingness_point(user: NaturalPerson) -> int:
     """
-    计算剩余的意愿点
+    计算用户剩余的意愿点
+
+    :param user: 当前用户
+    :type user: NaturalPerson
+    :raises NotImplementedError: 暂不启用
+    :return: 剩余的意愿点值
+    :rtype: int
     """
     raise NotImplementedError("暂时不使用意愿点")
-    # # 当前用户已经预选的课
-    # # 由于participant可能为空，重新启用的时候注意修改代码
-    # courses = Course.objects.filter(
-    #     participant_set__person=user,
-    #     participant_set__status=CourseParticipant.Status.SELECT)
+    # 当前用户已经预选的课
+    # 由于participant可能为空，重新启用的时候注意修改代码
+    courses = Course.objects.filter(
+        participant_set__person=user,
+        participant_set__status=CourseParticipant.Status.SELECT)
 
-    # initial_point = 99  # 初始意愿点
-    # cost_point = courses.aggregate(Sum('bidding'))  # 已经使用的意愿点
+    initial_point = 99  # 初始意愿点
+    cost_point = courses.aggregate(Sum('bidding'))  # 已经使用的意愿点
 
-    # if cost_point:
-    #     # cost_point可能为None
-    #     return initial_point - cost_point['bidding__sum']
-    # else:
-    #     return initial_point
+    if cost_point:
+        # cost_point可能为None
+        return initial_point - cost_point['bidding__sum']
+    else:
+        return initial_point
 
 
-def registration_status_check(course_status, cur_status, to_status):
+def registration_status_check(course_status: Course.Status,
+                              cur_status: CourseParticipant.Status,
+                              to_status: CourseParticipant.Status) -> None:
     """
-    判断选课状态的变化是否合法
+    检查选课状态的变化是否合法
+    
+    1. 预选阶段允许的状态变化: SELECT <-> UNSELECT
+    2. 补退选阶段允许的状态变化: SUCCESS -> UNSELECT; FAILED -> SUCCESS; UNSELECT -> SUCCESS  
+    
+    异常: 抛出AssertionError，在调用处解决
 
-    说明:
-        预选阶段可能的状态变化: SELECT <-> UNSELECT
-        补退选阶段可能的状态变化: SUCCESS -> UNSELECT; FAILED -> SUCCESS; UNSELECT -> SUCCESS
-    注意:
-        抛出AssertionError，在调用处解决。
+    :param course_status: 课程所处的选课阶段
+    :type course_status: Course.Status
+    :param cur_status: 当前选课状态
+    :type cur_status: CourseParticipant.Status
+    :param to_status: 希望转变为的选课状态
+    :type to_status: CourseParticipant.Status
     """
+
     if course_status == Course.Status.STAGE1:
         assert ((cur_status == CourseParticipant.Status.SELECT
                  and to_status == CourseParticipant.Status.UNSELECT)
@@ -379,9 +406,17 @@ def registration_status_check(course_status, cur_status, to_status):
                     and to_status == CourseParticipant.Status.SUCCESS))
 
 
-def check_course_time_conflict(current_course, user):
+def check_course_time_conflict(current_course: Course,
+                               user: NaturalPerson) -> Tuple[bool, str]:
     """
     检查当前选择课程的时间和已选课程是否冲突
+
+    :param current_course: 用户当前想选的课程
+    :type current_course: Course
+    :param user: 当前用户
+    :type user: NaturalPerson
+    :return: 是否冲突、发生冲突的具体原因
+    :rtype: Tuple[bool, str]
     """
     selected_courses = Course.objects.activated().filter(
         participant_set__person=user,
@@ -450,16 +485,19 @@ def check_course_time_conflict(current_course, user):
                      record_args=True,
                      status_code=log.STATE_WARNING,
                      source='course_utils[registration_status_change]')
-def registration_status_change(course_id, user, action=None):
+def registration_status_change(course_id: int, user: NaturalPerson,
+                               action: str) -> MESSAGECONTEXT:
     """
-    学生点击选课或者取消选课后，用该函数更改学生的选课状态
+    学生点击选课或者取消选课后，更改学生的选课状态
 
-    参数:
-        course_id: Course的主键，
-        action: 是希望对课程进行的操作，可能为"select"或"cancel"
-
-    注意: 
-        非选课阶段，不应该进入这个函数！
+    :param course_id: 当前课程的编号
+    :type course_id: int
+    :param user: 当前用户
+    :type user: NaturalPerson
+    :param action: 希望进行的操作，可能为"select"或"cancel"
+    :type action: str
+    :return: 操作是否成功执行
+    :rtype: MESSAGECONTEXT
     """
     context = wrong("在修改选课状态的过程中发生错误，请联系管理员！")
 
@@ -467,19 +505,22 @@ def registration_status_change(course_id, user, action=None):
     course = Course.objects.get(id=course_id)
     course_status = course.status
 
-    # 设置初始值，后面可以省略一些判断
-    to_status = CourseParticipant.Status.UNSELECT
-
     if (course_status != Course.Status.STAGE1
             and course_status != Course.Status.STAGE2):
         return wrong("在非选课阶段不能选课！")
 
-    # 选课信息
-    participant_info, _ = CourseParticipant.objects.get_or_create(
-        course_id=course_id, person=user)
-    cur_status = participant_info.status
+    need_to_create = False
 
     if action == "select":
+        if CourseParticipant.objects.filter(course_id=course_id,
+                                            person=user).exists():
+            participant_info = CourseParticipant.objects.get(
+                course_id=course_id, person=user)
+            cur_status = participant_info.status
+        else:
+            need_to_create = True
+            cur_status = CourseParticipant.Status.UNSELECT
+
         if course_status == Course.Status.STAGE1:
             to_status = CourseParticipant.Status.SELECT
         else:
@@ -499,9 +540,19 @@ def registration_status_change(course_id, user, action=None):
 
         if is_conflict:
             return wrong(message)
-            return wrong(f'与{is_conflict}门已选课程时间冲突: {message}')
+            # return wrong(f'与{is_conflict}门已选课程时间冲突: {message}')
 
-    # 如果action为取消预选或退选，to_status直接使用初始值即可
+    else:
+        # action为取消预选或退选
+        to_status = CourseParticipant.Status.UNSELECT
+
+        # 不允许状态不存在，除非发生了严重的错误
+        try:
+            participant_info = CourseParticipant.objects.get(
+                course_id=course_id, person=user)
+            cur_status = participant_info.status
+        except:
+            return context
 
     # 检查当前选课状态、选课阶段和操作的一致性
     try:
@@ -520,8 +571,8 @@ def registration_status_change(course_id, user, action=None):
             if to_status == CourseParticipant.Status.UNSELECT:
                 Course.objects.filter(id=course_id).select_for_update().update(
                     current_participants=F("current_participants") - 1)
-                CourseParticipant.objects.filter(
-                    course__id=course_id, person=user).update(status=to_status)
+                CourseParticipant.objects.filter(course_id=course_id,
+                                                 person=user).delete()
                 succeed("成功取消选课！", context)
             else:
                 # 处理并发问题
@@ -530,22 +581,34 @@ def registration_status_change(course_id, user, action=None):
                         and course.current_participants >= course.capacity):
                     wrong("选课人数已满！", context)
                 else:
-                    course.current_participants = course.current_participants + 1
+                    course.current_participants += 1
                     course.save()
 
                     # 由于不同用户之间的状态不共享，这个更新应该可以不加锁
-                    CourseParticipant.objects.filter(
-                        course__id=course_id,
-                        person=user).update(status=to_status)
+                    if need_to_create:
+                        CourseParticipant.objects.create(course_id=course_id,
+                                                         person=user,
+                                                         status=to_status)
+                    else:
+                        CourseParticipant.objects.filter(
+                            course_id=course_id,
+                            person=user).update(status=to_status)
                     succeed("选课成功！", context)
     except:
         return context
     return context
 
 
-def process_time(start, end) -> str:
+def process_time(start: datetime, end: datetime) -> str:
     """
-    把datetime对象转换成人类可读的时间表示
+    把datetime对象转换成可读的时间表示
+
+    :param start: 课程的开始时间
+    :type start: datetime
+    :param end: 课程的结束时间
+    :type end: datetime
+    :return: 可读的时间表示
+    :rtype: str
     """
     chinese_display = ["一", "二", "三", "四", "五", "六", "日"]
     start_time = start.strftime("%H:%M")
@@ -553,21 +616,22 @@ def process_time(start, end) -> str:
     return f"周{chinese_display[start.weekday()]} {start_time}-{end_time}"
 
 
-def course_to_display(courses, user, detail=False) -> list:
+def course_to_display(courses: QuerySet[Course],
+                      user: NaturalPerson,
+                      detail: bool = False) -> List[dict]:
     """
-    方便前端呈现课程信息
+    将课程信息转换为列表，方便前端呈现
 
-    参数:
-        courses: 一个Course对象QuerySet
-        user: 当前用户对应的NaturalPerson对象
-        detail: 是否显示课程的详细信息，默认为False
-    返回值:
-        返回一个列表，列表中的每个元素是一个课程信息的字典
+    :param courses: 课程集合
+    :type courses: QuerySet[Course]
+    :param user: 当前用户
+    :type user: NaturalPerson
+    :param detail: 是否显示课程的详细信息, defaults to False
+    :type detail: bool
+    :return: 课程信息列表，用一个字典来传递课程的全部信息
+    :rtype: List[dict]
     """
     display = []
-
-    # TODO：task10 ljy 2022-02-14
-    # 在课程详情页的前端完成后，适当调整向前端传递的字段
 
     if detail:
         courses = courses.select_related('organization').prefetch_related(
@@ -581,7 +645,7 @@ def course_to_display(courses, user, detail=False) -> list:
             "photo",
             "teaching_plan",
             "record_cal_method",
-            "QRcode"
+            "QRcode",
         ).select_related('organization').prefetch_related(
             Prefetch('participant_set',
                      queryset=CourseParticipant.objects.filter(person=user),
@@ -609,12 +673,10 @@ def course_to_display(courses, user, detail=False) -> list:
             course_info["introduction"] = course.introduction
             course_info["teaching_plan"] = course.teaching_plan
             course_info["record_cal_method"] = course.record_cal_method
+            course_info["organization_name"] = course.organization.oname
+            course_info["have_QRcode"] = bool(course.QRcode)
             course_info["photo_path"] = course.get_photo_path()
             course_info["QRcode"] = course.get_QRcode_path()
-            course_info["have_QRcode"] = bool(course.QRcode)
-            course_info["organization_name"] = course.organization.oname
-            if course.QRcode:
-                course_info["QRcode"] = MEDIA_URL + str(course.QRcode)
             display.append(course_info)
             continue
 
@@ -644,16 +706,12 @@ def course_to_display(courses, user, detail=False) -> list:
 def draw_lots():
     """
     等额抽签选出成功选课的学生，并修改学生的选课状态
-
-    参数:
-        course: 待抽签的课程
     """
     courses = Course.objects.activated().filter(status=Course.Status.DRAWING)
     for course in courses:
         with transaction.atomic():
             participants = CourseParticipant.objects.filter(
-                course=course,
-                status=CourseParticipant.Status.SELECT).select_related()
+                course=course, status=CourseParticipant.Status.SELECT)
 
             participants_num = participants.count()
             if participants_num <= 0:
@@ -665,14 +723,15 @@ def draw_lots():
             if participants_num <= capacity:
                 # 选课人数少于课程容量，不用抽签
                 CourseParticipant.objects.filter(
-                    course=course).select_for_update().update(
+                    id__in=participants_id).select_for_update().update(
                         status=CourseParticipant.Status.SUCCESS)
                 Course.objects.filter(id=course.id).select_for_update().update(
                     current_participants=participants_num)
             else:
                 # 抽签；可能实现得有一些麻烦
                 lucky_ones = sample(participants_id, capacity)
-                unlucky_ones = list(set(participants_id).difference(set(lucky_ones)))
+                unlucky_ones = list(
+                    set(participants_id).difference(set(lucky_ones)))
                 # 不确定是否要加悲观锁
                 CourseParticipant.objects.filter(
                     id__in=lucky_ones).select_for_update().update(
@@ -740,16 +799,20 @@ def draw_lots():
                      record_args=True,
                      status_code=log.STATE_WARNING,
                      source='course_utils[change_course_status]')
-def change_course_status(cur_status, to_status):
+def change_course_status(cur_status: Course.Status, to_status: Course.Status) -> None:
     """
     作为定时任务，在课程设定的时间改变课程的选课阶段
-
-    使用方法:
-        scheduler.add_job(change_course_status, "date", 
-        id=f"course_{course_id}_{to_status}, run_date, args)
-
-    参数:
-        to_status: 希望course变为的选课状态
+    
+    example: 
+    scheduler.add_job(change_course_status, "date", 
+                      id=f"course_{course_id}_{to_status}, run_date, args)
+    
+    :param cur_status: 课程的当前选课阶段
+    :type cur_status: Course.Status
+    :param to_status: 希望课程转变到的选课阶段
+    :type to_status: Course.Status
+    :raises AssertionError: 选课已经结束 / 两个状态间不匹配
+    :raises AssertionError: 未提供当前阶段的信息
     """
     # 以下进行状态的合法性检查
     if cur_status is not None:
@@ -783,9 +846,19 @@ def change_course_status(cur_status, to_status):
                 organization = course.organization
                 positions = []
                 for participant in participants:
+                    # 如果已有当前的离职状态，改成在职成员
+                    Position.objects.current().filter(
+                        person=participant.person,
+                        org=organization,
+                        status=Position.Status.DEPART,
+                    ).update(pos=10,
+                             is_admin=False,
+                             in_semester=Semester.now(),
+                             status=Position.Status.INSERVICE)
                     # 检查是否已经加入小组
-                    if not Position.objects.activated().filter(person=participant.person,
-                                                   org=organization).exists():
+                    if not Position.objects.activated().filter(
+                            person=participant.person,
+                            org=organization).exists():
                         position = Position(person=participant.person,
                                             org=organization,
                                             in_semester=Semester.now())
@@ -800,7 +873,15 @@ def change_course_status(cur_status, to_status):
 
 def str_to_time(stage: str):
     """字符串转换成时间"""
-    return datetime.strptime(stage,'%Y-%m-%d %H:%M:%S')
+    try: return datetime.strptime(stage,'%Y-%m-%d %H:%M:%S')
+    except: pass
+    try: return datetime.strptime(stage,'%Y-%m-%d %H:%M')
+    except: pass
+    try: return datetime.strptime(stage,'%Y-%m-%d %H')
+    except: pass
+    try: return datetime.strptime(stage,'%Y-%m-%d')
+    except: pass
+    raise ValueError(stage)
 
 
 @log.except_captured(return_value=True,
@@ -905,6 +986,7 @@ def course_base_check(request,if_new=None):
         return wrong(str(e))
 
     # 每周课程时间合法性检查
+    # TODO: 需要增加是否可以修改时间的安全性检查
     course_starts = request.POST.getlist("start")
     course_ends = request.POST.getlist("end")
     course_starts = [
@@ -955,8 +1037,9 @@ def create_course(request, course_id=None):
         try:
             course = Course.objects.get(id=int(course_id))
             with transaction.atomic():
-                course_time = course.time_set.all()
-                course_time.delete()
+                if course.status in [Course.Status.WAITING]:
+                    course_time = course.time_set.all()
+                    course_time.delete()
                 course.name = context["name"]
                 course.classroom = context["classroom"]
                 course.teacher = context['teacher']
@@ -970,12 +1053,13 @@ def create_course(request, course_id=None):
                     course.QRcode = context["QRcode"]
                 course.save()
 
-                for i in range(len(context['course_starts'])):
-                    CourseTime.objects.create(
-                        course=course,
-                        start=context['course_starts'][i],
-                        end=context['course_ends'][i],
-                    )
+                if course.status in [Course.Status.WAITING]:
+                    for i in range(len(context['course_starts'])):
+                        CourseTime.objects.create(
+                            course=course,
+                            start=context['course_starts'][i],
+                            end=context['course_ends'][i],
+                        )
         except:
             return wrong("修改课程时遇到不可预料的错误。如有需要，请联系管理员解决!")
         context["cid"] = course_id
@@ -1065,7 +1149,7 @@ def check_post_and_modify(records, post_data):
             assert float(hours) >= 0, "学时数据为负数，请检查输入数据！"
             record.total_hours = float(hours)
             # 更新是否有效
-            record.invalid = (record.total_hours < 8)
+            record.invalid = (record.total_hours < LEAST_RECORD_HOURS)
 
         CourseRecord.objects.bulk_update(records, ["total_hours", "invalid"])
         return succeed("修改学时信息成功！")
@@ -1146,40 +1230,132 @@ def finish_course(course):
     return succeed("结束课程成功！")
 
 
-def download_course_record(course, year, semester):
+def download_course_record(course=None, year=None, semester=None):
     '''
-    返回需要导出的文件
+    返回需要导出的学时信息文件
+    course:
+        提供course时为单个课程服务，只导出该课程的相关人员的学时信息
+        不提供时下载所有学时信息，注意，只有相关负责老师可以访问！
     '''
-    records = CourseRecord.objects.filter(
-        course=course,
-        year=year,
-        semester=semester,
-    ).select_related('person')
-
     wb = openpyxl.Workbook()  # 生成一个工作簿（即一个Excel文件）
     wb.encoding = 'utf-8'
-    # 获取第一个工作表（sheet1）
-    sheet1 = wb.active
+    # 获取第一个工作表（detail_sheet）
+    detail_sheet = wb.active
     # 给工作表设置标题
-    # sheet1.title = str(course)  # 中文符号如：无法被解读
+    # detail_sheet.title = str(course)  # 中文符号如：无法被解读
+    detail_sheet.title = '详情'
+    ctime = datetime.now().strftime('%Y-%m-%d %H:%M')
+    # 学时筛选内容
+    filter_kws = {}
+    if course is not None: filter_kws.update(course=course)
+    if year is not None: filter_kws.update(year=year)
+    if semester is not None: filter_kws.update(semester=semester)
+
+    if course is not None:
+        # 助教下载自己课程的学时
+        records = CourseRecord.objects.filter(**filter_kws)
+        file_name = f'{course}-{ctime}'
+    else:
+        # 设置明细和汇总两个sheet的相关信息
+        total_sheet = wb.create_sheet('汇总', 0)
+        total_sheet.append(['学号', '姓名', '总有效学时', '总无效学时'])
+
+        # 下载所有学时信息，包括无效学时
+        all_person = NaturalPerson.objects.activated().filter(
+            identity=NaturalPerson.Identity.STUDENT)
+
+        # 汇总表信息，姓名，学号，总学时
+        relate_filter_kws = {f'courserecord__{k}': v for k, v in filter_kws.items()}
+        person_record = all_person.annotate(
+            record_hours=Sum('courserecord__total_hours',
+                             filter=Q(
+                                 courserecord__invalid=False,
+                                 **relate_filter_kws,
+                             )),
+            invalid_hours=Sum('courserecord__total_hours',
+                              filter=Q(
+                                  courserecord__invalid=True,
+                                  **relate_filter_kws,
+                              )),
+        ).order_by('person_id__username')
+        for person in person_record.select_related('person_id'):
+            total_sheet.append([
+                person.person_id.username,
+                person.name,
+                person.record_hours or 0,
+                person.invalid_hours or 0,
+            ])
+        # 详细信息
+        records = CourseRecord.objects.filter(
+            person__in=all_person,
+            **filter_kws,
+        ).order_by('person__person_id__username')
+        file_name = f'学时汇总-{ctime}'
+
     # 从第一行开始写，因为Excel文件的行号是从1开始，列号也是从1开始
-    sheet_header = ['课程', '姓名', '学号', '次数', '学时', "学年", "学期"]
-    sheet1.append(sheet_header)
-    for record in records:
+    detail_header = ['课程', '姓名', '学号', '次数', '学时', '学年', '学期', '有效']
+    detail_sheet.append(detail_header)
+    for record in records.values_list(
+        'course__name', 'extra_name',
+        'person__name', 'person__person_id__username',
+        'attend_times', 'total_hours',
+        'year', 'semester', 'invalid',
+    ):
         record_info = [
-            str(course),
+            record[0] or record[1],
+            *record[2:6],
+            f'{record[6]}-{record[6] + 1}',
+            '春' if record[7] == Semester.SPRING else '秋',
+            '否' if record[8] else '是',
+        ]
+        # 将每一个对象的所有字段的信息写入一行内
+        detail_sheet.append(record_info)
+    '''
+    for record in records.select_related('person', 'course'):
+        record_info = [
+            record.get_course_name(),
             record.person.name,
             record.person.person_id.username,
             record.attend_times,
             record.total_hours,
-            year,
-            semester,
+            f'{record.year}-{record.year + 1}',
+            '春' if record.semester == Semester.SPRING else '秋',
+            '否' if record.invalid else '是',
         ]
         # 将每一个对象的所有字段的信息写入一行内
-        sheet1.append(record_info)
+        detail_sheet.append(record_info)
+    '''
 
+    # 设置文件名并保存
+    response = HttpResponse(content_type='application/vnd.ms-excel')
+    response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
+    wb.save(response)
+    return response
+
+
+def download_select_info(course=None):
+    """
+    下载选课信息
+    """
+    wb = openpyxl.Workbook()  # 生成一个工作簿（即一个Excel文件）
+    wb.encoding = 'utf-8'
+    sheet1 = wb.active
+    sheet1_header = ['姓名', '年级']
+    sheet1.append(sheet1_header)
+    lucky_ones = CourseParticipant.objects.filter(
+        course=course, status=CourseParticipant.Status.SUCCESS)
+    for person in lucky_ones:
+        person_info = [
+            person.person.name,
+            person.person.stu_grade,  # 用这个字段表示年级好呢，还是用学号判断？
+        ]
+        sheet1.append(person_info)
+    # 设置文件名并保存
+    semester = "春" if course.semester == Semester.SPRING else "秋"
+    year = (course.year + 1) if semester == "春" else course.year
     ctime = datetime.now().strftime('%Y-%m-%d %H:%M')
-    file_name = f'{course}-{ctime}'  # 给文件名中添加日期时间
+    # 给文件名中添加日期时间
+    file_name = f'{year}{semester}{course.name}选课名单-{ctime}'
     response = HttpResponse(content_type='application/vnd.ms-excel')
     response['Content-Disposition'] = f'attachment;filename={quote(file_name)}.xlsx'
     wb.save(response)

@@ -9,10 +9,10 @@ from django.utils.html import format_html, format_html_join
 from django.db import transaction  # 原子化更改数据库
 from django.db.models import F
 
+from boottest.admin_utils import *
 from Appointment import *
 from Appointment.utils import scheduler_func, utils
-from Appointment.utils.scheduler_func import addAppoint, scheduler
-from Appointment.utils.utils import operation_writer, send_wechat_message
+from Appointment.utils.utils import operation_writer
 from Appointment.models import (
     Participant,
     Room,
@@ -27,7 +27,10 @@ from Appointment.models import (
 # admin.site.site_title = '元培地下室管理后台'
 # admin.site.site_header = '元培地下室 - 管理后台'
 
-admin.site.register(College_Announcement)
+@admin.register(College_Announcement)
+class College_AnnouncementAdmin(admin.ModelAdmin):
+    list_display = ['id', 'announcement', 'show']
+    list_editable = ['announcement', 'show']
 
 
 @admin.register(Participant)
@@ -73,36 +76,46 @@ class ParticipantAdmin(admin.ModelAdmin):
         }
     ])
 
-    actions = ['recover', 'renew_pinyin']
+    @readonly_inline
+    class AppointInline(admin.TabularInline):
+        # 对外呈现部分
+        model = Appoint
+        verbose_name = '近两周预约信息'
+        verbose_name_plural = verbose_name
+        classes = ['collapse']
+        # 对内呈现部分（max_num和get_queryset均无法限制呈现个数）
+        ordering = ['-Aid']
+        fields = [
+            'Room', 'Astart', 'Afinish',
+            'Astatus', 'Acamera_check_num', 'Acamera_ok_num',
+        ]
+        show_change_link = True
+        # 可申诉的范围只有一周，筛选两周内范围的即可
+        def get_queryset(self, request):
+            return super().get_queryset(request).filter(
+                Astart__gte=datetime.now().date() - timedelta(days=14))
 
+
+    inlines = [AppointInline]
+
+    actions = []
+
+    @as_action('全院学生信用分恢复一分', actions, 'change', atomic=True)
     def recover(self, request, queryset):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level=messages.WARNING)
-        try:
-            with transaction.atomic():
-                stu_all = Participant.objects.all()
-                stu_all.filter(credit__lt=3).select_for_update().update(
-                    credit=F('credit') + 1
-                )
-                return self.message_user(request, '操作成功!')
-        except:
-            return self.message_user(request=request,
-                                     message='操作失败!请与开发者联系!',
-                                     level=messages.WARNING)
+        stu_all = Participant.objects.all()
+        stu_all = stu_all.filter(hidden=False)
+        stu_all.filter(credit__lt=3).select_for_update().update(
+            credit=F('credit') + 1
+        )
+        return self.message_user(request, '操作成功!')
 
-    recover.short_description = "全院学生信用分恢复一分"
-
+    @as_action('更新姓名拼音', actions, update=True)
     def renew_pinyin(self, request, queryset):
         for stu in queryset:
             pinyin_list = pypinyin.pinyin(stu.name, style=pypinyin.NORMAL)
             stu.pinyin = ''.join([w[0][0] for w in pinyin_list])
             stu.save()
-        return self.message_user(request=request,
-                                 message='修改学生拼音成功!')
-
-    renew_pinyin.short_description = "更新姓名拼音"
+        return self.message_user(request, '修改学生拼音成功!')
 
 
 @admin.register(Room)
@@ -110,36 +123,13 @@ class RoomAdmin(admin.ModelAdmin):
     list_display = ('Rid', 'Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish',
                     'Rstatus_display', 'RIsAllNight', 'Rpresent', 'Rlatest_time',
                     'RneedAgree',
-                    )  # 'is_delete'
+                    )
     list_display_links = ('Rid', )
     list_editable = ('Rtitle', 'Rmin', 'Rmax', 'Rstart', 'Rfinish', 'RneedAgree')
     search_fields = ('Rid', 'Rtitle')
-    list_filter = ('Rstatus', 'RIsAllNight', 'RneedAgree')  # 'is_delete'
-    fieldsets = (
-        [
-            '基本信息', {
-                'fields': (
-                    'Rid',
-                    'Rtitle',
-                    'Rmin',
-                    'Rmax',
-                    'Rstart',
-                    'Rfinish',
-                    'Rstatus',
-                    'RIsAllNight',
-                    'RneedAgree',
-                ),
-            }
-        ],
-        # [
-        #     '删除房间信息', {
-        #         'classes': ('wide', ),
-        #         'description': '逻辑删除不会清空物理内存。只是在这里进行标记',
-        #         'fields': ('is_delete', ),
-        #     }
-        # ],
-    )
+    list_filter = ('Rstatus', 'RIsAllNight', 'RneedAgree')
 
+    @as_display('预约状态')
     def Rstatus_display(self, obj):
         if obj.Rstatus == Room.Status.PERMITTED:
             color_code = 'green'
@@ -150,8 +140,6 @@ class RoomAdmin(admin.ModelAdmin):
             color_code,
             obj.get_Rstatus_display(),
         )
-
-    Rstatus_display.short_description = '预约状态'
 
 
 @admin.register(Appoint)
@@ -183,6 +171,8 @@ class AppointAdmin(admin.ModelAdmin):
         # 'Afinish',
     )  # 'Ausage'
     date_hierarchy = 'Astart'
+    autocomplete_fields = ['major_student']
+    filter_horizontal = ['students']
     readonly_fields = ('Atime', )
 
     class ActivateFilter(admin.SimpleListFilter):
@@ -206,14 +196,14 @@ class AppointAdmin(admin.ModelAdmin):
 
     list_filter = ('Astart', 'Atime', 'Astatus', ActivateFilter, 'Atemp_flag')
 
+    @as_display('参与人')
     def Participants(self, obj):
         students = [(obj.major_student.name, )]
         students += [(stu.name, ) for stu in obj.students.all()
                                     if stu != obj.major_student]
         return format_html_join('\n', '<li>{}</li>', students)
 
-    Participants.short_description = '参与人'
-
+    @as_display('用途')
     def usage_display(self, obj):
         batch = 6
         half_len = 18
@@ -228,23 +218,19 @@ class AppointAdmin(admin.ModelAdmin):
         usage = '<br/>'.join([usage[i:i+batch] for i in range(0, len(usage), batch)])
         return mark_safe(usage)
 
-    usage_display.short_description = "用途"
-
+    @as_display('通过率')
     def check_display(self, obj):
         return f'{obj.Acamera_ok_num}/{obj.Acamera_check_num}'
 
-    check_display.short_description = "通过率"
-
+    @as_display('总人数')
     def total_display(self, obj):
         return obj.Anon_yp_num + obj.Ayp_num
 
-    total_display.short_description = "总人数"
-
+    @as_display('发起人')
     def major_student_display(self, obj):
         return obj.major_student.name
 
-    major_student_display.short_description = "发起人"
-
+    @as_display('预约状态')
     def Astatus_display(self, obj):
         status2color = {
             Appoint.Status.CANCELED: 'grey',
@@ -265,16 +251,10 @@ class AppointAdmin(admin.ModelAdmin):
             status,
         )
 
-    Astatus_display.short_description = '预约状态'
+    actions = []
 
-    actions = [ 'confirm', 'violate', 'refresh_scheduler',
-                'longterm1', 'longterm2', 'longterm4', 'longterm8']
-
+    @as_action('所选条目 通过', actions, 'change')
     def confirm(self, request, queryset):  # 确认通过
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level=messages.WARNING)
         some_invalid = 0
         have_success = 0
         try:
@@ -286,20 +266,10 @@ class AppointAdmin(admin.ModelAdmin):
                         have_success = 1
                         # send wechat message
                         # TODO: major_sid
-                        scheduler.add_job(send_wechat_message,
-                                          args=[[appoint.major_student.Sid_id],  # stuid_list
-                                                appoint.Astart,  # start_time
-                                                appoint.Room,     # room
-                                                "confirm_admin_w2c",  # message_type
-                                                appoint.major_student.name,  # major_student
-                                                appoint.Ausage,  # usage
-                                                appoint.Aannouncement,
-                                                appoint.Ayp_num + appoint.Anon_yp_num,
-                                                appoint.get_status(),  # reason
-                                                # appoint.major_student.credit,
-                                                ],
-                                          id=f'{appoint.Aid}_confirm_admin_wechat',
-                                          next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
+                        scheduler_func.set_appoint_wechat(
+                            appoint, 'confirm_admin_w2c', appoint.get_status(),
+                            students_id=[appoint.major_student.Sid_id], admin=True,
+                            id=f'{appoint.Aid}_confirm_admin_wechat')
                         operation_writer(SYSTEM_LOG, str(appoint.Aid)+"号预约被管理员从WAITING改为CONFIRMED" +
                                  "发起人："+str(appoint.major_student), "admin.confirm", "OK")
                     elif appoint.Astatus == Appoint.Status.VIOLATED:
@@ -312,20 +282,10 @@ class AppointAdmin(admin.ModelAdmin):
                         have_success = 1
                         # send wechat message
                         # TODO: major_sid
-                        scheduler.add_job(send_wechat_message,
-                                          args=[[appoint.major_student.Sid_id],  # stuid_list
-                                                appoint.Astart,  # start_time
-                                                appoint.Room,     # room
-                                                "confirm_admin_v2j",  # message_type
-                                                appoint.major_student.name,  # major_student
-                                                appoint.Ausage,  # usage
-                                                appoint.Aannouncement,
-                                                appoint.Ayp_num + appoint.Anon_yp_num,
-                                                appoint.get_status(),  # reason
-                                                #appoint.major_student.credit,
-                                                ],
-                                          id=f'{appoint.Aid}_confirm_admin_wechat',
-                                          next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
+                        scheduler_func.set_appoint_wechat(
+                            appoint, 'confirm_admin_v2j', appoint.get_status(),
+                            students_id=[appoint.major_student.Sid_id], admin=True,
+                            id=f'{appoint.Aid}_confirm_admin_wechat')
                         operation_writer(SYSTEM_LOG, str(appoint.Aid)+"号预约被管理员从VIOLATED改为JUDGED" +
                                  "发起人："+str(appoint.major_student), "admin.confirm", "OK")
 
@@ -348,13 +308,9 @@ class AppointAdmin(admin.ModelAdmin):
                                          message='修改失败!不允许修改状态不为等待、违约的预约!',
                                          level=messages.WARNING)
 
-    confirm.short_description = '所选条目 通过'
 
+    @as_action('所选条目 违约', actions, 'change')
     def violate(self, request, queryset):  # 确认违约
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level=messages.WARNING)
         try:
             for appoint in queryset:
                 assert not (
@@ -369,27 +325,14 @@ class AppointAdmin(admin.ModelAdmin):
                     appoint.major_student.credit -= 1  # 只扣除发起人
                     appoint.major_student.save()
                 appoint.Areason = Appoint.Reason.R_ELSE
-                # for stu in appoint.students.all():
-                #    stu.credit -= 1
-                #    stu.save()
                 appoint.save()
 
                 # send wechat message
                 # TODO: major_sid
-                scheduler.add_job(send_wechat_message,
-                                  args=[[appoint.major_student.Sid_id],  # stuid_list
-                                        appoint.Astart,  # start_time
-                                        appoint.Room,     # room
-                                        "violate_admin",  # message_type
-                                        appoint.major_student.name,  # major_student
-                                        appoint.Ausage,  # usage
-                                        appoint.Aannouncement,
-                                        appoint.Ayp_num + appoint.Anon_yp_num,
-                                        f'原状态：{ori_status}',  # reason
-                                        #appoint.major_student.credit,
-                                        ],
-                                  id=f'{appoint.Aid}_violate_admin_wechat',
-                                  next_run_time=datetime.now() + timedelta(seconds=5))  # 5s足够了
+                scheduler_func.set_appoint_wechat(
+                    appoint, 'violate_admin', f'原状态：{ori_status}',
+                    students_id=[appoint.major_student.Sid_id], admin=True,
+                    id=f'{appoint.Aid}_violate_admin_wechat')
                 operation_writer(SYSTEM_LOG, str(
                     appoint.Aid)+"号预约被管理员设为违约"+"发起人："+str(appoint.major_student), "admin.violate", "OK")
         except:
@@ -399,22 +342,13 @@ class AppointAdmin(admin.ModelAdmin):
 
         return self.message_user(request, "设为违约成功!")
 
-    violate.short_description = '所选条目 违约'
-
     
+    @as_action('更新定时任务', actions, ['add', 'change'])
     def refresh_scheduler(self, request, queryset):
         '''
         假设的情况是后台修改了开始和结束时间后，需要重置定时任务
         因此，旧的定时任务可能处于任何完成状态
         '''
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level=messages.WARNING)
-        if not queryset:
-            return self.message_user(request=request,
-                                     message='请至少选择一个需要更新的预约!',
-                                     level=messages.WARNING)
         for appoint in queryset:
             try:
                 aid = appoint.Aid
@@ -433,31 +367,18 @@ class AppointAdmin(admin.ModelAdmin):
                                  "出现更新定时任务失败的问题: " + str(e),
                                  "admin.longterm",
                                  "Error")
-                return self.message_user(request=request,
-                                         message=str(e),
-                                         level=messages.WARNING)
+                return self.message_user(request, str(e), messages.WARNING)
         return self.message_user(request, '定时任务更新成功!')
-            
-    refresh_scheduler.short_description = '更新定时任务'
     
 
-    def longterm_wk(self, request, queryset, week_num):
-        if not request.user.is_superuser:
-            return self.message_user(request=request,
-                                     message='操作失败,没有权限,请联系老师!',
-                                     level=messages.WARNING)
-        if len(queryset) != 1:
-            return self.message_user(request=request,
-                                     message='每次仅允许将一条预约长线化!',
-                                     level=messages.WARNING)
+    def longterm_wk(self, request, queryset, times, interval_week=1):
         for appoint in queryset:
-            # print(appoint)
             try:
                 with transaction.atomic():
                     stuid_list = [stu.Sid_id for stu in appoint.students.all()]
-                    for i in range(week_num):
+                    for i in range(1, times + 1):
                         # 调用函数完成预约
-                        feedback = addAppoint({
+                        feedback = scheduler_func.addAppoint({
                             'Rid':
                             appoint.Room.Rid,
                             'students':
@@ -465,9 +386,9 @@ class AppointAdmin(admin.ModelAdmin):
                             'non_yp_num':
                             appoint.Anon_yp_num,
                             'Astart':
-                            appoint.Astart + (i + 1) * timedelta(days=7),
+                            appoint.Astart + i * timedelta(days=7 * interval_week),
                             'Afinish':
-                            appoint.Afinish + (i + 1) * timedelta(days=7),
+                            appoint.Afinish + i * timedelta(days=7 * interval_week),
                             'Sid':
                             # TODO: major_sid
                             appoint.major_student.Sid_id,
@@ -483,24 +404,6 @@ class AppointAdmin(admin.ModelAdmin):
                             warning = json.loads(feedback.content)['statusInfo']['message']
                             print(warning)
                             raise Exception(warning)
-                        '''
-                        newappoint = Appoint(
-                            Room=appoint.Room,
-                            Astart=appoint.Astart + (i+1) * timedelta(days=7),
-                            Afinish=appoint.Afinish + \
-                                (i+1) * timedelta(days=7),
-                            Ausage=appoint.Ausage,
-                            Aannouncement=appoint.Aannouncement,
-                            major_student=appoint.major_student,
-                            Anon_yp_num=appoint.Anon_yp_num,
-                            Ayp_num=appoint.Ayp_num
-                        )
-                        newappoint.save()
-                        for tempstudent in appoint.students.all():
-                            print(tempstudent)
-                            newappoint.students.add(tempstudent)
-                        newappoint.save()
-                        '''
             except Exception as e:
                 operation_writer(SYSTEM_LOG, "学生" + str(appoint.major_student) +
                                  "出现添加长线化预约失败的问题:"+str(e), "admin.longterm", "Problem")
@@ -509,46 +412,66 @@ class AppointAdmin(admin.ModelAdmin):
                                          level=messages.WARNING)
 
             # 到这里, 长线化预约发起成功
-            scheduler.add_job(send_wechat_message,
-                              args=[
-                                  stuid_list,  # stuid_list
-                                  appoint.Astart,  # start_time
-                                  appoint.Room,     # room
-                                  "longterm",  # message_type
-                                  appoint.major_student.name,  # major_student
-                                  appoint.Ausage,  # usage
-                                  appoint.Aannouncement,
-                                  len(stuid_list) + appoint.Anon_yp_num,
-                                  week_num,  # reason, 这里用作表示持续周数
-                                  #appoint.major_student.credit,
-                              ],
-                              id=f'{appoint.Aid}_new_wechat',
-                              next_run_time=datetime.now() + timedelta(seconds=5))  # 2s足够了
+            scheduler_func.set_longterm_wechat(
+                appoint, infos=f'新增了{times}周同时段预约', admin=True)
             # TODO: major_sid
-            operation_writer(appoint.major_student.Sid_id, "发起"+str(week_num) +
+            operation_writer(appoint.major_student.Sid_id, "发起"+str(times) +
                              "周的长线化预约, 原始预约号"+str(appoint.Aid), "admin.longterm", "OK")
         return self.message_user(request, '长线化成功!')
 
+
+    def new_longterm_wk(self, request, queryset, times, interval_week=1):
+        new_appoints = {}
+        for appoint in queryset:
+            try:
+                conflict_week, appoints = (
+                    scheduler_func.add_longterm_appoint(
+                        appoint, times, interval_week, admin=True))
+                if conflict_week is not None:
+                    return self.message_user(
+                        request,
+                        f'第{conflict_week}周存在冲突的预约: {appoints[0].Aid}!',
+                        level=messages.WARNING)
+                new_appoints[appoint.pk] = list(appoints.values_list('pk', flat=True))
+            except Exception as e:
+                return self.message_user(request, f'长线化失败!', messages.WARNING)
+        new_infos = []
+        if len(new_appoints) == 1:
+            for appoint, new_appoint_ids in new_appoints.items():
+                new_infos.append(f'{new_appoint_ids}'[1:-1])
+        else:
+            for appoint, new_appoint_ids in new_appoints.items():
+                new_infos.append(f'{appoint}->{new_appoint_ids}')
+        return self.message_user(request, f'长线化成功!生成预约{";".join(new_appoints)}')
+
+
+    @as_action('增加一周本预约', actions, 'add', single=True)
     def longterm1(self, request, queryset):
-        week_num = 1  # 往后增加多少次
-        return self.longterm_wk(request, queryset, week_num)
+        return self.longterm_wk(request, queryset, 1)
 
+    @as_action('增加两周本预约', actions, 'add', single=True)
     def longterm2(self, request, queryset):
-        week_num = 2  # 往后增加多少次
-        return self.longterm_wk(request, queryset, week_num)
+        return self.longterm_wk(request, queryset, 2)
 
+    @as_action('增加四周本预约', actions, 'add', single=True)
     def longterm4(self, request, queryset):
-        week_num = 4  # 往后增加多少次
-        return self.longterm_wk(request, queryset, week_num)
+        return self.longterm_wk(request, queryset, 4)
 
+    @as_action('增加八周本预约', actions, 'add', single=True)
     def longterm8(self, request, queryset):
-        week_num = 8  # 往后增加多少次
-        return self.longterm_wk(request, queryset, week_num)
+        return self.longterm_wk(request, queryset, 8)
 
-    longterm1.short_description = "增加一周本预约"
-    longterm2.short_description = "增加两周本预约"
-    longterm4.short_description = "增加四周本预约"
-    longterm8.short_description = "增加八周本预约"
+    @as_action('按单双周 增加一次本预约', actions, 'add', single=True)
+    def longterm1_2(self, request, queryset):
+        return self.longterm_wk(request, queryset, 1, 2)
+
+    @as_action('按单双周 增加两次本预约', actions, 'add', single=True)
+    def longterm2_2(self, request, queryset):
+        return self.longterm_wk(request, queryset, 2, 2)
+
+    @as_action('按单双周 增加四次本预约', actions, 'add', single=True)
+    def longterm4_2(self, request, queryset):
+        return self.longterm_wk(request, queryset, 4, 2)
 
 
 @admin.register(CardCheckInfo)
@@ -559,10 +482,6 @@ class CardCheckInfoAdmin(admin.ModelAdmin):
                      'Cardstudent__name', 'Cardroom__Rid', "id")
     list_filter = ('CardStatus', 'ShouldOpenStatus')
     
+    @as_display('刷卡者', except_value='-')
     def student_display(self, obj):
-        try:
-            return obj.Cardstudent.name
-        except:
-            return '-'
-
-    student_display.short_description = "刷卡者"
+        return obj.Cardstudent.name

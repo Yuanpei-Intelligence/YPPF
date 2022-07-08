@@ -319,10 +319,12 @@ def get_person_receivers(all_receiver_ids, level=None):
 
 @log.except_captured(False, record_args=True, source='wechat_send[publish_notification]')
 def publish_notification(notification_or_id,
+                        show_source=True,
                         app=None, level=None):
     """
     根据单个通知或id（实际是主键）向通知的receiver发送
     别创建了好多通知然后循环调用这个，批量发送用publish_notifications
+    - show_source: bool, 显示消息来源 默认显示
     - app: str | WechatApp宏, 确定发送的应用 请推广类消息务必注意
     - level: int | WechatMessageLevel宏, 用于筛选用户 推广类消息可以不填
     """
@@ -336,40 +338,39 @@ def publish_notification(notification_or_id,
     if app is None or app == WechatApp.DEFAULT:
         app = WechatDefault.get_app('notification', notification)
     check_block = app not in UNBLOCK_APPS
-    sender = get_person_or_org(notification.sender)  # 也可能是小组
     url = notification.URL
     if url and url[0] == "/":  # 相对路径变为绝对路径
         url = THIS_URL + url
 
-    if len(notification.content) < 120:  # 卡片类型消息最多显示256字节
-        kws = {"card": True}  # 因留白等原因，内容120字左右就超出了
-        message = "\n".join(
-            (
-                notification.get_title_display(),
-                f"发送者：{str(sender)}",
-                "通知内容：",
-                notification.content,
-            )
-        )
+    messages = [notification.get_title_display()]
+    if len(notification.content) < 120:
+        # 卡片类型消息最多显示256字节
+        # 因留白等原因，内容120字左右就超出了
+        kws = {"card": True}
+        if show_source:
+            sender = get_person_or_org(notification.sender)
+            # 通知内容暂时也一起去除了
+            messages += [f'发送者：{str(sender)}', '通知内容：']
+        messages += [notification.content]
         if url:
             kws["url"] = url
             kws["btntxt"] = "查看详情"
-    else:  # 超出卡片字数范围的消息使用文本格式发送
+    else:
+        # 超出卡片字数范围的消息使用文本格式发送
         kws = {"card": False}
-        message = "\n".join(
-            (
-                notification.get_title_display(),
-                "",
-                "发送者：",
-                f"{str(sender)}",
-                "通知内容：",
-                notification.content,
-            )
-        )
+        messages.append('')
+        if show_source:
+            sender = get_person_or_org(notification.sender)
+            # 通知内容暂时也一起去除了
+            messages += ['发送者：' + f'{str(sender)}', '通知内容：']
+        messages += [notification.content]
         if url:
-            message += f'\n\n<a href="{url}">阅读原文</a>'
+            messages += ['', f'<a href="{url}">阅读原文</a>']
         else:
-            message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
+            messages += ['', f'<a href="{DEFAULT_URL}">查看详情</a>']
+
+    # 获取完整消息
+    message = '\n'.join(messages)
 
     if check_block and (level is None or level == WechatMessageLevel.DEFAULT):
         # 考虑屏蔽时，获得默认行为的消息等级
@@ -393,6 +394,7 @@ def publish_notification(notification_or_id,
 @log.except_captured(False, record_args=True, source='wechat_send[publish_notifications]')
 def publish_notifications(
     notifications_or_ids=None, filter_kws=None, exclude_kws=None,
+    show_source=True,
     app=None, level=None,
     *, check=True
 ):
@@ -408,6 +410,7 @@ def publish_notifications(
     - exclude_kws: dict | None, 这些参数将被直接传递给exclude函数
     - 以上参数不能都为空
     
+    - show_source: bool, 显示消息来源 默认显示
     - app: str | WechatApp宏, 确定发送的应用 请推广类消息务必注意
     - level: int | WechatMessageLevel宏, 用于筛选用户 推广类消息可以不填
 
@@ -465,39 +468,38 @@ def publish_notifications(
     except:
         raise Exception("检查失败，发生了未知错误，这里不该发生异常")
 
-    sender = get_person_or_org(sender)  # 可能是小组或个人
     if url and url[0] == "/":  # 相对路径变为绝对路径
         url = THIS_URL + url
 
-    if len(content) < 120:  # 卡片类型消息最多显示256字节
-        kws = {"card": True}  # 因留白等原因，内容120字左右就超出了
-        message = "\n".join(
-            (
-                latest_notification.get_title_display(),
-                f"发送者：{str(sender)}",
-                "通知内容：",
-                content,
-            )
-        )
+    messages = [latest_notification.get_title_display()]
+    if len(latest_notification.content) < 120:
+        # 卡片类型消息最多显示256字节
+        # 因留白等原因，内容120字左右就超出了
+        kws = {"card": True}
+        if show_source:
+            sender = get_person_or_org(latest_notification.sender)
+            # 通知内容暂时也一起去除了
+            messages += [f'发送者：{str(sender)}', '通知内容：']
+        messages += [latest_notification.content]
         if url:
             kws["url"] = url
             kws["btntxt"] = "查看详情"
-    else:  # 超出卡片字数范围的消息使用文本格式发送
+    else:
+        # 超出卡片字数范围的消息使用文本格式发送
         kws = {"card": False}
-        message = "\n".join(
-            (
-                latest_notification.get_title_display(),
-                "",
-                "发送者：",
-                f"{str(sender)}",
-                "通知内容：",
-                content,
-            )
-        )
+        messages.append('')
+        if show_source:
+            sender = get_person_or_org(latest_notification.sender)
+            # 通知内容暂时也一起去除了
+            messages += ['发送者：' + f'{str(sender)}', '通知内容：']
+        messages += [latest_notification.content]
         if url:
-            message += f'\n\n<a href="{url}">阅读原文</a>'
+            messages += ['', f'<a href="{url}">阅读原文</a>']
         else:
-            message += f'\n\n<a href="{DEFAULT_URL}">查看详情</a>'
+            messages += ['', f'<a href="{DEFAULT_URL}">查看详情</a>']
+
+    # 获取完整消息
+    message = '\n'.join(messages)
 
     # 获得发送应用和消息发送等级
     if app is None or app == WechatApp.DEFAULT:

@@ -59,18 +59,36 @@ def check_user_access(redirect_url="/logout/", is_modpw=False):
     return actual_decorator
 
 
+def get_classified_user(user: User, user_type=None, *,
+                        update=False, activate=False) -> ClassifiedUser:
+    '''
+    通过User对象获取对应的实例
 
-def get_person_or_org(user, user_type=None):
+    check_user_type返回valid=True时，应能得到一个与user_type相符的实例
+
+    Parameters
+    ----------
+    user_type : UTYPE, optional
+        用来加速访问，不提供时按顺序尝试，非法值抛出`AssertionError`
+    update : bool, optional
+        获取用来更新的对象，需要在事务中调用，否则会报错
+    activate : bool, optional
+        只获取活跃的用户，由对应的模型管理器检查，用户不活跃可能报错
+    '''
     if user_type is None:
         if hasattr(user, "naturalperson"):
-            return user.naturalperson
+            return NaturalPerson.objects.get_by_user(user, update=update, activate=activate)
         else:
-            return user.organization
-    return (
-        NaturalPerson.objects.get(person_id=user)
-        if user_type == UTYPE_PER
-        else Organization.objects.get(organization_id=user)
-    )
+            return Organization.objects.get_by_user(user, update=update, activate=activate)
+    elif user_type == UTYPE_PER:
+        return NaturalPerson.objects.get_by_user(user, update=update, activate=activate)
+    elif user_type == UTYPE_ORG:
+        return Organization.objects.get_by_user(user, update=update, activate=activate)
+    else:
+        raise AssertionError(f"非法的用户类型：“{user_type}”")
+
+# 保持之前的函数名接口
+get_person_or_org = get_classified_user
 
 
 def get_user_by_name(name):
@@ -114,21 +132,21 @@ def check_user_type(user):
     return True, user_type, html_display
 
 
-def get_user_ava(obj, user_type):
+def get_user_ava(obj: ClassifiedUser, user_type):
     try:
         ava = obj.avatar
     except:
         ava = ""
     if not ava:
         if user_type == UTYPE_PER:
-            return MEDIA_URL + "avatar/person_default.jpg"
+            return NaturalPerson.get_user_ava()
         else:
-            return MEDIA_URL + "avatar/org_default.png"
+            return Organization.get_user_ava()
     else:
         return MEDIA_URL + str(ava)
 
 
-def get_user_wallpaper(person, user_type):
+def get_user_wallpaper(person: ClassifiedUser, user_type):
     if user_type == UTYPE_PER:
         return MEDIA_URL + (str(person.wallpaper) or "wallpaper/person_wall_default.jpg")
     else:
@@ -166,7 +184,7 @@ def get_org_left_navbar(org, is_myself, html_display):
 
 
 # 检验是否要展示如何分享信息的帮助，预期只在stuinfo, orginfo, viewActivity使用
-def get_inform_share(me, is_myself=True):
+def get_inform_share(me: ClassifiedUser, is_myself=True):
     alert_message = ""
     if is_myself and me.inform_share:
         alert_message = ("【关于分享】:如果你在使用手机浏览器，"+
@@ -210,7 +228,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         receiver=user, status=Notification.Status.UNDONE
     ).count()
 
-    if user_type == "Person":
+    if user_type == UTYPE_PER:
         bar_display["profile_name"] = "个人主页"
         bar_display["profile_url"] = "/stuinfo/"
         bar_display["name"] = me.name
@@ -223,10 +241,10 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
         # my_org_id_list = Position.objects.activated().filter(person=me, is_admin=True).select_related("org")
         # bar_display["my_org_list"] = [w.org for w in my_org_id_list]  # 我管理的小组
         # bar_display["my_org_len"] = len(bar_display["my_org_list"])
-        
-        
-        bar_display['is_auditor'] = me.identity == NaturalPerson.Identity.TEACHER
-    
+
+
+        bar_display['is_auditor'] = me.is_teacher()
+
     else:
         bar_display["profile_name"] = "小组主页"
         bar_display["profile_url"] = "/orginfo/"
@@ -236,7 +254,7 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
     # title_name默认与navbar_name相同
 
     bar_display["title_name"] = title_name if title_name else navbar_name
-    
+
     if navbar_name == "我的元气值":
         bar_display["help_message"] = local_dict["help_message"].get(
             (navbar_name + user_type.lower()),  ""
@@ -258,20 +276,6 @@ def get_sidebar_and_navbar(user, navbar_name="", title_name="", bar_display=None
             bar_display["help_paragraphs"] = ""
 
     return bar_display
-
-
-
-# 检查发起活动的request的合法性
-def check_ac_request(request):
-    # oid的获取
-    context = dict()
-    context["warn_code"] = 0
-
-    try:
-        assert request.POST["edit"] == "True"
-        edit = True
-    except:
-        edit = False
 
 
 def url_check(arg_url):
@@ -333,17 +337,17 @@ def get_std_url(arg_url: str, site_url: str, path_dir=None, match_func=None):
     if match_func(arg_url):
         site_parse = urllib.parse.urlparse(site_url)
         arg_parse = urllib.parse.urlparse(arg_url)
-        
+
         def in_dir(path, path_dir):
             return path.startswith(path_dir) or path == path_dir.rstrip('/')
-        
+
         std_path = arg_parse.path
         if path_dir:
             if (in_dir(site_parse.path, path_dir) and not in_dir(std_path, path_dir)):
                 std_path = path_dir.rstrip('/') + std_path
             elif (not in_dir(site_parse.path, path_dir) and in_dir(std_path, path_dir)):
                 std_path = std_path.split(path_dir.rstrip('/'), 1)[1]
-    
+
         std_parse = [
             site_parse.scheme,
             site_parse.netloc,
@@ -391,7 +395,7 @@ def get_std_inner_url(inner_url):
     if url_parse.scheme or url_parse.netloc:
         return False, inner_url
     return True, inner_url
-    
+
 
 # 允许进行 cross site 授权时，return True
 def check_cross_site(request, arg_url):
@@ -417,38 +421,9 @@ def get_url_params(request, html_display):
                 html_display[key] = value
 
 
-def check_newpos_request(request, prepos=None):
-
-    context = dict()
-    context['warn_code'] = 0
-    if prepos is None:
-        oname = str(request.POST['oname'])
-    else:
-        oname = prepos.position.org.oname
-    context['apply_pos'] = int(request.POST.get('apply_pos', 10))
-    context['apply_type'] = str(request.POST.get('apply_type',"加入小组"))
-    if len(oname) >= 32:
-        context['warn_code'] = 1
-        context['warn_msg'] = "小组的名字不能超过32字节"
-        return context
-    if oname == "":
-        context['warn_code'] = 1
-        context['warn_msg'] = "小组的名字不能为空"
-        return context
-    
-    context['oname'] = oname  # 小组名字
-
-    context["application"] = str(request.POST.get("application", ""))  # 申请理由
-
-    if context["application"] == "":
-        context["warn_code"] = 1
-        context["warn_msg"] = "申请理由不能为空"
-    return context
-
-
 def if_image(image):
     '''判断是否为图片'''
-    if image == None:
+    if image is None:
         return 0
     imgType_list = {"jpg", "bmp", "png", "jpeg", "rgb", "tif"}
 
@@ -538,7 +513,7 @@ def set_nperson_quota_to(quota):
 
 
 def check_account_setting(request, user_type):
-    if user_type == 'Person':
+    if user_type == UTYPE_PER:
         html_display = dict()
         attr_dict = dict()
 
@@ -579,7 +554,7 @@ def check_account_setting(request, user_type):
         if len(attr_dict['biography']) > 1024:
             html_display['warn_code'] = 1
             html_display['warn_message'] += "输入的简介过长，不能超过1024个字符哦！"
-        
+
         if len(attr_dict['stu_major']) > 25:
             html_display['warn_code'] = 1
             html_display['warn_message'] += "输入的专业过长，不能超过25个字符哦！"
@@ -678,7 +653,7 @@ def export_orgpos_info(org):
     if org is None:
         return response
     response['Content-Disposition'] = f'attachment;filename=小组{org.oname}成员信息.xls'
-    participants = Position.objects.filter(org=org).filter(status=Position.Status.INSERVICE)
+    participants = Position.objects.activated().filter(org=org).filter(status=Position.Status.INSERVICE)
     """导出excel表"""
     if len(participants) > 0:
         # 创建工作簿
@@ -717,7 +692,7 @@ def record_modification(user, info=""):
     try:
         _, usertype, _ = check_user_type(user)
         obj = get_person_or_org(user, usertype)
-        name = obj.name if usertype == 'Person' else obj.oname
+        name = obj.get_display_name()
         firsttime = not user.modify_records.exists()
         ModifyRecord.objects.create(user=user, usertype=usertype, name=name, info=info)
         return firsttime
@@ -747,7 +722,7 @@ def record_modify_with_session(request, info=""):
         recorded = record_modification(request.user, info)
         if recorded == True:
             rank = get_modify_rank(request.user)
-            is_person = usertype == 'Person'
+            is_person = usertype == UTYPE_PER
             info_rank = local_dict.get("max_inform_rank", {}).get(usertype, -1)
             if rank > -1 and rank <= info_rank:
                 msg = (
@@ -794,7 +769,7 @@ def update_related_account_in_session(request, username, shift=False, oname=""):
 
 
 @log.except_captured(source='utils[user_login_org]', record_user=True)
-def user_login_org(request, org):
+def user_login_org(request, org) -> MESSAGECONTEXT:
     '''
     令人疑惑的函数，需要整改
     尝试从用户登录到org指定的组织，如果不满足权限，则会返回wrong

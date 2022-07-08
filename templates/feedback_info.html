@@ -70,7 +70,7 @@
                       <div>
                         <h4>
                           <img src={{ feedback.org.get_user_ava }} width="24" height="24" alt="avatar" />
-                          <a href='/orginfo/?name={{feedback.org.oname}}'>
+                          <a href='{{feedback.org.get_absolute_url}}'>
                             <u>{{feedback.org.oname}}</u>
                           </a>
                         </h4>
@@ -78,7 +78,7 @@
                       <!--<div align="right">
                         <h4>
                           <img src={{ feedback.person.get_user_ava }} width="24" height="24" alt="avatar" />
-                          <a href='/stuinfo/?name={{feedback.person.name}}'>
+                          <a href='{{feedback.person.get_absolute_url}}'>
                             <u>{{feedback.person.name}}</u>
                           </a>
                         </h4>

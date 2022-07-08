@@ -29,6 +29,13 @@
         <p style="margin-top: 0%;">补退选时间：{{html_display.btx_election_start}}至{{html_display.btx_election_end}}</p>
     </div>
 
+    <div style="text-align: left; margin-left: 2%;">
+        <p style="margin-bottom: 0%; color: red;"><b>注：</b></p>
+        <p style="margin-bottom: 0%; color: red;">1. 选课各阶段均最多选择6门书院课程，不可同时选择两门时间冲突的课程。</p>
+        <p style="margin-top: 0%; color: red;">2. 原则上同一门书院课程不能重复计算时长，如有特殊情况，需向学院申请。</p>
+        <br>
+    </div>
+
     <div class="container-fluid">
     <!--  BEGIN SWITCH TAB  -->
     <ul class="nav nav-tabs nav-tabs-solid nav-justified" role="tablist">
@@ -131,7 +138,7 @@
                                 <tbody class="table">
                                   {% for course in unselected_display %}
                                   <tr>
-                                    <th scope="row">
+                                    <th scope="row" style="vertical-align: middle;">
                                         {% comment %} 课程小组头像路径（后端调用get_user_ava获得）{% endcomment %}
                                         <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                                         <a href='/viewCourse/?courseid={{ course.course_id }}'>
@@ -157,9 +164,9 @@
                                             {% if course.status != "预选" and course.status != "补退选" or is_student == False %}
                                             <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                             {% else %}
-                                            <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal-{{course.course_id}}">选课</button>
-                                            <div class="modal fade" id="myModal-{{course.course_id}}">
-                                                <div class="modal-dialog modal-dialog-centered">
+                                            <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('你确定要选课程《{{course.name}}》吗？')">选课</button>
+                                            {% comment %} <div class="modal fade" id="myModal-{{course.course_id}}">
+                                                <div class="modal-dialog modal-dialog-centered" style="z-index: 1200">
                                                   <div class="modal-content">
                                                     <!-- 模态框主体 -->
                                                     <div class="modal-body">
@@ -172,7 +179,7 @@
                                                     </div>
                                                   </div>
                                                 </div>
-                                            </div>
+                                            </div> {% endcomment %}
                                             {% endif %}
                                         </form>
                                         
@@ -213,7 +220,7 @@
                                         <tbody class="table">
                                         {% for course in typed_courses %}
                                         <tr>
-                                            <th scope="row">
+                                            <th scope="row" style="vertical-align: middle;">
                                                 {% comment %} 课程小组头像路径 {% endcomment %}
                                                 <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                                                 <a href='/viewCourse/?courseid={{ course.course_id }}'>{% comment %} 做一个新的课程详情页 {% endcomment %}
@@ -237,9 +244,9 @@
                                                     {% if course.status != "预选" and course.status != "补退选" or is_student == False %}
                                                     <button type="submit" class="btn btn-primary btn-sm" disabled>选课</button>
                                                     {% else %}
-                                                    <button type="button" class="btn btn-primary btn-sm" data-toggle="modal" data-target="#myModal{{ forloop.counter }}-{{course.course_id}}">选课</button>
-                                                    <div class="modal fade" id="myModal{{ forloop.counter }}-{{course.course_id}}">
-                                                        <div class="modal-dialog modal-dialog-centered">
+                                                    <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('你确定要选课程《{{course.name}}》吗？')">选课</button>
+                                                    {% comment %} <div class="modal fade" id="myModal{{ forloop.counter }}-{{course.course_id}}">
+                                                        <div class="modal-dialog modal-dialog-centered" style="z-index: 1200">
                                                         <div class="modal-content">
                                                             <!-- 模态框主体 -->
                                                             <div class="modal-body">
@@ -252,7 +259,7 @@
                                                             </div>
                                                         </div>
                                                         </div>
-                                                    </div>
+                                                    </div> {% endcomment %}
                                                     {% endif %}
                                                 </form>
                                             </td>
@@ -306,7 +313,7 @@
                                             
                       {% for course in selected_display %}
                       <tr>
-                        <th scope="row">
+                        <th scope="row" style="vertical-align: middle;">
                             <img src={{ course.avatar_path }} width="24" height="24" alt="avatar">
                             <a href='/viewCourse/?courseid={{ course.course_id }}'>
                                 <u>{{course.name}}</u>
@@ -340,10 +347,10 @@
                                 {% if course.status != "预选" and course.status != "补退选" or course.student_status == "选课失败" %}
                                 <button type="submit" class="btn btn-danger btn-sm" disabled>退课</button>
                                 {% else %}
-                                <button type="button" class="btn btn-danger btn-sm" data-toggle="modal" data-target="#myModalcancel-{{course.course_id}}">退课</button>
+                                <button type="submit" class="btn btn-danger btn-sm" onclick="return confirm('你确定要退课程《{{course.name}}》吗？')">退课</button>
                                 {% endif %}
-                                <div class="modal fade" id="myModalcancel-{{course.course_id}}">
-                                    <div class="modal-dialog modal-dialog-centered">
+                                {% comment %} <div class="modal fade" id="myModalcancel-{{course.course_id}}">
+                                    <div class="modal-dialog modal-dialog-centered" style="z-index: 120000">
                                       <div class="modal-content">
                                         <!-- 模态框主体 -->
                                         <div class="modal-body">
@@ -356,7 +363,7 @@
                                         </div>
                                       </div>
                                     </div>
-                                </div>
+                                </div> {% endcomment %}
                             </form>
                             
                         </td>

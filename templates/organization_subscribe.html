@@ -20,6 +20,12 @@
     <div id="content" class="main-content">
             <div class="container">
                 
+                {% if html_display.warn_code == 2 %}
+                <div class="alert alert-success text-center mb-0">{{ html_display.warn_message }}</div>
+                {% elif html_display.warn_code == 1 %}
+                <div class="alert alert-warning text-center mb-0">{{ html_display.warn_message }}</div>
+                {% endif %}
+
                 <div class="row layout-top-spacing">
                     {% if bar_display.help_paragraphs %}
                         {% include 'help_with_table.html' %}
@@ -94,7 +100,7 @@
                             </div>
                             <div class="collapse show" id="orgsearch{{type_id}}">
                                 <div class="widget-content widget-content-area">
-                                    {% if otype.allow_unsubscribe %}
+                                    {% if otype.allow_unsubscribe and not html_display.readonly %}
                                     <div>
                                         <button type="button" class="btn btn-outline-primary" id="{{type_id}}"
                                             onclick="turn_on_all.call(this);this.blur();">全部开启</button>
@@ -118,20 +124,19 @@
                                                 <tr>
                                                     <td>
                                                         <u><a href="/orginfo/?name={{org.oname}}"><img src="{{org.get_user_ava}}" width="18px" height="18px" style="margin-top: -2px; margin-right: 5px; border-radius: 9px;"><span>{{org.oname}}</span></a></u>
-                                                        {% with org.get_subscriber_num as subscribers %}
-                                                        [<span class="num_sub">{{ subscribers }}</span>关注]
-                                                        {% endwith %}
+                                                        [<span class="num_sub">{{ org.get_subscriber_num }}</span>关注]
                                                     </td>
                                                     <!--<td>
                                                         {{org.otype.otype_name}}
                                                     </td>-->
                                                     {% with username=org.organization_id.username %}
-                                                    {%if not username in unsubscribe_list%}
+                                                    {% if username not in unsubscribe_set %}
                                                     <td bgColor="F3FDFF" , id="td{{username}}_{{type_id}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
                                                                 id="{{username}}_{{type_id}}" name="{{type_id}}"
-                                                                onclick="change_status.call(this);this.blur();" checked {% if not otype.allow_unsubscribe %} disabled {% endif %}>
+                                                                onclick="change_status.call(this);this.blur();" checked
+                                                                {% if not otype.allow_unsubscribe or html_display.readonly %} disabled {% endif %}>
                                                             <label class="custom-control-label"
                                                                 for="{{username}}_{{type_id}}"
                                                                 id="checkbox2{{username}}_{{type_id}}">
@@ -140,12 +145,13 @@
                                                             </label>
                                                         </div>
                                                     </td>
-                                                    {%else%}
+                                                    {% else %}
                                                     <td bgColor="FFFFFF" , id="td{{username}}_{{type_id}}">
                                                         <div class="custom-control custom-switch">
                                                             <input type="checkbox" class="custom-control-input"
                                                                 id="{{username}}_{{type_id}}" name="{{type_id}}"
-                                                                onclick="change_status.call(this);this.blur();">
+                                                                onclick="change_status.call(this);this.blur();"
+                                                                {% if html_display.readonly %} disabled {% endif %}>
                                                             <label class="custom-control-label"
                                                                 for="{{username}}_{{type_id}}"
                                                                 id="checkbox2{{username}}_{{type_id}}">
@@ -154,7 +160,7 @@
                                                             </label>
                                                         </div>
                                                     </td>
-                                                    {%endif%}
+                                                    {% endif %}
                                                     {% endwith %}
                                                 </tr>
                                                 {% endfor %}

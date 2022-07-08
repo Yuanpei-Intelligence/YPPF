@@ -59,14 +59,24 @@
                                         <h4 class="text-center mb-4">
                                             问答反馈中心
                                             {% if is_person %}
+                                            {% if not is_teacher %}
                                             <a href="/modifyFeedback/"><i class="fa fa-plus-square" aria-hidden="true" style="color: #1b55e2;"></i></a>
                                             {% endif %} 
+                                            {% endif %} 
                                         </h4>
+                                        {% if is_person %}
                                         <p style="text-indent:2em;">欢迎你来到这里。这是学生权益诉求的集中地，也是信息交流的便捷平台，在这里我们用共同关心搭建共同生活的家园。</p>
-                                        </br>
+                                        <br />
                                         <p style="text-indent:2em;">如果你在学习与生活中产生自己无法解答的困惑；对改善公共空间环境、改进学生组织工作有好的建议；或是有其他想要和组织迫切交流的观点；都可以<em><strong>点击上方的“+”向组织反馈！</strong></em></p>
-                                        </br>
+                                        <br />
                                         <p style="text-indent:2em;">您的反馈至始至终对组织匿名；欢迎公开您的反馈，为后来者提供帮助！</p>
+                                        {% else %}
+                                        <p style="text-indent:2em;">欢迎你来到这里。这是学生权益反馈的集中地，也是各方沟通交流的便捷平台，在这里我们用共同关心搭建共同生活的家园。</p>
+                                        <br />
+                                        <p style="text-indent:2em;">平台提供畅通的意见交流通道，你可以在留言的评论区与留言者互动，解决问题、解答困惑；同时也需要你定期、按时地查看反馈留言，标记问题的解决进度；此外，对于广泛关注的话题，你可以在经过个人同意、通过学院审核后将留言公开，及时回应同学们共同的权益诉求。</p>
+                                        <br />
+                                        <p style="text-indent:2em;">倾听同学的迫切需求，帮助同伴解决生活学习中的问题，这是责任，更是信任。祝大家在充分理解和切身感受里领会共情，在友好沟通与思考平衡里收获成长。</p>
+                                        {% endif %}
                                     </div>
                                     
                                 </div>
@@ -125,7 +135,7 @@
                                                             </p>
                                                             <p style="color: rgb(66, 67, 68); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
                                                                 <i class="fa fa-envelope" style="width: 14px;"></i>
-                                                                {{feedback.content}}
+                                                                <span class="ml-1">{{feedback.content}}</span>
                                                             </p>
                                                         </div>
                                                     </div>
@@ -193,8 +203,8 @@
                                 </li>
 
                                 <li class="nav-item">
-                                    <a class="nav-link" href="#public" data-toggle="tab">
-                                        <h5><i class="fa fa-envelope-o"></i> 我已公开</h5>
+                                    <a class="nav-link" href="#process" data-toggle="tab">
+                                        <h5><i class="fa fa-envelope-o"></i> 我已处理</h5>
                                     </a>
                                 </li>
 
@@ -236,6 +246,11 @@
                                                                         {% endif %}
                                                                     </h5>
                                                                 </div>
+                                                                <div>
+                                                                    <a href="/viewFeedback/{{feedback.id}}" data-toggle="tooltip" title="查看">
+                                                                        <h5><i class="fa fa-eye"></i></h5>
+                                                                    </a>
+                                                                </div>
                                                             </div>
                                                     
 
@@ -270,11 +285,11 @@
                                         </div>
                                     {% endif %}
                                 </div>
-                                <div class="tab-pane fade" id="public">
-                                    {% if my_public_feedback %}
+                                <div class="tab-pane fade" id="process">
+                                    {% if my_process_feedback %}
                                         <div class="bio-skill-box">
                                             <div class="row">
-                                                {% for feedback in my_public_feedback %}
+                                                {% for feedback in my_process_feedback %}
                                                     <div class="col-12 col-xl-6 col-lg-12 mb-xl-4 mb-4 ">
                                                         <div class=" b-skills">
                                                             <div class="d-flex justify-content-between">
@@ -300,8 +315,21 @@
                                                                         {% endif %}
                                                                         {{feedback.get_solve_status_display}} </span>
                                                                         {% endif %}
+                                                                        {% if feedback.public_status == 0%}
+                                                                        <span class="badge badge-pill badge-success">
+                                                                        {{feedback.get_public_status_display}} </span>
+                                                                        {%endif%}
+                                                                        {%if feedback.public_status == 3%}
+                                                                        <span class="badge badge-pill badge-danger">
+                                                                            {{feedback.get_public_status_display}} </span>
+                                                                        {%endif%}
                                                                     </h5>
                                                                 </div>
+                                                                <div>
+                                                                    <a href="/viewFeedback/{{feedback.id}}" data-toggle="tooltip" title="查看">
+                                                                        <h5><i class="fa fa-eye"></i></h5>
+                                                                    </a>
+                                                                </div>    
                                                             </div>
                                                             
                                                             <p style="color: rgb(66, 67, 68);">
@@ -337,6 +365,7 @@
             </div>
             {% endif %}
             <!-- 反馈记录 -->
+            {% if show_feedback %}
             <div class="col-12">
                 <div class="bio layout-spacing mb-4">
                     <div class="widget-content widget-content-area">
@@ -431,7 +460,7 @@
                                 {% endif %}
                             </div> 
                             {% endif %} 
-                            <!-- 未完成 -->
+                            <!-- 进行中 -->
                             <div class="tab-pane fade in active show" id="home" role="tabpanel">
                                 {% if undone_feedback %}
                                 <div class="bio-skill-box">
@@ -506,7 +535,7 @@
                                 </div>
                                 {% endif %}
                             </div>
-                            <!-- 已完成 -->
+                            <!-- 已结束 -->
                             <div class="tab-pane fade" id="done" role="tabpanel">
                                 {% if done_feedback %}
                                     <div class="bio-skill-box">
@@ -569,6 +598,7 @@
                     </div>
                 </div>
             </div>
+            {% endif %}
         </div>
     </div>
 

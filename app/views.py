@@ -69,22 +69,16 @@ from django.contrib.auth.password_validation import CommonPasswordValidator, Num
 from django.core.exceptions import ValidationError
 
 
-# 定时任务不在views直接调用
-# 但是天气任务还是在这里弄吧，太奇怪了
-from app.scheduler_func import start_scheduler
-start_scheduler(with_scheduled_job=True, debug=True)
-
-
 email_url = local_dict["url"]["email_url"]
 hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
 
-@log.except_captured(source='views[index]', record_user=True)
-def index(request):
+@log.except_captured(source='views[index]', record_user=True,
+                     record_request_args=True, show_traceback=True)
+def index(request: HttpRequest):
     arg_origin = request.GET.get("origin")
     modpw_status = request.GET.get("modinfo")
-    # request.GET['success'] = "no"
     arg_islogout = request.GET.get("is_logout")
     alert = request.GET.get("alert")
     if request.session.get('alert_message'):
@@ -95,14 +89,12 @@ def index(request):
             and modpw_status is not None
             and modpw_status == "success"
     ):
-        html_display["warn_code"] = 2
-        html_display["warn_message"] = "修改密码成功!"
+        succeed("修改密码成功!", html_display)
         auth.logout(request)
         return render(request, "index.html", locals())
 
     if alert is not None:
-        html_display["warn_code"] = 1
-        html_display["warn_message"] = "检测到异常行为，请联系系统管理员。"
+        wrong("检测到异常行为，请联系系统管理员。", html_display)
         auth.logout(request)
         return render(request, "index.html", locals())
 
@@ -113,12 +105,7 @@ def index(request):
     if arg_origin is None:  # 非外部接入
         if request.user.is_authenticated:
             return redirect("/welcome/")
-            """
-            valid, user_type, html_display = utils.check_user_type(request.user)
-            if not valid:
-                return render(request, 'index.html', locals())
-            return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
-            """
+
     # 非法的 origin
     if not url_check(arg_origin):
         request.session['alert_message'] = f"尝试跳转到非法 URL: {arg_origin}，跳转已取消。"
@@ -137,19 +124,15 @@ def index(request):
             else:
                 user = user[0]
         except:
-            # if arg_origin is not None:
-            #    redirect(f'/login/?origin={arg_origin}')
-            html_display["warn_message"] = local_dict["msg"]["404"]
-            html_display["warn_code"] = 1
+            wrong(local_dict["msg"]["404"], html_display)
             return render(request, "index.html", locals())
         userinfo = auth.authenticate(username=username, password=password)
         if userinfo:
             auth.login(request, userinfo)
-            # request.session["username"] = username 已废弃
             valid, user_type, html_display = utils.check_user_type(request.user)
             if not valid:
                 return redirect("/logout/")
-            if user_type == "Person":
+            if user_type == UTYPE_PER:
                 me = get_person_or_org(userinfo, user_type)
                 if me.first_time_login:
                     # 不管有没有跳转，这个逻辑都应该是优先的
@@ -158,15 +141,8 @@ def index(request):
                 update_related_account_in_session(request, username)
             if arg_origin is None:
                 return redirect("/welcome/")
-                """
-                valid, user_type, html_display = utils.check_user_type(request.user)
-                if not valid:
-                    return render(request, 'index.html', locals())
-                return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
-                """
         else:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = local_dict["msg"]["406"]
+            wrong(local_dict["msg"]["406"], html_display)
 
     # 所有跳转，现在不管是不是post了
     if arg_origin is not None and request.user.is_authenticated:
@@ -179,7 +155,7 @@ def index(request):
 
 @login_required(redirect_field_name="origin")
 @log.except_captured(source='views[shiftAccount]', record_user=True)
-def shiftAccount(request):
+def shiftAccount(request: HttpRequest):
 
     username = request.session.get("NP")
     if not username:
@@ -208,7 +184,7 @@ wechat_login_coder = MyMD5PasswordHasher("wechat_login")
 
 
 @log.except_captured(source='views[miniLogin]', record_user=True)
-def miniLogin(request):
+def miniLogin(request: HttpRequest):
     try:
         assert request.method == "POST"
         username = request.POST["username"]
@@ -236,7 +212,7 @@ def miniLogin(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[stuinfo]', record_user=True)
-def stuinfo(request, name=None):
+def stuinfo(request: HttpRequest, name=None):
     """
         进入到这里的逻辑:
         首先必须登录，并且不是超级账户
@@ -265,10 +241,7 @@ def stuinfo(request, name=None):
             return redirect("/orginfo/")  # 小组只能指定学生姓名访问
         else:  # 跳轉到自己的頁面
             assert user_type == "Person"
-            full_path = request.get_full_path()
-
-            append_url = "" if ("?" not in full_path) else "&" + full_path.split("?")[1]
-            return redirect("/stuinfo/?name=" + oneself.name + append_url)
+            return redirect(append_query(oneself.get_absolute_url(), **request.GET.dict()))
     else:
         # 先对可能的加号做处理
         name_list = name.replace(' ', '+').split("+")
@@ -302,17 +275,14 @@ def stuinfo(request, name=None):
             anonymous_flag = (request.POST.get('show_name') is not None)
             question = request.POST.get("question")
             if len(question) == 0:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "请填写问题内容!"
+                wrong("请填写问题内容!", html_display)
             else:
                 try:
                     QA_create(sender=request.user,receiver=person.person_id,Q_text=str(question),anonymous_flag=anonymous_flag)
-                    html_display["warn_code"] = 2
-                    html_display["warn_message"] = "提问发送成功!"
+                    succeed("提问发送成功!", html_display)
                 except:
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = "提问发送失败!请联系管理员!"
-            return redirect(f"/stuinfo/?name={person.name}&warn_code="+str(html_display["warn_code"])+"&warn_message="+str(html_display["warn_message"]))
+                    wrong("提问发送失败!请联系管理员!", html_display)
+            return redirect(message_url(html_display, person.get_absolute_url()))
         elif request.method == "POST" and request.POST:
             option = request.POST.get("option", "")
             assert option == "cancelInformShare" and html_display["is_myself"]
@@ -595,7 +565,7 @@ def stuinfo(request, name=None):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[requestLoginOrg]', record_user=True)
-def requestLoginOrg(request, name=None):  # 特指个人希望通过个人账户登入小组账户的逻辑
+def requestLoginOrg(request: HttpRequest, name=None):  # 特指个人希望通过个人账户登入小组账户的逻辑
     """
         这个函数的逻辑是，个人账户点击左侧的管理小组直接跳转登录到小组账户
         首先检查登录的user是个人账户，否则直接跳转orginfo
@@ -643,7 +613,7 @@ def requestLoginOrg(request, name=None):  # 特指个人希望通过个人账户
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[orginfo]', record_user=True)
-def orginfo(request, name=None):
+def orginfo(request: HttpRequest, name=None):
     """
         orginfo负责呈现小组主页，逻辑和stuinfo是一样的，可以参考
         只区分自然人和法人，不区分自然人里的负责人和非负责人。任何自然人看这个小组界面都是【不可管理/编辑小组信息】
@@ -888,15 +858,10 @@ def orginfo(request, name=None):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[homepage]', record_user=True)
-def homepage(request):
+def homepage(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = True if user_type == "Person" else False
     me = get_person_or_org(request.user, user_type)
-    myname = me.name if is_person else me.oname
-
-    # 直接储存在html_display中
-    # profile_name = "个人主页" if is_person else "小组主页"
-    # profile_url = "/stuinfo/?name=" + myname if is_person else "/orginfo/?name=" + myname
 
     html_display["is_myself"] = True
 
@@ -1047,7 +1012,7 @@ def homepage(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[accountSetting]', record_user=True)
-def accountSetting(request):
+def accountSetting(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
     # 在这个页面 默认回归为自己的左边栏
@@ -1187,8 +1152,9 @@ def accountSetting(request):
         return render(request, "org_account_setting.html", locals())
 
 
-@log.except_captured(source='views[freshman]', record_user=True)
-def freshman(request):
+@log.except_captured(source='views[freshman]', record_user=True,
+                     record_request_args=True, show_traceback=True)
+def freshman(request: HttpRequest):
     if request.user.is_authenticated:
         return redirect(message_url(wrong('你已经登录，无需进行注册!')))
 
@@ -1294,7 +1260,7 @@ def freshman(request):
 
 @login_required(redirect_field_name="origin")
 @log.except_captured(source='views[userAgreement]', record_user=True)
-def userAgreement(request):
+def userAgreement(request: HttpRequest):
     # 不要加check_user_access，因为本页面就是该包装器首次登录时的跳转页面之一
     valid, user_type, html_display = utils.check_user_type(request.user)
     if not valid:
@@ -1314,7 +1280,7 @@ def userAgreement(request):
 
 
 @log.except_captured(source='views[authRegister]', record_user=True)
-def authRegister(request):
+def authRegister(request: HttpRequest):
     if request.user.is_superuser:
         if request.method == "POST" and request.POST:
             name = request.POST["name"]
@@ -1365,7 +1331,7 @@ def authRegister(request):
 
 # @login_required(redirect_field_name=None)
 @log.except_captured(source='views[logout]', record_user=True)
-def logout(request):
+def logout(request: HttpRequest):
     auth.logout(request)
     return HttpResponseRedirect("/index/")
 
@@ -1389,7 +1355,7 @@ def org_spec(request, *args, **kwargs):
 """
 
 @log.except_captured(source='views[get_stu_img]', record_user=True)
-def get_stu_img(request):
+def get_stu_img(request: HttpRequest):
     if DEBUG: print("in get stu img")
     stuId = request.GET.get("stuId")
     if stuId is not None:
@@ -1405,7 +1371,7 @@ def get_stu_img(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[search]', record_user=True)
-def search(request):
+def search(request: HttpRequest):
     """
         搜索界面的呈现逻辑
         分成搜索个人和搜索小组两个模块，每个模块的呈现独立开，有内容才呈现，否则不显示
@@ -1533,8 +1499,9 @@ def search(request):
     return render(request, "search.html", locals())
 
 
-@log.except_captured(source='views[forgetPassword]', record_user=True)
-def forgetPassword(request):
+@log.except_captured(source='views[forgetPassword]', record_user=True,
+                     record_request_args=True, show_traceback=True)
+def forgetPassword(request: HttpRequest):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
 
@@ -1677,7 +1644,7 @@ def forgetPassword(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/", is_modpw=True)
 @log.except_captured(source='views[modpw]', record_user=True)
-def modpw(request):
+def modpw(request: HttpRequest):
     """
         可能在三种情况进入这个页面：首次登陆；忘记密码；或者常规的修改密码。
         在忘记密码时，可以允许不输入旧的密码
@@ -1773,32 +1740,32 @@ def modpw(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[subscribeOrganization]', record_user=True)
-def subscribeOrganization(request):
+def subscribeOrganization(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if user_type != 'Person':
-        return redirect('/welcome/?warn_code=1&warn_message=小组账号不支持订阅！')
+    if user_type != UTYPE_PER:
+        succeed('小组账号不支持订阅，您可以在此查看小组列表！', html_display)
+        html_display.update(readonly=True)
 
     me = get_person_or_org(request.user, user_type)
-    html_display["is_myself"] = True
     # orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
     otype_infos = [(
         otype,
         list(Organization.objects.filter(otype=otype)
             .select_related("organization_id")),
     ) for otype in OrganizationType.objects.all().order_by('-otype_id')]
-    unsubscribe_list = list(me.unsubscribe_list.values_list("organization_id__username", flat=True))
+
     # 获取不订阅列表（数据库里的是不订阅列表）
-
-
+    if user_type == UTYPE_PER:
+        unsubscribe_set = set(me.unsubscribe_list.values_list(
+            'organization_id__username', flat=True))
+    else:
+        unsubscribe_set = set(Organization.objects.values_list(
+            'organization_id__username', flat=True))
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的订阅")
-    # 补充一些呈现信息
-    # bar_display["title_name"] = "Subscribe"
-    # bar_display["navbar_name"] = "我的订阅"  #
-    # bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
-
-    subscribe_url = reverse("saveSubscribeStatus")
+    # 小组暂且不使用订阅提示
+    bar_display = utils.get_sidebar_and_navbar(
+        request.user, navbar_name='我的订阅' if user_type == UTYPE_PER else '小组一览')
 
     # all_number = NaturalPerson.objects.activated().all().count()    # 人数全体 优化查询
     return render(request, "organization_subscribe.html", locals())
@@ -1809,9 +1776,9 @@ def subscribeOrganization(request):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[saveSubscribeStatus]', record_user=True)
-def saveSubscribeStatus(request):
+def saveSubscribeStatus(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if user_type != 'Person':
+    if user_type != UTYPE_PER:
         return JsonResponse({"success":False})
 
     me = get_person_or_org(request.user, user_type)
@@ -1927,7 +1894,7 @@ def apply_position(request, oid=None):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[notifications]', record_user=True)
-def notifications(request):
+def notifications(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
 
     # 接下来处理POST相关的内容
@@ -1998,7 +1965,7 @@ def notifications(request):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(source='views[QAcenter]', record_user=True)
-def QAcenter(request):
+def QAcenter(request: HttpRequest):
     """
     Haowei:
     QA的聚合界面
@@ -2052,7 +2019,7 @@ def QAcenter(request):
 @login_required(redirect_field_name='origin')
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, log=False)
-def eventTrackingFunc(request):
+def eventTrackingFunc(request: HttpRequest):
     # unpack request:
     logType = int(request.POST['Type'])
     logUrl = request.POST['Url']
