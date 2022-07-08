@@ -428,9 +428,13 @@ def selectCourse(request: HttpRequest):
     2. 在预选和补退选阶段，学生可以通过点击课程对应的按钮实现选课或者退选，
     且点击后页面显示发生相应的变化
     3. 显示选课结果
+
+    用户权限：学生和老师可以进入，组织不能进入；只有学生可以进行选课
     
-    用户权限: 学生和老师可以进入，组织不能进入；只有学生可以进行选课
+    :param request: POST courseid=<int> & action= "select" or "cancel"
+    :type request: HttpRequest
     """
+
     valid, user_type, html_display = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)
 
@@ -524,11 +528,10 @@ def selectCourse(request: HttpRequest):
                      source='course_views[viewCourse]')
 def viewCourse(request: HttpRequest):
     """
-    展示一门课程的详细信息
-    
-    GET参数: ?courseid=<int>
+    展示一门课程的详细信息，所有用户类型均可访问
 
-    用户权限: 不对用户类型作出限制，均正常显示内容  
+    :param request: GET courseid=<int>
+    :type request: HttpRequest
     """
     valid, user_type, html_display = utils.check_user_type(request.user)
 

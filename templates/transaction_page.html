@@ -18,9 +18,9 @@
                         <div class="form-container">
                             <div class="form-content">
                                 <div class="d-flex user-meta">
-                                    <img src={{context.avatar_path}} class="usr-profile" alt="avatar">
+                                    <img src={{transaction_context.avatar}} class="usr-profile" alt="avatar">
                                     <div class="">
-                                        <p class="">向{{context.name}}转账</p>
+                                        <p class="">向{{transaction_context.name}}转账</p>
                                     </div>
                                 </div>
 
@@ -29,8 +29,8 @@
 
                                         <div id="pw-field" class="field-wrapper input mb-2">
                                             <div class="d-flex justify-content-between">
-                                                <label>转账金额(可用{{context.YQPoint}}元气值)</label>
-                                                <a href="{{context.return_url}}" class="forgot-pass-link">返回</a>
+                                                <label>转账金额(可用{{transaction_context.YQPoint_limit}}元气值)</label>
+                                                <a href="{{transaction_context.return_url}}" class="forgot-pass-link">返回</a>
                                             </div>
                                             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24"
                                                 viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
@@ -42,11 +42,11 @@
                                             <input  type="number" class="form-control" name="amount"
                                                 placeholder="最小精度为0.1" οnkeyup="value=value.replace(/^\D*(\d*(?:\.\d{0,1})?).*$/g, '$1')"
                                                 min="0.1", step="0.1" required="required">
+                                            {% if transaction_context.service is not None and transaction_context.service != -1 %}
+                                            <input type="hidden" name="service" value={{transaction_context.service}}>
+                                            {% endif %}
                                             <!--modified by wxy-->
-                                            
                                         </div>
-
-
 
                                         <div class="form">
                                             <div id="new-field" class="field-wrapper input mb-2">
@@ -55,7 +55,7 @@
                                                     <!--modified by pht-->
                                                 </div>
                                                 <textarea name="msg"  class="form-control"
-                                                    rows="3"></textarea>
+                                                    rows="3">{{transaction_context.message | default_if_none : ""}}</textarea>
                                                 
                                                 <!--modified by wxy-->
                                             </div>
@@ -63,7 +63,7 @@
                                             <div class="d-sm-flex justify-content-between">
                                                 <div class="field-wrapper">
                                                     <button type="submit" class="btn btn-primary" value=""
-                                                    onclick="return confirm('确定向{{context.name}}发起转账?')"
+                                                    onclick="return confirm('{% if user_type == 'Organization' %}你正在使用小组账号，{% endif %}确定向{{transaction_context.name}}发起转账？确定后将无法撤回！')"
                                                         id="">确认发起</button>
                                                     <!--modified by wxy-->
                                                 </div>

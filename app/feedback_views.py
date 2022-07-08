@@ -34,7 +34,7 @@ def viewFeedback(request: HttpRequest, fid):
     try:
         # 查找fid对应的反馈条目
         fid = int(fid)
-        feedback = Feedback.objects.get(id=fid)
+        feedback: Feedback = Feedback.objects.get(id=fid)
     except:
         return redirect(message_url(wrong("反馈不存在！"), '/feedback/'))
 
@@ -330,7 +330,11 @@ def viewFeedback(request: HttpRequest, fid):
             and feedback.issue_status != Feedback.IssueStatus.DELETED:
             login_identity = "student"
         else:
-            return redirect(message_url(wrong("该反馈尚未公开，没有访问该反馈的权限！")))
+            # 如果是组织管理员，尝试登录
+            login_context = utils.user_login_org(request, feedback.org)
+            if login_context["warn_code"] == SUCCEED:
+                return redirect(message_url(login_context, request.path))
+            return redirect(message_url(wrong("该反馈尚未公开，没有访问该反馈的权限！"), '/feedback/'))
     # 四、当前登录用户为受反馈小组
     elif user_type == UTYPE_ORG and feedback.org == me:
         login_identity = "org"
@@ -349,7 +353,7 @@ def viewFeedback(request: HttpRequest, fid):
             public_editable = True
     # 其他用户（非受反馈小组）暂时不开放任何权限
     else:
-        return redirect(message_url(wrong("没有访问该反馈的权限")))
+        return redirect(message_url(wrong("没有访问该反馈的权限"), '/feedback/'))
 
     # 撤销反馈、公开反馈、标记已读、修改解决状态需要表单操作
     # 撤销反馈迁移到反馈聚合页面
@@ -368,7 +372,6 @@ def feedbackWelcome(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = user_type == UTYPE_PER
     me = get_person_or_org(request.user, user_type)
-    myname = me.get_display_name()
 
     # 准备用户提示量
     my_messages.transfer_message_context(request.GET, html_display)

@@ -327,7 +327,7 @@
                                                 <h5>
                                                     <img src={{ member.avatar_path }} width="24" height="24"
                                                         alt="avatar">
-                                                    <a href='/stuinfo/?name={{ member.person.name }}'>
+                                                    <a href='{{ member.person.get_absolute_url }}'>
                                                         <u>{{ member.person.name }}</u>
                                                     </a>
                                                 </h5>

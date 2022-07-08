@@ -74,11 +74,11 @@ hash_coder = MySHA256Hasher(local_dict["hash"]["base_hasher"])
 email_coder = MySHA256Hasher(local_dict["hash"]["email"])
 
 
-@log.except_captured(source='views[index]', record_user=True)
+@log.except_captured(source='views[index]', record_user=True,
+                     record_request_args=True, show_traceback=True)
 def index(request: HttpRequest):
     arg_origin = request.GET.get("origin")
     modpw_status = request.GET.get("modinfo")
-    # request.GET['success'] = "no"
     arg_islogout = request.GET.get("is_logout")
     alert = request.GET.get("alert")
     if request.session.get('alert_message'):
@@ -89,14 +89,12 @@ def index(request: HttpRequest):
             and modpw_status is not None
             and modpw_status == "success"
     ):
-        html_display["warn_code"] = 2
-        html_display["warn_message"] = "修改密码成功!"
+        succeed("修改密码成功!", html_display)
         auth.logout(request)
         return render(request, "index.html", locals())
 
     if alert is not None:
-        html_display["warn_code"] = 1
-        html_display["warn_message"] = "检测到异常行为，请联系系统管理员。"
+        wrong("检测到异常行为，请联系系统管理员。", html_display)
         auth.logout(request)
         return render(request, "index.html", locals())
 
@@ -107,12 +105,7 @@ def index(request: HttpRequest):
     if arg_origin is None:  # 非外部接入
         if request.user.is_authenticated:
             return redirect("/welcome/")
-            """
-            valid, user_type, html_display = utils.check_user_type(request.user)
-            if not valid:
-                return render(request, 'index.html', locals())
-            return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
-            """
+
     # 非法的 origin
     if not url_check(arg_origin):
         request.session['alert_message'] = f"尝试跳转到非法 URL: {arg_origin}，跳转已取消。"
@@ -131,19 +124,15 @@ def index(request: HttpRequest):
             else:
                 user = user[0]
         except:
-            # if arg_origin is not None:
-            #    redirect(f'/login/?origin={arg_origin}')
-            html_display["warn_message"] = local_dict["msg"]["404"]
-            html_display["warn_code"] = 1
+            wrong(local_dict["msg"]["404"], html_display)
             return render(request, "index.html", locals())
         userinfo = auth.authenticate(username=username, password=password)
         if userinfo:
             auth.login(request, userinfo)
-            # request.session["username"] = username 已废弃
             valid, user_type, html_display = utils.check_user_type(request.user)
             if not valid:
                 return redirect("/logout/")
-            if user_type == "Person":
+            if user_type == UTYPE_PER:
                 me = get_person_or_org(userinfo, user_type)
                 if me.first_time_login:
                     # 不管有没有跳转，这个逻辑都应该是优先的
@@ -152,15 +141,8 @@ def index(request: HttpRequest):
                 update_related_account_in_session(request, username)
             if arg_origin is None:
                 return redirect("/welcome/")
-                """
-                valid, user_type, html_display = utils.check_user_type(request.user)
-                if not valid:
-                    return render(request, 'index.html', locals())
-                return redirect('/stuinfo') if user_type == "Person" else redirect('/orginfo')
-                """
         else:
-            html_display["warn_code"] = 1
-            html_display["warn_message"] = local_dict["msg"]["406"]
+            wrong(local_dict["msg"]["406"], html_display)
 
     # 所有跳转，现在不管是不是post了
     if arg_origin is not None and request.user.is_authenticated:
@@ -259,10 +241,7 @@ def stuinfo(request: HttpRequest, name=None):
             return redirect("/orginfo/")  # 小组只能指定学生姓名访问
         else:  # 跳轉到自己的頁面
             assert user_type == "Person"
-            full_path = request.get_full_path()
-
-            append_url = "" if ("?" not in full_path) else "&" + full_path.split("?")[1]
-            return redirect("/stuinfo/?name=" + oneself.name + append_url)
+            return redirect(append_query(oneself.get_absolute_url(), **request.GET.dict()))
     else:
         # 先对可能的加号做处理
         name_list = name.replace(' ', '+').split("+")
@@ -296,17 +275,14 @@ def stuinfo(request: HttpRequest, name=None):
             anonymous_flag = (request.POST.get('show_name') is not None)
             question = request.POST.get("question")
             if len(question) == 0:
-                html_display["warn_code"] = 1
-                html_display["warn_message"] = "请填写问题内容!"
+                wrong("请填写问题内容!", html_display)
             else:
                 try:
                     QA_create(sender=request.user,receiver=person.person_id,Q_text=str(question),anonymous_flag=anonymous_flag)
-                    html_display["warn_code"] = 2
-                    html_display["warn_message"] = "提问发送成功!"
+                    succeed("提问发送成功!", html_display)
                 except:
-                    html_display["warn_code"] = 1
-                    html_display["warn_message"] = "提问发送失败!请联系管理员!"
-            return redirect(f"/stuinfo/?name={person.name}&warn_code="+str(html_display["warn_code"])+"&warn_message="+str(html_display["warn_message"]))
+                    wrong("提问发送失败!请联系管理员!", html_display)
+            return redirect(message_url(html_display, person.get_absolute_url()))
         elif request.method == "POST" and request.POST:
             option = request.POST.get("option", "")
             assert option == "cancelInformShare" and html_display["is_myself"]
@@ -886,11 +862,6 @@ def homepage(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
     is_person = True if user_type == "Person" else False
     me = get_person_or_org(request.user, user_type)
-    myname = me.get_display_name()
-
-    # 直接储存在html_display中
-    # profile_name = "个人主页" if is_person else "小组主页"
-    # profile_url = "/stuinfo/?name=" + myname if is_person else "/orginfo/?name=" + myname
 
     html_display["is_myself"] = True
 
@@ -1181,7 +1152,8 @@ def accountSetting(request: HttpRequest):
         return render(request, "org_account_setting.html", locals())
 
 
-@log.except_captured(source='views[freshman]', record_user=True)
+@log.except_captured(source='views[freshman]', record_user=True,
+                     record_request_args=True, show_traceback=True)
 def freshman(request: HttpRequest):
     if request.user.is_authenticated:
         return redirect(message_url(wrong('你已经登录，无需进行注册!')))
@@ -1527,7 +1499,8 @@ def search(request: HttpRequest):
     return render(request, "search.html", locals())
 
 
-@log.except_captured(source='views[forgetPassword]', record_user=True)
+@log.except_captured(source='views[forgetPassword]', record_user=True,
+                     record_request_args=True, show_traceback=True)
 def forgetPassword(request: HttpRequest):
     """
         忘记密码页（Pylance可以提供文档字符串支持）
@@ -1769,30 +1742,30 @@ def modpw(request: HttpRequest):
 @log.except_captured(source='views[subscribeOrganization]', record_user=True)
 def subscribeOrganization(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if user_type != 'Person':
-        return redirect('/welcome/?warn_code=1&warn_message=小组账号不支持订阅！')
+    if user_type != UTYPE_PER:
+        succeed('小组账号不支持订阅，您可以在此查看小组列表！', html_display)
+        html_display.update(readonly=True)
 
     me = get_person_or_org(request.user, user_type)
-    html_display["is_myself"] = True
     # orgava_list = [(org, utils.get_user_ava(org, "Organization")) for org in org_list]
     otype_infos = [(
         otype,
         list(Organization.objects.filter(otype=otype)
             .select_related("organization_id")),
     ) for otype in OrganizationType.objects.all().order_by('-otype_id')]
-    unsubscribe_list = list(me.unsubscribe_list.values_list("organization_id__username", flat=True))
+
     # 获取不订阅列表（数据库里的是不订阅列表）
-
-
+    if user_type == UTYPE_PER:
+        unsubscribe_set = set(me.unsubscribe_list.values_list(
+            'organization_id__username', flat=True))
+    else:
+        unsubscribe_set = set(Organization.objects.values_list(
+            'organization_id__username', flat=True))
 
     # 新版侧边栏, 顶栏等的呈现，采用 bar_display, 必须放在render前最后一步
-    bar_display = utils.get_sidebar_and_navbar(request.user, navbar_name="我的订阅")
-    # 补充一些呈现信息
-    # bar_display["title_name"] = "Subscribe"
-    # bar_display["navbar_name"] = "我的订阅"  #
-    # bar_display["help_message"] = local_dict["help_message"]["我的订阅"]
-
-    subscribe_url = reverse("saveSubscribeStatus")
+    # 小组暂且不使用订阅提示
+    bar_display = utils.get_sidebar_and_navbar(
+        request.user, navbar_name='我的订阅' if user_type == UTYPE_PER else '小组一览')
 
     # all_number = NaturalPerson.objects.activated().all().count()    # 人数全体 优化查询
     return render(request, "organization_subscribe.html", locals())
@@ -1805,7 +1778,7 @@ def subscribeOrganization(request: HttpRequest):
 @log.except_captured(source='views[saveSubscribeStatus]', record_user=True)
 def saveSubscribeStatus(request: HttpRequest):
     valid, user_type, html_display = utils.check_user_type(request.user)
-    if user_type != 'Person':
+    if user_type != UTYPE_PER:
         return JsonResponse({"success":False})
 
     me = get_person_or_org(request.user, user_type)
