@@ -422,7 +422,6 @@ def feedback_homepage(request):
 
     if request.method == "POST":
         option = request.POST.get("option")
-        print(option)
         if not is_person:
             return redirect(message_url(wrong('组织不可以撤回/删除反馈!'), request.path))
         if option != "delete" and option != "withdraw":
