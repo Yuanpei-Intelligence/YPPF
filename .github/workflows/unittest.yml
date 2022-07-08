@@ -1,0 +1,33 @@
+name: unittest
+
+on:
+  push:
+    branches: [ auto_test ]
+  pull_request:
+    branches: [ auto_test ]
+
+jobs:
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v3
+
+    - name: Configure local json
+      run: >
+        cat local_json_template.json |
+        sed 's/\$DATABASE\$/yppf/g' |
+        sed 's/\$USER\$/root/g' |
+        sed 's/\$PASSWORD\$/secret/g' |
+        sed 's/\$HOST\$/mysql/g' >
+        local_json.json
+          cat local_json.json
+
+    - name: Start containers
+      run: |
+        docker-compose -f "docker-compose.yml" up -d --build
+    
+    - name: Test 
+      run: |
+        docker-compose run yppf python3 manage.py test
