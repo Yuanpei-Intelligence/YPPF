@@ -12,6 +12,7 @@ from django.shortcuts import render, redirect  # 网页render & redirect
 from django.urls import reverse
 from django.contrib import auth
 import json  # 读取Json请求
+import html  # 解码保证安全
 
 # csrf 检测和完善
 from django.views.decorators.csrf import csrf_exempt
@@ -32,7 +33,10 @@ import boottest.global_messages as my_messages
 # utils对接工具
 from Appointment.utils.utils import send_wechat_message, appoint_violate, doortoroom, iptoroom, operation_writer, write_before_delete, cardcheckinfo_writer, check_temp_appoint, set_appoint_reason
 import Appointment.utils.web_func as web_func
-from Appointment.utils.identity import get_name, get_avatar, get_participant, identity_check
+from Appointment.utils.identity import (
+    get_name, get_avatar, get_member_ids, get_members,
+    get_participant, identity_check,
+)
 
 # 定时任务注册
 from django_apscheduler.jobstores import DjangoJobStore, register_events, register_job
@@ -291,7 +295,6 @@ def cancelAppoint(request):
         scheduler_func.set_cancel_wechat(appoint)
 
     return redirect(message_url(context, reverse("Appointment:admin_index")))
-    return scheduler_func.cancelFunction(request)
 
 
 @csrf_exempt
@@ -302,6 +305,7 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
             display_token = request.GET.get('token', None)
             check = Room.objects.filter(Rid=Rid)
             assert len(check) > 0
+            roomname = check[0].Rtitle
 
             assert display_token is not None
         except:
@@ -333,7 +337,9 @@ def display_getappoint(request):    # 用于为班牌机提供展示预约的信
                                      Astart__lte=nowtime + timedelta(minutes=15))
         comingsoon = 1 if len(comingsoon) else 0    # 有15分钟之内的未开始预约，不允许即时预约
 
-        return JsonResponse({'comingsoon': comingsoon, 'data': data}, status=200, json_dumps_params={'ensure_ascii': False})
+        return JsonResponse(
+            {'comingsoon': comingsoon, 'data': data, 'roomname': roomname},
+            status=200, json_dumps_params={'ensure_ascii': False})
     else:
         return JsonResponse(
             {'statusInfo': {
@@ -400,29 +406,40 @@ def admin_index(request):   # 我的账户也主函数
 @identity_check(redirect_field_name='origin')
 def admin_credit(request):
 
+    render_context = {}
+    render_context.update(
+        login_url=GLOBAL_INFO.login_url,
+        show_admin=(request.user.is_superuser or request.user.is_staff),
+    )
+
+    my_messages.transfer_message_context(request.GET, render_context)
+
+    # 学生基本信息
     Pid = request.user.username
-    show_admin=(request.user.is_superuser or request.user.is_staff)
+    my_info = web_func.get_user_info(Pid)
+    participant = get_participant(Pid)
+    if participant.agree_time is not None:
+        my_info['agree_time'] = str(participant.agree_time)
 
     # 头像信息
     img_path = get_avatar(request.user)
+    render_context.update(my_info=my_info, img_path=img_path)
 
-    vio_list = web_func.get_appoints(Pid, 'violate', major=True).get('data')
-    vio_list_in_7_days = []
-    present_day = datetime.now()
-    seven_days_before = present_day - timedelta(7)
-    for x in vio_list:
-        temp_time = datetime.strptime(x['Astart'], "%Y-%m-%dT%H:%M:%S")
-        x['Astart_hour_minute'] = temp_time.strftime("%I:%M %p")
-        temp_time = datetime.strptime(x['Afinish'], "%Y-%m-%dT%H:%M:%S")
-        x['Afinish_hour_minute'] = temp_time.strftime("%I:%M %p")
-        if datetime.strptime(
-                x['Astart'],
-                "%Y-%m-%dT%H:%M:%S") <= present_day and datetime.strptime(
-                    x['Astart'], "%Y-%m-%dT%H:%M:%S") >= seven_days_before:
-            vio_list_in_7_days.append(x)
-    vio_list_in_7_days.sort(key=lambda k: k['Astart'])
-    my_info = web_func.get_user_info(Pid)
-    return render(request, 'Appointment/admin-credit.html', locals())
+    vio_list = web_func.get_appoints(
+        Pid, 'violate', major=True, to_json=False).get('data')
+
+    if request.method == 'POST' and request.POST:
+        if request.POST.get('feedback') is not None:
+            # 申诉反馈
+            # TODO: 检查合法性 添加信息 查询已有反馈并跳转
+            return redirect(GLOBAL_INFO.login_url.rstrip('/') + '/feedback/')
+
+    vio_list_display = web_func.appoints2json(vio_list)
+    for x, appoint in zip(vio_list_display, vio_list):
+        x['Astart_hour_minute'] = appoint.Astart.strftime("%I:%M %p")
+        x['Afinish_hour_minute'] = appoint.Afinish.strftime("%I:%M %p")
+    render_context.update(vio_list=vio_list_display)
+    return render(request, 'Appointment/admin-credit.html', render_context)
 
 
 # added by wxy
@@ -452,7 +469,7 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
     if room.Rstatus == Room.Status.FORBIDDEN:   # 禁止使用的房间
         cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：禁止使用")
         return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
-    
+
     if room.RneedAgree:
         if student.agree_time is None:
             cardcheckinfo_writer(student, room, False, False, f"刷卡拒绝：未签署协议")
@@ -525,18 +542,18 @@ def door_check(request):  # 先以Sid Rid作为参数，看之后怎么改
                              now_time.hour, now_time.minute, 0)  # 需要剥离秒级以下的数据，否则admin-index无法正确渲染
             timeid = web_func.get_time_id(room, time(start.hour, start.minute))
 
+            finish, valid = web_func.get_hour_time(room, timeid + 1)
+            finish = datetime(now_time.year, now_time.month, now_time.day, int(
+                finish.split(':')[0]), int(finish.split(':')[1]), 0)
+
             # 房间未开放
-            if timeid < 0:
+            if timeid < 0 or not valid:
                 message = f"该时段房间未开放！别熬夜了，回去睡觉！"
                 cardcheckinfo_writer(student, room, False,
                                      False, f"刷卡拒绝：临时预约失败（{message}）")
                 send_wechat_message(
                     [Sid], start, room, "temp_appointment_fail", student, "临时预约", "", 1, message)
                 return JsonResponse({"code": 1, "openDoor": "false"}, status=400)
-
-            finish, valid = web_func.get_hour_time(room, timeid + 1)
-            finish = datetime(now_time.year, now_time.month, now_time.day, int(
-                finish.split(':')[0]), int(finish.split(':')[1]), 0)
 
             # 检查时间是否合法
             # 合法条件：为避免冲突，临时预约时长必须超过15分钟；预约时在房间可用时段
@@ -646,9 +663,14 @@ def index(request):  # 主页
 
     #--------- 1,2 地下室状态部分 ---------#
 
-    double_list = ['航模', '绘画', '书法']
-    function_room_list = room_list.exclude(Rid__icontains="R").filter(Rstatus=Room.Status.PERMITTED).filter(
-        ~Q(Rtitle__icontains="研讨") | Q(Rtitle__icontains="绘画") | Q(Rtitle__icontains="航模") | Q(Rtitle__icontains="书法")).order_by('Rid')
+    double_list = ['航模', '绘画', '书法', '活动']
+    function_room_title_query = ~Q(Rtitle__icontains="研讨")
+    function_room_title_query |= Q(Rtitle__icontains="/")
+    for room_title in double_list:
+        function_room_title_query |= Q(Rtitle__icontains=room_title)
+    function_room_list = room_list.exclude(Rid__icontains="R").filter(
+        function_room_title_query,
+        Rstatus=Room.Status.PERMITTED).order_by('Rid')
 
     #--------- 地下室状态：left tab ---------#
     suspended_room_list = room_list.filter(
@@ -658,7 +680,8 @@ def index(request):  # 主页
 
     #--------- 地下室状态：right tab ---------#
     talk_room_list = room_list.filter(                                              # 研讨室（展示临时预约）
-        Rtitle__icontains="研讨").filter(Rstatus=Room.Status.PERMITTED).order_by('Rmin', 'Rid')
+        Rtitle__icontains="研讨",
+        Rstatus=Room.Status.PERMITTED).order_by('Rid')
     room_info = [(room, {'Room': room.Rid} in occupied_rooms, format_time(          # 研讨室占用情况
         room_appointments[room.Rid])) for room in talk_room_list]
 
@@ -790,11 +813,17 @@ def arrange_time(request):
         for appoint_record in appoints:
             change_id_list = web_func.timerange2idlist(Rid, appoint_record.Astart,
                                                        appoint_record.Afinish, time_range)
+            appoint_usage = html.escape(appoint_record.Ausage).replace('\n', '<br/>')
+            appointer_name = html.escape(appoint_record.major_student.name)
             for day in dayrange_list:
                 if appoint_record.Astart.date() == date(day['year'], day['month'],
                                                         day['day']):
                     for i in change_id_list:
                         day['timesection'][i]['status'] = 1
+                        day['timesection'][i]['display_info'] = '<br/>'.join([
+                            f'{appoint_usage}',
+                            f'预约者：{appointer_name}',
+                        ])
 
         # 删去今天已经过去的时间
         present_time_id = web_func.get_time_id(
@@ -893,9 +922,15 @@ def arrange_talk_room(request):
                     (appointment.Astart - t_start).total_seconds()) // 1800
                 finish_id = int(((appointment.Afinish - timedelta(minutes=1)) -
                                  t_start).total_seconds()) // 1800
+                appointer_name = html.escape(appointment.major_student.name)
+                appoint_usage = html.escape(appointment.Ausage).replace('\n', '<br/>')
 
                 for time_id in range(start_id, finish_id + 1):
                     rooms_time_list[sequence][time_id]['status'] = 1
+                    rooms_time_list[sequence][time_id]['display_info'] = '<br/>'.join([
+                        f'{appoint_usage}',
+                        f'预约者：{appointer_name}',
+                    ])
 
     js_rooms_time_list = json.dumps(rooms_time_list)
     js_weekday = json.dumps(
@@ -1007,11 +1042,14 @@ def check_out(request):  # 预约表单提交
                 wrong(add_dict['message'], render_context)
 
     js_stu_list = web_func.get_student_chosen_list(request)
+    member_id_set = set(get_member_ids(request.user))
+    for js_stu in js_stu_list:
+        if js_stu['id'] in member_id_set:
+            js_stu['text'] += '_成员'
     render_context.update(js_stu_list=js_stu_list)
 
     if request.method == 'POST':
         # 到这里说明预约失败 补充一些已有信息,避免重复填写
-        js_stu_list = web_func.get_student_chosen_list(request)
         selected_stu_list = [
             w for w in js_stu_list if w['id'] in contents['students']]
         no_clause = True

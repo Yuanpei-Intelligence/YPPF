@@ -68,7 +68,7 @@
                                             <tr>
                                                 <!--
                                                 <td><a
-                                                        href=../../stuinfo/?name={{person.name}}+{{person.id}}>{{person.name}}</a>
+                                                        href="{{person.get_absolute_url}}">{{person.name}}</a>
                                                 </td>
                                                 <td>{{person.pgender}}</td>
                                                 <td>{{person.pyear}}</td>
@@ -86,7 +86,7 @@
                                                 <!-- 说明此时要展示姓名，关联链接 -->
                                                 <td style="min-width: 80px;">
                                                     <u>
-                                                        <a href="/stuinfo/?name={{ person.name }}+{{ person.person_id.id }}">
+                                                        <a href="{{ person.get_absolute_url }}">
                                                             <img src="{{ person.get_user_ava }}" alt="大头照" style="height: 20px; width: 20px;">{{ attribute }}
                                                         </a>
                                                     </u>
@@ -182,7 +182,7 @@
                                                 </td>
                                                 <td style="min-width: 80px;">
                                                     {% for pos_person in orgn.pos0 %}
-                                                    <a href="/stuinfo/?name={{ pos_person }}+{{pos_person.person_id_id}}">
+                                                    <a href="{{ pos_person.get_absolute_url }}">
                                                         <u>
                                                             <img src="{{ pos_person.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">{{ pos_person }}
                                                         </u> <!-- 重名？ -->
@@ -352,19 +352,6 @@
                                                         <a href="/viewFeedback/{{ feedback.id }}">{{ feedback.title }}</a>
                                                     </u>
                                                 </td>
-                                                <!-- 组织 -->
-                                                <td style="min-width: 80px;">
-                                                    {% if feedback.org %}
-                                                    <u>
-                                                        <a href="/orginfo/?name={{ feedback.org }}">
-                                                            <img src="{{ feedback.org.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">
-                                                            {{ feedback.org }}
-                                                        </a>
-                                                    </u>
-                                                    {% else %}
-                                                    这条反馈没有相关小组！  
-                                                    {% endif %}
-                                                </td>
                                                 <!-- 状态 -->
                                                 <td style="min-width: 60px; ">
                                                     {% if feedback.solve_status == 1 or feedback.solve_status == 3 %}
@@ -391,13 +378,24 @@
 
                                                     {% endif %}
                                                 </td>
-
-                                                <td >
+                                                <!-- 组织 -->
+                                                <td style="min-width: 80px;">
+                                                    {% if feedback.org %}
+                                                    <u>
+                                                        <a href="/orginfo/?name={{ feedback.org }}">
+                                                            <img src="{{ feedback.org.get_user_ava }}" alt="大头照" style="width: 20px; height: 20px;">
+                                                            {{ feedback.org }}
+                                                        </a>
+                                                    </u>
+                                                    {% else %}
+                                                    这条反馈没有相关小组！  
+                                                    {% endif %}
+                                                </td>
+                                                <td>
                                                     <p class="mb-0" style="overflow: hidden; display: -webkit-box; 
                                                     -webkit-line-clamp: 2; -webkit-box-orient: vertical; ">
                                                         {{feedback.content}}
                                                     </p>
-                                                    
                                                 </td>
                                             </tr>
                                             {% endfor %}

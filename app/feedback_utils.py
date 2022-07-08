@@ -229,18 +229,30 @@ def examine_notification(feedback):
     )
 
 @log.except_captured(source='feedback_utils[inform_notification]')
-def inform_notification(sender, receiver, content, feedback, anonymous=None, important=False):
+def inform_notification(sender: ClassifiedUser, receiver: ClassifiedUser,
+                        content, feedback, anonymous=None, important=False):
+    '''
+    根据信息创建通知并发送到微信
+
+    Parameters
+    ----------
+    content : str
+        消息内容
+    feedback : Feedback
+        只使用id用于创建URL
+    anonymous : bool, optional
+        是否匿名，默认个人匿名
+    important : bool, optional
+        微信发送的等级, by default False
+    '''
     if anonymous is None:
-        anonymous = False if isinstance(sender, Organization) else True
-    if important == False:
-        level = WechatMessageLevel.INFO
-    else:
-        level = WechatMessageLevel.IMPORTANT
+        anonymous = not isinstance(sender, Organization)
+    level = WechatMessageLevel.IMPORTANT if important else WechatMessageLevel.INFO
     notification_create(
-        receiver=receiver.person_id if isinstance(receiver, NaturalPerson) else receiver.organization_id,
-        sender=sender.person_id if isinstance(sender, NaturalPerson) else sender.organization_id,
+        receiver=receiver.get_user(),
+        sender=sender.get_user(),
         typename=Notification.Type.NEEDREAD,
-        title="反馈状态更新",
+        title=Notification.Title.FEEDBACK_INFORM,
         content=content,
         URL=f"/viewFeedback/{feedback.id}",
         anonymous_flag=anonymous,

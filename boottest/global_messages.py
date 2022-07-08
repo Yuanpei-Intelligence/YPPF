@@ -10,12 +10,14 @@ global_messages.py
 @Date 2022-02-17
 '''
 # 类型信息提示
-from typing import Union, Mapping, Callable, Sequence, Any
+from typing import Union, TypedDict, Mapping, Callable, Sequence, Any
 
 __all__ = [
     # 常量
     'WRONG', 'SUCCEED',
     'CODE_FIELD', 'MSG_FIELD', 'ALERT_FIELD',
+    # 类型信息支持
+    'MESSAGECONTEXT',
     # 生成全局消息
     'wrong', 'succeed', 'alert',
     # 读取全局消息
@@ -36,9 +38,16 @@ CODE_FIELD = 'warn_code'
 MSG_FIELD = 'warn_message'
 ALERT_FIELD = 'alert_message'
 
+# 类型信息
+MESSAGECONTEXT = TypedDict(
+    'dict',
+    warn_code=int, warn_message=str,
+    alert_message=str,
+)
+
 
 # 生成全局消息
-def wrong(message, context=None):
+def wrong(message, context: dict=None) -> MESSAGECONTEXT:
     '''
     在错误的情况下返回的字典, message为错误信息
     如果提供了context，则向其中添加信息
@@ -50,7 +59,7 @@ def wrong(message, context=None):
     return context
 
 
-def succeed(message, context=None):
+def succeed(message, context: dict=None) -> MESSAGECONTEXT:
     '''
     在成功的情况下返回的字典, message为提示信息
     如果提供了context，则向其中添加信息
@@ -62,7 +71,7 @@ def succeed(message, context=None):
     return context
 
 
-def alert(message, context=None):
+def alert(message, context: dict=None) -> MESSAGECONTEXT:
     if context is None:
         context = dict()
     context[ALERT_FIELD] = message
@@ -124,7 +133,7 @@ def _move(context, warn_code, warn_message, alert_message=None):
     return count
 
 def transfer_message_context(source: dict, context=None,
-                             with_alert=False, normalize=True):
+                             with_alert=False, normalize=True) -> MESSAGECONTEXT:
     '''
     将来源中的全局消息导出到context
     如果未提供context，则创建一个新字典

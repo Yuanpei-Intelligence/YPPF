@@ -57,9 +57,9 @@ def base_get_setting(path: str='', trans_func=None, default=None,
 
 
 # 全局设置
-DEBUG = settings.DEBUG
-MEDIA_URL = settings.MEDIA_URL
-LOGIN_URL = settings.LOGIN_URL
+DEBUG: bool = settings.DEBUG
+MEDIA_URL: str = settings.MEDIA_URL
+LOGIN_URL: str = settings.LOGIN_URL
 
 # 全局设置变量
 UNDERGROUND_URL: str = base_get_setting('url/base_url')

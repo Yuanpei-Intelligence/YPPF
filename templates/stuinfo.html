@@ -17,8 +17,7 @@
             let share_confirm = confirm("{{alert_message}}");
             if (share_confirm) {
                 const req = new XMLHttpRequest();
-                let url = '/stuinfo/?name=' + "{{name}}";
-                req.open('POST', url, true);
+                req.open('POST', '{{person.get_absolute_url}}', true);
                 req.responseType = 'blob';
                 req.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded'); //设置请求头
                 req.send("option=" + "cancelInformShare"); //输入参数 参数的值为option="share"

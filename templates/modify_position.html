@@ -54,14 +54,14 @@
                                                         <div>
                                                             <h4>
                                                                 <img src={{ org_avatar_path }} width="24" height="24" alt="avatar">
-                                                                <a href='/orginfo/?name={{applied_org.oname}}'>
+                                                                <a href='{{applied_org.get_absolute_url}}'>
                                                                     <u>{{applied_org.oname}}</u></a>
                                                                     </h4>
                                                         </div>
                                                     <div align="right">
                                                             <h4>
                                                             <img src={{ app_avatar_path }} width="24" height="24" alt="avatar">
-                                                            <a href='/stuinfo/?name={{apply_person.name}}'>
+                                                            <a href='{{apply_person.get_absolute_url}}'>
                                                                 <u>{{apply_person.name}}</u></a>
                                                             </h4>
                                                     </div>
