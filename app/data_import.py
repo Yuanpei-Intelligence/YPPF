@@ -123,14 +123,17 @@ def create_org_account(name, oid, otype, rand_pw=False, reset_pw=None, **default
 
 
 def try_output(msg: str, output_func=None, html=True):
-    if not html:
+    '''
+    工具函数，尝试用output_func输出msg的内容，如output_func为None则直接返回msg
+    '''
+    if not html:          # 如果不是呈现在html文档，则将<br/>标签换为\n
         msg = msg.replace('<br/>', '\n')
 
     if output_func is not None:
-        output_func(msg)
+        output_func(msg)  # output_func不为None，直接用output_func输出msg
         return None
     else:
-        return msg
+        return msg        # output_func为None，返回msg的内容
 
 
 def load_file(file):
