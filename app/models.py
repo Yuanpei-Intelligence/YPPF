@@ -84,6 +84,10 @@ __all__ = [
     'Feedback',
 ]
 
+# 兼容Django3.0及以下版本
+if not hasattr(QuerySet, '__class_getitem__'):
+    QuerySet.__class_getitem__ = classmethod(lambda cls, *args, **kwargs: cls)
+
 
 def current_year() -> int:
     '''不导出的函数，用于实时获取学年设置'''
