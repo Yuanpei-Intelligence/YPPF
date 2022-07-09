@@ -28,6 +28,12 @@ jobs:
       run: |
         docker-compose -f env/docker-compose.yml up -d --build
     
+    - name: Check host
+      run: |
+          timeout 60s bash -c "while ! curl -Is localhost:8000; do
+                                 sleep 2
+                               done"
+
     - name: Test 
       run: |
         docker-compose -f env/docker-compose.yml run yppf python3 manage.py test
