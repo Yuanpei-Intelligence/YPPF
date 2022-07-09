@@ -938,10 +938,14 @@ def examineActivity(request: HttpRequest, aid):
 @log.except_captured(source='activity_views[offlineCheckinActivity]', record_user=True)
 def offlineCheckinActivity(request: HttpRequest, aid):
     '''
-    修改签到功能
-    只有举办活动的组织账号可查看和修改
-    注：
-        该函数实现的重要前提是活动已经设置所有组织成员签到初始状态为未签到
+    修改签到记录，只有举办活动的组织账号可查看和修改
+    
+    :param request: 修改请求
+    :type request: HttpRequest
+    :param aid: 活动id
+    :type aid: int
+    :return: 修改签到页面
+    :rtype: HttpResponse
     '''
     _, user_type, _ = utils.check_user_type(request.user)
     me = get_person_or_org(request.user, user_type)
