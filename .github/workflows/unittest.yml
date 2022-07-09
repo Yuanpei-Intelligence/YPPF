@@ -2,9 +2,9 @@ name: unittest
 
 on:
   push:
-    branches: [ auto_test ]
+    branches: [ develop ]
   pull_request:
-    branches: [ auto_test ]
+    branches: [ develop ]
 
 jobs:
 
