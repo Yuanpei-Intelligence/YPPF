@@ -24,6 +24,7 @@ import math
 import json
 import numpy
 import pandas as pd
+from typing import Callable
 from tqdm import tqdm
 from datetime import datetime
 
@@ -36,19 +37,15 @@ __all__ = [
     # utils
     'create_user', 'create_person', 'create_org',
     'create_person_account', 'create_org_account',
-    'try_output',
-    # basic loads
+    # load functions
     'load_stu', 'load_orgtype', 'load_org',
-    # executive functions
-    'load_activity_info', 'load_transfer_info', 'load_notification_info',
-    'load_freshman_info', 'load_help', 'load_course_record', 
-    'load_org_tag', 'load_tags_for_old_org', 'load_feedback_type', 
-    'load_feedback', 'load_feedback_comments', 'load_feedback_data',
+    'load_activity', 'load_transfer', 'load_notification',
+    'load_freshman', 'load_help', 'load_course_record', 
+    'load_org_tag', 'load_old_org_tags', 'load_feedback_type', 
+    'load_feedback', 'load_feedback_comments',
     # views
-    'load_org_view', 'load_activity_info_view', 'load_transfer_info_view',
-    'load_notification_info_view', 'load_stu_view', 'load_freshman_info_view',
-    'load_help_view', 'load_course_record_view', 'load_org_tag_view',
-    'load_tags_for_old_org_view', 'load_feedback_view',
+    'as_load_view',
+    'load_org_view', 'load_feedback_view',
 ]
 
 
@@ -122,9 +119,18 @@ def create_org_account(name, oid, otype, rand_pw=False, reset_pw=None, **default
     return org
 
 
-def try_output(msg: str, output_func=None, html=True):
+def try_output(msg: str, output_func: Callable=None, html=True):
     '''
     工具函数，尝试用output_func输出msg的内容，如output_func为None则直接返回msg
+
+    :param msg: 输出内容
+    :type msg: str
+    :param output_func: 输出函数, defaults to None
+    :type output_func: Callable, optional
+    :param html: 允许以HTML格式输出，否则将br标签替换为\n, defaults to True
+    :type html: bool, optional
+    :return: 若有输出函数则不返回，否则返回修改后的消息
+    :rtype: str | None
     '''
     if not html:          # 如果不是呈现在html文档，则将<br/>标签换为\n
         msg = msg.replace('<br/>', '\n')
@@ -136,11 +142,44 @@ def try_output(msg: str, output_func=None, html=True):
         return msg        # output_func为None，返回msg的内容
 
 
-def load_file(file):
-    return pd.read_csv(f"test_data/{file}", dtype=object, encoding="utf-8")
+def as_load_view(load_func: Callable, filepath: str):
+    '''
+    将导入函数作为视图，检查权限
+
+    :param load_func: 导入函数，遵循统一接口
+    :type load_func: Callable[Tuple[str, Callable, bool], Optional[str]]
+    :param filepath: 加载的文件路径
+    :type filepath: str
+    '''
+    def _load_view(request):
+        if request.user.is_superuser:
+            message = load_func(filepath, html=True)
+        else:
+            message = "请先以超级账户登录后台后再操作！"
+        return render(request, "debugging.html", dict(message=message))
+    return _load_view
 
 
-def load_orgtype(filepath: str, output_func=None, html=False, debug=True):
+def load_file(filepath: str, base_dir='test_data/') -> 'pd.DataFrame':
+    '''
+    加载表格
+
+    :param filepath: 测试目录下的相对路径，通常为文件名文件名
+    :type filepath: str
+    :param base_dir: 测试目录, defaults to 'test_data/'
+    :type base_dir: str, optional
+    :return: 加载出的表格
+    :rtype: DataFrame
+    '''
+    full_path = base_dir + filepath
+    if filepath.endswith('xlsx') or filepath.endswith('xls'):
+        return pd.read_excel(f'{full_path}', sheet_name=None)
+    if filepath.endswith('csv'):
+        return pd.read_csv(f'{full_path}', dtype=object, encoding='utf-8')
+    return pd.read_table(f'{full_path}', dtype=object, encoding='utf-8')
+
+
+def load_orgtype(filepath: str, output_func: Callable=None, html=False, debug=True):
     if debug:
         username = "someone"
         user, mid = User.objects.get_or_create(username=username)
@@ -173,7 +212,7 @@ def load_orgtype(filepath: str, output_func=None, html=False, debug=True):
     return try_output("导入小组类型信息成功！", output_func, html)
 
 
-def load_org(filepath: str, output_func=None, html=False):
+def load_org(filepath: str, output_func: Callable=None, html=False):
     org_df = load_file(filepath)
     msg = ''
     for _, org_dict in org_df.iterrows():
@@ -267,7 +306,7 @@ def load_org(filepath: str, output_func=None, html=False):
     return try_output(msg, output_func, html)
 
 
-def load_activity_info(filepath: str, output_func=None, html=False):
+def load_activity(filepath: str, output_func: Callable=None, html=False):
     act_df = load_file(filepath)
     act_list = []
     for _, act_dict in act_df.iterrows():
@@ -314,7 +353,7 @@ def load_activity_info(filepath: str, output_func=None, html=False):
     return try_output("导入活动信息成功！", output_func, html)
 
 
-def load_transfer_info(filepath: str, output_func=None, html=False):
+def load_transfer(filepath: str, output_func: Callable=None, html=False):
     act_df = load_file(filepath)
     act_list = []
     for _, act_dict in act_df.iterrows():
@@ -360,7 +399,7 @@ def load_transfer_info(filepath: str, output_func=None, html=False):
     return try_output("导入转账信息成功！", output_func, html)
 
 
-def load_notification_info(filepath: str, output_func=None, html=False):
+def load_notification(filepath: str, output_func: Callable=None, html=False):
     not_df = load_file(filepath)
     not_list = []
     for _, not_dict in not_df.iterrows():
@@ -415,7 +454,7 @@ def load_notification_info(filepath: str, output_func=None, html=False):
     return try_output("导入通知信息成功！", output_func, html)
 
 
-def load_stu(filepath: str, output_func=None, html=False):
+def load_stu(filepath: str, output_func: Callable=None, html=False):
     stu_df = load_file(filepath)
     total = 0
     stu_list = []
@@ -489,7 +528,7 @@ def load_stu(filepath: str, output_func=None, html=False):
     return try_output(msg, output_func, html)
 
 
-def load_freshman_info(filepath: str, output_func=None, html=False):
+def load_freshman(filepath: str, output_func: Callable=None, html=False):
     freshman_df = load_file(filepath)
     freshman_list = []
     for _, freshman_dict in tqdm(freshman_df.iterrows()):
@@ -515,7 +554,7 @@ def load_freshman_info(filepath: str, output_func=None, html=False):
     return try_output("导入新生信息成功！", output_func, html)
 
 
-def load_help(filepath: str, output_func=None, html=False):
+def load_help(filepath: str, output_func: Callable=None, html=False):
     try:
         help_df = load_file(filepath)
     except:
@@ -529,9 +568,9 @@ def load_help(filepath: str, output_func=None, html=False):
     return try_output("成功导入帮助信息！", output_func, html)
 
 
-def load_course_record(filepath: str, output_func=None, html=False):
+def load_course_record(filepath: str, output_func: Callable=None, html=False):
     try:
-        courserecord_file = pd.read_excel(f"test_data/{filepath}", sheet_name=None)
+        courserecord_file = load_file(filepath)
     except:
         return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
 
@@ -739,7 +778,7 @@ def load_course_record(filepath: str, output_func=None, html=False):
     return try_output(display_message, output_func, html)
 
 
-def load_org_tag(filepath: str, output_func=None, html=False):
+def load_org_tag(filepath: str, output_func: Callable=None, html=False):
     try:
         org_tag_def = load_file(filepath)
     except:
@@ -758,7 +797,7 @@ def load_org_tag(filepath: str, output_func=None, html=False):
     return try_output("导入组织标签类型信息成功！", output_func, html)
 
 
-def load_tags_for_old_org(filepath: str, output_func=None, html=False):
+def load_old_org_tags(filepath: str, output_func: Callable=None, html=False):
     try:
         org_tag_def = load_file(filepath)
     except:
@@ -789,7 +828,7 @@ def load_tags_for_old_org(filepath: str, output_func=None, html=False):
     return try_output(msg, output_func, html)
 
 
-def load_feedback(filepath: str, output_func=None, html=False):
+def load_feedback(filepath: str, output_func: Callable=None, html=False):
     '''该函数用于导入反馈详情的数据(csv)'''
     try:
         feedback_df = load_file(filepath)
@@ -865,7 +904,7 @@ def load_feedback(filepath: str, output_func=None, html=False):
     return try_output(msg, output_func, html)
 
 
-def load_feedback_type(filepath: str, output_func=None, html=False):
+def load_feedback_type(filepath: str, output_func: Callable=None, html=False):
     '''该函数用于导入反馈类型的数据(csv)'''
     try:
         feedback_type_df = load_file(filepath)
@@ -900,7 +939,7 @@ def load_feedback_type(filepath: str, output_func=None, html=False):
     return try_output("导入反馈类型信息成功！", output_func, html)
 
 
-def load_feedback_comments(filepath: str, output_func=None, html=False):
+def load_feedback_comments(filepath: str, output_func: Callable=None, html=False):
     '''该函数用于导入反馈的评论(feedbackcomments.csv)
     需要先导入feedbackinf.csv'''
     try:
@@ -941,6 +980,7 @@ def load_feedback_comments(filepath: str, output_func=None, html=False):
     return try_output(msg, output_func, html)
 
 
+# views
 def load_org_view(request):
     if request.user.is_superuser:
         load_type = request.GET.get("loadtype", None)
@@ -953,78 +993,6 @@ def load_org_view(request):
             message = "导入小组信息成功！" + load_org("orginf.csv")
         else:
             message = "没有得到loadtype参数:[org或otype]"
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
-
-
-def load_activity_info_view(request):
-    if request.user.is_superuser:
-        message = load_activity_info("activityinfo.csv")
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
-
-
-def load_notification_info_view(request):
-    if request.user.is_superuser:
-        message = load_notification_info("notificationinfo.csv")
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
-
-
-def load_transfer_info_view(request):
-    if request.user.is_superuser:
-        message = load_transfer_info("transferinfo.csv")
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
-
-
-def load_stu_view(request):
-    if request.user.is_superuser:
-        message = load_stu("stuinf.csv")
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
-
-
-def load_freshman_info_view(request):
-    if request.user.is_superuser:
-        message = load_freshman_info("freshman.csv")
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
-
-
-def load_help_view(request):
-    if request.user.is_superuser:
-        message = load_help("help.csv")
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
-
-
-def load_course_record_view(request):
-    if request.user.is_superuser:
-        message = load_course_record("courtime.xlsx")
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
-
-
-def load_org_tag_view(request):
-    if request.user.is_superuser:
-        message = load_org_tag("orgtag.csv")
-    else:
-        message = "请先以超级账户登录后台后再操作！"
-    return render(request, "debugging.html", locals())
-
-
-def load_tags_for_old_org_view(request):
-    if request.user.is_superuser:
-        message = load_tags_for_old_org("oldorgtags.csv")
     else:
         message = "请先以超级账户登录后台后再操作！"
     return render(request, "debugging.html", locals())

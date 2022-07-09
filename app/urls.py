@@ -11,8 +11,9 @@
 """
 from django.urls import path, re_path
 from django.conf.urls.static import static
-from . import data_import
-from . import (
+from app.data_import import as_load_view as load_view
+from app import data_import
+from app import (
     views,
     org_views,
     activity_views,
@@ -105,23 +106,19 @@ urlpatterns = [
     path("viewFeedback/<str:fid>", feedback_views.viewFeedback, name="viewFeedback"),
 ] + [
     # 数据导入
-    path("loadstudata/", data_import.load_stu_view, name="load_stu_data"),
-    path("loadfreshman/", data_import.load_freshman_info_view, name="load_freshman"),
-    path("loadorgdata/", data_import.load_org_view, name="load_org_data"),
-    path("loadorgtag/", data_import.load_org_tag_view, name="loag_org_tag"),
-    path("loadoldorgtags/", data_import.load_tags_for_old_org_view, name="load_tags_for_old_org"),
-    path("loadfeedbackdata/", data_import.load_feedback_view, name="load_feedback_data"),
-    # path("loadtransferinfo/",
-    #      data_import.load_transfer_info_view,
-    #      name="load_transfer_info"),        #服务器弃用
-    # path("loadactivity/",
-    #      data_import.load_activity_info_view,
-    #      name="load_activity_info"),        #服务器弃用
-    # path("loadnotification/",
-    #      data_import.load_notification_info_view,
-    #      name="load_notification_info"),    #服务器弃用
-    path("loadhelp/", data_import.load_help_view, name="load_help"),
-    path("loadcourserecord/", data_import.load_course_record_view, name="load_course_record"),
+    # 导入视图不需要名称
+    path("load/stu/", load_view(data_import.load_stu, 'stuinf.csv')),
+    path("load/freshman/", load_view(data_import.load_freshman, 'freshman.csv')),
+    path("load/org/", data_import.load_org_view),
+    path("load/orgtag/", load_view(data_import.load_org_tag, 'orgtag.csv')),
+    path("load/oldorgtags/", load_view(data_import.load_old_org_tags, 'oldorgtags.csv')),
+    path("load/feedback/", data_import.load_feedback_view),
+    # 服务器弃用
+    # path("load/transfer/", load_view(data_import.load_transfer, 'transferinfo.csv')),
+    # path("load/activity/", load_view(data_import.load_activity, 'activityinfo.csv'),
+    # path("load/notification/", load_view(data_import.load_notification, 'notificationinfo.csv')),
+    path("load/help/", load_view(data_import.load_help, 'help.csv')),
+    path("load/courserecord/", load_view(data_import.load_course_record, 'courtime.xlsx')),
 ] + [
     # 埋点
     path('eventTrackingFunc/', views.eventTrackingFunc, name='eventTracking'),
