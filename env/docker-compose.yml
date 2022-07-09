@@ -15,7 +15,6 @@ services:
     ports:
       - 3306:3306
     environment:
-      MYSQL_USER: "root"
       MYSQL_ROOT_PASSWORD: secret
       MYSQL_DATABASE: yppf
 
@@ -28,7 +27,7 @@ services:
     ports:
       - 8000:8000
     volumes:
-      - ./:/yppf
+      - .././:/yppf
     depends_on:
       - mysql
 
