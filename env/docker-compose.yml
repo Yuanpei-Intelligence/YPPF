@@ -19,6 +19,7 @@ services:
   yppf:
     image: yuanpei/yppf
     command: sh -c "sleep 10 &&
+                    conda run -n yppf pip install env/requirements.txt
                     conda run -n yppf python3 manage.py runserver 0.0.0.0:80"
     ports:
       - 8000:80

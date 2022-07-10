@@ -26,15 +26,18 @@ jobs:
 
     - name: Start containers
       run: |
+        cat env/requirements.txt |
+        sed '/^#.*$/d' > env/requirements.txt
         docker-compose -f env/docker-compose.yml up -d --build
     
     - name: Check host
       run: |
           docker ps -a
-          sleep 10; timeout 40s bash -c "while ! curl -Is localhost:8000; do
+          sleep 20; timeout 40s bash -c "while ! curl -Is localhost:8000; do
                                  sleep 2
                                  echo 'Failed to fetch web page.'
-                               done" || "docker-compose -f env/docker-compose.yml logs && exit 1"
+                               done" ||
+          "docker-compose -f env/docker-compose.yml logs && exit 1"
 
     - name: Test 
       run: |
