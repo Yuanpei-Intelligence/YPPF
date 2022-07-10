@@ -34,8 +34,7 @@ jobs:
           sleep 10; timeout 40s bash -c "while ! curl -Is localhost:8000; do
                                  sleep 2
                                  echo 'Failed to fetch web page.'
-                               done"
-          docker-compose -f env/docker-compose.yml logs
+                               done" || "docker-compose -f env/docker-compose.yml logs && exit 1"
 
     - name: Test 
       run: |
