@@ -26,8 +26,7 @@ jobs:
 
     - name: Start containers
       run: |
-        cat env/requirements.txt |
-        sed '/^#.*$/d' > env/requirements.txt
+        cat env/requirements.txt | sed '/^#.*$/d' > env/requirements.txt
         docker-compose -f env/docker-compose.yml up -d --build
     
     - name: Check host
