@@ -65,7 +65,7 @@ def appointment_data(require_data_masking: bool) -> list:
     for appoint in appoint_queryset:
         appointment = {
             "预约房间": appoint.Room.Rid.strip('"') + " " + appoint.Room.Rtitle.strip('"'),
-            "预约人": data_masking(appoint.major_student.Sid) if require_data_masking \
+            "预约人": data_masking(str(appoint.major_student.Sid)) if require_data_masking \
                          else appoint.major_student.name,
             "参与者": [],
             "开始时间": appoint.Astart.strftime("%Y年%m月%d日 %H:%M"),
@@ -73,7 +73,7 @@ def appointment_data(require_data_masking: bool) -> list:
             "预约用途": appoint.Ausage,
         }
         for student in appoint.students.all():
-            appointment["参与者"].append(data_masking(student.Sid) if require_data_masking \
+            appointment["参与者"].append(data_masking(str(student.Sid)) if require_data_masking \
                                       else student.name)
         appointments.append(appointment)
     return appointments
