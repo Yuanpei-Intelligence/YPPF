@@ -30,6 +30,7 @@ jobs:
     
     - name: Check host
       run: |
+          docker ps -a
           timeout 60s bash -c "while ! curl -Is localhost:8000; do
                                  sleep 2
                                  echo 'Failed to fetch web page.'
