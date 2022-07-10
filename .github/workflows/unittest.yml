@@ -32,9 +32,10 @@ jobs:
       run: |
           timeout 60s bash -c "while ! curl -Is localhost:8000; do
                                  sleep 2
-                               done" ||
-          "docker-compose -f env/docker-compose.yml logs && exit 1"
+                                 echo "Failed to fetch web page."
+                               done"
+          docker-compose -f env/docker-compose.yml logs
 
     - name: Test 
       run: |
-        docker-compose -f env/docker-compose.yml run yppf python3 manage.py test
+        docker-compose -f env/docker-compose.yml run yppf conda run -n yppf python3 manage.py test
