@@ -19,7 +19,7 @@ services:
       MYSQL_DATABASE: yppf
 
   yppf:
-    build: .
+    image: yuanpei/yppf
     command: sh -c "sleep 10 &&
                     python3 manage.py makemigrations && 
                     python3 manage.py migrate &&
@@ -27,7 +27,7 @@ services:
     ports:
       - 8000:8000
     volumes:
-      - .././:/yppf
+      - .././:/code
     depends_on:
       - mysql
 
