@@ -8,7 +8,7 @@ on:
 
 jobs:
 
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout
@@ -26,17 +26,17 @@ jobs:
 
     - name: Start containers
       run: |
-        cat env/requirements.txt | sed '/^#.*$/d' > env/requirements.txt
         docker-compose -f env/docker-compose.yml up -d --build
     
     - name: Check host
       run: |
-          docker ps -a
-          sleep 20; timeout 40s bash -c "while ! curl -Is localhost:8000; do
-                                 sleep 2
-                                 echo 'Failed to fetch web page.'
-                               done" ||
-          "docker-compose -f env/docker-compose.yml logs && exit 1"
+        docker ps -a
+        sleep 10
+        timeout 30s bash -c "while ! curl -Is localhost:8000; do
+                                sleep 3
+                                echo 'Failed to fetch web page.'
+                              done" ||
+        "docker-compose -f env/docker-compose.yml logs && exit 1"
 
     - name: Test 
       run: |
