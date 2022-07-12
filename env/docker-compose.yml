@@ -12,22 +12,21 @@ services:
         "--character-set-server=utf8mb4",
         "--collation-server=utf8mb4_bin"
       ]
-    ports:
-      - 3306:3306
     environment:
       MYSQL_ROOT_PASSWORD: secret
       MYSQL_DATABASE: yppf
 
   yppf:
-    build: .
+    image: yuanpei/yppf
     command: sh -c "sleep 10 &&
-                    python3 manage.py makemigrations && 
-                    python3 manage.py migrate &&
-                    python3 manage.py runserver 0.0.0.0:8000"
+                    conda run -n yppf pip3 install -r env/requirements.txt &&
+                    conda run -n yppf python3 manage.py makemigrations app Appointment &&
+                    conda run -n yppf python3 manage.py migrate &&
+                    conda run -n yppf python3 manage.py runserver 0.0.0.0:80"
     ports:
-      - 8000:8000
+      - 8000:80
     volumes:
-      - .././:/yppf
+      - .././:/code
     depends_on:
       - mysql
 

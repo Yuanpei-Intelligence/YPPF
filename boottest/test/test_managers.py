@@ -1,4 +1,5 @@
 from django.test import TestCase, SimpleTestCase
+
 from boottest.context_managers import *
 
 class CheckerTestCase(SimpleTestCase):
