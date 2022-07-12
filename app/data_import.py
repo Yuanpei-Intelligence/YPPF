@@ -568,7 +568,19 @@ def load_help(filepath: str, output_func: Callable=None, html=False):
     return try_output("成功导入帮助信息！", output_func, html)
 
 
-def load_course_record(filepath: str, output_func: Callable=None, html=False):
+def load_course_record(filepath: str, output_func: Callable=None, html:bool=False) -> str:
+    """从文件中导入学时信息
+
+    :param filepath: 文件路径,放在test文件夹内
+    :type filepath: str
+    :param output_func: 输出函数, defaults to None
+    :type output_func: Callable, optional
+    :param html: _description_, defaults to False
+    :type html: bool, optional
+    :return: 返回导入结果的提示
+    :rtype: str
+    """
+
     try:
         courserecord_file = load_file(filepath)
     except:

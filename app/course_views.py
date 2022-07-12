@@ -275,12 +275,16 @@ def showCourseActivity(request: HttpRequest):
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[showCourseRecord]', record_user=True)
-def showCourseRecord(request: HttpRequest):
-    '''
+def showCourseRecord(request: HttpRequest) -> HttpResponse:
+    """    
     展示及修改学时数据
     在开启修改功能前，显示本学期已完成的所有课程活动的学生的参与次数
     开启修改功能后，自动创建学时表，并且允许修改学时
-    '''
+    :param request: 请求
+    :type request: HttpRequest
+    :return: 下载导出的学时文件或者返回前端展示的数据
+    :rtype: HttpResponse
+    """
     # ----身份检查----
     _, user_type, _ = utils.check_user_type(request.user)
     me = utils.get_person_or_org(request.user)  # 获取自身
