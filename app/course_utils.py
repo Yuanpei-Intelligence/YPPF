@@ -48,7 +48,7 @@ from collections import Counter
 from datetime import datetime, timedelta
 from typing import Tuple, List
 
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.contrib.auth.models import User
 from django.db import transaction
 from django.db.models import F, Q, Sum, Prefetch
@@ -75,15 +75,32 @@ __all__ = [
 ]
 
 
-# 时间合法性的检查：开始早于结束，开始晚于当前时间
-def check_ac_time_course(start_time, end_time):
+def check_ac_time_course(start_time: datetime, end_time: datetime) -> bool:
+    """
+    时间合法性的检查：开始早于结束
+
+    :param start_time: 活动开始时间
+    :type start_time: datetime
+    :param end_time: 活动结束时间
+    :type end_time: datetime
+    :return: 是否合法
+    :rtype: bool
+    """
     if not start_time < end_time:
         return False
     return True
 
 
-def course_activity_base_check(request):
-    '''检查课程活动，是activity_base_check的简化版，失败时抛出AssertionError'''
+def course_activity_base_check(request: HttpRequest) -> dict:
+    """
+    检查课程活动，是activity_base_check的简化版，失败时抛出AssertionError
+
+    :param request: 修改/发起单次课程活动的请求
+    :type request: HttpRequest
+    :raises AssertionError: 活动时间非法
+    :return: context
+    :rtype: dict
+    """
     context = dict()
 
     # 读取活动名称和地点，检查合法性
@@ -112,11 +129,16 @@ def course_activity_base_check(request):
     return context
 
 
-def create_single_course_activity(request):
-    '''
+def create_single_course_activity(request: HttpRequest) -> Tuple[int, bool]:
+    """
     创建单次课程活动，是create_activity的简化版
     错误提示通过AssertionError抛出
-    '''
+
+    :param request: 发起单次课程活动的请求
+    :type request: HttpRequest
+    :return: 课程活动id，True(成功创建)/False(相似活动已存在)
+    :rtype: Tuple[int, bool]
+    """
     context = course_activity_base_check(request)
 
     # 获取组织和课程
@@ -218,11 +240,16 @@ def create_single_course_activity(request):
     return activity.id, True
 
 
-def modify_course_activity(request, activity):
-    '''
+def modify_course_activity(request: HttpRequest, activity: Activity):
+    """
     修改单次课程活动信息，是modify_activity的简化版
     错误提示通过AssertionError抛出
-    '''
+
+    :param request: 修改单次课程活动的请求
+    :type request: HttpRequest
+    :param activity: 待修改的活动
+    :type activity: Activity
+    """
     # 课程活动无需报名，在开始前都是等待中的状态
     assert activity.status == Activity.Status.WAITING, \
             "课程活动只有在等待状态才能修改。"
@@ -293,8 +320,8 @@ def modify_course_activity(request, activity):
     notifyActivity(activity.id, "modification_par", "\n".join(to_participants))
 
 
-def cancel_course_activity(request, activity, cancel_all=False):
-    '''
+def cancel_course_activity(request: HttpRequest, activity: Activity, cancel_all: bool = False):
+    """
     取消课程活动，是cancel_activity的简化版，在聚合页面被调用
 
     在聚合页面中，应确保activity是课程活动，并且应检查activity.status，
@@ -302,7 +329,16 @@ def cancel_course_activity(request, activity, cancel_all=False):
 
     成功无返回值，失败返回错误消息
     （或者也可以在聚合页面判断出来能不能取消）
-    '''
+
+    :param request: 取消单次课程活动的请求
+    :type request: HttpRequest
+    :param activity: 待取消的活动
+    :type activity: Activity
+    :param cancel_all: 取消该时段所有活动, defaults to False
+    :type cancel_all: bool, optional
+    :return: 取消失败的话返回错误信息
+    :rtype: string
+    """
     # 只有WAITING和PROGRESSING有可能修改
     if activity.status not in [
         Activity.Status.WAITING,
