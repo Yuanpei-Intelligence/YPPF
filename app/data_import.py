@@ -32,6 +32,11 @@ from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
 from django.db import transaction
 
+# type annotation
+from typing import Dict
+ContextType = Dict[str, str]
+
+# TODO: 还没修改完__all__
 __all__ = [
     # utils
     'create_user', 'create_person', 'create_org',
@@ -41,7 +46,7 @@ __all__ = [
     # basic views
     'load_stu_data', 'load_org_data',
     # views
-    'load_freshman_info', 'load_help', 'load_org_tag',
+    'load_freshman_data', 'load_help_data', 'load_org_tag',
     'load_tags_for_old_org', 'load_course_record',
     # debugs
     'load_activity_info', 'load_transfer_info', 'load_notification_info',
@@ -49,6 +54,10 @@ __all__ = [
     'load_feedback_data',
 ]
 
+# 一些命名规则:
+# load_*_data or load_*_info: views函数, 包含是否为 superuser 的检查
+# load_*:      实际创建的函数, 可能调用其他工具函数
+# 调用顺序: load_*_data ==calls=> load_* ==calls=> local tools 
 
 # local tools
 def create_user(id, rand_pw=False, reset_pw=None, **defaults):
@@ -275,11 +284,11 @@ def load_org_data(request):
     return render(request, "debugging.html", locals())
 
 
-def load_activity_info(request):
-    if not request.user.is_superuser:
-        context = {"message": "请先以超级账户登录后台后再操作！"}
-        return render(request, "debugging.html", context)
-    act_df = load_file("activityinfo.csv")
+def load_activity() -> ContextType:
+    try:
+        act_df = load_file("activityinfo.csv")
+    except:
+        return {"message": "没有找到transferinfo.csv,请确认该文件已经在test_data中。"}
     act_list = []
     for _, act_dict in act_df.iterrows():
         organization_id = str(act_dict["organization_id"])
@@ -291,7 +300,7 @@ def load_activity_info(request):
             context = {
                 "message": "请先导入小组信息！{username}".format(username=organization_id)
             }
-            return render(request, "debugging.html", context)
+            return context
         title = act_dict["title"]
         start = act_dict["start"]
         end = act_dict["end"]
@@ -321,14 +330,22 @@ def load_activity_info(request):
     for act in act_list:
         act.save()
     context = {"message": "导入活动信息成功！"}
-    return render(request, "debugging.html", context)
+    return context
 
 
-def load_transfer_info(request):
+def load_activity_info(request):
     if not request.user.is_superuser:
         context = {"message": "请先以超级账户登录后台后再操作！"}
         return render(request, "debugging.html", context)
-    act_df = load_file("transferinfo.csv")
+    context = load_activity()
+    return render(request, "debugging.html", context)
+
+
+def load_transfer() -> ContextType:
+    try:
+        act_df = load_file("transferinfo.csv")
+    except:
+        return {"message": "没有找到transferinfo.csv,请确认该文件已经在test_data中。"}
     act_list = []
     for _, act_dict in act_df.iterrows():
         id = act_dict["id"]
@@ -371,14 +388,21 @@ def load_transfer_info(request):
         )
     TransferRecord.objects.bulk_create(act_list)
     context = {"message": "导入转账信息成功！"}
-    return render(request, "debugging.html", context)
+    return context
 
 
-def load_notification_info(request):
+def load_transfer_info(request):
     if not request.user.is_superuser:
         context = {"message": "请先以超级账户登录后台后再操作！"}
         return render(request, "debugging.html", context)
-    not_df = load_file("notificationinfo.csv")
+    return render(request, "debugging.html", context)
+
+
+def load_notification() -> ContextType:
+    try:
+        not_df = load_file("notificationinfo.csv")
+    except:
+        return {"message": "没有找到notificationinfo.csv,请确认该文件已经在test_data中。"}
     not_list = []
     for _, not_dict in not_df.iterrows():
         id = not_dict["id"]
@@ -399,7 +423,7 @@ def load_notification_info(request):
                     username1=receiver, username2=sender
                 )
             }
-            return render(request, "debugging.html", context)
+            return context
         status = not_dict["status"]
         title = not_dict["title"]
         start_time = str(not_dict["start_time"])
@@ -435,6 +459,14 @@ def load_notification_info(request):
         )
     Notification.objects.bulk_create(not_list)
     context = {"message": "导入通知信息成功！"}
+    return context
+
+
+def load_notification_info(request):
+    if not request.user.is_superuser:
+        context = {"message": "请先以超级账户登录后台后再操作！"}
+        return render(request, "debugging.html", context)
+    context = load_notification()
     return render(request, "debugging.html", context)
 
 
@@ -514,12 +546,12 @@ def load_stu():
     return context
 
 
-def load_freshman_info(request):
-    if not request.user.is_superuser:
-        context = {"message": "请先以超级账户登录后台后再操作！"}
-        return render(request, "debugging.html", context)
+def load_freshman() -> ContextType:
+    try:
+        freshman_df = load_file("freshman.csv")
+    except:
+        return {"message": "没有找到freshman.csv,请确认该文件已经在test_data中。"}
 
-    freshman_df = load_file("freshman.csv")
     freshman_list = []
     for _, freshman_dict in tqdm(freshman_df.iterrows()):
         sid = freshman_dict["学号"]
@@ -543,18 +575,23 @@ def load_freshman_info(request):
     Freshman.objects.bulk_create(freshman_list)
 
     context = {"message": "导入新生信息成功！"}
-    return render(request, "debugging.html", context)
+    return context
 
 
-def load_help(request):
+def load_freshman_data(request):
     if not request.user.is_superuser:
         context = {"message": "请先以超级账户登录后台后再操作！"}
         return render(request, "debugging.html", context)
+    context = load_freshman()
+    return render(request, "debugging.html", context)
+
+
+def load_help() -> ContextType:
     try:
         help_df = load_file("help.csv")
     except:
         context = {"message": "没有找到help.csv,请确认该文件已经在test_data中。"}
-        return render(request, "debugging.html", context)
+        return context
     # helps = [Help(title=title, content=content) for title, content in help_dict.items()]
     for _, help_dict in help_df.iterrows():
         content = help_dict["content"]
@@ -563,6 +600,14 @@ def load_help(request):
         new_help.content = content
         new_help.save()
     context = {"message": "成功导入帮助信息！"}
+    return context
+
+
+def load_help_data(request):
+    if not request.user.is_superuser:
+        context = {"message": "请先以超级账户登录后台后再操作！"}
+        return render(request, "debugging.html", context)
+    context = load_help()
     return render(request, "debugging.html", context)
 
 

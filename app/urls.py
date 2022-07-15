@@ -106,7 +106,7 @@ urlpatterns = [
 ] + [
     # 数据导入
     path("loadstudata/", data_import.load_stu_data, name="load_stu_data"),
-    path("loadfreshman/", data_import.load_freshman_info, name="load_freshman"),
+    path("loadfreshman/", data_import.load_freshman_data, name="load_freshman"),
     path("loadorgdata/", data_import.load_org_data, name="load_org_data"),
     path("loadorgtag/", data_import.load_org_tag, name="loag_org_tag"),
     path("loadoldorgtags/", data_import.load_tags_for_old_org, name="load_tags_for_old_org"),
@@ -120,7 +120,7 @@ urlpatterns = [
     # path("loadnotification/",
     #      data_import.load_notification_info,
     #      name="load_notification_info"),    #服务器弃用
-    path("loadhelp/", data_import.load_help, name="load_help"),
+    path("loadhelp/", data_import.load_help_data, name="load_help"),
     path("loadcourserecord/", data_import.load_course_record, name="load_course_record"),
 ] + [
     # 埋点
