@@ -1,0 +1,1 @@
+from data_analysis.management import register_load
