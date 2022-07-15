@@ -48,7 +48,12 @@ def base_get_setting(path: str='', trans_func=None, default=None,
     except Exception as e:
         if raise_exception:
             raise
-        if DEBUG:
+        try:
+            assert DEBUG is not None, '正在settings中加载设置'
+            debug = DEBUG
+        except:
+            debug = True
+        if debug:
             if default is None:
                 print(f'{e}, but given no default')
             else:

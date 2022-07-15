@@ -1,6 +1,7 @@
 import threading
 import os
-from boottest import local_dict
+from boottest import base_get_setting
+from app.constants import SYSTEM_LOG
 from datetime import datetime, timedelta
 
 from functools import wraps
@@ -41,6 +42,17 @@ if not os.path.exists(os.path.join(__log_root_path, __log_user)):
 __log_user_path = os.path.join(__log_root_path, __log_user)
 __log_detailed_path = os.path.join(__log_root_path, "traceback_record")
 
+
+# 记录相关的常量
+SYSTEM_LOG = SYSTEM_LOG
+DEBUG_IDS: list = base_get_setting(
+    'debug_stuids',
+    lambda x: x.replace(' ', '').split(',') if isinstance(x, str) else x,
+    default=[], raise_exception=False,
+)
+
+
+# 屏蔽设置记录等级以下的等级
 def status_enabled(status_code: str):
     # 待完善，半成品
     level_up = [STATE_DEBUG, STATE_INFO, STATE_WARNING, STATE_ERROR]
@@ -50,30 +62,28 @@ def status_enabled(status_code: str):
         return False
 
 
-# 通用日志写入程序 写入时间(datetime.now()),操作主体(Sid),操作说明(Str),写入函数(Str)
-# 参数说明：第一为Sid也是文件名，第二位消息，第三位来源的函数名（类别）
-# 如果是系统相关的 请写local_dict["system_log"]
-def operation_writer(user, message, source=None, status_code: str=STATE_INFO):
+def operation_writer(user: str, message: str, source: str='', status_code: str=STATE_INFO):
+    '''
+    通用日志写入程序
+    - 写入时间, 操作主体(user), 操作说明(Str),写入函数(Str)
+    - 参数说明：第一为Sid也是文件名，第二位消息，第三位来源的函数名（类别）
+    - 如果是系统相关的 请写SYSTEM_LOG
+    '''
     if not status_enabled(status_code):
         return
     
     __lock.acquire()
     try:
-        timestamp = str(datetime.now())
-        source = str(source).ljust(30)
+        timestamp = datetime.now()
         status = status_code.ljust(10)
-        message = f"{timestamp} {source}{status}: {message}\n"
+        file_message = f"{timestamp} {str(source).ljust(30)} {status}: {message}\n"
 
         with open(os.path.join(__log_user_path, f"{str(user)}.log"), mode="a") as journal:
-            journal.write(message)
+            journal.write(file_message)
 
-        if status_code == STATE_ERROR and local_dict.get('debug_stuids'):
+        if status_code == STATE_ERROR and DEBUG_IDS:
             from app.wechat_send import send_wechat
-            receivers = list(local_dict['debug_stuids'])
-            if isinstance(receivers, str):
-                receivers = receivers.replace(' ', '').split(',')
-            receivers = list(map(str, receivers))
-            send_message = message
+            send_message = f'{source} {timestamp}: {message}'
             if len(send_message) > 400:
                 send_message = '\n'.join([
                     send_message[:300],
@@ -81,7 +91,7 @@ def operation_writer(user, message, source=None, status_code: str=STATE_INFO):
                     send_message[-100:],
                     '详情请查看log'
                 ])
-            send_wechat(receivers, f'YPPF {settings.MY_ENV}发生异常\n' + send_message, card=len(message) < 200)
+            send_wechat(DEBUG_IDS, f'YPPF {settings.MY_ENV}发生异常\n' + send_message, card=len(message) < 200)
     except Exception as e:
         # 最好是发送邮件通知存在问题
         # TODO:
@@ -151,7 +161,7 @@ def except_captured(return_value=None, except_type=Exception,
                     if show_traceback:
                         msg += '\n详细信息：\n\t'
                         msg += traceback.format_exc().replace('\n', '\n\t')
-                    operation_writer(local_dict['system_log'],
+                    operation_writer(SYSTEM_LOG,
                         msg, source, status_code)
                 if return_value is not None:
                     return return_value
@@ -181,11 +191,8 @@ def record_traceback(request, e):
     with open(__log_path, "w") as f:
         json.dump(d, f)
 
-    if local_dict.get('debug_stuids'):
+    if DEBUG_IDS:
         from app.wechat_send import send_wechat
-        receivers = list(local_dict['debug_stuids'])
-        if isinstance(receivers, str):
-            receivers = receivers.replace(' ', '').split(',')
-        receivers = list(map(str, receivers))
-        message = f"错误类型：{type(e)}\n + 记录路径：{__log_path}\n"
-        send_wechat(receivers, f'YPPF {settings.MY_ENV} 记录到错误详情\n' + f"记录路径：{__log_path}")
+        message = f"错误信息：{repr(e)}\n + 记录路径：{__log_path}\n"
+        message = f'YPPF {settings.MY_ENV} 记录到错误详情\n{message}'
+        send_wechat(DEBUG_IDS, message)
