@@ -17,5 +17,5 @@ class LoadCommandTest(TestCase):
             return
         register_load(cmd_label, _load_func, filepath)
         out = StringIO()
-        call_command('load', cmd_label, stdout=out)
+        call_command('load', cmd_label, '-d=', stdout=out, stderr=out)
         self.assertIn(f'filepath is {filepath}', out.getvalue())
