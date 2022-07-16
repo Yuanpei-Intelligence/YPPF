@@ -34,7 +34,7 @@ class Command(BaseCommand):
             files = ['' for _ in range(len(labels))]
         
         for label, filepath in zip(labels, files):
-            self.stderr.write(f'Loading {label}')
+            self.stdout.write(f'Loading {label}')
             # 测试需要验证成功注册了函数，请删除下行
             try:
                 load_function, default_path = load_map.get(label)
@@ -44,7 +44,7 @@ class Command(BaseCommand):
             if not filepath:
                 filepath = default_path
             
-            load_function(filepath, base_dir=base_dir, output_func=self.stderr.write)
+            load_function(filepath, base_dir=base_dir, output_func=self.stdout.write)
 
-            self.stderr.write(f'成功 load {label}')
+            self.stdout.write(f'成功 load {label}')
 

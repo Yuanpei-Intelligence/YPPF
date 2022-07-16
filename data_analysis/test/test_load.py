@@ -9,7 +9,7 @@ class LoadCommandTest(TestCase):
         '''测试注册指令'''
         cmd_label = '_test'
         filepath = 'test.csv'
-        def _load_func(filepath, output_func=None):
+        def _load_func(filepath, output_func=None, base_dir=''):
             output = f'filepath is {filepath}'
             if filepath is None:
                 return output_func
