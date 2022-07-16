@@ -33,10 +33,6 @@ from django.contrib.auth.models import User
 from django.shortcuts import render, redirect
 from django.db import transaction
 
-# type annotation
-from typing import Dict
-ContextType = Dict[str, str]
-
 __all__ = [
     # utils
     'create_user', 'create_person', 'create_org',
@@ -146,7 +142,7 @@ def try_output(msg: str, output_func: Callable=None, html=True):
         return msg        # output_func为None，返回msg的内容
 
 
-def as_load_view(load_func: Callable, filepath: str):
+def as_load_view(load_func: Callable, filepath: str, base_dir='test_data/'):
     '''
     将导入函数作为视图，检查权限
 
@@ -154,29 +150,28 @@ def as_load_view(load_func: Callable, filepath: str):
     :type load_func: Callable[Tuple[str, Callable, bool], Optional[str]]
     :param filepath: 加载的文件路径
     :type filepath: str
+    :param base_dir: 测试目录, defaults to 'test_data/'
+    :type base_dir: str, optional
     '''
     def _load_view(request):
         if request.user.is_superuser:
-            message = load_func(filepath, html=True)
+            message = load_func(base_dir + filepath, html=True)
         else:
             message = "请先以超级账户登录后台后再操作！"
         return render(request, "debugging.html", dict(message=message))
     return _load_view
 
-def load_file(filepath: str, base_dir: str) -> 'pd.DataFrame':
+
+def load_file(filepath: str) -> 'pd.DataFrame':
     '''
     加载表格
 
     :param filepath: 测试目录下的相对路径，通常为文件名文件名
     :type filepath: str
-    :param base_dir: 测试目录, defaults to 'test_data/'
-    :type base_dir: str, optional
     :return: 加载出的表格
     :rtype: DataFrame
     '''
-    if not base_dir:
-        base_dir = 'test_data/'
-    full_path = base_dir + filepath
+    full_path = filepath
     if filepath.endswith('xlsx') or filepath.endswith('xls'):
         return pd.read_excel(f'{full_path}', sheet_name=None)
     if filepath.endswith('csv'):
@@ -184,7 +179,7 @@ def load_file(filepath: str, base_dir: str) -> 'pd.DataFrame':
     return pd.read_table(f'{full_path}', dtype=object, encoding='utf-8')
 
 
-def load_orgtype(filepath: str, output_func: Callable=None, html=False, debug=True, base_dir: str=''):
+def load_orgtype(filepath: str, output_func: Callable=None, html=False, debug=True):
     if debug:
         username = "someone"
         user, mid = User.objects.get_or_create(username=username)
@@ -195,7 +190,7 @@ def load_orgtype(filepath: str, output_func: Callable=None, html=False, debug=Tr
         Nperson, mid = NaturalPerson.objects.get_or_create(person_id=user)
         Nperson.name = "待定"
         Nperson.save()
-    org_type_df = load_file(filepath, base_dir)
+    org_type_df = load_file(filepath)
     for _, otype_dict in org_type_df.iterrows():
         type_id = int(otype_dict["otype_id"])
         type_name = otype_dict["otype_name"]
@@ -217,8 +212,8 @@ def load_orgtype(filepath: str, output_func: Callable=None, html=False, debug=Tr
     return try_output("导入小组类型信息成功！", output_func, html)
 
 
-def load_org(filepath: str, output_func: Callable=None, html=False, base_dir: str=''):
-    org_df = load_file(filepath, base_dir)
+def load_org(filepath: str, output_func: Callable=None, html=False):
+    org_df = load_file(filepath)
     msg = ''
     for _, org_dict in org_df.iterrows():
         try:
@@ -311,8 +306,8 @@ def load_org(filepath: str, output_func: Callable=None, html=False, base_dir: st
     return try_output(msg, output_func, html)
 
 
-def load_activity(filepath: str, output_func: Callable=None, html=False, base_dir: str=''):
-    act_df = load_file(filepath, base_dir)
+def load_activity(filepath: str, output_func: Callable=None, html=False):
+    act_df = load_file(filepath)
     act_list = []
     for _, act_dict in act_df.iterrows():
         organization_id = str(act_dict["organization_id"])
@@ -358,8 +353,8 @@ def load_activity(filepath: str, output_func: Callable=None, html=False, base_di
     return try_output("导入活动信息成功！", output_func, html)
 
 
-def load_transfer(filepath: str, output_func: Callable=None, html=False, base_dir: str=''):
-    act_df = load_file(filepath, base_dir)
+def load_transfer(filepath: str, output_func: Callable=None, html=False):
+    act_df = load_file(filepath)
     act_list = []
     for _, act_dict in act_df.iterrows():
         id = act_dict["id"]
@@ -404,8 +399,8 @@ def load_transfer(filepath: str, output_func: Callable=None, html=False, base_di
     return try_output("导入转账信息成功！", output_func, html)
 
 
-def load_notification(filepath: str, output_func: Callable=None, html=False, base_dir: str=''):
-    not_df = load_file(filepath, base_dir)
+def load_notification(filepath: str, output_func: Callable=None, html=False):
+    not_df = load_file(filepath)
     not_list = []
     for _, not_dict in not_df.iterrows():
         id = not_dict["id"]
@@ -459,8 +454,8 @@ def load_notification(filepath: str, output_func: Callable=None, html=False, bas
     return try_output("导入通知信息成功！", output_func, html)
 
 
-def load_stu(filepath: str, output_func: Callable=None, html=False, base_dir: str=''):
-    stu_df = load_file(filepath, base_dir)
+def load_stu(filepath: str, output_func: Callable=None, html=False):
+    stu_df = load_file(filepath)
     total = 0
     stu_list = []
     exist_list = []
@@ -533,8 +528,8 @@ def load_stu(filepath: str, output_func: Callable=None, html=False, base_dir: st
     return try_output(msg, output_func, html)
 
 
-def load_freshman(filepath: str, output_func: Callable=None, html=False, base_dir: str=''):
-    freshman_df = load_file(filepath, base_dir)
+def load_freshman(filepath: str, output_func: Callable=None, html=False):
+    freshman_df = load_file(filepath)
     freshman_list = []
     for _, freshman_dict in tqdm(freshman_df.iterrows()):
         sid = freshman_dict["学号"]
@@ -559,9 +554,9 @@ def load_freshman(filepath: str, output_func: Callable=None, html=False, base_di
     return try_output("导入新生信息成功！", output_func, html)
 
 
-def load_help(filepath: str, output_func: Callable=None, html=False, base_dir: str=''):
+def load_help(filepath: str, output_func: Callable=None, html=False):
     try:
-        help_df = load_file(filepath, base_dir)
+        help_df = load_file(filepath)
     except:
         return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
     for _, help_dict in help_df.iterrows():
@@ -573,9 +568,9 @@ def load_help(filepath: str, output_func: Callable=None, html=False, base_dir: s
     return try_output("成功导入帮助信息！", output_func, html)
 
 
-def load_course_record(filepath: str, output_func: Callable=None, html=False, base_dir: str=''):
+def load_course_record(filepath: str, output_func: Callable=None, html=False):
     try:
-        courserecord_file = load_file(filepath, base_dir)
+        courserecord_file = load_file(filepath)
     except:
         return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
 
@@ -783,9 +778,9 @@ def load_course_record(filepath: str, output_func: Callable=None, html=False, ba
     return try_output(display_message, output_func, html)
 
 
-def load_org_tag(filepath: str, output_func: Callable=None, html=False, base_dir: str=''):
+def load_org_tag(filepath: str, output_func: Callable=None, html=False):
     try:
-        org_tag_def = load_file(filepath, base_dir)
+        org_tag_def = load_file(filepath)
     except:
         return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
     tag_list = []
@@ -802,9 +797,9 @@ def load_org_tag(filepath: str, output_func: Callable=None, html=False, base_dir
     return try_output("导入组织标签类型信息成功！", output_func, html)
 
 
-def load_old_org_tags(filepath: str, output_func: Callable=None, html=False, base_dir: str=''):
+def load_old_org_tags(filepath: str, output_func: Callable=None, html=False):
     try:
-        org_tag_def = load_file(filepath, base_dir)
+        org_tag_def = load_file(filepath)
     except:
         return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
     error_dict = {}
@@ -833,10 +828,10 @@ def load_old_org_tags(filepath: str, output_func: Callable=None, html=False, bas
     return try_output(msg, output_func, html)
 
 
-def load_feedback(filepath: str, output_func: Callable=None, html=False, base_dir: str=''):
+def load_feedback(filepath: str, output_func: Callable=None, html=False):
     '''该函数用于导入反馈详情的数据(csv)'''
     try:
-        feedback_df = load_file(filepath, base_dir)
+        feedback_df = load_file(filepath)
     except:
         return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
     error_dict = {}
@@ -909,10 +904,10 @@ def load_feedback(filepath: str, output_func: Callable=None, html=False, base_di
     return try_output(msg, output_func, html)
 
 
-def load_feedback_type(filepath: str, output_func: Callable=None, html=False, base_dir: str=''):
+def load_feedback_type(filepath: str, output_func: Callable=None, html=False):
     '''该函数用于导入反馈类型的数据(csv)'''
     try:
-        feedback_type_df = load_file(filepath, base_dir)
+        feedback_type_df = load_file(filepath)
     except:
         return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
     type_list = []
@@ -944,11 +939,11 @@ def load_feedback_type(filepath: str, output_func: Callable=None, html=False, ba
     return try_output("导入反馈类型信息成功！", output_func, html)
 
 
-def load_feedback_comments(filepath: str, output_func: Callable=None, html=False, base_dir: str=''):
+def load_feedback_comments(filepath: str, output_func: Callable=None, html=False):
     '''该函数用于导入反馈的评论(feedbackcomments.csv)
     需要先导入feedbackinf.csv'''
     try:
-        feedback_df = load_file(filepath, base_dir)
+        feedback_df = load_file(filepath)
     except:
         return try_output(f"没有找到{filepath},请确认该文件已经在test_data中。", output_func, html)
     error_dict = {}

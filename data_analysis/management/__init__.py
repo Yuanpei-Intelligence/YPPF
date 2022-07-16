@@ -19,7 +19,8 @@ DumpFunc = Callable[[StartTime, EndTime, Optional[HashFunc]], DataFrame]
 
 
 def register_load(cmd_label: str, load_func: LoadFunc, default_path: str):
-    load_map[cmd_label] = (load_func, default_path) 
+    '''将导入函数注册到指令列表中'''
+    load_map[cmd_label] = load_func, default_path
 
 
 def register_dump(cmd_label: str, dump_func: DumpFunc, default_path: str):
