@@ -112,9 +112,21 @@ DATABASES = {
             'charset': 'utf8mb4',
         #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         },
-    }
+    },
+    # 除服务器外无法连接，暂时不启用
+    # "yp_lib": {
+    #     "ENGINE": "mssql",
+    #     "NAME": base_get_setting('yp_lib/NAME'),
+    #     "HOST": base_get_setting('yp_lib/HOST'),
+    #     "PORT": 1433,
+    #     "USER": base_get_setting('yp_lib/USER'),
+    #     "PASSWORD": base_get_setting('yp_lib/PASSWORD'),
+    #     'OPTIONS': {
+    #         'driver': 'ODBC Driver 18 for SQL Server',   
+    #         'extra_params': 'TrustServerCertificate=yes',
+    #     },
+    # },
 }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/2.1/ref/settings/#auth-password-validators
