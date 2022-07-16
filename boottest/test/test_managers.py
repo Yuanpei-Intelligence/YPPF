@@ -2,7 +2,7 @@ from django.test import TestCase, SimpleTestCase
 
 from boottest.context_managers import *
 
-class CheckerTestCase(SimpleTestCase):
+class CheckerTest(SimpleTestCase):
     @classmethod
     def setUpClass(cls) -> None:
         from boottest.context_managers import DEFAULT_EXC_TYPE

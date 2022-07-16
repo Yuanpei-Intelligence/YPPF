@@ -2,8 +2,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate
 
-
-class DBTestCase(TestCase):
+class DBTest(TestCase):
     '''A dumb to make sure the test db works.'''
 
     @classmethod
