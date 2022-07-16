@@ -243,15 +243,9 @@ def stuinfo(request: HttpRequest, name=None):
             assert user_type == "Person"
             return redirect(append_query(oneself.get_absolute_url(), **request.GET.dict()))
     else:
-        # 先对可能的加号做处理，name可能为 "姓名" 或者 "姓名 id"
+        # 先对可能的加号做处理
         name_list = name.replace(' ', '+').split("+")
-        try: 
-            obtain_id = int(name_list[-1])
-            name_list.pop()
-        except:
-            pass
-        finally:
-            name = " ".join(name_list)
+        name = name_list[0]
         person = NaturalPerson.objects.activated().filter(name=name)
         if len(person) == 0:  # 查无此人
             return redirect(message_url(wrong('用户不存在!')))
