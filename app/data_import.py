@@ -37,7 +37,6 @@ from django.db import transaction
 from typing import Dict
 ContextType = Dict[str, str]
 
-# TODO: 还没修改完__all__
 __all__ = [
     # utils
     'create_user', 'create_person', 'create_org',
@@ -53,10 +52,6 @@ __all__ = [
     'load_org_view', 'load_feedback_view',
 ]
 
-# 一些命名规则:
-# load_*_data or load_*_info: views函数, 包含是否为 superuser 的检查
-# load_*:      实际创建的函数, 可能调用其他工具函数
-# 调用顺序: load_*_data ==calls=> load_* ==calls=> local tools 
 
 # local tools
 def create_user(id, rand_pw=False, reset_pw=None, **defaults):
@@ -168,8 +163,7 @@ def as_load_view(load_func: Callable, filepath: str):
         return render(request, "debugging.html", dict(message=message))
     return _load_view
 
-
-def load_file(filepath: str, base_dir='test_data/') -> 'pd.DataFrame':
+def load_file(filepath: str, base_dir: str='test_data/') -> 'pd.DataFrame':
     '''
     加载表格
 
