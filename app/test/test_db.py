@@ -2,8 +2,7 @@ from django.test import TestCase
 
 from app.models import *
 
-
-class MigrateTestCase(TestCase):
+class MigrateTest(TestCase):
     '''Another dumb to make sure the test db works.'''
     @classmethod
     def setUpTestData(cls):

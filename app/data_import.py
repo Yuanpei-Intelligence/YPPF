@@ -142,7 +142,7 @@ def try_output(msg: str, output_func: Callable=None, html=True):
         return msg        # output_func为None，返回msg的内容
 
 
-def as_load_view(load_func: Callable, filepath: str):
+def as_load_view(load_func: Callable, filepath: str, base_dir='test_data/'):
     '''
     将导入函数作为视图，检查权限
 
@@ -150,28 +150,28 @@ def as_load_view(load_func: Callable, filepath: str):
     :type load_func: Callable[Tuple[str, Callable, bool], Optional[str]]
     :param filepath: 加载的文件路径
     :type filepath: str
+    :param base_dir: 测试目录, defaults to 'test_data/'
+    :type base_dir: str, optional
     '''
     def _load_view(request):
         if request.user.is_superuser:
-            message = load_func(filepath, html=True)
+            message = load_func(base_dir + filepath, html=True)
         else:
             message = "请先以超级账户登录后台后再操作！"
         return render(request, "debugging.html", dict(message=message))
     return _load_view
 
 
-def load_file(filepath: str, base_dir='test_data/') -> 'pd.DataFrame':
+def load_file(filepath: str) -> 'pd.DataFrame':
     '''
     加载表格
 
     :param filepath: 测试目录下的相对路径，通常为文件名文件名
     :type filepath: str
-    :param base_dir: 测试目录, defaults to 'test_data/'
-    :type base_dir: str, optional
     :return: 加载出的表格
     :rtype: DataFrame
     '''
-    full_path = base_dir + filepath
+    full_path = filepath
     if filepath.endswith('xlsx') or filepath.endswith('xls'):
         return pd.read_excel(f'{full_path}', sheet_name=None)
     if filepath.endswith('csv'):
