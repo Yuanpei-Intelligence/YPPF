@@ -79,9 +79,16 @@ class Readers(models.Model):
     """
     读者信息
     """
-    # 读者编号与姓名一一对应
+    # 该编号与借书记录中的readerid相对应
     id = models.AutoField("编号", db_column='ID', primary_key=True)
+    # 学生姓名
     name = models.CharField("姓名", db_column='Name', max_length=100)
+    # * 目前数据库还需整理，这一列可能存在数据错误或缺失
+    idcardno = models.CharField("学号",
+                                db_column='IDCardNo',
+                                max_length=30,
+                                blank=True,
+                                null=True)
 
     # 以下为无关数据
     sex = models.IntegerField(db_column='Sex', blank=True, null=True)
@@ -90,17 +97,13 @@ class Readers(models.Model):
                               max_length=50,
                               blank=True,
                               null=True)
+    idcardtype = models.IntegerField(db_column='IDCardType',
+                                     blank=True,
+                                     null=True)
     cardserialno = models.CharField(db_column='CardSerialNo',
                                     max_length=20,
                                     blank=True,
                                     null=True)
-    idcardtype = models.IntegerField(db_column='IDCardType',
-                                     blank=True,
-                                     null=True)
-    idcardno = models.CharField(db_column='IDCardNo',
-                                max_length=30,
-                                blank=True,
-                                null=True)
     levelr = models.IntegerField(db_column='LevelR', blank=True, null=True)
     readertype = models.IntegerField(db_column='ReaderType',
                                      blank=True,
