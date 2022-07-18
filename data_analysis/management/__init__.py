@@ -25,6 +25,7 @@ def register_load(cmd_label: str, load_func: LoadFunc, default_path: str):
 
 def register_dump(cmd_label: str, dump_func: DumpFunc, default_path: str):
     # 未完成，请修改
+    # 请为每个命令指定default_path, .xlsx后缀
     return NotImplemented
     dump_map[cmd_label] = dump_func, ...
 
