@@ -62,3 +62,6 @@ __pycache__/
 # OPS Files *
 *.ini
 *.sh
+
+# for this PR only
+static/

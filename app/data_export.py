@@ -3,7 +3,7 @@ from app.models import (CourseRecord, Feedback, NaturalPerson)
 import pandas as pd
 from typing import Callable
 from datetime import datetime
-from django.db.models import Q, Sum, CharField, IntegerField
+from django.db.models import Q, Sum, CharField, IntegerField, Count
 
 __all__ = ['course_data', 'feedback_data']
 
@@ -35,37 +35,36 @@ def course_data(year: IntegerField = None,
         filter_kws.update(year=year)
     if semester is not None:
         filter_kws.update(semester=semester)
-    courses = pd.DataFrame(columns=('姓名', '门数', '次数', '学时'))
-    for person in all_person:
-        records = CourseRecord.objects.filter(person=person)
-        record_num = records.filter(**filter_kws).count()
-        record_times = records.aggregate(val=Sum(
-            'attend_times',
-            filter=Q(invalid=False,
-                   **filter_kws))).values()
-        invalid_times = records.aggregate(val=Sum(
-            'attend_times',
-            filter=Q(invalid=True,
-                   **filter_kws))).values()
-        record_hours = records.aggregate(val=Sum(
-            'total_hours',
-            filter=Q(invalid=False,
-                   **filter_kws))).values()
-        invalid_hours = records.aggregate(val=Sum(
-            'total_hours',
-            filter=Q(invalid=True,
-                   **filter_kws))).values()
+    courses = pd.DataFrame(columns=('姓名', '学号', '门数', '次数', '学时'))
+    relate_filter_kws = {
+        f'courserecord__{k}': v
+        for k, v in filter_kws.items()
+    }
+    person_record = all_person.annotate(
+        record_times=Sum('courserecord__attend_times',
+                         filter=Q(courserecord__invalid=False,
+                                  **relate_filter_kws)),
+        invalid_times=Sum('courserecord__attend_times',
+                          filter=Q(courserecord__invalid=True,
+                                   **relate_filter_kws)),
+        record_hours=Sum('courserecord__total_hours',
+                         filter=Q(courserecord__invalid=False,
+                                  **relate_filter_kws)),
+        invalid_hours=Sum(
+            'courserecord__total_hours',
+            filter=Q(courserecord__invalid=True,
+                     **relate_filter_kws))).order_by('person_id__username')
+    for person in person_record:
         courses.loc[len(courses.index)] = [
-            hash_func(str(person.peron_id.name)) if hash_func is not None \
+            hash_func(str(person.person_id.name)) if hash_func is not None \
                                else person.name,    # 姓名
-            record_num,  # 总门数
-            record_times if include_invalid is False \
-                else record_times + invalid_times,     # 次数
-            record_hours if include_invalid is False \
-                else record_hours + invalid_hours     # 学时
+            person.person_id,   # 学号
+            CourseRecord.objects.filter(**filter_kws,person=person).count(),  # 总门数
+            person.record_times if include_invalid is False \
+                else person.record_times + person.invalid_times,     # 次数
+            person.record_hours if include_invalid is False \
+                else person.record_hours + person.invalid_hours     # 学时
         ]
-    # test
-    print(courses)
     return courses
 
 
@@ -95,21 +94,23 @@ def feedback_data(
         filter_kws.update(feedback_time__gte=start_time)
     if end_time is not None:
         filter_kws.update(feedback_time__lte=end_time)
-    feedbacks = pd.DataFrame(columns=('姓名', '提交反馈数', '已解决反馈数'))
-    for person in all_person:
-        records = Feedback.objects.filter(
-            person_id=person,
-            **filter_kws,
+    feedbacks = pd.DataFrame(columns=('姓名', '学号', '提交反馈数', '已解决反馈数'))
+    person_record = all_person.annotate(
+        total_num=Count(
+            'feedback',
+            filter=Q(**filter_kws)
+        ),
+        solved_num=Count(
+            'feedback',
+            filter=Q(feedback__solve_status=0,**filter_kws)
         )
-        total_num = records.count()
-        solved_num = records.filter(
-            solve_status=Feedback.SolveStatus.SOLVED).count()
+    ).order_by('person_id__username')
+    for person in person_record:
         feedbacks.loc[len(feedbacks.index)]=[
             hash_func(str(person.peron_id.name)) if hash_func is not None \
                                else person.name,    # 姓名
-            total_num,      # 总提交数
-            solved_num      # 已解决提交数
+            person.person_id,       # 学号
+            person.total_num,      # 总提交数
+            person.solved_num      # 已解决提交数
             ]
-    #test
-    print(feedbacks)
     return feedbacks
