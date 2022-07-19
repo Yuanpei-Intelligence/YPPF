@@ -18,7 +18,7 @@ def organization_data(start_time: datetime = None,
                      end_time: datetime = None, 
                      hash_func: Callable = None ) -> pd.DataFrame:
     """ 导出：组织数量，每个组织办的活动的数量及参与人数。
-    
+
     :param start_time: 筛选的起始时间, defaults to None
     :type start_time: datetime, optional
     :param end_time: 筛选的终止时间, defaults to None
