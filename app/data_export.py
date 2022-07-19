@@ -39,13 +39,10 @@ def organization_data(start_time: datetime = None,
     if end_time :
         activity_queryset = activity_queryset.filter(start__lte=end_time)
 
-    orga_num = orga_queryset.count()
-    acti_allnum = 0 # 总活动个数
     # 便历各个organization
     for orga in orga_queryset:
         orga_acti_queryset = activity_queryset.filter(organization_id=orga)
         acti_num = orga_acti_queryset.count()
-        acti_allnum += acti_num
         if  acti_num == 0: # 若没有活动，用/填充
             acti_frame.loc[len(acti_frame.index)] = [
                 orga.oname, 0,
@@ -63,11 +60,11 @@ def organization_data(start_time: datetime = None,
             ]
     # 最后两行输出组织个数和活动个数
     acti_frame.loc[len(acti_frame.index)] = [
-        '组织个数', orga_num,
+        '组织个数', orga_queryset.count(),
         "/","/","/","/" 
     ]
     acti_frame.loc[len(acti_frame.index)] = [
-        '活动个数', acti_allnum,
+        '活动个数', activity_queryset.count(),
         "/","/","/","/" 
     ]
     return acti_frame
