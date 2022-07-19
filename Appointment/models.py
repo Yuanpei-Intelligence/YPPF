@@ -284,6 +284,36 @@ class CardCheckInfo(models.Model):
         verbose_name_plural = verbose_name
 
 
+class LongTermAppoint(models.Model):
+    """
+    记录长期预约所需要的全部信息
+    """
+    appoint = models.OneToOneField(Appoint, 
+                                   on_delete=models.CASCADE,
+                                   verbose_name='单次预约信息')
+
+    org = models.ForeignKey(Participant, 
+                            on_delete=models.CASCADE, 
+                            verbose_name='发起预约组织')                  
+
+    times = models.SmallIntegerField('预约次数', default=1)
+    interval = models.SmallIntegerField('间隔周数', default=1)
+    
+    class Status(models.IntegerChoices):
+        CANCELED = (0, '已取消')
+        REVIEWING = (1, '审核中')
+        APPROVED = (2, '已通过')
+        REJECTED = (3, '未通过')
+
+    status = models.SmallIntegerField("申请状态", 
+                                      choices=Status.choices, 
+                                      default=Status.REVIEWING)
+
+    class Meta:
+        verbose_name = '长期预约信息'
+        verbose_name_plural = verbose_name
+
+
 from Appointment.utils.scheduler_func import cancel_scheduler
 
 @receiver(pre_delete, sender=Appoint)
