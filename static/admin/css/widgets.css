@@ -22,25 +22,26 @@
 }
 
 .selector-available h2, .selector-chosen h2 {
-    border: 1px solid var(--border-color);
+    border: 1px solid #ccc;
     border-radius: 4px 4px 0 0;
 }
 
 .selector-chosen h2 {
-    background: var(--primary);
-    color: var(--header-link-color);
+    background: #79aec8;
+    color: #fff;
 }
 
 .selector .selector-available h2 {
-    background: var(--darkened-bg);
-    color: var(--body-quiet-color);
+    background: #f8f8f8;
+    color: #666;
 }
 
 .selector .selector-filter {
-    border: 1px solid var(--border-color);
+    background: white;
+    border: 1px solid #ccc;
     border-width: 0 1px;
     padding: 8px;
-    color: var(--body-quiet-color);
+    color: #999;
     font-size: 10px;
     margin: 0;
     text-align: left;
@@ -65,7 +66,7 @@
 .selector ul.selector-chooser {
     float: left;
     width: 22px;
-    background-color: var(--selected-bg);
+    background-color: #eee;
     border-radius: 10px;
     margin: 10em 5px 0 5px;
     padding: 0;
@@ -90,7 +91,7 @@
     text-indent: -3000px;
     overflow: hidden;
     cursor: default;
-    opacity: 0.55;
+    opacity: 0.3;
 }
 
 .active.selector-add, .active.selector-remove {
@@ -125,14 +126,14 @@ a.selector-chooseall, a.selector-clearall {
     overflow: hidden;
     font-weight: bold;
     line-height: 16px;
-    color: var(--body-quiet-color);
+    color: #666;
     text-decoration: none;
-    opacity: 0.55;
+    opacity: 0.3;
 }
 
 a.active.selector-chooseall:focus, a.active.selector-clearall:focus,
 a.active.selector-chooseall:hover, a.active.selector-clearall:hover {
-    color: var(--link-fg);
+    color: #447e9b;
 }
 
 a.active.selector-chooseall, a.active.selector-clearall {
@@ -210,11 +211,6 @@ a.active.selector-clearall:focus, a.active.selector-clearall:hover {
 }
 
 .stacked .active.selector-add {
-    background-position: 0 -32px;
-    cursor: pointer;
-}
-
-.stacked .active.selector-add:focus, .stacked .active.selector-add:hover {
     background-position: 0 -48px;
     cursor: pointer;
 }
@@ -225,11 +221,6 @@ a.active.selector-clearall:focus, a.active.selector-clearall:hover {
 }
 
 .stacked .active.selector-remove {
-    background-position: 0 0px;
-    cursor: pointer;
-}
-
-.stacked .active.selector-remove:focus, .stacked .active.selector-remove:hover {
     background-position: 0 -16px;
     cursor: pointer;
 }
@@ -260,7 +251,7 @@ p.datetime {
     line-height: 20px;
     margin: 0;
     padding: 0;
-    color: var(--body-quiet-color);
+    color: #666;
     font-weight: bold;
 }
 
@@ -268,7 +259,7 @@ p.datetime {
     white-space: nowrap;
     font-weight: normal;
     font-size: 11px;
-    color: var(--body-quiet-color);
+    color: #ccc;
 }
 
 .datetime input, .form-row .datetime input.vDateField, .form-row .datetime input.vTimeField {
@@ -312,7 +303,7 @@ table p.datetime {
 
 .timezonewarning {
     font-size: 11px;
-    color: var(--body-quiet-color);
+    color: #999;
 }
 
 /* URL */
@@ -321,7 +312,7 @@ p.url {
     line-height: 20px;
     margin: 0;
     padding: 0;
-    color: var(--body-quiet-color);
+    color: #666;
     font-size: 11px;
     font-weight: bold;
 }
@@ -336,7 +327,7 @@ p.file-upload {
     line-height: 20px;
     margin: 0;
     padding: 0;
-    color: var(--body-quiet-color);
+    color: #666;
     font-size: 11px;
     font-weight: bold;
 }
@@ -354,7 +345,7 @@ p.file-upload {
 }
 
 span.clearable-file-input label {
-    color: var(--body-fg);
+    color: #333;
     font-size: 11px;
     display: inline;
     float: none;
@@ -367,9 +358,8 @@ span.clearable-file-input label {
     font-size: 12px;
     width: 19em;
     text-align: center;
-    background: var(--body-bg);
-    color: var(--body-fg);
-    border: 1px solid var(--hairline-color);
+    background: white;
+    border: 1px solid #ddd;
     border-radius: 4px;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
     overflow: hidden;
@@ -397,20 +387,20 @@ span.clearable-file-input label {
     margin: 0;
     text-align: center;
     border-top: none;
+    background: #f5dd5d;
     font-weight: 700;
     font-size: 12px;
     color: #333;
-    background: var(--accent);
 }
 
 .calendar th {
     padding: 8px 5px;
-    background: var(--darkened-bg);
-    border-bottom: 1px solid var(--border-color);
+    background: #f8f8f8;
+    border-bottom: 1px solid #ddd;
     font-weight: 400;
     font-size: 12px;
     text-align: center;
-    color: var(--body-quiet-color);
+    color: #666;
 }
 
 .calendar td {
@@ -418,17 +408,17 @@ span.clearable-file-input label {
     font-size: 12px;
     text-align: center;
     padding: 0;
-    border-top: 1px solid var(--hairline-color);
+    border-top: 1px solid #eee;
     border-bottom: none;
 }
 
 .calendar td.selected a {
-    background: var(--primary);
-    color: var(--button-fg);
+    background: #79aec8;
+    color: #fff;
 }
 
 .calendar td.nonday {
-    background: var(--darkened-bg);
+    background: #f8f8f8;
 }
 
 .calendar td.today a {
@@ -440,17 +430,17 @@ span.clearable-file-input label {
     font-weight: 400;
     padding: 6px;
     text-decoration: none;
-    color: var(--body-quiet-color);
+    color: #444;
 }
 
 .calendar td a:focus, .timelist a:focus,
 .calendar td a:hover, .timelist a:hover {
-    background: var(--primary);
+    background: #79aec8;
     color: white;
 }
 
 .calendar td a:active, .timelist a:active {
-    background: var(--header-bg);
+    background: #417690;
     color: white;
 }
 
@@ -464,16 +454,16 @@ span.clearable-file-input label {
 
 .calendarnav a:link, #calendarnav a:visited,
 #calendarnav a:focus, #calendarnav a:hover {
-    color: var(--body-quiet-color);
+    color: #999;
 }
 
 .calendar-shortcuts {
-    background: var(--body-bg);
-    color: var(--body-quiet-color);
+    background: white;
     font-size: 11px;
     line-height: 11px;
-    border-top: 1px solid var(--hairline-color);
+    border-top: 1px solid #eee;
     padding: 8px 0;
+    color: #ccc;
 }
 
 .calendarbox .calendarnav-previous, .calendarbox .calendarnav-next {
@@ -511,8 +501,8 @@ span.clearable-file-input label {
     padding: 4px 0;
     font-size: 12px;
     background: #eee;
-    border-top: 1px solid var(--border-color);
-    color: var(--body-fg);
+    border-top: 1px solid #ddd;
+    color: #333;
 }
 
 .calendar-cancel:focus, .calendar-cancel:hover {

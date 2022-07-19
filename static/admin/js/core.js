@@ -1,15 +1,19 @@
 // Core javascript helper functions
-'use strict';
+
+// basic browser identification & version
+var isOpera = (navigator.userAgent.indexOf("Opera") >= 0) && parseFloat(navigator.appVersion);
+var isIE = ((document.all) && (!isOpera)) && parseFloat(navigator.appVersion.split("MSIE ")[1].split(";")[0]);
 
 // quickElement(tagType, parentReference [, textInChildNode, attribute, attributeValue ...]);
 function quickElement() {
-    const obj = document.createElement(arguments[0]);
+    'use strict';
+    var obj = document.createElement(arguments[0]);
     if (arguments[2]) {
-        const textNode = document.createTextNode(arguments[2]);
+        var textNode = document.createTextNode(arguments[2]);
         obj.appendChild(textNode);
     }
-    const len = arguments.length;
-    for (let i = 3; i < len; i += 2) {
+    var len = arguments.length;
+    for (var i = 3; i < len; i += 2) {
         obj.setAttribute(arguments[i], arguments[i + 1]);
     }
     arguments[1].appendChild(obj);
@@ -18,6 +22,7 @@ function quickElement() {
 
 // "a" is reference to an object
 function removeChildren(a) {
+    'use strict';
     while (a.hasChildNodes()) {
         a.removeChild(a.lastChild);
     }
@@ -28,11 +33,16 @@ function removeChildren(a) {
 // See https://www.quirksmode.org/js/findpos.html
 // ----------------------------------------------------------------------------
 function findPosX(obj) {
-    let curleft = 0;
+    'use strict';
+    var curleft = 0;
     if (obj.offsetParent) {
         while (obj.offsetParent) {
-            curleft += obj.offsetLeft - obj.scrollLeft;
+            curleft += obj.offsetLeft - ((isOpera) ? 0 : obj.scrollLeft);
             obj = obj.offsetParent;
+        }
+        // IE offsetParent does not include the top-level
+        if (isIE && obj.parentElement) {
+            curleft += obj.offsetLeft - obj.scrollLeft;
         }
     } else if (obj.x) {
         curleft += obj.x;
@@ -41,11 +51,16 @@ function findPosX(obj) {
 }
 
 function findPosY(obj) {
-    let curtop = 0;
+    'use strict';
+    var curtop = 0;
     if (obj.offsetParent) {
         while (obj.offsetParent) {
-            curtop += obj.offsetTop - obj.scrollTop;
+            curtop += obj.offsetTop - ((isOpera) ? 0 : obj.scrollTop);
             obj = obj.offsetParent;
+        }
+        // IE offsetParent does not include the top-level
+        if (isIE && obj.parentElement) {
+            curtop += obj.offsetTop - obj.scrollTop;
         }
     } else if (obj.y) {
         curtop += obj.y;
@@ -56,7 +71,8 @@ function findPosY(obj) {
 //-----------------------------------------------------------------------------
 // Date object extensions
 // ----------------------------------------------------------------------------
-{
+(function() {
+    'use strict';
     Date.prototype.getTwelveHours = function() {
         return this.getHours() % 12 || 12;
     };
@@ -85,12 +101,6 @@ function findPosY(obj) {
         return (this.getSeconds() < 10) ? '0' + this.getSeconds() : this.getSeconds();
     };
 
-    Date.prototype.getAbbrevMonthName = function() {
-        return typeof window.CalendarNamespace === "undefined"
-            ? this.getTwoDigitMonth()
-            : window.CalendarNamespace.monthsOfYearAbbrev[this.getMonth()];
-    };
-
     Date.prototype.getFullMonthName = function() {
         return typeof window.CalendarNamespace === "undefined"
             ? this.getTwoDigitMonth()
@@ -98,8 +108,7 @@ function findPosY(obj) {
     };
 
     Date.prototype.strftime = function(format) {
-        const fields = {
-            b: this.getAbbrevMonthName(),
+        var fields = {
             B: this.getFullMonthName(),
             c: this.toString(),
             d: this.getTwoDigitDate(),
@@ -116,7 +125,7 @@ function findPosY(obj) {
             Y: '' + this.getFullYear(),
             '%': '%'
         };
-        let result = '', i = 0;
+        var result = '', i = 0;
         while (i < format.length) {
             if (format.charAt(i) === '%') {
                 result = result + fields[format.charAt(i + 1)];
@@ -134,10 +143,10 @@ function findPosY(obj) {
     // String object extensions
     // ----------------------------------------------------------------------------
     String.prototype.strptime = function(format) {
-        const split_format = format.split(/[.\-/]/);
-        const date = this.split(/[.\-/]/);
-        let i = 0;
-        let day, month, year;
+        var split_format = format.split(/[.\-/]/);
+        var date = this.split(/[.\-/]/);
+        var i = 0;
+        var day, month, year;
         while (i < split_format.length) {
             switch (split_format[i]) {
             case "%d":
@@ -150,14 +159,7 @@ function findPosY(obj) {
                 year = date[i];
                 break;
             case "%y":
-                // A %y value in the range of [00, 68] is in the current
-                // century, while [69, 99] is in the previous century,
-                // according to the Open Group Specification.
-                if (parseInt(date[i], 10) >= 69) {
-                    year = date[i];
-                } else {
-                    year = (new Date(Date.UTC(date[i], 0))).getUTCFullYear() + 100;
-                }
+                year = date[i];
                 break;
             }
             ++i;
@@ -167,4 +169,5 @@ function findPosY(obj) {
         // date extraction.
         return new Date(Date.UTC(year, month, day));
     };
-}
+
+})();
