@@ -1,22 +1,23 @@
-import pandas as pd
-from app.models import (
-    Organization,
-    Activity,
-    Position,
-)
-import pandas as pd
-from typing import Callable
 from datetime import datetime
+from typing import Callable
 
+import pandas as pd
+from django.db.models import Aggregate, CharField, Count
+
+from app.models import (
+    Activity,
+    Position
+)
 
 __all__ = [
     'organization_data',
+    'orga_position_data',
 ]
 
 
-def organization_data(start_time: datetime = None, 
-                     end_time: datetime = None, 
-                     hash_func: Callable = None ) -> pd.DataFrame:
+def organization_data(start_time: datetime = None,
+                      end_time: datetime = None,
+                      hash_func: Callable = None) -> pd.DataFrame:
     """ 导出：组织数量，每个组织办的活动的数量及参与人数。
 
     :param start_time: 筛选的起始时间, defaults to None
@@ -28,88 +29,75 @@ def organization_data(start_time: datetime = None,
     :return: 返回数据
     :rtype: pd.DataFrame
     """
-    orga_queryset = Organization.objects.all()
     activity_queryset = Activity.objects.all()
     acti_frame = pd.DataFrame(columns=(
-        "组织", "活动个数", "活动", "参与人数", "开始时间", "结束时间"
+        "组织", "活动", "参与人数", "开始时间", "结束时间"
     ))
     # 按时间筛选
     if start_time:
         activity_queryset = activity_queryset.filter(start__gte=start_time)
-    if end_time :
+    if end_time:
         activity_queryset = activity_queryset.filter(start__lte=end_time)
+    orga_name = 'organization_id__oname'
+    activity_queryset = activity_queryset.values_list(
+        orga_name, 'title', 'current_participants', 'start', 'end').order_by(orga_name)
 
-    # 便历各个organization
-    for orga in orga_queryset:
-        orga_acti_queryset = activity_queryset.filter(organization_id=orga)
-        acti_num = orga_acti_queryset.count()
-        if  acti_num == 0: # 若没有活动，用/填充
-            acti_frame.loc[len(acti_frame.index)] = [
-                orga.oname, 0,
-                "/","/","/","/"
-            ]
-            continue
-        for acti in orga_acti_queryset:
-            acti_frame.loc[len(acti_frame.index)] = [
-                orga.oname,
-                acti_num,
-                acti.title,
-                acti.current_participants,
-                acti.start.strftime("%Y年%m月%d日 %H:%M"),    # 开始时间
-                acti.end.strftime("%Y年%m月%d日 %H:%M"),   # 结束时间
-            ]
-    # 最后两行输出组织个数和活动个数
-    acti_frame.loc[len(acti_frame.index)] = [
-        '组织个数', orga_queryset.count(),
-        "/","/","/","/" 
-    ]
-    acti_frame.loc[len(acti_frame.index)] = [
-        '活动个数', activity_queryset.count(),
-        "/","/","/","/" 
-    ]
+    for acti in activity_queryset:
+        acti_frame.loc[len(acti_frame.index)] = [
+            acti[0], acti[1], acti[2],
+            acti[3].strftime("%Y年%m月%d日 %H:%M"),    # 开始时间
+            acti[4].strftime("%Y年%m月%d日 %H:%M"),   # 结束时间
+        ]
+
     return acti_frame
 
 
-def orga_position_data(start_time: datetime = None, 
-                     end_time: datetime = None, 
-                     hash_func: Callable = None) -> pd.DataFrame:
+def orga_position_data(start_time: int = None,
+                       end_time: int = None,
+                       hash_func: Callable = None) -> pd.DataFrame:
     """导出：每个人参与了什么书院组织
 
-    :param start_time: 筛选的起始时间, defaults to None
-    :type start_time: datetime, optional
-    :param end_time: 筛选的终止时间, defaults to None
-    :type end_time: datetime, optional
+    :param start_time: 筛选的起始学年, defaults to None
+    :type start_time: int, optional
+    :param end_time: 筛选的终止学年, defaults to None
+    :type end_time: int, optional
     :param hash_func: 脱敏函数, defaults to None
     :type hash_func: Callable, optional
     :return: 返回数据
     :rtype: pd.DataFrame
     """
+    class GroupConcat(Aggregate):  # 用于分类聚合查询
+        function = 'GROUP_CONCAT'
+        template = '%(function)s(%(distinct)s%(expressions)s%(ordering)s%(separator)s)'
+
+        def __init__(self, expression, distinct=False, ordering=None, separator=',', **extra):
+            super(GroupConcat, self).__init__(
+                expression,
+                distinct='DISTINCT ' if distinct else '',
+                ordering=' ORDER BY %s' % ordering if ordering is not None else '',
+                separator=' SEPARATOR "%s"' % separator,
+                output_field=CharField(),
+                **extra
+            )
     person_frame = pd.DataFrame(columns=(
-        "学号", "姓名", "参与组织个数", "参与组织",
+        "学号", "参与组织个数", "参与组织",
     ))
-    position_queryset = Position.objects.filter(
-        status=Position.Status.INSERVICE)  # 只筛选在职的人员
-    data_dict = {}
-    position_queryset_len = len(position_queryset)
-    # 遍历所有position
-    for index in range(position_queryset_len):
-        position:Position = position_queryset[index]
-        personid = position.person.person_id.username  # 学号
-        # data_dict[personid][0]为姓名
-        # data_dict[personid][1]为储存参加组织的名称的列表
-        if data_dict.get(personid):
-            data_dict[personid][1].append(position.org.oname)
-        else:
-            data_dict[personid] = [position.person.name,[position.org.oname,]]
-    personlist = list(data_dict.keys())
-    if not hash_func: # 若不脱敏，则按学号排序
-        personlist.sort()
-    for person in personlist:
+    position_queryset = Position.objects.all()
+    if start_time:
+        position_queryset = position_queryset.filter(in_year__gte=start_time)
+    if end_time:
+        position_queryset = position_queryset.filter(in_year__lte=end_time)
+
+    sid = "person__person_id__username"  # 学号
+    position_queryset = position_queryset.values(sid) \
+        .annotate(count=Count('org'), orgalist=GroupConcat('org__oname', separator=",")
+                  ).order_by(sid)
+
+    for person in position_queryset:
         person_frame.loc[len(person_frame.index)] = [
-            hash_func(person) if hash_func else person,
-            hash_func(data_dict[person][0]) if hash_func else data_dict[person][0],
-            len(data_dict[person][1]),
-            ','.join(data_dict[person][1])
+            hash_func(person[sid]) if hash_func else person[sid],
+            person['count'],
+            person['orgalist']
         ]
-    
+
     return person_frame
