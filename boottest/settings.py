@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     "django_apscheduler",
     "app",
     "Appointment",
+    'data_analysis',
     "scheduler",
 ]
 
