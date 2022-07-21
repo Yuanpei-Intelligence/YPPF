@@ -6,12 +6,12 @@ from django.db.models import Aggregate, CharField, Count
 
 from app.models import (
     Activity,
-    Position
+    Position,
 )
 
 __all__ = [
     'organization_data',
-    'orga_position_data',
+    'org_position_data',
 ]
 
 
@@ -30,7 +30,7 @@ def organization_data(start_time: datetime = None,
     :rtype: pd.DataFrame
     """
     activity_queryset = Activity.objects.all()
-    acti_frame = pd.DataFrame(columns=(
+    activity_frame = pd.DataFrame(columns=(
         "组织", "活动", "参与人数", "开始时间", "结束时间"
     ))
     # 按时间筛选
@@ -38,18 +38,19 @@ def organization_data(start_time: datetime = None,
         activity_queryset = activity_queryset.filter(start__gte=start_time)
     if end_time:
         activity_queryset = activity_queryset.filter(start__lte=end_time)
-    orga_name = 'organization_id__oname'
+    org_name_field = 'organization_id__oname'
     activity_queryset = activity_queryset.values_list(
-        orga_name, 'title', 'current_participants', 'start', 'end').order_by(orga_name)
+        org_name_field, 'title', 'current_participants', 'start', 'end'
+        ).order_by(org_name_field)
 
     for acti in activity_queryset:
-        acti_frame.loc[len(acti_frame.index)] = [
+        activity_frame.loc[len(activity_frame.index)] = [
             acti[0], acti[1], acti[2],
             acti[3].strftime("%Y年%m月%d日 %H:%M"),    # 开始时间
             acti[4].strftime("%Y年%m月%d日 %H:%M"),   # 结束时间
         ]
 
-    return acti_frame
+    return activity_frame
 
 
 def orga_position_data(start_time: int = None,
@@ -88,14 +89,17 @@ def orga_position_data(start_time: int = None,
     if end_time:
         position_queryset = position_queryset.filter(in_year__lte=end_time)
 
-    sid = "person__person_id__username"  # 学号
-    position_queryset = position_queryset.values(sid) \
-        .annotate(count=Count('org'), orgalist=GroupConcat('org__oname', separator=",")
-                  ).order_by(sid)
+    sid_field = "person__person_id__username"  # 学号
+    position_queryset = (
+        position_queryset.values(sid_field)
+        .annotate(
+            count=Count('org'),
+            orgalist=GroupConcat('org__oname', separator=",")
+        ))
 
     for person in position_queryset:
         person_frame.loc[len(person_frame.index)] = [
-            hash_func(person[sid]) if hash_func else person[sid],
+            hash_func(person[sid_field]) if hash_func else person[sid_field],
             person['count'],
             person['orgalist']
         ]
