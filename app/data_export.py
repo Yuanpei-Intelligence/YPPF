@@ -16,7 +16,7 @@ __all__ = [
     'feedback_data',
     'organization_data',
     'org_position_data',
-    ]
+]
 
 def course_data(year: int = None,
                 semester: str = None,
@@ -45,7 +45,7 @@ def course_data(year: int = None,
         filter_kws.update(year=year)
     if semester is not None:
         filter_kws.update(semester=semester)
-    courses = pd.DataFrame(columns=('年级', '学号', '门数', '次数', '学时'))
+    courses = pd.DataFrame(columns=('学号', '年级', '门数', '次数', '学时'))
     relate_filter_kws = {
         f'courserecord__{k}': v
         for k, v in filter_kws.items()
@@ -67,9 +67,9 @@ def course_data(year: int = None,
                      **relate_filter_kws)))
     for i, person in enumerate(person_record):
         courses.loc[i] = [
-            person.stu_grade,   # 年级
             hash_func(str(person.person_id)) if hash_func is not None \
                                              else str(person.person_id),    # 学号
+            person.stu_grade,   # 年级
             person.course_num,  #总门数
             person.record_times if include_invalid == False \
                                 else person.record_times + person.invalid_times,     # 次数
