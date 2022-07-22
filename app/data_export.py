@@ -13,7 +13,7 @@ __all__ = [
     'course_data',
     'feedback_data',
     'organization_data',
-    'orga_position_data'
+    'org_position_data'
     ]
 
 def course_data(year: int = None,
@@ -67,12 +67,12 @@ def course_data(year: int = None,
         courses.loc[i] = [
             person.stu_grade,   # 年级
             hash_func(str(person.person_id)) if hash_func is not None \
-                               else str(person.person_id),    # 学号
+                                             else str(person.person_id),    # 学号
             person.course_num,  #总门数
             person.record_times if include_invalid == False \
-                else person.record_times + person.invalid_times,     # 次数
+                                else person.record_times + person.invalid_times,     # 次数
             person.record_hours if include_invalid == False \
-                else person.record_hours + person.invalid_hours     # 学时
+                                else person.record_hours + person.invalid_hours     # 学时
         ]
     return courses
 
@@ -114,7 +114,7 @@ def feedback_data(
         feedbacks.loc[i]=[
             person.stu_grade,    # 年级
             hash_func(str(person.peron_id)) if hash_func is not None \
-                               else str(person.person_id),    # 学号
+                                            else str(person.person_id),    # 学号
             person.total_num,      # 总提交数
             person.solved_num      # 已解决提交数
             ]
@@ -158,7 +158,7 @@ def organization_data(start_time: datetime = None,
 
     return activity_frame
 
-def orga_position_data(start_time: int = None,
+def org_position_data(start_time: int = None,
                        end_time: int = None,
                        hash_func: Callable = None) -> pd.DataFrame:
     """导出：每个人参与了什么书院组织
