@@ -1,4 +1,3 @@
-from collections import defaultdict
 from typing import Callable, Optional
 from datetime import datetime
 from pandas import DataFrame
@@ -8,7 +7,7 @@ __all__ = [
 ]
 
 load_map = {}
-dump_map = defaultdict(list)
+dump_map = {}
 
 # 类型提示
 OutputFunc = Callable[[str], Optional[str]]
@@ -24,8 +23,9 @@ def register_load(cmd_label: str, load_func: LoadFunc, default_path: str):
     load_map[cmd_label] = load_func, default_path
 
 
-def register_dump(task: str, dump_func: DumpFunc, default_path: str, accept_params: list):
-    dump_map[task].append((dump_func, default_path, accept_params))
+def register_dump(task: str, dump_func: DumpFunc,
+                  accept_params: list = ['start_time', 'end_time']):
+    dump_map[task] = dump_func, accept_params
 
 from data_analysis import load_funcs
 from data_analysis import dump_funcs
