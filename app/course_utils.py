@@ -1101,7 +1101,7 @@ def create_course(request, course_id=None):
     return context
 
 
-def cal_participate_num(course: Course) -> Counter:
+def cal_participate_num(course: Course) -> dict:
     """
     计算该课程对应组织所有成员的参与次数
     return {Naturalperson.id:参与次数}
@@ -1109,7 +1109,7 @@ def cal_participate_num(course: Course) -> Counter:
     :param course: 选择要计算的课程
     :type course: Course
     :return: 返回统计数据
-    :rtype: Counter
+    :rtype: dict
     """
     org = course.organization
     activities = Activity.objects.activated().filter(
