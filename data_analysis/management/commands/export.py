@@ -1,4 +1,6 @@
+from functools import reduce
 import os
+from typing import List
 import pandas as pd
 from datetime import datetime
 
@@ -30,14 +32,14 @@ def valid_datetime(s: str) -> datetime:
 
 
 def complete_filename(filename: str=None) -> str:
-    '''
+    """
     处理缺省的文件名和没有后缀的文件名
 
     :param filename: 待处理的文件名, defaults to None
     :type filename: str, optional
     :return: 处理后的文件名
     :rtype: str
-    '''
+    """
     filename = (
         filename if filename is not None else
         datetime.now().strftime('%Y年%m月%d日') + MySHA256Hasher('').encode(
@@ -48,16 +50,36 @@ def complete_filename(filename: str=None) -> str:
     return filename
 
 
+def extend_group_label(labels: List[str], extend_dict: dict) -> set:
+    """Extend label to low-level, atomic tasks.
+    Currently no support to recur
+
+    :param labels: labels to be extended
+    :type labels: List[str]
+    :param extend_dict: ...
+    :type extend_dict: dict
+    :return: set of atomic tasks
+    :rtype: set
+    """
+    tasks = [label for label in labels if label not in extend_dict]
+    tasks.extend(reduce(lambda x, y: x + y, [extend_dict[label]
+                                             for label in labels if label in extend_dict]))
+    return set(tasks)
+
+
 class Command(BaseCommand):
     help = '导出数据'
 
     def add_arguments(self, parser):
         parser.add_argument('tasks', type=str, nargs='+',
                             help='Specify dumping task. Use all to execute all.',
-                            choices=['ALL', 'EXCEPT'] + list(dump_map.keys()))
+                            choices=['all'] + list(dump_map.keys()) + list(dump_groups.keys()))
+        parser.add_argument('-x', '--exclude', type=str, nargs='+',
+                            help='exclude tasks')
         parser.add_argument('-d', '--dir', type=str, help='Dumping directory.',
                             default='test_data')
-        parser.add_argument('-f', '--filename', type=str, help='Dumping file name.')
+        parser.add_argument('-f', '--filename', type=str,
+                            help='Dumping file name.')
         parser.add_argument('-s', '--start-time', type=valid_datetime,
                             help='Start time. Format: YY-mm-dd-HH:MM or YY-mm-dd')
         parser.add_argument('-e', '--end-time', type=valid_datetime,
@@ -65,39 +87,18 @@ class Command(BaseCommand):
         parser.add_argument('-ay', '--year', type=int, help='Academic Year')
         parser.add_argument('-as', '--semester', type=str, help='Semester',
                             choices=['Fall', 'Spring', 'Fall+Spring'])
-        parser.add_argument('-ex', '--extra', type=str, help='Extra parameters')
+        parser.add_argument('-ex', '--extra', type=str,
+                            help='Extra parameters')
         parser.add_argument('-m', '--mask', type=bool,
                             default=True, help='Mask student id.')
         parser.add_argument('-S', '--salt', type=str, help='hash salt')
-
 
     def handle(self, *args, **options):
         hash_func = (MySHA256Hasher(options['salt'] or str(os.urandom(8))).encode
                      if options['mask'] else None)
 
-        tasks: list = []
-        except_flag = False
-        # 预处理
-        # 可优化，但数据规模导致没有意义
-        for task in options['tasks']:
-            if task == 'ALL':
-                except_flag = False
-                tasks.clear()
-                tasks.extend(dump_map.keys())
-            elif task in dump_groups.keys():
-                # 预定义的标签组
-                except_flag = False
-                task_set = set(task)
-                tasks.extend([t for t in dump_groups[task]
-                              if t not in task_set and t in dump_map.keys()])
-            elif task == 'EXCEPT':
-                except_flag = True
-            elif except_flag:
-                try: tasks.remove(task)
-                except: self.stderr.write(f'{task} 不是一个待导出的标签！')
-            elif task not in tasks:
-                tasks.append(task)
-        # 文件路径
+        tasks = dump_map.keys() if 'all' in options['tasks'] else extend_group_label(
+            options['tasks']) - extend_group_label(options['exclude'])
         filename = complete_filename(options['filename'])
         filepath = os.path.join(options['dir'], filename)
         with pd.ExcelWriter(filepath) as writer:
