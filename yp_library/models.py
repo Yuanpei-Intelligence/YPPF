@@ -21,9 +21,6 @@ class Reader(models.Model):
         to_field='username',
         verbose_name='学号',
     )
-    
-    def __str__(self):
-        return str(self.name)
 
 
 class Book(models.Model):
@@ -32,6 +29,7 @@ class Book(models.Model):
         verbose_name_plural = verbose_name
         
     id = models.IntegerField("书籍编号", primary_key=True)
+    reqno = models.CharField("索书号", max_length=254, blank=True, null=True)
     title = models.CharField("书名", max_length=500, blank=True, null=True)
     author = models.CharField("作者", max_length=254, blank=True, null=True)
     publisher = models.CharField("出版商", max_length=254, blank=True, null=True)
