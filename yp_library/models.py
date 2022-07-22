@@ -14,7 +14,7 @@ class Reader(models.Model):
         verbose_name_plural = verbose_name
     
     id = models.AutoField("编号", primary_key=True)
-    stu_id = models.CharField("学号", max_length=30, blank=True, null=True)
+    student_id = models.CharField("学号", max_length=30, blank=True, null=True)
 
 
 class Book(models.Model):
@@ -23,7 +23,7 @@ class Book(models.Model):
         verbose_name_plural = verbose_name
         
     id = models.IntegerField("书籍编号", primary_key=True)
-    reqno = models.CharField("索书号", max_length=254, blank=True, null=True)
+    identity_code = models.CharField("索书号", max_length=254, blank=True, null=True)
     title = models.CharField("书名", max_length=500, blank=True, null=True)
     author = models.CharField("作者", max_length=254, blank=True, null=True)
     publisher = models.CharField("出版商", max_length=254, blank=True, null=True)
