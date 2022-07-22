@@ -113,19 +113,6 @@ DATABASES = {
         #     "init_command": "SET sql_mode='STRICT_TRANS_TABLES'",
         },
     },
-    # 除服务器外无法连接，暂时不启用
-    # "yp_lib": {
-    #     "ENGINE": "mssql",
-    #     "NAME": base_get_setting('yp_lib/NAME'),
-    #     "HOST": base_get_setting('yp_lib/HOST'),
-    #     "PORT": 1433,
-    #     "USER": base_get_setting('yp_lib/USER'),
-    #     "PASSWORD": base_get_setting('yp_lib/PASSWORD'),
-    #     'OPTIONS': {
-    #         'driver': 'ODBC Driver 18 for SQL Server',   
-    #         'extra_params': 'TrustServerCertificate=yes',
-    #     },
-    # },
 }
 
 # Password validation
@@ -203,6 +190,19 @@ if MY_ENV == "SCHEDULER":
 if MY_ENV == "INNER":
     pass
 
+if MY_ENV == "LIB":
+    DATABASES["yp_lib"] =  {
+        "ENGINE": "mssql",
+        "NAME": os.environ["LIB_DB"],
+        "HOST": os.environ["LIB_DB_HOST"],
+        "PORT": os.environ["LIB_DB_PORT"],
+        "USER": os.environ["LIB_DB_USER"],
+        "PASSWORD": os.environ["LIB_DB_PASSWORD"],
+        'OPTIONS': {
+            'driver': 'ODBC Driver 18 for SQL Server',   
+            'extra_params': 'TrustServerCertificate=yes',
+        },
+    }
 
 # STATIC_ROOT = os.path.join(BASE_DIR, "static")
 STATIC_URL = "/static/"

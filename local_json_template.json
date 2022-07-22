@@ -10,12 +10,6 @@
         "PASSWORD": "$PASSWORD$",
         "HOST": "$HOST$"
     },
-    "yp_lib": {
-        "NAME": "$DATABASE$",
-        "USER": "$USER$",
-        "PASSWORD": "$PASSWORD$",
-        "HOST": "$HOST$"
-    },
     "url": {
         "base_url": "http://$BASEMENT_IP$/",
         "login_url": "http://$THIS_IP$",
