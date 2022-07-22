@@ -48,9 +48,16 @@ __all__ = [
 @login_required(redirect_field_name="origin")
 @utils.check_user_access(redirect_url="/logout/")
 @log.except_captured(EXCEPT_REDIRECT, source='course_views[editCourseActivity]', record_user=True)
-def editCourseActivity(request: HttpRequest, aid):
+def editCourseActivity(request: HttpRequest, aid: int):
     """
     编辑单次书院课程活动，addActivity的简化版
+
+    :param request: 修改单次课程活动的请求
+    :type request: HttpRequest
+    :param aid: 待修改的课程活动id
+    :type aid: int
+    :return: 返回"修改课程活动"页面
+    :rtype: HttpResponse
     """
     # 检查用户身份
     valid, user_type, html_display = utils.check_user_type(request.user)
@@ -127,6 +134,11 @@ def editCourseActivity(request: HttpRequest, aid):
 def addSingleCourseActivity(request: HttpRequest):
     """
     创建单次书院课程活动，addActivity的简化版
+
+    :param request: 创建单次课程活动的请求
+    :type request: HttpRequest
+    :return: 返回"发起单次课程活动"页面
+    :rtype: HttpResponse
     """
     # 检查用户身份
     valid, user_type, html_display = utils.check_user_type(request.user)
