@@ -575,7 +575,7 @@ def load_course_record(filepath: str, output_func: Callable=None, html:bool=Fals
     :type filepath: str
     :param output_func: 输出函数, defaults to None
     :type output_func: Callable, optional
-    :param html: _description_, defaults to False
+    :param html: 允许以HTML格式输出，否则将br标签替换为\n, defaults to False
     :type html: bool, optional
     :return: 返回导入结果的提示
     :rtype: str
