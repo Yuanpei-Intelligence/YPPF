@@ -1136,7 +1136,7 @@ def cal_participate_num(course: Course) -> Counter:
 def check_post_and_modify(records:list, post_data:dict) -> MESSAGECONTEXT:
     """
     records和post_data分别为原先和更新后的list
-    检查post表单是否可以为这个course对应的内容,
+    检查post表单是否可以为这个course对应的内容，
     如果可以，修改学时
     - 返回wrong|succeed
     - 不抛出异常
@@ -1240,18 +1240,17 @@ def finish_course(course):
     return succeed("结束课程成功！")
 
 
-def download_course_record(course=None, year=None, semester=None):
-    """
-    返回需要导出的学时信息文件
+def download_course_record(course:Course=None, year:int=None, semester:Semester=None) -> HttpResponse:
+    """返回需要导出的学时信息文件
     course:
-        提供course时为单个课程服务,只导出该课程的相关人员的学时信息
+        提供course时为单个课程服务，只导出该课程的相关人员的学时信息
         不提供时下载所有学时信息，注意，只有相关负责老师可以访问！
     :param course: 所选择的课程, defaults to None
-    :type course: _type_, optional
+    :type course: Course, optional
     :param year: 所选择的学年, defaults to None
-    :type year: _type_, optional
+    :type year: int, optional
     :param semester: 所选择的学期, defaults to None
-    :type semester: _type_, optional
+    :type semester: Semester, optional
     :return: 返回下载的文件数据
     :rtype: HttpResponse
     """
