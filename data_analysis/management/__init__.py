@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import Callable, Optional
 from datetime import datetime
 from pandas import DataFrame
@@ -7,7 +8,7 @@ __all__ = [
 ]
 
 load_map = {}
-dump_map = {}
+dump_map = defaultdict(list)
 
 # 类型提示
 OutputFunc = Callable[[str], Optional[str]]
@@ -23,12 +24,8 @@ def register_load(cmd_label: str, load_func: LoadFunc, default_path: str):
     load_map[cmd_label] = load_func, default_path
 
 
-def register_dump(cmd_label: str, dump_func: DumpFunc, default_path: str):
-    # 未完成，请修改
-    # 请为每个命令指定default_path, .xlsx后缀
-    return NotImplemented
-    dump_map[cmd_label] = dump_func, ...
-
+def register_dump(task: str, dump_func: DumpFunc, default_path: str, accept_params: list):
+    dump_map[task].append((dump_func, default_path, accept_params))
 
 from data_analysis import load_funcs
 from data_analysis import dump_funcs
