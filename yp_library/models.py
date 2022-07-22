@@ -14,13 +14,7 @@ class Reader(models.Model):
         verbose_name_plural = verbose_name
     
     id = models.AutoField("编号", primary_key=True)
-    stu_id = models.OneToOneField(
-        User,
-        related_name='+',
-        on_delete=models.CASCADE,
-        to_field='username',
-        verbose_name='学号',
-    )
+    stu_id = models.CharField("学号", max_length=30, blank=True, null=True)
 
 
 class Book(models.Model):
