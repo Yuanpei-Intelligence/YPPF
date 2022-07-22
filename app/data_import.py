@@ -1000,9 +1000,9 @@ def load_org_view(request):
         if load_type is None:
             message = "没有传入loadtype参数:[org或otype]"
         elif load_type == "otype":
-            message = load_orgtype("orgtypeinf.csv")
+            message = load_orgtype("test_data/orgtypeinf.csv")
         elif load_type == "org":
-            message = "导入小组信息成功！" + load_org("orginf.csv")
+            message = "导入小组信息成功！" + load_org("test_data/orginf.csv")
         else:
             message = "没有得到loadtype参数:[org或otype]"
     else:
