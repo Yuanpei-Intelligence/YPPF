@@ -1843,6 +1843,9 @@ class CourseRecordManager(models.Manager):
 
 
 class CourseRecord(models.Model):
+    """
+    学时表
+    """
     class Meta:
         verbose_name = "学时表"
         verbose_name_plural = verbose_name
