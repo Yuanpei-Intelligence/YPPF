@@ -13,7 +13,7 @@ __all__ = [
     'course_data',
     'feedback_data',
     'organization_data',
-    'org_pos_data'
+    'orga_position_data'
     ]
 
 def course_data(year: int = None,
