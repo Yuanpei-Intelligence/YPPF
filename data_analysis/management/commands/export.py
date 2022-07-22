@@ -1,11 +1,10 @@
 import os
+import pandas as pd
 from datetime import datetime
 
 from django.core.management.base import BaseCommand
-from django.conf import settings
 
 from boottest.hasher import MySHA256Hasher
-from app.constants import CURRENT_ACADEMIC_YEAR
 from data_analysis.management import dump_map
 
 
@@ -30,36 +29,67 @@ def valid_datetime(s: str) -> datetime:
     raise ValueError(msg)
 
 
+def complete_filename(filename: str=None) -> str:
+    '''
+    处理缺省的文件名和没有后缀的文件名
+
+    :param filename: 待处理的文件名, defaults to None
+    :type filename: str, optional
+    :return: 处理后的文件名
+    :rtype: str
+    '''
+    filename = (
+        filename if filename is not None else
+        datetime.now().strftime('%Y年%m月%d日') + MySHA256Hasher('').encode(
+            datetime.now().strftime(' %H:%M:%S.%f'))[:4]
+    )
+    if not filename.endswith(('.xlsx', '.xls')):
+        filename += '.xlsx'
+    return filename
+
+
 class Command(BaseCommand):
+    help = '导出数据'
+
     def add_arguments(self, parser):
-        parser.add_argument('task', type=str, nargs='+',
+        parser.add_argument('tasks', type=str, nargs='+',
                             help='Specify dumping task. Use all to execute all.',
                             choices=['all'] + list(dump_map.keys()))
-        parser.add_argument('-d', '--directory', type=str, help='Dumping directory.',
-                            default=os.path.join(settings.MY_TMP_DIR, str(datetime.now().date)))
+        parser.add_argument('-d', '--dir', type=str, help='Dumping directory.',
+                            default='test_data')
+        parser.add_argument('-f', '--filename', type=str, help='Dumping file name.')
         parser.add_argument('-s', '--start-time', type=valid_datetime,
-                            default=None, help='Start time. Format: YY-mm-dd-HH:MM or YY-mm-dd')
+                            help='Start time. Format: YY-mm-dd-HH:MM or YY-mm-dd')
         parser.add_argument('-e', '--end-time', type=valid_datetime,
-                            default=None, help='End time. Format: YY-mm-dd-HH:MM or YY-mm-dd')
-        parser.add_argument('-y', '--year', type=int,
-                            help='Academic Year', default=CURRENT_ACADEMIC_YEAR)
+                            help='End time. Format: YY-mm-dd-HH:MM or YY-mm-dd')
+        parser.add_argument('-ay', '--year', type=int, help='Academic Year')
+        parser.add_argument('-as', '--semester', type=str, help='Semester',
+                            choices=['Fall', 'Spring', 'Fall+Spring'])
+        parser.add_argument('-ex', '--extra', type=str, help='Extra parameters')
         parser.add_argument('-m', '--mask', type=bool,
                             default=True, help='Mask student id.')
-        parser.add_argument('-S', '--salt', type=str,
-                            default=str(os.urandom(8)), help='hash salt')
-        parser.add_argument('--semester', type=str, help='Semester',
-                            choices=['Fall', 'Spring', 'Fall+Spring'], default='Fall+Spring')
+        parser.add_argument('-S', '--salt', type=str, help='hash salt')
+
 
     def handle(self, *args, **options):
-        hash_func = MySHA256Hasher(
-            options['salt']).encode if options['mask'] else None
+        hash_func = (MySHA256Hasher(options['salt'] or str(os.urandom(8))).encode
+                     if options['mask'] else None)
 
-        tasks = options['task']
-        if 'all' in options['task']:
-            tasks = dump_map.keys()
-        for task in tasks:
-            for dump_function, default_filename, accept_params in dump_map[task]:
-                data_frame = dump_function(
-                    hash_func=hash_func, **options.fromkeys(accept_params))
-                data_frame.to_csv(os.path.join(
-                    options['directory'], f'{default_filename}.csv'), index=False)
+        tasks: list = options['tasks']
+        # 预处理
+        if 'all' in tasks:
+            tasks.remove('all')
+            tasks = [t for t in dump_map.keys() if not t in tasks]
+        # 文件路径
+        filename = complete_filename(options['filename'])
+        filepath = os.path.join(options['dir'], filename)
+        with pd.ExcelWriter(filepath) as writer:
+            for task in tasks:
+                dump_function, accept_params = dump_map[task]
+                self.stdout.write(f'正在导出 {task} 到 {filepath}')
+                df: pd.DataFrame = dump_function(
+                    hash_func=hash_func,
+                    **{k: options[k] for k in set(accept_params).intersection(options.keys())}
+                )
+                df.to_excel(writer, sheet_name=task, index=False)
+        self.stdout.write(f'导出结束！已导出至 {filepath}')
